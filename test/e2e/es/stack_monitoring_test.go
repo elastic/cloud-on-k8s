@@ -105,7 +105,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 						return err
 					}
 
-					es.Spec.HTTP = commonv1.HTTPConfig{
+					es.Spec.HTTP = commonv1.HTTPConfigWithClientOptions{
 						Service: commonv1.ServiceTemplate{
 							Spec: corev1.ServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
@@ -114,10 +114,12 @@ func TestExternalESStackMonitoring(t *testing.T) {
 								},
 							},
 						},
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-									{IP: nodeExternalIP},
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+										{IP: nodeExternalIP},
+									},
 								},
 							},
 						},

@@ -11,12 +11,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -54,29 +52,39 @@ func (l ResourcesList) ExpectedNodeCount() int32 {
 	return l.StatefulSets().ExpectedNodeCount()
 }
 
+// ResolvedConfig holds all pre-computed configuration needed for reconciliation.
+// Computing this early allows us to detect clientAuthenticationRequired before creating the ES client,
+// and avoids duplicate config computation in BuildExpectedResources.
+type ResolvedConfig struct {
+	// NodeSetConfigs contains the merged configuration for each NodeSet, keyed by NodeSet name.
+	NodeSetConfigs map[string]settings.CanonicalConfig
+
+	// ClientAuthenticationRequired indicates whether client certificate authentication is required
+	// based on the merged configuration.
+	ClientAuthenticationRequired bool
+
+	// PolicyConfig contains StackConfigPolicy settings.
+	PolicyConfig PolicyConfig
+
+	// ClientAuthenticationOverrideWarning is set when spec.http.tls.client.authentication is enabled
+	// but StackConfigPolicy overrides xpack.security.http.ssl.client_authentication to a non-required value.
+	ClientAuthenticationOverrideWarning string
+}
+
+// BuildExpectedResources builds the expected Kubernetes resources for all NodeSets.
+// It uses pre-computed configs from ResolvedConfig (computed early in reconciliation)
+// to avoid duplicate config computation.
 func BuildExpectedResources(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets es_sset.StatefulSetList,
-	ipFamily corev1.IPFamily,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
+	resolvedConfig ResolvedConfig,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
-	clusterHasZoneAwareness := esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness()
-
-	ver, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get policy config from StackConfigPolicy
-	policyConfig, err := GetPolicyConfig(ctx, client, es)
-	if err != nil {
-		return nil, err
-	}
 
 	// we retrieve the current pods restart trigger annotation.
 	actualPodsRestartTriggerAnnotationValue, err := es_sset.GetActualPodsRestartTriggerAnnotationForCluster(client, es)
@@ -85,28 +93,12 @@ func BuildExpectedResources(
 	}
 
 	for _, nodeSpec := range es.Spec.NodeSets {
-		// build es config
-		userCfg := commonv1.Config{}
-		if nodeSpec.Config != nil {
-			userCfg = *nodeSpec.Config
-		}
-		cfg, err := settings.NewMergedESConfig(
-			es.Name,
-			ver,
-			ipFamily,
-			es.Spec.HTTP,
-			userCfg,
-			policyConfig.ElasticsearchConfig,
-			es.Spec.RemoteClusterServer.Enabled,
-			es.HasRemoteClusterAPIKey(),
-			clusterHasZoneAwareness,
-		)
-		if err != nil {
-			return nil, err
+		cfg, ok := resolvedConfig.NodeSetConfigs[nodeSpec.Name]
+		if !ok {
+			return nil, fmt.Errorf("no pre-computed config for NodeSet %s", nodeSpec.Name)
 		}
 
-		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue)
+		statefulSet, err := BuildStatefulSet(ctx, client, es, nodeSpec, cfg, keystoreResources, existingStatefulSets, setDefaultSecurityContext, resolvedConfig.PolicyConfig, meta, actualPodsRestartTriggerAnnotationValue, resolvedConfig.ClientAuthenticationRequired)
 		if err != nil {
 			return nil, err
 		}

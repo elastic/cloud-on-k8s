@@ -126,6 +126,34 @@ type Context struct {
 	E2ETags               string            `json:"e2e_tags"`
 	LogToFile             bool              `json:"log_to_file"`
 	ArtefactsDir          string            `json:"artefacts_dir"`
+	// DatePrefix is the date prefix for bucket paths (YYYYMMDD format).
+	// Set once at context initialization to ensure consistency across a test run.
+	DatePrefix string `json:"date_prefix"`
+	// Stateless holds configuration for stateless Elasticsearch tests.
+	// If nil, stateless mode is disabled.
+	Stateless *StatelessConfig `json:"stateless,omitempty"`
+}
+
+// StatelessConfig holds configuration for stateless Elasticsearch tests.
+type StatelessConfig struct {
+	// Provider is the storage provider type: gcs, s3, or azure.
+	Provider string `json:"provider"`
+	// Bucket is the bucket name (GCS/S3) or container name (Azure).
+	Bucket string `json:"bucket"`
+	// Region is the cloud region (S3 only).
+	Region string `json:"region,omitempty"`
+	// StorageAccount is the Azure storage account name (only set for Azure provider).
+	StorageAccount string `json:"storage_account,omitempty"`
+	// SecretName is the name of the K8s Secret containing bucket credentials.
+	SecretName string `json:"secret_name"`
+	// SecretNamespace is the namespace where the bucket credentials Secret is located.
+	// This Secret will be copied to managed namespaces when E2E tests run.
+	SecretNamespace string `json:"secret_namespace"`
+}
+
+// IsEnabled returns true if stateless configuration is set (non-nil).
+func (s *StatelessConfig) IsEnabled() bool {
+	return s != nil
 }
 
 // ManagedNamespace returns the nth managed namespace.
@@ -141,6 +169,46 @@ func (c Context) HasTag(tag string) bool {
 // KubernetesMajorMinor returns just the major and minor version numbers of the effective Kubernetes version.
 func (c Context) KubernetesMajorMinor() string {
 	return fmt.Sprintf("%d.%d", c.KubernetesVersion.Major, c.KubernetesVersion.Minor)
+}
+
+// IsStateless returns true if tests should run in stateless Elasticsearch mode.
+func (c Context) IsStateless() bool {
+	return c.Stateless.IsEnabled()
+}
+
+// TestBasePath returns the base path within the bucket for a test's data.
+// Format: {DatePrefix}/{TestRun}/{testName}
+// The date prefix (YYYYMMDD) makes cleanup easier - old directories can be identified
+// and deleted by date, either manually or via scripts.
+// This can be used by the Elasticsearch builder to construct the object store config,
+// ensuring each stateless Elasticsearch instance has an isolated storage path.
+func (c Context) TestBasePath(testName string) string {
+	if c.Stateless == nil || c.Stateless.Bucket == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", c.RunBasePath(), testName)
+}
+
+// RunBasePath returns the base path for this test run within the bucket: {DatePrefix}/{TestRun}.
+// All per-test paths are nested under this. Used by cleanup to delete the entire run's data.
+func (c Context) RunBasePath() string {
+	datePrefix := c.DatePrefix
+	if datePrefix == "" {
+		// Fallback for contexts not initialized via the standard path (e.g., unit tests).
+		datePrefix = time.Now().UTC().Format("20060102")
+	}
+	return fmt.Sprintf("%s/%s", datePrefix, c.TestRun)
+}
+
+// StatelessSecretRef returns the name and namespace of the bucket credentials Secret.
+// This can be used by the Elasticsearch builder to automatically add the Secret
+// to secureSettings for object store authentication.
+// Returns empty strings if stateless mode is not enabled or not configured.
+func (c Context) StatelessSecretRef() (name, namespace string) {
+	if c.Stateless == nil {
+		return "", ""
+	}
+	return c.Stateless.SecretName, c.Stateless.SecretNamespace
 }
 
 // ClusterResource is a generic cluster resource.

@@ -31,6 +31,11 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+setup-envtest:
+ifeq ($(shell which setup-envtest 2>/dev/null),)
+	@(cd /tmp; GO111MODULE=on go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+endif
+
 ## -- Docker image
 
 REGISTRY            ?= docker.elastic.co
@@ -179,17 +184,19 @@ helm-test:
 	@hack/helm/test.sh
 
 integration: GO_TAGS += integration
-integration: clean
-	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
-		KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+integration: setup-envtest clean
+	@ kubebuilder_assets=$$(setup-envtest use -p path) ; \
+	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+		KUBEBUILDER_ASSETS=$$kubebuilder_assets ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
 			go test $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
 	done
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean
-	@ exit_code=0; \
+integration-xml: setup-envtest clean
+	@ kubebuilder_assets=$$(setup-envtest use -p path) ; \
+	exit_code=0; \
 	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
-	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+	KUBEBUILDER_ASSETS=$$kubebuilder_assets ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
 		gotestsum --junitfile integration-tests-$$(basename $$pkg).xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) || exit_code=$$? ; \
 	done; \
 	exit $$exit_code
@@ -456,13 +463,15 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.3.0
+E2E_STACK_VERSION          ?= 9.3.2
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 15m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
+# Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
+E2E_STATELESS              ?= $(or $(STATELESS),false)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -492,7 +501,8 @@ e2e-run: go-generate
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--stateless=$(E2E_STATELESS)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json

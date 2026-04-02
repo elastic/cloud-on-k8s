@@ -8,14 +8,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"

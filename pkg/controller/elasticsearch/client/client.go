@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"math"
@@ -124,7 +125,7 @@ type Client interface {
 	// in the cluster.
 	Version() version.Version
 	// HasProperties checks whether this client has the indicated properties.
-	HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate) bool
+	HasProperties(version version.Version, user BasicAuth, url URLProvider, caCerts []*x509.Certificate, clientCert *tls.Certificate) bool
 }
 
 // Timeout returns the Elasticsearch client timeout value for the given Elasticsearch resource.
@@ -138,7 +139,8 @@ func formatAsSeconds(d time.Duration) string {
 
 // NewElasticsearchClient creates a new client for the target cluster.
 //
-// If dialer is not nil, it will be used to create new TCP connections
+// If dialer is not nil, it will be used to create new TCP connections.
+// If clientCert is not nil, it will be presented to the server for mutual TLS authentication.
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	es types.NamespacedName,
@@ -146,15 +148,17 @@ func NewElasticsearchClient(
 	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	clientCert *tls.Certificate,
 	timeout time.Duration,
 	debug bool,
 ) Client {
-	client := commonhttp.Client(dialer, caCerts, timeout)
+	client := commonhttp.ClientWithCert(dialer, caCerts, clientCert, timeout)
 	client.Transport = apmelasticsearch.WrapRoundTripper(client.Transport)
 	base := &baseClient{
 		URLProvider: esURL,
 		User:        esUser,
 		caCerts:     caCerts,
+		clientCert:  clientCert,
 		HTTP:        client,
 		es:          es,
 		debug:       debug,

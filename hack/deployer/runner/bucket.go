@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
 func createBucketIfConfigured(plan Plan, newManager func() (bucket.Manager, error)) error {
@@ -33,6 +34,45 @@ func deleteBucketIfConfigured(plan Plan, newManager func() (bucket.Manager, erro
 		return err
 	}
 	return mgr.Delete()
+}
+
+// newVaultBucketManager creates a VaultManager for pre-provisioned bucket credentials.
+// The Vault path is determined by the provider ID (gke→gcs, eks→s3, eks-arm→s3-arm, aks→azure).
+func newVaultBucketManager(providerID string, vaultClient vault.Client) (*bucket.VaultManager, error) {
+	vaultPath, ok := bucket.StatelessVaultPaths[providerID]
+	if !ok {
+		return nil, fmt.Errorf("no stateless bucket Vault path configured for provider %q", providerID)
+	}
+
+	// Determine provider type from Vault path
+	provider, err := providerFromVaultPath(vaultPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := bucket.VaultConfig{
+		VaultPath:       vaultPath,
+		Provider:        provider,
+		SecretName:      bucket.StatelessSecretName,
+		SecretNamespace: bucket.StatelessSecretNamespace,
+	}
+
+	return bucket.NewVaultManager(cfg, vaultClient)
+}
+
+// providerFromVaultPath extracts the provider type from a Vault path.
+// Expects flat naming convention: stateless-bucket-{provider} (e.g., stateless-bucket-gcs).
+func providerFromVaultPath(vaultPath string) (bucket.VaultProvider, error) {
+	switch {
+	case strings.HasSuffix(vaultPath, "-gcs"):
+		return bucket.VaultProviderGCS, nil
+	case strings.HasSuffix(vaultPath, "-s3-arm"), strings.HasSuffix(vaultPath, "-s3"):
+		return bucket.VaultProviderS3, nil
+	case strings.HasSuffix(vaultPath, "-azure"):
+		return bucket.VaultProviderAzure, nil
+	default:
+		return "", fmt.Errorf("cannot determine provider from Vault path %q: expected path ending in -gcs, -s3, -s3-arm, or -azure", vaultPath)
+	}
 }
 
 // newBucketConfig builds a bucket.Config from a plan and driver context.

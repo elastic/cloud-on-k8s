@@ -5,7 +5,10 @@
 package association
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -25,14 +28,22 @@ func AddAssociationController(
 	params operator.Parameters,
 	associationInfo AssociationInfo,
 ) error {
+	// Derive the referenced resource Kind from the scheme at setup time,
+	// making the relationship with ReferencedObjTemplate explicit and unbreakable.
+	referencedResourceKind, err := referencedObjKind(mgr, associationInfo.ReferencedObjTemplate())
+	if err != nil {
+		return err
+	}
+
 	controllerName := associationInfo.AssociationName + "-association-controller"
 	r := &Reconciler{
-		AssociationInfo: associationInfo,
-		Client:          mgr.GetClient(),
-		accessReviewer:  accessReviewer,
-		watches:         watches.NewDynamicWatches(),
-		recorder:        mgr.GetEventRecorder(controllerName),
-		Parameters:      params,
+		AssociationInfo:        associationInfo,
+		Client:                 mgr.GetClient(),
+		accessReviewer:         accessReviewer,
+		watches:                watches.NewDynamicWatches(),
+		recorder:               mgr.GetEventRecorder(controllerName),
+		Parameters:             params,
+		referencedResourceKind: referencedResourceKind,
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
@@ -67,4 +78,16 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 
 	// Dynamically watch Service objects for custom services setup by the user
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, r.watches.Services))
+}
+
+// referencedObjKind derives the Kind of the referenced resource from the manager's scheme.
+func referencedObjKind(mgr manager.Manager, obj client.Object) (string, error) {
+	gvks, _, err := mgr.GetScheme().ObjectKinds(obj)
+	if err != nil {
+		return "", fmt.Errorf("failed to derive Kind for %T: %w", obj, err)
+	}
+	if len(gvks) == 0 || gvks[0].Kind == "" {
+		return "", fmt.Errorf("no GVK found for %T", obj)
+	}
+	return gvks[0].Kind, nil
 }

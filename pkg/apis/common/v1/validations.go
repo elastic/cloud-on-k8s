@@ -119,6 +119,16 @@ func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorL
 	return nil
 }
 
+// CheckElasticsearchSelectorRefs checks that the given Elasticsearch selector references are valid.
+func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
 // CheckLocalAssociationRefs checks that the given local association references are valid.
 func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) field.ErrorList {
 	for _, ref := range refs {

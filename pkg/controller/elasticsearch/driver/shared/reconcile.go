@@ -61,10 +61,12 @@ var (
 )
 
 // ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
+// clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
 func ReconcileSharedResources(
 	ctx context.Context,
 	d commondriver.Interface,
 	params driver.Parameters,
+	clientAuthenticationRequired bool,
 ) (*ReconcileState, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
@@ -160,6 +162,20 @@ func ReconcileSharedResources(
 		return nil, results
 	}
 
+	// Reconcile operator client certificate and trust bundle of client certificates.
+	// Unlike the HTTP cert reconciliation above, a failure here does not prevent subsequent steps:
+	// the ES client is still created (without a client cert), esReachable becomes false if client auth
+	// is required, and subsequent steps should handle that gracefully with a requeue.
+	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
+		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
+	)
+	if clientCertResults.HasError() {
+		_, err := clientCertResults.Aggregate()
+		k8s.MaybeEmitErrorEventf(d.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+			"Operator client certificate and trust bundle reconciliation error: %v", err)
+	}
+	results.WithResults(clientCertResults)
+
 	// Start the ES observer
 	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
 	if err != nil {
@@ -180,6 +196,7 @@ func ReconcileSharedResources(
 			controllerUser,
 			*minVersion,
 			trustedHTTPCertificates,
+			operatorClientCert,
 		),
 		hasEndpoints,
 	)
@@ -224,6 +241,7 @@ func ReconcileSharedResources(
 		controllerUser,
 		*minVersion,
 		trustedHTTPCertificates,
+		operatorClientCert,
 	)
 
 	// use unknown health as a proxy for a cluster not responding to requests

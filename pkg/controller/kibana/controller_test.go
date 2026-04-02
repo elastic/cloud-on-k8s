@@ -377,7 +377,7 @@ func withName(kibana *kibanav1.Kibana, name string) *kibanav1.Kibana {
 
 func withESReference(kibana *kibanav1.Kibana, selector commonv1.ObjectSelector) *kibanav1.Kibana {
 	obj := kibana.DeepCopy()
-	obj.Spec.ElasticsearchRef = selector
+	obj.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: selector}
 	return obj
 }
 

@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -367,18 +368,20 @@ func Test_validSanIP(t *testing.T) {
 			name: "valid SAN IPs: OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					HTTP: commonv1.HTTPConfig{
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-									{
-										IP: validIP,
-									},
-									{
-										IP: validIP2,
-									},
-									{
-										IP: validIPv6,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+										{
+											IP: validIP,
+										},
+										{
+											IP: validIP2,
+										},
+										{
+											IP: validIPv6,
+										},
 									},
 								},
 							},
@@ -392,15 +395,17 @@ func Test_validSanIP(t *testing.T) {
 			name: "invalid SAN IPs: NOT OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					HTTP: commonv1.HTTPConfig{
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-									{
-										IP: invalidIP,
-									},
-									{
-										IP: validIP2,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+										{
+											IP: invalidIP,
+										},
+										{
+											IP: validIP2,
+										},
 									},
 								},
 							},
@@ -1376,5 +1381,89 @@ func es(v string) esv1.Elasticsearch {
 			Name:      "foo",
 		},
 		Spec: esv1.ElasticsearchSpec{Version: v},
+	}
+}
+
+func Test_validClientAuthentication(t *testing.T) {
+	tests := []struct {
+		name              string
+		es                esv1.Elasticsearch
+		enterpriseEnabled bool
+		expectErrors      bool
+	}{
+		{
+			name: "client authentication disabled: OK regardless of license",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: false},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: false,
+			expectErrors:      false,
+		},
+		{
+			name: "client authentication enabled with enterprise license: OK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: true,
+			expectErrors:      false,
+		},
+		{
+			name: "client authentication enabled without enterprise license: NOK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: false,
+			expectErrors:      true,
+		},
+		{
+			name: "client authentication enabled with TLS disabled: NOK",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "8.17.0",
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+							},
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			enterpriseEnabled: true,
+			expectErrors:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checker := license.MockLicenseChecker{EnterpriseEnabled: tt.enterpriseEnabled}
+			actual := validClientAuthentication(context.Background(), tt.es, checker)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validClientAuthentication(). Name: %v, actual %v, wanted errors: %v", tt.name, actual, tt.expectErrors)
+			}
+		})
 	}
 }

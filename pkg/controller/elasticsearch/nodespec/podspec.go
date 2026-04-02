@@ -66,6 +66,7 @@ func BuildPodTemplateSpec(
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
 	actualPodsRestartTriggerAnnotationValue string,
+	clientAuthenticationRequired bool,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -73,7 +74,7 @@ func BuildPodTemplateSpec(
 	}
 
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes)
+	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes, clientAuthenticationRequired)
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {

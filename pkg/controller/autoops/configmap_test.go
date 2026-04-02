@@ -178,10 +178,12 @@ func mkES(sslEnabled bool) esv1.Elasticsearch {
 			Namespace: "default",
 		},
 		Spec: esv1.ElasticsearchSpec{
-			HTTP: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: !sslEnabled,
+			HTTP: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							Disabled: !sslEnabled,
+						},
 					},
 				},
 			},

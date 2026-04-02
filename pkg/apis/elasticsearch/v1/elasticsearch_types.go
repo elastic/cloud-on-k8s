@@ -122,7 +122,7 @@ type ElasticsearchSpec struct {
 
 	// HTTP holds HTTP layer settings for Elasticsearch.
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
 	// Transport holds transport layer settings for Elasticsearch.
 	// +kubebuilder:validation:Optional
