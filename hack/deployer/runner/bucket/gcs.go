@@ -142,9 +142,15 @@ func (g *GCSManager) Create() error {
 		return fmt.Errorf("while parsing service account key JSON from %s: invalid JSON", keyFile)
 	}
 
-	return createK8sSecret(g.cfg.SecretName, g.cfg.SecretNamespace, map[string]string{
+	// Annotations provide bucket configuration for the E2E test framework.
+	// These are consistent with VaultManager.readGCSCredentials() to ensure the same
+	// bucket information is available regardless of credential source.
+	return CreateK8sSecret(g.cfg.SecretName, g.cfg.SecretNamespace, map[string]string{
 		"gcs.client.default.credentials_file": string(keyData),
 	}, map[string]string{
+		AnnotationProvider:             ProviderGCS,
+		AnnotationBucket:               g.cfg.Name,
+		AnnotationProject:              g.project,
 		"eck-deployer/service-account": g.serviceAccountEmail(),
 		"eck-deployer/key-id":          keyJSON.PrivateKeyID,
 	})

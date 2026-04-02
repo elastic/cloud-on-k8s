@@ -43,6 +43,7 @@ const (
 	EnvVarGoTags               = "GO_TAGS"
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
+	EnvVarStateless            = "STATELESS"
 
 	K8sInDockerMachineType = "n1-standard-16"
 )
@@ -62,10 +63,11 @@ var (
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
 
 	shortcuts = map[string]string{
-		"p": EnvVarProvider,
-		"k": EnvVarK8sVersion,
-		"s": EnvVarStackVersion,
-		"t": EnvVarTestsMatch,
+		"p":  EnvVarProvider,
+		"k":  EnvVarK8sVersion,
+		"s":  EnvVarStackVersion,
+		"t":  EnvVarTestsMatch,
+		"sl": EnvVarStateless,
 	}
 
 	fixed   string

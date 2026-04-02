@@ -50,6 +50,10 @@ type runFlags struct {
 	deployChaosJob        bool
 	e2eTags               string
 	testEnvTags           []string
+	// Stateless configuration
+	statelessEnabled         bool
+	statelessSecretName      string
+	statelessSecretNamespace string
 }
 
 var log logr.Logger
@@ -106,6 +110,11 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
 	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
+	// Stateless flags
+	// The bucket base path is extracted from Secret annotations set by the deployer.
+	cmd.Flags().BoolVar(&flags.statelessEnabled, "stateless", false, "Enable stateless Elasticsearch tests")
+	cmd.Flags().StringVar(&flags.statelessSecretName, "stateless-secret-name", "elasticsearch-object-store", "Name of the K8s Secret containing bucket credentials")
+	cmd.Flags().StringVar(&flags.statelessSecretNamespace, "stateless-secret-namespace", "default", "Namespace where the bucket credentials Secret is located")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

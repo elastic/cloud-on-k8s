@@ -321,6 +321,146 @@ func TestObjectSelector_IsValid(t *testing.T) {
 	}
 }
 
+func TestElasticsearchSelector_IsValid(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector ElasticsearchSelector
+		wantErr  bool
+	}{
+		{
+			name:     "empty: OK",
+			selector: ElasticsearchSelector{},
+			wantErr:  false,
+		},
+		{
+			name: "name only: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name, namespace and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: false,
+		},
+		{
+			name: "clientCertificateSecretName without name: KO",
+			selector: ElasticsearchSelector{
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName and clientCertificateSecretName: KO (secretName and name conflict)",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{SecretName: "s", Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: true,
+		},
+		{
+			name: "inherits ObjectSelector validation - secretName and name: KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{SecretName: "s", Name: "a"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "inherits ObjectSelector validation - secretName and serviceName: KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{SecretName: "s", ServiceName: "c"},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.selector.IsValid(); (got != nil) != tt.wantErr {
+				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestElasticsearchSelector_GetClientCertificateSecretName(t *testing.T) {
+	assert.Equal(t, "", ElasticsearchSelector{}.GetClientCertificateSecretName())
+	assert.Equal(t, "my-cert", ElasticsearchSelector{ClientCertificateSecretName: "my-cert"}.GetClientCertificateSecretName())
+}
+
+func TestElasticsearchSelector_WithDefaultNamespace(t *testing.T) {
+	tests := []struct {
+		name             string
+		selector         ElasticsearchSelector
+		defaultNamespace string
+		want             ElasticsearchSelector
+	}{
+		{
+			name: "keep non-empty namespace",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+		},
+		{
+			name: "default empty namespace, preserve clientCertificateSecretName",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "d"},
+				ClientCertificateSecretName: "cc",
+			},
+		},
+		{
+			name: "default empty namespace without clientCertificateSecretName",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a"},
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a", Namespace: "d"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.selector.WithDefaultNamespace(tt.defaultNamespace)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestElasticsearchSelector_IsSet(t *testing.T) {
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsSet())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsSet())
+	assert.False(t, ElasticsearchSelector{}.IsSet())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}, ClientCertificateSecretName: "cc"}.IsSet())
+}
+
+func TestElasticsearchSelector_IsExternal(t *testing.T) {
+	assert.False(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsExternal())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsExternal())
+}
+
 func TestLocalObjectSelector_IsValid(t *testing.T) {
 	tests := []struct {
 		name           string
