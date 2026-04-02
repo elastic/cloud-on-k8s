@@ -186,14 +186,18 @@ func (c Context) TestBasePath(testName string) string {
 	if c.Stateless == nil || c.Stateless.Bucket == "" {
 		return ""
 	}
-	// DatePrefix is set once at context initialization to ensure all tests in a run
-	// use the same date, even if the run spans midnight.
+	return fmt.Sprintf("%s/%s", c.RunBasePath(), testName)
+}
+
+// RunBasePath returns the base path for this test run within the bucket: {DatePrefix}/{TestRun}.
+// All per-test paths are nested under this. Used by cleanup to delete the entire run's data.
+func (c Context) RunBasePath() string {
 	datePrefix := c.DatePrefix
 	if datePrefix == "" {
 		// Fallback for contexts not initialized via the standard path (e.g., unit tests).
 		datePrefix = time.Now().UTC().Format("20060102")
 	}
-	return fmt.Sprintf("%s/%s/%s", datePrefix, c.TestRun, testName)
+	return fmt.Sprintf("%s/%s", datePrefix, c.TestRun)
 }
 
 // StatelessSecretRef returns the name and namespace of the bucket credentials Secret.

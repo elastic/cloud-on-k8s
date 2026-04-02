@@ -167,7 +167,7 @@ func extractBucketConfig(annotations map[string]string, cfg *test.StatelessConfi
 // This runs at end of session and deletes all objects under {DatePrefix}/{TestRun}.
 func (h *helper) registerBucketCleanup(secret *corev1.Secret) {
 	cfg := h.testContext.Stateless
-	basePath := fmt.Sprintf("%s/%s", h.testContext.DatePrefix, h.testContext.TestRun)
+	basePath := h.testContext.RunBasePath()
 
 	log.Info("Registering bucket cleanup",
 		"provider", cfg.Provider,
