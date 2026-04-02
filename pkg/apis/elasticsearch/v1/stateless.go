@@ -47,7 +47,6 @@ type ObjectStoreConfig struct {
 	Client string `json:"client,omitempty"`
 
 	// BasePath is the path prefix within the bucket.
-	// If not specified, defaults to <namespace>/<name> to prevent data collisions when multiple clusters share the same bucket.
 	// +kubebuilder:validation:Optional
 	BasePath string `json:"basePath,omitempty"`
 }

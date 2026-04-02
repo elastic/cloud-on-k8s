@@ -1389,7 +1389,7 @@ ObjectStoreConfig holds the configuration for the external object store used in 
 | *`type`* __[ObjectStoreType](#objectstoretype)__ | Type is the object store backend type (s3, gcs, or azure). |
 | *`bucket`* __string__ | Bucket is the name of the storage bucket. |
 | *`client`* __string__ | Client is the named client configuration in elasticsearch.yml.<br>Defaults to "default" if not specified. |
-| *`basePath`* __string__ | BasePath is the path prefix within the bucket.<br>If not specified, defaults to <namespace>/<name> to prevent data collisions when multiple clusters share the same bucket. |
+| *`basePath`* __string__ | BasePath is the path prefix within the bucket. |
 
 
 ### ObjectStoreType (string)  [#objectstoretype]

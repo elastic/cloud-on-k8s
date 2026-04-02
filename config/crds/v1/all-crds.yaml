@@ -4983,9 +4983,7 @@ spec:
                   Required when mode is "stateless", forbidden when mode is "stateful".
                 properties:
                   basePath:
-                    description: |-
-                      BasePath is the path prefix within the bucket.
-                      If not specified, defaults to <namespace>/<name> to prevent data collisions when multiple clusters share the same bucket.
+                    description: BasePath is the path prefix within the bucket.
                     type: string
                   bucket:
                     description: Bucket is the name of the storage bucket.
