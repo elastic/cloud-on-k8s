@@ -22,6 +22,7 @@ import (
 	commonlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -33,20 +34,36 @@ const (
 // The Settings version is updated using the current timestamp only when the Settings have changed.
 // If the new settings from the policy changed compared to the actual from the secret, the settings version is
 // updated
-func NewSettingsSecretWithVersion(es types.NamespacedName, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
+func NewSettingsSecretWithVersion(ctx context.Context, es types.NamespacedName, isStateless bool, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
 	newVersion := time.Now().UnixNano()
-	return newSettingsSecret(newVersion, es, currentSecret, esConfigPolicy, namespacedSecretSources, meta)
+	return newSettingsSecret(ctx, newVersion, isStateless, es, currentSecret, esConfigPolicy, namespacedSecretSources, meta)
 }
 
-// NewSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
-func newSettingsSecret(version int64, es types.NamespacedName, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
-	settings := NewEmptySettings(version)
+// newSettingsSecret returns a new SettingsSecret for a given Elasticsearch and StackConfigPolicy.
+func newSettingsSecret(ctx context.Context, version int64, isStateless bool, es types.NamespacedName, currentSecret *corev1.Secret, esConfigPolicy *policyv1alpha1.ElasticsearchConfigPolicySpec, namespacedSecretSources []commonv1.NamespacedSecretSource, meta metadata.Metadata) (corev1.Secret, int64, error) {
+	settings := NewEmptySettings(version, isStateless)
 
 	// update the settings according to the config policy
 	if esConfigPolicy != nil {
 		err := settings.updateState(es, *esConfigPolicy)
 		if err != nil {
 			return corev1.Secret{}, 0, err
+		}
+	}
+
+	// For stateless Elasticsearch, preserve existing cluster_secrets from the current secret.
+	// cluster_secrets are managed separately by ReconcileClusterSecrets (called from the ES controller),
+	// so we must not overwrite them when rebuilding the settings (e.g. from the SCP controller).
+	// This is best-effort: if the current settings are missing or malformed, continue rebuilding
+	// without preserving cluster_secrets — the ES controller will reconcile them back.
+	if isStateless && currentSecret != nil {
+		if currentSettingsBytes, exists := currentSecret.Data[SettingsSecretKey]; exists {
+			var currentSettings Settings
+			if err := json.Unmarshal(currentSettingsBytes, &currentSettings); err != nil {
+				ulog.FromContext(ctx).Error(err, "Failed to unmarshal current file settings, cluster_secrets will not be preserved")
+			} else {
+				settings.State.ClusterSecrets = currentSettings.State.ClusterSecrets
+			}
 		}
 	}
 

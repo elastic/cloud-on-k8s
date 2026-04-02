@@ -267,13 +267,13 @@ func Test_ReconcileEmptyFileSettingsSecret(t *testing.T) {
 	// check that the Secret was not updated
 	assert.Equal(t, "1", secret2.ResourceVersion)
 
-	// reconcile again without create only: secret is reconciled but its content hasn't changed
+	// reconcile again without create only: secret is reconciled but its content hasn't changed,
+	// so the Secret should not be updated
 	err = ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, false)
 	assert.NoError(t, err)
 
 	var secret3 corev1.Secret
 	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret3)
 	assert.NoError(t, err)
-	// check that the Secret was not updated
-	assert.NotEqual(t, "1", secret3.ResourceVersion)
+	assert.Equal(t, "1", secret3.ResourceVersion)
 }

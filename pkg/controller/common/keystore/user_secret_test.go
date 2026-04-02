@@ -441,3 +441,75 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		})
 	}
 }
+
+func Test_BuildSecureSettingsData(t *testing.T) {
+	kb := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Name: "kb", Namespace: "ns"},
+	}
+	recorder := toolsevents.NewFakeRecorder(100)
+
+	t.Run("no secrets: returns empty string_secrets", func(t *testing.T) {
+		client := k8s.NewFakeClient(kb)
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, nil)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{}}, got)
+	})
+
+	t.Run("flat keys", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data:       map[string][]byte{"MY_KEY": []byte("my_value")},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{"MY_KEY": "my_value"}}, got)
+	})
+
+	t.Run("dotted keys are expanded into nested maps", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data: map[string][]byte{
+				"s3.client.default.access_key": []byte("AKIA"),
+				"s3.client.default.secret_key": []byte("secret"),
+			},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
+			"s3": map[string]any{
+				"client": map[string]any{
+					"default": map[string]any{
+						"access_key": "AKIA",
+						"secret_key": "secret",
+					},
+				},
+			},
+		}}, got)
+	})
+
+	t.Run("multiple secrets are merged", func(t *testing.T) {
+		s1 := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data:       map[string][]byte{"s3.client.default.access_key": []byte("AKIA")},
+		}
+		s2 := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s2", Namespace: "ns"},
+			Data:       map[string][]byte{"gcs.credentials": []byte("creds")},
+		}
+		client := k8s.NewFakeClient(kb, s1, s2)
+		sources := []commonv1.NamespacedSecretSource{
+			{Namespace: "ns", SecretName: "s1"},
+			{Namespace: "ns", SecretName: "s2"},
+		}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
+			"s3":  map[string]any{"client": map[string]any{"default": map[string]any{"access_key": "AKIA"}}},
+			"gcs": map[string]any{"credentials": "creds"},
+		}}, got)
+	})
+}
