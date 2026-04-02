@@ -1,0 +1,58 @@
+# This sample sets up a stateless Elasticsearch cluster backed by an S3 object store.
+# Stateless Elasticsearch stores data in an external object store rather than on local persistent volumes.
+# Nodes are ephemeral and can be replaced without data loss.
+# Stateless clusters also support these configuration options:
+#   - spec.http (HTTP layer settings, TLS, custom certificates)
+#   - spec.transport (transport layer settings, TLS)
+#   - spec.monitoring (metrics and logs shipping)
+#   - spec.auth (file realm, roles)
+#   - spec.podDisruptionBudget
+#   - spec.updateStrategy
+# See elasticsearch.yaml for examples of these settings.
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-stateless-sample
+spec:
+  version: 9.4.0
+  mode: stateless
+  objectStore:
+    type: s3
+    bucket: my-es-bucket
+    # client: default        # optional, named client configuration in elasticsearch.yml
+    # basePath: my/base/path # optional, defaults to <namespace>/<name>
+  # Object store credentials are managed through secureSettings.
+  # The secret should contain the keystore entries expected by Elasticsearch,
+  # e.g. s3.client.default.access_key and s3.client.default.secret_key for S3.
+  secureSettings:
+  - secretName: object-store-credentials
+  # A stateless cluster requires at least one index and one search tier.
+  nodeSets:
+  - name: index
+    count: 1
+    # podTemplate:
+    #   spec:
+    #     containers:
+    #     - name: elasticsearch
+    #       resources:
+    #         limits:
+    #           memory: 4Gi
+    #           cpu: 2
+  - name: search
+    count: 2
+    # In stateless mode, volumeClaimTemplates provision local cache storage (not primary data).
+    # Data durability comes from the object store. If omitted, a default cache volume is injected.
+    # volumeClaimTemplates:
+    # - metadata:
+    #     name: elasticsearch-cache
+    #   spec:
+    #     accessModes:
+    #     - ReadWriteOnce
+    #     resources:
+    #       requests:
+    #         storage: 50Gi
+    #     storageClassName: standard
+  # For custom NodeSet names, set the tier field explicitly:
+  # - name: my-custom-indexers
+  #   count: 2
+  #   tier: index
