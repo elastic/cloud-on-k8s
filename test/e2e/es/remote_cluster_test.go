@@ -33,6 +33,9 @@ const (
 // 2. A second cluster is created with the first cluster declared as a remote cluster.
 // 3. Finally, an index follower is created in the second cluster to follow the "data-integrity-check" index from the first one.
 func TestRemoteCluster(t *testing.T) {
+	// Remote clusters require stateful Elasticsearch (for now)
+	test.SkipIfStateless(t, "remote clusters not yet supported for stateless Elasticsearch")
+
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
 		t.SkipNow()

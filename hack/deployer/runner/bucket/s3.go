@@ -68,14 +68,18 @@ func (s *S3Manager) Create() error {
 		return err
 	}
 
-	return createK8sSecret(s.cfg.SecretName, s.cfg.SecretNamespace, map[string]string{
+	// Annotations provide bucket configuration for the E2E test framework.
+	// These are consistent with VaultManager.readS3Credentials() to ensure the same
+	// bucket information is available regardless of credential source.
+	return CreateK8sSecret(s.cfg.SecretName, s.cfg.SecretNamespace, map[string]string{
 		"s3.client.default.access_key": accessKeyID,
 		"s3.client.default.secret_key": secretAccessKey,
 	}, map[string]string{
+		AnnotationProvider:           ProviderS3,
+		AnnotationBucket:             s.cfg.Name,
+		AnnotationRegion:             s.cfg.Region,
 		"eck-deployer/iam-user":      s.iamUserName(),
 		"eck-deployer/access-key-id": accessKeyID,
-		"eck-deployer/bucket":        s.cfg.Name,
-		"eck-deployer/region":        s.cfg.Region,
 	})
 }
 

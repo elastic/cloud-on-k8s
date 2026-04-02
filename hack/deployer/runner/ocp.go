@@ -108,9 +108,10 @@ type runtimeState struct {
 }
 
 type OCPDriver struct {
-	plan         Plan
-	runtimeState runtimeState
-	vaultClient  vault.Client
+	plan               Plan
+	runtimeState       runtimeState
+	vaultClient        vault.Client
+	vaultBucketManager *bucket.VaultManager
 }
 
 func (*OCPDriverFactory) Create(plan Plan) (Driver, error) {
@@ -129,8 +130,24 @@ func (d *OCPDriver) setup() []func() error {
 		d.ensureWorkDir,
 		d.authToGCP,
 		d.ensurePullSecret,
+		d.readBucketCredentials,
 		d.downloadClusterState,
 	}
+}
+
+// readBucketCredentials reads Vault bucket credentials early, before cluster creation,
+// to avoid Vault token expiry during long-running OCP cluster provisioning.
+// The VaultManager reads credentials eagerly at construction time.
+func (d *OCPDriver) readBucketCredentials() error {
+	if d.plan.Bucket == nil || !d.plan.Bucket.FromVault {
+		return nil
+	}
+	mgr, err := newVaultBucketManager(OCPDriverID, d.vaultClient)
+	if err != nil {
+		return err
+	}
+	d.vaultBucketManager = mgr
+	return nil
 }
 
 func (d *OCPDriver) Execute() error {
@@ -533,6 +550,16 @@ func (d *OCPDriver) baseDomain() string {
 }
 
 func (d *OCPDriver) newBucketManager() (bucket.Manager, error) {
+	// Use pre-read VaultManager if credentials were read during setup (avoids Vault token expiry).
+	if d.vaultBucketManager != nil {
+		return d.vaultBucketManager, nil
+	}
+	// Should not happen: readBucketCredentials in setup() always caches when FromVault is set.
+	if d.plan.Bucket.FromVault {
+		return nil, fmt.Errorf("bucket.fromVault is set but credentials were not pre-read during setup")
+	}
+
+	// Use GCSManager for dynamic bucket creation
 	if err := bucket.ValidateShellArg(d.plan.Ocp.GCloudProject, "GCP project"); err != nil {
 		return nil, err
 	}

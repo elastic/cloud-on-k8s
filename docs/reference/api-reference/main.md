@@ -542,6 +542,25 @@ ConfigSource references configuration settings.
 
 
 
+### ElasticsearchSelector  [#elasticsearchselector]
+
+ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by the operator
+or a Secret describing an external cluster not managed by the operator.
+
+:::{admonition} Appears In:
+* [KibanaSpec](#kibanaspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace. |
+| *`name`* __string__ | Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK. |
+| *`serviceName`* __string__ | ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced<br>object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of<br>the referenced resource is used. |
+| *`secretName`* __string__ | SecretName is the name of an existing Kubernetes secret that contains connection information for associating an<br>Elastic resource not managed by the operator.<br>The referenced secret must contain the following:<br>- `url`: the URL to reach the Elastic resource<br>- `username`: the username of the user to be authenticated to the Elastic resource<br>- `password`: the password of the user to be authenticated to the Elastic resource<br>- `ca.crt`: the CA certificate in PEM format (optional)<br>- `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)<br>This field cannot be used in combination with the other fields name, namespace or serviceName. |
+| *`clientCertificateSecretName`* __string__ | ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate<br>(tls.crt) and private key (tls.key) for client authentication to the referenced resource.<br>This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.<br>If not specified and the referenced resource requires client authentication, ECK will auto-generate a<br>client certificate. |
+
+
 ### HTTPConfig  [#httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
@@ -673,6 +692,7 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [ApmServerSpec](#apmserverspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchCluster](#elasticsearchcluster)
+* [ElasticsearchSelector](#elasticsearchselector)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
@@ -1908,7 +1928,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`version`* __string__ | Version of Kibana. |
 | *`image`* __string__ | Image is the Kibana Docker image to deploy. |
 | *`count`* __integer__ | Count of Kibana instances to deploy. |
-| *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`packageRegistryRef`* __[LocalObjectSelector](#localobjectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
 | *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |

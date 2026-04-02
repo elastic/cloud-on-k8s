@@ -115,10 +115,12 @@ steps:
       .buildkite/scripts/build/set-images.sh
       cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
       cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
+      # Run TestSmoke in both stateful and stateless mode on every commit.
       - label: "kind/TestSmoke"
         fixed:
           E2E_PROVIDER: kind
           TESTS_MATCH: TestSmoke
+          STATELESS: "true"
           E2E_TAGS: "e2e,mixed"
           MONITORING_SECRETS: ""
           E2E_SKIP_CLEANUP: true
