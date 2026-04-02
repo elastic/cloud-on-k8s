@@ -57,7 +57,7 @@ func newVaultBucketManager(providerID string, vaultClient vault.Client) (*bucket
 		SecretNamespace: bucket.StatelessSecretNamespace,
 	}
 
-	return bucket.NewVaultManager(cfg, vaultClient), nil
+	return bucket.NewVaultManager(cfg, vaultClient)
 }
 
 // providerFromVaultPath extracts the provider type from a Vault path.

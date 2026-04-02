@@ -59,44 +59,44 @@ type VaultConfig struct {
 
 // VaultManager reads pre-provisioned bucket credentials from Vault and creates a Kubernetes Secret.
 // Unlike other bucket managers, it does not create or delete cloud resources.
+// Credentials are read eagerly at construction time so that the Vault token does not need
+// to remain valid until Create() is called (important for OCP where cluster creation can
+// take 30-45 minutes and Vault tokens may expire).
 type VaultManager struct {
 	cfg         VaultConfig
-	vaultClient vault.Client
+	secretData  map[string]string
+	annotations map[string]string
 }
 
-// NewVaultManager creates a new VaultManager with the given configuration.
-func NewVaultManager(cfg VaultConfig, vaultClient vault.Client) *VaultManager {
-	return &VaultManager{
-		cfg:         cfg,
-		vaultClient: vaultClient,
-	}
-}
+// NewVaultManager creates a new VaultManager by reading bucket credentials from Vault.
+// The read happens at construction time to avoid Vault token expiry during long-running
+// operations (e.g., OCP cluster creation).
+func NewVaultManager(cfg VaultConfig, vaultClient vault.Client) (*VaultManager, error) {
+	log.Printf("Reading bucket credentials from Vault path: %s (provider: %s)", cfg.VaultPath, cfg.Provider)
 
-// Create reads bucket credentials from Vault and creates a Kubernetes Secret.
-// The bucket itself is assumed to already exist (pre-provisioned).
-func (m *VaultManager) Create() error {
-	log.Printf("Reading bucket credentials from Vault path: %s (provider: %s)", m.cfg.VaultPath, m.cfg.Provider)
-
-	var secretData map[string]string
-	var annotations map[string]string
+	m := &VaultManager{cfg: cfg}
 	var err error
 
-	switch m.cfg.Provider {
+	switch cfg.Provider {
 	case VaultProviderGCS:
-		secretData, annotations, err = m.readGCSCredentials()
+		m.secretData, m.annotations, err = readGCSCredentials(vaultClient, cfg.VaultPath)
 	case VaultProviderS3:
-		secretData, annotations, err = m.readS3Credentials()
+		m.secretData, m.annotations, err = readS3Credentials(vaultClient, cfg.VaultPath)
 	case VaultProviderAzure:
-		secretData, annotations, err = m.readAzureCredentials()
+		m.secretData, m.annotations, err = readAzureCredentials(vaultClient, cfg.VaultPath)
 	default:
-		return fmt.Errorf("unsupported vault provider: %s", m.cfg.Provider)
+		return nil, fmt.Errorf("unsupported vault provider: %s", cfg.Provider)
 	}
 
 	if err != nil {
-		return fmt.Errorf("while reading credentials from Vault: %w", err)
+		return nil, fmt.Errorf("while reading credentials from Vault: %w", err)
 	}
+	return m, nil
+}
 
-	return CreateK8sSecret(m.cfg.SecretName, m.cfg.SecretNamespace, secretData, annotations)
+// Create creates a Kubernetes Secret from the credentials read at construction time.
+func (m *VaultManager) Create() error {
+	return CreateK8sSecret(m.cfg.SecretName, m.cfg.SecretNamespace, m.secretData, m.annotations)
 }
 
 // Delete is a no-op for VaultManager since we don't own the bucket.
@@ -110,8 +110,8 @@ func (m *VaultManager) Delete() error {
 // Expected Vault keys: bucket, project, credentials_file
 // The returned annotations provide bucket configuration for the E2E test framework,
 // consistent with GCSManager.Create().
-func (m *VaultManager) readGCSCredentials() (map[string]string, map[string]string, error) {
-	values, err := vault.GetMany(m.vaultClient, m.cfg.VaultPath, "bucket", "project", "credentials_file")
+func readGCSCredentials(vaultClient vault.Client, vaultPath string) (map[string]string, map[string]string, error) {
+	values, err := vault.GetMany(vaultClient, vaultPath, "bucket", "project", "credentials_file")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -136,8 +136,8 @@ func (m *VaultManager) readGCSCredentials() (map[string]string, map[string]strin
 // readS3Credentials reads S3 bucket credentials from Vault.
 // Expected Vault keys: bucket, region, access_key, secret_key
 // See readGCSCredentials for annotation documentation.
-func (m *VaultManager) readS3Credentials() (map[string]string, map[string]string, error) {
-	values, err := vault.GetMany(m.vaultClient, m.cfg.VaultPath, "bucket", "region", "access_key", "secret_key")
+func readS3Credentials(vaultClient vault.Client, vaultPath string) (map[string]string, map[string]string, error) {
+	values, err := vault.GetMany(vaultClient, vaultPath, "bucket", "region", "access_key", "secret_key")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -163,8 +163,8 @@ func (m *VaultManager) readS3Credentials() (map[string]string, map[string]string
 // readAzureCredentials reads Azure Blob Storage credentials from Vault.
 // Expected Vault keys: storage_account, container, sas_token
 // See readGCSCredentials for annotation documentation.
-func (m *VaultManager) readAzureCredentials() (map[string]string, map[string]string, error) {
-	values, err := vault.GetMany(m.vaultClient, m.cfg.VaultPath, "storage_account", "container", "sas_token")
+func readAzureCredentials(vaultClient vault.Client, vaultPath string) (map[string]string, map[string]string, error) {
+	values, err := vault.GetMany(vaultClient, vaultPath, "storage_account", "container", "sas_token")
 	if err != nil {
 		return nil, nil, err
 	}
