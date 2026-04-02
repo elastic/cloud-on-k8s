@@ -593,6 +593,69 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 			},
 			wantValidationError: ptr.To[string]("ElasticsearchAutoscaler.autoscaling.k8s.elastic.co \"esa\" is invalid: spec.policies[2].name: Invalid value: \"ml\": ML nodes must be in a dedicated NodeSet"),
 		},
+		{
+			name: "Autoscaler targeting a stateless Elasticsearch is rejected",
+			args: args{
+				es: &esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.4.0",
+						Mode:    esv1.ElasticsearchModeStateless,
+						ObjectStore: &esv1.ObjectStoreConfig{
+							Type:   esv1.ObjectStoreTypeS3,
+							Bucket: "my-bucket",
+						},
+						NodeSets: []esv1.NodeSet{
+							{Name: "index", Count: 1},
+							{Name: "search", Count: 2},
+						},
+					},
+				},
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name:              "index_policy",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"index"}},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+			wantValidationError: ptr.To[string]("autoscaling is not supported for stateless Elasticsearch clusters"),
+		},
+		{
+			name: "Autoscaler targeting a stateful Elasticsearch is allowed",
+			args: args{
+				es: es(map[string]string{}, map[string][]string{"nodeset-data-1": {"data"}}, nil, "8.0.0"),
+				esa: v1alpha1.ElasticsearchAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+					Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+						ElasticsearchRef: v1alpha1.ElasticsearchRef{
+							Name: "es",
+						},
+						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
+							{
+								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+									Name:              "data_policy",
+									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
+								},
+								AutoscalingResources: defaultResources,
+							},
+						},
+					},
+				},
+				checker: yesCheck,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

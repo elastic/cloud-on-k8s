@@ -33,6 +33,9 @@ func validations(ctx context.Context, k8sClient k8s.Client, checker license.Chec
 		noUnknownFields,
 		validName,
 		func(proposed v1alpha1.ElasticsearchAutoscaler) (field.ErrorList, error) {
+			return noStatelessElasticsearch(ctx, proposed, k8sClient)
+		},
+		func(proposed v1alpha1.ElasticsearchAutoscaler) (field.ErrorList, error) {
 			return validAutoscalingConfiguration(ctx, proposed, k8sClient)
 		},
 		func(proposed v1alpha1.ElasticsearchAutoscaler) (field.ErrorList, error) {
@@ -50,6 +53,25 @@ var (
 			Child(child, moreChildren...)
 	}
 )
+
+// noStatelessElasticsearch rejects an autoscaler that targets a stateless Elasticsearch cluster.
+func noStatelessElasticsearch(ctx context.Context, esa v1alpha1.ElasticsearchAutoscaler, k8sClient k8s.Client) (field.ErrorList, error) {
+	var es esv1.Elasticsearch
+	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: esa.Namespace}
+	if err := k8sClient.Get(ctx, esNamespacedName, &es); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, nil
+	}
+	if es.IsStateless() {
+		return field.ErrorList{field.Forbidden(
+			field.NewPath("spec").Child("elasticsearchRef"),
+			"autoscaling is not supported for stateless Elasticsearch clusters",
+		)}, nil
+	}
+	return nil, nil
+}
 
 func noAutoscalingAnnotation(ctx context.Context, esa v1alpha1.ElasticsearchAutoscaler, k8sClient k8s.Client) (field.ErrorList, error) {
 	var errs field.ErrorList
