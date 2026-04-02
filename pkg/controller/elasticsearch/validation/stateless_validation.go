@@ -29,7 +29,7 @@ const (
 var (
 	objectStorePath = field.NewPath("spec").Child("objectStore")
 	modePath        = field.NewPath("spec").Child("mode")
-	// TODO: update to the actual minimum version that supports stateless once confirmed.
+	// TODO(#9296): update to the actual minimum version that supports stateless once confirmed.
 	statelessMinVersion = version.MinFor(9, 4, 0)
 )
 
