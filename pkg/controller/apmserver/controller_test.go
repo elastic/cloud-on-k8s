@@ -483,7 +483,7 @@ func withFinalizers(apm apmv1.ApmServer, finalizers []string) *apmv1.ApmServer {
 
 func withESReference(apm apmv1.ApmServer, selector commonv1.ObjectSelector) *apmv1.ApmServer {
 	obj := apm.DeepCopy()
-	obj.Spec.ElasticsearchRef = selector
+	obj.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: selector}
 	return obj
 }
 

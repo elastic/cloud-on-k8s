@@ -223,7 +223,7 @@ func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.As
 	apmv1.NewApmKibanaAssociation(as).SetAssociationConf(kbAssocConf)
 
 	if esAssocConf != nil {
-		as.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "es"}
+		as.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}}
 	}
 
 	if kbAssocConf != nil {
