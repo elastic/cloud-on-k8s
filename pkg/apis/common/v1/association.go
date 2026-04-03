@@ -248,6 +248,25 @@ type AssociationConf struct {
 	// and private key for client authentication. This secret is created in the associated resource's
 	// namespace and should be mounted into the associated resource's pods.
 	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
+	// TransitiveESRef holds state about a transitive Elasticsearch association (e.g. the Elasticsearch
+	// that a Fleet Server connects to on behalf of fleet-managed agents). Populated by the association
+	// controller; changes propagate through the annotation and trigger reconciliation of the associated resource.
+	TransitiveESRef *TransitiveESRef `json:"transitiveESRef,omitempty"`
+}
+
+// TransitiveESRef captures state about a transitive Elasticsearch association, such as the name
+// of a client certificate secret reconciled for mTLS. It is stored in the association conf
+// annotation so that changes trigger reconciliation of the associated resource.
+type TransitiveESRef struct {
+	// ClientCertSecretName is the name of the client certificate secret reconciled in the
+	// associated resource's namespace for mTLS with the transitive Elasticsearch.
+	// Empty when the Elasticsearch does not require client authentication.
+	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
+}
+
+// ClientCertIsConfigured returns true if a client certificate secret name is set.
+func (t *TransitiveESRef) ClientCertIsConfigured() bool {
+	return t != nil && t.ClientCertSecretName != ""
 }
 
 // IsConfigured returns true if all the fields are set.
