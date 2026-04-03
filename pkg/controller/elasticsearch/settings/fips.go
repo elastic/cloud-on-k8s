@@ -17,10 +17,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+// Keystore password environment variable names.
 const (
-	keystorePasswordEnvVar       = "KEYSTORE_PASSWORD"
-	keystorePasswordFileEnvVar   = "KEYSTORE_PASSWORD_FILE"
-	keystorePassphraseFileEnvVar = "ES_KEYSTORE_PASSPHRASE_FILE" //nolint:gosec // Environment variable name, not a secret value.
+	// KeystorePasswordEnvVar is the environment variable name for the keystore password value.
+	KeystorePasswordEnvVar = "KEYSTORE_PASSWORD"
+	// KeystorePasswordFileEnvVar is the environment variable name for the keystore password file path.
+	KeystorePasswordFileEnvVar = "KEYSTORE_PASSWORD_FILE"
+	// KeystorePassphraseFileEnvVar is the environment variable name for the legacy keystore passphrase file path.
+	KeystorePassphraseFileEnvVar = "ES_KEYSTORE_PASSPHRASE_FILE" //nolint:gosec // Environment variable name, not a secret value.
 )
 
 // IsFIPSEnabled returns true when the given config contains
@@ -69,7 +73,7 @@ func HasUserProvidedKeystorePassword(ctx context.Context, c k8s.Client, namespac
 			continue
 		}
 		for _, env := range container.Env {
-			if env.Name == keystorePasswordEnvVar || env.Name == keystorePasswordFileEnvVar || env.Name == keystorePassphraseFileEnvVar {
+			if env.Name == KeystorePasswordEnvVar || env.Name == KeystorePasswordFileEnvVar || env.Name == KeystorePassphraseFileEnvVar {
 				return true, nil
 			}
 		}
@@ -109,24 +113,26 @@ func AnyNodeSetHasUserProvidedKeystorePassword(
 // would inject KEYSTORE_PASSWORD, KEYSTORE_PASSWORD_FILE, or ES_KEYSTORE_PASSPHRASE_FILE.
 func envFromContainsKeystorePassword(ctx context.Context, c k8s.Client, namespace string, sources []corev1.EnvFromSource) (bool, error) {
 	for _, src := range sources {
-		if src.ConfigMapRef != nil {
+		switch {
+		case src.ConfigMapRef != nil:
 			var cm corev1.ConfigMap
-			if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: src.ConfigMapRef.Name}, &cm); err != nil {
-				if apierrors.IsNotFound(err) && src.ConfigMapRef.Optional != nil && *src.ConfigMapRef.Optional {
-					continue
-				}
+			err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: src.ConfigMapRef.Name}, &cm)
+			if shouldIgnoreNotFound(err, src.ConfigMapRef.Optional) {
+				continue
+			}
+			if err != nil {
 				return false, err
 			}
 			if envFromKeyMatches(src.Prefix, cm.Data) {
 				return true, nil
 			}
-		}
-		if src.SecretRef != nil {
+		case src.SecretRef != nil:
 			var secret corev1.Secret
-			if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: src.SecretRef.Name}, &secret); err != nil {
-				if apierrors.IsNotFound(err) && src.SecretRef.Optional != nil && *src.SecretRef.Optional {
-					continue
-				}
+			err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: src.SecretRef.Name}, &secret)
+			if shouldIgnoreNotFound(err, src.SecretRef.Optional) {
+				continue
+			}
+			if err != nil {
 				return false, err
 			}
 			// secret.Data is map[string][]byte; extract keys only to match envFromKeyMatches signature.
@@ -142,12 +148,17 @@ func envFromContainsKeystorePassword(ctx context.Context, c k8s.Client, namespac
 	return false, nil
 }
 
+// shouldIgnoreNotFound returns true if the error is a NotFound error and the resource is optional.
+func shouldIgnoreNotFound(err error, optional *bool) bool {
+	return apierrors.IsNotFound(err) && optional != nil && *optional
+}
+
 // envFromKeyMatches returns true if any key in data, when prefixed with the
 // given envFrom prefix, matches a keystore password env var name.
 func envFromKeyMatches(prefix string, data map[string]string) bool {
 	for key := range data {
 		name := prefix + key
-		if name == keystorePasswordEnvVar || name == keystorePasswordFileEnvVar || name == keystorePassphraseFileEnvVar {
+		if name == KeystorePasswordEnvVar || name == KeystorePasswordFileEnvVar || name == KeystorePassphraseFileEnvVar {
 			return true
 		}
 	}

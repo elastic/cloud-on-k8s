@@ -118,7 +118,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 	// create a cluster with a bad ES configuration that leads to Pods bootlooping
 	initial := elasticsearch.NewBuilder("force-upgrade-bootloop").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"this leads": "to a bootlooping instance",
 			},

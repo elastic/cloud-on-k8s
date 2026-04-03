@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	esettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -35,12 +36,8 @@ const (
 	// SourcePasswordFile is the mounted Secret file path read by the keystore init container.
 	SourcePasswordFile = SourceMountPath + "/keystore-password"
 
-	keystorePasswordFileEnvVar = "KEYSTORE_PASSWORD_FILE"
-
 	generatedPasswordLength = 24
-)
 
-const (
 	// VolumeName is the source Secret volume name used for init-container consumption.
 	VolumeName = SourceVolumeName
 	// MountPath is the source Secret mount path used for init-container consumption.
@@ -128,18 +125,18 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 		ReadOnly:  true,
 	}
 
-	// Main Elasticsearch container wiring:
+	// Configure the main Elasticsearch container:
 	// - add the Secret volume to the pod and mount it on the main container
 	// - set KEYSTORE_PASSWORD_FILE so docker-entrypoint reads from the Secret file
 	builder = builder.
 		WithVolumes(sourcePasswordVolume).
 		WithVolumeMounts(sourcePasswordMount).
 		WithEnv(corev1.EnvVar{
-			Name:  keystorePasswordFileEnvVar,
+			Name:  esettings.KeystorePasswordFileEnvVar,
 			Value: SourcePasswordFile,
 		})
 
-	// Keystore init container wiring:
+	// Configure the keystore init container:
 	// - mount the source Secret path so the init script can read SourcePasswordFile
 	for i := range builder.PodTemplate.Spec.InitContainers {
 		if builder.PodTemplate.Spec.InitContainers[i].Name != keystore.InitContainerName {
