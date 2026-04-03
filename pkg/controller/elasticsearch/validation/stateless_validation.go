@@ -29,6 +29,10 @@ const (
 	statelessRoleInStatefulMsg     = "index and search roles are only supported in stateless mode"
 	statelessMinVersionMsg         = "stateless mode requires Elasticsearch version 9.4.0 or higher"
 	statelessLicenseRequiredMsg    = "stateless mode requires an enterprise license"
+	remoteClustersStatelessMsg       = "remote clusters are not supported in stateless mode"
+	clientAuthStatelessMsg           = "client certificate authentication (mTLS) is not supported in stateless mode"
+	remoteClusterServerStatelessMsg  = "remote cluster server is not supported in stateless mode"
+	volumeClaimDeletePolicyStatelessMsg = "volumeClaimDeletePolicy is not applicable in stateless mode"
 )
 
 var (
@@ -105,6 +109,22 @@ func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 
 	if es.Spec.ObjectStore == nil {
 		errs = append(errs, field.Required(objectStorePath, objectStoreRequiredMsg))
+	}
+
+	if len(es.Spec.RemoteClusters) > 0 {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("remoteClusters"), remoteClustersStatelessMsg))
+	}
+
+	if es.Spec.RemoteClusterServer.Enabled {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("remoteClusterServer"), remoteClusterServerStatelessMsg))
+	}
+
+	if es.Spec.HTTP.TLS.Client.Authentication {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("http", "tls", "client", "authentication"), clientAuthStatelessMsg))
+	}
+
+	if es.Spec.VolumeClaimDeletePolicy != "" {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("volumeClaimDeletePolicy"), volumeClaimDeletePolicyStatelessMsg))
 	}
 
 	hasIndex := false

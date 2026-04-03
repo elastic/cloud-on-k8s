@@ -203,6 +203,78 @@ func Test_validModeSpecificConfig(t *testing.T) {
 			wantMsgs:   []string{objectStoreRequiredMsg},
 		},
 		{
+			name: "stateless: remote clusters forbidden",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:     "9.4.0",
+					Mode:        esv1.ElasticsearchModeStateless,
+					ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					RemoteClusters: []esv1.RemoteCluster{{Name: "remote"}},
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 1},
+						{Name: "search", Count: 2},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{remoteClustersStatelessMsg},
+		},
+		{
+			name: "stateless: remote cluster server forbidden",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:              "9.4.0",
+					Mode:                 esv1.ElasticsearchModeStateless,
+					ObjectStore:          &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					RemoteClusterServer:  esv1.RemoteClusterServer{Enabled: true},
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 1},
+						{Name: "search", Count: 2},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{remoteClusterServerStatelessMsg},
+		},
+		{
+			name: "stateless: volumeClaimDeletePolicy forbidden",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:                "9.4.0",
+					Mode:                   esv1.ElasticsearchModeStateless,
+					ObjectStore:            &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					VolumeClaimDeletePolicy: esv1.DeleteOnScaledownAndClusterDeletionPolicy,
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 1},
+						{Name: "search", Count: 2},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{volumeClaimDeletePolicyStatelessMsg},
+		},
+		{
+			name: "stateless: mTLS forbidden",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:     "9.4.0",
+					Mode:        esv1.ElasticsearchModeStateless,
+					ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+					NodeSets: []esv1.NodeSet{
+						{Name: "index", Count: 1},
+						{Name: "search", Count: 2},
+					},
+				},
+			},
+			wantErrors: 1,
+			wantMsgs:   []string{clientAuthStatelessMsg},
+		},
+		{
 			name: "stateless: missing index tier",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
