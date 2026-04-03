@@ -4,23 +4,23 @@ This directory holds the files used to install and setup [Kyverno](https://kyver
 
 ## How to update Kyverno?
 
-The deployer uses the [`kyverno.yaml`](kyverno.yaml) manifest located in this directory to deploy Kyverno as soon as the `psp` property is set to `true`, for example:
+The deployer uses the [`kyverno.yaml`](kyverno.yaml) manifest located in this directory to deploy Kyverno as soon as the `enforceSecurityPolicies` property is **not** set to `false`, for example:
 
 ```yaml
 id: kind-dev
 overrides:
   clusterName: my-dev-cluster
-  psp: true
+  enforceSecurityPolicies: true
 ```
 
 
 Kyverno can be updated from the Kyverno project using the following command:
 
-```
-wget -O kyverno.yaml https://raw.githubusercontent.com/kyverno/kyverno/release-1.7/config/release/install.yaml`
+```shell
+wget -O kyverno.yaml https://github.com/kyverno/kyverno/releases/download/v1.17.1/install.yaml
 ```
 
-(replace `1.7` by the expected version)
+(replace `1.17.1` by the expected version)
 
 ## Security Policies
 
