@@ -22,6 +22,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
+const (
+	artefactCopyTimeout    = 10 * time.Minute
+	artefactCopyMaxRetries = 3
+	artefactCopyRetryDelay = 5 * time.Second
+)
+
 // JobsManager represents a test session running on a remote K8S cluster.
 type JobsManager struct {
 	*helper
@@ -98,11 +104,12 @@ func (jm *JobsManager) Start() {
 	log.Info("Starting test session")
 
 	defer func() {
-		jm.cancelFunc()
-		if deadline, _ := jm.Deadline(); deadline.Before(time.Now()) {
+		if deadline, ok := jm.Deadline(); ok && deadline.Before(time.Now()) {
 			jm.err = errors.Errorf("Test job timeout exceeded (%s)", jobTimeout)
 			log.Error(jm.err, "Pod aborted")
+			jm.rescueArtefactsAfterTimeout()
 		}
+		jm.cancelFunc()
 		runtime.HandleCrash()
 	}()
 
@@ -137,17 +144,7 @@ func (jm *JobsManager) Start() {
 
 				// locally copy all files from the artifacts directory when the pod is ready
 				if k8s.IsPodReady(*newPod) {
-					if job.artefactsDir != "" && !job.artefactsDownloaded {
-						log.Info("Downloading pod artefacts", "pod", newPod.Name)
-
-						src := fmt.Sprintf("%s/%s:%s", newPod.Namespace, newPod.Name, filepath.Join(job.artefactsDir, "."))
-						dst := "."
-						_, _, err := jm.kubectl("cp", src, dst)
-						if err != nil {
-							log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst)
-						}
-						job.artefactsDownloaded = true
-
+					if jm.downloadJobArtefacts(job, newPod.Namespace, newPod.Name) {
 						jm.Stop()
 					}
 				}
@@ -176,4 +173,37 @@ func (jm *JobsManager) Stop() {
 		job.Stop()
 	}
 	jm.cancelFunc()
+}
+
+func (jm *JobsManager) rescueArtefactsAfterTimeout() {
+	for _, job := range jm.jobs {
+		if job.podNamespace == "" || job.podName == "" {
+			continue
+		}
+		jm.downloadJobArtefacts(job, job.podNamespace, job.podName)
+	}
+}
+
+func (jm *JobsManager) downloadJobArtefacts(job *Job, namespace, podName string) bool {
+	if job.artefactsDir == "" || job.artefactsDownloaded {
+		return false
+	}
+	log.Info("Downloading pod artefacts", "pod", podName, "namespace", namespace)
+
+	src := fmt.Sprintf("%s/%s:%s", namespace, podName, filepath.Join(job.artefactsDir, "."))
+	dst := "."
+	for attempt := 1; attempt <= artefactCopyMaxRetries; attempt++ {
+		_, _, err := jm.kubectlWithTimeout(artefactCopyTimeout, "cp", src, dst)
+		if err == nil {
+			job.artefactsDownloaded = true
+			return true
+		}
+
+		log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst, "attempt", attempt, "max_attempts", artefactCopyMaxRetries)
+		if attempt < artefactCopyMaxRetries {
+			time.Sleep(artefactCopyRetryDelay)
+		}
+	}
+
+	return false
 }
