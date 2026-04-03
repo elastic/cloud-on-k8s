@@ -385,83 +385,32 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 	}
 }
 
-func TestReconcileFIPSKeystoreSecretVersionGate(t *testing.T) {
-	fipsConfig := commonv1.NewConfig(map[string]any{
+func TestReconcileFIPSKeystoreSecret(t *testing.T) {
+	fipsEnabledConfig := commonv1.NewConfig(map[string]any{
 		"xpack.security.fips_mode.enabled": true,
 	})
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+	fipsDisabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+
+	esMeta := metav1.ObjectMeta{Namespace: "ns", Name: "es"}
+	fipsSecretName := esv1.FIPSKeystorePasswordSecret(esMeta.Name)
+
+	esFIPSNodeSetOnly := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
 		Spec: esv1.ElasticsearchSpec{
 			NodeSets: []esv1.NodeSet{
-				{
-					Name:   "default",
-					Config: &fipsConfig,
-				},
+				{Name: "default", Config: &fipsEnabledConfig},
 			},
 		},
 	}
-
-	tests := []struct {
-		name         string
-		esVersion    commonversion.Version
-		wantSecret   bool
-		wantSecretID string
-	}{
-		{
-			name:         "below minimum version does not reconcile secret",
-			esVersion:    commonversion.MinFor(9, 3, 0),
-			wantSecret:   false,
-			wantSecretID: esv1.FIPSKeystorePasswordSecret(es.Name),
-		},
-		{
-			name:         "minimum version reconciles secret",
-			esVersion:    esversion.FIPSKeystorePasswordMinVersion,
-			wantSecret:   true,
-			wantSecretID: esv1.FIPSKeystorePasswordSecret(es.Name),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.NewFakeClient(&es)
-
-			secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, tt.esVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
-			require.NoError(t, err)
-			if tt.wantSecret {
-				require.NotNil(t, secret)
-				require.Equal(t, tt.wantSecretID, secret.Name)
-			} else {
-				require.Nil(t, secret)
-			}
-
-			var stored corev1.Secret
-			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: tt.wantSecretID}, &stored)
-			if tt.wantSecret {
-				require.NoError(t, err)
-			} else {
-				require.True(t, apierrors.IsNotFound(err))
-			}
-		})
-	}
-}
-
-func TestReconcileFIPSKeystoreSecret_userKeystorePasswordOverride(t *testing.T) {
-	fipsConfig := commonv1.NewConfig(map[string]any{
-		"xpack.security.fips_mode.enabled": true,
-	})
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+	esFIPSWithUserKeystorePassword := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
 		Spec: esv1.ElasticsearchSpec{
 			NodeSets: []esv1.NodeSet{
 				{
 					Name:   "default",
-					Config: &fipsConfig,
+					Config: &fipsEnabledConfig,
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -478,83 +427,99 @@ func TestReconcileFIPSKeystoreSecret_userKeystorePasswordOverride(t *testing.T) 
 			},
 		},
 	}
-
-	c := k8s.NewFakeClient(&es)
-	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
-	require.NoError(t, err)
-	require.Nil(t, secret)
-
-	var stored corev1.Secret
-	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FIPSKeystorePasswordSecret(es.Name)}, &stored)
-	require.True(t, apierrors.IsNotFound(err))
-}
-
-func TestReconcileFIPSKeystoreSecret_fipsDisabled_deletesSecret(t *testing.T) {
-	nonFIPSConfig := commonv1.NewConfig(map[string]any{
-		"xpack.security.fips_mode.enabled": false,
-	})
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+	esFIPSDisabled := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
 		Spec: esv1.ElasticsearchSpec{
 			NodeSets: []esv1.NodeSet{
-				{
-					Name:   "default",
-					Config: &nonFIPSConfig,
-				},
+				{Name: "default", Config: &fipsDisabledConfig},
 			},
 		},
 	}
-	secretName := esv1.FIPSKeystorePasswordSecret(es.Name)
-	existing := &corev1.Secret{
+	existingFIPSSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      secretName,
+			Namespace: esMeta.Namespace,
+			Name:      fipsSecretName,
 		},
 		Data: map[string][]byte{
 			fips.KeystorePasswordKey: []byte("leftover-password"),
 		},
 	}
-
-	c := k8s.NewFakeClient(&es, existing)
-	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
-	require.NoError(t, err)
-	require.Nil(t, secret)
-
-	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: secretName}, &corev1.Secret{})
-	require.True(t, apierrors.IsNotFound(err))
-}
-
-func TestReconcileFIPSKeystoreSecret_fipsEnabledViaStackConfigPolicy(t *testing.T) {
-	nonFIPSNodeConfig := commonv1.NewConfig(map[string]any{
-		"xpack.security.fips_mode.enabled": false,
-	})
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
-		Spec: esv1.ElasticsearchSpec{
-			NodeSets: []esv1.NodeSet{
-				{
-					Name:   "default",
-					Config: &nonFIPSNodeConfig,
-				},
-			},
-		},
-	}
-	policyCfg := commonsettings.MustCanonicalConfig(map[string]any{
-		"xpack.security.fips_mode.enabled": true,
-	})
-	policyConfig := nodespec.PolicyConfig{
-		ElasticsearchConfig: policyCfg,
+	policyFIPSEnabled := nodespec.PolicyConfig{
+		ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
+			"xpack.security.fips_mode.enabled": true,
+		}),
 	}
 
-	c := k8s.NewFakeClient(&es)
-	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, policyConfig)
-	require.NoError(t, err)
-	require.NotNil(t, secret)
-	require.Equal(t, esv1.FIPSKeystorePasswordSecret(es.Name), secret.Name)
+	tests := []struct {
+		name               string
+		es                 esv1.Elasticsearch
+		extraInit          []client.Object
+		policyConfig       nodespec.PolicyConfig
+		esVersion          commonversion.Version
+		wantReturnedSecret bool
+		wantSecretInAPI    bool
+	}{
+		{
+			name:               "below minimum version does not reconcile secret",
+			es:                 esFIPSNodeSetOnly,
+			esVersion:          commonversion.MinFor(9, 3, 0),
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "minimum version reconciles secret",
+			es:                 esFIPSNodeSetOnly,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
+		},
+		{
+			name:               "user-provided keystore password env skips operator secret",
+			es:                 esFIPSWithUserKeystorePassword,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "FIPS disabled deletes existing FIPS keystore secret",
+			es:                 esFIPSDisabled,
+			extraInit:          []client.Object{existingFIPSSecret},
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "FIPS enabled only via StackConfigPolicy reconciles secret",
+			es:                 esFIPSDisabled,
+			policyConfig:       policyFIPSEnabled,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := tt.es
+			initObjs := append([]client.Object{&es}, tt.extraInit...)
+			c := k8s.NewFakeClient(initObjs...)
+
+			secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, tt.esVersion, metadata.Metadata{}, tt.policyConfig)
+			require.NoError(t, err)
+			if tt.wantReturnedSecret {
+				require.NotNil(t, secret)
+				require.Equal(t, fipsSecretName, secret.Name)
+			} else {
+				require.Nil(t, secret)
+			}
+
+			var stored corev1.Secret
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fipsSecretName}, &stored)
+			if tt.wantSecretInAPI {
+				require.NoError(t, err)
+			} else {
+				require.True(t, apierrors.IsNotFound(err))
+			}
+		})
+	}
 }
