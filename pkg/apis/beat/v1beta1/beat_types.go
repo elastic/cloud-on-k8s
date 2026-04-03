@@ -39,7 +39,7 @@ type BeatSpec struct {
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
 	// It allows automatic setup of dashboards and visualizations.
@@ -272,7 +272,7 @@ func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }
 
-func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
+func (b *Beat) ElasticsearchRef() commonv1.ElasticsearchSelector {
 	return b.Spec.ElasticsearchRef
 }
 

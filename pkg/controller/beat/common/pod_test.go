@@ -81,7 +81,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
 			Type:             "filebeat",
-			ElasticsearchRef: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}},
 			Monitoring: commonv1.Monitoring{
 				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{
@@ -299,6 +299,106 @@ func Test_buildPodTemplate(t *testing.T) {
 			if monitoring.IsDefined(&tt.args.params.Beat) {
 				assertMonitoring(t, tt.args.params.Client, tt.args.params.Beat, podTemplateSpec)
 			}
+		})
+	}
+}
+
+func Test_buildPodTemplate_clientCertVolume(t *testing.T) {
+	tests := []struct {
+		name                 string
+		conf                 commonv1.AssociationConf
+		wantCAVolume         bool
+		wantClientCertVolume bool
+		wantCAMount          bool
+		wantClientCertMount  bool
+	}{
+		{
+			name: "CA and client cert both present",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       true,
+				CASecretName:         "ca-secret",
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         true,
+			wantClientCertVolume: true,
+			wantCAMount:          true,
+			wantClientCertMount:  true,
+		},
+		{
+			name: "client cert only, no CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: true,
+			wantCAMount:          false,
+			wantClientCertMount:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			beat := beatv1beta1.Beat{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "beat-name",
+					Namespace: "ns",
+				},
+				Spec: beatv1beta1.BeatSpec{
+					Version: "8.0.0",
+					Type:    "filebeat",
+					ElasticsearchRef: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+					},
+					DaemonSet: &beatv1beta1.DaemonSetSpec{},
+				},
+			}
+			esAssoc := beatv1beta1.BeatESAssociation{Beat: &beat}
+			esAssoc.SetAssociationConf(&tt.conf)
+
+			params := DriverParams{
+				Context: context.Background(),
+				Watches: watches.NewDynamicWatches(),
+				Client: k8s.NewFakeClient(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "auth-secret", Namespace: "ns"},
+					Data:       map[string][]byte{"elastic": []byte("pass")},
+				}),
+				Beat: beat,
+			}
+
+			meta := metadata.Propagate(&params.Beat, metadata.Metadata{Labels: params.Beat.GetIdentityLabels()})
+			podTemplate, err := buildPodTemplate(params, "beats/filebeat", newHash("test"), meta)
+			require.NoError(t, err)
+
+			var hasCAVolume, hasClientCertVolume bool
+			for _, vol := range podTemplate.Spec.Volumes {
+				if vol.Secret != nil && vol.Secret.SecretName == "ca-secret" {
+					hasCAVolume = true
+				}
+				if vol.Secret != nil && vol.Secret.SecretName == "client-cert-secret" {
+					hasClientCertVolume = true
+				}
+			}
+			assert.Equal(t, tt.wantCAVolume, hasCAVolume, "CA volume")
+			assert.Equal(t, tt.wantClientCertVolume, hasClientCertVolume, "client cert volume")
+
+			var hasCAMount, hasClientCertMount bool
+			for _, vm := range podTemplate.Spec.Containers[0].VolumeMounts {
+				if vm.MountPath == "/mnt/elastic-internal/elasticsearch-certs" {
+					hasCAMount = true
+				}
+				if vm.MountPath == "/mnt/elastic-internal/elasticsearch-client-certs" {
+					hasClientCertMount = true
+				}
+			}
+			assert.Equal(t, tt.wantCAMount, hasCAMount, "CA volume mount")
+			assert.Equal(t, tt.wantClientCertMount, hasClientCertMount, "client cert volume mount")
 		})
 	}
 }

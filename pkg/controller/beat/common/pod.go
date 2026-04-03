@@ -61,6 +61,10 @@ func certificatesDir(association commonv1.Association) string {
 	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociationType())
 }
 
+func clientCertificatesDir(association commonv1.Association) string {
+	return fmt.Sprintf("/mnt/elastic-internal/%s-client-certs", association.AssociationType())
+}
+
 // initContainerParameters generates parameters specific to Beats for an init container that will load the secure
 // settings into a keystore
 func initContainerParameters(typ string) keystore.InitContainerParameters {
@@ -111,16 +115,23 @@ func buildPodTemplate(
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
-		if !assocConf.CAIsConfigured() {
-			continue
+		if assocConf.CAIsConfigured() {
+			caSecretName := assocConf.GetCASecretName()
+			caVolume := volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				fmt.Sprintf("%s-certs", assoc.AssociationType()),
+				certificatesDir(assoc),
+			)
+			vols = append(vols, caVolume)
 		}
-		caSecretName := assocConf.GetCASecretName()
-		caVolume := volume.NewSecretVolumeWithMountPath(
-			caSecretName,
-			fmt.Sprintf("%s-certs", assoc.AssociationType()),
-			certificatesDir(assoc),
-		)
-		vols = append(vols, caVolume)
+		if assocConf.ClientCertIsConfigured() {
+			clientCertVolume := volume.NewSecretVolumeWithMountPath(
+				assocConf.GetClientCertSecretName(),
+				fmt.Sprintf("%s-client-certs", assoc.AssociationType()),
+				clientCertificatesDir(assoc),
+			)
+			vols = append(vols, clientCertVolume)
+		}
 	}
 
 	volumes := make([]corev1.Volume, 0, len(vols))
