@@ -115,6 +115,17 @@ type ElasticsearchSpec struct {
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
+	// Mode selects the deployment mode for this Elasticsearch cluster.
+	// "stateful" (default) uses persistent local volumes for data storage.
+	// "stateless" uses an external object store for data storage.
+	// +kubebuilder:validation:Optional
+	Mode ElasticsearchMode `json:"mode,omitempty"`
+
+	// ObjectStore configures the external object store for stateless Elasticsearch.
+	// Required when mode is "stateless", forbidden when mode is "stateful".
+	// +kubebuilder:validation:Optional
+	ObjectStore *ObjectStoreConfig `json:"objectStore,omitempty"`
+
 	// RemoteClusterServer specifies if the remote cluster server should be enabled.
 	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
 	// +kubebuilder:validation:Optional
@@ -371,6 +382,11 @@ type NodeSet struct {
 	// If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller.
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
+
+	// Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
+	// Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
+	// +kubebuilder:validation:Optional
+	Tier StatelessTier `json:"tier,omitempty"`
 
 	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
 	// +kubebuilder:validation:Optional
