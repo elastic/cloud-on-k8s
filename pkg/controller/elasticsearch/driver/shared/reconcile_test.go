@@ -21,8 +21,11 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -443,4 +446,115 @@ func TestReconcileFIPSKeystoreSecretVersionGate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReconcileFIPSKeystoreSecret_userKeystorePasswordOverride(t *testing.T) {
+	fipsConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &fipsConfig,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Env: []corev1.EnvVar{
+										{Name: essettings.KeystorePasswordEnvVar, Value: "user-supplied"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	c := k8s.NewFakeClient(&es)
+	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
+	require.NoError(t, err)
+	require.Nil(t, secret)
+
+	var stored corev1.Secret
+	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FIPSKeystorePasswordSecret(es.Name)}, &stored)
+	require.True(t, apierrors.IsNotFound(err))
+}
+
+func TestReconcileFIPSKeystoreSecret_fipsDisabled_deletesSecret(t *testing.T) {
+	nonFIPSConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &nonFIPSConfig,
+				},
+			},
+		},
+	}
+	secretName := esv1.FIPSKeystorePasswordSecret(es.Name)
+	existing := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      secretName,
+		},
+		Data: map[string][]byte{
+			fips.KeystorePasswordKey: []byte("leftover-password"),
+		},
+	}
+
+	c := k8s.NewFakeClient(&es, existing)
+	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, nodespec.PolicyConfig{})
+	require.NoError(t, err)
+	require.Nil(t, secret)
+
+	err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: secretName}, &corev1.Secret{})
+	require.True(t, apierrors.IsNotFound(err))
+}
+
+func TestReconcileFIPSKeystoreSecret_fipsEnabledViaStackConfigPolicy(t *testing.T) {
+	nonFIPSNodeConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &nonFIPSNodeConfig,
+				},
+			},
+		},
+	}
+	policyCfg := commonsettings.MustCanonicalConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	policyConfig := nodespec.PolicyConfig{
+		ElasticsearchConfig: policyCfg,
+	}
+
+	c := k8s.NewFakeClient(&es)
+	secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, esversion.FIPSKeystorePasswordMinVersion, metadata.Metadata{}, policyConfig)
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+	require.Equal(t, esv1.FIPSKeystorePasswordSecret(es.Name), secret.Name)
 }
