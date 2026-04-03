@@ -5,11 +5,15 @@
 package validation
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -24,6 +28,7 @@ const (
 	indexAndSearchRolesConflictMsg = "a NodeSet cannot have both index and search roles"
 	statelessRoleInStatefulMsg     = "index and search roles are only supported in stateless mode"
 	statelessMinVersionMsg         = "stateless mode requires Elasticsearch version 9.4.0 or higher"
+	statelessLicenseRequiredMsg    = "stateless mode requires an enterprise license"
 )
 
 var (
@@ -166,6 +171,22 @@ func effectiveMode(mode esv1.ElasticsearchMode) esv1.ElasticsearchMode {
 func noModeChange(current, proposed esv1.Elasticsearch) field.ErrorList {
 	if effectiveMode(current.Spec.Mode) != effectiveMode(proposed.Spec.Mode) {
 		return field.ErrorList{field.Forbidden(modePath, modeChangeMsg)}
+	}
+	return nil
+}
+
+// validStatelessLicense checks that an enterprise license is available for stateless mode.
+func validStatelessLicense(ctx context.Context, es esv1.Elasticsearch, checker license.Checker) field.ErrorList {
+	if !es.IsStateless() {
+		return nil
+	}
+	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "while checking enterprise features for stateless validation")
+		return nil
+	}
+	if !enabled {
+		return field.ErrorList{field.Forbidden(modePath, statelessLicenseRequiredMsg)}
 	}
 	return nil
 }

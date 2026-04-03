@@ -85,6 +85,9 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		supportsRemoteClusterUsingAPIKey,
 		validModeSpecificConfig,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validStatelessLicense(ctx, proposed, checker)
+		},
+		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
 		func(proposed esv1.Elasticsearch) field.ErrorList {
