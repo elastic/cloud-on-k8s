@@ -95,8 +95,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.ApmServer.Spec.Count = int32(count) //nolint:gosec // G115: node count cannot realistically overflow int32
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.ApmServer.Spec.Count = count
 	return b
 }
 
