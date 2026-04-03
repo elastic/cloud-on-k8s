@@ -100,8 +100,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.Logstash.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.Logstash.Spec.Count = count
 	return b
 }
 
