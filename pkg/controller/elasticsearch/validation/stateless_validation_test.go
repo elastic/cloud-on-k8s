@@ -206,9 +206,9 @@ func Test_validModeSpecificConfig(t *testing.T) {
 			name: "stateless: remote clusters forbidden",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Version:     "9.4.0",
-					Mode:        esv1.ElasticsearchModeStateless,
-					ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					Version:        "9.4.0",
+					Mode:           esv1.ElasticsearchModeStateless,
+					ObjectStore:    &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
 					RemoteClusters: []esv1.RemoteCluster{{Name: "remote"}},
 					NodeSets: []esv1.NodeSet{
 						{Name: "index", Count: 1},
@@ -223,10 +223,10 @@ func Test_validModeSpecificConfig(t *testing.T) {
 			name: "stateless: remote cluster server forbidden",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Version:              "9.4.0",
-					Mode:                 esv1.ElasticsearchModeStateless,
-					ObjectStore:          &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
-					RemoteClusterServer:  esv1.RemoteClusterServer{Enabled: true},
+					Version:             "9.4.0",
+					Mode:                esv1.ElasticsearchModeStateless,
+					ObjectStore:         &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					RemoteClusterServer: esv1.RemoteClusterServer{Enabled: true},
 					NodeSets: []esv1.NodeSet{
 						{Name: "index", Count: 1},
 						{Name: "search", Count: 2},
@@ -240,9 +240,9 @@ func Test_validModeSpecificConfig(t *testing.T) {
 			name: "stateless: volumeClaimDeletePolicy forbidden",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					Version:                "9.4.0",
-					Mode:                   esv1.ElasticsearchModeStateless,
-					ObjectStore:            &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+					Version:                 "9.4.0",
+					Mode:                    esv1.ElasticsearchModeStateless,
+					ObjectStore:             &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
 					VolumeClaimDeletePolicy: esv1.DeleteOnScaledownAndClusterDeletionPolicy,
 					NodeSets: []esv1.NodeSet{
 						{Name: "index", Count: 1},

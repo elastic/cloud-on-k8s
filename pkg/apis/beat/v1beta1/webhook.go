@@ -5,65 +5,31 @@
 package v1beta1
 
 import (
-	"errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 const (
-	// webhookPath is the HTTP path for the Elastic Beats validating webhook.
-	webhookPath = "/validate-beat-k8s-elastic-co-v1beta1-beat"
+	// WebhookPath is the HTTP path for the Elastic Beats validating webhook.
+	WebhookPath = "/validate-beat-k8s-elastic-co-v1beta1-beat"
 )
 
-var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("beat-v1beta1-validation")
-)
+var groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 // +kubebuilder:webhook:path=/validate-beat-k8s-elastic-co-v1beta1-beat,mutating=false,failurePolicy=ignore,groups=beat.k8s.elastic.co,resources=beats,verbs=create;update,versions=v1beta1,name=elastic-beat-validation-v1beta1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*Beat)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (b *Beat) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", b.Name)
-	return b.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (b *Beat) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", b.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (b *Beat) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", b.Name)
-	oldObj, ok := old.(*Beat)
-	if !ok {
-		return nil, errors.New("cannot cast old object to Beat type")
-	}
-
-	return b.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (b *Beat) WebhookPath() string {
-	return webhookPath
+// Validate is called to validate a Beat resource.
+func Validate(b *Beat, old *Beat) (admission.Warnings, error) {
+	return b.validate(old)
 }
 
 func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	// deprecation check
 	deprecationWarning, deprecationError := checkIfVersionDeprecated(b)

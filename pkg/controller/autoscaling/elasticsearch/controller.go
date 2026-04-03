@@ -158,7 +158,8 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 
 	// Validate the autoscaling specification
-	if validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker); validationErr != nil || runtimeErr != nil {
+	warnings, validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker)
+	if validationErr != nil || runtimeErr != nil {
 		if validationErr != nil {
 			log.Error(
 				validationErr,
@@ -178,6 +179,9 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		err := errors.NewAggregate([]error{validationErr, runtimeErr})
 		_, _ = r.reportAsUnhealthy(ctx, log, esa, err.Error())
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, &esa, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	// Get autoscaling policies and the associated node sets.

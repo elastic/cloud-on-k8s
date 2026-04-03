@@ -258,9 +258,18 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
-	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	_, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
+	// Same validation as the webhook, run again here when the webhook is not configured.
+	admWarnings, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
+
+	for _, w := range admWarnings {
+		log.Info(
+			"Elasticsearch manifest has warnings. Proceed at your own risk. "+w,
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, w)
+	}
 
 	if err != nil {
 		log.Error(
@@ -271,16 +280,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		)
 		reconcileState.UpdateElasticsearchInvalidWithEvent(events.EventActionValidation, err.Error())
 		return results
-	}
-
-	err = validation.CheckForWarnings(es)
-	if err != nil {
-		log.Info(
-			"Elasticsearch manifest has warnings. Proceed at your own risk. "+err.Error(),
-			"namespace", es.Namespace,
-			"es_name", es.Name,
-		)
-		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
 	}
 
 	// TODO(#9204): implement stateless driver and replace this guard with proper driver selection.

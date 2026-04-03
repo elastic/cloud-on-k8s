@@ -7,27 +7,13 @@ package webhook
 import (
 	"context"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
-
-func (v *validatingWebhook) commonValidations(ctx context.Context, req admission.Request, obj runtime.Object) error {
-	errorList := hasRequestedLicenseLevel(ctx, obj, v.licenseChecker)
-	if len(errorList) > 0 {
-		return apierrors.NewInvalid(schema.GroupKind{
-			Group: req.Kind.Group,
-			Kind:  req.Kind.Kind,
-		}, req.Name, errorList)
-	}
-	return nil
-}
 
 func hasRequestedLicenseLevel(ctx context.Context, obj runtime.Object, checker license.Checker) field.ErrorList {
 	whlog := ulog.FromContext(ctx).WithName("common-webhook")
