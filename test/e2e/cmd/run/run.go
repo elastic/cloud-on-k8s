@@ -772,8 +772,16 @@ func (h *helper) kubectl(command string, args ...string) (string, string, error)
 	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
+func (h *helper) kubectlWithTimeout(timeout time.Duration, command string, args ...string) (string, string, error) {
+	return h.execWithTimeout(timeout, h.kubectlWrapper.Command(command, args...))
+}
+
 func (h *helper) exec(cmd *command.Command) (string, string, error) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
+	return h.execWithTimeout(h.commandTimeout, cmd)
+}
+
+func (h *helper) execWithTimeout(timeout time.Duration, cmd *command.Command) (string, string, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
