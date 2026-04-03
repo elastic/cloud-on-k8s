@@ -23,7 +23,7 @@ func (in *ElasticMapsServer) DeepCopyInto(out *ElasticMapsServer) {
 	if in.assocConf != nil {
 		in, out := &in.assocConf, &out.assocConf
 		*out = new(v1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

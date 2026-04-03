@@ -176,7 +176,7 @@ func (in *Elasticsearch) DeepCopyInto(out *Elasticsearch) {
 		in, out := &in.AssocConfs, &out.AssocConfs
 		*out = make(map[commonv1.ObjectSelector]commonv1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 }
