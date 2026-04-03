@@ -65,7 +65,7 @@ func Test_esReachableConditionMessage(t *testing.T) {
 	}
 }
 
-func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
+func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 	const operatorNamespace = "elastic-system"
 
 	tests := []struct {
@@ -348,14 +348,14 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 
 			c := k8s.NewFakeClient(initObjs...)
 
-			requeue, err := maybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, operatorNamespace)
+			requeue, err := MaybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, operatorNamespace)
 
 			// Check error expectation
 			if tt.wantErr {
-				assert.Error(t, err, "expected error at maybeReconcileEmptyFileSettingsSecret")
+				assert.Error(t, err, "expected error at MaybeReconcileEmptyFileSettingsSecret")
 				return
 			}
-			assert.NoError(t, err, "expected no error at maybeReconcileEmptyFileSettingsSecret")
+			assert.NoError(t, err, "expected no error at MaybeReconcileEmptyFileSettingsSecret")
 			assert.Equal(t, tt.wantRequeue, requeue, "expected requeue does not match")
 
 			// Check if secret was created

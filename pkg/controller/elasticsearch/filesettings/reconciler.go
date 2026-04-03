@@ -50,10 +50,15 @@ func ReconcileEmptyFileSettingsSecret(
 		return err
 	}
 
-	// extract the metadata that should be propagated to children
+	// Pass the current secret so that stateless cluster_secrets are preserved when
+	// SCP-managed fields are cleared.
+	var currentSecretPtr *corev1.Secret
+	if err == nil {
+		currentSecretPtr = &currentSecret
+	}
+
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
-	// no secret, reconcile a new empty file settings
-	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil, nil, meta)
+	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), es.IsStateless(), currentSecretPtr, nil, nil, meta)
 	if err != nil {
 		return err
 	}

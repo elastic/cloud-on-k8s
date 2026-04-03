@@ -8,11 +8,13 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -207,4 +209,36 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
+}
+
+// BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
+// them in the nested structure expected by Elasticsearch file-based settings cluster_secrets:
+//
+//	{"string_secrets": {"s3": {"client": {"default": {"access_key": "..."}}}}}
+//
+// Dotted keystore keys (e.g. "s3.client.default.access_key") are expanded into a nested map tree.
+// This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
+func BuildSecureSettingsData(
+	ctx context.Context,
+	c k8s.Client,
+	recorder toolsevents.EventRecorder,
+	hasKeystore HasKeystore,
+	secretSources []commonv1.NamespacedSecretSource,
+) (map[string]any, error) {
+	userSecrets, err := retrieveUserSecrets(ctx, c, recorder, hasKeystore, secretSources)
+	if err != nil {
+		return nil, err
+	}
+
+	stringSecrets := map[string]any{}
+	for _, s := range userSecrets {
+		for k, v := range s.Data {
+			if err := unstructured.SetNestedField(stringSecrets, string(v), strings.Split(k, ".")...); err != nil {
+				return nil, pkgerrors.Wrapf(err, "failed to set nested key %q in cluster_secrets", k)
+			}
+		}
+	}
+	return map[string]any{
+		"string_secrets": stringSecrets,
+	}, nil
 }
