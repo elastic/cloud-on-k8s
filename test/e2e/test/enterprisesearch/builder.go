@@ -140,7 +140,7 @@ func (b Builder) WithVersion(version string) Builder {
 }
 
 func (b Builder) WithNodeCount(count int) Builder {
-	b.EnterpriseSearch.Spec.Count = int32(count)
+	b.EnterpriseSearch.Spec.Count = int32(count) //nolint:gosec // G115: node count cannot realistically overflow int32
 	return b
 }
 

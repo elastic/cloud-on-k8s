@@ -53,7 +53,7 @@ func customPad(data []byte) []byte {
 	padding := make([]byte, padLen)
 	_, _ = rand.Read(padding)
 	data = append(data, padding...)
-	return append(data, byte(padLen+1))
+	return append(data, byte(padLen+1)) //nolint:gosec // G115: padLen ≤ customPadding-1 = 19, so padLen+1 ≤ 20 < 256
 }
 
 // pkcs5Pad see https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS#5_and_PKCS#7
