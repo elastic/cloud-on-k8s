@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -526,6 +527,29 @@ func Test_validator_Handle(t *testing.T) {
 			wantWarnings: []string{
 				"restart-allocation-delay annotation will be ignored due to error: negative restart-allocation-delay annotation: -10s",
 			},
+		},
+		{
+			name: "accept valid creation with warning due to mixed fips nodesets",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{
+								{Name: "set1", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+								{Name: "set2", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed:  true,
+			wantWarnings: []string{inconsistentFIPSModeWarningMsg},
 		},
 		{
 			name: "reject downgrade on deprecated version but still return warnings",

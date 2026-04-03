@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func Test_getPolicyConfig(t *testing.T) {
+func TestGetPolicyConfig(t *testing.T) {
 	canonicalConfig := common.MustCanonicalConfig(map[string]any{
 		"logger.org.elasticsearch.discovery": "DEBUG",
 	})

@@ -5,18 +5,28 @@
 package shared
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -370,6 +380,145 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 				assert.NoError(t, secretErr, "expected no error at getting file-settings secret")
 			} else {
 				assert.True(t, apierrors.IsNotFound(secretErr), "expected IsNotFound error at getting file-settings secret")
+			}
+		})
+	}
+}
+
+func TestReconcileFIPSKeystoreSecret(t *testing.T) {
+	fipsEnabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	fipsDisabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+
+	esMeta := metav1.ObjectMeta{Namespace: "ns", Name: "es"}
+	fipsSecretName := esv1.FIPSKeystorePasswordSecret(esMeta.Name)
+
+	esFIPSNodeSetOnly := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsEnabledConfig},
+			},
+		},
+	}
+	esFIPSWithUserKeystorePassword := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &fipsEnabledConfig,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Env: []corev1.EnvVar{
+										{Name: essettings.KeystorePasswordEnvVar, Value: "user-supplied"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	esFIPSDisabled := esv1.Elasticsearch{
+		ObjectMeta: esMeta,
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsDisabledConfig},
+			},
+		},
+	}
+	existingFIPSSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: esMeta.Namespace,
+			Name:      fipsSecretName,
+		},
+		Data: map[string][]byte{
+			fips.KeystorePasswordKey: []byte("leftover-password"),
+		},
+	}
+	policyFIPSEnabled := nodespec.PolicyConfig{
+		ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
+			"xpack.security.fips_mode.enabled": true,
+		}),
+	}
+
+	tests := []struct {
+		name               string
+		es                 esv1.Elasticsearch
+		extraInit          []client.Object
+		policyConfig       nodespec.PolicyConfig
+		esVersion          commonversion.Version
+		wantReturnedSecret bool
+		wantSecretInAPI    bool
+	}{
+		{
+			name:               "below minimum version does not reconcile secret",
+			es:                 esFIPSNodeSetOnly,
+			esVersion:          commonversion.MinFor(9, 3, 0),
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "minimum version reconciles secret",
+			es:                 esFIPSNodeSetOnly,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
+		},
+		{
+			name:               "user-provided keystore password env skips operator secret",
+			es:                 esFIPSWithUserKeystorePassword,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "FIPS disabled deletes existing FIPS keystore secret",
+			es:                 esFIPSDisabled,
+			extraInit:          []client.Object{existingFIPSSecret},
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: false,
+			wantSecretInAPI:    false,
+		},
+		{
+			name:               "FIPS enabled only via StackConfigPolicy reconciles secret",
+			es:                 esFIPSDisabled,
+			policyConfig:       policyFIPSEnabled,
+			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := tt.es
+			initObjs := append([]client.Object{&es}, tt.extraInit...)
+			c := k8s.NewFakeClient(initObjs...)
+
+			secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, tt.esVersion, metadata.Metadata{}, tt.policyConfig)
+			require.NoError(t, err)
+			if tt.wantReturnedSecret {
+				require.NotNil(t, secret)
+				require.Equal(t, fipsSecretName, secret.Name)
+			} else {
+				require.Nil(t, secret)
+			}
+
+			var stored corev1.Secret
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fipsSecretName}, &stored)
+			if tt.wantSecretInAPI {
+				require.NoError(t, err)
+			} else {
+				require.True(t, apierrors.IsNotFound(err))
 			}
 		})
 	}

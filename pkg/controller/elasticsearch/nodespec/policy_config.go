@@ -28,7 +28,7 @@ type PolicyConfig struct {
 	AdditionalVolumes   []volume.VolumeLike
 }
 
-// GetPolicyConfig parses the StackConfigPolicy secret and returns a PolicyConfig struct
+// GetPolicyConfig parses the StackConfigPolicy secret and returns a PolicyConfig.
 func GetPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch) (PolicyConfig, error) {
 	var policyConfig PolicyConfig
 	// Retrieve secret created by the StackConfigPolicy controller if it exists
