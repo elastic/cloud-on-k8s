@@ -112,8 +112,8 @@ type AgentSpec struct {
 }
 
 type Output struct {
-	commonv1.ObjectSelector `json:",omitempty,inline"`
-	OutputName              string `json:"outputName,omitempty"`
+	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
+	OutputName                     string `json:"outputName,omitempty"`
 }
 
 type DaemonSetSpec struct {
@@ -356,8 +356,8 @@ func (a *Agent) GetObservedGeneration() int64 {
 
 type AgentESAssociation struct {
 	*Agent
-	// ref is the object selector of the Elasticsearch used in Association
-	ref commonv1.ObjectSelector
+	// ref is the Elasticsearch selector used in Association
+	ref commonv1.ElasticsearchSelector
 }
 
 var _ commonv1.Association = (*AgentESAssociation)(nil)
@@ -399,11 +399,11 @@ func (aea *AgentESAssociation) AssociationRef() commonv1.AssociationRef {
 }
 
 func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName(aea.ref)
+	return commonv1.ElasticsearchConfigAnnotationName(aea.ref.ObjectSelector)
 }
 
 func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
-	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
+	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref.ObjectSelector, aea.esAssocConfs)
 }
 
 func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
@@ -415,7 +415,7 @@ func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf
 		aea.esAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if conf != nil {
-		aea.esAssocConfs[aea.ref] = *conf
+		aea.esAssocConfs[aea.ref.ObjectSelector] = *conf
 	}
 }
 

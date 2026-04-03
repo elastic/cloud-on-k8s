@@ -44,23 +44,23 @@ func (in *Kibana) DeepCopyInto(out *Kibana) {
 	if in.assocConf != nil {
 		in, out := &in.assocConf, &out.assocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.entAssocConf != nil {
 		in, out := &in.entAssocConf, &out.entAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.eprAssocConf != nil {
 		in, out := &in.eprAssocConf, &out.eprAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.monitoringAssocConfs != nil {
 		in, out := &in.monitoringAssocConfs, &out.monitoringAssocConfs
 		*out = make(map[commonv1.ObjectSelector]commonv1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 }

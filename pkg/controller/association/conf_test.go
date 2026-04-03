@@ -447,8 +447,10 @@ func TestAllowVersion(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						SecretName: "my-secret",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							SecretName: "my-secret",
+						},
 					},
 				},
 			},
@@ -578,8 +580,10 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 				outputName = "default"
 			}
 			agent.Spec.ElasticsearchRefs = append(agent.Spec.ElasticsearchRefs, agentv1alpha1.Output{
-				ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
-				OutputName:     outputName,
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
+				},
+				OutputName: outputName,
 			})
 		}
 		return agent
@@ -588,7 +592,13 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				ElasticsearchRefs: []agentv1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+				ElasticsearchRefs: []agentv1alpha1.Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+						},
+					},
+				},
 			},
 		}
 		associations := agent.GetAssociations()
