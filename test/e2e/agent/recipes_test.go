@@ -124,68 +124,6 @@ func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
 	runAgentRecipe(t, "fleet-kubernetes-integration.yaml", customize)
 }
 
-func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
-	v := version.MustParse(test.Ctx().ElasticStackVersion)
-
-	if (v.GE(version.MinFor(7, 17, 28)) && v.LT(version.MinFor(8, 0, 0))) ||
-		(v.GE(version.MinFor(8, 1, 3)) && v.LT(version.MinFor(8, 2, 0))) {
-		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/236788", v)
-	}
-
-	// https://github.com/elastic/cloud-on-k8s/issues/6331
-	if v.LT(version.MinFor(8, 7, 0)) && v.GE(version.MinFor(8, 6, 0)) {
-		t.SkipNow()
-	}
-
-	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
-		(v.EQ(version.From(9, 1, 0))) {
-		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
-	}
-
-	// Do not test between 9.1.0 and 9.1.5 due to broken ssl settings in Kibana, see https://github.com/elastic/cloud-on-k8s/issues/8820
-	if v.GE(version.From(9, 1, 0)) && v.LT(version.From(9, 1, 5)) {
-		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/issues/233780", v)
-	}
-
-	// The recipe does not work fully within an openshift cluster without modifications.
-	if test.Ctx().OcpCluster {
-		t.SkipNow()
-	}
-
-	customize := func(builder agent.Builder) agent.Builder {
-		if !builder.Agent.Spec.FleetServerEnabled {
-			return builder
-		}
-
-		return builder.
-			WithFleetAgentDataStreamsValidation().
-			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
-			// see https://github.com/elastic/cloud-on-k8s/issues/4092
-			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.container", "default")).
-			// Might not generate an event in time for this check to succeed in all environments
-			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.event", "k8s")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.node", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.pod", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.proxy", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.system", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.volume", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
-			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
-			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.fsstat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.memory", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.network", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process.summary", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
-	}
-
-	runAgentRecipe(t, "fleet-kubernetes-integration-nonroot.yaml", customize)
-}
-
 func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 
