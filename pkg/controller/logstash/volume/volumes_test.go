@@ -32,12 +32,12 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
-							ClusterName:    "production",
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"}},
+							ClusterName:           "production",
 						},
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"},
-							ClusterName:    "production2",
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"}},
+							ClusterName:           "production2",
 						},
 					},
 				},
@@ -53,17 +53,37 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			wantAssociationsLength: 2,
 		},
 		{
+			name: "es ref with ca and client cert",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+						{
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"}},
+							ClusterName:           "production",
+						},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-ca",
+					ClientCertSecretName: "elasticsearch-client-cert",
+				})
+			},
+			wantAssociationsLength: 2, // one CA volume + one client cert volume
+		},
+		{
 			name: "one es ref with ca, another no ca",
 			logstash: logstashv1alpha1.Logstash{
 				Spec: logstashv1alpha1.LogstashSpec{
 					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "uat"},
-							ClusterName:    "uat",
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "uat"}},
+							ClusterName:           "uat",
 						},
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "production"},
-							ClusterName:    "production",
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "production"}},
+							ClusterName:           "production",
 						},
 					},
 				},
