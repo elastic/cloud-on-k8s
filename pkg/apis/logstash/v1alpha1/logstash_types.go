@@ -125,7 +125,7 @@ type LogstashService struct {
 
 // ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 type ElasticsearchCluster struct {
-	commonv1.ObjectSelector `json:",omitempty,inline"`
+	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
@@ -194,10 +194,10 @@ type LogstashList struct {
 	Items           []Logstash `json:"items"`
 }
 
-func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
-	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
+func (l *Logstash) ElasticsearchRefs() []commonv1.ElasticsearchSelector {
+	refs := make([]commonv1.ElasticsearchSelector, len(l.Spec.ElasticsearchRefs))
 	for i, r := range l.Spec.ElasticsearchRefs {
-		refs[i] = r.ObjectSelector
+		refs[i] = r.ElasticsearchSelector
 	}
 	return refs
 }
@@ -230,8 +230,8 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 		associations = append(associations, &LogstashESAssociation{
 			Logstash: l,
 			ElasticsearchCluster: ElasticsearchCluster{
-				ObjectSelector: ref.WithDefaultNamespace(l.Namespace),
-				ClusterName:    ref.ClusterName,
+				ElasticsearchSelector: ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace),
+				ClusterName:           ref.ClusterName,
 			},
 		})
 	}
@@ -318,7 +318,7 @@ func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
 }
 
 func (lses *LogstashESAssociation) AssociationRef() commonv1.AssociationRef {
-	return lses.ElasticsearchCluster.ObjectSelector
+	return lses.ElasticsearchCluster.ElasticsearchSelector
 }
 
 func (lses *LogstashESAssociation) AssociationConfAnnotationName() string {
