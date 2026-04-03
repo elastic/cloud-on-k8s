@@ -128,7 +128,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) | v1.9.0 | BSD-3-Clause |
 | [github.com/fxamacker/cbor/v2](https://github.com/fxamacker/cbor) | v2.9.0 | MIT |
 | [github.com/gkampitakis/ciinfo](https://github.com/gkampitakis/ciinfo) | v0.3.2 | MIT |
-| [github.com/go-jose/go-jose/v4](https://github.com/go-jose/go-jose) | v4.1.3 | Apache-2.0 |
+| [github.com/go-jose/go-jose/v4](https://github.com/go-jose/go-jose) | v4.1.4 | Apache-2.0 |
 | [github.com/go-logr/stdr](https://github.com/go-logr/stdr) | v1.2.2 | Apache-2.0 |
 | [github.com/go-logr/zapr](https://github.com/go-logr/zapr) | v1.3.0 | Apache-2.0 |
 | [github.com/go-openapi/jsonpointer](https://github.com/go-openapi/jsonpointer) | v0.21.0 | Apache-2.0 |
