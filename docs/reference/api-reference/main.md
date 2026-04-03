@@ -412,7 +412,7 @@ BeatSpec defines the desired state of a Beat.
 | --- | --- |
 | *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, auditbeat, journalbeat, packetbeat, and so on).<br>Any string can be used, but well-known types will have the image field defaulted and have the appropriate<br>Elasticsearch roles created automatically. It also allows for dashboard setup when combined with a `KibanaRef`. |
 | *`version`* __string__ | Version of the Beat. |
-| *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.<br>It allows automatic setup of dashboards and visualizations. |
 | *`image`* __string__ | Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image. |
 | *`config`* __[Config](#config)__ | Config holds the Beat configuration. At most one of [`Config`, `ConfigRef`] can be specified. |
@@ -548,6 +548,7 @@ ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by
 or a Secret describing an external cluster not managed by the operator.
 
 :::{admonition} Appears In:
+* [BeatSpec](#beatspec)
 * [KibanaSpec](#kibanaspec)
 
 :::

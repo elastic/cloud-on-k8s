@@ -35,10 +35,10 @@ func Test_calculateHealth(t *testing.T) {
 			URL:            "url",
 		}
 		if assocDef.esAssoc {
-			beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{
+			beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 				Name:      "es",
 				Namespace: "a",
-			}
+			}}
 			esAssoc := beatv1beta1.BeatESAssociation{Beat: beat}
 			esAssoc.SetAssociationConf(&dummyConf)
 			if assocDef.esAssocEstablished {
