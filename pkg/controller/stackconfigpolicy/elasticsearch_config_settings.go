@@ -35,12 +35,13 @@ const (
 )
 
 func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (corev1.Secret, error) {
-	data := make(map[string][]byte)
+	var data map[string][]byte
 	if len(esConfig.SecretMounts) > 0 {
 		secretMountBytes, err := json.Marshal(esConfig.SecretMounts)
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+		data = make(map[string][]byte)
 		data[SecretsMountKey] = secretMountBytes
 	}
 
@@ -49,6 +50,9 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		configDataJSONBytes, err := esConfig.Config.MarshalJSON()
 		if err != nil {
 			return corev1.Secret{}, err
+		}
+		if data == nil {
+			data = make(map[string][]byte)
 		}
 		data[ElasticSearchConfigKey] = configDataJSONBytes
 	}
@@ -90,7 +94,8 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			return err
 		}
 
-		meta = meta.Merge(metadata.Metadata{
+		// Use a fresh copy of meta per iteration to avoid accumulating annotations across iterations.
+		secretMeta := meta.Merge(metadata.Metadata{
 			Annotations: map[string]string{
 				commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
 			},
@@ -101,8 +106,8 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:   es.Namespace,
 				Name:        secretName,
-				Labels:      meta.Labels,
-				Annotations: meta.Annotations,
+				Labels:      secretMeta.Labels,
+				Annotations: secretMeta.Annotations,
 			},
 			Data: additionalSecret.Data,
 		}

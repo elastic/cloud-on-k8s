@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -27,9 +28,14 @@ var (
 	// will always take precedence to update or remove these labels.
 	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
 
-	// managedAnnotations are the annotations managed by the operator for the stack config policy related secrets, which means that the operator
-	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
+	// fileSettingsManagedAnnotations are the annotations managed by the operator for the file settings Secret.
+	fileSettingsManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, reconciler.SoftOwnerRefsAnnotation}
+
+	// esConfigManagedAnnotations are the annotations managed by the operator for the Elasticsearch config Secret.
+	esConfigManagedAnnotations = []string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
+
+	// kibanaConfigManagedAnnotations are the annotations managed by the operator for the Kibana config Secret.
+	kibanaConfigManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
 )
 
 // ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
@@ -58,16 +64,34 @@ func ReconcileEmptyFileSettingsSecret(
 		return err
 	}
 
-	return ReconcileSecret(ctx, c, expectedSecret, &es)
+	return reconcileSecret(ctx, c, expectedSecret, &es, fileSettingsManagedAnnotations)
 }
 
-// ReconcileSecret reconciles the given Secret.
+// ReconcileFileSettingsSecret reconciles the file settings Secret for the given owner.
+func ReconcileFileSettingsSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) error {
+	return reconcileSecret(ctx, c, expected, owner, fileSettingsManagedAnnotations)
+}
+
+// ReconcileESConfigSecret reconciles the Elasticsearch config Secret for the given owner.
+func ReconcileESConfigSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) error {
+	return reconcileSecret(ctx, c, expected, owner, esConfigManagedAnnotations)
+}
+
+// ReconcileKibanaConfigSecret reconciles the Kibana config Secret for the given owner.
+func ReconcileKibanaConfigSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) error {
+	return reconcileSecret(ctx, c, expected, owner, kibanaConfigManagedAnnotations)
+}
+
+// reconcileSecret reconciles the given Secret.
 // This implementation is slightly different from reconciler.ReconcileSecret to allow resetting managed annotations.
-func ReconcileSecret(
+// The managedAnnotations parameter scopes which annotations are actively managed (and removed if absent from expected),
+// preventing cross-type annotation drift between different secret types.
+func reconcileSecret(
 	ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
 	owner client.Object,
+	managedAnnotations []string,
 ) error {
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
@@ -81,9 +105,17 @@ func ReconcileSecret(
 			// * the expected labels/annotations are not a subset of the existing labels/annotations,
 			// * the managed labels/annotations have been removed/changed,
 			// * the data itself has changed.
-			return (!maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)) ||
-				(!maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)) ||
-				!reflect.DeepEqual(expected.Data, reconciled.Data)
+			labelsChanged := !maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)
+			annotationsChanged := !maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)
+			dataChanged := !reflect.DeepEqual(expected.Data, reconciled.Data)
+			if labelsChanged || annotationsChanged || dataChanged {
+				ulog.FromContext(ctx).V(1).Info("Secret needs update",
+					"secret_namespace", expected.Namespace, "secret_name", expected.Name,
+					"labels_changed", labelsChanged, "annotations_changed", annotationsChanged, "data_changed", dataChanged,
+				)
+				return true
+			}
+			return false
 		},
 		UpdateReconciled: func() {
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)

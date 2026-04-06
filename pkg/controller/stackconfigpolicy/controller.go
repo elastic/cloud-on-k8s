@@ -359,7 +359,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		if err := filesettings.ReconcileSecret(ctx, r.Client, expectedSecret, &es); err != nil {
+		if err := filesettings.ReconcileFileSettingsSecret(ctx, r.Client, expectedSecret, &es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -387,7 +387,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &es); err != nil {
+		if err = filesettings.ReconcileESConfigSecret(ctx, r.Client, expectedConfigSecret, &es); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -486,7 +486,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 				return results.WithError(err), status
 			}
 
-			if err = filesettings.ReconcileSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
+			if err = filesettings.ReconcileKibanaConfigSecret(ctx, r.Client, expectedConfigSecret, &kibana); err != nil {
 				return results.WithError(err), status
 			}
 		}
@@ -672,7 +672,7 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 					return err
 				}
 			} else {
-				if err := filesettings.ReconcileSecret(ctx, c, s, &es); err != nil && !apierrors.IsNotFound(err) {
+				if err := filesettings.ReconcileFileSettingsSecret(ctx, c, s, &es); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 			}
@@ -797,8 +797,16 @@ func deleteOrphanSoftOwnedSecrets(
 			if err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
-		} else {
-			if err := filesettings.ReconcileSecret(ctx, c, secret, ownerObject); err != nil && !apierrors.IsNotFound(err) {
+			continue
+		}
+
+		switch configuredApplicationType {
+		case eslabel.Type:
+			if err := filesettings.ReconcileESConfigSecret(ctx, c, secret, ownerObject); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		case kblabel.Type:
+			if err := filesettings.ReconcileKibanaConfigSecret(ctx, c, secret, ownerObject); err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
 		}
