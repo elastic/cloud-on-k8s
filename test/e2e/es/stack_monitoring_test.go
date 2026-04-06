@@ -170,7 +170,7 @@ func TestExternalESStackMonitoring(t *testing.T) {
 							Name:      extRefSecretName,
 						},
 						Data: map[string][]byte{
-							"url":      fmt.Appendf(nil, "https://%s:%d", nodeExternalIP, nodePort),
+							"url":      []byte(fmt.Sprintf("https://%s:%d", nodeExternalIP, nodePort)),
 							"username": []byte(extRefUsername),
 							"password": extRefPassword,
 							"ca.crt":   monitoringHTTPPublicCertsSecret.Data["ca.crt"],
