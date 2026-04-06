@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -90,15 +91,21 @@ func ReconcileKeystorePasswordSecret(
 	return &reconciled, nil
 }
 
-// DeleteKeystorePasswordSecret deletes the FIPS keystore password
-// secret, if present.
+// DeleteKeystorePasswordSecret deletes the FIPS keystore password secret when it
+// exists, and does not attempt a delete when not found.
 func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	return client.IgnoreNotFound(c.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
-		},
-	}))
+	secretName := types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
+	}
+	var existing corev1.Secret
+	if err := c.Get(ctx, secretName, &existing); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return client.IgnoreNotFound(c.Delete(ctx, &existing))
 }
 
 // InjectKeystorePassword adds the FIPS keystore password Secret volume and
@@ -110,7 +117,7 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  secretName,
-				DefaultMode: ptr.To[int32](0400),
+				DefaultMode: ptr.To[int32](0440),
 			},
 		},
 	}

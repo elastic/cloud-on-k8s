@@ -215,62 +215,101 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 			if err != nil {
 				return err
 			}
-			keystoreInitContainer, err := findContainerByName(sset.Spec.Template.Spec.InitContainers, commonkeystore.InitContainerName)
-			if err != nil {
-				return err
-			}
-
-			hasFIPSVolume := slices.ContainsFunc(sset.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
-				return v.Name == esfips.VolumeName
-			})
-			mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
-				return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
-			})
-			initHasFIPSMount := slices.ContainsFunc(keystoreInitContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
-				return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
-			})
-			mainHasPassphraseEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
-				return e.Name == "KEYSTORE_PASSWORD_FILE" &&
-					e.Value == esfips.PasswordFile
-			})
-			mainHasPasswordEnvFromSecret := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
-				return e.Name == "KEYSTORE_PASSWORD" && e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil
-			})
-			script := strings.Join(keystoreInitContainer.Command, " ")
-			scriptHasFIPS := strings.Contains(script, "create -p") &&
-				strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
 
 			if expectUserOverride {
-				if hasFIPSVolume || mainHasFIPSMount || initHasFIPSMount || scriptHasFIPS {
-					return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
-				}
-				if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "KEYSTORE_PASSWORD_FILE" }) {
-					return fmt.Errorf("expected user-provided KEYSTORE_PASSWORD_FILE env var to be present")
-				}
-				return nil
+				return checkFIPSPodTemplateUserOverride(&sset.Spec.Template.Spec, esContainer)
 			}
-
-			if !hasFIPSVolume {
-				return fmt.Errorf("missing %s volume", esfips.VolumeName)
-			}
-			if !mainHasFIPSMount {
-				return fmt.Errorf("missing %s mount on Elasticsearch container", esfips.MountPath)
-			}
-			if !initHasFIPSMount {
-				return fmt.Errorf("missing %s mount on init container", esfips.MountPath)
-			}
-			if !mainHasPassphraseEnv {
-				return fmt.Errorf("missing KEYSTORE_PASSWORD_FILE=%s env var", esfips.PasswordFile)
-			}
-			if mainHasPasswordEnvFromSecret {
-				return fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container")
-			}
-			if !scriptHasFIPS {
-				return fmt.Errorf("expected FIPS-aware keystore init script, got command %q", script)
-			}
-			return nil
+			return checkFIPSPodTemplateOperatorManaged(&sset.Spec.Template.Spec, esContainer)
 		}),
 	}
+}
+
+func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.Container) error {
+	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
+		return v.Name == esfips.VolumeName
+	})
+	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
+		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+	})
+	if hasFIPSVolume || mainHasFIPSMount {
+		return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
+	}
+
+	if keystoreInit := findContainerByNameOptional(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
+		initHasFIPSMount := slices.ContainsFunc(keystoreInit.VolumeMounts, func(vm corev1.VolumeMount) bool {
+			return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+		})
+		if initHasFIPSMount || keystoreInitScriptLooksFIPS(keystoreInit.Command) {
+			return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
+		}
+	}
+
+	if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "KEYSTORE_PASSWORD_FILE" }) {
+		return fmt.Errorf("expected user-provided KEYSTORE_PASSWORD_FILE env var to be present")
+	}
+	return nil
+}
+
+func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev1.Container) error {
+	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
+		return v.Name == esfips.VolumeName
+	})
+	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
+		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+	})
+
+	keystoreInitContainer, err := findContainerByName(pod.InitContainers, commonkeystore.InitContainerName)
+	if err != nil {
+		return err
+	}
+	initHasFIPSMount := slices.ContainsFunc(keystoreInitContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
+		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
+	})
+	mainHasPassphraseEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
+		return e.Name == "KEYSTORE_PASSWORD_FILE" &&
+			e.Value == esfips.PasswordFile
+	})
+	mainHasPasswordEnvFromSecret := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
+		return e.Name == "KEYSTORE_PASSWORD" && e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil
+	})
+	script := strings.Join(keystoreInitContainer.Command, " ")
+
+	if !hasFIPSVolume {
+		return fmt.Errorf("missing %s volume", esfips.VolumeName)
+	}
+	if !mainHasFIPSMount {
+		return fmt.Errorf("missing %s mount on Elasticsearch container", esfips.MountPath)
+	}
+	if !initHasFIPSMount {
+		return fmt.Errorf("missing %s mount on init container", esfips.MountPath)
+	}
+	if !mainHasPassphraseEnv {
+		return fmt.Errorf("missing KEYSTORE_PASSWORD_FILE=%s env var", esfips.PasswordFile)
+	}
+	if mainHasPasswordEnvFromSecret {
+		return fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container")
+	}
+	if !keystoreInitScriptLooksFIPS(keystoreInitContainer.Command) {
+		return fmt.Errorf("expected FIPS-aware keystore init script, got command %q", script)
+	}
+	return nil
+}
+
+// keystoreInitScriptLooksFIPS reports whether the keystore init container command matches the
+// operator's FIPS-aware elasticsearch-keystore bootstrap script.
+func keystoreInitScriptLooksFIPS(cmd []string) bool {
+	script := strings.Join(cmd, " ")
+	return strings.Contains(script, "create -p") &&
+		strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
+}
+
+func findContainerByNameOptional(containers []corev1.Container, name string) *corev1.Container {
+	for i := range containers {
+		if containers[i].Name == name {
+			return &containers[i]
+		}
+	}
+	return nil
 }
 
 func findContainerByName(containers []corev1.Container, name string) (*corev1.Container, error) {

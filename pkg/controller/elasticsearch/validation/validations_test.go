@@ -1183,53 +1183,88 @@ func Test_validAssociations(t *testing.T) {
 	}
 }
 
-func Test_fipsModeConsistencyWarning(t *testing.T) {
+func Test_fipsWarnings(t *testing.T) {
 	tests := []struct {
 		name string
 		es   esv1.Elasticsearch
-		want string
+		want field.ErrorList
 	}{
 		{
-			name: "all nodesets with fips enabled has no warning",
+			name: "no fips in nodesets",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					NodeSets: []esv1.NodeSet{
-						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
-						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": "true"}}},
-					},
+					Version:  "9.4.0",
+					NodeSets: []esv1.NodeSet{{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"node.attr.rack": "r1"}}}},
 				},
 			},
-			want: "",
+			want: nil,
 		},
 		{
-			name: "all nodesets without fips has no warning",
+			name: "mixed fips settings below min version emits both warnings",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
 					NodeSets: []esv1.NodeSet{
-						{Config: &commonv1.Config{Data: map[string]any{"node.attr.rack": "rack-a"}}},
-						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
 					},
 				},
 			},
-			want: "",
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("nodeSets"), []esv1.NodeSet{
+					{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+					{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+				}, inconsistentFIPSModeWarningMsg),
+				field.Invalid(field.NewPath("spec").Child("version"), "9.3.0", fipsManagedKeystoreUnsupportedWarningMsg),
+			},
 		},
 		{
-			name: "mixed fips settings emits warning",
+			name: "version parse error still returns consistency warning",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
+					Version: "not-a-version",
 					NodeSets: []esv1.NodeSet{
-						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
-						{Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
 					},
 				},
 			},
-			want: inconsistentFIPSModeWarningMsg,
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("nodeSets"), []esv1.NodeSet{
+					{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+					{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+				}, inconsistentFIPSModeWarningMsg),
+				field.Invalid(field.NewPath("spec").Child("version"), "not-a-version", parseVersionErrMsg),
+			},
+		},
+		{
+			name: "fips enabled below min version but keystore password env set on es container",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{Name: esv1.ElasticsearchContainerName, Env: []corev1.EnvVar{{Name: "KEYSTORE_PASSWORD_FILE", Value: "/x"}}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, fipsModeConsistencyWarning(tt.es))
+			assert.Equal(t, tt.want, fipsWarnings(tt.es))
 		})
 	}
 }

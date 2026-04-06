@@ -189,7 +189,7 @@ func newNodeSet(name string, roles []string, count int32, limits corev1.Resource
 	return esv1.NodeSet{
 		Name: name,
 		Config: &commonv1.Config{
-			Data: map[string]interface{}{esv1.NodeRoles: roles},
+			Data: map[string]any{esv1.NodeRoles: roles},
 		},
 		Count:                count,
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{pvc},

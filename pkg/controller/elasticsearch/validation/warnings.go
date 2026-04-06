@@ -14,7 +14,9 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 )
 
 const (
@@ -25,7 +27,7 @@ const (
 var warnings = []validation{
 	deprecatedStackVersionWarning,
 	validZoneAwarenessAffinityWarnings,
-	fipsModeConsistencyWarningField,
+	fipsWarnings,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
@@ -81,12 +83,42 @@ func validateClientAuthentication(config *common.CanonicalConfig, index int) fie
 	return errs
 }
 
-// fipsModeConsistencyWarning returns a warning message if FIPS mode is
-// inconsistently configured across NodeSets. It returns an empty string when
-// all NodeSets agree.
-func fipsModeConsistencyWarning(es esv1.Elasticsearch) string {
-	var fipsCount, total int
+// fipsState tracks the state of FIPS mode across NodeSets for warnings generation.
+type fipsState struct {
+	fipsEnabledCount       int
+	parseableNodeSetCount  int
+	hasKeystorePasswordEnv bool
+}
+
+// fipsWarnings emits warnings when FIPS mode is inconsistent across NodeSets or
+// when managed keystore passwords are unsupported for the requested version.
+func fipsWarnings(es esv1.Elasticsearch) field.ErrorList {
+	state := collectFIPSState(es)
+
+	var warnings field.ErrorList
+	if state.fipsEnabledCount > 0 && state.fipsEnabledCount < state.parseableNodeSetCount {
+		// Attach the warning to the nodeSets path since the inconsistency is per-NodeSet.
+		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, inconsistentFIPSModeWarningMsg))
+	}
+
+	ver, err := commonversion.Parse(es.Spec.Version)
+	if err != nil {
+		// If the version is not parseable, return the warnings collected so far as previous blocking
+		// validations for supportedVersion should have already ran.
+		return warnings
+	}
+
+	if state.fipsEnabledCount > 0 && !state.hasKeystorePasswordEnv && ver.LT(esversion.FIPSKeystorePasswordMinVersion) {
+		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, fipsManagedKeystoreUnsupportedWarningMsg))
+	}
+	return warnings
+}
+
+// collectFIPSState gathers NodeSet-level state related to FIPS mode for warnings generation.
+func collectFIPSState(es esv1.Elasticsearch) fipsState {
+	state := fipsState{}
 	for _, nodeSet := range es.Spec.NodeSets {
+		state.hasKeystorePasswordEnv = !state.hasKeystorePasswordEnv && nodeSetDeclaresKeystorePasswordEnv(nodeSet)
 		userConfig := map[string]any{}
 		if nodeSet.Config != nil {
 			userConfig = nodeSet.Config.Data
@@ -95,26 +127,28 @@ func fipsModeConsistencyWarning(es esv1.Elasticsearch) string {
 		if err != nil {
 			continue
 		}
-		total++
+		state.parseableNodeSetCount++
 		if essettings.IsFIPSEnabled(canonicalConfig) {
-			fipsCount++
+			state.fipsEnabledCount++
 		}
 	}
-	if fipsCount > 0 && fipsCount < total {
-		return inconsistentFIPSModeWarningMsg
-	}
-	return ""
+	return state
 }
 
-// fipsModeConsistencyWarningField wraps fipsModeConsistencyWarning into the
-// validation signature used by the warnings list, converting a non-empty
-// message into a field.ErrorList so it will surface as an admission warning.
-func fipsModeConsistencyWarningField(es esv1.Elasticsearch) field.ErrorList {
-	if msg := fipsModeConsistencyWarning(es); msg != "" {
-		// Attach the warning to the nodeSets path since the inconsistency is per-NodeSet.
-		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, msg)}
+// nodeSetDeclaresKeystorePasswordEnv reports whether the Elasticsearch container
+// declares keystore password env vars in the given NodeSet.
+func nodeSetDeclaresKeystorePasswordEnv(nodeSet esv1.NodeSet) bool {
+	for _, container := range nodeSet.PodTemplate.Spec.Containers {
+		if container.Name != esv1.ElasticsearchContainerName {
+			continue
+		}
+		for _, env := range container.Env {
+			if env.Name == essettings.KeystorePasswordEnvVar || env.Name == essettings.KeystorePasswordFileEnvVar || env.Name == essettings.KeystorePassphraseFileEnvVar {
+				return true
+			}
+		}
 	}
-	return nil
+	return false
 }
 
 // validZoneAwarenessAffinityWarnings produces warnings for required node affinity that

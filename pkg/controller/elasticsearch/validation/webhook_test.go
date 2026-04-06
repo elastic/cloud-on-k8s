@@ -548,8 +548,33 @@ func Test_validator_Handle(t *testing.T) {
 					}),
 				},
 			}},
+			wantAllowed: true,
+			wantWarnings: []string{
+				inconsistentFIPSModeWarningMsg,
+				fipsManagedKeystoreUnsupportedWarningMsg,
+			},
+		},
+		{
+			name: "accept valid creation with warning when fips enabled below managed-keystore min version",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "9.3.0",
+							NodeSets: []esv1.NodeSet{
+								{Name: "set1", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+							},
+						},
+					}),
+				},
+			}},
 			wantAllowed:  true,
-			wantWarnings: []string{inconsistentFIPSModeWarningMsg},
+			wantWarnings: []string{fipsManagedKeystoreUnsupportedWarningMsg},
 		},
 		{
 			name: "reject downgrade on deprecated version but still return warnings",
