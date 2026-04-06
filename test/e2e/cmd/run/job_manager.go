@@ -23,9 +23,10 @@ import (
 )
 
 const (
-	artefactCopyTimeout    = 10 * time.Minute
-	artefactCopyMaxRetries = 3
-	artefactCopyRetryDelay = 5 * time.Second
+	readyArtefactCopyTimeout   = 90 * time.Second
+	timeoutArtefactCopyTimeout = 10 * time.Minute
+	timeoutArtefactMaxRetries  = 3
+	timeoutArtefactRetryDelay  = 5 * time.Second
 )
 
 // JobsManager represents a test session running on a remote K8S cluster.
@@ -144,7 +145,15 @@ func (jm *JobsManager) Start() {
 
 				// locally copy all files from the artifacts directory when the pod is ready
 				if k8s.IsPodReady(*newPod) {
-					if jm.downloadJobArtefacts(job, newPod.Namespace, newPod.Name) {
+					attempted, _ := jm.downloadJobArtefactsWithRetry(
+						job,
+						newPod.Namespace,
+						newPod.Name,
+						readyArtefactCopyTimeout,
+						1,
+						0,
+					)
+					if attempted {
 						jm.Stop()
 					}
 				}
@@ -180,30 +189,48 @@ func (jm *JobsManager) rescueArtefactsAfterTimeout() {
 		if job.podNamespace == "" || job.podName == "" {
 			continue
 		}
-		jm.downloadJobArtefacts(job, job.podNamespace, job.podName)
+		jm.downloadJobArtefactsWithRetry(
+			job,
+			job.podNamespace,
+			job.podName,
+			timeoutArtefactCopyTimeout,
+			timeoutArtefactMaxRetries,
+			timeoutArtefactRetryDelay,
+		)
 	}
 }
 
-func (jm *JobsManager) downloadJobArtefacts(job *Job, namespace, podName string) bool {
+func (jm *JobsManager) downloadJobArtefactsWithRetry(
+	job *Job,
+	namespace string,
+	podName string,
+	timeout time.Duration,
+	maxRetries int,
+	retryDelay time.Duration,
+) (attempted bool, downloaded bool) {
 	if job.artefactsDir == "" || job.artefactsDownloaded {
-		return false
+		return false, false
 	}
+	if maxRetries < 1 {
+		maxRetries = 1
+	}
+	attempted = true
 	log.Info("Downloading pod artefacts", "pod", podName, "namespace", namespace)
 
 	src := fmt.Sprintf("%s/%s:%s", namespace, podName, filepath.Join(job.artefactsDir, "."))
 	dst := "."
-	for attempt := 1; attempt <= artefactCopyMaxRetries; attempt++ {
-		_, _, err := jm.kubectlWithTimeout(artefactCopyTimeout, "cp", src, dst)
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		_, _, err := jm.kubectlWithTimeout(timeout, "cp", src, dst)
 		if err == nil {
 			job.artefactsDownloaded = true
-			return true
+			return attempted, true
 		}
 
-		log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst, "attempt", attempt, "max_attempts", artefactCopyMaxRetries)
-		if attempt < artefactCopyMaxRetries {
-			time.Sleep(artefactCopyRetryDelay)
+		log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst, "attempt", attempt, "max_attempts", maxRetries)
+		if attempt < maxRetries && retryDelay > 0 {
+			time.Sleep(retryDelay)
 		}
 	}
 
-	return false
+	return attempted, false
 }
