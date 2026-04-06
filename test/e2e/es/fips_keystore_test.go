@@ -46,7 +46,7 @@ func skipUnlessFIPSKeystoreStackVersion(t *testing.T) {
 func TestFIPSKeystoreManagedResources(t *testing.T) {
 	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
-	b := elasticsearch.NewBuilder("test-fips-keystore-managed-resources").
+	b := elasticsearch.NewBuilder("test-fips-ks-managed").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
 		WithAdditionalConfig(map[string]map[string]any{
@@ -71,7 +71,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
 	const userPassphraseFile = "/tmp/user-managed-fips-passphrase"
-	b := elasticsearch.NewBuilder("test-fips-keystore-user-override").
+	b := elasticsearch.NewBuilder("test-fips-ks-user-override").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
 		WithAdditionalConfig(map[string]map[string]any{
@@ -95,7 +95,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
-	b := elasticsearch.NewBuilder("test-fips-keystore-disable-cleans-secret").
+	b := elasticsearch.NewBuilder("test-fips-ks-off-cleans-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
 		WithAdditionalConfig(map[string]map[string]any{
