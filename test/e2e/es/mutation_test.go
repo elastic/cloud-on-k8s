@@ -182,7 +182,7 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 			},
 		})
 
-		mutated = mutated.WithAdditionalConfig(map[string]map[string]any{
+		mutated = mutated.WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
