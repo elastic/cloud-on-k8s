@@ -31,19 +31,14 @@ const (
 	// KeystorePasswordKey is the key used in the FIPS keystore password secret.
 	KeystorePasswordKey = "keystore-password"
 
-	SourceVolumeName = "fips-keystore-password"
-	SourceMountPath  = "/mnt/elastic-internal/fips-keystore-password"
-	// SourcePasswordFile is the mounted Secret file path read by the keystore init container.
-	SourcePasswordFile = SourceMountPath + "/keystore-password"
+	// VolumeName is the source Secret volume name used for init-container consumption.
+	VolumeName = "fips-keystore-password"
+	// MountPath is the source Secret mount path used for init-container consumption.
+	MountPath = "/mnt/elastic-internal/fips-keystore-password"
+	// PasswordFile is the mounted Secret file path read by the keystore init container.
+	PasswordFile = MountPath + "/keystore-password"
 
 	generatedPasswordLength = 24
-
-	// VolumeName is the source Secret volume name used for init-container consumption.
-	VolumeName = SourceVolumeName
-	// MountPath is the source Secret mount path used for init-container consumption.
-	MountPath = SourceMountPath
-	// PasswordFile is the source Secret password file path used by the init script.
-	PasswordFile = SourcePasswordFile
 )
 
 // ReconcileKeystorePasswordSecret ensures the FIPS keystore password Secret
@@ -111,7 +106,7 @@ func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Ela
 // Elasticsearch container and the keystore init container.
 func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName string) *defaults.PodTemplateBuilder {
 	sourcePasswordVolume := corev1.Volume{
-		Name: SourceVolumeName,
+		Name: VolumeName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  secretName,
@@ -120,8 +115,8 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 		},
 	}
 	sourcePasswordMount := corev1.VolumeMount{
-		Name:      SourceVolumeName,
-		MountPath: SourceMountPath,
+		Name:      VolumeName,
+		MountPath: MountPath,
 		ReadOnly:  true,
 	}
 
@@ -133,11 +128,11 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 		WithVolumeMounts(sourcePasswordMount).
 		WithEnv(corev1.EnvVar{
 			Name:  esettings.KeystorePasswordFileEnvVar,
-			Value: SourcePasswordFile,
+			Value: PasswordFile,
 		})
 
 	// Configure the keystore init container:
-	// - mount the source Secret path so the init script can read SourcePasswordFile
+	// - mount the source Secret path so the init script can read PasswordFile
 	for i := range builder.PodTemplate.Spec.InitContainers {
 		if builder.PodTemplate.Spec.InitContainers[i].Name != keystore.InitContainerName {
 			continue

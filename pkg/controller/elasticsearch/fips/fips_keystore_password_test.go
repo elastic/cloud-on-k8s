@@ -212,7 +212,7 @@ func TestInjectKeystorePassword(t *testing.T) {
 
 			var sourceVolume *corev1.Volume
 			for i := range builder.PodTemplate.Spec.Volumes {
-				if builder.PodTemplate.Spec.Volumes[i].Name == SourceVolumeName {
+				if builder.PodTemplate.Spec.Volumes[i].Name == VolumeName {
 					sourceVolume = &builder.PodTemplate.Spec.Volumes[i]
 				}
 			}
@@ -225,13 +225,13 @@ func TestInjectKeystorePassword(t *testing.T) {
 			mainContainer := builder.MainContainer()
 			require.NotNil(t, mainContainer)
 			require.Contains(t, mainContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      SourceVolumeName,
-				MountPath: SourceMountPath,
+				Name:      VolumeName,
+				MountPath: MountPath,
 				ReadOnly:  true,
 			})
 			require.Contains(t, mainContainer.Env, corev1.EnvVar{
 				Name:  "KEYSTORE_PASSWORD_FILE",
-				Value: SourcePasswordFile,
+				Value: PasswordFile,
 			})
 
 			var keystoreInitContainer *corev1.Container
@@ -243,8 +243,8 @@ func TestInjectKeystorePassword(t *testing.T) {
 			}
 			require.NotNil(t, keystoreInitContainer)
 			require.Contains(t, keystoreInitContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      SourceVolumeName,
-				MountPath: SourceMountPath,
+				Name:      VolumeName,
+				MountPath: MountPath,
 				ReadOnly:  true,
 			})
 		})
