@@ -220,7 +220,7 @@ func TestInjectKeystorePassword(t *testing.T) {
 			require.NotNil(t, sourceVolume.Secret)
 			require.Equal(t, "es-es-fips-keystore-password", sourceVolume.Secret.SecretName)
 			require.NotNil(t, sourceVolume.Secret.DefaultMode)
-			require.Equal(t, int32(0400), *sourceVolume.Secret.DefaultMode)
+			require.Equal(t, int32(0440), *sourceVolume.Secret.DefaultMode)
 
 			mainContainer := builder.MainContainer()
 			require.NotNil(t, mainContainer)

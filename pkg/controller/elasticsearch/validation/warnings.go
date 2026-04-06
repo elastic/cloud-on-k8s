@@ -103,8 +103,10 @@ func fipsWarnings(es esv1.Elasticsearch) field.ErrorList {
 
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
-		// If the version is not parseable, return the warnings collected so far as previous blocking
-		// validations for supportedVersion should have already ran.
+		// Surface the parse failure as a warning for callers that evaluate warnings in isolation;
+		// ValidateElasticsearch runs supportedVersion first, so this duplicates admission only if
+		// validations are skipped.
+		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
 		return warnings
 	}
 
