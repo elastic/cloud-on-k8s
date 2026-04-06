@@ -6,11 +6,11 @@ toolchain go1.26.1
 
 require (
 	cloud.google.com/go/storage v1.61.3
-	github.com/elastic/cloud-on-k8s/v3 v3.3.1
+	github.com/elastic/cloud-on-k8s/v3 v3.3.2
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	google.golang.org/api v0.273.0
+	google.golang.org/api v0.274.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v4 v4.1.3
 )
@@ -24,7 +24,7 @@ exclude github.com/docker/docker v24.0.0+incompatible
 require (
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
-	cloud.google.com/go/auth v0.18.2 // indirect
+	cloud.google.com/go/auth v0.19.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
@@ -64,7 +64,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
