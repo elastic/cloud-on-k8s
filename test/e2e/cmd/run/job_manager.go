@@ -145,7 +145,7 @@ func (jm *JobsManager) Start() {
 
 				// locally copy all files from the artifacts directory when the pod is ready
 				if k8s.IsPodReady(*newPod) {
-					attempted, _ := jm.downloadJobArtefactsWithRetry(
+					attempted := jm.downloadJobArtefactsWithRetry(
 						job,
 						newPod.Namespace,
 						newPod.Name,
@@ -207,9 +207,9 @@ func (jm *JobsManager) downloadJobArtefactsWithRetry(
 	timeout time.Duration,
 	maxRetries int,
 	retryDelay time.Duration,
-) (attempted bool, downloaded bool) {
+) (attempted bool) {
 	if job.artefactsDir == "" || job.artefactsDownloaded {
-		return false, false
+		return false
 	}
 	if maxRetries < 1 {
 		maxRetries = 1
@@ -223,7 +223,7 @@ func (jm *JobsManager) downloadJobArtefactsWithRetry(
 		_, _, err := jm.kubectlWithTimeout(timeout, "cp", src, dst)
 		if err == nil {
 			job.artefactsDownloaded = true
-			return attempted, true
+			return attempted
 		}
 
 		log.Error(err, "Failed to kubectl cp", "src", src, "dst", dst, "attempt", attempt, "max_attempts", maxRetries)
@@ -232,5 +232,5 @@ func (jm *JobsManager) downloadJobArtefactsWithRetry(
 		}
 	}
 
-	return attempted, false
+	return attempted
 }
