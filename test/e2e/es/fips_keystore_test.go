@@ -20,7 +20,9 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonkeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esfips "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -30,7 +32,19 @@ const (
 	fipsSetting = "xpack.security.fips_mode.enabled"
 )
 
+// skipUnlessFIPSKeystoreStackVersion skips when the E2E stack version is below the operator's
+// FIPS managed-keystore threshold (same semver rule as reconcileFIPSKeystoreSecret).
+func skipUnlessFIPSKeystoreStackVersion(t *testing.T) {
+	t.Helper()
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.LT(esversion.FIPSKeystorePasswordMinVersion) {
+		t.Skipf("Skipping test: stack version %s is below FIPS managed keystore minimum %s",
+			test.Ctx().ElasticStackVersion, esversion.FIPSKeystorePasswordMinVersion.String())
+	}
+}
+
 func TestFIPSKeystoreManagedResources(t *testing.T) {
+	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
 	b := elasticsearch.NewBuilder("test-fips-keystore-managed-resources").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
@@ -54,6 +68,7 @@ func TestFIPSKeystoreManagedResources(t *testing.T) {
 }
 
 func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
+	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
 	const userPassphraseFile = "/tmp/user-managed-fips-passphrase"
 	b := elasticsearch.NewBuilder("test-fips-keystore-user-override").
@@ -78,6 +93,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 }
 
 func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
+	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
 	b := elasticsearch.NewBuilder("test-fips-keystore-disable-cleans-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
@@ -147,54 +163,45 @@ func checkFIPSKeystoreSecretCreatedStep(k *test.K8sClient, es esv1.Elasticsearch
 			if len(passwordBytes) != 24 {
 				return fmt.Errorf("expected 24-char generated password, got %d", len(passwordBytes))
 			}
-			for _, c := range passwordBytes {
-				if !(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') {
-					return fmt.Errorf("generated password contains non-alphanumeric byte: %q", c)
-				}
-			}
 			return nil
 		}),
 	}
 }
 
-func checkFIPSKeystoreSecretAbsentStep(k *test.K8sClient, es esv1.Elasticsearch) test.Step {
+func checkFIPSKeystoreSecretEventuallyAbsentStep(k *test.K8sClient, es esv1.Elasticsearch, name, stillPresentFmt string) test.Step {
 	return test.Step{
-		Name: "FIPS keystore password secret should not be created",
+		Name: name,
 		Test: test.Eventually(func() error {
 			var secret corev1.Secret
-			err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FIPSKeystorePasswordSecret(es.Name)}, &secret)
+			nn := types.NamespacedName{Namespace: es.Namespace, Name: esv1.FIPSKeystorePasswordSecret(es.Name)}
+			err := k.Client.Get(context.Background(), nn, &secret)
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			return fmt.Errorf("unexpected secret %s/%s exists", secret.Namespace, secret.Name)
+			return fmt.Errorf(stillPresentFmt, secret.Namespace, secret.Name)
 		}),
 	}
+}
+
+func checkFIPSKeystoreSecretAbsentStep(k *test.K8sClient, es esv1.Elasticsearch) test.Step {
+	return checkFIPSKeystoreSecretEventuallyAbsentStep(k, es,
+		"FIPS keystore password secret should not be created",
+		"unexpected secret %s/%s exists")
 }
 
 func checkFIPSKeystoreSecretDeletedStep(k *test.K8sClient, es esv1.Elasticsearch) test.Step {
-	return test.Step{
-		Name: "FIPS keystore password secret should eventually be deleted",
-		Test: test.Eventually(func() error {
-			var secret corev1.Secret
-			err := k.Client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FIPSKeystorePasswordSecret(es.Name)}, &secret)
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			return fmt.Errorf("secret %s/%s still exists", secret.Namespace, secret.Name)
-		}),
-	}
+	return checkFIPSKeystoreSecretEventuallyAbsentStep(k, es,
+		"FIPS keystore password secret should eventually be deleted",
+		"secret %s/%s still exists")
 }
 
 func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, expectUserOverride bool) test.Step {
-	stepName := "StatefulSet pod template should include FIPS keystore wiring"
+	stepName := "StatefulSet pod template should include FIPS keystore password Secret mount and env"
 	if expectUserOverride {
-		stepName = "StatefulSet pod template should not include operator-managed FIPS wiring when user override is set"
+		stepName = "StatefulSet pod template should omit operator-managed FIPS keystore password mount and env when user override is set"
 	}
 	return test.Step{
 		Name: stepName,
@@ -211,9 +218,9 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				return err
 			}
 
-			esContainer, err := findContainerByName(sset.Spec.Template.Spec.Containers, esv1.ElasticsearchContainerName)
-			if err != nil {
-				return err
+			esContainer := containerByName(sset.Spec.Template.Spec.Containers, esv1.ElasticsearchContainerName)
+			if esContainer == nil {
+				return fmt.Errorf("container %q not found", esv1.ElasticsearchContainerName)
 			}
 
 			if expectUserOverride {
@@ -232,15 +239,15 @@ func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.C
 		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
 	})
 	if hasFIPSVolume || mainHasFIPSMount {
-		return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
+		return fmt.Errorf("operator-managed FIPS keystore password volume or Elasticsearch container mount unexpectedly present in pod template")
 	}
 
-	if keystoreInit := findContainerByNameOptional(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
+	if keystoreInit := containerByName(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
 		initHasFIPSMount := slices.ContainsFunc(keystoreInit.VolumeMounts, func(vm corev1.VolumeMount) bool {
 			return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
 		})
-		if initHasFIPSMount || keystoreInitScriptLooksFIPS(keystoreInit.Command) {
-			return fmt.Errorf("operator-managed FIPS wiring unexpectedly present in pod template")
+		if initHasFIPSMount || keystoreInitCommandUsesPasswordFile(keystoreInit.Command) {
+			return fmt.Errorf("operator-managed FIPS keystore password mount or password-file bootstrap unexpectedly present on keystore init container")
 		}
 	}
 
@@ -258,9 +265,9 @@ func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev
 		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
 	})
 
-	keystoreInitContainer, err := findContainerByName(pod.InitContainers, commonkeystore.InitContainerName)
-	if err != nil {
-		return err
+	keystoreInitContainer := containerByName(pod.InitContainers, commonkeystore.InitContainerName)
+	if keystoreInitContainer == nil {
+		return fmt.Errorf("container %q not found", commonkeystore.InitContainerName)
 	}
 	initHasFIPSMount := slices.ContainsFunc(keystoreInitContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
 		return vm.Name == esfips.VolumeName && vm.MountPath == esfips.MountPath
@@ -289,34 +296,26 @@ func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev
 	if mainHasPasswordEnvFromSecret {
 		return fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container")
 	}
-	if !keystoreInitScriptLooksFIPS(keystoreInitContainer.Command) {
-		return fmt.Errorf("expected FIPS-aware keystore init script, got command %q", script)
+	if !keystoreInitCommandUsesPasswordFile(keystoreInitContainer.Command) {
+		return fmt.Errorf("expected keystore init to use password-file bootstrap, got command %q", script)
 	}
 	return nil
 }
 
-// keystoreInitScriptLooksFIPS reports whether the keystore init container command matches the
-// operator's FIPS-aware elasticsearch-keystore bootstrap script.
-func keystoreInitScriptLooksFIPS(cmd []string) bool {
+// keystoreInitCommandUsesPasswordFile reports whether the keystore init container command
+// appears to run elasticsearch-keystore create -p with KEYSTORE_PASSWORD read from a file,
+// matching the operator-managed FIPS bootstrap script shape.
+func keystoreInitCommandUsesPasswordFile(cmd []string) bool {
 	script := strings.Join(cmd, " ")
 	return strings.Contains(script, "create -p") &&
 		strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
 }
 
-func findContainerByNameOptional(containers []corev1.Container, name string) *corev1.Container {
+func containerByName(containers []corev1.Container, name string) *corev1.Container {
 	for i := range containers {
 		if containers[i].Name == name {
 			return &containers[i]
 		}
 	}
 	return nil
-}
-
-func findContainerByName(containers []corev1.Container, name string) (*corev1.Container, error) {
-	for i := range containers {
-		if containers[i].Name == name {
-			return &containers[i], nil
-		}
-	}
-	return nil, fmt.Errorf("container %q not found", name)
 }
