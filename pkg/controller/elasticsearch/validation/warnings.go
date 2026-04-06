@@ -118,7 +118,7 @@ func fipsWarnings(es esv1.Elasticsearch) field.ErrorList {
 func collectFIPSState(es esv1.Elasticsearch) fipsState {
 	state := fipsState{}
 	for _, nodeSet := range es.Spec.NodeSets {
-		state.hasKeystorePasswordEnv = !state.hasKeystorePasswordEnv && nodeSetDeclaresKeystorePasswordEnv(nodeSet)
+		state.hasKeystorePasswordEnv = state.hasKeystorePasswordEnv || nodeSetDeclaresKeystorePasswordEnv(nodeSet)
 		userConfig := map[string]any{}
 		if nodeSet.Config != nil {
 			userConfig = nodeSet.Config.Data
