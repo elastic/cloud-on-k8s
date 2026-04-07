@@ -335,7 +335,7 @@ func Test_statelessSkipsRemoteClusterAPIKeyValidation(t *testing.T) {
 	}
 
 	// Should get mode-specific errors only, not API-key-version errors.
-	var msgs []string
+	msgs := make([]string, 0, len(allErrs))
 	for _, e := range allErrs {
 		msgs = append(msgs, e.Detail)
 	}
