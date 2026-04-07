@@ -112,7 +112,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 
 	targetPort := intstr.FromInt(0)
 	for _, port := range service.Spec.Ports {
-		if port.Port == int32(servicePort) {
+		if port.Port == int32(servicePort) { //nolint:gosec // G115: servicePort is a network port (0–65535), fits in int32
 			// default to using the same port between the service and the target
 			targetPort = intstr.FromInt(int(port.Port))
 
@@ -145,7 +145,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 			if port.Port == nil {
 				continue
 			}
-			foundPort = *port.Port == int32(targetPort.IntValue())
+			foundPort = *port.Port == int32(targetPort.IntValue()) //nolint:gosec // G115: port numbers are in range 0–65535, fits in int32
 			if foundPort {
 				break
 			}

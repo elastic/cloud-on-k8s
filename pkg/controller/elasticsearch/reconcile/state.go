@@ -119,7 +119,7 @@ func (s *State) UpdateWithPhase(
 func (s *State) UpdateAvailableNodes(
 	resourcesState ResourcesState,
 ) *State {
-	s.status.AvailableNodes = int32(len(AvailableElasticsearchNodes(resourcesState.CurrentPods)))
+	s.status.AvailableNodes = int32(len(AvailableElasticsearchNodes(resourcesState.CurrentPods))) //nolint:gosec // G115: node count cannot realistically overflow int32
 	return s
 }
 

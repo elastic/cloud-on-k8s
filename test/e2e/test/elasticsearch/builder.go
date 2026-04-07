@@ -242,7 +242,7 @@ func (b Builder) WithNoESTopology() Builder {
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: MasterRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -253,7 +253,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -264,7 +264,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -275,7 +275,7 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:        "masterdata",
-		Count:       int32(count),
+		Count:       int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
@@ -304,7 +304,7 @@ func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceReq
 
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "coordinating",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: cfg,
 		},

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"time"
 
 	errors2 "github.com/pkg/errors"
@@ -51,7 +52,10 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 		return errors2.Wrap(err, "failed to base64 decode signature")
 	}
 	buf := bytes.NewBuffer(allParts)
-	maxLen := uint32(len(allParts))
+	if len(allParts) > math.MaxUint32 {
+		return errors.New("signature data exceeds maximum size")
+	}
+	maxLen := uint32(len(allParts)) //nolint:gosec // G115: bounds checked above
 
 	var version uint32
 	if err := readInt(buf, &version); err != nil {
@@ -353,6 +357,9 @@ func (l EnterpriseLicense) Version() int {
 }
 
 func writeInt(buffer *bytes.Buffer, i int) error {
+	if i < 0 || i > math.MaxUint32 {
+		return fmt.Errorf("writeInt: value %d is out of uint32 range", i)
+	}
 	in := make([]byte, 4)
 	binary.BigEndian.PutUint32(in, uint32(i))
 	_, err := buffer.Write(in)

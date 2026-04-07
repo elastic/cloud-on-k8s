@@ -278,7 +278,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 	if resourcesWithDownwardLabels > 0 {
 		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
 			ResourceCount:           resourcesWithDownwardLabels,
-			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115: distinct label count cannot realistically overflow int32
 		}
 	}
 
@@ -287,7 +287,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 		if err := k8sClient.List(context.Background(), &esaList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
-		stats.AutoscaledResourceCount += int32(len(esaList.Items))
+		stats.AutoscaledResourceCount += int32(len(esaList.Items)) //nolint:gosec // G115: resource count cannot realistically overflow int32
 	}
 
 	return "elasticsearches", stats, nil
@@ -473,9 +473,9 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 
 		for _, ls := range logstashList.Items {
 			stats[resourceCount]++
-			stats[serviceCount] += int32(len(ls.Spec.Services))
+			stats[serviceCount] += int32(len(ls.Spec.Services)) //nolint:gosec // G115: service count cannot realistically overflow int32
 			stats[podCount] += ls.Status.AvailableNodes
-			stats[pipelineCount] += int32(len(ls.Spec.Pipelines))
+			stats[pipelineCount] += int32(len(ls.Spec.Pipelines)) //nolint:gosec // G115: pipeline count cannot realistically overflow int32
 			if ls.Spec.PipelinesRef != nil {
 				stats[pipelineRefCount]++
 			}
@@ -586,7 +586,7 @@ func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 
 		for _, autoopsAgentPolicy := range autoopsAgentPolicyList.Items {
 			stats.ResourceCount++
-			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources)
+			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources) //nolint:gosec // G115: resource count cannot realistically overflow int32
 			if isManagedByHelm(autoopsAgentPolicy.Labels) {
 				stats.HelmManagedResourceCount++
 			}

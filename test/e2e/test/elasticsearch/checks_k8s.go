@@ -281,7 +281,7 @@ func CheckPodsCondition(b Builder, k *test.K8sClient, name string, condition fun
 			if err != nil {
 				return err
 			}
-			if int32(len(pods)) != b.Elasticsearch.Spec.NodeCount() {
+			if int32(len(pods)) != b.Elasticsearch.Spec.NodeCount() { //nolint:gosec // G115: pod count cannot realistically overflow int32
 				return fmt.Errorf("expected %d pods, got %d", len(pods), b.Elasticsearch.Spec.NodeCount())
 			}
 			return test.OnAllPods(pods, condition)
