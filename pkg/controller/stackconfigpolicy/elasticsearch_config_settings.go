@@ -35,13 +35,12 @@ const (
 )
 
 func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (corev1.Secret, error) {
-	var data map[string][]byte
+	data := make(map[string][]byte)
 	if len(esConfig.SecretMounts) > 0 {
 		secretMountBytes, err := json.Marshal(esConfig.SecretMounts)
 		if err != nil {
 			return corev1.Secret{}, err
 		}
-		data = make(map[string][]byte)
 		data[SecretsMountKey] = secretMountBytes
 	}
 
@@ -51,11 +50,13 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		if err != nil {
 			return corev1.Secret{}, err
 		}
-		if data == nil {
-			data = make(map[string][]byte)
-		}
 		data[ElasticSearchConfigKey] = configDataJSONBytes
 	}
+
+	if len(data) == 0 {
+		data = nil
+	}
+
 	meta := metadata.Propagate(&es, metadata.Metadata{
 		Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es)),
 		Annotations: map[string]string{
