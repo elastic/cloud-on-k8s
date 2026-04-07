@@ -43,6 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
@@ -496,11 +497,19 @@ func reconcileManagedKeystorePasswordSecret(
 	passwordGenerator password.RandomGenerator,
 	meta metadata.Metadata,
 ) (*corev1.Secret, error) {
+	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
+	if err != nil {
+		return nil, err
+	}
+	isFIPSModeEnabled, err := settings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyConfig.ElasticsearchConfig)
+	if err != nil {
+		return nil, err
+	}
 	if esVersion.LT(esversion.FIPSKeystorePasswordMinVersion) {
 		return nil, nil
 	}
 	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
-	if err != nil || userOverride {
+	if err != nil || userOverride || !isFIPSModeEnabled {
 		return nil, err
 	}
 	return keystorepassword.ReconcileKeystorePasswordSecret(ctx, client, es, passwordGenerator, meta)

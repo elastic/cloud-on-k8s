@@ -1185,6 +1185,8 @@ func Test_validAssociations(t *testing.T) {
 }
 
 func Test_fipsWarnings(t *testing.T) {
+	const policyConfigSecretKey = "elasticsearch.json"
+
 	tests := []struct {
 		name    string
 		objects []client.Object
@@ -1294,6 +1296,63 @@ func Test_fipsWarnings(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "fips enabled only via stack config policy below min version emits unsupported warning",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-only"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						policyConfigSecretKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-only",
+					Namespace: "ns",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1},
+					},
+				},
+			},
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("version"), "9.3.0", fipsManagedKeystoreUnsupportedWarningMsg),
+			},
+		},
+		{
+			name: "stack config policy fips override suppresses mixed nodeset inconsistency warning",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-override"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						policyConfigSecretKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-override",
+					Namespace: "ns",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.4.0",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
 					},
 				},
 			},

@@ -73,7 +73,9 @@ func (r *randomPasswordGenerator) Length(ctx context.Context) int {
 	if useLength {
 		return r.length
 	}
-	return r.length
+	// Keep Length aligned with Generate fallback behavior above when enterprise
+	// features are disabled which simply returns 24.
+	return 24
 }
 
 // NewGenerator returns a password generator with the specified length.

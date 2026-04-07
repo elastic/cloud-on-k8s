@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -169,6 +170,34 @@ func TestDeleteKeystorePasswordSecret(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err))
 
 	require.NoError(t, DeleteKeystorePasswordSecret(context.Background(), c, es))
+}
+
+func TestReconcileKeystorePasswordSecret_UsesDefaultLengthWhenUseLengthDisabled(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es",
+		},
+	}
+	secretNN := types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.KeystorePasswordSecret(es.Name),
+	}
+	c := k8s.NewFakeClient(&es)
+	meta := metadata.Metadata{}
+
+	generator, err := commonpassword.NewRandomPasswordGenerator(72, func(context.Context) (bool, error) { return false, nil })
+	require.NoError(t, err)
+
+	reconciled, err := ReconcileKeystorePasswordSecret(context.Background(), c, es, generator, meta)
+	require.NoError(t, err)
+	require.NotNil(t, reconciled)
+	require.Len(t, reconciled.Data[KeystorePasswordKey], 24)
+
+	var secret corev1.Secret
+	err = c.Get(context.Background(), secretNN, &secret)
+	require.NoError(t, err)
+	require.Len(t, secret.Data[KeystorePasswordKey], 24)
 }
 
 func TestInjectKeystorePassword(t *testing.T) {

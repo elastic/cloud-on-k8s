@@ -6,6 +6,7 @@ package password
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -146,6 +147,96 @@ func TestValidateLength(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestRandomPasswordGenerator_Length(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		length    int
+		useLength func(context.Context) (bool, error)
+		want      int
+	}{
+		{
+			name:      "returns configured length when enterprise features enabled",
+			length:    32,
+			useLength: func(context.Context) (bool, error) { return true, nil },
+			want:      32,
+		},
+		{
+			name:      "returns default length when enterprise features disabled",
+			length:    32,
+			useLength: func(context.Context) (bool, error) { return false, nil },
+			want:      24,
+		},
+		{
+			name:      "returns default length when license check errors",
+			length:    32,
+			useLength: func(context.Context) (bool, error) { return false, errors.New("boom") },
+			want:      24,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generator, err := NewRandomPasswordGenerator(tt.length, tt.useLength)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.want, generator.Length(ctx))
+		})
+	}
+}
+
+func TestRandomPasswordGenerator_GenerateFallbackBehavior(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		length      int
+		useLength   func(context.Context) (bool, error)
+		wantLen     int
+		expectError bool
+	}{
+		{
+			name:        "uses configured length when enterprise features enabled",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return true, nil },
+			wantLen:     32,
+			expectError: false,
+		},
+		{
+			name:        "uses default length when enterprise features disabled",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return false, nil },
+			wantLen:     24,
+			expectError: false,
+		},
+		{
+			name:        "returns error when license check errors",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return false, errors.New("boom") },
+			wantLen:     0,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generator, err := NewRandomPasswordGenerator(tt.length, tt.useLength)
+			require.NoError(t, err)
+
+			result, err := generator.Generate(ctx)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Len(t, result, tt.wantLen)
+			require.Equal(t, tt.wantLen, generator.Length(ctx))
 		})
 	}
 }

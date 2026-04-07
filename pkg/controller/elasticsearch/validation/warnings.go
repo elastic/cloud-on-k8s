@@ -6,10 +6,12 @@ package validation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -25,6 +27,7 @@ import (
 const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
+	policyConfigSecretKey                       = "elasticsearch.json"
 )
 
 var warnings = []validation{
@@ -130,6 +133,8 @@ func fipsWarnings(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fie
 }
 
 // collectFIPSState gathers NodeSet-level state related to FIPS mode for warnings generation.
+// It evaluates each NodeSet with the StackConfigPolicy Elasticsearch config overlaid
+// so warnings match the effective FIPS setting used at reconciliation time.
 // NotFound errors while resolving envFrom refs are downgraded to "override
 // status unknown" for warning-only admission behavior.
 func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fipsState, error) {
@@ -143,6 +148,15 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 			return fipsState{}, err
 		}
 	}
+
+	// We intentionally do not call nodespec.GetPolicyConfig() here:
+	// importing nodespec from validation introduces an import cycle.
+	// This warning path only needs the Elasticsearch policy config payload.
+	policyConfig, err := getPolicyElasticsearchConfig(ctx, c, es)
+	if err != nil {
+		return fipsState{}, err
+	}
+
 	for _, nodeSet := range es.Spec.NodeSets {
 		userConfig := map[string]any{}
 		if nodeSet.Config != nil {
@@ -153,11 +167,46 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 			continue
 		}
 		state.parseableNodeSetCount++
+		if err := canonicalConfig.MergeWith(policyConfig); err != nil {
+			return fipsState{}, err
+		}
 		if essettings.IsFIPSEnabled(canonicalConfig) {
 			state.fipsEnabledCount++
 		}
 	}
 	return state, nil
+}
+
+// getPolicyElasticsearchConfig returns the StackConfigPolicy Elasticsearch config
+// from the per-cluster policy secret. It returns nil when no policy secret or
+// Elasticsearch policy config is present.
+func getPolicyElasticsearchConfig(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (*common.CanonicalConfig, error) {
+	var policySecret corev1.Secret
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      esv1.StackConfigElasticsearchConfigSecretName(es.Name),
+		Namespace: es.Namespace,
+	}, &policySecret)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	rawConfig := policySecret.Data[policyConfigSecretKey]
+	if len(rawConfig) == 0 {
+		return nil, nil
+	}
+
+	var policyConfig map[string]any
+	if err := json.Unmarshal(rawConfig, &policyConfig); err != nil {
+		return nil, err
+	}
+	canonicalConfig, err := common.NewCanonicalConfigFrom(policyConfig)
+	if err != nil {
+		return nil, err
+	}
+	return canonicalConfig, nil
 }
 
 // validZoneAwarenessAffinityWarnings produces warnings for required node affinity that

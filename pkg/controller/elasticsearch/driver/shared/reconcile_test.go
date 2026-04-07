@@ -22,12 +22,11 @@ import (
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
-	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -445,17 +444,20 @@ func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 			keystorepassword.KeystorePasswordKey: []byte("leftover-password"),
 		},
 	}
-	policyFIPSEnabled := nodespec.PolicyConfig{
-		ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
-			"xpack.security.fips_mode.enabled": true,
-		}),
+	policyFIPSEnabledConfigSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: esMeta.Namespace,
+			Name:      esv1.StackConfigElasticsearchConfigSecretName(esMeta.Name),
+		},
+		Data: map[string][]byte{
+			stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+		},
 	}
 
 	tests := []struct {
 		name               string
 		es                 esv1.Elasticsearch
 		extraInit          []client.Object
-		policyConfig       nodespec.PolicyConfig
 		esVersion          commonversion.Version
 		wantReturnedSecret bool
 		wantSecretInAPI    bool
@@ -486,13 +488,13 @@ func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 			es:                 esFIPSDisabled,
 			extraInit:          []client.Object{existingKeystorePasswordSecret},
 			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
-			wantReturnedSecret: true,
+			wantReturnedSecret: false,
 			wantSecretInAPI:    true,
 		},
 		{
 			name:               "FIPS enabled only via StackConfigPolicy reconciles secret",
 			es:                 esFIPSDisabled,
-			policyConfig:       policyFIPSEnabled,
+			extraInit:          []client.Object{policyFIPSEnabledConfigSecret},
 			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
 			wantReturnedSecret: true,
 			wantSecretInAPI:    true,
