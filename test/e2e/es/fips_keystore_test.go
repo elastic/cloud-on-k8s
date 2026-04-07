@@ -238,21 +238,38 @@ func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.C
 	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
 		return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
 	})
-	if hasFIPSVolume || mainHasFIPSMount {
-		return fmt.Errorf("operator-managed FIPS keystore password volume or Elasticsearch container mount unexpectedly present in pod template")
-	}
 
+	initHasFIPSManagedArtifacts := false
 	if keystoreInit := containerByName(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
 		initHasFIPSMount := slices.ContainsFunc(keystoreInit.VolumeMounts, func(vm corev1.VolumeMount) bool {
 			return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
 		})
-		if initHasFIPSMount || keystoreInitCommandUsesPasswordFile(keystoreInit.Command) {
-			return fmt.Errorf("operator-managed FIPS keystore password mount or password-file bootstrap unexpectedly present on keystore init container")
-		}
+		initHasFIPSManagedArtifacts = initHasFIPSMount || keystoreInitCommandUsesPasswordFile(keystoreInit.Command)
 	}
 
-	if !slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "KEYSTORE_PASSWORD_FILE" }) {
-		return fmt.Errorf("expected user-provided KEYSTORE_PASSWORD_FILE env var to be present")
+	mainHasPasswordFileEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool { return e.Name == "KEYSTORE_PASSWORD_FILE" })
+
+	checks := []struct {
+		condition bool
+		err       error
+	}{
+		{
+			condition: !hasFIPSVolume && !mainHasFIPSMount,
+			err:       fmt.Errorf("operator-managed FIPS keystore password volume or Elasticsearch container mount unexpectedly present in pod template"),
+		},
+		{
+			condition: !initHasFIPSManagedArtifacts,
+			err:       fmt.Errorf("operator-managed FIPS keystore password mount or password-file bootstrap unexpectedly present on keystore init container"),
+		},
+		{
+			condition: mainHasPasswordFileEnv,
+			err:       fmt.Errorf("expected user-provided KEYSTORE_PASSWORD_FILE env var to be present"),
+		},
+	}
+	for _, check := range checks {
+		if !check.condition {
+			return check.err
+		}
 	}
 	return nil
 }
@@ -281,23 +298,39 @@ func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev
 	})
 	script := strings.Join(keystoreInitContainer.Command, " ")
 
-	if !hasFIPSVolume {
-		return fmt.Errorf("missing %s volume", eskeystorepassword.VolumeName)
+	checks := []struct {
+		condition bool
+		err       error
+	}{
+		{
+			condition: hasFIPSVolume,
+			err:       fmt.Errorf("missing %s volume", eskeystorepassword.VolumeName),
+		},
+		{
+			condition: mainHasFIPSMount,
+			err:       fmt.Errorf("missing %s mount on Elasticsearch container", eskeystorepassword.MountPath),
+		},
+		{
+			condition: initHasFIPSMount,
+			err:       fmt.Errorf("missing %s mount on init container", eskeystorepassword.MountPath),
+		},
+		{
+			condition: mainHasPassphraseEnv,
+			err:       fmt.Errorf("missing KEYSTORE_PASSWORD_FILE=%s env var", eskeystorepassword.PasswordFile),
+		},
+		{
+			condition: !mainHasPasswordEnvFromSecret,
+			err:       fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container"),
+		},
+		{
+			condition: keystoreInitCommandUsesPasswordFile(keystoreInitContainer.Command),
+			err:       fmt.Errorf("expected keystore init to use password-file bootstrap, got command %q", script),
+		},
 	}
-	if !mainHasFIPSMount {
-		return fmt.Errorf("missing %s mount on Elasticsearch container", eskeystorepassword.MountPath)
-	}
-	if !initHasFIPSMount {
-		return fmt.Errorf("missing %s mount on init container", eskeystorepassword.MountPath)
-	}
-	if !mainHasPassphraseEnv {
-		return fmt.Errorf("missing KEYSTORE_PASSWORD_FILE=%s env var", eskeystorepassword.PasswordFile)
-	}
-	if mainHasPasswordEnvFromSecret {
-		return fmt.Errorf("unexpected KEYSTORE_PASSWORD secret env var on Elasticsearch container")
-	}
-	if !keystoreInitCommandUsesPasswordFile(keystoreInitContainer.Command) {
-		return fmt.Errorf("expected keystore init to use password-file bootstrap, got command %q", script)
+	for _, check := range checks {
+		if !check.condition {
+			return check.err
+		}
 	}
 	return nil
 }
