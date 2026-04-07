@@ -11,7 +11,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
@@ -106,10 +108,8 @@ func reconcileSecret(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// Secrets must be updated in the following cases:
-			// * the expected labels/annotations are not a subset of the existing labels/annotations,
-			// * the managed labels/annotations have been removed/changed,
-			// * the data itself has changed.
+			// Compare expected against current state (reconciled holds the Get result).
+			// Owner refs and managed key cleanup are handled by ReconcileResource separately.
 			labelsChanged := !maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)
 			annotationsChanged := !maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)
 			dataChanged := !reflect.DeepEqual(expected.Data, reconciled.Data)
@@ -123,21 +123,116 @@ func reconcileSecret(
 			return false
 		},
 		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			// remove managed labels if they are no longer defined
-			for _, label := range managedLabels {
-				if _, ok := expected.Labels[label]; !ok {
-					delete(reconciled.Labels, label)
-				}
-			}
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-			// remove managed annotations if they are no longer defined
-			for _, annotation := range managedAnnotations {
-				if _, ok := expected.Annotations[annotation]; !ok {
-					delete(reconciled.Annotations, annotation)
-				}
-			}
-			reconciled.Data = expected.Data
+			applyExpectedSecret(reconciled, expected, managedAnnotations, false)
 		},
 	})
+}
+
+// ReconcileOpt configures ReconcileSecretWithCurrent behavior.
+type ReconcileOpt func(*reconcileOpts)
+
+type reconcileOpts struct {
+	additiveOnly bool
+}
+
+// WithAdditiveMetadata makes ReconcileSecretWithCurrent merge labels/annotations
+// additively without removing managed ones that are missing from expected.
+// Use when the caller doesn't own the full set of managed labels/annotations
+// (e.g., the ES controller patching a Secret also managed by the SCP controller).
+func WithAdditiveMetadata() ReconcileOpt {
+	return func(o *reconcileOpts) { o.additiveOnly = true }
+}
+
+// ReconcileSecretWithCurrent reconciles expected against a caller-provided current secret.
+// This avoids a second GET in ReconcileSecret, which is useful when expected is built from
+// that same current state and we need strict read-modify-write semantics.
+//
+// By default, managed labels/annotations missing from expected are removed (SCP controller).
+// Use WithAdditiveMetadata to only merge additively (ES controller).
+func ReconcileSecretWithCurrent(
+	ctx context.Context,
+	c k8s.Client,
+	current *corev1.Secret,
+	expected corev1.Secret,
+	owner client.Object,
+	opts ...ReconcileOpt,
+) error {
+	var o reconcileOpts
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	if owner != nil {
+		if err := controllerutil.SetControllerReference(owner, &expected, scheme.Scheme); err != nil {
+			return err
+		}
+	}
+
+	// Create path.
+	if current == nil {
+		return c.Create(ctx, &expected)
+	}
+
+	// Update path: apply expected state to a copy of current, then set the controller
+	// reference on the copy (preserving any additional owner refs from current).
+	reconciled := current.DeepCopy()
+	applyExpectedSecret(reconciled, expected, fileSettingsManagedAnnotations, o.additiveOnly)
+	if owner != nil {
+		if err := controllerutil.SetControllerReference(owner, reconciled, scheme.Scheme); err != nil {
+			return err
+		}
+	}
+	if !isSecretUpdateNeeded(ctx, *current, *reconciled) {
+		return nil
+	}
+	return c.Update(ctx, reconciled)
+}
+
+// isSecretUpdateNeeded compares the current Secret (as read from the API server) against
+// the reconciled Secret (current + all expected mutations applied) and returns true if
+// any field differs. This includes labels, annotations, data, and owner references.
+// Used by ReconcileSecretWithCurrent after applyExpectedSecret and SetControllerReference
+// have been applied to the reconciled copy.
+func isSecretUpdateNeeded(ctx context.Context, current, reconciled corev1.Secret) bool {
+	labelsChanged := !reflect.DeepEqual(current.Labels, reconciled.Labels)
+	annotationsChanged := !reflect.DeepEqual(current.Annotations, reconciled.Annotations)
+	dataChanged := !reflect.DeepEqual(current.Data, reconciled.Data)
+	ownerRefsChanged := !reflect.DeepEqual(current.OwnerReferences, reconciled.OwnerReferences)
+
+	if labelsChanged || annotationsChanged || dataChanged || ownerRefsChanged {
+		ulog.FromContext(ctx).V(1).Info("Secret needs update",
+			"secret_namespace", current.Namespace, "secret_name", current.Name,
+			"labels_changed", labelsChanged, "annotations_changed", annotationsChanged,
+			"data_changed", dataChanged, "owner_refs_changed", ownerRefsChanged,
+		)
+		return true
+	}
+	return false
+}
+
+// applyExpectedSecret merges the expected state into the reconciled Secret.
+// Labels, annotations, and data from expected are merged into reconciled.
+// When additiveOnly is false (SCP controller), managed labels and annotations that are
+// absent from expected are removed from reconciled. When additiveOnly is true
+// (ES controller), existing labels and annotations are never removed, only added to.
+// Owner references are not handled here — they are set separately via SetControllerReference.
+func applyExpectedSecret(reconciled *corev1.Secret, expected corev1.Secret, managedAnnotations []string, additiveOnly bool) {
+	reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+	reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+	reconciled.Data = expected.Data
+
+	if additiveOnly {
+		return
+	}
+	// Remove managed labels/annotations that are no longer defined in expected.
+	for _, label := range managedLabels {
+		if _, ok := expected.Labels[label]; !ok {
+			delete(reconciled.Labels, label)
+		}
+	}
+	for _, annotation := range managedAnnotations {
+		if _, ok := expected.Annotations[annotation]; !ok {
+			delete(reconciled.Annotations, annotation)
+		}
+	}
 }

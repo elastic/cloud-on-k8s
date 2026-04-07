@@ -18,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -198,6 +199,58 @@ func TestReconcileClusterSecrets_PreservesOtherFields(t *testing.T) {
 	assert.NotNil(t, settings.State.ClusterSettings)
 	assert.Equal(t, "100mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 	assert.NotNil(t, settings.State.ClusterSecrets)
+}
+
+func TestReconcileClusterSecrets_PreservesSCPManagedMetadata(t *testing.T) {
+	es := testES()
+
+	// Create a secret with SCP-managed annotations and labels.
+	existingSettings := NewEmptySettings(1, true)
+	settingsBytes, err := json.Marshal(existingSettings)
+	require.NoError(t, err)
+
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.FileSettingsSecretName(es.Name),
+			Namespace: es.Namespace,
+			Labels: map[string]string{
+				reconciler.SoftOwnerKindLabel: "StackConfigPolicy",
+			},
+			Annotations: map[string]string{
+				commonannotation.SettingsHashAnnotationName:          existingSettings.hash(),
+				reconciler.SoftOwnerRefsAnnotation:                   `["ns/test-policy"]`,
+				commonannotation.SecureSettingsSecretsAnnotationName: "ns/my-secure-settings",
+			},
+		},
+		Data: map[string][]byte{
+			SettingsSecretKey: settingsBytes,
+		},
+	}
+
+	client := k8s.NewFakeClient(&es, existingSecret)
+
+	// Reconcile cluster_secrets
+	clusterSecrets := testClusterSecrets()
+	err = ReconcileClusterSecrets(context.Background(), client, es, clusterSecrets)
+	require.NoError(t, err)
+
+	// Verify SCP-managed annotations and labels are preserved.
+	var secret corev1.Secret
+	err = client.Get(context.Background(), types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.FileSettingsSecretName(es.Name),
+	}, &secret)
+	require.NoError(t, err)
+
+	assert.Equal(t, `["ns/test-policy"]`, secret.Annotations[reconciler.SoftOwnerRefsAnnotation])
+	assert.Equal(t, "ns/my-secure-settings", secret.Annotations[commonannotation.SecureSettingsSecretsAnnotationName])
+	assert.Equal(t, "StackConfigPolicy", secret.Labels[reconciler.SoftOwnerKindLabel])
+
+	// Verify cluster_secrets was still updated.
+	var settings Settings
+	err = json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
+	require.NoError(t, err)
+	assert.Equal(t, clusterSecrets.Data, settings.State.ClusterSecrets.Data)
 }
 
 func TestReconcileClusterSecrets_ClearsWhenNil(t *testing.T) {

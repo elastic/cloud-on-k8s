@@ -19,8 +19,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -378,7 +378,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			}
 
 			expectedVersion = candidateExpectedVersion
-			return filesettings.ReconcileFileSettingsSecret(ctx, r.Client, expectedSecret, &es)
+			return filesettings.ReconcileSecretWithCurrent(ctx, r.Client, currentSecretPtr, expectedSecret, &es)
 		}); err != nil {
 			return results.WithError(err), status
 		}
