@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -229,7 +230,7 @@ func statelessNodeRolesWarning(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("config").Child(esv1.NodeRoles),
 				esv1.NodeRoles,
-				statelessNodeRolesWarningMsg,
+				fmt.Sprintf("%s (nodeSet: %s)", statelessNodeRolesWarningMsg, nodeSet.Name),
 			))
 		}
 	}

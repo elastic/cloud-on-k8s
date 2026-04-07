@@ -89,7 +89,12 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validPVCNaming,
 		validMonitoring,
 		validAssociations,
-		supportsRemoteClusterUsingAPIKey,
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			if proposed.IsStateless() {
+				return nil
+			}
+			return supportsRemoteClusterUsingAPIKey(proposed)
+		},
 		validModeSpecificConfig,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validStatelessLicense(ctx, proposed, checker)
@@ -345,8 +350,8 @@ func supportsRemoteClusterUsingAPIKey(es esv1.Elasticsearch) field.ErrorList {
 
 // hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.
 // The rules are:
-// There must be at least one master node.
-// node.roles are only supported on Elasticsearch 7.9.0 and above
+// There must be at least one master node (stateful only, stateless tiers handle this differently).
+// node.roles are only supported on Elasticsearch 7.9.0 and above.
 func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {

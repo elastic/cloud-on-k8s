@@ -64,10 +64,10 @@ type Node struct {
 	Roles               []string `config:"roles"`                 // available as of 7.9.0, takes priority over the other fields if non-nil
 	VotingOnly          *bool    `config:"voting_only"`           // available as of 7.3.0
 
-	// Stateless
-
-	Index  *bool `config:"index"`
-	Search *bool `config:"search"`
+	// Stateless internal-only fields. These must not have config tags to prevent
+	// them from being populated via user config.
+	Index  *bool
+	Search *bool
 }
 
 // CanContainData returns true if a node can contain data, it returns false otherwise.
