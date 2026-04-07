@@ -1000,6 +1000,11 @@ func (s *staticPasswordGenerator) Generate(_ context.Context) ([]byte, error) {
 	return []byte(staticPassword), nil
 }
 
+// Length returns the fixed password length used by staticPasswordGenerator.
+func (s *staticPasswordGenerator) Length(_ context.Context) int {
+	return len(staticPassword)
+}
+
 type staticPasswordHasher struct{}
 
 func (s *staticPasswordHasher) ReuseOrGenerateHash(password, _ []byte) ([]byte, error) {
