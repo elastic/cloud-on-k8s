@@ -19,6 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -324,14 +325,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			continue
 		}
 
-		// Get the file settings secret. Create it if it doesn't exist.
-		// This resolves the race condition from https://github.com/elastic/cloud-on-k8s/issues/8912
-		var actualSettingsSecret corev1.Secret
-		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return results.WithError(err), status
-		}
-
 		// build the final config by merging all policies that target the given Elasticsearch cluster
 		esConfigPolicyFinal, err := getConfigPolicyForElasticsearch(&es, allPolicies, r.params)
 		switch {
@@ -347,19 +340,46 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
-		// create the expected Settings Secret
-		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(ctx, esNsn, es.IsStateless(), &actualSettingsSecret, &esConfigPolicyFinal.Spec, esConfigPolicyFinal.SecretSources, meta)
-		if err != nil {
-			return results.WithError(err), status
-		}
+		// Recompute expected settings secret on each retry attempt using the latest
+		// persisted Secret to avoid stale overwrites when ES and SCP controllers
+		// concurrently update the shared file-settings Secret.
+		var expectedVersion int64
+		if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
+			return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+		}, func() error {
+			// Get the current file settings secret if it exists.
+			var actualSettingsSecret corev1.Secret
+			var currentSecretPtr *corev1.Secret
+			err := r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+			if err == nil {
+				currentSecretPtr = &actualSettingsSecret
+			}
 
-		// We must keep track of the soft owner references of the file-settings secret to ensure that the secret is reconciled
-		// back to an empty one when no policies are targeting it (look at resetOrphanSoftOwnedFileSettingSecrets)
-		if err := setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
-			return results.WithError(err), status
-		}
+			// Build expected settings from latest state.
+			expectedSecret, candidateExpectedVersion, err := filesettings.NewSettingsSecretWithVersion(
+				ctx,
+				esNsn,
+				es.IsStateless(),
+				currentSecretPtr,
+				&esConfigPolicyFinal.Spec,
+				esConfigPolicyFinal.SecretSources,
+				meta,
+			)
+			if err != nil {
+				return err
+			}
 
-		if err := filesettings.ReconcileFileSettingsSecret(ctx, r.Client, expectedSecret, &es); err != nil {
+			// Keep soft owner references so the secret can be reset when orphaned.
+			if err := setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
+				return err
+			}
+
+			expectedVersion = candidateExpectedVersion
+			return filesettings.ReconcileFileSettingsSecret(ctx, r.Client, expectedSecret, &es)
+		}); err != nil {
 			return results.WithError(err), status
 		}
 
