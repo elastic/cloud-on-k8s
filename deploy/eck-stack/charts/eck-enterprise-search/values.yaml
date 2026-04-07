@@ -19,7 +19,7 @@
 # Version of Enterprise Search.
 #
 # 8.19 should be the last minor version in the 8 line.
-version: 8.19.0-SNAPSHOT
+version: 8.19.0
 
 # Enterprise Search Docker image to deploy
 #
