@@ -16,11 +16,16 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonkeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eskeystorepassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -43,6 +48,21 @@ func skipUnlessFIPSKeystoreStackVersion(t *testing.T) {
 	}
 }
 
+// skipUnlessStackConfigPolicySupported skips when StackConfigPolicy is not available
+// in the current E2E environment.
+func skipUnlessStackConfigPolicySupported(t *testing.T) {
+	t.Helper()
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping test: stack config policy requires a test license")
+	}
+
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.LT(filesettings.FileBasedSettingsMinPreVersion) {
+		t.Skipf("Skipping test: stack version %s is below StackConfigPolicy minimum %s",
+			test.Ctx().ElasticStackVersion, filesettings.FileBasedSettingsMinPreVersion.String())
+	}
+}
+
 func TestFIPSKeystoreManagedResources(t *testing.T) {
 	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
@@ -59,6 +79,7 @@ func TestFIPSKeystoreManagedResources(t *testing.T) {
 		WithSteps(b.InitTestSteps(k)).
 		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
 		WithSteps(b.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(b, k)).
 		WithStep(checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch)).
 		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, false)).
 		WithSteps(b.DeletionTestSteps(k)).
@@ -85,6 +106,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 		WithSteps(b.InitTestSteps(k)).
 		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
 		WithSteps(b.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(b, k)).
 		WithStep(checkFIPSKeystoreSecretAbsentStep(k, b.Elasticsearch)).
 		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, true)).
 		WithSteps(b.DeletionTestSteps(k))
@@ -108,6 +130,7 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 		WithSteps(b.InitTestSteps(k)).
 		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
 		WithSteps(b.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(b, k)).
 		WithStep(checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch)).
 		WithStep(test.Step{
 			Name: "Disable FIPS mode in Elasticsearch spec",
@@ -128,6 +151,125 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 		}).
 		WithStep(checkFIPSKeystoreSecretDeletedStep(k, b.Elasticsearch)).
 		WithSteps(b.DeletionTestSteps(k))
+
+	steps.RunSequential(t)
+}
+
+// TestFIPSKeystoreManagedResourcesFromStackConfigPolicy validates managed FIPS
+// keystore resources when FIPS mode is enabled by StackConfigPolicy config.
+func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
+	skipUnlessFIPSKeystoreStackVersion(t)
+	skipUnlessStackConfigPolicySupported(t)
+
+	k := test.NewK8sClientOrFatal()
+	selectorValue := rand.String(4)
+	b := elasticsearch.NewBuilder("test-fips-ks-scp").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithEmptyDirVolumes().
+		WithLabel("fips-ks-scp", selectorValue)
+
+	config := commonv1.NewConfig(map[string]any{
+		fipsSetting: true,
+	})
+	policy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: b.Elasticsearch.Namespace,
+			Name:      fmt.Sprintf("test-fips-ks-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"fips-ks-scp": selectorValue},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				Config: &config,
+			},
+		},
+	}
+
+	steps := test.StepList{}.
+		WithSteps(b.InitTestSteps(k)).
+		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
+		WithStep(test.Step{
+			Name: "Create StackConfigPolicy with FIPS mode enabled",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(&policy)
+			}),
+		}).
+		WithSteps(b.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(b, k)).
+		WithStep(checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch)).
+		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, false)).
+		WithStep(test.Step{
+			Name: fmt.Sprintf("Delete StackConfigPolicy %s/%s", policy.Namespace, policy.Name),
+			Test: test.Eventually(func() error {
+				err := k.Client.Delete(context.Background(), &policy)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				return nil
+			}),
+		}).
+		WithSteps(b.DeletionTestSteps(k)).
+		WithStep(checkFIPSKeystoreSecretDeletedStep(k, b.Elasticsearch))
+
+	steps.RunSequential(t)
+}
+
+// TestFIPSKeystoreWithSecureSettings validates that secure settings are added
+// through the password-protected keystore flow when FIPS mode is enabled.
+func TestFIPSKeystoreWithSecureSettings(t *testing.T) {
+	skipUnlessFIPSKeystoreStackVersion(t)
+
+	k := test.NewK8sClientOrFatal()
+	b := elasticsearch.NewBuilder("test-fips-ks-secure-settings").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithEmptyDirVolumes().
+		WithAdditionalConfig(map[string]map[string]any{
+			"masterdata": {
+				fipsSetting: true,
+			},
+		})
+
+	const secureSettingKey = "xpack.notification.email.account.foo.smtp.secure_password"
+	secureSettings := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("test-fips-ks-secure-settings-%s", rand.String(4)),
+			Namespace: b.Elasticsearch.Namespace,
+		},
+		Data: map[string][]byte{
+			secureSettingKey: []byte("foo_pw"),
+		},
+	}
+	b = b.WithESSecureSettings(secureSettings.Name)
+
+	steps := test.StepList{}.
+		WithStep(test.Step{
+			Name: "Create secure settings secret",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(&secureSettings)
+			}),
+		}).
+		WithSteps(b.InitTestSteps(k)).
+		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
+		WithSteps(b.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(b, k)).
+		WithStep(checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch)).
+		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, false)).
+		WithStep(elasticsearch.CheckESKeystoreEntries(k, b, []string{
+			secureSettingKey,
+		})).
+		WithSteps(b.DeletionTestSteps(k)).
+		WithStep(checkFIPSKeystoreSecretDeletedStep(k, b.Elasticsearch)).
+		WithStep(test.Step{
+			Name: fmt.Sprintf("Delete secret %s/%s", secureSettings.Namespace, secureSettings.Name),
+			Test: test.Eventually(func() error {
+				err := k.Client.Delete(context.Background(), &secureSettings)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				return nil
+			}),
+		})
 
 	steps.RunSequential(t)
 }
