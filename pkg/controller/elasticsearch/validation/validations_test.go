@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -1185,9 +1186,10 @@ func Test_validAssociations(t *testing.T) {
 
 func Test_fipsWarnings(t *testing.T) {
 	tests := []struct {
-		name string
-		es   esv1.Elasticsearch
-		want field.ErrorList
+		name    string
+		objects []client.Object
+		es      esv1.Elasticsearch
+		want    field.ErrorList
 	}{
 		{
 			name: "no fips in nodesets",
@@ -1217,6 +1219,43 @@ func Test_fipsWarnings(t *testing.T) {
 				}, inconsistentFIPSModeWarningMsg),
 				field.Invalid(field.NewPath("spec").Child("version"), "9.3.0", fipsManagedKeystoreUnsupportedWarningMsg),
 			},
+		},
+		{
+			name: "fips enabled below min version but keystore password via envFrom secret",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ks-envfrom"},
+					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/x")},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											EnvFrom: []corev1.EnvFromSource{
+												{SecretRef: &corev1.SecretEnvSource{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "ks-envfrom"},
+												}},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
 		},
 		{
 			name: "version parse error still returns consistency warning",
@@ -1264,7 +1303,10 @@ func Test_fipsWarnings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, fipsWarnings(tt.es))
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := fipsWarnings(context.Background(), c, tt.es)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -259,7 +259,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// Same validation as the webhook, run again here when the webhook is not configured.
-	admWarnings, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
+	admWarnings, err := validation.ValidateElasticsearch(ctx, r.Client, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
 
 	for _, w := range admWarnings {
