@@ -58,12 +58,6 @@ func validateStatefulConfig(es esv1.Elasticsearch) field.ErrorList {
 		errs = append(errs, field.Forbidden(objectStorePath, objectStoreForbiddenMsg))
 	}
 
-	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		// version validation is handled elsewhere
-		return errs
-	}
-
 	for i, ns := range es.Spec.NodeSets {
 		if ns.Tier != "" {
 			errs = append(errs, field.Forbidden(
@@ -71,6 +65,15 @@ func validateStatefulConfig(es esv1.Elasticsearch) field.ErrorList {
 				tierForbiddenMsg,
 			))
 		}
+	}
+
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		// version validation is handled elsewhere; role checks below need a parsed version
+		return errs
+	}
+
+	for i, ns := range es.Spec.NodeSets {
 		errs = append(errs, validateNoStatelessRoles(ns, i, v)...)
 	}
 	return errs
