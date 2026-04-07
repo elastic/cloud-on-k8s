@@ -621,6 +621,46 @@ func Test_validator_Handle(t *testing.T) {
 			assertWarnings: true,
 		},
 		{
+			name: "accept creation with FIPS below managed-keystore min when envFrom reference is missing",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "9.3.0",
+							NodeSets: []esv1.NodeSet{
+								{
+									Name:   "set1",
+									Count:  1,
+									Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+									PodTemplate: corev1.PodTemplateSpec{
+										Spec: corev1.PodSpec{
+											Containers: []corev1.Container{
+												{
+													Name: esv1.ElasticsearchContainerName,
+													EnvFrom: []corev1.EnvFromSource{
+														{SecretRef: &corev1.SecretEnvSource{
+															LocalObjectReference: corev1.LocalObjectReference{Name: "missing-envfrom-secret"},
+														}},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed:    true,
+			assertWarnings: true,
+		},
+		{
 			name: "reject downgrade on deprecated version but still return warnings",
 			fields: fields{
 				client: k8s.NewFakeClient(),

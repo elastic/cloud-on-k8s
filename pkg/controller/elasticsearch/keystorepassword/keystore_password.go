@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package fips
+package keystorepassword
 
 import (
 	"context"
@@ -19,9 +19,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -29,20 +31,17 @@ import (
 )
 
 const (
-	// KeystorePasswordKey is the key used in the FIPS keystore password secret.
+	// KeystorePasswordKey is the key used in the keystore password secret.
 	KeystorePasswordKey = "keystore-password"
-
 	// VolumeName is the source Secret volume name used for init-container consumption.
-	VolumeName = "fips-keystore-password"
+	VolumeName = "keystore-password"
 	// MountPath is the source Secret mount path used for init-container consumption.
-	MountPath = "/mnt/elastic-internal/fips-keystore-password"
+	MountPath = "/mnt/elastic-internal/keystore-password"
 	// PasswordFile is the mounted Secret file path read by the keystore init container.
 	PasswordFile = MountPath + "/keystore-password"
-
-	generatedPasswordLength = 24
 )
 
-// ReconcileKeystorePasswordSecret ensures the FIPS keystore password Secret
+// ReconcileKeystorePasswordSecret ensures the managed keystore password Secret
 // exists with up-to-date metadata. If the Secret already exists with a
 // non-empty password, the existing password is preserved; otherwise a new
 // password is generated. Metadata (labels, annotations, owner references) is
@@ -51,11 +50,12 @@ func ReconcileKeystorePasswordSecret(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	passwordGenerator password.RandomGenerator,
 	meta metadata.Metadata,
 ) (*corev1.Secret, error) {
 	secretName := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
+		Name:      esv1.KeystorePasswordSecret(es.Name),
 	}
 
 	var existingSecret corev1.Secret
@@ -66,9 +66,9 @@ func ReconcileKeystorePasswordSecret(
 	passwordBytes := existingSecret.Data[KeystorePasswordKey]
 	if len(passwordBytes) == 0 {
 		var err error
-		passwordBytes, err = password.RandomBytesWithoutSymbols(generatedPasswordLength)
+		passwordBytes, err = password.RandomBytesWithoutSymbols(max(passwordGenerator.Length(ctx), 14))
 		if err != nil {
-			return nil, fmt.Errorf("while generating fips keystore password: %w", err)
+			return nil, fmt.Errorf("while generating keystore password: %w", err)
 		}
 	}
 
@@ -76,7 +76,7 @@ func ReconcileKeystorePasswordSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   secretName.Namespace,
 			Name:        secretName.Name,
-			Labels:      maps.Merge(label.NewLabels(k8s.ExtractNamespacedName(&es)), meta.Labels),
+			Labels:      labels.AddCredentialsLabel(maps.Merge(label.NewLabels(k8s.ExtractNamespacedName(&es)), meta.Labels)),
 			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
@@ -86,17 +86,17 @@ func ReconcileKeystorePasswordSecret(
 
 	reconciled, err := reconciler.ReconcileSecret(ctx, c, expected, &es)
 	if err != nil {
-		return nil, fmt.Errorf("while reconciling fips keystore password secret: %w", err)
+		return nil, fmt.Errorf("while reconciling keystore password secret: %w", err)
 	}
 	return &reconciled, nil
 }
 
-// DeleteKeystorePasswordSecret deletes the FIPS keystore password secret when it
-// exists, and does not attempt a delete when not found.
+// DeleteKeystorePasswordSecret deletes the managed keystore password secret when
+// it exists, and does not attempt a delete when not found.
 func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
 	secretName := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
+		Name:      esv1.KeystorePasswordSecret(es.Name),
 	}
 	var existing corev1.Secret
 	if err := c.Get(ctx, secretName, &existing); err != nil {
@@ -108,7 +108,7 @@ func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Ela
 	return client.IgnoreNotFound(c.Delete(ctx, &existing))
 }
 
-// InjectKeystorePassword adds the FIPS keystore password Secret volume and
+// InjectKeystorePassword adds the keystore password Secret volume and
 // KEYSTORE_PASSWORD_FILE env var to the pod template. It modifies both the
 // Elasticsearch container and the keystore init container.
 func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName string) *defaults.PodTemplateBuilder {
@@ -150,4 +150,27 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 	}
 
 	return builder
+}
+
+// MaybeGarbageCollectKeystorePasswordSecret deletes the managed keystore
+// password secret when FIPS mode is not enabled by NodeSet or StackConfigPolicy
+// configuration or when a user-provided keystore password is present.
+func MaybeGarbageCollectKeystorePasswordSecret(
+	ctx context.Context,
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	policyElasticsearchConfig *commonsettings.CanonicalConfig,
+) error {
+	fipsEnabled, err := esettings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyElasticsearchConfig)
+	if err != nil {
+		return err
+	}
+	userOverride, err := esettings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, c, es.Namespace, es.Spec.NodeSets)
+	if err != nil {
+		return err
+	}
+	if !fipsEnabled || userOverride {
+		return DeleteKeystorePasswordSecret(ctx, c, es)
+	}
+	return nil
 }

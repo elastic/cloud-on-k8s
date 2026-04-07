@@ -21,9 +21,10 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -385,7 +386,7 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 	}
 }
 
-func TestReconcileFIPSKeystoreSecret(t *testing.T) {
+func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 	fipsEnabledConfig := commonv1.NewConfig(map[string]any{
 		"xpack.security.fips_mode.enabled": true,
 	})
@@ -394,7 +395,7 @@ func TestReconcileFIPSKeystoreSecret(t *testing.T) {
 	})
 
 	esMeta := metav1.ObjectMeta{Namespace: "ns", Name: "es"}
-	fipsSecretName := esv1.FIPSKeystorePasswordSecret(esMeta.Name)
+	keystorePasswordSecretName := esv1.KeystorePasswordSecret(esMeta.Name)
 
 	esFIPSNodeSetOnly := esv1.Elasticsearch{
 		ObjectMeta: esMeta,
@@ -435,13 +436,13 @@ func TestReconcileFIPSKeystoreSecret(t *testing.T) {
 			},
 		},
 	}
-	existingFIPSSecret := &corev1.Secret{
+	existingKeystorePasswordSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: esMeta.Namespace,
-			Name:      fipsSecretName,
+			Name:      keystorePasswordSecretName,
 		},
 		Data: map[string][]byte{
-			fips.KeystorePasswordKey: []byte("leftover-password"),
+			keystorepassword.KeystorePasswordKey: []byte("leftover-password"),
 		},
 	}
 	policyFIPSEnabled := nodespec.PolicyConfig{
@@ -481,12 +482,12 @@ func TestReconcileFIPSKeystoreSecret(t *testing.T) {
 			wantSecretInAPI:    false,
 		},
 		{
-			name:               "FIPS disabled deletes existing FIPS keystore secret",
+			name:               "FIPS disabled does not change helper behavior",
 			es:                 esFIPSDisabled,
-			extraInit:          []client.Object{existingFIPSSecret},
+			extraInit:          []client.Object{existingKeystorePasswordSecret},
 			esVersion:          esversion.FIPSKeystorePasswordMinVersion,
-			wantReturnedSecret: false,
-			wantSecretInAPI:    false,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
 		},
 		{
 			name:               "FIPS enabled only via StackConfigPolicy reconciles secret",
@@ -504,17 +505,17 @@ func TestReconcileFIPSKeystoreSecret(t *testing.T) {
 			initObjs := append([]client.Object{&es}, tt.extraInit...)
 			c := k8s.NewFakeClient(initObjs...)
 
-			secret, err := reconcileFIPSKeystoreSecret(context.Background(), c, es, tt.esVersion, metadata.Metadata{}, tt.policyConfig)
+			secret, err := reconcileManagedKeystorePasswordSecret(context.Background(), c, es, tt.esVersion, fixtures.MustTestRandomGenerator(24), metadata.Metadata{})
 			require.NoError(t, err)
 			if tt.wantReturnedSecret {
 				require.NotNil(t, secret)
-				require.Equal(t, fipsSecretName, secret.Name)
+				require.Equal(t, keystorePasswordSecretName, secret.Name)
 			} else {
 				require.Nil(t, secret)
 			}
 
 			var stored corev1.Secret
-			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: fipsSecretName}, &stored)
+			err = c.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: keystorePasswordSecretName}, &stored)
 			if tt.wantSecretInAPI {
 				require.NoError(t, err)
 			} else {

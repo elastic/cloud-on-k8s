@@ -32,10 +32,9 @@ type InitContainerParameters struct {
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
 	// to true if the keystore can be forcibly recreated.
 	SkipInitializedFlag bool
-	// FIPSKeystorePasswordPath, when non-empty, enables FIPS-aware keystore
-	// creation. The value is the path to the file containing the keystore
-	// password.
-	FIPSKeystorePasswordPath string
+	// KeystorePasswordPath can be referenced by a custom script when the keystore
+	// password is provided through a mounted file.
+	KeystorePasswordPath string
 	// SecurityContext is the security context applied to the keystore container.
 	SecurityContext *corev1.SecurityContext
 }
@@ -57,23 +56,6 @@ fi
 {{ end -}}
 echo "Initializing keystore."
 
-{{ if .FIPSKeystorePasswordPath -}}
-# FIPS: remove any existing keystore to avoid interactive "Overwrite?" prompt
-rm -f {{ .KeystoreVolumePath }}/elasticsearch.keystore
-
-KEYSTORE_PASSWORD=$(cat "{{ .FIPSKeystorePasswordPath }}")
-
-# create a password-protected keystore; printf supplies password twice (new + confirmation)
-printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | {{ .KeystoreCreateCommand }} -p
-
-# add all existing secret entries into it
-for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
-	[[ -e "$filename" ]] || continue # glob does not match
-	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
-	echo -n "$KEYSTORE_PASSWORD" | {{ .KeystoreAddCommand }}
-done
-{{ else -}}
 # create a keystore in the default data path
 {{ .KeystoreCreateCommand }}
 
@@ -84,7 +66,6 @@ for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	echo "Adding "$key" to the keystore."
 	{{ .KeystoreAddCommand }}
 done
-{{ end }}
 {{ if not .SkipInitializedFlag -}}
 touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 {{ end -}}

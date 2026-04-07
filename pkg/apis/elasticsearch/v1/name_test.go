@@ -80,6 +80,6 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestFIPSKeystorePasswordSecret(t *testing.T) {
-	require.Equal(t, "cluster-es-fips-keystore-password", FIPSKeystorePasswordSecret("cluster"))
+func TestKeystorePasswordSecret(t *testing.T) {
+	require.Equal(t, "cluster-es-keystore-password", KeystorePasswordSecret("cluster"))
 }

@@ -25,9 +25,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
@@ -37,11 +39,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/fips"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
@@ -337,18 +338,14 @@ func ReconcileSharedResources(
 	keystoreSecurityContext := securitycontext.For(params.Version, true)
 	keystoreParams.SecurityContext = &keystoreSecurityContext
 
-	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
+	keystorePasswordSecret, err := reconcileManagedKeystorePasswordSecret(ctx, client, es, params.Version, params.OperatorParameters.PasswordGenerator, meta)
 	if err != nil {
 		esClient.Close()
 		return nil, results.WithError(err)
 	}
-	fipsKeystorePasswordSecret, err := reconcileFIPSKeystoreSecret(ctx, client, es, params.Version, meta, policyConfig)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-	if fipsKeystorePasswordSecret != nil {
-		keystoreParams.FIPSKeystorePasswordPath = fips.PasswordFile
+	if keystorePasswordSecret != nil {
+		keystoreParams.KeystorePasswordPath = keystorepassword.PasswordFile
+		keystorepassword.ApplyPasswordProtectedKeystoreScript(&keystoreParams)
 	}
 
 	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &es, client)
@@ -369,9 +366,9 @@ func ReconcileSharedResources(
 		esClient.Close()
 		return nil, results.WithError(err)
 	}
-	if keystoreResources != nil && fipsKeystorePasswordSecret != nil {
-		keystoreResources.FIPSKeystorePasswordSecretName = fipsKeystorePasswordSecret.Name
-		keystoreResources.FIPSKeystorePasswordSecretResourceVersion = fipsKeystorePasswordSecret.ResourceVersion
+	if keystoreResources != nil && keystorePasswordSecret != nil {
+		keystoreResources.KeystorePasswordSecretName = keystorePasswordSecret.Name
+		keystoreResources.KeystorePasswordSecretHash = hash.HashObject(keystorePasswordSecret.Data)
 	}
 
 	// Cluster UUID
@@ -488,25 +485,17 @@ func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.
 	}, nil
 }
 
-// reconcileFIPSKeystoreSecret reconciles or cleans up the FIPS keystore
-// password secret based on whether any NodeSet or StackConfigPolicy enables
-// FIPS mode. It returns the secret when FIPS is enabled and no user-provided
-// password override exists.
-func reconcileFIPSKeystoreSecret(
+// reconcileManagedKeystorePasswordSecret reconciles the managed keystore
+// password secret when FIPS mode is enabled and no user-provided password
+// override exists.
+func reconcileManagedKeystorePasswordSecret(
 	ctx context.Context,
 	client k8s.Client,
 	es esv1.Elasticsearch,
 	esVersion version.Version,
+	passwordGenerator password.RandomGenerator,
 	meta metadata.Metadata,
-	policyConfig nodespec.PolicyConfig,
 ) (*corev1.Secret, error) {
-	fipsEnabled, err := settings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyConfig.ElasticsearchConfig)
-	if err != nil {
-		return nil, err
-	}
-	if !fipsEnabled {
-		return nil, fips.DeleteKeystorePasswordSecret(ctx, client, es)
-	}
 	if esVersion.LT(esversion.FIPSKeystorePasswordMinVersion) {
 		return nil, nil
 	}
@@ -514,7 +503,7 @@ func reconcileFIPSKeystoreSecret(
 	if err != nil || userOverride {
 		return nil, err
 	}
-	return fips.ReconcileKeystorePasswordSecret(ctx, client, es, meta)
+	return keystorepassword.ReconcileKeystorePasswordSecret(ctx, client, es, passwordGenerator, meta)
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.

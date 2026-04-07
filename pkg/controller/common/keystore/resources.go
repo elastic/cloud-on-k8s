@@ -27,12 +27,12 @@ type Resources struct {
 	InitContainer corev1.Container
 	// hash of the secret data provided by the user
 	Hash string
-	// FIPSKeystorePasswordSecretName is the name of the Secret containing the
-	// FIPS keystore password when operator-managed FIPS mode is enabled.
-	FIPSKeystorePasswordSecretName string
-	// FIPSKeystorePasswordSecretResourceVersion is included in the pod config
-	// hash to trigger a rolling restart if the FIPS password Secret changes.
-	FIPSKeystorePasswordSecretResourceVersion string
+	// KeystorePasswordSecretName is the name of the Secret containing the
+	// operator-managed keystore password.
+	KeystorePasswordSecretName string
+	// KeystorePasswordSecretHash is the hash of the Secret containing the
+	// operator-managed keystore password.
+	KeystorePasswordSecretHash string
 }
 
 // HasKeystore interface represents an Elastic Stack application that offers a keystore which in ECK
@@ -75,11 +75,12 @@ func ReconcileResources(
 		return nil, err
 	}
 	if secretVolume == nil {
-		if initContainerParams.FIPSKeystorePasswordPath == "" {
+		if initContainerParams.KeystorePasswordPath == "" {
 			// nothing to do
 			return nil, nil
 		}
-		// FIPS mode requires an init container even with no secure settings.
+		// A password-protected keystore still requires an init container even
+		// when no secure settings are configured.
 		emptySecureSettingsVolume := volume.NewEmptyDirVolume(SecureSettingsVolumeName, SecureSettingsVolumeMountPath)
 		secureSettingsMount := emptySecureSettingsVolume.VolumeMount()
 		secureSettingsMount.ReadOnly = true

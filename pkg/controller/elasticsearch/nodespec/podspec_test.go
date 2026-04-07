@@ -441,11 +441,11 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "With FIPS keystore password secret resource version",
+			name: "With keystore password secret hash",
 			args: args{
 				keystoreResources: &keystore.Resources{
-					Hash: "42",
-					FIPSKeystorePasswordSecretResourceVersion: "100",
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "100",
 				},
 				scriptsContent: "scripts content",
 			},
@@ -454,11 +454,11 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "With another FIPS keystore password secret resource version",
+			name: "With another keystore password secret hash",
 			args: args{
 				keystoreResources: &keystore.Resources{
-					Hash: "42",
-					FIPSKeystorePasswordSecretResourceVersion: "101",
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "101",
 				},
 				scriptsContent: "scripts content",
 			},
@@ -570,7 +570,7 @@ func Test_buildAnnotations(t *testing.T) {
 	}
 }
 
-func Test_buildAnnotations_FIPSKeystorePasswordSecretResourceVersion_changesConfigHash(t *testing.T) {
+func Test_buildAnnotations_KeystorePasswordSecretHash_changesConfigHash(t *testing.T) {
 	es := newEsSampleBuilder().build()
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
@@ -581,19 +581,19 @@ func Test_buildAnnotations_FIPSKeystorePasswordSecretResourceVersion_changesConf
 	baseKeystore := &keystore.Resources{Hash: "42"}
 
 	gotA := buildAnnotations(es, cfg, &keystore.Resources{
-		Hash: baseKeystore.Hash,
-		FIPSKeystorePasswordSecretResourceVersion: "100",
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "100",
 	}, scriptsContent, nil, "")
 	gotB := buildAnnotations(es, cfg, &keystore.Resources{
-		Hash: baseKeystore.Hash,
-		FIPSKeystorePasswordSecretResourceVersion: "101",
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "101",
 	}, scriptsContent, nil, "")
 
 	hashA := gotA[ConfigHashAnnotationName]
 	hashB := gotB[ConfigHashAnnotationName]
 	require.NotEmpty(t, hashA)
 	require.NotEmpty(t, hashB)
-	require.NotEqual(t, hashA, hashB, "config hash must change when FIPS keystore password secret resource version changes")
+	require.NotEqual(t, hashA, hashB, "config hash must change when keystore password secret data hash changes")
 }
 
 func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {

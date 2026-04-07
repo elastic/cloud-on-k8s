@@ -129,7 +129,7 @@ func TestReconcileResources(t *testing.T) {
 			wantNil:                 true,
 		},
 		{
-			name:   "no secure settings specified with fips password path: create resources",
+			name:   "no secure settings specified with keystore password path: create resources",
 			client: k8s.NewFakeClient(),
 			kb:     testKibana,
 			initContainerParameters: InitContainerParameters{
@@ -137,7 +137,7 @@ func TestReconcileResources(t *testing.T) {
 				KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 				SecureSettingsVolumeMountPath: "/foo/secret",
 				KeystoreVolumePath:            "/bar/data",
-				FIPSKeystorePasswordPath:      "/mnt/elastic-internal/fips-keystore-password/keystore-password",
+				KeystorePasswordPath:          "/mnt/elastic-internal/keystore-password/keystore-password",
 				Resources:                     testResourceRequirements,
 			},
 			wantContainers: wantContainer(`#!/usr/bin/env bash
@@ -153,22 +153,16 @@ fi
 
 echo "Initializing keystore."
 
-# FIPS: remove any existing keystore to avoid interactive "Overwrite?" prompt
-rm -f /bar/data/elasticsearch.keystore
-
-KEYSTORE_PASSWORD=$(cat "/mnt/elastic-internal/fips-keystore-password/keystore-password")
-
-# create a password-protected keystore; printf supplies password twice (new + confirmation)
-printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | /keystore/bin/keystore create -p
+# create a keystore in the default data path
+/keystore/bin/keystore create
 
 # add all existing secret entries into it
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
 	echo "Adding "$key" to the keystore."
-	echo -n "$KEYSTORE_PASSWORD" | /keystore/bin/keystore add "$key" "$filename"
+	/keystore/bin/keystore add "$key" "$filename"
 done
-
 touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `),
@@ -203,7 +197,6 @@ for filename in  /foo/secret/*; do
 	echo "Adding "$key" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `),
@@ -232,7 +225,6 @@ for filename in  /foo/secret/*; do
 	echo "Adding "$key" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 echo "Keystore initialization successful."
 `),
 			// since this will be created, it will be incremented

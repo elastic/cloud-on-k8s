@@ -2,11 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package fips
+package keystorepassword
 
 import (
+	"bytes"
 	"context"
 	"testing"
+	"text/template"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -20,9 +22,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
+
+func renderCustomScript(t *testing.T, parameters keystore.InitContainerParameters) string {
+	t.Helper()
+	tpl, err := template.New("").Parse(parameters.CustomScript)
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	err = tpl.Execute(&out, parameters)
+	require.NoError(t, err)
+	return out.String()
+}
 
 func TestReconcileKeystorePasswordSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
@@ -33,7 +47,7 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 	}
 	secretNN := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
+		Name:      esv1.KeystorePasswordSecret(es.Name),
 	}
 	meta := metadata.Metadata{
 		Labels:      map[string]string{"custom": "label"},
@@ -114,7 +128,7 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 			}
 			c := k8s.NewFakeClient(objects...)
 
-			reconciled, err := ReconcileKeystorePasswordSecret(context.Background(), c, es, meta)
+			reconciled, err := ReconcileKeystorePasswordSecret(context.Background(), c, es, fixtures.MustTestRandomGenerator(24), meta)
 			require.NoError(t, err)
 			require.NotNil(t, reconciled)
 
@@ -137,7 +151,7 @@ func TestDeleteKeystorePasswordSecret(t *testing.T) {
 	}
 	secretNN := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      esv1.FIPSKeystorePasswordSecret(es.Name),
+		Name:      esv1.KeystorePasswordSecret(es.Name),
 	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -208,7 +222,7 @@ func TestInjectKeystorePassword(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := defaults.NewPodTemplateBuilder(tt.podTemplate, esv1.ElasticsearchContainerName)
-			builder = InjectKeystorePassword(builder, "es-es-fips-keystore-password")
+			builder = InjectKeystorePassword(builder, "es-es-keystore-password")
 
 			var sourceVolume *corev1.Volume
 			for i := range builder.PodTemplate.Spec.Volumes {
@@ -218,7 +232,7 @@ func TestInjectKeystorePassword(t *testing.T) {
 			}
 			require.NotNil(t, sourceVolume)
 			require.NotNil(t, sourceVolume.Secret)
-			require.Equal(t, "es-es-fips-keystore-password", sourceVolume.Secret.SecretName)
+			require.Equal(t, "es-es-keystore-password", sourceVolume.Secret.SecretName)
 			require.NotNil(t, sourceVolume.Secret.DefaultMode)
 			require.Equal(t, int32(0440), *sourceVolume.Secret.DefaultMode)
 
@@ -247,6 +261,53 @@ func TestInjectKeystorePassword(t *testing.T) {
 				MountPath: MountPath,
 				ReadOnly:  true,
 			})
+		})
+	}
+}
+
+func TestApplyPasswordProtectedKeystoreScript(t *testing.T) {
+	tests := []struct {
+		name                string
+		parameters          keystore.InitContainerParameters
+		wantCustomScriptSet bool
+	}{
+		{
+			name: "sets custom script when password path is configured",
+			parameters: keystore.InitContainerParameters{
+				KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/mnt/elastic-internal/secure-settings",
+				KeystoreVolumePath:            "/usr/share/elasticsearch/config",
+				KeystorePasswordPath:          PasswordFile,
+			},
+			wantCustomScriptSet: true,
+		},
+		{
+			name: "does not set custom script without password path",
+			parameters: keystore.InitContainerParameters{
+				KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/mnt/elastic-internal/secure-settings",
+				KeystoreVolumePath:            "/usr/share/elasticsearch/config",
+			},
+			wantCustomScriptSet: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ApplyPasswordProtectedKeystoreScript(&tt.parameters)
+			if !tt.wantCustomScriptSet {
+				require.Empty(t, tt.parameters.CustomScript)
+				return
+			}
+
+			require.NotEmpty(t, tt.parameters.CustomScript)
+			rendered := renderCustomScript(t, tt.parameters)
+			require.Contains(t, rendered, "rm -f /usr/share/elasticsearch/config/elasticsearch.keystore")
+			require.Contains(t, rendered, `KEYSTORE_PASSWORD=$(cat "/mnt/elastic-internal/keystore-password/keystore-password")`)
+			require.Contains(t, rendered, `printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p`)
+			require.Contains(t, rendered, `echo -n "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`)
 		})
 	}
 }

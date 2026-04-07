@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -89,12 +90,15 @@ type fipsState struct {
 	fipsEnabledCount                int
 	parseableNodeSetCount           int
 	hasUserProvidedKeystorePassword bool
+	keystorePasswordOverrideUnknown bool
 }
 
 // fipsWarnings emits warnings when FIPS mode is inconsistent across NodeSets or
 // when managed keystore passwords are unsupported for the requested version.
 // It uses the same keystore password override detection as reconciliation
-// (explicit env and envFrom), which may perform API reads against c.
+// (explicit env and envFrom), which may perform API reads against c. Missing
+// envFrom refs are treated as unknown override status to keep warning paths
+// non-blocking for admission.
 func fipsWarnings(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (field.ErrorList, error) {
 	state, err := collectFIPSState(ctx, c, es)
 	if err != nil {
@@ -116,19 +120,29 @@ func fipsWarnings(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fie
 		return warnings, nil //nolint:nilerr // version parse failures are admission warnings, not returned as validation errors
 	}
 
-	if state.fipsEnabledCount > 0 && !state.hasUserProvidedKeystorePassword && ver.LT(esversion.FIPSKeystorePasswordMinVersion) {
+	if state.fipsEnabledCount > 0 &&
+		!state.hasUserProvidedKeystorePassword &&
+		!state.keystorePasswordOverrideUnknown &&
+		ver.LT(esversion.FIPSKeystorePasswordMinVersion) {
 		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, fipsManagedKeystoreUnsupportedWarningMsg))
 	}
 	return warnings, nil
 }
 
 // collectFIPSState gathers NodeSet-level state related to FIPS mode for warnings generation.
+// NotFound errors while resolving envFrom refs are downgraded to "override
+// status unknown" for warning-only admission behavior.
 func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fipsState, error) {
+	state := fipsState{}
 	hasUserPwd, err := essettings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, c, es.Namespace, es.Spec.NodeSets)
+	state.hasUserProvidedKeystorePassword = hasUserPwd
 	if err != nil {
-		return fipsState{}, err
+		if apierrors.IsNotFound(err) {
+			state.keystorePasswordOverrideUnknown = true
+		} else {
+			return fipsState{}, err
+		}
 	}
-	state := fipsState{hasUserProvidedKeystorePassword: hasUserPwd}
 	for _, nodeSet := range es.Spec.NodeSets {
 		userConfig := map[string]any{}
 		if nodeSet.Config != nil {
