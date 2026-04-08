@@ -46,6 +46,10 @@ const (
 	remoteAPIKeysNameSuffix = "remote-api-keys"
 
 	controllerRevisionHashLen = 10
+
+	// StackConfigElasticsearchConfigKey is the key used for Elasticsearch
+	// config in StackConfigPolicy per-cluster secrets.
+	StackConfigElasticsearchConfigKey = "elasticsearch.json"
 )
 
 var (

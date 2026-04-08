@@ -51,7 +51,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -487,8 +486,8 @@ func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.
 }
 
 // reconcileManagedKeystorePasswordSecret reconciles the managed keystore
-// password secret when FIPS mode is enabled and no user-provided password
-// override exists.
+// password secret when managed keystore passwords are applicable (version
+// threshold met, FIPS enabled, and no user-provided password override).
 func reconcileManagedKeystorePasswordSecret(
 	ctx context.Context,
 	client k8s.Client,
@@ -501,16 +500,19 @@ func reconcileManagedKeystorePasswordSecret(
 	if err != nil {
 		return nil, err
 	}
-	isFIPSModeEnabled, err := settings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyConfig.ElasticsearchConfig)
+	shouldManage, err := settings.ShouldManageGeneratedKeystorePassword(
+		ctx,
+		client,
+		esVersion,
+		es.Namespace,
+		es.Spec.NodeSets,
+		policyConfig.ElasticsearchConfig,
+	)
 	if err != nil {
 		return nil, err
 	}
-	if esVersion.LT(esversion.FIPSKeystorePasswordMinVersion) {
+	if !shouldManage {
 		return nil, nil
-	}
-	userOverride, err := settings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, client, es.Namespace, es.Spec.NodeSets)
-	if err != nil || userOverride || !isFIPSModeEnabled {
-		return nil, err
 	}
 	return keystorepassword.ReconcileKeystorePasswordSecret(ctx, client, es, passwordGenerator, meta)
 }

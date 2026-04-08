@@ -24,7 +24,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -170,6 +173,133 @@ func TestDeleteKeystorePasswordSecret(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err))
 
 	require.NoError(t, DeleteKeystorePasswordSecret(context.Background(), c, es))
+}
+
+func TestMaybeGarbageCollectKeystorePasswordSecret(t *testing.T) {
+	fipsEnabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	fipsDisabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+
+	tests := []struct {
+		name           string
+		es             esv1.Elasticsearch
+		esVersion      commonversion.Version
+		policyConfig   *commonsettings.CanonicalConfig
+		wantSecretLeft bool
+	}{
+		{
+			name: "below minimum version deletes secret",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "default", Config: &fipsEnabledConfig},
+					},
+				},
+			},
+			esVersion:      commonversion.MinFor(9, 3, 0),
+			wantSecretLeft: false,
+		},
+		{
+			name: "fips enabled and no override keeps secret",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "default", Config: &fipsEnabledConfig},
+					},
+				},
+			},
+			esVersion:      esversion.KeystorePasswordMinVersion,
+			wantSecretLeft: true,
+		},
+		{
+			name: "fips disabled deletes secret",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "default", Config: &fipsDisabledConfig},
+					},
+				},
+			},
+			esVersion:      esversion.KeystorePasswordMinVersion,
+			wantSecretLeft: false,
+		},
+		{
+			name: "user override deletes secret",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "default",
+							Config: &fipsEnabledConfig,
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											Env: []corev1.EnvVar{
+												{Name: "KEYSTORE_PASSWORD_FILE", Value: "/tmp/user-managed"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			esVersion:      esversion.KeystorePasswordMinVersion,
+			wantSecretLeft: false,
+		},
+		{
+			name: "policy-only fips keeps secret",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{Name: "default", Config: &fipsDisabledConfig},
+					},
+				},
+			},
+			esVersion:      esversion.KeystorePasswordMinVersion,
+			policyConfig:   commonsettings.MustCanonicalConfig(map[string]any{"xpack.security.fips_mode.enabled": true}),
+			wantSecretLeft: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secretName := types.NamespacedName{
+				Namespace: tt.es.Namespace,
+				Name:      esv1.KeystorePasswordSecret(tt.es.Name),
+			}
+			existingSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: secretName.Namespace,
+					Name:      secretName.Name,
+				},
+				Data: map[string][]byte{KeystorePasswordKey: []byte("existing")},
+			}
+			c := k8s.NewFakeClient(&tt.es, existingSecret)
+
+			err := MaybeGarbageCollectKeystorePasswordSecret(context.Background(), c, tt.es, tt.esVersion, tt.policyConfig)
+			require.NoError(t, err)
+
+			var secret corev1.Secret
+			err = c.Get(context.Background(), secretName, &secret)
+			if tt.wantSecretLeft {
+				require.NoError(t, err)
+				return
+			}
+			require.True(t, apierrors.IsNotFound(err))
+		})
+	}
 }
 
 func TestReconcileKeystorePasswordSecret_UsesDefaultLengthWhenUseLengthDisabled(t *testing.T) {

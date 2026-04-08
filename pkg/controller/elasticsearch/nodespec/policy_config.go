@@ -17,6 +17,7 @@ import (
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -48,14 +49,9 @@ func GetPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 	}
 
 	// Parse Elasticsearch config from the stack config policy secret.
-	var esConfigFromStackConfigPolicy map[string]any
-	if string(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey]) != "" {
-		err = json.Unmarshal(stackConfigPolicyConfigSecret.Data[stackconfigpolicy.ElasticSearchConfigKey], &esConfigFromStackConfigPolicy)
-		if err != nil {
-			return policyConfig, err
-		}
-	}
-	canonicalConfig, err := common.NewCanonicalConfigFrom(esConfigFromStackConfigPolicy)
+	canonicalConfig, err := essettings.ParseStackConfigPolicyElasticsearchConfig(
+		stackConfigPolicyConfigSecret.Data[esv1.StackConfigElasticsearchConfigKey],
+	)
 	if err != nil {
 		return policyConfig, err
 	}

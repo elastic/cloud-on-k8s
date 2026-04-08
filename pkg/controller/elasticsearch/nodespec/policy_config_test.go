@@ -107,14 +107,14 @@ func mkConfigSecret(name string, namespace string) corev1.Secret {
 				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 			},
 		},
-		Data: map[string][]byte{stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),
+		Data: map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),
 			stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)},
 	}
 }
 
 func mkInvalidConfigSecret(name string, namespace string) corev1.Secret {
 	secret := mkConfigSecret(name, namespace)
-	secret.Data = map[string][]byte{stackconfigpolicy.ElasticSearchConfigKey: []byte(`{"invalid"}`),
+	secret.Data = map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(`{"invalid"}`),
 		stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)}
 	return secret
 }

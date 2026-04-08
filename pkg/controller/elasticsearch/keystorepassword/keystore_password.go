@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -153,23 +154,28 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 }
 
 // MaybeGarbageCollectKeystorePasswordSecret deletes the managed keystore
-// password secret when FIPS mode is not enabled by NodeSet or StackConfigPolicy
-// configuration or when a user-provided keystore password is present.
+// password secret when managed keystore passwords are not applicable for this
+// resource (version < 9.4.0, FIPS disabled, or user-provided password
+// override).
 func MaybeGarbageCollectKeystorePasswordSecret(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	esVersion commonversion.Version,
 	policyElasticsearchConfig *commonsettings.CanonicalConfig,
 ) error {
-	fipsEnabled, err := esettings.AnyNodeSetFIPSEnabled(es.Spec.NodeSets, policyElasticsearchConfig)
+	shouldManage, err := esettings.ShouldManageGeneratedKeystorePassword(
+		ctx,
+		c,
+		esVersion,
+		es.Namespace,
+		es.Spec.NodeSets,
+		policyElasticsearchConfig,
+	)
 	if err != nil {
 		return err
 	}
-	userOverride, err := esettings.AnyNodeSetHasUserProvidedKeystorePassword(ctx, c, es.Namespace, es.Spec.NodeSets)
-	if err != nil {
-		return err
-	}
-	if !fipsEnabled || userOverride {
+	if !shouldManage {
 		return DeleteKeystorePasswordSecret(ctx, c, es)
 	}
 	return nil

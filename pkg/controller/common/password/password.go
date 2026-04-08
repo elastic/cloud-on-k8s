@@ -38,7 +38,7 @@ var (
 // RandomGenerator is an interface for generating random passwords.
 type RandomGenerator interface {
 	Generate(ctx context.Context) ([]byte, error)
-	Length(ctx context.Context) int
+	Length(ctx context.Context) (int, error)
 }
 
 // RandomPasswordGenerator is an implementation of RandomGenerator
@@ -65,17 +65,17 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 }
 
 // Length returns the length of the password to generate.
-func (r *randomPasswordGenerator) Length(ctx context.Context) int {
+func (r *randomPasswordGenerator) Length(ctx context.Context) (int, error) {
 	useLength, err := r.useLength(ctx)
 	if err != nil {
-		return 24
+		return 0, err
 	}
 	if useLength {
-		return r.length
+		return r.length, nil
 	}
 	// Keep Length aligned with Generate fallback behavior above when enterprise
 	// features are disabled which simply returns 24.
-	return 24
+	return 24, nil
 }
 
 // NewGenerator returns a password generator with the specified length.

@@ -185,7 +185,9 @@ func TestRandomPasswordGenerator_Length(t *testing.T) {
 			generator, err := NewRandomPasswordGenerator(tt.length, tt.useLength)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.want, generator.Length(ctx))
+			length, err := generator.Length(ctx)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, length)
 		})
 	}
 }
@@ -236,7 +238,9 @@ func TestRandomPasswordGenerator_GenerateFallbackBehavior(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, result, tt.wantLen)
-			require.Equal(t, tt.wantLen, generator.Length(ctx))
+			len, err := generator.Length(ctx)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantLen, len)
 		})
 	}
 }

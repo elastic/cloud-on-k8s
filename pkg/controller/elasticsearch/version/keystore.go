@@ -6,6 +6,6 @@ package version
 
 import "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 
-// FIPSKeystorePasswordMinVersion is the minimum Elasticsearch version that
+// KeystorePasswordMinVersion is the minimum Elasticsearch version that
 // supports Secret-mounted KEYSTORE_PASSWORD_FILE with group-readable modes.
-var FIPSKeystorePasswordMinVersion = version.MinFor(9, 4, 0)
+var KeystorePasswordMinVersion = version.MinFor(9, 4, 0)

@@ -527,7 +527,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.NoError(t, err)
 				secretMountsJSONData, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 				assert.NoError(t, err)
-				assert.Equal(t, esSecret.Data[ElasticSearchConfigKey], elasticsearchConfigJSONData)
+				assert.Equal(t, esSecret.Data[esv1.StackConfigElasticsearchConfigKey], elasticsearchConfigJSONData)
 				assert.Equal(t, esSecret.Data[SecretsMountKey], secretMountsJSONData)
 
 				// Verify the secret mounts secret

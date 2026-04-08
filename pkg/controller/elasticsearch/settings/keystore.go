@@ -14,6 +14,8 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -40,11 +42,11 @@ func IsFIPSEnabled(cfg *common.CanonicalConfig) bool {
 	return val == "true"
 }
 
-// AnyNodeSetFIPSEnabled returns true if any NodeSet's user-supplied config or
+// anyNodeSetFIPSEnabled returns true if any NodeSet's user-supplied config or
 // the StackConfigPolicy config has xpack.security.fips_mode.enabled: true.
 // It inspects the raw config layers directly rather than performing a full
 // merged config computation.
-func AnyNodeSetFIPSEnabled(nodeSets []esv1.NodeSet, policyConfig *common.CanonicalConfig) (bool, error) {
+func anyNodeSetFIPSEnabled(nodeSets []esv1.NodeSet, policyConfig *common.CanonicalConfig) (bool, error) {
 	if IsFIPSEnabled(policyConfig) {
 		return true, nil
 	}
@@ -63,11 +65,11 @@ func AnyNodeSetFIPSEnabled(nodeSets []esv1.NodeSet, policyConfig *common.Canonic
 	return false, nil
 }
 
-// HasUserProvidedKeystorePassword returns true if the user has set
+// hasUserProvidedKeystorePassword returns true if the user has set
 // KEYSTORE_PASSWORD, KEYSTORE_PASSWORD_FILE, or ES_KEYSTORE_PASSPHRASE_FILE on the Elasticsearch
 // container in their pod template. It checks both explicit env entries and
 // envFrom sources by resolving referenced ConfigMaps and Secrets.
-func HasUserProvidedKeystorePassword(ctx context.Context, c k8s.Client, namespace string, podTemplate corev1.PodTemplateSpec) (bool, error) {
+func hasUserProvidedKeystorePassword(ctx context.Context, c k8s.Client, namespace string, podTemplate corev1.PodTemplateSpec) (bool, error) {
 	for _, container := range podTemplate.Spec.Containers {
 		if container.Name != esv1.ElasticsearchContainerName {
 			continue
@@ -97,7 +99,7 @@ func AnyNodeSetHasUserProvidedKeystorePassword(
 	nodeSets []esv1.NodeSet,
 ) (bool, error) {
 	for _, nodeSet := range nodeSets {
-		hasOverride, err := HasUserProvidedKeystorePassword(ctx, c, namespace, nodeSet.PodTemplate)
+		hasOverride, err := hasUserProvidedKeystorePassword(ctx, c, namespace, nodeSet.PodTemplate)
 		if err != nil {
 			return false, err
 		}
@@ -106,6 +108,36 @@ func AnyNodeSetHasUserProvidedKeystorePassword(
 		}
 	}
 	return false, nil
+}
+
+// ShouldManageGeneratedKeystorePassword returns true when the operator should
+// manage a generated keystore password Secret for this Elasticsearch resource.
+// Management is enabled only for Elasticsearch versions >= 9.4.0, when FIPS is
+// enabled in any NodeSet or StackConfigPolicy config, and when no NodeSet
+// provides a user-managed keystore password through env or envFrom.
+func ShouldManageGeneratedKeystorePassword(
+	ctx context.Context,
+	c k8s.Client,
+	esVersion commonversion.Version,
+	namespace string,
+	nodeSets []esv1.NodeSet,
+	policyConfig *common.CanonicalConfig,
+) (bool, error) {
+	if esVersion.LT(esversion.KeystorePasswordMinVersion) {
+		return false, nil
+	}
+
+	fipsEnabled, err := anyNodeSetFIPSEnabled(nodeSets, policyConfig)
+	if err != nil {
+		return false, err
+	}
+
+	userOverride, err := AnyNodeSetHasUserProvidedKeystorePassword(ctx, c, namespace, nodeSets)
+	if err != nil {
+		return false, err
+	}
+
+	return fipsEnabled && !userOverride, nil
 }
 
 // envFromContainsKeystorePassword resolves the ConfigMaps and Secrets

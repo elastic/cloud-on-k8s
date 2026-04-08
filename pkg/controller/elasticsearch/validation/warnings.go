@@ -6,12 +6,10 @@ package validation
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -27,7 +25,6 @@ import (
 const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
-	policyConfigSecretKey                       = "elasticsearch.json"
 )
 
 var warnings = []validation{
@@ -114,8 +111,8 @@ func fipsWarnings(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fie
 		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, inconsistentFIPSModeWarningMsg))
 	}
 
-	ver, verErr := commonversion.Parse(es.Spec.Version)
-	if verErr != nil {
+	ver, err := commonversion.Parse(es.Spec.Version)
+	if err != nil {
 		// Surface the parse failure as a warning for callers that evaluate warnings in isolation;
 		// ValidateElasticsearch runs supportedVersion first, so this duplicates admission only if
 		// validations are skipped.
@@ -126,7 +123,7 @@ func fipsWarnings(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (fie
 	if state.fipsEnabledCount > 0 &&
 		!state.hasUserProvidedKeystorePassword &&
 		!state.keystorePasswordOverrideUnknown &&
-		ver.LT(esversion.FIPSKeystorePasswordMinVersion) {
+		ver.LT(esversion.KeystorePasswordMinVersion) {
 		warnings = append(warnings, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, fipsManagedKeystoreUnsupportedWarningMsg))
 	}
 	return warnings, nil
@@ -149,10 +146,7 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 		}
 	}
 
-	// We intentionally do not call nodespec.GetPolicyConfig() here:
-	// importing nodespec from validation introduces an import cycle.
-	// This warning path only needs the Elasticsearch policy config payload.
-	policyConfig, err := getPolicyElasticsearchConfig(ctx, c, es)
+	policyConfig, err := essettings.GetStackConfigPolicyElasticsearchConfig(ctx, c, es)
 	if err != nil {
 		return fipsState{}, err
 	}
@@ -162,51 +156,21 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 		if nodeSet.Config != nil {
 			userConfig = nodeSet.Config.Data
 		}
+		// Since this code path is only used for warnings, we are going to ignore any errors
+		// in this whole block and continue to the next nodeSet.
 		canonicalConfig, cfgErr := common.NewCanonicalConfigFrom(userConfig)
 		if cfgErr != nil {
 			continue
 		}
 		state.parseableNodeSetCount++
 		if err := canonicalConfig.MergeWith(policyConfig); err != nil {
-			return fipsState{}, err
+			continue
 		}
 		if essettings.IsFIPSEnabled(canonicalConfig) {
 			state.fipsEnabledCount++
 		}
 	}
 	return state, nil
-}
-
-// getPolicyElasticsearchConfig returns the StackConfigPolicy Elasticsearch config
-// from the per-cluster policy secret. It returns nil when no policy secret or
-// Elasticsearch policy config is present.
-func getPolicyElasticsearchConfig(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (*common.CanonicalConfig, error) {
-	var policySecret corev1.Secret
-	err := c.Get(ctx, types.NamespacedName{
-		Name:      esv1.StackConfigElasticsearchConfigSecretName(es.Name),
-		Namespace: es.Namespace,
-	}, &policySecret)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	rawConfig := policySecret.Data[policyConfigSecretKey]
-	if len(rawConfig) == 0 {
-		return nil, nil
-	}
-
-	var policyConfig map[string]any
-	if err := json.Unmarshal(rawConfig, &policyConfig); err != nil {
-		return nil, err
-	}
-	canonicalConfig, err := common.NewCanonicalConfigFrom(policyConfig)
-	if err != nil {
-		return nil, err
-	}
-	return canonicalConfig, nil
 }
 
 // validZoneAwarenessAffinityWarnings produces warnings for required node affinity that

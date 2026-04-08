@@ -16,6 +16,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -89,7 +91,7 @@ func TestAnyNodeSetFIPSEnabled(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AnyNodeSetFIPSEnabled(tt.nodeSets, tt.policyConfig)
+			got, err := anyNodeSetFIPSEnabled(tt.nodeSets, tt.policyConfig)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -368,7 +370,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.objects...)
-			got, err := HasUserProvidedKeystorePassword(context.Background(), c, namespace, tt.podTemplate)
+			got, err := hasUserProvidedKeystorePassword(context.Background(), c, namespace, tt.podTemplate)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -460,6 +462,254 @@ func TestAnyNodeSetHasUserProvidedKeystorePassword(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestShouldManageGeneratedKeystorePassword(t *testing.T) {
+	const namespace = "ns"
+
+	fipsConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": true,
+	})
+	fipsDisabledConfig := commonv1.NewConfig(map[string]any{
+		"xpack.security.fips_mode.enabled": false,
+	})
+
+	tests := []struct {
+		name         string
+		objects      []client.Object
+		esVersion    commonversion.Version
+		nodeSets     []esv1.NodeSet
+		policyConfig *common.CanonicalConfig
+		want         bool
+		wantErr      bool
+	}{
+		{
+			name:      "version below minimum returns false",
+			esVersion: commonversion.MinFor(9, 3, 0),
+			nodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsConfig},
+			},
+			want: false,
+		},
+		{
+			name:      "fips enabled and no override returns true",
+			esVersion: esversion.KeystorePasswordMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsConfig},
+			},
+			want: true,
+		},
+		{
+			name:      "fips disabled returns false",
+			esVersion: esversion.KeystorePasswordMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsDisabledConfig},
+			},
+			want: false,
+		},
+		{
+			name:      "user override returns false",
+			esVersion: esversion.KeystorePasswordMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &fipsConfig,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Env:  []corev1.EnvVar{{Name: KeystorePasswordEnvVar, Value: "user-managed"}},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name:      "policy only fips returns true",
+			esVersion: esversion.KeystorePasswordMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsDisabledConfig},
+			},
+			policyConfig: common.MustCanonicalConfig(map[string]any{"xpack.security.fips_mode.enabled": true}),
+			want:         true,
+		},
+		{
+			name:      "envFrom lookup error is returned",
+			esVersion: esversion.KeystorePasswordMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{
+					Name:   "default",
+					Config: &fipsConfig,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									EnvFrom: []corev1.EnvFromSource{
+										{
+											ConfigMapRef: &corev1.ConfigMapEnvSource{
+												LocalObjectReference: corev1.LocalObjectReference{Name: "missing"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := ShouldManageGeneratedKeystorePassword(
+				context.Background(),
+				c,
+				tt.esVersion,
+				namespace,
+				tt.nodeSets,
+				tt.policyConfig,
+			)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestParseStackConfigPolicyElasticsearchConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload []byte
+		want    *common.CanonicalConfig
+		wantErr bool
+	}{
+		{
+			name:    "empty payload returns empty config",
+			payload: nil,
+			want:    common.MustCanonicalConfig(map[string]any{}),
+		},
+		{
+			name:    "valid payload returns canonical config",
+			payload: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+			want:    common.MustCanonicalConfig(map[string]any{"xpack.security.fips_mode.enabled": true}),
+		},
+		{
+			name:    "invalid payload returns error",
+			payload: []byte(`{"xpack.security.fips_mode.enabled":`),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseStackConfigPolicyElasticsearchConfig(tt.payload)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetStackConfigPolicyElasticsearchConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		objects []client.Object
+		es      esv1.Elasticsearch
+		want    *common.CanonicalConfig
+		wantNil bool
+		wantErr bool
+	}{
+		{
+			name:    "missing policy secret returns nil config",
+			objects: nil,
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "missing", Namespace: "ns"},
+			},
+			wantNil: true,
+		},
+		{
+			name: "valid policy secret returns parsed config",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("with-config"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "with-config", Namespace: "ns"},
+			},
+			want: common.MustCanonicalConfig(map[string]any{"xpack.security.fips_mode.enabled": true}),
+		},
+		{
+			name: "policy secret with empty config returns empty canonical config",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("empty-config"),
+						Namespace: "ns",
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "empty-config", Namespace: "ns"},
+			},
+			want: common.MustCanonicalConfig(map[string]any{}),
+		},
+		{
+			name: "invalid policy secret config returns error",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("invalid-config"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "invalid-config", Namespace: "ns"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := GetStackConfigPolicyElasticsearchConfig(context.Background(), c, tt.es)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantNil {
+				require.Nil(t, got)
+				return
+			}
 			require.Equal(t, tt.want, got)
 		})
 	}

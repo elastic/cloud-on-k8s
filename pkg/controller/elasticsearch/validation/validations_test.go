@@ -1185,8 +1185,6 @@ func Test_validAssociations(t *testing.T) {
 }
 
 func Test_fipsWarnings(t *testing.T) {
-	const policyConfigSecretKey = "elasticsearch.json"
-
 	tests := []struct {
 		name    string
 		objects []client.Object
@@ -1310,7 +1308,7 @@ func Test_fipsWarnings(t *testing.T) {
 						Namespace: "ns",
 					},
 					Data: map[string][]byte{
-						policyConfigSecretKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 					},
 				},
 			},
@@ -1339,7 +1337,7 @@ func Test_fipsWarnings(t *testing.T) {
 						Namespace: "ns",
 					},
 					Data: map[string][]byte{
-						policyConfigSecretKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 					},
 				},
 			},

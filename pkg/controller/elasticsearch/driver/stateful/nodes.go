@@ -150,7 +150,7 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := keystorepassword.MaybeGarbageCollectKeystorePasswordSecret(ctx, d.Client, d.ES, resolvedConfig.PolicyConfig.ElasticsearchConfig); err != nil {
+	if err := keystorepassword.MaybeGarbageCollectKeystorePasswordSecret(ctx, d.Client, d.ES, d.Version, resolvedConfig.PolicyConfig.ElasticsearchConfig); err != nil {
 		return results.WithError(err)
 	}
 
