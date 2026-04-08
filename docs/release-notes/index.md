@@ -9,6 +9,90 @@ mapped_pages:
 
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.4.0 [elastic-cloud-kubernetes-340-release-notes]
+
+### Release Highlights
+
+#### {{es}} client certificate authentication support
+
+ECK now supports configuring {{es}} to require client certificates for authentication. This allows you to enforce mutual TLS (mTLS) between clients and {{es}}, strengthening security by requiring both the client and server to present valid certificates. Currently, {{es}} and {{product.kibana}} support this feature - {{product.kibana}} can be configured to present client certificates when connecting to {{es}}. Support for the remaining components that connect to {{es}} (Beats, Elastic Agent, APM Server, Logstash, etc.) will follow in future releases.
+
+#### Rolling restarts of {{es}} clusters
+
+ECK now supports triggering rolling restarts of {{es}} clusters through a new annotation-based mechanism. This enables operators to gracefully restart all nodes in a cluster without manual intervention, useful for applying configuration changes that require a restart.
+
+#### Simplified zone awareness configuration
+
+ECK simplifies the configuration of zone awareness for {{es}} clusters, reducing the amount of boilerplate configuration needed to set up topology-aware allocation.
+
+#### Improved default PVC handling for {{es}}
+
+The {{es}} controller now correctly skips adding default volume claim templates whenever a volume with the same name already exists in the pod spec, regardless of volume type. Previously, the operator only skipped defaults for non-PVC volumes (such as `emptyDir` or `hostPath`), which could result in redundant or conflicting volume claim templates when users supplied their own PVC for the same volume name. This change unifies the logic so that user-provided PVCs are respected in the same way as other volume types.
+
+#### Operator-managed FIPS keystore password support for {{es}}
+
+ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When FIPS mode is enabled in the {{es}} configuration (`xpack.security.fips_mode.enabled: true`), the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration.
+
+### Features and enhancements [elastic-cloud-kubernetes-340-features-and-enhancements]
+
+- Implement client certificate required support for {{es}} [#9229](https://github.com/elastic/cloud-on-k8s/pull/9229)
+- Implement {{product.kibana}} support for presenting client certificates to {{es}} [#9230](https://github.com/elastic/cloud-on-k8s/pull/9230)
+- Support rolling restarts of {{es}} clusters [#9172](https://github.com/elastic/cloud-on-k8s/pull/9172)
+- Simplify zone awareness [#9148](https://github.com/elastic/cloud-on-k8s/pull/9148)
+- Operator-managed FIPS keystore password support for {{es}} [#9287](https://github.com/elastic/cloud-on-k8s/pull/9287) (issue: [#9171](https://github.com/elastic/cloud-on-k8s/issues/9171))
+- Surface webhook warnings; Refactor webhooks to use controller-runtime's Validator [#9235](https://github.com/elastic/cloud-on-k8s/pull/9235)
+- Add `extraObjects` support to ECK Helm charts [#9069](https://github.com/elastic/cloud-on-k8s/pull/9069)
+- Add `kubeAPIServerPort` configuration option to Helm chart [#8980](https://github.com/elastic/cloud-on-k8s/pull/8980)
+- Set `seccompProfile` to `RuntimeDefault` [#9012](https://github.com/elastic/cloud-on-k8s/pull/9012)
+- Validate user-supplied HTTP CA certificate [#8992](https://github.com/elastic/cloud-on-k8s/pull/8992)
+- Validate user-supplied CA for the transport layer of {{es}} [#8953](https://github.com/elastic/cloud-on-k8s/pull/8953)
+- Sign ECK container images (v2) [#9078](https://github.com/elastic/cloud-on-k8s/pull/9078)
+- Improve license signature verification error to diagnose wrong license type [#9262](https://github.com/elastic/cloud-on-k8s/pull/9262)
+- Improve AutoOpsAgentPolicy status reporting [#9095](https://github.com/elastic/cloud-on-k8s/pull/9095)
+- Support `runAsNonRoot` true for recent versions of EPR [#8974](https://github.com/elastic/cloud-on-k8s/pull/8974)
+- Set `TransformStripManagedFields` on informer caches [#9321](https://github.com/elastic/cloud-on-k8s/pull/9321)
+- Align DaemonSet `UpdateReconciled` with Deployment reconciler [#9256](https://github.com/elastic/cloud-on-k8s/pull/9256)
+- Add version-gated querylog fileset to Filebeat sidecar config [#9291](https://github.com/elastic/cloud-on-k8s/pull/9291)
+
+### Fixes [elastic-cloud-kubernetes-340-fixes]
+
+- Prevent StackConfigPolicy controller from performing unnecessary file-settings secret updates on every reconciliation [#9316](https://github.com/elastic/cloud-on-k8s/pull/9316)
+- Correct NetworkPolicy namespace selector label for soft multi-tenancy [#9153](https://github.com/elastic/cloud-on-k8s/pull/9153)
+- Prevent using a nodeSet name while the equivalent StatefulSet already exists [#9036](https://github.com/elastic/cloud-on-k8s/pull/9036)
+- Skip default PVC if volume with same name exists [#9199](https://github.com/elastic/cloud-on-k8s/pull/9199)
+- Avoid empty reconcile requests in StackConfigPolicy secret watch [#9179](https://github.com/elastic/cloud-on-k8s/pull/9179)
+- Make remote-ca secret generation failures non-blocking [#9271](https://github.com/elastic/cloud-on-k8s/pull/9271)
+- Garbage collect Agent soft-owned secrets on deletion [#9090](https://github.com/elastic/cloud-on-k8s/pull/9090)
+- Detect stale CA in certificate chain and trigger certificates reissuance [#9197](https://github.com/elastic/cloud-on-k8s/pull/9197)
+- Skip per-shard replica checks for GREEN clusters in `require_started_replica` predicate [#9188](https://github.com/elastic/cloud-on-k8s/pull/9188)
+- Handle server side default for `TrafficDistribution` [#8994](https://github.com/elastic/cloud-on-k8s/pull/8994)
+- Set default security context to {{product.kibana}} init container [#9218](https://github.com/elastic/cloud-on-k8s/pull/9218)
+
+### Documentation improvements [elastic-cloud-kubernetes-340-documentation-improvements]
+
+- Add recipe for manual mTLS configuration [#9124](https://github.com/elastic/cloud-on-k8s/pull/9124)
+- Mention `PodTopologyLabelsAdmission` in {{es}} sample [#9035](https://github.com/elastic/cloud-on-k8s/pull/9035)
+- Logstash Chart improvements [#9087](https://github.com/elastic/cloud-on-k8s/pull/9087)
+
+:::{dropdown} Updated dependencies
+
+- Go 1.25.8 => 1.26.1
+- github.com/elastic/go-ucfg v0.8.9-0.20251017163010-3520930bed4f => v0.9.1
+- github.com/gkampitakis/go-snaps v0.5.19 => v0.5.21
+- github.com/google/go-containerregistry v0.20.7 => v0.21.4
+- github.com/hashicorp/vault/api v1.22.0 => v1.23.0
+- go.elastic.co/apm/v2 v2.7.2 => v2.7.6
+- golang.org/x/crypto v0.46.0 => v0.49.0
+- k8s.io/api v0.35.0 => v0.35.3
+- k8s.io/apimachinery v0.35.0 => v0.35.3
+- k8s.io/client-go v0.35.0 => v0.35.3
+- k8s.io/klog/v2 v2.130.1 => v2.140.0
+- sigs.k8s.io/controller-runtime v0.22.4 => v0.23.3
+- sigs.k8s.io/controller-tools v0.20.0 => v0.20.1
+- New direct dependencies: cloud.google.com/go/auth, cloud.google.com/go/storage, github.com/Azure/azure-sdk-for-go/sdk/storage/azblob, github.com/aws/aws-sdk-go-v2, google.golang.org/api
+
+:::
+
 ## 3.3.2 [elastic-cloud-kubernetes-332-release-notes]
 
 ### Release Highlights

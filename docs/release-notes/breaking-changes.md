@@ -14,6 +14,27 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.4.0 [elastic-cloud-kubernetes-340-breaking-changes]
+
+::::{dropdown} Rolling restart of managed pods due to seccompProfile security context change
+ECK 3.4.0 sets `seccompProfile` to `RuntimeDefault` on managed pods. This causes a rolling restart of nearly all ECK-managed pods ({{es}}, {{product.kibana}}, APM Server, Enterprise Search, Logstash, Elastic Maps Server, and Elastic Package Registry) during the operator upgrade. Beats and Elastic Agent pods are not affected. This rolling restart only occurs when the operator flag `set-default-security-context` is set to `auto-detect` (the default) or `true`.
+For more information, check [PR #9012](https://github.com/elastic/cloud-on-k8s/pull/9012).
+
+**Impact**<br> Upgrading to ECK 3.4.0 will trigger a rolling restart of most managed workloads. Plan the upgrade during a maintenance window.
+
+**Action**<br> Schedule the ECK operator upgrade during a maintenance window to account for the rolling restart. If you need to prevent the restart, set the operator flag `set-default-security-context` to `false` before upgrading, though this is not recommended as the new default improves security posture.
+::::
+
+::::{dropdown} Rolling restart of Kibana pods due to init container security context change
+ECK 3.4.0 sets a default security context on the {{product.kibana}} init container, which will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
+For more information, check [PR #9218](https://github.com/elastic/cloud-on-k8s/pull/9218).
+
+**Impact**<br> {{product.kibana}} pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that {{product.kibana}} pods will restart during the upgrade.
+::::
+
+
 ## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
 
 There are no breaking changes for ECK 3.3.2
