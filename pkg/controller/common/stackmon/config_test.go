@@ -7,8 +7,11 @@ package stackmon
 import (
 	"context"
 	"testing"
+	"text/template"
 
+	"github.com/blang/semver/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -132,4 +135,67 @@ param2: value2
 			assert.Equal(t, tt.want.secret.Data, got.secret.Data)
 		})
 	}
+}
+
+func TestIsVersionGTE(t *testing.T) {
+	tests := []struct {
+		name    string
+		version semver.Version
+		minVer  string
+		want    bool
+	}{
+		{
+			name:    "release equal to min",
+			version: semver.MustParse("9.4.0"),
+			minVer:  "9.4.0",
+			want:    true,
+		},
+		{
+			name:    "release above min",
+			version: semver.MustParse("9.5.0"),
+			minVer:  "9.4.0",
+			want:    true,
+		},
+		{
+			name:    "release below min",
+			version: semver.MustParse("9.3.0"),
+			minVer:  "9.4.0",
+			want:    false,
+		},
+		{
+			name:    "SNAPSHOT equal to min",
+			version: semver.MustParse("9.4.0-SNAPSHOT"),
+			minVer:  "9.4.0",
+			want:    true,
+		},
+		{
+			name:    "SNAPSHOT below min",
+			version: semver.MustParse("9.3.0-SNAPSHOT"),
+			minVer:  "9.4.0",
+			want:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			funcs := TemplateFuncs(tt.version)
+			isGTE := funcs["isVersionGTE"].(func(string) (bool, error))
+			got, err := isGTE(tt.minVer)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRenderTemplateWithSnapshot(t *testing.T) {
+	tpl := `{{- if isVersionGTE "9.4.0" }}querylog: true{{- end }}`
+	got, err := RenderTemplate(semver.MustParse("9.4.0-SNAPSHOT"), tpl, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "querylog: true", got)
+}
+
+// Verify the isVersionGTE template function signature matches what template.FuncMap expects.
+func TestTemplateFuncsSignature(t *testing.T) {
+	funcs := TemplateFuncs(semver.MustParse("8.0.0"))
+	_, err := template.New("").Funcs(funcs).Parse(`{{ isVersionGTE "8.0.0" }}`)
+	require.NoError(t, err)
 }
