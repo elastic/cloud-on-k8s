@@ -595,7 +595,10 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+	opts.Cache = cache.Options{
+		DefaultNamespaces: map[string]cache.Config{},
+		DefaultTransform:  cache.TransformStripManagedFields(),
+	}
 	for _, ns := range managedNamespaces {
 		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
 	}
