@@ -69,7 +69,7 @@ func TestFIPSKeystoreManagedResources(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-managed").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -103,7 +103,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-user-override").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -158,7 +158,7 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-off-cleans-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -207,7 +207,7 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 		WithLabel("fips-ks-scp", selectorValue)
 	bWithLicense := test.LicenseTestBuilder(b)
 
-	config := commonv1.NewConfig(map[string]any{
+	config := commonv1.NewConfig(map[string]interface{}{
 		fipsSetting: true,
 	})
 	policy := policyv1alpha1.StackConfigPolicy{
@@ -263,7 +263,7 @@ func TestFIPSKeystoreWithSecureSettings(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-secure-settings").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]any{
+		WithAdditionalConfig(map[string]map[string]interface{}{
 			"masterdata": {
 				fipsSetting: true,
 			},
