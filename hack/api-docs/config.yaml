@@ -12,6 +12,10 @@ processor:
     - "ResourceListInt64"
     - "(NodeSets|NodeSet|Cluster)Resources"
     - NamespacedSecretSource
+    - "ElasticsearchMode$"
+    - "ObjectStoreConfig$"
+    - "ObjectStoreType$"
+    - "StatelessTier$"
   ignoreFields:
     - "TypeMeta$"
 

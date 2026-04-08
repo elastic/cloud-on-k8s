@@ -1205,17 +1205,6 @@ ElasticsearchHealth is the health of the cluster as returned by the health API.
 
 
 
-### ElasticsearchMode (string)  [#elasticsearchmode]
-
-ElasticsearchMode specifies the deployment mode for an Elasticsearch cluster.
-
-:::{admonition} Appears In:
-* [ElasticsearchSpec](#elasticsearchspec)
-
-:::
-
-
-
 ### ElasticsearchOrchestrationPhase (string)  [#elasticsearchorchestrationphase]
 
 ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
@@ -1240,8 +1229,6 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | --- | --- |
 | *`version`* __string__ | Version of Elasticsearch. |
 | *`image`* __string__ | Image is the Elasticsearch Docker image to deploy. |
-| *`mode`* __[ElasticsearchMode](#elasticsearchmode)__ | Mode selects the deployment mode for this Elasticsearch cluster.<br>"stateful" (default) uses persistent local volumes for data storage.<br>"stateless" uses an external object store for data storage. |
-| *`objectStore`* __[ObjectStoreConfig](#objectstoreconfig)__ | ObjectStore configures the external object store for stateless Elasticsearch.<br>Required when mode is "stateless", forbidden when mode is "stateful". |
 | *`remoteClusterServer`* __[RemoteClusterServer](#remoteclusterserver)__ | RemoteClusterServer specifies if the remote cluster server should be enabled.<br>This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication. |
 | *`http`* __[HTTPConfigWithClientOptions](#httpconfigwithclientoptions)__ | HTTP holds HTTP layer settings for Elasticsearch. |
 | *`transport`* __[TransportConfig](#transportconfig)__ | Transport holds transport layer settings for Elasticsearch. |
@@ -1369,38 +1356,9 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
-| *`tier`* __[StatelessTier](#statelesstier)__ | Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).<br>Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name. |
 | *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
-
-
-### ObjectStoreConfig  [#objectstoreconfig]
-
-ObjectStoreConfig holds the configuration for the external object store used in stateless mode.
-
-:::{admonition} Appears In:
-* [ElasticsearchSpec](#elasticsearchspec)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`type`* __[ObjectStoreType](#objectstoretype)__ | Type is the object store backend type (s3, gcs, or azure). |
-| *`bucket`* __string__ | Bucket is the name of the storage bucket. |
-| *`client`* __string__ | Client is the named client configuration in elasticsearch.yml.<br>Defaults to "default" if not specified. |
-| *`basePath`* __string__ | BasePath is the path prefix within the bucket. |
-
-
-### ObjectStoreType (string)  [#objectstoretype]
-
-ObjectStoreType specifies the type of object store backend.
-
-:::{admonition} Appears In:
-* [ObjectStoreConfig](#objectstoreconfig)
-
-:::
-
 
 
 ### RemoteCluster  [#remotecluster]
@@ -1520,17 +1478,6 @@ SelfSignedTransportCertificates holds configuration for the self-signed certific
 | Field | Description |
 | --- | --- |
 | *`disabled`* __boolean__ | Disabled indicates that provisioning of the self-signed certificates should be disabled. |
-
-
-### StatelessTier (string)  [#statelesstier]
-
-StatelessTier represents the functional tier of a NodeSet in stateless mode.
-
-:::{admonition} Appears In:
-* [NodeSet](#nodeset)
-
-:::
-
 
 
 ### TransportConfig  [#transportconfig]

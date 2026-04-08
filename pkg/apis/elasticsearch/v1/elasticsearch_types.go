@@ -118,11 +118,13 @@ type ElasticsearchSpec struct {
 	// Mode selects the deployment mode for this Elasticsearch cluster.
 	// "stateful" (default) uses persistent local volumes for data storage.
 	// "stateless" uses an external object store for data storage.
+	// Note: stateless mode is under active development and not yet ready for use.
 	// +kubebuilder:validation:Optional
 	Mode ElasticsearchMode `json:"mode,omitempty"`
 
 	// ObjectStore configures the external object store for stateless Elasticsearch.
 	// Required when mode is "stateless", forbidden when mode is "stateful".
+	// Note: stateless mode is under active development and not yet ready for use.
 	// +kubebuilder:validation:Optional
 	ObjectStore *ObjectStoreConfig `json:"objectStore,omitempty"`
 
@@ -385,6 +387,7 @@ type NodeSet struct {
 
 	// Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
 	// Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
+	// Note: stateless mode is under active development and not yet ready for use.
 	// +kubebuilder:validation:Optional
 	Tier StatelessTier `json:"tier,omitempty"`
 
