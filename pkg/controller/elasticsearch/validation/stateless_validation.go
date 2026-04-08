@@ -115,14 +115,17 @@ func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 		errs = append(errs, field.Required(objectStorePath, objectStoreRequiredMsg))
 	}
 
+	// TODO(#9324): support remote clusters for stateless Elasticsearch.
 	if len(es.Spec.RemoteClusters) > 0 {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("remoteClusters"), remoteClustersStatelessMsg))
 	}
 
+	// TODO(#9324): support remote cluster server for stateless Elasticsearch.
 	if es.Spec.RemoteClusterServer.Enabled {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("remoteClusterServer"), remoteClusterServerStatelessMsg))
 	}
 
+	// TODO(#9323): support client certificate authentication (mTLS) for stateless Elasticsearch.
 	if es.Spec.HTTP.TLS.Client.Authentication {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("http", "tls", "client", "authentication"), clientAuthStatelessMsg))
 	}
