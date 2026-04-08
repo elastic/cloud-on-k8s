@@ -101,6 +101,8 @@ const (
 	EventActionAutoscalingOffline = "AutoscalingOfflineReconciliation"
 	// EventActionDistributionCheck describes the distribution check step the controller was taking when the event was triggered.
 	EventActionDistributionCheck = "DistributionCheck"
+	// EventActionPendingOrchestrationChanges describes when spec changes have been made while the eck.k8s.elastic.co/pause-orchestration annotation is enabled.
+	EventActionPendingOrchestrationChanges = "PendingOrchestrationChanges"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

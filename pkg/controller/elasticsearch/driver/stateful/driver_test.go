@@ -16,6 +16,145 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
+//
+//func TestDriver_hasPendingSpecChanges(t *testing.T) {
+//	state := &shared.ReconcileState{
+//		Meta: metadata.Metadata{
+//			Labels: map[string]string{
+//				commonv1.TypeLabelName:         "elasticsearch",
+//				label.ClusterNameLabelName:     "test-cluster",
+//				label.StatefulSetNameLabelName: "test-cluster-es-nodeset",
+//			},
+//			Annotations: nil,
+//		},
+//		KeystoreResources: &keystore.Resources{},
+//	}
+//
+//	resolvedConfig := nodespec.ResolvedConfig{
+//		NodeSetConfigs: map[string]essettings.CanonicalConfig{
+//			"test-cluster-es-nodeset": {CanonicalConfig: settings.MustCanonicalConfig(commonv1.Config{Data: map[string]any{"user": "true"}})},
+//		},
+//	}
+//
+//	elasticsearch := esv1.Elasticsearch{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "test-cluster",
+//		},
+//		Spec: esv1.ElasticsearchSpec{
+//			Version: "9.3.1",
+//			NodeSets: []esv1.NodeSet{
+//				{
+//					Name:          "test-cluster-es-nodeset",
+//					Config:        nil,
+//					Count:         0,
+//					ZoneAwareness: nil,
+//					PodTemplate:   corev1.PodTemplateSpec{},
+//					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+//						{
+//							ObjectMeta: metav1.ObjectMeta{},
+//						},
+//					},
+//				},
+//			},
+//		},
+//	}
+//
+//	tests := []struct {
+//		name            string
+//		buildActualSets func(client k8s.Client) es_sset.StatefulSetList
+//		k8sClient       k8s.Client
+//		expected        bool
+//		expectedErr     error
+//	}{
+//		{
+//			name: "actual stateful sets are equal to expected stateful sets returns false",
+//			buildActualSets: func(client k8s.Client) es_sset.StatefulSetList {
+//				statefulSet, err := nodespec.BuildStatefulSet(
+//					context.Background(),
+//					client,
+//					elasticsearch,
+//					elasticsearch.Spec.NodeSets[0],
+//					essettings.CanonicalConfig{
+//						CanonicalConfig: settings.MustCanonicalConfig(commonv1.Config{Data: map[string]any{"user": "true"}}),
+//					},
+//					state.KeystoreResources,
+//					es_sset.StatefulSetList{},
+//					true,
+//					nodespec.PolicyConfig{},
+//					state.Meta,
+//					"trigger",
+//					true,
+//				)
+//				require.NoError(t, err)
+//
+//				return es_sset.StatefulSetList{statefulSet}
+//			},
+//			k8sClient: k8s.NewFakeClient(
+//				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-es-scripts"}},
+//			),
+//			expected:    false,
+//			expectedErr: nil,
+//		},
+//		{
+//			name:        "actual stateful sets are different than expected stateful sets returns true",
+//			k8sClient:   k8s.NewFakeClient(),
+//			expected:    true,
+//			expectedErr: nil,
+//		},
+//		{
+//			name:        "error getting expected stateful sets returns error",
+//			k8sClient:   k8s.NewFakeClient(),
+//			expected:    false,
+//			expectedErr: errors.New("error getting expected stateful sets"),
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			d := &Driver{
+//				BaseDriver: driver.BaseDriver{
+//					Parameters: driver.Parameters{
+//						Client: tt.k8sClient,
+//						ES:     elasticsearch,
+//						OperatorParameters: operator.Parameters{
+//							SetDefaultSecurityContext: true,
+//						},
+//					},
+//				},
+//			}
+//
+//			actualSets := tt.buildActualSets(tt.k8sClient)
+//
+//			hasChanged, err := d.hasPendingSpecChanges(context.Background(), actualSets, state, resolvedConfig)
+//			if tt.expectedErr != nil {
+//				assert.EqualErrorf(t, err, tt.expectedErr.Error(), "expected error %s but got %s", tt.expectedErr.Error(), err)
+//			} else {
+//				assert.NoError(t, err)
+//			}
+//			assert.Equal(t, tt.expected, hasChanged)
+//		})
+//	}
+//}
+//
+//func TestDriver_reconcileCriticalSteps(t *testing.T) {
+//	tests := []struct {
+//		name        string
+//		actualSets  es_sset.StatefulSetList
+//		meta        metadata.Metadata
+//		k8sClient   k8s.Client
+//		expected    bool
+//		expectedErr error
+//	}{
+//		{},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//
+//		})
+//	}
+//}
+
 func Test_allNodesRunningServiceAccounts(t *testing.T) {
 	type args struct {
 		saTokens       user.ServiceAccountTokens

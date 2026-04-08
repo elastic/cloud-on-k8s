@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -210,6 +211,156 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 				require.True(t, len(reason) > 0)
 			}
 			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestStatefulSetList_HasSpecDiff(t *testing.T) {
+	tests := []struct {
+		name string
+		this StatefulSetList
+		that StatefulSetList
+		want bool
+	}{
+		{
+			name: "both this and that statefulset are nil",
+			this: nil,
+			that: nil,
+			want: false,
+		},
+		{
+			name: "both this and that statefulset are empty",
+			this: StatefulSetList{},
+			that: StatefulSetList{},
+			want: false,
+		},
+		{
+			name: "one statefulset exists in this but not that",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{},
+				},
+			},
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset2",
+					},
+					Spec: appsv1.StatefulSetSpec{},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "StatefulSet exists in both this and that and have equal specs",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: ptr.To[int32](3),
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "sset1-pvc",
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											APIVersion: "apps/v1",
+											Kind:       "StatefulSet",
+											Name:       "sset1",
+											Controller: ptr.To[bool](true),
+										},
+										{
+											APIVersion: "apps/v1",
+											Kind:       "Elasticsearch",
+											Name:       "es1",
+											Controller: ptr.To[bool](true),
+										},
+									},
+									Annotations: map[string]string{
+										"foo": "bar",
+										"bar": "foo",
+									},
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
+								},
+							},
+						},
+						ServiceName:                          "sset1",
+						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
+						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
+						RevisionHistoryLimit:                 ptr.To[int32](3),
+						MinReadySeconds:                      2,
+						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
+						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+					},
+				},
+			},
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: ptr.To[int32](3),
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "sset1-pvc",
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											APIVersion: "apps/v1",
+											Kind:       "StatefulSet",
+											Name:       "sset1",
+											Controller: ptr.To[bool](true),
+										},
+										{
+											APIVersion: "apps/v1",
+											Kind:       "Elasticsearch",
+											Name:       "es1",
+											Controller: ptr.To[bool](true),
+										},
+									},
+									Annotations: map[string]string{
+										"bar": "foo",
+										"foo": "bar",
+									},
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
+								},
+							},
+						},
+						ServiceName:                          "sset1",
+						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
+						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
+						RevisionHistoryLimit:                 ptr.To[int32](3),
+						MinReadySeconds:                      2,
+						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
+						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.this.HasSpecDiff(tt.that)
 			assert.Equal(t, tt.want, got)
 		})
 	}

@@ -12,12 +12,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // Driver is the stateful Elasticsearch driver implementation using StatefulSets.
@@ -97,10 +103,61 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	if common.IsOrchestrationPaused(&d.ES) {
+		return results.WithError(d.reconcileCriticalSteps(ctx, sharedState, resolvedConfig, keystoreResources))
+	}
+
+	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "")
+
 	// Stateful specific: Node specs (StatefulSets, upgrades, downscales)
 	return results.WithResults(d.reconcileNodeSpecs(
 		ctx, sharedState.ESReachable, sharedState.ESClient, d.ReconcileState,
 		*sharedState.ResourcesState, keystoreResources, sharedState.Meta, resolvedConfig))
+}
+
+func (d *Driver) reconcileCriticalSteps(
+	ctx context.Context,
+	state *shared.ReconcileState,
+	resolvedConfig nodespec.ResolvedConfig,
+	keystoreResources *keystore.Resources,
+) error {
+	actualSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return err
+	}
+	if err = pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualSets, state.Meta); err != nil {
+		return err
+	}
+	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+
+	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
+	if err != nil {
+		return err
+	}
+
+	message := "Orchestration paused via annotation; no pending spec changes detected"
+	if hasPendingChanges {
+		message = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
+		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy,
+			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
+	}
+	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionTrue, message)
+	return nil
+}
+
+func (d *Driver) hasPendingSpecChanges(
+	ctx context.Context,
+	actualSets es_sset.StatefulSetList,
+	state *shared.ReconcileState,
+	resolvedConfig nodespec.ResolvedConfig,
+	keystoreResources *keystore.Resources,
+) (bool, error) {
+	expectedResources, err := nodespec.BuildExpectedResources(ctx, d.Client, d.ES, keystoreResources, actualSets,
+		d.OperatorParameters.SetDefaultSecurityContext, state.Meta, resolvedConfig)
+	if err != nil {
+		return false, err
+	}
+	return actualSets.HasSpecDiff(expectedResources.StatefulSets()), nil
 }
 
 // names returns the names of the given pods.
