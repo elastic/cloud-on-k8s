@@ -42,9 +42,9 @@ const (
 func skipUnlessFIPSKeystoreStackVersion(t *testing.T) {
 	t.Helper()
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.LT(esversion.FIPSKeystorePasswordMinVersion) {
+	if v.LT(esversion.KeystorePasswordMinVersion) {
 		t.Skipf("Skipping test: stack version %s is below FIPS managed keystore minimum %s",
-			test.Ctx().ElasticStackVersion, esversion.FIPSKeystorePasswordMinVersion.String())
+			test.Ctx().ElasticStackVersion, esversion.KeystorePasswordMinVersion.String())
 	}
 }
 
@@ -91,7 +91,15 @@ func TestFIPSKeystoreManagedResources(t *testing.T) {
 func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 	skipUnlessFIPSKeystoreStackVersion(t)
 	k := test.NewK8sClientOrFatal()
-	const userPassphraseFile = "/tmp/user-managed-fips-passphrase"
+
+	const (
+		passphraseSecretKey  = "passphrase"
+		passphraseMountPath  = "/mnt/elastic-internal/e2e-user-fips-keystore-passphrase"
+		passphraseVolumeName = "e2e-user-fips-keystore-passphrase"
+	)
+	passphraseSecretName := fmt.Sprintf("test-fips-ks-user-override-pass-%s", rand.String(4))
+	userPassphraseFile := fmt.Sprintf("%s/%s", passphraseMountPath, passphraseSecretKey)
+
 	b := elasticsearch.NewBuilder("test-fips-ks-user-override").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
@@ -100,16 +108,46 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 				fipsSetting: true,
 			},
 		}).
+		WithSecretVolumeMountForElasticsearch(passphraseVolumeName, passphraseSecretName, passphraseMountPath).
 		WithEnvironmentVariable("KEYSTORE_PASSWORD_FILE", userPassphraseFile)
 
 	steps := test.StepList{}.
+		WithStep(test.Step{
+			Name: "Create user FIPS keystore passphrase secret",
+			Test: test.Eventually(func() error {
+				sec := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      passphraseSecretName,
+						Namespace: b.Elasticsearch.Namespace,
+					},
+					Data: map[string][]byte{
+						// Fixed-length passphrase for the user-managed keystore file (not operator-generated).
+						passphraseSecretKey: []byte("e2e-user-fips-kst-phr-32bytes!!"),
+					},
+				}
+				return k.CreateOrUpdate(&sec)
+			}),
+		}).
 		WithSteps(b.InitTestSteps(k)).
 		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
 		WithSteps(b.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(b, k)).
 		WithStep(checkFIPSKeystoreSecretAbsentStep(k, b.Elasticsearch)).
 		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, true)).
-		WithSteps(b.DeletionTestSteps(k))
+		WithSteps(b.DeletionTestSteps(k)).
+		WithStep(test.Step{
+			Name: fmt.Sprintf("Delete secret %s/%s", b.Elasticsearch.Namespace, passphraseSecretName),
+			Test: test.Eventually(func() error {
+				var sec corev1.Secret
+				sec.Namespace = b.Elasticsearch.Namespace
+				sec.Name = passphraseSecretName
+				err := k.Client.Delete(context.Background(), &sec)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				return nil
+			}),
+		})
 
 	steps.RunSequential(t)
 }
@@ -167,6 +205,7 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
 		WithLabel("fips-ks-scp", selectorValue)
+	bWithLicense := test.LicenseTestBuilder(b)
 
 	config := commonv1.NewConfig(map[string]any{
 		fipsSetting: true,
@@ -187,7 +226,7 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 	}
 
 	steps := test.StepList{}.
-		WithSteps(b.InitTestSteps(k)).
+		WithSteps(bWithLicense.InitTestSteps(k)).
 		WithStep(deleteFIPSKeystoreSecretStep(k, b.Elasticsearch)).
 		WithStep(test.Step{
 			Name: "Create StackConfigPolicy with FIPS mode enabled",
@@ -195,8 +234,8 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 				return k.CreateOrUpdate(&policy)
 			}),
 		}).
-		WithSteps(b.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(b, k)).
+		WithSteps(bWithLicense.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(bWithLicense, k)).
 		WithStep(checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch)).
 		WithStep(checkFIPSPodTemplateInjectedStep(k, b.Elasticsearch, false)).
 		WithStep(test.Step{
@@ -209,7 +248,7 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 				return nil
 			}),
 		}).
-		WithSteps(b.DeletionTestSteps(k)).
+		WithSteps(bWithLicense.DeletionTestSteps(k)).
 		WithStep(checkFIPSKeystoreSecretDeletedStep(k, b.Elasticsearch))
 
 	steps.RunSequential(t)

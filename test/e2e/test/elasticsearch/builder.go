@@ -393,6 +393,36 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
+// WithSecretVolumeMountForElasticsearch appends a Secret-backed volume and mounts it read-only on the Elasticsearch
+// container for every node set. Call after WithEmptyDirVolumes (or any setup that defines pod volumes) so the secret
+// volume is merged with existing volumes. The Secret must exist in the namespace before pods are scheduled.
+func (b Builder) WithSecretVolumeMountForElasticsearch(volumeName, secretName, mountPath string) Builder {
+	defaultMode := int32(0o444)
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		ns := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
+		ns.Volumes = append(ns.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName,
+					DefaultMode: &defaultMode,
+				},
+			},
+		})
+		for j := range ns.Containers {
+			if ns.Containers[j].Name != esv1.ElasticsearchContainerName {
+				continue
+			}
+			ns.Containers[j].VolumeMounts = append(ns.Containers[j].VolumeMounts, corev1.VolumeMount{
+				Name:      volumeName,
+				ReadOnly:  true,
+				MountPath: mountPath,
+			})
+		}
+	}
+	return b
+}
+
 func (b Builder) WithDefaultPersistentVolumes() Builder {
 	storageClass := test.DefaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
