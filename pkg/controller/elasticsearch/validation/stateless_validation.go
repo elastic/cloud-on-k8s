@@ -101,16 +101,6 @@ func validateNoStatelessRoles(ns esv1.NodeSet, index int, v version.Version) fie
 func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 
-	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		// version validation is handled elsewhere
-		return errs
-	}
-
-	if !v.GTE(statelessMinVersion) {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, statelessMinVersionMsg))
-	}
-
 	if es.Spec.ObjectStore == nil {
 		errs = append(errs, field.Required(objectStorePath, objectStoreRequiredMsg))
 	}
@@ -154,8 +144,6 @@ func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 		case esv1.MasterTier, esv1.MLTier:
 			// valid tiers that don't affect the index/search requirement
 		}
-
-		errs = append(errs, validateNoConflictingRoles(ns, i, v)...)
 	}
 
 	if !hasIndex {
@@ -163,6 +151,21 @@ func validateStatelessConfig(es esv1.Elasticsearch) field.ErrorList {
 	}
 	if !hasSearch {
 		errs = append(errs, field.Required(field.NewPath("spec").Child("nodeSets"), tierSearchRequiredMsg))
+	}
+
+	// Version-dependent checks below.
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		// version validation is handled elsewhere
+		return errs
+	}
+
+	if !v.GTE(statelessMinVersion) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, statelessMinVersionMsg))
+	}
+
+	for i, ns := range es.Spec.NodeSets {
+		errs = append(errs, validateNoConflictingRoles(ns, i, v)...)
 	}
 
 	return errs
