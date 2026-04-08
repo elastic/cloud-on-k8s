@@ -63,7 +63,7 @@ echo "Initializing keystore."
 for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	{{ .KeystoreAddCommand }}
 done
 {{ if not .SkipInitializedFlag -}}

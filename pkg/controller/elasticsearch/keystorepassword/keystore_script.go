@@ -36,7 +36,7 @@ printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | {{ .KeystoreCreate
 for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	echo -n "$KEYSTORE_PASSWORD" | {{ .KeystoreAddCommand }}
 done
 unset KEYSTORE_PASSWORD

@@ -67,7 +67,11 @@ func ReconcileKeystorePasswordSecret(
 	passwordBytes := existingSecret.Data[KeystorePasswordKey]
 	if len(passwordBytes) == 0 {
 		var err error
-		passwordBytes, err = password.RandomBytesWithoutSymbols(max(passwordGenerator.Length(ctx), 14))
+		length, err := passwordGenerator.Length(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("while generating keystore password: %w", err)
+		}
+		passwordBytes, err = password.RandomBytesWithoutSymbols(max(length, 14))
 		if err != nil {
 			return nil, fmt.Errorf("while generating keystore password: %w", err)
 		}
