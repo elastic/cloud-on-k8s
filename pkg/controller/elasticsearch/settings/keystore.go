@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// Keystore password environment variable names.
 const (
 	// KeystorePasswordEnvVar is the environment variable name for the keystore password value.
 	KeystorePasswordEnvVar = "KEYSTORE_PASSWORD"

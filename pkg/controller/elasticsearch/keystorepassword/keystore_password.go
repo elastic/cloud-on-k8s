@@ -71,6 +71,8 @@ func ReconcileKeystorePasswordSecret(
 		if err != nil {
 			return nil, fmt.Errorf("while generating keystore password: %w", err)
 		}
+		// Use the larger of (user-defined length, or 14) as the length of the password to generate.
+		// 14 is the minimum for a password protected keystore in Elasticsearch.
 		passwordBytes, err = password.RandomBytesWithoutSymbols(max(length, 14))
 		if err != nil {
 			return nil, fmt.Errorf("while generating keystore password: %w", err)

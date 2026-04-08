@@ -64,7 +64,7 @@ func (r *randomPasswordGenerator) Generate(ctx context.Context) ([]byte, error) 
 	return randomBytesWithLengthAndCharset(24, defaultCharacterSet)
 }
 
-// Length returns the length of the password to generate.
+// Length returns the length of the password to generate along with any error that may occur.
 func (r *randomPasswordGenerator) Length(ctx context.Context) (int, error) {
 	useLength, err := r.useLength(ctx)
 	if err != nil {
