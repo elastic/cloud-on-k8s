@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -35,8 +34,11 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 			}
 			// check keystore entries on all Pods
 			if err := test.OnAllPods(pods, func(p corev1.Pod) error {
-				// exec into the pod to list keystore entries
-				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{initcontainer.KeystoreBinPath, "list"})
+				stdout, stderr, err := k.ExecInContainer(
+					k8s.ExtractNamespacedName(&p),
+					esv1.ElasticsearchContainerName,
+					test.ElasticsearchKeystoreListArgv(),
+				)
 				if err != nil {
 					return errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
 				}
@@ -45,9 +47,7 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 				var entries []string
 				// the keystore contains a "keystore.seed" entry we don't want to include in the comparison
 				noKeystoreSeeds := strings.Replace(stdout, "keystore.seed\n", "", 1)
-				// remove trailing newlines and whitespaces
 				trimmed := strings.TrimSpace(noKeystoreSeeds)
-				// split by lines, unless no output
 				if trimmed != "" {
 					entries = strings.Split(trimmed, "\n")
 				}
