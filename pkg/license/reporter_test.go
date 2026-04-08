@@ -157,14 +157,14 @@ func TestGet(t *testing.T) {
 			memoryUsage: memoryUsage{
 				appUsage: map[string]managedMemory{
 					elasticsearchKey: newManagedMemory(0, elasticsearchKey),
-					kibanaKey:        newManagedMemory(107374182400, kibanaKey),
+					kibanaKey:        newManagedMemory(214748364800, kibanaKey),
 					apmKey:           newManagedMemory(0, apmKey),
 					entSearchKey:     newManagedMemory(0, entSearchKey),
 					logstashKey:      newManagedMemory(0, logstashKey),
 				},
-				totalMemory: newManagedMemory(107374182400, totalKey),
+				totalMemory: newManagedMemory(214748364800, totalKey),
 			},
-			EnterpriseResourceUnits: 2,
+			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
 
