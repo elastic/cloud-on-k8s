@@ -9,7 +9,7 @@ import "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 // #nosec G101 -- this is a shell template variable name, not a hardcoded credential.
 const elasticsearchPasswordProtectedKeystoreScript = `#!/usr/bin/env bash
 
-set -eux
+set -eu
 
 {{ if not .SkipInitializedFlag -}}
 keystore_initialized_flag={{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
@@ -25,8 +25,6 @@ echo "Initializing keystore."
 # Remove any existing keystore to avoid interactive "Overwrite?" prompt
 rm -f {{ .KeystoreVolumePath }}/elasticsearch.keystore
 
-# Avoid exposing sensitive password values in init container logs.
-set +x
 KEYSTORE_PASSWORD=$(cat "{{ .KeystorePasswordPath }}")
 
 # create a password-protected keystore; printf supplies password twice (new + confirmation)
@@ -40,7 +38,6 @@ for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	echo -n "$KEYSTORE_PASSWORD" | {{ .KeystoreAddCommand }}
 done
 unset KEYSTORE_PASSWORD
-set -x
 {{ if not .SkipInitializedFlag -}}
 touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 {{ end -}}

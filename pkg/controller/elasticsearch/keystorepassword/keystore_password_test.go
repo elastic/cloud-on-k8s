@@ -464,12 +464,12 @@ func TestApplyPasswordProtectedKeystoreScript(t *testing.T) {
 			require.NotEmpty(t, tt.parameters.CustomScript)
 			rendered := renderCustomScript(t, tt.parameters)
 			require.Contains(t, rendered, "rm -f /usr/share/elasticsearch/config/elasticsearch.keystore")
-			require.Contains(t, rendered, "set +x")
+			require.Contains(t, rendered, "set -eu")
 			require.Contains(t, rendered, `KEYSTORE_PASSWORD=$(cat "/mnt/elastic-internal/keystore-password/keystore-password")`)
 			require.Contains(t, rendered, `printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p`)
 			require.Contains(t, rendered, `echo -n "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`)
 			require.Contains(t, rendered, "unset KEYSTORE_PASSWORD")
-			require.Contains(t, rendered, "set -x")
+			require.NotContains(t, rendered, "set -x")
 		})
 	}
 }
