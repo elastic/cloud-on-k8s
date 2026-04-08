@@ -178,7 +178,8 @@ func TestIsVersionGTE(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			funcs := TemplateFuncs(tt.version)
-			isGTE := funcs["isVersionGTE"].(func(string) (bool, error))
+			isGTE, ok := funcs["isVersionGTE"].(func(string) (bool, error))
+			require.True(t, ok, "isVersionGTE should be func(string) (bool, error)")
 			got, err := isGTE(tt.minVer)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
