@@ -47,7 +47,7 @@ echo "Initializing keystore."
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
 touch /bar/data/elastic-internal-init-keystore.ok

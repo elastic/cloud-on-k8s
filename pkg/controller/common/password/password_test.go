@@ -155,28 +155,32 @@ func TestRandomPasswordGenerator_Length(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name      string
-		length    int
-		useLength func(context.Context) (bool, error)
-		want      int
+		name        string
+		length      int
+		useLength   func(context.Context) (bool, error)
+		want        int
+		expectError bool
 	}{
 		{
-			name:      "returns configured length when enterprise features enabled",
-			length:    32,
-			useLength: func(context.Context) (bool, error) { return true, nil },
-			want:      32,
+			name:        "returns configured length when enterprise features enabled",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return true, nil },
+			want:        32,
+			expectError: false,
 		},
 		{
-			name:      "returns default length when enterprise features disabled",
-			length:    32,
-			useLength: func(context.Context) (bool, error) { return false, nil },
-			want:      24,
+			name:        "returns default length when enterprise features disabled",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return false, nil },
+			want:        24,
+			expectError: false,
 		},
 		{
-			name:      "returns default length when license check errors",
-			length:    32,
-			useLength: func(context.Context) (bool, error) { return false, errors.New("boom") },
-			want:      24,
+			name:        "returns error when license check errors",
+			length:      32,
+			useLength:   func(context.Context) (bool, error) { return false, errors.New("boom") },
+			want:        0,
+			expectError: true,
 		},
 	}
 
@@ -186,6 +190,10 @@ func TestRandomPasswordGenerator_Length(t *testing.T) {
 			require.NoError(t, err)
 
 			length, err := generator.Length(ctx)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, length)
 		})
@@ -238,9 +246,9 @@ func TestRandomPasswordGenerator_GenerateFallbackBehavior(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, result, tt.wantLen)
-			len, err := generator.Length(ctx)
+			generatedLength, err := generator.Length(ctx)
 			require.NoError(t, err)
-			require.Equal(t, tt.wantLen, len)
+			require.Equal(t, tt.wantLen, generatedLength)
 		})
 	}
 }
