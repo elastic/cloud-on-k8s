@@ -62,7 +62,11 @@ var (
 	// readOnlyRootFilesystem set to true.
 	TempVolume = volume.NewEmptyDirVolume(kbvolume.TempVolumeName, kbvolume.TempVolumeMountPath)
 
-	DefaultMemoryLimits = resource.MustParse("1Gi")
+	// Bumped from 1Gi to 2Gi as a temporary measure: Kibana 9.x raised its V8 heap limit from
+	// 60% to 75% of container memory (elastic/kibana#260491) to reduce OOMs, but 1Gi containers
+	// still don't provide enough headroom and crash during plugin initialization.
+	// Revisit once the Kibana team provides guidance on whether to change the defaults permanently.
+	DefaultMemoryLimits = resource.MustParse("2Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
