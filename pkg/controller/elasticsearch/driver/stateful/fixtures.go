@@ -136,7 +136,7 @@ func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations ma
 			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
 				ChangeBudget: esv1.ChangeBudget{
-					MaxUnavailable: ptr.To[int32](int32(maxUnavailable)),
+					MaxUnavailable: ptr.To[int32](int32(maxUnavailable)), //nolint:gosec // G115: maxUnavailable is a small test value, cannot realistically overflow int32
 				},
 			},
 		},

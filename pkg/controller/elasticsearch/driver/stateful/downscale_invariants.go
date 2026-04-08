@@ -61,7 +61,7 @@ func newDownscaleState(actualPods []corev1.Pod, es esv1.Elasticsearch) *downscal
 		masterRemovalInProgress: false,
 		runningMasters:          len(mastersReady),
 		removalsAllowed: calculateRemovalsAllowed(
-			int32(len(nodesReady)),
+			int32(len(nodesReady)), //nolint:gosec // G115: node count cannot realistically overflow int32
 			es.Spec.NodeCount(),
 			es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()),
 	}

@@ -92,8 +92,8 @@ func MustParse(v string) Version {
 }
 
 // From creates a new version from the given major, minor, patch numbers.
-func From(major, minor, patch int) Version {
-	return Version{Major: uint64(major), Minor: uint64(minor), Patch: uint64(patch)}
+func From(major, minor, patch uint64) Version {
+	return Version{Major: major, Minor: minor, Patch: patch}
 }
 
 // MinFor creates a new version for the given major, minor, patch numbers with lowest PreRelease version, ie.
