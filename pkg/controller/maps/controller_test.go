@@ -229,6 +229,8 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			},
 			post: func(r ReconcileMapsServer) {
 				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
+				require.Equal(t, "Warning Validation Version 7.12.0 is EOL and support for it will be removed in a future release of the ECK operator", e)
+				e = <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
 
 				// observedGeneration should have been updated

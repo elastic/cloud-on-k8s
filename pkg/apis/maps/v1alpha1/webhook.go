@@ -6,24 +6,21 @@ package v1alpha1
 
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Elastic Maps Server validating webhook.
-	webhookPath = "/validate-ems-k8s-elastic-co-v1alpha1-mapsservers"
+	// WebhookPath is the HTTP path for the Elastic Maps Server validating webhook.
+	WebhookPath = "/validate-ems-k8s-elastic-co-v1alpha1-mapsservers"
 )
 
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("maps-v1alpha1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*ElasticMapsServer) field.ErrorList{
 		checkNoUnknownFields,
@@ -33,39 +30,18 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=mapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
+// +kubebuilder:webhook:path=/validate-ems-k8s-elastic-co-v1alpha1-mapsservers,mutating=false,failurePolicy=ignore,groups=maps.k8s.elastic.co,resources=elasticmapsservers,verbs=create;update,versions=v1alpha1,name=elastic-ems-validation-v1alpha1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
 
-var _ admission.Validator = (*ElasticMapsServer)(nil)
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", m.Name)
+// Validate is called by the validating webhook to validate an ElasticMapsServer resource. There's no update-specific checks, so the old parameter is ignored.
+func Validate(m *ElasticMapsServer, _ *ElasticMapsServer) (admission.Warnings, error) {
 	return m.validate()
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", m.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (m *ElasticMapsServer) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", m.Name)
-	return m.validate()
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (m *ElasticMapsServer) WebhookPath() string {
-	return webhookPath
 }
 
 func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	for _, dc := range defaultChecks {
 		if err := dc(m); err != nil {
@@ -84,7 +60,6 @@ func (m *ElasticMapsServer) validate() (admission.Warnings, error) {
 	}
 
 	if len(errors) > 0 {
-		validationLog.V(1).Info("failed validation", "errors", errors)
 		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}
 	return warnings, nil

@@ -308,6 +308,44 @@ func Test_supportsRemoteClusterUsingAPIKey(t *testing.T) {
 	}
 }
 
+func Test_statelessSkipsRemoteClusterAPIKeyValidation(t *testing.T) {
+	// A stateless cluster with remote clusters should only get the mode-specific
+	// "remote clusters not supported" error, not the API-key-version error.
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
+		Spec: esv1.ElasticsearchSpec{
+			Version:     "9.4.0",
+			Mode:        esv1.ElasticsearchModeStateless,
+			ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
+			RemoteClusters: []esv1.RemoteCluster{
+				{Name: "remote", APIKey: &esv1.RemoteClusterAPIKey{}},
+			},
+			RemoteClusterServer: esv1.RemoteClusterServer{Enabled: true},
+			NodeSets: []esv1.NodeSet{
+				{Name: "index", Count: 1},
+				{Name: "search", Count: 2},
+			},
+		},
+	}
+	checker := license.MockLicenseChecker{EnterpriseEnabled: true}
+	errs := validations(context.Background(), checker, nil)
+	var allErrs field.ErrorList
+	for _, v := range errs {
+		allErrs = append(allErrs, v(es)...)
+	}
+
+	// Should get mode-specific errors only, not API-key-version errors.
+	msgs := make([]string, 0, len(allErrs))
+	for _, e := range allErrs {
+		msgs = append(msgs, e.Detail)
+	}
+	for _, msg := range msgs {
+		assert.NotContains(t, msg, "minimum required version for remote cluster")
+	}
+	assert.Contains(t, msgs, remoteClustersStatelessMsg)
+	assert.Contains(t, msgs, remoteClusterServerStatelessMsg)
+}
+
 func Test_validName(t *testing.T) {
 	tests := []struct {
 		name         string

@@ -5,9 +5,13 @@
 package validation
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
@@ -18,8 +22,18 @@ const (
 )
 
 var warnings = []validation{
-	noUnsupportedSettings,
+	deprecatedStackVersionWarning,
 	validZoneAwarenessAffinityWarnings,
+	statelessNodeRolesWarning,
+}
+
+// deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
+func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
+	deprecationWarning, _ := commonv1.CheckDeprecatedStackVersion(es.Spec.Version)
+	if deprecationWarning == "" {
+		return nil
+	}
+	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
@@ -44,6 +58,25 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 	for _, setting := range unsupported {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
 	}
+	errs = append(errs, validateClientAuthentication(config, index)...)
+	return errs
+}
+
+// validateClientAuthentication reports mandatory HTTP client authentication
+// (value "required") as a Forbidden field error so admission surfaces it as a
+// warning, not a denial.
+func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
+	const forbiddenValue = "required" // we allow 'none' and 'optional' but 'required' is not supported
+
+	var errs field.ErrorList
+	value, err := config.String(esv1.XPackSecurityHttpSslClientAuthentication)
+	if err != nil {
+		return errs
+	}
+	if value == forbiddenValue {
+		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(esv1.XPackSecurityHttpSslClientAuthentication),
+			unsupportedClientAuthenticationMsg))
+	}
 	return errs
 }
 
@@ -66,14 +99,24 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 	return warnings
 }
 
-func CheckForWarnings(es esv1.Elasticsearch) error {
-	warnings, errors := check(es, warnings)
-	if warnings != "" {
-		warningError := field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, warnings)}
-		errors = append(errors, warningError...)
+// settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
+// violations and unsupported xpack.security.http.ssl.client_authentication
+// values (Forbidden) are surfaced as non-blocking admission warnings; Invalid
+// config (unparseable canonical config) must deny admission.
+func settingsWarningsAndErrors(es esv1.Elasticsearch) (admission.Warnings, field.ErrorList) {
+	var (
+		admissionWarnings admission.Warnings
+		blocking          field.ErrorList
+	)
+	for _, e := range noUnsupportedSettings(es) {
+		switch e.Type {
+		case field.ErrorTypeForbidden:
+			admissionWarnings = append(admissionWarnings, fmt.Sprintf("%s: %s", e.Field, e.Detail))
+		case field.ErrorTypeInvalid:
+			blocking = append(blocking, e)
+		default:
+			blocking = append(blocking, e)
+		}
 	}
-	if len(errors) > 0 {
-		return errors.ToAggregate()
-	}
-	return nil
+	return admissionWarnings, blocking
 }

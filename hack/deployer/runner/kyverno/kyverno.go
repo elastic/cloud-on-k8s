@@ -25,7 +25,8 @@ var policiesManifest string
 var GKEPolicies string
 
 const (
-	waitForKyvernoDeployment = `wait deployment kyverno -n kyverno --for condition=Available=True --timeout=15m`
+	waitForKyvernoAdmissionDeployment  = `wait deployment kyverno-admission-controller -n kyverno --for condition=Available=True --timeout=20m`
+	waitForKyvernoBackgroundDeployment = `wait deployment kyverno-background-controller -n kyverno --for condition=Available=True --timeout=20m`
 )
 
 func Install(globalKubectlOptions ...string) error {
@@ -38,11 +39,14 @@ func Install(globalKubectlOptions ...string) error {
 	defer os.RemoveAll(dir)
 
 	log.Println("Installing Kyverno")
-	if err := apply(k, dir, installerManifest, "install.yaml"); err != nil {
+	if err := apply(k, dir, installerManifest, "install.yaml", "--server-side"); err != nil {
 		return err
 	}
 	log.Println("Waiting for Kyverno Pod to be ready...")
-	if err := k.NewCommand(waitForKyvernoDeployment).Run(); err != nil {
+	if err := k.NewCommand(waitForKyvernoAdmissionDeployment).Run(); err != nil {
+		return err
+	}
+	if err := k.NewCommand(waitForKyvernoBackgroundDeployment).Run(); err != nil {
 		return err
 	}
 
@@ -55,12 +59,16 @@ func Install(globalKubectlOptions ...string) error {
 	return nil
 }
 
-func apply(k *Kubectl, workDir string, content string, tmpFilename string) error {
+func apply(k *Kubectl, workDir string, content string, tmpFilename string, args ...string) error {
 	path := filepath.Join(workDir, tmpFilename)
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		return err
 	}
-	return k.NewCommand(fmt.Sprintf(`apply -f %s`, path)).Run()
+	cmd := fmt.Sprintf(`apply -f %s`, path)
+	if len(args) > 0 {
+		cmd = fmt.Sprintf(`apply %s -f %s`, strings.Join(args, " "), path)
+	}
+	return k.NewCommand(cmd).Run()
 }
 
 type Kubectl struct {

@@ -10,9 +10,6 @@ linters:
         or more contributor license agreements. Licensed under the Elastic License 2.0;
         you may not use this file except in compliance with the Elastic License 2.0.
 
-    gosec:
-      excludes:
-        - G115
 
     nolintlint:
       require-specific: true
@@ -105,10 +102,6 @@ linters:
           - staticcheck
         path: pkg/controller/common/tracing/apmclientgo/client.go
         text: SA1019
-      - linters:
-          - staticcheck
-        # added exclusion until https://github.com/elastic/cloud-on-k8s/issues/8442 is implemented
-        text: 'SA1019: .* is deprecated: Consider CustomValidator instead, this only restores the old ctrl-runtime interface for bwc.'
       - linters:
           - staticcheck
         # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed

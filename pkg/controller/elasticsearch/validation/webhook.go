@@ -6,21 +6,18 @@ package validation
 
 import (
 	"context"
-	"net/http"
 
-	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1,name=elastic-es-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
@@ -31,137 +28,97 @@ const (
 
 var eslog = ulog.Log.WithName("es-validation")
 
-// RegisterWebhook will register the Elasticsearch validating webhook.
+// RegisterWebhook registers the Elasticsearch validating webhook.
 func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string) {
-	wh := &validatingWebhook{
+	inner := &validator{
 		client:               mgr.GetClient(),
-		decoder:              admission.NewDecoder(mgr.GetScheme()),
 		validateStorageClass: validateStorageClass,
 		exposedNodeLabels:    exposedNodeLabels,
 		licenseChecker:       licenseChecker,
-		managedNamespaces:    set.Make(managedNamespaces...),
 	}
+	// License checks run inside validations(), so we pass nil here
+	// (the reconciler calls ValidateElasticsearch directly).
+	v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, managedNamespaces, inner)
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
-	mgr.GetWebhookServer().Register(webhookPath, &webhook.Admission{Handler: wh})
+	wh := admission.WithValidator[*esv1.Elasticsearch](mgr.GetScheme(), v)
+	mgr.GetWebhookServer().Register(webhookPath, wh)
 }
 
-type validatingWebhook struct {
+type validator struct {
 	client               k8s.Client
-	decoder              admission.Decoder
 	validateStorageClass bool
 	exposedNodeLabels    NodeLabels
 	licenseChecker       license.Checker
-	managedNamespaces    set.StringSet
 }
 
-func (wh *validatingWebhook) validateCreate(ctx context.Context, es esv1.Elasticsearch) ([]string, error) {
+func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	var warnings []string
-
-	warn, err := ValidateElasticsearch(ctx, es, wh.licenseChecker, wh.exposedNodeLabels)
-	if warn != "" {
-		warnings = append(warnings, warn)
-	}
-
-	if allocationDelayWarning := validateRestartAllocationDelayWarnings(es); allocationDelayWarning != "" {
-		warnings = append(warnings, allocationDelayWarning)
-	}
-
-	return warnings, err
+	return ValidateElasticsearch(ctx, *es, v.licenseChecker, v.exposedNodeLabels)
 }
 
-func (wh *validatingWebhook) validateUpdate(ctx context.Context, prev esv1.Elasticsearch, curr esv1.Elasticsearch) ([]string, error) {
-	eslog.V(1).Info("validate update", "name", curr.Name)
+func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
+	eslog.V(1).Info("validate update", "name", newObj.Name)
+
+	// Ensure we get the warnings from the validation function such that warnings are returned even on denial.
+	warnings, validationErr := ValidateElasticsearch(ctx, *newObj, v.licenseChecker, v.exposedNodeLabels)
+	if w := validateRestartTriggerWarnings(ctx, v.client, *oldObj, *newObj); w != "" {
+		warnings = append(warnings, w)
+	}
+
 	var errs field.ErrorList
-	for _, val := range updateValidations(ctx, wh.client, wh.validateStorageClass) {
-		if err := val(prev, curr); err != nil {
+	for _, val := range updateValidations(ctx, v.client, v.validateStorageClass) {
+		if err := val(*oldObj, *newObj); err != nil {
 			errs = append(errs, err...)
 		}
 	}
 	if len(errs) > 0 {
-		return nil, apierrors.NewInvalid(
-			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
-			curr.Name, errs)
-	}
-
-	var warnings []string
-
-	ew, err := ValidateElasticsearch(ctx, curr, wh.licenseChecker, wh.exposedNodeLabels)
-	if ew != "" {
-		warnings = append(warnings, ew)
-	}
-	if err != nil {
-		return warnings, err
-	}
-
-	if restartTriggerWarning := validateRestartTriggerWarnings(ctx, wh.client, prev, curr); restartTriggerWarning != "" {
-		warnings = append(warnings, restartTriggerWarning)
-	}
-
-	if allocationDelayWarning := validateRestartAllocationDelayWarnings(curr); allocationDelayWarning != "" {
-		warnings = append(warnings, allocationDelayWarning)
-	}
-
-	return warnings, nil
-}
-
-// Handle is called when any request is sent to the webhook, satisfying the admission.Handler interface.
-func (wh *validatingWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
-	es := &esv1.Elasticsearch{}
-	err := wh.decoder.DecodeRaw(req.Object, es)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-
-	// If this Elasticsearch instance is not within the set of managed namespaces
-	// for this operator ignore this request.
-	if wh.managedNamespaces.Count() > 0 && !wh.managedNamespaces.Has(es.Namespace) {
-		eslog.V(1).Info("Skip Elasticsearch resource validation", "name", es.Name, "namespace", es.Namespace)
-		return admission.Allowed("")
-	}
-
-	if req.Operation == admissionv1.Create {
-		warnings, err := wh.validateCreate(ctx, *es)
-		if err != nil {
-			return admission.Denied(err.Error())
-		}
-
-		if len(warnings) > 0 {
-			return admission.Allowed("").WithWarnings(warnings...)
-		}
-
-		return admission.Allowed("")
-	}
-
-	if req.Operation == admissionv1.Update {
-		oldObj := &esv1.Elasticsearch{}
-		err = wh.decoder.DecodeRaw(req.OldObject, oldObj)
-		if err != nil {
-			return admission.Errored(http.StatusBadRequest, err)
-		}
-
-		warnings, err := wh.validateUpdate(ctx, *oldObj, *es)
-		if err != nil {
-			return admission.Denied(err.Error())
-		}
-
-		if len(warnings) > 0 {
-			return admission.Allowed("").WithWarnings(warnings...)
-		}
-	}
-
-	return admission.Allowed("")
-}
-
-// ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs.
-func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (string, error) {
-	warnings, errs := check(es, validations(ctx, checker, exposedNodeLabels))
-	if len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
+			newObj.Name, errs)
+	}
+	return warnings, validationErr
+}
+
+func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (admission.Warnings, error) {
+	return nil, nil
+}
+
+// ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs returning warnings and an error if validation fails.
+func ValidateElasticsearch(ctx context.Context, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (admission.Warnings, error) {
+	if err := runChecks(es, validations(ctx, checker, exposedNodeLabels)); err != nil {
+		return nil, err
+	}
+	var admWarnings admission.Warnings
+	for _, val := range warnings {
+		for _, fieldErr := range val(es) {
+			admWarnings = append(admWarnings, fieldErr.Detail)
+		}
+	}
+	if w := validateRestartAllocationDelayWarnings(es); w != "" {
+		admWarnings = append(admWarnings, w)
+	}
+	settingWarns, settingErrs := settingsWarningsAndErrors(es)
+	admWarnings = append(admWarnings, settingWarns...)
+	if len(settingErrs) > 0 {
+		return admWarnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
+			es.Name,
+			settingErrs,
+		)
+	}
+	return admWarnings, nil
+}
+
+// runChecks executes the given validations against the Elasticsearch resource.
+// It returns an error if any validation fails.
+func runChecks(es esv1.Elasticsearch, validations []validation) error {
+	errs := check(es, validations)
+	if len(errs) > 0 {
+		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
 			es.Name,
 			errs,
 		)
 	}
-	return warnings, nil
+	return nil
 }

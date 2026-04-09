@@ -33,7 +33,7 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 		WithESMasterDataNodes(minClusterSizeFromKibanaVersion(t, dstVersion), elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
-	srcNodeCount := 3
+	srcNodeCount := int32(3)
 	if srcVersion == "7.1.1" {
 		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
 		// can be removed once we stop supporting 7.1.1
@@ -93,7 +93,7 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 		WithESMasterDataNodes(minClusterSizeFromKibanaVersion(t, dstVersion), elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
-	srcNodeCount := 3
+	srcNodeCount := int32(3)
 	if srcVersion == "7.1.1" {
 		// workaround for https://github.com/elastic/kibana/pull/37674 to avoid accidental .kibana index creation
 		// can be removed once we stop supporting 7.1.1
@@ -163,7 +163,7 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 		WithVersion(srcVersion).
 		TolerateMutationChecksFailures()
 
-	srcNodeCount := 3
+	srcNodeCount := int32(3)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(srcNodeCount).
@@ -208,7 +208,7 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 		WithESMasterDataNodes(esNodes, elasticsearch.DefaultResources).
 		WithVersion(dstVersion)
 
-	srcNodeCount := 3
+	srcNodeCount := int32(3)
 
 	kbBuilder1 := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).

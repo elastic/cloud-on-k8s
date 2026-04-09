@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -147,7 +148,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "client auth setting required OK (client cert validation supported)",
+			name: "client auth setting required yields forbidden field error for warning split",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -162,7 +163,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					},
 				},
 			},
-			expectErrors: false,
+			expectErrors: true,
 		},
 	}
 	for _, tt := range tests {
@@ -174,6 +175,47 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
+	t.Run("mandatory client authentication is warning only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityHttpSslClientAuthentication: "required",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
+	})
 }
 
 func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {

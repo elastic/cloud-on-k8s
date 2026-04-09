@@ -24,9 +24,7 @@ import (
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -45,15 +43,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -63,9 +57,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
-	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
-	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
@@ -78,8 +70,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -89,12 +79,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/v3/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
-	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/license"
@@ -607,7 +595,10 @@ func startOperator(ctx context.Context) error {
 	}
 
 	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+	opts.Cache = cache.Options{
+		DefaultNamespaces: map[string]cache.Config{},
+		DefaultTransform:  cache.TransformStripManagedFields(),
+	}
 	for _, ns := range managedNamespaces {
 		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
 	}
@@ -1033,113 +1024,6 @@ func garbageCollectAutoOpsResources(ctx context.Context, k8sClient k8s.Client, d
 		return fmt.Errorf("AutoOps garbage collection failed: %w", err)
 	}
 	return nil
-}
-
-func setupWebhook(
-	ctx context.Context,
-	mgr manager.Manager,
-	params operator.Parameters,
-	webhookCertDir string,
-	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels,
-	managedNamespaces []string,
-	tracer *apm.Tracer,
-) {
-	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
-	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
-			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
-		}
-	}
-
-	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-	// setup webhooks for supported types
-	webhookObjects := []interface {
-		runtime.Object
-		admission.Validator
-		WebhookPath() string
-	}{
-		&agentv1alpha1.Agent{},
-		&apmv1.ApmServer{},
-		&apmv1beta1.ApmServer{},
-		&beatv1beta1.Beat{},
-		&entv1.EnterpriseSearch{},
-		&entv1beta1.EnterpriseSearch{},
-		&esv1beta1.Elasticsearch{},
-		&kbv1.Kibana{},
-		&kbv1beta1.Kibana{},
-		&emsv1alpha1.ElasticMapsServer{},
-		&eprv1alpha1.PackageRegistry{},
-		&policyv1alpha1.StackConfigPolicy{},
-	}
-	for _, obj := range webhookObjects {
-		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
-			Manager:          mgr,
-			WebhookPath:      obj.WebhookPath(),
-			ManagedNamespace: managedNamespaces,
-			Validator:        obj,
-			LicenseChecker:   checker,
-		})
-	}
-
-	// Logstash, Elasticsearch, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
-	// differently in order to access the k8s client or license checker directly.
-	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
-	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
-	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
-
-	// wait for the secret to be populated in the local filesystem before returning
-	interval := time.Second * 1
-	timeout := time.Second * 30
-	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
-	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	//nolint:staticcheck // keep
-	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
-		_, err := os.Stat(keyPath)
-		// err could be that the file does not exist, but also that permission was denied or something else
-		if os.IsNotExist(err) {
-			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
-
-			return false, nil
-		} else if err != nil {
-			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)
-			return false, err
-		}
-		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
-		return true, nil
-	})
-	if err != nil {
-		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
-		os.Exit(1)
-	}
-}
-
-func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
-	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
-	defer tracing.EndContextTransaction(ctx)
-	log.Info("Automatic management of the webhook certificates enabled")
-	// Ensure that all the certificates needed by the webhook server are already created
-	webhookParams := webhook.Params{
-		Name:       viper.GetString(operator.WebhookNameFlag),
-		Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
-		SecretName: viper.GetString(operator.WebhookSecretFlag),
-		Rotation:   certRotation,
-	}
-
-	// retrieve the current webhook configuration interface
-	wh, err := webhookParams.NewAdmissionControllerInterface(ctx, clientset)
-	if err != nil {
-		return err
-	}
-
-	// Force a first reconciliation to create the resources before the server is started
-	if err := webhookParams.ReconcileResources(ctx, clientset, wh); err != nil {
-		return err
-	}
-
-	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
 }
 
 func fipsLog() {

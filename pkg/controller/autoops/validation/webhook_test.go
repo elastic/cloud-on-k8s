@@ -14,9 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func asJSON(obj any) []byte {
@@ -27,9 +28,7 @@ func asJSON(obj any) []byte {
 	return data
 }
 
-func Test_validatingWebhook_Handle(t *testing.T) {
-	decoder := admission.NewDecoder(k8s.Scheme())
-
+func Test_validator_Handle(t *testing.T) {
 	tests := []struct {
 		name              string
 		enterpriseEnabled bool
@@ -132,7 +131,7 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			enterpriseEnabled: false,
 			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
 				Operation: admissionv1.Delete,
-				Object: runtime.RawExtension{
+				OldObject: runtime.RawExtension{
 					Raw: asJSON(func() any {
 						policy := newPolicy("9.2.3")
 						policy.Namespace = "ns"
@@ -160,12 +159,12 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wh := &validatingWebhook{
-				decoder:           decoder,
-				licenseChecker:    license.MockLicenseChecker{EnterpriseEnabled: tt.enterpriseEnabled},
-				managedNamespaces: set.Make(tt.managedNamespaces...),
+			inner := &validator{
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: tt.enterpriseEnabled},
 			}
+			v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, tt.managedNamespaces, inner)
 
+			wh := admission.WithValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](k8s.Scheme(), v)
 			got := wh.Handle(context.Background(), tt.req)
 			require.Equal(t, tt.wantAllowed, got.Allowed)
 			if !got.Allowed {

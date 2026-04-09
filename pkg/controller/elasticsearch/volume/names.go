@@ -30,6 +30,10 @@ const (
 	ElasticsearchDataVolumeName = "elasticsearch-data"
 	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
 
+	// ElasticsearchCacheVolumeName is the volume name for stateless cache storage.
+	// Users can provide a volumeClaimTemplate with this name to customize the cache volume size.
+	ElasticsearchCacheVolumeName = "elasticsearch-cache"
+
 	ElasticsearchLogsVolumeName = "elasticsearch-logs"
 	ElasticsearchLogsMountPath  = "/usr/share/elasticsearch/logs"
 
