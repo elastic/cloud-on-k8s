@@ -24,6 +24,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonkeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eskeystorepassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
@@ -70,7 +71,7 @@ func TestFIPSKeystoreManagedResources(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-managed").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -104,7 +105,7 @@ func TestFIPSKeystoreUserOverrideSkipsManagement(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-user-override").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -159,7 +160,7 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-off-cleans-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -189,6 +190,7 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 			}),
 		}).
 		WithStep(checkFIPSKeystoreSecretDeletedStep(k, b.Elasticsearch)).
+		WithStep(elasticsearch.CheckClusterHealth(b, k)).
 		WithSteps(b.DeletionTestSteps(k))
 
 	steps.RunSequential(t)
@@ -208,7 +210,7 @@ func TestFIPSKeystoreManagedResourcesFromStackConfigPolicy(t *testing.T) {
 		WithLabel("fips-ks-scp", selectorValue)
 	bWithLicense := test.LicenseTestBuilder(b)
 
-	config := commonv1.NewConfig(map[string]interface{}{
+	config := commonv1.NewConfig(map[string]any{
 		fipsSetting: true,
 	})
 	policy := policyv1alpha1.StackConfigPolicy{
@@ -264,7 +266,7 @@ func TestFIPSKeystoreWithSecureSettings(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-fips-ks-secure-settings").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes().
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,
 			},
@@ -400,7 +402,7 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 				return err
 			}
 
-			esContainer := containerByName(sset.Spec.Template.Spec.Containers, esv1.ElasticsearchContainerName)
+			esContainer := pod.ContainerByName(sset.Spec.Template.Spec, esv1.ElasticsearchContainerName)
 			if esContainer == nil {
 				return fmt.Errorf("container %q not found", esv1.ElasticsearchContainerName)
 			}
@@ -413,8 +415,8 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 	}
 }
 
-func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.Container) error {
-	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
+func checkFIPSPodTemplateUserOverride(podSpec *corev1.PodSpec, esContainer *corev1.Container) error {
+	hasFIPSVolume := slices.ContainsFunc(podSpec.Volumes, func(v corev1.Volume) bool {
 		return v.Name == esvolume.KeystorePasswordSecretVolumeName
 	})
 	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
@@ -422,7 +424,7 @@ func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.C
 	})
 
 	initHasFIPSManagedArtifacts := false
-	if keystoreInit := containerByName(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
+	if keystoreInit := pod.InitContainerByName(*podSpec, commonkeystore.InitContainerName); keystoreInit != nil {
 		initHasFIPSMount := slices.ContainsFunc(keystoreInit.VolumeMounts, func(vm corev1.VolumeMount) bool {
 			return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 		})
@@ -456,15 +458,15 @@ func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.C
 	return nil
 }
 
-func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev1.Container) error {
-	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
+func checkFIPSPodTemplateOperatorManaged(podSpec *corev1.PodSpec, esContainer *corev1.Container) error {
+	hasFIPSVolume := slices.ContainsFunc(podSpec.Volumes, func(v corev1.Volume) bool {
 		return v.Name == esvolume.KeystorePasswordSecretVolumeName
 	})
 	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
 		return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 	})
 
-	keystoreInitContainer := containerByName(pod.InitContainers, commonkeystore.InitContainerName)
+	keystoreInitContainer := pod.InitContainerByName(*podSpec, commonkeystore.InitContainerName)
 	if keystoreInitContainer == nil {
 		return fmt.Errorf("container %q not found", commonkeystore.InitContainerName)
 	}
@@ -524,13 +526,4 @@ func keystoreInitCommandUsesPasswordFile(cmd []string) bool {
 	script := strings.Join(cmd, " ")
 	return strings.Contains(script, "create -p") &&
 		strings.Contains(script, `KEYSTORE_PASSWORD=$(cat "`)
-}
-
-func containerByName(containers []corev1.Container, name string) *corev1.Container {
-	for i := range containers {
-		if containers[i].Name == name {
-			return &containers[i]
-		}
-	}
-	return nil
 }
