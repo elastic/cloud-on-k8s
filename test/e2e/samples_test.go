@@ -37,6 +37,10 @@ func TestSamples(t *testing.T) {
 	for _, sample := range sampleFiles {
 		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
+		if hasStatelessElasticsearch(builders) {
+			t.Logf("Skipping %s: stateless Elasticsearch samples are not yet supported in e2e tests", sample)
+			continue
+		}
 		t.Run(testName, func(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
@@ -145,6 +149,15 @@ func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.Object
 	}
 
 	return ref
+}
+
+func hasStatelessElasticsearch(builders []test.Builder) bool {
+	for _, b := range builders {
+		if esBuilder, ok := b.(elasticsearch.Builder); ok && esBuilder.Elasticsearch.IsStateless() {
+			return true
+		}
+	}
+	return false
 }
 
 func tweakLocalServiceRef(ref commonv1.LocalObjectSelector, suffix string) commonv1.LocalObjectSelector {
