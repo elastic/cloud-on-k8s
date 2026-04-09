@@ -76,11 +76,17 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
-	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil, meta)
+	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	ver, err := version.Parse(es.Spec.Version)
+
+	cfg, err := stackmon.RenderTemplate(ver, filebeatConfigTemplate, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, cfg, nil, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
