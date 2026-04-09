@@ -58,4 +58,7 @@ const (
 
 	InternalClientCertVolumeName = "elastic-internal-client-cert"
 	InternalClientCertMountPath  = "/usr/share/elasticsearch/config/client-cert"
+
+	KeystorePasswordSecretVolumeName      = "elastic-internal-keystore-password"
+	KeystorePasswordSecretVolumeMountPath = "/mnt/elastic-internal/keystore-password" //nolint:gosec
 )
