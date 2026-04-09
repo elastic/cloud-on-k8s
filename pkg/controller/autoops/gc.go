@@ -240,7 +240,7 @@ func cleanupOrphanedConfigMaps(
 	return nil
 }
 
-// cleanupOrphanedSecrets removes secrets (CA and API key) for ES clusters that no longer match the selector.
+// cleanupOrphanedSecrets removes secrets (CA, client cert, and API key) for ES clusters that no longer match the selector.
 func cleanupOrphanedSecrets(
 	ctx context.Context,
 	log logr.Logger,
