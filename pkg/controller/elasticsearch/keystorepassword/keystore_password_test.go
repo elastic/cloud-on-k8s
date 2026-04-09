@@ -28,6 +28,7 @@ import (
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -385,7 +386,7 @@ func TestInjectKeystorePassword(t *testing.T) {
 
 			var sourceVolume *corev1.Volume
 			for i := range builder.PodTemplate.Spec.Volumes {
-				if builder.PodTemplate.Spec.Volumes[i].Name == VolumeName {
+				if builder.PodTemplate.Spec.Volumes[i].Name == esvolume.KeystorePasswordSecretVolumeName {
 					sourceVolume = &builder.PodTemplate.Spec.Volumes[i]
 				}
 			}
@@ -398,8 +399,8 @@ func TestInjectKeystorePassword(t *testing.T) {
 			mainContainer := builder.MainContainer()
 			require.NotNil(t, mainContainer)
 			require.Contains(t, mainContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      VolumeName,
-				MountPath: MountPath,
+				Name:      esvolume.KeystorePasswordSecretVolumeName,
+				MountPath: esvolume.KeystorePasswordSecretVolumeMountPath,
 				ReadOnly:  true,
 			})
 			require.Contains(t, mainContainer.Env, corev1.EnvVar{
@@ -416,8 +417,8 @@ func TestInjectKeystorePassword(t *testing.T) {
 			}
 			require.NotNil(t, keystoreInitContainer)
 			require.Contains(t, keystoreInitContainer.VolumeMounts, corev1.VolumeMount{
-				Name:      VolumeName,
-				MountPath: MountPath,
+				Name:      esvolume.KeystorePasswordSecretVolumeName,
+				MountPath: esvolume.KeystorePasswordSecretVolumeMountPath,
 				ReadOnly:  true,
 			})
 		})

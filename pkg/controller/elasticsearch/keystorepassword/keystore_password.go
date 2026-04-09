@@ -27,6 +27,7 @@ import (
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -34,12 +35,8 @@ import (
 const (
 	// KeystorePasswordKey is the key used in the keystore password secret.
 	KeystorePasswordKey = "keystore-password"
-	// VolumeName is the source Secret volume name used for init-container consumption.
-	VolumeName = "keystore-password"
-	// MountPath is the source Secret mount path used for init-container consumption.
-	MountPath = "/mnt/elastic-internal/keystore-password"
 	// PasswordFile is the mounted Secret file path read by the keystore init container.
-	PasswordFile = MountPath + "/keystore-password"
+	PasswordFile = esvolume.KeystorePasswordSecretVolumeMountPath + "/" + KeystorePasswordKey
 )
 
 // ReconcileKeystorePasswordSecret ensures the managed keystore password Secret
@@ -120,7 +117,7 @@ func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Ela
 // Elasticsearch container and the keystore init container.
 func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName string) *defaults.PodTemplateBuilder {
 	sourcePasswordVolume := corev1.Volume{
-		Name: VolumeName,
+		Name: esvolume.KeystorePasswordSecretVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName:  secretName,
@@ -129,8 +126,8 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 		},
 	}
 	sourcePasswordMount := corev1.VolumeMount{
-		Name:      VolumeName,
-		MountPath: MountPath,
+		Name:      esvolume.KeystorePasswordSecretVolumeName,
+		MountPath: esvolume.KeystorePasswordSecretVolumeMountPath,
 		ReadOnly:  true,
 	}
 

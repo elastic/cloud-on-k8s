@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eskeystorepassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -414,16 +415,16 @@ func checkFIPSPodTemplateInjectedStep(k *test.K8sClient, es esv1.Elasticsearch, 
 
 func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.Container) error {
 	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
-		return v.Name == eskeystorepassword.VolumeName
+		return v.Name == esvolume.KeystorePasswordSecretVolumeName
 	})
 	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
-		return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
+		return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 	})
 
 	initHasFIPSManagedArtifacts := false
 	if keystoreInit := containerByName(pod.InitContainers, commonkeystore.InitContainerName); keystoreInit != nil {
 		initHasFIPSMount := slices.ContainsFunc(keystoreInit.VolumeMounts, func(vm corev1.VolumeMount) bool {
-			return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
+			return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 		})
 		initHasFIPSManagedArtifacts = initHasFIPSMount || keystoreInitCommandUsesPasswordFile(keystoreInit.Command)
 	}
@@ -457,10 +458,10 @@ func checkFIPSPodTemplateUserOverride(pod *corev1.PodSpec, esContainer *corev1.C
 
 func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev1.Container) error {
 	hasFIPSVolume := slices.ContainsFunc(pod.Volumes, func(v corev1.Volume) bool {
-		return v.Name == eskeystorepassword.VolumeName
+		return v.Name == esvolume.KeystorePasswordSecretVolumeName
 	})
 	mainHasFIPSMount := slices.ContainsFunc(esContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
-		return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
+		return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 	})
 
 	keystoreInitContainer := containerByName(pod.InitContainers, commonkeystore.InitContainerName)
@@ -468,7 +469,7 @@ func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev
 		return fmt.Errorf("container %q not found", commonkeystore.InitContainerName)
 	}
 	initHasFIPSMount := slices.ContainsFunc(keystoreInitContainer.VolumeMounts, func(vm corev1.VolumeMount) bool {
-		return vm.Name == eskeystorepassword.VolumeName && vm.MountPath == eskeystorepassword.MountPath
+		return vm.Name == esvolume.KeystorePasswordSecretVolumeName && vm.MountPath == esvolume.KeystorePasswordSecretVolumeMountPath
 	})
 	mainHasPassphraseEnv := slices.ContainsFunc(esContainer.Env, func(e corev1.EnvVar) bool {
 		return e.Name == "KEYSTORE_PASSWORD_FILE" &&
@@ -485,15 +486,15 @@ func checkFIPSPodTemplateOperatorManaged(pod *corev1.PodSpec, esContainer *corev
 	}{
 		{
 			condition: hasFIPSVolume,
-			err:       fmt.Errorf("missing %s volume", eskeystorepassword.VolumeName),
+			err:       fmt.Errorf("missing %s volume", esvolume.KeystorePasswordSecretVolumeName),
 		},
 		{
 			condition: mainHasFIPSMount,
-			err:       fmt.Errorf("missing %s mount on Elasticsearch container", eskeystorepassword.MountPath),
+			err:       fmt.Errorf("missing %s mount on Elasticsearch container", esvolume.KeystorePasswordSecretVolumeMountPath),
 		},
 		{
 			condition: initHasFIPSMount,
-			err:       fmt.Errorf("missing %s mount on init container", eskeystorepassword.MountPath),
+			err:       fmt.Errorf("missing %s mount on init container", esvolume.KeystorePasswordSecretVolumeMountPath),
 		},
 		{
 			condition: mainHasPassphraseEnv,
