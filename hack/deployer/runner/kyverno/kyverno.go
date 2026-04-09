@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 )
@@ -25,8 +26,7 @@ var policiesManifest string
 var GKEPolicies string
 
 const (
-	waitForKyvernoAdmissionDeployment  = `wait deployment kyverno-admission-controller -n kyverno --for condition=Available=True --timeout=20m`
-	waitForKyvernoBackgroundDeployment = `wait deployment kyverno-background-controller -n kyverno --for condition=Available=True --timeout=20m`
+	waitForKyvernoDeployments = `rollout status deployment -l app.kubernetes.io/instance=kyverno -n kyverno --timeout=20m`
 )
 
 func Install(globalKubectlOptions ...string) error {
@@ -43,15 +43,12 @@ func Install(globalKubectlOptions ...string) error {
 		return err
 	}
 	log.Println("Waiting for Kyverno Pod to be ready...")
-	if err := k.NewCommand(waitForKyvernoAdmissionDeployment).Run(); err != nil {
-		return err
-	}
-	if err := k.NewCommand(waitForKyvernoBackgroundDeployment).Run(); err != nil {
+	if err := k.NewCommand(waitForKyvernoDeployments).Run(); err != nil {
 		return err
 	}
 
 	log.Println("Installing Kyverno policies")
-	if err := apply(k, dir, policiesManifest, "policies.yaml"); err != nil {
+	if err := retry(4, 1*time.Second, func() error { return apply(k, dir, policiesManifest, "policies.yaml") }); err != nil {
 		return err
 	}
 
@@ -85,4 +82,22 @@ func NewKubectl(globalKubectlOptions ...string) *Kubectl {
 func (k *Kubectl) NewCommand(command string) *exec.Command {
 	cmd := fmt.Sprintf("%s %s", k.prefix, command)
 	return exec.NewCommand(cmd)
+}
+
+// retry runs a command up to maxAttempts times, sleeping between attempts.
+func retry(maxAttempts int, sleep time.Duration, fn func() error) error {
+	var err error
+	for {
+		if err = fn(); err == nil {
+			return nil
+		}
+
+		maxAttempts--
+		if maxAttempts <= 0 {
+			return err
+		}
+
+		log.Printf("Attempt failed, retrying in %s, available attempts %d", sleep, maxAttempts)
+		time.Sleep(sleep)
+	}
 }
