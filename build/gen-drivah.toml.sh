@@ -74,7 +74,7 @@ END
 }
 
 main() {
-    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS TRIGGER=$TRIGGER"
+    echo "# -- gen-drivah-config BUILD_FLAVORS=$BUILD_FLAVORS TRIGGER=${TRIGGER:-}"
 
     # disable SNAPSHOT for tags
     tag_pattern="^[0-9]+\.[0-9]+\.[0-9]+"

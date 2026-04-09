@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
@@ -148,6 +149,9 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
+	if keystoreResources != nil && keystoreResources.KeystorePasswordSecretName != "" {
+		builder = keystorepassword.InjectKeystorePassword(builder, keystoreResources.KeystorePasswordSecretName)
+	}
 	spreadConstraints, requiredMatchExpressions := zoneAwarenessSchedulingDirectives(
 		nodeSet,
 		es.Name,
@@ -241,6 +245,9 @@ func buildAnnotations(
 	if keystoreResources != nil {
 		// resource version of the secure settings secret to rotate the pod on secure settings change
 		_, _ = configHash.Write([]byte(keystoreResources.Hash))
+		if keystoreResources.KeystorePasswordSecretHash != "" {
+			_, _ = configHash.Write([]byte(keystoreResources.KeystorePasswordSecretHash))
+		}
 	}
 
 	if !es.Spec.Transport.TLS.SelfSignedEnabled() {
