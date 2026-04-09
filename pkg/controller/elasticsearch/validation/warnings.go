@@ -158,8 +158,8 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 		}
 		// Since this code path is only used for warnings, we are going to ignore any errors
 		// in this whole block and continue to the next nodeSet.
-		canonicalConfig, cfgErr := common.NewCanonicalConfigFrom(userConfig)
-		if cfgErr != nil {
+		canonicalConfig, err := common.NewCanonicalConfigFrom(userConfig)
+		if err != nil {
 			continue
 		}
 		state.parseableNodeSetCount++

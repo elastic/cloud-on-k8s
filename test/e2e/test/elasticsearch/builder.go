@@ -397,8 +397,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 // container for every node set. Call after WithEmptyDirVolumes (or any setup that defines pod volumes) so the secret
 // volume is merged with existing volumes. The Secret must exist in the namespace before pods are scheduled.
 func (b Builder) WithSecretVolumeMountForElasticsearch(volumeName, secretName, mountPath string) Builder {
-	// 0440 matches keystorepassword.InjectKeystorePassword: ES docker-entrypoint rejects 0444 for
-	// KEYSTORE_PASSWORD_FILE ("must have file permissions 400, 440, 600 or 640").
+	// 0440 is required as any mode with world readable bits are rejected.
 	defaultMode := int32(0o440)
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		ns := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
