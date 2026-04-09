@@ -201,7 +201,7 @@ func RenderTemplate(v semver.Version, configTemplate string, params any) (string
 }
 
 func TemplateFuncs(
-	version semver.Version,
+	ver semver.Version,
 ) template.FuncMap {
 	return template.FuncMap{
 		"sanitizeJSON": func(v any) (string, error) {
@@ -218,8 +218,7 @@ func TemplateFuncs(
 			}
 			// Compare only Major.Minor.Patch, ignoring pre-release identifiers
 			// so that e.g. 9.4.0-SNAPSHOT is treated the same as 9.4.0.
-			v := semver.Version{Major: version.Major, Minor: version.Minor, Patch: version.Patch}
-			return v.GTE(minAllowedSemver), nil
+			return version.WithoutPre(ver).GTE(minAllowedSemver), nil
 		},
 		"CAPath": func(caVolume volume.VolumeLike) string {
 			if caVolume == nil {
