@@ -613,7 +613,6 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 	configuredESResources esMap,
 	resourceType policyv1alpha1.ResourceType,
 ) error {
-	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
 	matchLabels := client.MatchingLabels{
 		reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
@@ -650,53 +649,8 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 			if _, exists := configuredESResources[namespacedName]; exists {
 				continue
 			}
-
-			var es esv1.Elasticsearch
-			if err := c.Get(ctx, namespacedName, &es); err != nil && !apierrors.IsNotFound(err) {
+			if err := resetOrphanESFileSettings(ctx, c, &s, namespacedName, softOwner); err != nil {
 				return err
-			}
-			if apierrors.IsNotFound(err) {
-				// Elasticsearch has just been deleted
-				return nil
-			}
-
-			remainingOwners, err := removePolicySoftOwner(&s, softOwner)
-			if err != nil {
-				return err
-			}
-
-			if remainingOwners == 0 {
-				log.V(1).Info("Reset file settings Secret for Elasticsearch",
-					"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
-					"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
-
-				esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
-				fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
-				if apierrors.IsNotFound(err) {
-					continue
-				}
-				if err != nil {
-					return err
-				}
-				if err := fs.Reset().Save(ctx, c, &es); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			} else {
-				// Metadata-only patch: persist the soft owner removal without sending Secret data.
-				secretNN := types.NamespacedName{Namespace: s.Namespace, Name: s.Name}
-				if err := retry.OnError(retry.DefaultRetry, apierrors.IsConflict, func() error {
-					var current corev1.Secret
-					if err := c.Get(ctx, secretNN, &current); err != nil {
-						return err
-					}
-					base := current.DeepCopy()
-					if _, err := removePolicySoftOwner(&current, softOwner); err != nil {
-						return err
-					}
-					return c.Patch(ctx, &current, client.MergeFrom(base))
-				}); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
 			}
 		case kblabel.Type:
 			// Currently we do not reset labels for kibana, so we shouldn't hit this.
@@ -707,6 +661,69 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 		}
 	}
 	return nil
+}
+
+// resetOrphanESFileSettings handles the file settings Secret for an Elasticsearch cluster
+// that is no longer targeted by the given StackConfigPolicy. If no other policies own the
+// Secret, it is reset to empty. Otherwise, only the soft owner annotation is patched.
+func resetOrphanESFileSettings(
+	ctx context.Context,
+	c k8s.Client,
+	s *corev1.Secret,
+	namespacedName types.NamespacedName,
+	softOwner types.NamespacedName,
+) error {
+	var es esv1.Elasticsearch
+	if err := c.Get(ctx, namespacedName, &es); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	remainingOwners, err := removePolicySoftOwner(s, softOwner)
+	if err != nil {
+		return err
+	}
+
+	log := ulog.FromContext(ctx)
+
+	if remainingOwners == 0 {
+		log.Info("Resetting file settings Secret to empty, last policy owner removed",
+			"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
+
+		esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
+		fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err := fs.Reset().Save(ctx, c, &es); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	// Metadata-only patch: persist the soft owner removal without sending Secret data.
+	log.Info("Removing policy soft owner from file settings Secret",
+		"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+		"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
+		"remaining_owners", remainingOwners)
+	secretNN := types.NamespacedName{Namespace: s.Namespace, Name: s.Name}
+	return retry.OnError(retry.DefaultRetry, apierrors.IsConflict, func() error {
+		var current corev1.Secret
+		if err := c.Get(ctx, secretNN, &current); err != nil {
+			return err
+		}
+		base := current.DeepCopy()
+		if _, err := removePolicySoftOwner(&current, softOwner); err != nil {
+			return err
+		}
+		return c.Patch(ctx, &current, client.MergeFrom(base))
+	})
 }
 
 // deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch/Kibana clusters that are no longer configured
