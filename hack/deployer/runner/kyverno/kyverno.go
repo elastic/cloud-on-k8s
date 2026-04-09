@@ -86,18 +86,24 @@ func (k *Kubectl) NewCommand(command string) *exec.Command {
 
 // retry runs a command up to maxAttempts times, sleeping between attempts.
 func retry(maxAttempts int, sleep time.Duration, fn func() error) error {
+	if maxAttempts <= 0 {
+		return fmt.Errorf("maxAttempts must be greater than 0")
+	}
+
 	var err error
-	for {
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if err = fn(); err == nil {
 			return nil
 		}
 
-		maxAttempts--
-		if maxAttempts <= 0 {
+		if attempt == maxAttempts {
 			return err
 		}
 
-		log.Printf("Attempt failed, retrying in %s, available attempts %d", sleep, maxAttempts)
+		remainingAttempts := maxAttempts - attempt
+		log.Printf("Attempt %d/%d failed, retrying in %s (%d attempts remaining): %v", attempt, maxAttempts, sleep, remainingAttempts, err)
 		time.Sleep(sleep)
 	}
+
+	return err
 }
