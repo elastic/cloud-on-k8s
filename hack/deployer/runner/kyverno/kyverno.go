@@ -100,8 +100,7 @@ func retry(maxAttempts int, sleep time.Duration, fn func() error) error {
 			return err
 		}
 
-		remainingAttempts := maxAttempts - attempt
-		log.Printf("Attempt %d/%d failed, retrying in %s (%d attempts remaining): %v", attempt, maxAttempts, sleep, remainingAttempts, err)
+		log.Printf("Attempt %d/%d failed, retrying in %s: %v", attempt, maxAttempts, sleep, err)
 		time.Sleep(sleep)
 	}
 
