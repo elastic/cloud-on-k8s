@@ -294,3 +294,37 @@ func TestReconcileClusterSecrets_ClearsWhenNil(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, settings.State.ClusterSecrets)
 }
+
+func TestReconcileClusterSecrets_FailsOnMalformedSettings(t *testing.T) {
+	es := testES()
+
+	// Create a secret with malformed settings.json
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.FileSettingsSecretName(es.Name),
+			Namespace: es.Namespace,
+			Annotations: map[string]string{
+				commonannotation.SettingsHashAnnotationName: "some-hash",
+			},
+		},
+		Data: map[string][]byte{
+			SettingsSecretKey: []byte(`{invalid json`),
+		},
+	}
+
+	client := k8s.NewFakeClient(&es, existingSecret)
+
+	// ReconcileClusterSecrets should fail instead of overwriting with empty settings
+	err := ReconcileClusterSecrets(context.Background(), client, es, testClusterSecrets())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "malformed")
+
+	// Verify the secret was NOT modified
+	var secret corev1.Secret
+	err = client.Get(context.Background(), types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.FileSettingsSecretName(es.Name),
+	}, &secret)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(`{invalid json`), secret.Data[SettingsSecretKey])
+}

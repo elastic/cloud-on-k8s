@@ -347,38 +347,20 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 			return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 		}, func() error {
-			// Get the current file settings secret if it exists.
-			var actualSettingsSecret corev1.Secret
-			var currentSecretPtr *corev1.Secret
-			err := r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
-			if err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
-			if err == nil {
-				currentSecretPtr = &actualSettingsSecret
-			}
-
-			// Build expected settings from latest state.
-			expectedSecret, candidateExpectedVersion, err := filesettings.NewSettingsSecretWithVersion(
-				ctx,
-				esNsn,
-				es.IsStateless(),
-				currentSecretPtr,
-				&esConfigPolicyFinal.Spec,
-				esConfigPolicyFinal.SecretSources,
-				meta,
-			)
+			fs, err := filesettings.Load(ctx, r.Client, esNsn, es.IsStateless(), meta)
 			if err != nil {
 				return err
 			}
-
-			// Keep soft owner references so the secret can be reset when orphaned.
-			if err := setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
+			if err := fs.ApplyPolicy(esConfigPolicyFinal.Spec, esConfigPolicyFinal.SecretSources); err != nil {
 				return err
 			}
-
-			expectedVersion = candidateExpectedVersion
-			return filesettings.ReconcileSecretWithCurrent(ctx, r.Client, currentSecretPtr, expectedSecret, &es)
+			if err := fs.Save(ctx, r.Client, &es, filesettings.WithMutator(func(s *corev1.Secret) error {
+				return setMultipleSoftOwners(s, esConfigPolicyFinal.PolicyRefs)
+			})); err != nil {
+				return err
+			}
+			expectedVersion = fs.Version()
+			return nil
 		}); err != nil {
 			return results.WithError(err), status
 		}
@@ -688,11 +670,20 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 					"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
 					"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
 
-				if err := filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false); err != nil && !apierrors.IsNotFound(err) {
+				esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
+				fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
+				if apierrors.IsNotFound(err) {
+					continue
+				}
+				if err != nil {
+					return err
+				}
+				if err := fs.Reset().Save(ctx, c, &es); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 			} else {
-				if err := filesettings.ReconcileFileSettingsSecret(ctx, c, s, &es); err != nil && !apierrors.IsNotFound(err) {
+				// Metadata-only update: persist the soft owner removal without touching settings data.
+				if err := c.Update(ctx, &s); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 			}

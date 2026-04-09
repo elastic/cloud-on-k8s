@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -351,13 +350,14 @@ func ReconcileSharedResources(
 // targets this cluster it creates an empty file-settings secret.
 // See https://github.com/elastic/cloud-on-k8s/issues/8912.
 func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
-	// Check if file-settings secret already exists
-	var currentSecret corev1.Secret
-	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret); err == nil {
-		// Secret does exist
-		return false, nil
-	} else if !k8serrors.IsNotFound(err) {
+	esNsn := k8s.ExtractNamespacedName(es)
+	meta := metadata.Propagate(es, metadata.Metadata{Labels: label.NewLabels(esNsn)})
+	fs, err := filesettings.Load(ctx, c, esNsn, es.IsStateless(), meta)
+	if err != nil {
 		return false, err
+	}
+	if fs.Exists() {
+		return false, nil
 	}
 
 	log := ulog.FromContext(ctx)
@@ -366,8 +366,7 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		return false, err
 	}
 	if !enabled {
-		// If the license is not enabled, we reconcile the empty file-settings secret
-		return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
+		return false, fs.Save(ctx, c, es)
 	}
 
 	// Get all StackConfigPolicies in the cluster
@@ -399,7 +398,7 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 	}
 
 	// No policies target this cluster, so ES controller should create the empty secret
-	return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
+	return false, fs.Save(ctx, c, es)
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.

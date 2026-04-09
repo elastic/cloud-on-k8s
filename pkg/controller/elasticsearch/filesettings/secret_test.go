@@ -7,7 +7,6 @@ package filesettings
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,95 +16,86 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func Test_NewSettingsSecret(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-	policy := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "policyNs",
-			Name:      "policyName",
-		},
-		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
-			},
-		},
-	}
-
-	// no policy
-	expectedVersion := int64(1)
-	secret, reconciledVersion, err := newSettingsSecret(context.Background(), expectedVersion, false, es, nil, nil, nil, metadata.Metadata{})
-	assert.NoError(t, err)
-	assert.Equal(t, "esNs", secret.Namespace)
-	assert.Equal(t, "esName-es-file-settings", secret.Name)
-	assert.Equal(t, 0, len(parseSettings(t, secret).State.ClusterSettings.Data))
-	assert.Equal(t, expectedVersion, reconciledVersion)
-
-	// policy
-	expectedVersion = int64(2)
-	secret, reconciledVersion, err = newSettingsSecret(context.Background(), expectedVersion, false, es, &secret, &policy.Spec.Elasticsearch, policy.GetElasticsearchNamespacedSecureSettings(), metadata.Metadata{})
-	assert.NoError(t, err)
-	assert.Equal(t, "esNs", secret.Namespace)
-	assert.Equal(t, "esName-es-file-settings", secret.Name)
-	assert.Equal(t, 1, len(parseSettings(t, secret).State.ClusterSettings.Data))
-	assert.Equal(t, expectedVersion, reconciledVersion)
-}
-
-func Test_SettingsSecret_hasChanged(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-	policy := policyv1alpha1.StackConfigPolicy{ObjectMeta: metav1.ObjectMeta{
-		Namespace: "policyNs",
-		Name:      "policyName",
+func Test_FileSettingsSecret_ApplyPolicy(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+		Namespace: esNsn.Namespace,
+		Name:      esNsn.Name,
 	}}
-	otherPolicy := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "otherPolicyNs",
-			Name:      "otherPolicyName",
-		},
-		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
-			},
-		}}
+	policy := policyv1alpha1.ElasticsearchConfigPolicySpec{
+		ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
+	}
 
-	expectedVersion := int64(1)
-	expectedEmptySettings := NewEmptySettings(expectedVersion, false)
+	fakeClient := k8s.NewFakeClient()
 
-	// no policy -> emptySettings
-	secret, reconciledVersion, err := newSettingsSecret(context.Background(), expectedVersion, false, es, nil, nil, nil, metadata.Metadata{})
-	assert.NoError(t, err)
-	assert.Equal(t, false, hasChanged(secret, expectedEmptySettings))
-	assert.Equal(t, expectedVersion, reconciledVersion)
+	// No policy: empty settings
+	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
 
-	// policy without settings -> emptySettings
-	sameSettings := NewEmptySettings(expectedVersion, false)
-	err = sameSettings.updateState(es, policy.Spec.Elasticsearch)
-	assert.NoError(t, err)
-	assert.Equal(t, false, hasChanged(secret, sameSettings))
-	assert.Equal(t, strconv.FormatInt(expectedVersion, 10), sameSettings.Metadata.Version)
+	var secret corev1.Secret
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret)
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(parseSettings(t, secret).State.ClusterSettings.Data))
 
-	// new policy -> settings changed
-	newVersion := int64(2)
-	newSettings := NewEmptySettings(newVersion, false)
+	// With policy
+	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs2.ApplyPolicy(policy, nil)
+	require.NoError(t, err)
+	err = fs2.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
 
-	err = newSettings.updateState(es, otherPolicy.Spec.Elasticsearch)
-	assert.NoError(t, err)
-	assert.Equal(t, true, hasChanged(secret, newSettings))
-	assert.Equal(t, strconv.FormatInt(newVersion, 10), newSettings.Metadata.Version)
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(parseSettings(t, secret).State.ClusterSettings.Data))
 }
 
-func Test_newSettingsSecret_stateless_preserves_cluster_secrets(t *testing.T) {
-	es := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+func Test_FileSettingsSecret_VersionUnchanged(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+		Namespace: esNsn.Namespace,
+		Name:      esNsn.Name,
+	}}
+
+	fakeClient := k8s.NewFakeClient()
+
+	// Create empty settings
+	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
+	v1 := fs.Version()
+
+	// Load again, save with no changes: version should stay the same
+	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs2.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
+	assert.Equal(t, v1, fs2.Version())
+
+	// Load again, apply policy: version should change
+	fs3, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs3.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{
+		ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
+	}, nil)
+	require.NoError(t, err)
+	err = fs3.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
+	assert.NotEqual(t, v1, fs3.Version())
+}
+
+func Test_FileSettingsSecret_PreservesClusterSecrets(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 
 	// Create a current secret that has cluster_secrets (written by ES controller)
 	currentSettings := NewEmptySettings(1, true)
@@ -117,73 +107,70 @@ func Test_newSettingsSecret_stateless_preserves_cluster_secrets(t *testing.T) {
 
 	currentSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
+			Namespace:   esNsn.Namespace,
 			Name:        "esName-es-file-settings",
 			Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
 		},
 		Data: map[string][]byte{SettingsSecretKey: settingsBytes},
 	}
 
-	// SCP rebuilds the secret with isStateless=true: cluster_secrets should be preserved
-	secret, _, err := newSettingsSecret(context.Background(), 2, true, es, currentSecret, nil, nil, metadata.Metadata{})
+	fakeClient := k8s.NewFakeClient(currentSecret)
+
+	// SCP rebuilds with ApplyPolicy: cluster_secrets should be preserved for stateless
+	fs, err := Load(context.Background(), fakeClient, esNsn, true, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	require.NoError(t, err)
 
-	rebuilt := parseSettings(t, secret)
-	assert.NotNil(t, rebuilt.State.ClusterSecrets, "cluster_secrets should be preserved for stateless")
-	assert.Equal(t, currentSettings.State.ClusterSecrets.Data, rebuilt.State.ClusterSecrets.Data)
+	// Verify settings before save
+	assert.NotNil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should be preserved for stateless")
+	assert.Equal(t, currentSettings.State.ClusterSecrets.Data, fs.settings.State.ClusterSecrets.Data)
 
 	// Stateful: cluster_secrets should NOT be preserved
-	secret, _, err = newSettingsSecret(context.Background(), 3, false, es, currentSecret, nil, nil, metadata.Metadata{})
+	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
 	require.NoError(t, err)
-
-	rebuilt = parseSettings(t, secret)
-	assert.Nil(t, rebuilt.State.ClusterSecrets, "cluster_secrets should not be preserved for stateful")
+	err = fs2.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
+	require.NoError(t, err)
+	assert.Nil(t, fs2.settings.State.ClusterSecrets, "cluster_secrets should not be preserved for stateful")
 }
 
-func Test_SettingsSecret_setSecureSettings_getSecureSettings(t *testing.T) {
-	es := types.NamespacedName{
-		Namespace: "esNs",
-		Name:      "esName",
-	}
-	policy := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "policyNs",
-			Name:      "policyName",
-		},
-		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				SecureSettings: nil,
-			},
-		}}
-	otherPolicy := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "otherPolicyNs",
-			Name:      "otherPolicyName",
-		},
-		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				SecureSettings: []commonv1.SecretSource{{SecretName: "secure-settings-secret"}},
-			},
-		}}
+func Test_SecureSettings_RoundTrip(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+		Namespace: esNsn.Namespace,
+		Name:      esNsn.Name,
+	}}
 
-	secret, _, err := NewSettingsSecretWithVersion(context.Background(), es, false, nil, nil, nil, metadata.Metadata{})
-	assert.NoError(t, err)
+	fakeClient := k8s.NewFakeClient()
 
+	// No secure settings
+	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
+
+	var secret corev1.Secret
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret)
+	require.NoError(t, err)
 	secureSettings, err := getSecureSettings(secret)
 	assert.NoError(t, err)
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
-	err = setSecureSettings(&secret, policy.GetElasticsearchNamespacedSecureSettings())
-	assert.NoError(t, err)
-	secureSettings, err = getSecureSettings(secret)
-	assert.NoError(t, err)
-	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
+	// With secure settings via ApplyPolicy
+	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	require.NoError(t, err)
+	err = fs2.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, []commonv1.NamespacedSecretSource{
+		{Namespace: "otherNs", SecretName: "secure-settings-secret"},
+	})
+	require.NoError(t, err)
+	err = fs2.Save(context.Background(), fakeClient, &es)
+	require.NoError(t, err)
 
-	err = setSecureSettings(&secret, otherPolicy.GetElasticsearchNamespacedSecureSettings())
-	assert.NoError(t, err)
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret)
+	require.NoError(t, err)
 	secureSettings, err = getSecureSettings(secret)
 	assert.NoError(t, err)
-	assert.Equal(t, []commonv1.NamespacedSecretSource{{Namespace: otherPolicy.Namespace, SecretName: "secure-settings-secret"}}, secureSettings)
+	assert.Equal(t, []commonv1.NamespacedSecretSource{{Namespace: "otherNs", SecretName: "secure-settings-secret"}}, secureSettings)
 }
 
 func parseSettings(t *testing.T, secret corev1.Secret) Settings {
