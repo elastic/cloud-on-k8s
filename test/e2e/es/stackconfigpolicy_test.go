@@ -21,7 +21,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -186,14 +185,18 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Cluster name should be as set in the config",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					var apiResponse ClusterInfoResponse
 					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
 						return err
 					}
 
-					require.Equal(t, clusterNameFromConfig, apiResponse.ClusterName)
+					if apiResponse.ClusterName != clusterNameFromConfig {
+						return fmt.Errorf("expected cluster name %q, got %q", clusterNameFromConfig, apiResponse.ClusterName)
+					}
 					return nil
 				}),
 			},
