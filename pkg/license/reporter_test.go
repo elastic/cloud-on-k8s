@@ -157,14 +157,14 @@ func TestGet(t *testing.T) {
 			memoryUsage: memoryUsage{
 				appUsage: map[string]managedMemory{
 					elasticsearchKey: newManagedMemory(0, elasticsearchKey),
-					kibanaKey:        newManagedMemory(107374182400, kibanaKey),
+					kibanaKey:        newManagedMemory(214748364800, kibanaKey),
 					apmKey:           newManagedMemory(0, apmKey),
 					entSearchKey:     newManagedMemory(0, entSearchKey),
 					logstashKey:      newManagedMemory(0, logstashKey),
 				},
-				totalMemory: newManagedMemory(107374182400, totalKey),
+				totalMemory: newManagedMemory(214748364800, totalKey),
 			},
-			EnterpriseResourceUnits: 2,
+			EnterpriseResourceUnits: 4,
 			EckLicenseLevel:         "basic",
 		}
 
@@ -292,12 +292,12 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "2" &&
-			cm.Data["total_managed_memory"] == "83.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "89120571392" &&
+			cm.Data["total_managed_memory"] == "85.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "91268055040" &&
 			cm.Data["elasticsearch_memory"] == "80.00GiB" && // 40 * 2Gi
 			cm.Data["elasticsearch_memory_bytes"] == "85899345920" &&
-			cm.Data["kibana_memory"] == "2.00GiB" && // 2 * 1Gi
-			cm.Data["kibana_memory_bytes"] == "2147483648" &&
+			cm.Data["kibana_memory"] == "4.00GiB" && // 2 * 2Gi
+			cm.Data["kibana_memory_bytes"] == "4294967296" &&
 			cm.Data["apm_memory"] == "1.00GiB" && // 2 * 512Mi
 			cm.Data["apm_memory_bytes"] == "1073741824"
 	}, waitFor, tick, "40*ES, 2*KB, 2 *APM")
@@ -320,8 +320,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "163.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "175019917312"
+			cm.Data["total_managed_memory"] == "165.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "177167400960"
 	}, waitFor, tick, "80*ES, 2*KB, 2*APM")
 
 	startTrial(t, k8sClient)
@@ -339,8 +339,8 @@ func Test_Start(t *testing.T) {
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == string(commonlicense.LicenseTypeEnterpriseTrial) &&
 			cm.Data["enterprise_resource_units"] == "3" &&
-			cm.Data["total_managed_memory"] == "163.00GiB" &&
-			cm.Data["total_managed_memory_bytes"] == "175019917312"
+			cm.Data["total_managed_memory"] == "165.00GiB" &&
+			cm.Data["total_managed_memory_bytes"] == "177167400960"
 	}, waitFor, tick, "trial license")
 }
 
