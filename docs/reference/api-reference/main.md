@@ -550,6 +550,7 @@ or a Secret describing an external cluster not managed by the operator.
 :::{admonition} Appears In:
 * [BeatSpec](#beatspec)
 * [ElasticsearchCluster](#elasticsearchcluster)
+* [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 
 :::
@@ -694,7 +695,6 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [ApmServerSpec](#apmserverspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchSelector](#elasticsearchselector)
-* [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 * [LogsMonitoring](#logsmonitoring)
@@ -1784,7 +1784,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`config`* __[Config](#config)__ | Config holds the Enterprise Search configuration. |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Enterprise Search resource. |
-| *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)<br>for the Enterprise Search pods. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
