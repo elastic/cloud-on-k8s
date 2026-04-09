@@ -20,6 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -204,4 +205,120 @@ func TestExternalESStackMonitoring(t *testing.T) {
 	}
 
 	test.Sequence(nil, steps, monitoring, monitored).RunSequential(t)
+}
+
+// checkClientAuthAnnotationStep returns a test step that verifies whether the given Elasticsearch resource
+// has (or does not have) the client authentication required annotation.
+func checkClientAuthAnnotationStep(k *test.K8sClient, namespace, esName string, expected bool) test.Step {
+	return test.Step{
+		Name: fmt.Sprintf("Verify ES %s/%s has client authentication annotation = %v", namespace, esName, expected),
+		Test: test.Eventually(func() error {
+			var es esv1.Elasticsearch
+			if err := k.Client.Get(context.Background(), types.NamespacedName{
+				Namespace: namespace,
+				Name:      esName,
+			}, &es); err != nil {
+				return err
+			}
+			if annotation.HasClientAuthenticationRequired(&es) != expected {
+				return fmt.Errorf("expected client authentication required annotation to be %v for ES %s/%s", expected, namespace, esName)
+			}
+			return nil
+		}),
+	}
+}
+
+// TestESStackClientAuthTransitionMonitored tests that when a monitored Elasticsearch cluster transitions
+// from having client authentication enabled to disabled, the monitoring continues to work correctly.
+func TestESStackClientAuthTransitionMonitored(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+	// only execute this test on supported version
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
+	if err != nil {
+		t.SkipNow()
+	}
+
+	// create monitoring cluster without client authentication
+	monitoring := elasticsearch.NewBuilder("test-es-mon-trans").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithClientAuthenticationRequired()
+
+	// create monitored cluster with client authentication required initially
+	monitored := elasticsearch.NewBuilder("test-es-mon-trans-a").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithClientAuthenticationRequired().
+		WithMonitoring(monitoring.Ref(), monitoring.Ref())
+
+	monitoringWithLicense := test.LicenseTestBuilder(monitoring)
+	monitoredWithLicense := test.LicenseTestBuilder(monitored)
+	monitoredWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			checkClientAuthAnnotationStep(k, monitored.Elasticsearch.Namespace, monitored.Elasticsearch.Name, true),
+		}.WithSteps(checks.MonitoredSteps(&monitored, k))
+	}
+
+	// Disable client authentication on monitored cluster
+	monitoredMutated := monitored.DeepCopy().WithMutatedFrom(&monitored)
+	monitoredMutated.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = false
+	monitoredMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: monitoredMutated,
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				checkClientAuthAnnotationStep(k, monitored.Elasticsearch.Namespace, monitored.Elasticsearch.Name, false),
+			}.WithSteps(checks.MonitoredSteps(monitoredMutated, k))
+		},
+	}
+
+	test.RunMutations(t, []test.Builder{monitoringWithLicense, monitoredWithLicense}, []test.Builder{monitoredMutatedWrapped})
+}
+
+// TestESStackClientAuthTransitionMonitoring tests that when the monitoring Elasticsearch cluster
+// transitions from having client authentication enabled to disabled, the monitoring continues to work correctly.
+func TestESStackClientAuthTransitionMonitoring(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+	// only execute this test on supported version
+	err := validations.IsSupportedVersion(test.Ctx().ElasticStackVersion, validations.MinStackVersion)
+	if err != nil {
+		t.SkipNow()
+	}
+
+	// create monitoring cluster with client authentication required initially
+	monitoring := elasticsearch.NewBuilder("test-es-mmon-trans").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithClientAuthenticationRequired()
+
+	// create monitored cluster without client authentication
+	monitored := elasticsearch.NewBuilder("test-es-mmon-trans-a").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithClientAuthenticationRequired().
+		WithMonitoring(monitoring.Ref(), monitoring.Ref())
+
+	monitoringWithLicense := test.LicenseTestBuilder(monitoring)
+	monitoringWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			checkClientAuthAnnotationStep(k, monitoring.Elasticsearch.Namespace, monitoring.Elasticsearch.Name, true),
+		}
+	}
+	monitoredWithLicense := test.LicenseTestBuilder(monitored)
+	monitoredWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
+		return checks.MonitoredSteps(&monitored, k)
+	}
+
+	// Disable client authentication on monitoring cluster
+	monitoringMutated := monitoring.DeepCopy().WithMutatedFrom(&monitoring)
+	monitoringMutated.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = false
+	monitoringMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: monitoringMutated,
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				checkClientAuthAnnotationStep(k, monitoring.Elasticsearch.Namespace, monitoring.Elasticsearch.Name, false),
+			}.WithSteps(checks.MonitoredSteps(&monitored, k))
+		},
+	}
+
+	test.RunMutations(t, []test.Builder{monitoringWithLicense, monitoredWithLicense}, []test.Builder{monitoringMutatedWrapped})
 }

@@ -86,7 +86,7 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, meta
 		return stackmon.BeatSidecar{}, err
 	}
 
-	sidecar, err := stackmon.NewMetricBeatSidecar(ctx, client, beat, v, nil, cfg, meta)
+	sidecar, err := stackmon.NewMetricBeatSidecar(ctx, client, beat, v, nil, nil, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
