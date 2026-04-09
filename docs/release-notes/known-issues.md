@@ -23,6 +23,17 @@ There are no known issues in ECK 3.3.2
 
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
 
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
+
 :::{dropdown} AutoOps - Enterprise license expiring may cause policy phase to be set to `Invalid` prior to 9.2.4
 
 In clusters running AutoOps Agent versions earlier than 9.2.4, an Enterprise license expiring may cause the policy phase to be set to `Invalid`. In this state, the AutoOps Agent stops sending data to AutoOps because the policy no longer passes validation on the controller.
@@ -34,6 +45,17 @@ Renew or restore the Enterprise license so that the AutoOps policy can be valida
 :::
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 :::{dropdown} Stack Config Policies - File settings may not reload correctly on {{es}} versions prior to 8.11.0
 
@@ -50,6 +72,17 @@ Use {{es}} version 8.11.0 or later when deploying Stack Config Policies.
 :::
 
 ## 3.2.0 [elastic-cloud-kubernetes-320-known-issues]
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 :::{dropdown} Elastic Agent fails with "cipher: message authentication failed" on ECK 3.2.0 re-upgrade
 
@@ -93,9 +126,29 @@ spec:
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-known-issues]
 
-There are no known issues in ECK 3.1
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 :::{dropdown} Elastic Maps Server does not start on certain container runtimes
 On May 19th 2025, it was discovered that the Elastic Maps Server container image in versions 7.17.28, 8.18.0, 8.18.1, 9.0.0 and 9.0.1 does not start on OpenShift Container Platform with the following error: `container create failed: open executable: Operation not permitted`.
