@@ -282,6 +282,12 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
+	// TODO(#9204): implement stateless driver and replace this guard with proper driver selection.
+	if es.IsStateless() {
+		log.Info("Stateless Elasticsearch detected, stateless driver not yet implemented")
+		return results
+	}
+
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)

@@ -24,6 +24,7 @@ const (
 var warnings = []validation{
 	deprecatedStackVersionWarning,
 	validZoneAwarenessAffinityWarnings,
+	statelessNodeRolesWarning,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
