@@ -23,8 +23,13 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -45,6 +50,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -594,10 +600,25 @@ func startOperator(ctx context.Context) error {
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 	}
 
+	// cache filters
+	req, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
+	if err != nil {
+		log.Error(err, "Failed to create cache label filter")
+		return err
+	}
+	selector := labels.NewSelector().Add(*req)
+
 	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
 		DefaultTransform:  cache.TransformStripManagedFields(),
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Pod{}:                   {Label: selector},
+			&policyv1.PodDisruptionBudget{}: {Label: selector},
+			&appsv1.Deployment{}:            {Label: selector},
+			&appsv1.StatefulSet{}:           {Label: selector},
+			&appsv1.DaemonSet{}:             {Label: selector},
+		},
 	}
 	for _, ns := range managedNamespaces {
 		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
