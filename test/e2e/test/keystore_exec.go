@@ -15,7 +15,6 @@ import (
 // ElasticsearchKeystoreListArgv returns `sh -c` arguments to run `elasticsearch-keystore list` inside the Elasticsearch
 // container. Password-protected keystores prompt on a TTY; without one, the CLI reads the password from stdin (see
 // org.elasticsearch.cli.Terminal). KEYSTORE_PASSWORD_FILE is for docker-entrypoint, not for elasticsearch-keystore.
-// Mirror the operator init pattern: pipe the password bytes into the CLI (same idea as add-file).
 func ElasticsearchKeystoreListArgv() []string {
 	script := fmt.Sprintf(`set -e
 PWFILE=""
