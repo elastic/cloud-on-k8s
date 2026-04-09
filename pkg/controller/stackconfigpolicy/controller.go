@@ -682,8 +682,19 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 					return err
 				}
 			} else {
-				// Metadata-only update: persist the soft owner removal without touching settings data.
-				if err := c.Update(ctx, &s); err != nil && !apierrors.IsNotFound(err) {
+				// Metadata-only patch: persist the soft owner removal without sending Secret data.
+				secretNN := types.NamespacedName{Namespace: s.Namespace, Name: s.Name}
+				if err := retry.OnError(retry.DefaultRetry, apierrors.IsConflict, func() error {
+					var current corev1.Secret
+					if err := c.Get(ctx, secretNN, &current); err != nil {
+						return err
+					}
+					base := current.DeepCopy()
+					if _, err := removePolicySoftOwner(&current, softOwner); err != nil {
+						return err
+					}
+					return c.Patch(ctx, &current, client.MergeFrom(base))
+				}); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 			}

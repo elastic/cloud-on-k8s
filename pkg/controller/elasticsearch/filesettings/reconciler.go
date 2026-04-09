@@ -83,8 +83,8 @@ func reconcileSecret(
 	})
 }
 
-// applyExpectedSecret merges the expected state into the reconciled Secret.
-// Labels, annotations, and data from expected are merged into reconciled.
+// applyExpectedSecret applies the expected state onto the reconciled Secret.
+// Labels and annotations from expected are merged into reconciled. Data is replaced wholesale.
 // When additiveOnly is false (SCP controller), managed labels and annotations that are
 // absent from expected are removed from reconciled. When additiveOnly is true
 // (ES controller), existing labels and annotations are never removed, only added to.

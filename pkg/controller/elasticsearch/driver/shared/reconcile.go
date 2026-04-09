@@ -366,7 +366,12 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		return false, err
 	}
 	if !enabled {
-		return false, fs.Save(ctx, c, es)
+		// AlreadyExists is not an error: another controller (e.g. SCP) may have created
+		// the Secret concurrently. The goal here is only to ensure the Secret exists.
+		if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+			return false, err
+		}
+		return false, nil
 	}
 
 	// Get all StackConfigPolicies in the cluster
@@ -397,8 +402,12 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		return true, nil
 	}
 
-	// No policies target this cluster, so ES controller should create the empty secret
-	return false, fs.Save(ctx, c, es)
+	// No policies target this cluster, so ES controller should create the empty secret.
+	// AlreadyExists is not an error: same race as above.
+	if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return false, err
+	}
+	return false, nil
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.
