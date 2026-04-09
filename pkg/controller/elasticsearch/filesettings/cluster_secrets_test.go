@@ -328,3 +328,23 @@ func TestReconcileClusterSecrets_FailsOnMalformedSettings(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte(`{invalid json`), secret.Data[SettingsSecretKey])
 }
+
+func TestReconcileClusterSecrets_FailsOnMissingSettingsKey(t *testing.T) {
+	es := testES()
+
+	// Create a secret with no settings.json key
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.FileSettingsSecretName(es.Name),
+			Namespace: es.Namespace,
+		},
+		Data: map[string][]byte{},
+	}
+
+	client := k8s.NewFakeClient(&es, existingSecret)
+
+	// ReconcileClusterSecrets should fail instead of overwriting with empty settings
+	err := ReconcileClusterSecrets(context.Background(), client, es, testClusterSecrets())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "malformed")
+}

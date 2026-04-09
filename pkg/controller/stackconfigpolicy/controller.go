@@ -695,9 +695,6 @@ func resetOrphanESFileSettings(
 
 		esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
 		fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
 		if err != nil {
 			return err
 		}

@@ -88,7 +88,12 @@ func Load(ctx context.Context, c k8s.Client, es types.NamespacedName, isStateles
 			f.settings.IsStateless = isStateless
 		}
 	} else {
+		ulog.FromContext(ctx).Error(
+			fmt.Errorf("missing %s key", SettingsSecretKey),
+			"Current file settings Secret is malformed, starting from empty",
+		)
 		f.settings = NewEmptySettings(f.version, isStateless)
+		f.settingsCorrupted = true
 	}
 
 	return f, nil
@@ -106,11 +111,13 @@ func (f *Secret) Version() int64 {
 	return f.version
 }
 
-// Reset clears the settings state to empty. Use when the Secret should be
-// reset (e.g. when all StackConfigPolicy owners are removed).
+// Reset clears SCP-managed settings state. For stateless clusters, cluster_secrets
+// are preserved since they are managed by the ES controller, not by SCP.
+// Use when the Secret should be reset (e.g. when all StackConfigPolicy owners are removed).
 func (f *Secret) Reset() *Secret {
-	f.settings = NewEmptySettings(f.version, f.isStateless)
-	f.secureSettingsSources = nil
+	// ApplyPolicy with an empty policy clears all SCP-managed fields while
+	// preserving cluster_secrets for stateless clusters.
+	_ = f.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	f.settingsCorrupted = false
 	return f
 }
