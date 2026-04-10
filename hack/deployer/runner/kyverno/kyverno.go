@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 )
 
 //go:embed install/kyverno.yaml
@@ -48,7 +49,11 @@ func Install(globalKubectlOptions ...string) error {
 	}
 
 	log.Println("Installing Kyverno policies")
-	if err := retry(4, 1*time.Second, func() error { return apply(k, dir, policiesManifest, "policies.yaml") }); err != nil {
+	if err := retry.UntilSuccess(
+		func() error { return apply(k, dir, policiesManifest, "policies.yaml") },
+		5*time.Second,
+		1*time.Second,
+	); err != nil {
 		return err
 	}
 
@@ -82,27 +87,4 @@ func NewKubectl(globalKubectlOptions ...string) *Kubectl {
 func (k *Kubectl) NewCommand(command string) *exec.Command {
 	cmd := fmt.Sprintf("%s %s", k.prefix, command)
 	return exec.NewCommand(cmd)
-}
-
-// retry runs a command up to maxAttempts times, sleeping between attempts.
-func retry(maxAttempts int, sleep time.Duration, fn func() error) error {
-	if maxAttempts <= 0 {
-		return fmt.Errorf("maxAttempts must be greater than 0")
-	}
-
-	var err error
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		if err = fn(); err == nil {
-			return nil
-		}
-
-		if attempt == maxAttempts {
-			return err
-		}
-
-		log.Printf("Attempt %d/%d failed, retrying in %s: %v", attempt, maxAttempts, sleep, err)
-		time.Sleep(sleep)
-	}
-
-	return err
 }
