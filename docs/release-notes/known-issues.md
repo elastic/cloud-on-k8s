@@ -21,13 +21,13 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
 
-During or after the upgrade of the ECK operator to 3.3.0-3.3.2, HTTP or transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures and prevents ES nodes from joining the cluster or Kibana/Fleet/other HTTP clients from connecting to it.
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
 
 For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
 
 **Workaround**
 
-Upgrade to ECK 3.4.0 or later. Alternatively, follow the [KB article](https://support.elastic.co/knowledge/5198af8e) to regenerate relevant certificates without upgrade. 
+Upgrade to ECK 3.4.0 or later. Alternatively, follow the [KB article](https://support.elastic.co/knowledge/5198af8e) to regenerate relevant certificates without upgrading. 
 
 :::
 
