@@ -256,6 +256,92 @@ func TestStatefulSetList_HasSpecDiff(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "this is non-empty, that is nil",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{},
+				},
+			},
+			that: nil,
+			want: true,
+		},
+		{
+			name: "this is nil, that is non-empty",
+			this: nil,
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "same name but different replicas",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+			},
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "multiple StatefulSets, all specs match",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "multiple StatefulSets, one has a spec diff",
+			this: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			that: StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "StatefulSet exists in both this and that and have equal specs",
 			this: StatefulSetList{
 				{

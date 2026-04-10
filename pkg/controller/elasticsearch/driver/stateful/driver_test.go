@@ -17,7 +17,7 @@ import (
 )
 
 //
-//func TestDriver_hasPendingSpecChanges(t *testing.T) {
+// func TestDriver_hasPendingSpecChanges(t *testing.T) {
 //	state := &shared.ReconcileState{
 //		Meta: metadata.Metadata{
 //			Labels: map[string]string{
@@ -136,7 +136,7 @@ import (
 //	}
 //}
 //
-//func TestDriver_reconcileCriticalSteps(t *testing.T) {
+// func TestDriver_reconcileCriticalSteps(t *testing.T) {
 //	tests := []struct {
 //		name        string
 //		actualSets  es_sset.StatefulSetList

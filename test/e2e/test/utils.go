@@ -78,7 +78,12 @@ func ExitOnErr(err error) {
 
 // Eventually runs the given function until success with a default timeout.
 func Eventually(f func() error) func(*testing.T) {
-	return UntilSuccess(f, ctx.TestTimeout)
+	return EventuallyWithTimeout(f, ctx.TestTimeout)
+}
+
+// EventuallyWithTimeout runs the given function until success with the given timeout.
+func EventuallyWithTimeout(f func() error, timeout time.Duration) func(*testing.T) {
+	return UntilSuccess(f, timeout)
 }
 
 // UntilSuccess executes f until it succeeds, or the timeout is reached.
