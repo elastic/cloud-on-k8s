@@ -19,7 +19,17 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
 
-There are no known issues in ECK 3.3.2
+:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+
+During or after the upgrade of the ECK operator to 3.3.0-3.3.2, HTTP or transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures and prevents ES nodes from joining the cluster or Kibana/Fleet/other HTTP clients from connecting to it.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.4.0 or later. Alternatively, follow the [KB article](https://support.elastic.co/knowledge/5198af8e) to regenerate relevant certificates without upgrade. 
+
+:::
 
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
 
