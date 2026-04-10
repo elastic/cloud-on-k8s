@@ -11,8 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 )
 
 //go:embed install/kyverno.yaml
@@ -25,8 +27,7 @@ var policiesManifest string
 var GKEPolicies string
 
 const (
-	waitForKyvernoAdmissionDeployment  = `wait deployment kyverno-admission-controller -n kyverno --for condition=Available=True --timeout=20m`
-	waitForKyvernoBackgroundDeployment = `wait deployment kyverno-background-controller -n kyverno --for condition=Available=True --timeout=20m`
+	waitForKyvernoDeployments = `rollout status deployment -l app.kubernetes.io/instance=kyverno -n kyverno --timeout=20m`
 )
 
 func Install(globalKubectlOptions ...string) error {
@@ -43,15 +44,16 @@ func Install(globalKubectlOptions ...string) error {
 		return err
 	}
 	log.Println("Waiting for Kyverno Pod to be ready...")
-	if err := k.NewCommand(waitForKyvernoAdmissionDeployment).Run(); err != nil {
-		return err
-	}
-	if err := k.NewCommand(waitForKyvernoBackgroundDeployment).Run(); err != nil {
+	if err := k.NewCommand(waitForKyvernoDeployments).Run(); err != nil {
 		return err
 	}
 
 	log.Println("Installing Kyverno policies")
-	if err := apply(k, dir, policiesManifest, "policies.yaml"); err != nil {
+	if err := retry.UntilSuccess(
+		func() error { return apply(k, dir, policiesManifest, "policies.yaml") },
+		5*time.Second,
+		1*time.Second,
+	); err != nil {
 		return err
 	}
 
