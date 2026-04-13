@@ -19,7 +19,7 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
 
-:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
 
 During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
 
@@ -33,7 +33,7 @@ Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-ce
 
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
 
-:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
 
 During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
 
@@ -68,7 +68,7 @@ Renew or restore the Enterprise license so that the AutoOps policy can be valida
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
 
-:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
 
 During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
 
