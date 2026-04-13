@@ -9247,7 +9247,7 @@ spec:
                       x-kubernetes-preserve-unknown-fields: true
                     resources:
                       description: Resources specifies the resource requests and limits
-                        (CPU and memory only) for the Elasticsearch nodes in this
+                        (CPU and Memory only) for the Elasticsearch nodes in this
                         NodeSet. When set these override the resource requests and
                         limits set in the PodTemplate for the primary Elasticsearch
                         container. To set the resources for other containers, use

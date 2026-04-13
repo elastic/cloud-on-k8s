@@ -71,6 +71,12 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the main Beat container. When set, these
+	// values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for
+	// the primary Beat container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitempty"`
+
 	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional

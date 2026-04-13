@@ -46,6 +46,12 @@ type ApmServerSpec struct {
 	// It allows APM agent central configuration management in Kibana.
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the APM Server container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary APM Server
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitempty"`
+
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields

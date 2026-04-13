@@ -199,6 +199,7 @@ func (in *LogstashSpec) DeepCopyInto(out *LogstashSpec) {
 		}
 	}
 	in.Monitoring.DeepCopyInto(&out.Monitoring)
+	in.Resources.DeepCopyInto(&out.Resources)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit

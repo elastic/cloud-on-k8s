@@ -171,6 +171,7 @@ func (in *BeatSpec) DeepCopyInto(out *BeatSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.DaemonSet != nil {
 		in, out := &in.DaemonSet, &out.DaemonSet
 		*out = new(DaemonSetSpec)

@@ -118,6 +118,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("3Gi"),
 					},
+					Requests: corev1.ResourceList{},
 				}, GetKibanaContainer(pod.Spec).Resources)
 			},
 		},

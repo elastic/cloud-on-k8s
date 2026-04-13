@@ -91,6 +91,7 @@ func (in *EnterpriseSearchSpec) DeepCopyInto(out *EnterpriseSearchSpec) {
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	out.ElasticsearchRef = in.ElasticsearchRef
+	in.Resources.DeepCopyInto(&out.Resources)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
