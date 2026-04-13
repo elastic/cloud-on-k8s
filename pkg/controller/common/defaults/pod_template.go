@@ -390,24 +390,30 @@ func (b *PodTemplateBuilder) WithInitContainers(
 	return b
 }
 
-// WithResourcesAndOverrides sets container resources to a merge of the user pod template, operator defaults,
-// and NodeSet-level overrides. When the main container has no resources yet, defaults are used as the base;
-// otherwise the pod template resources are preserved for keys not overridden. Overrides always win for CPU
-// and memory keys they set. The defaults argument is not mutated.
+// WithResourcesAndOverrides sets main-container CPU/memory using the pod template, CRD overrides, and operator
+// defaults. No pod resources and no overrides → full defaults. Otherwise only the keys you set are applied;
+// defaults are not used to fill the rest. If the pod template already has resources, overrides only adjust
+// CPU and memory on that base. The resources parameter is not mutated.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
 	var merged corev1.ResourceRequirements
-	if main.Resources.Requests == nil && main.Resources.Limits == nil {
-		merged = *resources.DeepCopy()
+
+	podTemplateResourcesUnset := main.Resources.Requests == nil && main.Resources.Limits == nil
+	if podTemplateResourcesUnset {
+		merged = corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{},
+			Limits:   corev1.ResourceList{},
+		}
 	} else {
 		merged = *main.Resources.DeepCopy()
+		if merged.Requests == nil {
+			merged.Requests = corev1.ResourceList{}
+		}
+		if merged.Limits == nil {
+			merged.Limits = corev1.ResourceList{}
+		}
 	}
-	if merged.Requests == nil {
-		merged.Requests = corev1.ResourceList{}
-	}
-	if merged.Limits == nil {
-		merged.Limits = corev1.ResourceList{}
-	}
+
 	if overrides.Limits.CPU != nil {
 		merged.Limits[corev1.ResourceCPU] = *overrides.Limits.CPU
 	}
@@ -420,6 +426,11 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 	if overrides.Requests.Memory != nil {
 		merged.Requests[corev1.ResourceMemory] = *overrides.Requests.Memory
 	}
+
+	if len(merged.Requests) == 0 && len(merged.Limits) == 0 {
+		merged = *resources.DeepCopy()
+	}
+
 	main.Resources = merged
 	b.setContainerDefaulter()
 	return b
