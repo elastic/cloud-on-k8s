@@ -27,7 +27,7 @@ For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/p
 
 **Workaround**
 
-Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
 
 :::
 
@@ -41,7 +41,7 @@ For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/p
 
 **Workaround**
 
-Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
 
 :::
 
@@ -76,7 +76,7 @@ For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/p
 
 **Workaround**
 
-Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
 
 :::
 
