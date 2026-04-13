@@ -27,11 +27,23 @@ For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/p
 
 **Workaround**
 
-Upgrade to ECK 3.4.0 or later. Alternatively, follow the [KB article](https://support.elastic.co/knowledge/5198af8e) to regenerate relevant certificates without upgrading. 
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
 
 :::
 
 ## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
+
+:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
+
+For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
+
+**Workaround**
+
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
+
+:::
 
 :::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
 Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
@@ -55,6 +67,18 @@ Renew or restore the Enterprise license so that the AutoOps policy can be valida
 :::
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
+
+:::{dropdown} Certificate mismatch causing {{es}} and {{kb}} connection failure during ECK operator upgrade
+
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
+
+For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
+
+**Workaround**
+
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://support.elastic.co/knowledge/5198af8e). Alternatively, upgrade to ECK 3.4.0 or later once available.
+
+:::
 
 :::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
 Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
