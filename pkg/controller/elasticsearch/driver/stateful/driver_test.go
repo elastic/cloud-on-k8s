@@ -6,154 +6,228 @@ package stateful
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-//
-// func TestDriver_hasPendingSpecChanges(t *testing.T) {
-//	state := &shared.ReconcileState{
-//		Meta: metadata.Metadata{
-//			Labels: map[string]string{
-//				commonv1.TypeLabelName:         "elasticsearch",
-//				label.ClusterNameLabelName:     "test-cluster",
-//				label.StatefulSetNameLabelName: "test-cluster-es-nodeset",
-//			},
-//			Annotations: nil,
-//		},
-//		KeystoreResources: &keystore.Resources{},
-//	}
-//
-//	resolvedConfig := nodespec.ResolvedConfig{
-//		NodeSetConfigs: map[string]essettings.CanonicalConfig{
-//			"test-cluster-es-nodeset": {CanonicalConfig: settings.MustCanonicalConfig(commonv1.Config{Data: map[string]any{"user": "true"}})},
-//		},
-//	}
-//
-//	elasticsearch := esv1.Elasticsearch{
-//		ObjectMeta: metav1.ObjectMeta{
-//			Name: "test-cluster",
-//		},
-//		Spec: esv1.ElasticsearchSpec{
-//			Version: "9.3.1",
-//			NodeSets: []esv1.NodeSet{
-//				{
-//					Name:          "test-cluster-es-nodeset",
-//					Config:        nil,
-//					Count:         0,
-//					ZoneAwareness: nil,
-//					PodTemplate:   corev1.PodTemplateSpec{},
-//					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-//						{
-//							ObjectMeta: metav1.ObjectMeta{},
-//						},
-//					},
-//				},
-//			},
-//		},
-//	}
-//
-//	tests := []struct {
-//		name            string
-//		buildActualSets func(client k8s.Client) es_sset.StatefulSetList
-//		k8sClient       k8s.Client
-//		expected        bool
-//		expectedErr     error
-//	}{
-//		{
-//			name: "actual stateful sets are equal to expected stateful sets returns false",
-//			buildActualSets: func(client k8s.Client) es_sset.StatefulSetList {
-//				statefulSet, err := nodespec.BuildStatefulSet(
-//					context.Background(),
-//					client,
-//					elasticsearch,
-//					elasticsearch.Spec.NodeSets[0],
-//					essettings.CanonicalConfig{
-//						CanonicalConfig: settings.MustCanonicalConfig(commonv1.Config{Data: map[string]any{"user": "true"}}),
-//					},
-//					state.KeystoreResources,
-//					es_sset.StatefulSetList{},
-//					true,
-//					nodespec.PolicyConfig{},
-//					state.Meta,
-//					"trigger",
-//					true,
-//				)
-//				require.NoError(t, err)
-//
-//				return es_sset.StatefulSetList{statefulSet}
-//			},
-//			k8sClient: k8s.NewFakeClient(
-//				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-es-scripts"}},
-//			),
-//			expected:    false,
-//			expectedErr: nil,
-//		},
-//		{
-//			name:        "actual stateful sets are different than expected stateful sets returns true",
-//			k8sClient:   k8s.NewFakeClient(),
-//			expected:    true,
-//			expectedErr: nil,
-//		},
-//		{
-//			name:        "error getting expected stateful sets returns error",
-//			k8sClient:   k8s.NewFakeClient(),
-//			expected:    false,
-//			expectedErr: errors.New("error getting expected stateful sets"),
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			d := &Driver{
-//				BaseDriver: driver.BaseDriver{
-//					Parameters: driver.Parameters{
-//						Client: tt.k8sClient,
-//						ES:     elasticsearch,
-//						OperatorParameters: operator.Parameters{
-//							SetDefaultSecurityContext: true,
-//						},
-//					},
-//				},
-//			}
-//
-//			actualSets := tt.buildActualSets(tt.k8sClient)
-//
-//			hasChanged, err := d.hasPendingSpecChanges(context.Background(), actualSets, state, resolvedConfig)
-//			if tt.expectedErr != nil {
-//				assert.EqualErrorf(t, err, tt.expectedErr.Error(), "expected error %s but got %s", tt.expectedErr.Error(), err)
-//			} else {
-//				assert.NoError(t, err)
-//			}
-//			assert.Equal(t, tt.expected, hasChanged)
-//		})
-//	}
-//}
-//
-// func TestDriver_reconcileCriticalSteps(t *testing.T) {
-//	tests := []struct {
-//		name        string
-//		actualSets  es_sset.StatefulSetList
-//		meta        metadata.Metadata
-//		k8sClient   k8s.Client
-//		expected    bool
-//		expectedErr error
-//	}{
-//		{},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//
-//		})
-//	}
-//}
+func TestDriver_hasPendingSpecChanges(t *testing.T) {
+	const esName = "test-cluster"
+	const namespace = "test-ns"
+	const nodeSetName = "default"
+	const nodeSetName2 = "data"
+
+	scriptsConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.ScriptsConfigMap(esName),
+			Namespace: namespace,
+		},
+	}
+
+	// --- Single-NodeSet (Count=3) setup ---
+	elasticsearch := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esName,
+			Namespace: namespace,
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.17.0",
+			NodeSets: []esv1.NodeSet{
+				{Name: nodeSetName, Count: 3},
+			},
+		},
+	}
+	// BuildPodTemplateSpec fetches the scripts ConfigMap; it must exist for BuildExpectedResources to succeed.
+	k8sClient := k8s.NewFakeClient(scriptsConfigMap)
+	resolvedConfig, err := ResolveConfig(context.Background(), k8sClient, elasticsearch, corev1.IPv4Protocol, false)
+	require.NoError(t, err)
+	state := &shared.ReconcileState{
+		Meta:              metadata.Metadata{},
+		KeystoreResources: nil,
+	}
+	// Build the expected StatefulSets to use as actualSets in the "no diff" cases.
+	// existingStatefulSets=nil means no existing ssets yet (new cluster).
+	expectedResources, err := nodespec.BuildExpectedResources(
+		context.Background(), k8sClient, elasticsearch, state.KeystoreResources,
+		nil, false, state.Meta, resolvedConfig,
+	)
+	require.NoError(t, err)
+	matchingActualSets := expectedResources.StatefulSets()
+
+	// --- Two-NodeSet setup ---
+	elasticsearch2 := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esName,
+			Namespace: namespace,
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.17.0",
+			NodeSets: []esv1.NodeSet{
+				{Name: nodeSetName, Count: 3},
+				{Name: nodeSetName2, Count: 2},
+			},
+		},
+	}
+	resolvedConfig2, err := ResolveConfig(context.Background(), k8sClient, elasticsearch2, corev1.IPv4Protocol, false)
+	require.NoError(t, err)
+	expectedResources2, err := nodespec.BuildExpectedResources(
+		context.Background(), k8sClient, elasticsearch2, state.KeystoreResources,
+		nil, false, state.Meta, resolvedConfig2,
+	)
+	require.NoError(t, err)
+	matchingActualSets2 := expectedResources2.StatefulSets()
+
+	// Build a two-NodeSet actualSets where the second sset has a modified replica count.
+	diffActualSets2 := make(es_sset.StatefulSetList, len(matchingActualSets2))
+	for i, s := range matchingActualSets2 {
+		diffActualSets2[i] = *s.DeepCopy()
+	}
+	diffActualSets2[1].Spec.Replicas = ptr.To[int32](99)
+
+	tests := []struct {
+		name                      string
+		elasticsearch             esv1.Elasticsearch
+		k8sClient                 k8s.Client
+		setDefaultSecurityContext bool
+		actualSets                es_sset.StatefulSetList
+		resolvedConfig            nodespec.ResolvedConfig
+		want                      bool
+		wantErrMsg                string
+	}{
+		{
+			name:           "actual sets match expected: no pending changes",
+			elasticsearch:  elasticsearch,
+			k8sClient:      k8sClient,
+			actualSets:     matchingActualSets,
+			resolvedConfig: resolvedConfig,
+			want:           false,
+		},
+		{
+			name:           "actual sets differ from expected (length mismatch): pending changes detected",
+			elasticsearch:  elasticsearch,
+			k8sClient:      k8sClient,
+			actualSets:     es_sset.StatefulSetList{},
+			resolvedConfig: resolvedConfig,
+			want:           true,
+		},
+		{
+			name: "same-name sset with different replica count: pending changes detected",
+			elasticsearch: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: esName, Namespace: namespace},
+				Spec: esv1.ElasticsearchSpec{
+					Version:  "8.17.0",
+					NodeSets: []esv1.NodeSet{{Name: nodeSetName, Count: 5}},
+				},
+			},
+			k8sClient:      k8sClient,
+			actualSets:     matchingActualSets, // built with Count=3
+			resolvedConfig: resolvedConfig,
+			want:           true,
+		},
+		{
+			// BuildPodTemplateSpec adds FSGroup+SeccompProfile for ES 8+ when enabled.
+			// actualSets built with false; driver re-computes with true → spec differs.
+			name:                      "SetDefaultSecurityContext enabled when actualSets lacks security context: pending changes detected",
+			elasticsearch:             elasticsearch,
+			k8sClient:                 k8sClient,
+			setDefaultSecurityContext: true,
+			actualSets:                matchingActualSets,
+			resolvedConfig:            resolvedConfig,
+			want:                      true,
+		},
+		{
+			name:           "multiple NodeSets all match: no pending changes",
+			elasticsearch:  elasticsearch2,
+			k8sClient:      k8sClient,
+			actualSets:     matchingActualSets2,
+			resolvedConfig: resolvedConfig2,
+			want:           false,
+		},
+		{
+			name:           "multiple NodeSets one differs: pending changes detected",
+			elasticsearch:  elasticsearch2,
+			k8sClient:      k8sClient,
+			actualSets:     diffActualSets2,
+			resolvedConfig: resolvedConfig2,
+			want:           true,
+		},
+		{
+			// GetActualPodsRestartTriggerAnnotationForCluster reads the annotation from live pods
+			// and embeds it in the expected pod template. If actualSets was built without the pod
+			// the annotation is absent, creating a diff.
+			name:          "pod restart annotation present but absent from actualSets: pending changes detected",
+			elasticsearch: elasticsearch,
+			k8sClient: k8s.NewFakeClient(
+				scriptsConfigMap,
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        esName + "-es-" + nodeSetName + "-0",
+						Namespace:   namespace,
+						Labels:      map[string]string{label.ClusterNameLabelName: esName},
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+					},
+				},
+			),
+			actualSets:     matchingActualSets, // built without the pod, so annotation is absent
+			resolvedConfig: resolvedConfig,
+			want:           true,
+		},
+		{
+			name:          "BuildExpectedResources fails: error propagated",
+			elasticsearch: elasticsearch,
+			k8sClient:     k8sClient,
+			actualSets:    es_sset.StatefulSetList{},
+			resolvedConfig: nodespec.ResolvedConfig{
+				NodeSetConfigs: map[string]settings.CanonicalConfig{},
+			},
+			want:       false,
+			wantErrMsg: fmt.Sprintf("no pre-computed config for NodeSet %s", nodeSetName),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Driver{
+				BaseDriver: driver.BaseDriver{
+					Parameters: driver.Parameters{
+						Client: tt.k8sClient,
+						ES:     tt.elasticsearch,
+						OperatorParameters: operator.Parameters{
+							SetDefaultSecurityContext: tt.setDefaultSecurityContext,
+						},
+					},
+				},
+			}
+
+			got, err := d.hasPendingSpecChanges(context.Background(), tt.actualSets, state, tt.resolvedConfig)
+			if tt.wantErrMsg != "" {
+				require.EqualError(t, err, tt.wantErrMsg)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
 func Test_allNodesRunningServiceAccounts(t *testing.T) {
 	type args struct {
