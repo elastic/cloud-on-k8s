@@ -385,6 +385,10 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
+	// Resources specifies the resource requests and limits (CPU and memory only) for the Elasticsearch nodes in this NodeSet. When set these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitempty"`
+
 	// Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
 	// Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
 	// Note: stateless mode is under active development and not yet ready for use.

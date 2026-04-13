@@ -10,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -386,6 +387,41 @@ func (b *PodTemplateBuilder) WithInitContainers(
 
 	b.PodTemplate.Spec.InitContainers = append(containers, b.PodTemplate.Spec.InitContainers...)
 
+	return b
+}
+
+// WithResourcesAndOverrides sets container resources to a merge of the user pod template, operator defaults,
+// and NodeSet-level overrides. When the main container has no resources yet, defaults are used as the base;
+// otherwise the pod template resources are preserved for keys not overridden. Overrides always win for CPU
+// and memory keys they set. The defaults argument is not mutated.
+func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
+	main := b.MainContainer()
+	var merged corev1.ResourceRequirements
+	if main.Resources.Requests == nil && main.Resources.Limits == nil {
+		merged = *resources.DeepCopy()
+	} else {
+		merged = *main.Resources.DeepCopy()
+	}
+	if merged.Requests == nil {
+		merged.Requests = corev1.ResourceList{}
+	}
+	if merged.Limits == nil {
+		merged.Limits = corev1.ResourceList{}
+	}
+	if overrides.Limits.CPU != nil {
+		merged.Limits[corev1.ResourceCPU] = *overrides.Limits.CPU
+	}
+	if overrides.Limits.Memory != nil {
+		merged.Limits[corev1.ResourceMemory] = *overrides.Limits.Memory
+	}
+	if overrides.Requests.CPU != nil {
+		merged.Requests[corev1.ResourceCPU] = *overrides.Requests.CPU
+	}
+	if overrides.Requests.Memory != nil {
+		merged.Requests[corev1.ResourceMemory] = *overrides.Requests.Memory
+	}
+	main.Resources = merged
+	b.setContainerDefaulter()
 	return b
 }
 
