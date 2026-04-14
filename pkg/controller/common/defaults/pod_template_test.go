@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 var varFalse = false
@@ -1236,6 +1238,164 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 			if got := b.WithResources(tt.defaultResources).containerDefaulter.Container().Resources; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
+	containerName := "default-container"
+	cpuOverride := resource.MustParse("200m")
+	memoryOverride := resource.MustParse("6Gi")
+	defaultResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+	}
+
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		overrides   commonv1.Resources
+		want        corev1.ResourceRequirements
+	}{
+		{
+			name: "limits-only pod template keeps requests nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "requests-only pod template keeps limits nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "explicit empty maps are preserved",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits:   corev1.ResourceList{},
+								Requests: corev1.ResourceList{},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits:   corev1.ResourceList{},
+				Requests: corev1.ResourceList{},
+			},
+		},
+		{
+			name: "requests override initializes missing requests map only when needed",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU: &cpuOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: cpuOverride,
+				},
+			},
+		},
+		{
+			name: "no pod template resources and no overrides uses full defaults",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			want: defaultResources,
+		},
+		{
+			name: "no pod template resources and partial override skips full defaults",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: memoryOverride,
+				},
+				Requests: corev1.ResourceList{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.podTemplate, containerName)
+			got := b.WithResourcesAndOverrides(defaultResources, tt.overrides).MainContainer().Resources
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
