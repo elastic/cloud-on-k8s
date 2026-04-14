@@ -15,7 +15,7 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### {{es}} client certificate authentication support
 
-ECK now supports configuring {{es}} to require client certificates for authentication. This allows you to enforce mutual TLS (mTLS) between clients and {{es}}, strengthening security by requiring both the client and server to present valid certificates. Currently, {{es}} and {{product.kibana}} support this feature - {{product.kibana}} can be configured to present client certificates when connecting to {{es}}. Support for the remaining components that connect to {{es}} (Beats, Elastic Agent, APM Server, Logstash, etc.) will follow in future releases.
+ECK now supports configuring {{es}} to require client certificates for authentication. This allows you to enforce mutual TLS (mTLS) between clients and {{es}}, strengthening security by requiring both the client and server to present valid certificates. Currently, {{es}} and {{product.kibana}} support this feature - {{product.kibana}} can be configured to present client certificates when connecting to {{es}}. Support for the remaining components that connect to {{es}} (Beats, Elastic Agent, APM Server, Logstash, and so on) will follow in future releases.
 
 #### Rolling restarts of {{es}} clusters
 
@@ -53,6 +53,7 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 - Set `TransformStripManagedFields` on informer caches [#9321](https://github.com/elastic/cloud-on-k8s/pull/9321)
 - Align DaemonSet `UpdateReconciled` with Deployment reconciler [#9256](https://github.com/elastic/cloud-on-k8s/pull/9256)
 - Add version-gated querylog fileset to Filebeat sidecar config [#9291](https://github.com/elastic/cloud-on-k8s/pull/9291)
+- Bump default {{product.kibana}} memory limit from 1Gi to 2Gi [#9328](https://github.com/elastic/cloud-on-k8s/pull/9328)
 
 ### Fixes [elastic-cloud-kubernetes-340-fixes]
 
@@ -76,7 +77,7 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 
 :::{dropdown} Updated dependencies
 
-- Go 1.25.8 => 1.26.1
+- Go 1.25.8 => 1.26.2
 - github.com/elastic/go-ucfg v0.8.9-0.20251017163010-3520930bed4f => v0.9.1
 - github.com/gkampitakis/go-snaps v0.5.19 => v0.5.21
 - github.com/google/go-containerregistry v0.20.7 => v0.21.4

@@ -34,6 +34,15 @@ For more information, check [PR #9218](https://github.com/elastic/cloud-on-k8s/p
 **Action**<br> No action required. Be aware that {{product.kibana}} pods will restart during the upgrade.
 ::::
 
+::::{dropdown} Rolling restart of Kibana pods due to default memory limit increase
+ECK 3.4.0 increases the default {{product.kibana}} memory limit from 1Gi to 2Gi. Kibana 9.x raised its V8 heap limit from 60% to 75% of container memory, causing OOM crashes with the previous 1Gi default. This change will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
+For more information, check [PR #9328](https://github.com/elastic/cloud-on-k8s/pull/9328).
+
+**Impact**<br> {{product.kibana}} pods will be restarted as part of the operator upgrade, and each pod will consume up to 2Gi of memory instead of 1Gi.
+
+**Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, this change does not affect you.
+::::
+
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
 
