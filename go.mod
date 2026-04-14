@@ -2,7 +2,7 @@ module github.com/elastic/cloud-on-k8s/v3
 
 go 1.25.7
 
-toolchain go1.26.1
+toolchain go1.26.2
 
 require (
 	cloud.google.com/go/auth v0.20.0
