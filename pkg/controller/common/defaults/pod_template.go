@@ -391,9 +391,11 @@ func (b *PodTemplateBuilder) WithInitContainers(
 }
 
 // WithResourcesAndOverrides sets main-container CPU/memory using the pod template, CRD overrides, and operator
-// defaults. No pod resources and no overrides → full defaults. Otherwise only the keys you set are applied;
-// defaults are not used to fill the rest. If the pod template already has resources, overrides only adjust
-// CPU and memory on that base. The resources parameter is not mutated.
+// defaults. When the pod template's main container has no resources field (both Requests and Limits nil) and
+// overrides leave CPU/memory unset, the full operator defaults from resources are applied. If the pod template
+// already has a Resources value — including explicit empty requests/limits maps for LimitRange — those maps
+// are the merge base and operator defaults are not substituted wholesale. Overrides only set CPU/memory keys
+// that are non-nil in overrides. The resources parameter is not mutated.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
 	var merged corev1.ResourceRequirements
@@ -427,7 +429,10 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 		merged.Requests[corev1.ResourceMemory] = *overrides.Requests.Memory
 	}
 
-	if len(merged.Requests) == 0 && len(merged.Limits) == 0 {
+	// Only substitute full operator defaults when the pod template had no resources at all.
+	// If the user set explicit (possibly empty) requests/limits maps — including the LimitRange
+	// escape hatch `requests: {}` / `limits: {}` — those must not be replaced by defaults.
+	if podTemplateResourcesUnset && len(merged.Requests) == 0 && len(merged.Limits) == 0 {
 		merged = *resources.DeepCopy()
 	}
 
