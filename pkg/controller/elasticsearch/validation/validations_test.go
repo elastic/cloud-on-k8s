@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -1179,6 +1180,280 @@ func Test_validAssociations(t *testing.T) {
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed validAssociations(). Name: %v, actual %v, wanted: %v", tt.name, actual, tt.expectErrors)
 			}
+		})
+	}
+}
+
+func Test_fipsWarnings(t *testing.T) {
+	tests := []struct {
+		name    string
+		objects []client.Object
+		es      esv1.Elasticsearch
+		want    field.ErrorList
+	}{
+		{
+			name: "no fips in nodesets",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version:  "9.4.0",
+					NodeSets: []esv1.NodeSet{{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"node.attr.rack": "r1"}}}},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "mixed fips settings below min version emits both warnings",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+					},
+				},
+			},
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("nodeSets"), []esv1.NodeSet{
+					{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+					{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+				}, inconsistentFIPSModeWarningMsg),
+				field.Invalid(field.NewPath("spec").Child("version"), "9.3.0", fipsManagedKeystoreUnsupportedWarningMsg),
+			},
+		},
+		{
+			name: "fips enabled below min version but keystore password via envFrom secret",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ks-envfrom"},
+					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/x")},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											EnvFrom: []corev1.EnvFromSource{
+												{SecretRef: &corev1.SecretEnvSource{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "ks-envfrom"},
+												}},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "version parse error still returns consistency warning",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "not-a-version",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+					},
+				},
+			},
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("nodeSets"), []esv1.NodeSet{
+					{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+					{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+				}, inconsistentFIPSModeWarningMsg),
+				field.Invalid(field.NewPath("spec").Child("version"), "not-a-version", parseVersionErrMsg),
+			},
+		},
+		{
+			name: "fips enabled below min version but keystore password env set on es container",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{Name: esv1.ElasticsearchContainerName, Env: []corev1.EnvVar{{Name: "KEYSTORE_PASSWORD_FILE", Value: "/x"}}},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "fips enabled only via stack config policy below min version emits unsupported warning",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-only"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-only",
+					Namespace: "ns",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1},
+					},
+				},
+			},
+			want: field.ErrorList{
+				field.Invalid(field.NewPath("spec").Child("version"), "9.3.0", fipsManagedKeystoreUnsupportedWarningMsg),
+			},
+		},
+		{
+			name: "stack config policy fips override suppresses mixed nodeset inconsistency warning",
+			objects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-override"),
+						Namespace: "ns",
+					},
+					Data: map[string][]byte{
+						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
+					},
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "policy-override",
+					Namespace: "ns",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.4.0",
+					NodeSets: []esv1.NodeSet{
+						{Name: "a", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+						{Name: "b", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+					},
+				},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objects...)
+			got, err := fipsWarnings(context.Background(), c, tt.es)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_fipsWarnings_notFoundEnvFromDoesNotBlockAdmissionWarningPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		wantWarnings []string
+	}{
+		{
+			name: "fips enabled below min version and missing envFrom ref suppresses managed-keystore warning",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											EnvFrom: []corev1.EnvFromSource{
+												{SecretRef: &corev1.SecretEnvSource{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+												}},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantWarnings: nil,
+		},
+		{
+			name: "mixed fips still emits consistency warning when envFrom ref is missing",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.3.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:   "a",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											EnvFrom: []corev1.EnvFromSource{
+												{SecretRef: &corev1.SecretEnvSource{
+													LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+												}},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name:   "b",
+							Count:  1,
+							Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}},
+						},
+					},
+				},
+			},
+			wantWarnings: []string{inconsistentFIPSModeWarningMsg},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient()
+			got, err := fipsWarnings(context.Background(), c, tt.es)
+			require.NoError(t, err)
+
+			gotWarnings := make([]string, 0, len(got))
+			for _, w := range got {
+				gotWarnings = append(gotWarnings, w.Detail)
+			}
+			require.ElementsMatch(t, tt.wantWarnings, gotWarnings)
 		})
 	}
 }
