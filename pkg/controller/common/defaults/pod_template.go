@@ -398,40 +398,13 @@ func (b *PodTemplateBuilder) WithInitContainers(
 // that are non-nil in overrides. The resources parameter is not mutated.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
-	var merged corev1.ResourceRequirements
+	merged, podTemplateResourcesUnset := resourceRequirementsMergeBase(main.Resources)
+	applyCPUAndMemoryOverrides(merged.Limits, overrides.Limits)
+	applyCPUAndMemoryOverrides(merged.Requests, overrides.Requests)
 
-	podTemplateResourcesUnset := main.Resources.Requests == nil && main.Resources.Limits == nil
-	if podTemplateResourcesUnset {
-		merged = corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{},
-			Limits:   corev1.ResourceList{},
-		}
-	} else {
-		merged = *main.Resources.DeepCopy()
-		if merged.Requests == nil {
-			merged.Requests = corev1.ResourceList{}
-		}
-		if merged.Limits == nil {
-			merged.Limits = corev1.ResourceList{}
-		}
-	}
-
-	if overrides.Limits.CPU != nil {
-		merged.Limits[corev1.ResourceCPU] = *overrides.Limits.CPU
-	}
-	if overrides.Limits.Memory != nil {
-		merged.Limits[corev1.ResourceMemory] = *overrides.Limits.Memory
-	}
-	if overrides.Requests.CPU != nil {
-		merged.Requests[corev1.ResourceCPU] = *overrides.Requests.CPU
-	}
-	if overrides.Requests.Memory != nil {
-		merged.Requests[corev1.ResourceMemory] = *overrides.Requests.Memory
-	}
-
-	// Only substitute full operator defaults when the pod template had no resources at all.
-	// If the user set explicit (possibly empty) requests/limits maps — including the LimitRange
-	// escape hatch `requests: {}` / `limits: {}` — those must not be replaced by defaults.
+	// Only substitute full operator defaults when the pod template omitted both requests and limits.
+	// If the user explicitly provided requests/limits maps, including empty maps
+	// (`requests: {}` / `limits: {}`), keep those as-is and do not replace them with defaults.
 	if podTemplateResourcesUnset && len(merged.Requests) == 0 && len(merged.Limits) == 0 {
 		merged = *resources.DeepCopy()
 	}
@@ -439,6 +412,42 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 	main.Resources = merged
 	b.setContainerDefaulter()
 	return b
+}
+
+// resourceRequirementsMergeBase returns the merge base for resources overrides and whether the
+// pod template had no resources set at all (both requests and limits nil).
+func resourceRequirementsMergeBase(existing corev1.ResourceRequirements) (corev1.ResourceRequirements, bool) {
+	podTemplateResourcesUnset := existing.Requests == nil && existing.Limits == nil
+	if podTemplateResourcesUnset {
+		return corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{},
+			Limits:   corev1.ResourceList{},
+		}, true
+	}
+
+	merged := *existing.DeepCopy()
+	ensureResourceMapsInitialized(&merged)
+	return merged, false
+}
+
+// ensureResourceMapsInitialized initializes requests/limits maps when they are nil.
+func ensureResourceMapsInitialized(resources *corev1.ResourceRequirements) {
+	if resources.Requests == nil {
+		resources.Requests = corev1.ResourceList{}
+	}
+	if resources.Limits == nil {
+		resources.Limits = corev1.ResourceList{}
+	}
+}
+
+// applyCPUAndMemoryOverrides copies non-nil CPU/memory overrides into dst.
+func applyCPUAndMemoryOverrides(dst corev1.ResourceList, overrides commonv1.ResourceAllocations) {
+	if overrides.CPU != nil {
+		dst[corev1.ResourceCPU] = *overrides.CPU
+	}
+	if overrides.Memory != nil {
+		dst[corev1.ResourceMemory] = *overrides.Memory
+	}
 }
 
 // WithResources sets up the given resource requirements if both resources limits and requests
