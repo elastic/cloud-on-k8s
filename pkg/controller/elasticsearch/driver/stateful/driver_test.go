@@ -6,16 +6,20 @@ package stateful
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -23,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
@@ -224,6 +229,394 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDriver_reconcileCriticalSteps(t *testing.T) {
+	const esName = "test-cluster"
+	const namespace = "test-ns"
+	const nodeSetName = "default"
+
+	scriptsConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.ScriptsConfigMap(esName),
+			Namespace: namespace,
+		},
+	}
+
+	elasticsearch := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esName,
+			Namespace: namespace,
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.17.0",
+			NodeSets: []esv1.NodeSet{
+				{Name: nodeSetName, Count: 3},
+			},
+		},
+	}
+
+	// Pre-compute matching StatefulSets for the "no pending changes" case. These are used as
+	// pre-existing k8s objects so that RetrieveActualStatefulSets returns them and hasPendingSpecChanges
+	// finds no diff against the re-computed expected resources.
+	setupClient := k8s.NewFakeClient(scriptsConfigMap)
+	resolvedConfig, err := ResolveConfig(context.Background(), setupClient, elasticsearch, corev1.IPv4Protocol, false)
+	require.NoError(t, err)
+
+	sharedState := &shared.ReconcileState{
+		Meta:              metadata.Metadata{},
+		KeystoreResources: nil,
+	}
+
+	expectedResources, err := nodespec.BuildExpectedResources(
+		context.Background(), setupClient, elasticsearch, sharedState.KeystoreResources,
+		nil, false, sharedState.Meta, resolvedConfig,
+	)
+	require.NoError(t, err)
+	matchingStatefulSets := expectedResources.StatefulSets()
+
+	tests := []struct {
+		name              string
+		k8sObjects        []crclient.Object // pre-existing StatefulSets beyond scriptsConfigMap
+		resolvedConfig    nodespec.ResolvedConfig
+		failK8sClient     bool
+		wantErr           bool
+		wantPhase         esv1.ElasticsearchOrchestrationPhase
+		wantCondStatus    corev1.ConditionStatus
+		wantCondMsgSubstr string
+		wantEvents        []events.Event
+	}{
+		{
+			name:              "actual StatefulSets match expected: no pending changes",
+			k8sObjects:        statefulSetsAsObjects(matchingStatefulSets),
+			resolvedConfig:    resolvedConfig,
+			wantPhase:         esv1.ElasticsearchOrchestrationPaused,
+			wantCondStatus:    corev1.ConditionTrue,
+			wantCondMsgSubstr: "no pending spec changes detected",
+		},
+		{
+			name:              "no actual StatefulSets: pending changes detected",
+			resolvedConfig:    resolvedConfig,
+			wantPhase:         esv1.ElasticsearchOrchestrationPaused,
+			wantCondStatus:    corev1.ConditionTrue,
+			wantCondMsgSubstr: "spec changes are pending and will be applied on resume",
+			wantEvents: []events.Event{
+				{
+					EventType: corev1.EventTypeWarning,
+					Reason:    events.EventReasonPaused,
+					Action:    events.EventActionPendingOrchestrationChanges,
+				},
+			},
+		},
+		{
+			name: "BuildExpectedResources fails: error is propagated, condition not set",
+			resolvedConfig: nodespec.ResolvedConfig{
+				NodeSetConfigs: map[string]settings.CanonicalConfig{},
+			},
+			wantErr: true,
+		},
+		{
+			name:           "k8s client failure: error is propagated",
+			failK8sClient:  true,
+			resolvedConfig: resolvedConfig,
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var k8sClient k8s.Client
+			if tt.failK8sClient {
+				k8sClient = k8s.NewFailingClient(errors.New("k8s client failed"))
+			} else {
+				objects := append([]crclient.Object{scriptsConfigMap}, tt.k8sObjects...)
+				k8sClient = k8s.NewFakeClient(objects...)
+			}
+
+			reconcileState := reconcile.MustNewState(elasticsearch)
+			d := &Driver{
+				BaseDriver: driver.BaseDriver{
+					Parameters: driver.Parameters{
+						Client:         k8sClient,
+						ES:             elasticsearch,
+						ReconcileState: reconcileState,
+					},
+				},
+			}
+
+			err := d.reconcileCriticalSteps(context.Background(), sharedState, tt.resolvedConfig)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			// Check OrchestrationPaused condition.
+			condIdx := reconcileState.Index(esv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, condIdx, 0, "OrchestrationPaused condition should be set")
+			cond := reconcileState.Conditions[condIdx]
+			assert.Equal(t, tt.wantCondStatus, cond.Status)
+			assert.Contains(t, cond.Message, tt.wantCondMsgSubstr)
+
+			// Check events (inspected before Apply() to avoid the health-degraded check).
+			recordedEvents := reconcileState.Events()
+			require.Len(t, recordedEvents, len(tt.wantEvents))
+			for i, want := range tt.wantEvents {
+				assert.Equal(t, want.EventType, recordedEvents[i].EventType)
+				assert.Equal(t, want.Reason, recordedEvents[i].Reason)
+				assert.Equal(t, want.Action, recordedEvents[i].Action)
+			}
+
+			// Check phase via Apply(), which surfaces the internal status.
+			_, updatedES := reconcileState.Apply()
+			require.NotNil(t, updatedES)
+			assert.Equal(t, tt.wantPhase, updatedES.Status.Phase)
+		})
+	}
+}
+
+func statefulSetsAsObjects(sets es_sset.StatefulSetList) []crclient.Object {
+	objects := make([]crclient.Object, len(sets))
+	for i := range sets {
+		objects[i] = &sets[i]
+	}
+	return objects
+}
+
+func Test_hasSpecDiff(t *testing.T) {
+	tests := []struct {
+		name string
+		this es_sset.StatefulSetList
+		that es_sset.StatefulSetList
+		want bool
+	}{
+		{
+			name: "both this and that statefulset are nil",
+			this: nil,
+			that: nil,
+			want: false,
+		},
+		{
+			name: "both this and that statefulset are empty",
+			this: es_sset.StatefulSetList{},
+			that: es_sset.StatefulSetList{},
+			want: false,
+		},
+		{
+			name: "one statefulset exists in this but not that",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{},
+				},
+			},
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset2",
+					},
+					Spec: appsv1.StatefulSetSpec{},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "this is non-empty, that is nil",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{},
+				},
+			},
+			that: nil,
+			want: true,
+		},
+		{
+			name: "this is nil, that is non-empty",
+			this: nil,
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "same name but different replicas",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+			},
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "multiple StatefulSets, all specs match",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "multiple StatefulSets, one has a spec diff",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+				},
+			},
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
+					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "StatefulSet exists in both this and that and have equal specs",
+			this: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: ptr.To[int32](3),
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "sset1-pvc",
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											APIVersion: "apps/v1",
+											Kind:       "StatefulSet",
+											Name:       "sset1",
+											Controller: ptr.To[bool](true),
+										},
+										{
+											APIVersion: "apps/v1",
+											Kind:       "Elasticsearch",
+											Name:       "es1",
+											Controller: ptr.To[bool](true),
+										},
+									},
+									Annotations: map[string]string{
+										"foo": "bar",
+										"bar": "foo",
+									},
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
+								},
+							},
+						},
+						ServiceName:                          "sset1",
+						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
+						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
+						RevisionHistoryLimit:                 ptr.To[int32](3),
+						MinReadySeconds:                      2,
+						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
+						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+					},
+				},
+			},
+			that: es_sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: ptr.To[int32](3),
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "sset1-pvc",
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											APIVersion: "apps/v1",
+											Kind:       "StatefulSet",
+											Name:       "sset1",
+											Controller: ptr.To[bool](true),
+										},
+										{
+											APIVersion: "apps/v1",
+											Kind:       "Elasticsearch",
+											Name:       "es1",
+											Controller: ptr.To[bool](true),
+										},
+									},
+									Annotations: map[string]string{
+										"bar": "foo",
+										"foo": "bar",
+									},
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
+								},
+							},
+						},
+						ServiceName:                          "sset1",
+						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
+						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
+						RevisionHistoryLimit:                 ptr.To[int32](3),
+						MinReadySeconds:                      2,
+						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
+						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hasSpecDiff(tt.this, tt.that)
 			assert.Equal(t, tt.want, got)
 		})
 	}

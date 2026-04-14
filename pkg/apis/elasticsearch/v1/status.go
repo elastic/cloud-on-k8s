@@ -52,6 +52,8 @@ const (
 	ElasticsearchNodeShutdownStalledPhase ElasticsearchOrchestrationPhase = "Stalled"
 	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
 	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
+	// ElasticsearchOrchestrationPaused orchestration is paused due to the pause-orchestration annotation.
+	ElasticsearchOrchestrationPaused ElasticsearchOrchestrationPhase = "Paused"
 )
 
 // ElasticsearchStatus represents the observed state of Elasticsearch.

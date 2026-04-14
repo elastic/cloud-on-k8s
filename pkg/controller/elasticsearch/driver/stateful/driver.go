@@ -9,7 +9,9 @@ import (
 	"context"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -128,7 +130,7 @@ func (d *Driver) reconcileCriticalSteps(
 	if err = pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualSets, state.Meta); err != nil {
 		return err
 	}
-	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchOrchestrationPaused)
 
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
 	if err != nil {
@@ -138,7 +140,7 @@ func (d *Driver) reconcileCriticalSteps(
 	message := "Orchestration paused via annotation; no pending spec changes detected"
 	if hasPendingChanges {
 		message = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
-		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy,
+		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
 	}
 	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionTrue, message)
@@ -157,7 +159,31 @@ func (d *Driver) hasPendingSpecChanges(
 	if err != nil {
 		return false, err
 	}
-	return actualSets.HasSpecDiff(expectedResources.StatefulSets()), nil
+	return hasSpecDiff(actualSets, expectedResources.StatefulSets()), nil
+}
+
+func hasSpecDiff(actualSets, expectedSets es_sset.StatefulSetList) bool {
+	if len(actualSets) != len(expectedSets) {
+		return true
+	}
+
+	otherSetsByName := make(map[string]appsv1.StatefulSet, len(expectedSets))
+	for _, otherSet := range expectedSets {
+		otherSetsByName[otherSet.Name] = otherSet
+	}
+
+	for _, thisSet := range actualSets {
+		thatSet, exists := otherSetsByName[thisSet.Name]
+		if !exists {
+			return true
+		}
+
+		if !equality.Semantic.DeepEqual(thisSet.Spec, thatSet.Spec) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // names returns the names of the given pods.

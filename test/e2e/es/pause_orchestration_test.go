@@ -54,27 +54,29 @@ func TestPauseOrchestration(t *testing.T) {
 		WithSteps(initialBuilder.InitTestSteps(k)).
 		WithSteps(initialBuilder.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initialBuilder, k)).
-		WithSteps(verifyPauseOrchestrationResourcesRemoved(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 1)).
 		// Phase 1: enable pause-orchestration annotation
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
 		WithSteps(enabledBuilder.MutationTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationResourcesExist(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
 		// Phase 2: update Elasticsearch spec
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(updatedBuilder, k)).
 		WithSteps(updatedBuilder.UpgradeTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationResourcesExist(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
 		// Phase 3: disable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*disabledBuilder, k)).
 		WithSteps(disabledBuilder.UpgradeTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationResourcesRemoved(k, esNamespace, actualESName, 3)).
+		WithSteps(disabledBuilder.RollingRestartTestSteps(k)).
+		WithSteps(test.CheckTestSteps(disabledBuilder, k)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3)).
 		WithSteps(initialBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
 }
 
-func verifyPauseOrchestrationResourcesExist(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
+func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
 	return test.StepList{
 		{
-			Name: "Verify pause-orchestration annotation is set",
+			Name: "Verify pause-orchestration annotation is set to true",
 			Test: test.EventuallyWithTimeout(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
@@ -84,7 +86,7 @@ func verifyPauseOrchestrationResourcesExist(k *test.K8sClient, namespace, esName
 					return err
 				}
 				if !common.IsOrchestrationPaused(&es) {
-					return fmt.Errorf("annotation %s not found on Elasticsearch resource", common.PauseOrchestrationAnnotation)
+					return fmt.Errorf("annotation %s should be set to true", common.PauseOrchestrationAnnotation)
 				}
 
 				orchestrationPausedIndex := es.Status.Conditions.Index(esv1.OrchestrationPaused)
@@ -114,10 +116,10 @@ func verifyPauseOrchestrationResourcesExist(k *test.K8sClient, namespace, esName
 	}
 }
 
-func verifyPauseOrchestrationResourcesRemoved(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
+func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
 	return test.StepList{
 		{
-			Name: "Verify pause-orchestration annotation is removed",
+			Name: "Verify pause-orchestration annotation is set to false",
 			Test: test.EventuallyWithTimeout(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
@@ -128,7 +130,7 @@ func verifyPauseOrchestrationResourcesRemoved(k *test.K8sClient, namespace, esNa
 				}
 
 				if common.IsOrchestrationPaused(&es) {
-					return fmt.Errorf("annotation %s should be removed", common.PauseOrchestrationAnnotation)
+					return fmt.Errorf("annotation %s should be set to false", common.PauseOrchestrationAnnotation)
 				}
 
 				for _, condition := range es.Status.Conditions {

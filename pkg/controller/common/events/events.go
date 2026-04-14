@@ -26,6 +26,8 @@ const (
 	EventReasonUnexpected = "Unexpected"
 	// EventReasonValidation describes events that were due to an invalid resource being submitted by the user.
 	EventReasonValidation = "Validation"
+	// EventReasonPaused describes events that were due to the pause-orchestration annotation being enabled.
+	EventReasonPaused = "Paused"
 )
 
 // Event reasons for Association controllers

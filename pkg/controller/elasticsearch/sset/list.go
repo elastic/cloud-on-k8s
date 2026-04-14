@@ -7,7 +7,6 @@ package sset
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -211,32 +210,6 @@ func (l StatefulSetList) AtLeastOneESVersionMatch(ctx context.Context, condition
 			return true
 		}
 	}
-	return false
-}
-
-// HasSpecDiff returns true if the StatefulSetSpec of each StatefulSet in the given StatefulSetList is equal to the
-// correlating StatefulSetSpec in this StatefulSetList
-func (l StatefulSetList) HasSpecDiff(otherSets StatefulSetList) bool {
-	if len(l) != len(otherSets) {
-		return true
-	}
-
-	otherSetsByName := make(map[string]appsv1.StatefulSet, len(otherSets))
-	for _, otherSet := range otherSets {
-		otherSetsByName[otherSet.Name] = otherSet
-	}
-
-	for _, thisSet := range l {
-		thatSet, exists := otherSetsByName[thisSet.Name]
-		if !exists {
-			return true
-		}
-
-		if !reflect.DeepEqual(thisSet.Spec, thatSet.Spec) {
-			return true
-		}
-	}
-
 	return false
 }
 

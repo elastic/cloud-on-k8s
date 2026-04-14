@@ -27,14 +27,9 @@ const (
 )
 
 // IsOrchestrationPaused returns true if the PauseOrchestrationAnnotation exists and is set to true on the given resource
-// to denote whether non-critical orchestration steps should continue.
+// when non-critical orchestration steps should be skipped.
 func IsOrchestrationPaused(object metav1.Object) bool {
-	paused, exists := object.GetAnnotations()[PauseOrchestrationAnnotation]
-	if exists && paused == "true" {
-		return true
-	}
-
-	return false
+	return object.GetAnnotations()[PauseOrchestrationAnnotation] == "true"
 }
 
 // IsUnmanaged checks if a given resource is currently unmanaged.
