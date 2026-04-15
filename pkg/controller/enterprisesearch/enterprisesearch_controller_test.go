@@ -72,7 +72,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
 		Spec: entv1.EnterpriseSearchSpec{
 			Version:          "7.7.0",
-			ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns", Name: "es"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Namespace: "ns", Name: "es"}},
 		},
 	}
 	fakeRecorder := toolsevents.NewFakeRecorder(10)
@@ -226,7 +226,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 				ReadOnlyModeAnnotationName: "false",
 			},
 		},
-		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}}}
+		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "some-es"}}}}
 	esTLSCertsSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
 		Data: map[string][]byte{
