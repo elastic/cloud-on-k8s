@@ -75,8 +75,8 @@ func TestMetadataPropagation(t *testing.T) {
 		WithNodeCount(1).
 		WithElasticsearchRefs(
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: es.Ref(),
-				ClusterName:    "es",
+				ElasticsearchSelector: v1.ElasticsearchSelector{ObjectSelector: es.Ref()},
+				ClusterName:           "es",
 			}).
 		WithLabel("my-label", "my-label-value").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").

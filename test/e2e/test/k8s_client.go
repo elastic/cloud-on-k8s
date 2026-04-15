@@ -341,7 +341,15 @@ func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeC
 }
 
 // Exec runs the given cmd into the given pod.
+// If the pod has multiple containers, Kubernetes chooses the first container; prefer ExecInContainer when the target
+// container is known.
 func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
+	return k.ExecInContainer(pod, "", cmd)
+}
+
+// ExecInContainer runs the given cmd in the named pod container. If container is empty, Kubernetes uses its default
+// (first container in the pod spec).
+func (k *K8sClient) ExecInContainer(pod types.NamespacedName, container string, cmd []string) (string, string, error) {
 	// create the exec client
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -352,6 +360,15 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		return "", "", err
 	}
 
+	opts := &corev1.PodExecOptions{
+		Command: cmd,
+		Stdout:  true,
+		Stderr:  true,
+	}
+	if container != "" {
+		opts.Container = container
+	}
+
 	// build the exec url
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -359,11 +376,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		Namespace(pod.Namespace).
 		SubResource("exec").
 		VersionedParams(
-			&corev1.PodExecOptions{
-				Command: cmd,
-				Stdout:  true,
-				Stderr:  true,
-			},
+			opts,
 			runtime.NewParameterCodec(scheme.Scheme),
 		)
 	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())

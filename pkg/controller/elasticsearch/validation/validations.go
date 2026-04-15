@@ -39,13 +39,16 @@ const (
 	nodeRolesInOldVersionMsg                 = "node.roles setting is not available in this version of Elasticsearch"
 	parseStoredVersionErrMsg                 = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
 	parseVersionErrMsg                       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-	pvcNotMountedErrMsg                      = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
+	pvcNotMountedStatefulErrMsg              = "volume claim declared but volume not mounted in any container. Note that the Elasticsearch data volume should be named 'elasticsearch-data'"
+	pvcNotMountedStatelessErrMsg             = "volume claim declared but volume not mounted in any container. Note that the stateless cache volume should be named 'elasticsearch-cache'"
 	unsupportedConfigErrMsg                  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	unsupportedClientAuthenticationMsg       = "HTTP client authentication mode \"required\" is not supported when set via nodeSet configuration; use spec.http.tls.client.authentication (enterprise license) instead"
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
+	inconsistentFIPSModeWarningMsg           = "xpack.security.fips_mode.enabled is not consistent across all NodeSets; FIPS mode should be uniform across the cluster"
+	fipsManagedKeystoreUnsupportedWarningMsg = "FIPS mode is enabled in NodeSet configuration but Elasticsearch version is below 9.4.0; the operator cannot manage the keystore password automatically."
 	restartTriggerRemovedWarningMsg          = "Removing the restart-trigger annotation does not cancel an in-progress rolling restart; pods not yet restarted will still be restarted with the previous trigger value."
 	restartTriggerUnchangedWarningMsg        = "Restart-trigger value unchanged; no new rolling restart will be triggered if pods already have this value."
 )
@@ -59,6 +62,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 	return []updateValidation{
 		noDowngrades,
 		validUpgradePath,
+		noModeChange,
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
 			return validPVCModification(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
@@ -88,7 +92,16 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validPVCNaming,
 		validMonitoring,
 		validAssociations,
-		supportsRemoteClusterUsingAPIKey,
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			if proposed.IsStateless() {
+				return nil
+			}
+			return supportsRemoteClusterUsingAPIKey(proposed)
+		},
+		validModeSpecificConfig,
+		func(proposed esv1.Elasticsearch) field.ErrorList {
+			return validStatelessLicense(ctx, proposed, checker)
+		},
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
@@ -340,8 +353,8 @@ func supportsRemoteClusterUsingAPIKey(es esv1.Elasticsearch) field.ErrorList {
 
 // hasCorrectNodeRoles checks whether Elasticsearch node roles are correctly configured.
 // The rules are:
-// There must be at least one master node.
-// node.roles are only supported on Elasticsearch 7.9.0 and above
+// There must be at least one master node (stateful only, stateless tiers handle this differently).
+// node.roles are only supported on Elasticsearch 7.9.0 and above.
 func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -381,7 +394,7 @@ func hasCorrectNodeRoles(es esv1.Elasticsearch) field.ErrorList {
 		seenMaster = seenMaster || (cfg.Node.IsConfiguredWithRole(esv1.MasterRole) && !cfg.Node.IsConfiguredWithRole(esv1.VotingOnlyRole) && ns.Count > 0)
 	}
 
-	if !seenMaster {
+	if !seenMaster && !es.IsStateless() {
 		errs = append(errs, field.Required(field.NewPath("spec").Child("nodeSets"), masterRequiredMsg))
 	}
 

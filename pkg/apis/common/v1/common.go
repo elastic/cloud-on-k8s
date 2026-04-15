@@ -60,6 +60,8 @@ type SecretRef struct {
 	SecretName string `json:"secretName,omitempty"`
 }
 
+var _ AssociationRef = (*LocalObjectSelector)(nil)
+
 // LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
 type LocalObjectSelector struct {
 	// Namespace of the Kubernetes object. If empty, defaults to the current namespace.
@@ -156,6 +158,8 @@ func (o LocalObjectSelector) IsValid() error {
 	}
 	return nil
 }
+
+var _ AssociationRef = (*ObjectSelector)(nil)
 
 // ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
 // or a Secret describing an external Elastic resource not managed by the operator.
@@ -283,6 +287,8 @@ func (o ObjectSelector) ToID() string {
 	}
 	return o.NameOrSecretName()
 }
+
+var _ AssociationRef = (*ElasticsearchSelector)(nil)
 
 // ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by the operator
 // or a Secret describing an external cluster not managed by the operator.

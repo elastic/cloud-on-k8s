@@ -37,8 +37,8 @@ func Test_getEnvVars(t *testing.T) {
 			Spec: logstashv1alpha1.LogstashSpec{
 				ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 					{
-						ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch-sample", Namespace: "default"},
-						ClusterName:    "production",
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch-sample", Namespace: "default"}},
+						ClusterName:           "production",
 					},
 				},
 			},
@@ -121,6 +121,39 @@ func Test_getEnvVars(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name:   "es ref with client cert",
+			params: params,
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "logstash-sample-default-elasticsearch-sample-logstash-user",
+					AuthSecretKey:        "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+					CACertProvided:       true,
+					CASecretName:         "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					Version:              "8.7.0",
+					ClientCertSecretName: "my-client-cert",
+				})
+				assocs[0].SetNamespace("default")
+			},
+			wantEnvs: []corev1.EnvVar{
+				{Name: "PRODUCTION_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
+				{Name: "PRODUCTION_ES_USER", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
+				{Name: "PRODUCTION_ES_PASSWORD",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							},
+							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+						},
+					},
+				},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.crt"},
+				{Name: "PRODUCTION_ES_SSL_KEY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.key"},
 			},
 		},
 		{

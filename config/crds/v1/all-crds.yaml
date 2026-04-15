@@ -2841,6 +2841,14 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -4571,6 +4579,16 @@ spec:
               image:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
+              mode:
+                description: |-
+                  Mode selects the deployment mode for this Elasticsearch cluster.
+                  "stateful" (default) uses persistent local volumes for data storage.
+                  "stateless" uses an external object store for data storage.
+                  Note: stateless mode is under active development and not yet ready for use.
+                enum:
+                - stateful
+                - stateless
+                type: string
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
@@ -4692,6 +4710,17 @@ spec:
                         for the Pods belonging to this NodeSet.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    tier:
+                      description: |-
+                        Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
+                        Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
+                        Note: stateless mode is under active development and not yet ready for use.
+                      enum:
+                      - index
+                      - search
+                      - master
+                      - ml
+                      type: string
                     volumeClaimTemplates:
                       description: |-
                         VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
@@ -4966,6 +4995,36 @@ spec:
                   type: object
                 minItems: 1
                 type: array
+              objectStore:
+                description: |-
+                  ObjectStore configures the external object store for stateless Elasticsearch.
+                  Required when mode is "stateless", forbidden when mode is "stateful".
+                  Note: stateless mode is under active development and not yet ready for use.
+                properties:
+                  basePath:
+                    description: BasePath is the path prefix within the bucket.
+                    type: string
+                  bucket:
+                    description: Bucket is the name of the storage bucket.
+                    minLength: 1
+                    type: string
+                  client:
+                    description: |-
+                      Client is the named client configuration in elasticsearch.yml.
+                      Defaults to "default" if not specified.
+                    type: string
+                  type:
+                    description: Type is the object store backend type (s3, gcs, or
+                      azure).
+                    enum:
+                    - s3
+                    - gcs
+                    - azure
+                    type: string
+                required:
+                - bucket
+                - type
+                type: object
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
@@ -9827,6 +9886,14 @@ spec:
                   description: ElasticsearchCluster is a named reference to an Elasticsearch
                     cluster which can be used in a Logstash pipeline.
                   properties:
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                        client certificate.
+                      type: string
                     clusterName:
                       description: |-
                         ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash

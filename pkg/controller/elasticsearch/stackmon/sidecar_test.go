@@ -218,3 +218,26 @@ func TestMetricbeatConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestFilebeatConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		version semver.Version
+	}{
+		{
+			name:    "pre 9.4.0",
+			version: version.From(8, 17, 0),
+		},
+		{
+			name:    "post 9.4.0 with querylog",
+			version: version.From(9, 4, 0),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := stackmon.RenderTemplate(tt.version, filebeatConfigTemplate, nil)
+			require.NoError(t, err)
+			snaps.MatchSnapshot(t, cfg)
+		})
+	}
+}

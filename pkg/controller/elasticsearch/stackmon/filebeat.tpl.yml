@@ -35,6 +35,14 @@ filebeat.modules:
         - /usr/share/elasticsearch/logs/*_deprecation.json
       close_timeout: 2h
       fields_under_root: true
+{{- if isVersionGTE "9.4.0" }}
+    querylog:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_querylog.json
+      close_timeout: 2h
+      fields_under_root: true
+{{- end }}
 
 processors:
   - add_cloud_metadata: {}
