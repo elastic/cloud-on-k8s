@@ -549,6 +549,7 @@ or a Secret describing an external cluster not managed by the operator.
 
 :::{admonition} Appears In:
 * [BeatSpec](#beatspec)
+* [ElasticsearchCluster](#elasticsearchcluster)
 * [KibanaSpec](#kibanaspec)
 
 :::
@@ -692,7 +693,6 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
 * [BeatSpec](#beatspec)
-* [ElasticsearchCluster](#elasticsearchcluster)
 * [ElasticsearchSelector](#elasticsearchselector)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -1956,7 +1956,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 
 | Field | Description |
 | --- | --- |
-| *`ObjectSelector`* __[ObjectSelector](#objectselector)__ |  |
+| *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
 
 

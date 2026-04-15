@@ -33,10 +33,10 @@ func Test_calculateHealth(t *testing.T) {
 			URL:            "url",
 		}
 		cluster := lsv1alpha1.ElasticsearchCluster{
-			ObjectSelector: commonv1.ObjectSelector{
+			ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 				Name:      "es",
 				Namespace: "a",
-			},
+			}},
 			ClusterName: "test",
 		}
 		if assocDef.esAssoc {

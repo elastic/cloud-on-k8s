@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -55,12 +56,13 @@ func Test_validator_Handle(t *testing.T) {
 		validateStorageClass bool
 	}
 	tests := []struct {
-		name         string
-		fields       fields
-		req          admission.Request
-		wantAllowed  bool
-		wantMessage  string
-		wantWarnings []string
+		name           string
+		fields         fields
+		req            admission.Request
+		wantAllowed    bool
+		wantMessage    string
+		wantWarnings   []string
+		assertWarnings bool // if true, compare warnings even when both wantWarnings and admission response are empty
 	}{
 		{
 			name: "accept valid creation",
@@ -528,6 +530,137 @@ func Test_validator_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "accept valid creation with warning due to mixed fips nodesets",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{
+								{Name: "set1", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+								{Name: "set2", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": false}}},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed: true,
+			wantWarnings: []string{
+				inconsistentFIPSModeWarningMsg,
+				fipsManagedKeystoreUnsupportedWarningMsg,
+			},
+		},
+		{
+			name: "accept valid creation with warning when fips enabled below managed-keystore min version",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "9.3.0",
+							NodeSets: []esv1.NodeSet{
+								{Name: "set1", Count: 1, Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}}},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed:  true,
+			wantWarnings: []string{fipsManagedKeystoreUnsupportedWarningMsg},
+		},
+		{
+			name: "accept creation with FIPS below managed-keystore min when keystore password comes from envFrom secret",
+			fields: fields{
+				client: k8s.NewFakeClient(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ks-envfrom"},
+					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/expected")},
+				}),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "9.3.0",
+							NodeSets: []esv1.NodeSet{
+								{
+									Name:   "set1",
+									Count:  1,
+									Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+									PodTemplate: corev1.PodTemplateSpec{
+										Spec: corev1.PodSpec{
+											Containers: []corev1.Container{
+												{
+													Name: esv1.ElasticsearchContainerName,
+													EnvFrom: []corev1.EnvFromSource{
+														{SecretRef: &corev1.SecretEnvSource{
+															LocalObjectReference: corev1.LocalObjectReference{Name: "ks-envfrom"},
+														}},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed:    true,
+			assertWarnings: true,
+		},
+		{
+			name: "accept creation with FIPS below managed-keystore min when envFrom reference is missing",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "9.3.0",
+							NodeSets: []esv1.NodeSet{
+								{
+									Name:   "set1",
+									Count:  1,
+									Config: &commonv1.Config{Data: map[string]any{"xpack.security.fips_mode.enabled": true}},
+									PodTemplate: corev1.PodTemplateSpec{
+										Spec: corev1.PodSpec{
+											Containers: []corev1.Container{
+												{
+													Name: esv1.ElasticsearchContainerName,
+													EnvFrom: []corev1.EnvFromSource{
+														{SecretRef: &corev1.SecretEnvSource{
+															LocalObjectReference: corev1.LocalObjectReference{Name: "missing-envfrom-secret"},
+														}},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					}),
+				},
+			}},
+			wantAllowed:    true,
+			assertWarnings: true,
+		},
+		{
 			name: "reject downgrade on deprecated version but still return warnings",
 			fields: fields{
 				client: k8s.NewFakeClient(),
@@ -572,7 +705,7 @@ func Test_validator_Handle(t *testing.T) {
 				}
 				return w
 			}
-			if len(tt.wantWarnings) > 0 || len(got.Warnings) > 0 {
+			if tt.assertWarnings || len(tt.wantWarnings) > 0 || len(got.Warnings) > 0 {
 				require.Equal(t, normalize(tt.wantWarnings), normalize(got.Warnings))
 			}
 		})

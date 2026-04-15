@@ -24,6 +24,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -146,6 +147,10 @@ func (d *Driver) reconcileNodeSpecs(
 	}
 
 	if err := GarbageCollectPVCs(ctx, d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
+		return results.WithError(err)
+	}
+
+	if err := keystorepassword.MaybeGarbageCollectKeystorePasswordSecret(ctx, d.Client, d.ES, d.Version, resolvedConfig.PolicyConfig.ElasticsearchConfig); err != nil {
 		return results.WithError(err)
 	}
 

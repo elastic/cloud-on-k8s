@@ -259,7 +259,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// Same validation as the webhook, run again here when the webhook is not configured.
-	admWarnings, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
+	admWarnings, err := validation.ValidateElasticsearch(ctx, r.Client, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
 
 	for _, w := range admWarnings {
@@ -279,6 +279,12 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"es_name", es.Name,
 		)
 		reconcileState.UpdateElasticsearchInvalidWithEvent(events.EventActionValidation, err.Error())
+		return results
+	}
+
+	// TODO(#9204): implement stateless driver and replace this guard with proper driver selection.
+	if es.IsStateless() {
+		log.Info("Stateless Elasticsearch detected, stateless driver not yet implemented")
 		return results
 	}
 

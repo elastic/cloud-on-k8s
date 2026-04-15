@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	ElasticSearchConfigKey = "elasticsearch.json"
-	SecretsMountKey        = "secretMounts.json"
+	SecretsMountKey = "secretMounts.json"
 )
 
 func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -50,7 +49,7 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		if err != nil {
 			return corev1.Secret{}, err
 		}
-		data[ElasticSearchConfigKey] = configDataJSONBytes
+		data[esv1.StackConfigElasticsearchConfigKey] = configDataJSONBytes
 	}
 
 	if len(data) == 0 {
