@@ -21,9 +21,9 @@ var (
 	//go:embed metricbeat.tpl.yml
 	metricbeatConfigTemplate string
 
-	// filebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
-	//go:embed filebeat.yml
-	filebeatConfig string
+	// filebeatConfigTemplate is a configuration template for Filebeat to collect Elasticsearch logs
+	//go:embed filebeat.tpl.yml
+	filebeatConfigTemplate string
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration

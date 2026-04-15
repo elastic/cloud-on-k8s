@@ -114,6 +114,7 @@ func TestReconcileResources(t *testing.T) {
 		client                  k8s.Client
 		kb                      kbv1.Kibana
 		initContainerParameters InitContainerParameters
+		wantErrMsg              string
 		wantNil                 bool
 		wantContainers          *corev1.Container
 		wantHash                string
@@ -126,6 +127,47 @@ func TestReconcileResources(t *testing.T) {
 			wantContainers:          nil,
 			wantHash:                "",
 			wantNil:                 true,
+		},
+		{
+			name:   "no secure settings specified with keystore password path: create resources",
+			client: k8s.NewFakeClient(),
+			kb:     testKibana,
+			initContainerParameters: InitContainerParameters{
+				KeystoreCreateCommand:         "/keystore/bin/keystore create",
+				KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/foo/secret",
+				KeystoreVolumePath:            "/bar/data",
+				KeystorePasswordPath:          "/mnt/elastic-internal/keystore-password/keystore-password",
+				Resources:                     testResourceRequirements,
+			},
+			wantContainers: wantContainer(`#!/usr/bin/env bash
+
+set -eux
+
+keystore_initialized_flag=/bar/data/elastic-internal-init-keystore.ok
+
+if [[ -f "${keystore_initialized_flag}" ]]; then
+    echo "Keystore already initialized."
+	exit 0
+fi
+
+echo "Initializing keystore."
+
+# create a keystore in the default data path
+/keystore/bin/keystore create
+
+# add all existing secret entries into it
+for filename in  /foo/secret/*; do
+	[[ -e "$filename" ]] || continue # glob does not match
+	key=$(basename "$filename")
+	echo "Adding "${key}" to the keystore."
+	/keystore/bin/keystore add "$key" "$filename"
+done
+touch /bar/data/elastic-internal-init-keystore.ok
+echo "Keystore initialization successful."
+`),
+			wantHash: "",
+			wantNil:  false,
 		},
 		{
 			name:                    "secure settings specified: return volume, init container and (empty) version",
@@ -152,10 +194,9 @@ echo "Initializing keystore."
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `),
@@ -181,10 +222,9 @@ echo "Initializing keystore."
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 echo "Keystore initialization successful."
 `),
 			// since this will be created, it will be incremented
@@ -222,6 +262,10 @@ echo "Keystore initialization successful."
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, tt.initContainerParameters)
+			if tt.wantErrMsg != "" {
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)
