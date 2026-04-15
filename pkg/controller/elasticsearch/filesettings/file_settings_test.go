@@ -196,6 +196,7 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+				Roles:                  &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -258,6 +259,7 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+				Roles:                  &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -302,6 +304,7 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+				Roles:                  &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -348,6 +351,7 @@ func Test_updateState(t *testing.T) {
 				}},
 				SLM:                    &commonv1.Config{Data: map[string]any{}},
 				RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+				Roles:                  &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 				IndexTemplates: &IndexTemplates{
@@ -423,11 +427,49 @@ func Test_updateState(t *testing.T) {
 				SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
 				SLM:                    snapshotLifecyclePolicies,
 				RoleMappings:           roleMappings,
+				Roles:                  &commonv1.Config{Data: map[string]any{}},
 				IndexLifecyclePolicies: indexLifecyclePolicies,
 				IngestPipelines:        ingestPipelines,
 				IndexTemplates: &IndexTemplates{
 					ComposableIndexTemplates: composableIndexTemplates,
 					ComponentTemplates:       componentTemplates,
+				},
+			},
+		},
+		{
+			name: "security roles: propagated to state",
+			args: args{policy: policyv1alpha1.StackConfigPolicy{Spec: policyv1alpha1.StackConfigPolicySpec{Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecurityRoles: &commonv1.Config{Data: map[string]any{
+					"test-role": map[string]any{
+						"indices": []any{
+							map[string]any{
+								"names":      []any{"logs-*"},
+								"privileges": []any{"read"},
+							},
+						},
+					},
+				}},
+			}}}},
+			want: SettingsState{
+				ClusterSettings:      &commonv1.Config{Data: map[string]any{}},
+				SnapshotRepositories: &commonv1.Config{Data: map[string]any{}},
+				SLM:                  &commonv1.Config{Data: map[string]any{}},
+				RoleMappings:         &commonv1.Config{Data: map[string]any{}},
+				Roles: &commonv1.Config{Data: map[string]any{
+					"test-role": map[string]any{
+						"indices": []any{
+							map[string]any{
+								"names":      []any{"logs-*"},
+								"privileges": []any{"read"},
+							},
+						},
+					},
+				}},
+				IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
+				IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
+				IndexTemplates: &IndexTemplates{
+					ComponentTemplates:       &commonv1.Config{Data: map[string]any{}},
+					ComposableIndexTemplates: &commonv1.Config{Data: map[string]any{}},
 				},
 			},
 		},

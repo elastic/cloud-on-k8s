@@ -41,6 +41,7 @@ type SettingsState struct {
 	SnapshotRepositories   *commonv1.Config `json:"snapshot_repositories,omitempty"`
 	SLM                    *commonv1.Config `json:"slm,omitempty"`
 	RoleMappings           *commonv1.Config `json:"role_mappings,omitempty"`
+	Roles                  *commonv1.Config `json:"roles,omitempty"`
 	IndexLifecyclePolicies *commonv1.Config `json:"ilm,omitempty"`
 	IngestPipelines        *commonv1.Config `json:"ingest_pipelines,omitempty"`
 	IndexTemplates         *IndexTemplates  `json:"index_templates,omitempty"`
@@ -71,6 +72,7 @@ func newEmptySettingsState() SettingsState {
 		SnapshotRepositories:   &commonv1.Config{Data: map[string]any{}},
 		SLM:                    &commonv1.Config{Data: map[string]any{}},
 		RoleMappings:           &commonv1.Config{Data: map[string]any{}},
+		Roles:                  &commonv1.Config{Data: map[string]any{}},
 		IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{}},
 		IngestPipelines:        &commonv1.Config{Data: map[string]any{}},
 		IndexTemplates: &IndexTemplates{
@@ -108,6 +110,9 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 	}
 	if esConfigPolicy.SecurityRoleMappings != nil {
 		state.RoleMappings = esConfigPolicy.SecurityRoleMappings
+	}
+	if esConfigPolicy.SecurityRoles != nil {
+		state.Roles = esConfigPolicy.SecurityRoles
 	}
 	if esConfigPolicy.IndexLifecyclePolicies != nil {
 		state.IndexLifecyclePolicies = esConfigPolicy.IndexLifecyclePolicies

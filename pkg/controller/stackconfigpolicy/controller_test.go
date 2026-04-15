@@ -185,7 +185,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 			},
 		},
-		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
+		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"roles":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
 	secretHash, err := getSettingsHash(secretFixture)
 	assert.NoError(t, err)
@@ -956,7 +956,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 			},
 		},
-		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"1","compatibility":"8.4.0"},"state":{"cluster_settings":{},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
+		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"1","compatibility":"8.4.0"},"state":{"cluster_settings":{},"snapshot_repositories":{},"slm":{},"role_mappings":{},"roles":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
 
 	esPod := getEsPod("ns", map[string]string{})
