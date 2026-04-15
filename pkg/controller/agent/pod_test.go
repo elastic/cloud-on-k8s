@@ -1746,8 +1746,8 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 				"FLEET_SERVER_ELASTICSEARCH_USERNAME": "user",
 				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": "password",
 				"FLEET_SERVER_ELASTICSEARCH_CA":       "/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt",
-				FleetServerElasticsearchCert:          path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.CertFileName),
-				FleetServerElasticsearchCertKey:       path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.KeyFileName),
+				FleetServerESCert:                     path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.CertFileName),
+				FleetServerESCertKey:                  path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.KeyFileName),
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{

@@ -85,8 +85,8 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
-	FleetServerElasticsearchCert     = "FLEET_SERVER_ES_CERT"
-	FleetServerElasticsearchCertKey  = "FLEET_SERVER_ES_CERT_KEY"
+	FleetServerESCert                = "FLEET_SERVER_ES_CERT"
+	FleetServerESCertKey             = "FLEET_SERVER_ES_CERT_KEY"
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
@@ -676,8 +676,8 @@ func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent,
 			return err
 		}
 		clientCertDir := standaloneAgentClientCertificatesDir(esAssoc)
-		fleetServerCfg[FleetServerElasticsearchCert] = path.Join(clientCertDir, certificates.CertFileName)
-		fleetServerCfg[FleetServerElasticsearchCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
+		fleetServerCfg[FleetServerESCert] = path.Join(clientCertDir, certificates.CertFileName)
+		fleetServerCfg[FleetServerESCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
 	}
 
 	return nil
