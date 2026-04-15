@@ -176,6 +176,14 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 
 	ref := esAssociation.AssociationRef()
+	if ref.IsExternal() {
+		// For external ES references, the operator cannot determine whether client
+		// authentication is required. Skip client cert reconciliation.
+		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+			return nil, results.WithError(err)
+		}
+		return nil, nil
+	}
 
 	var es esv1.Elasticsearch
 	if err := c.Get(ctx, ref.NamespacedName(), &es); err != nil {
