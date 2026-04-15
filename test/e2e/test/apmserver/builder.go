@@ -101,10 +101,7 @@ func (b Builder) WithNodeCount(count int32) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.ApmServer.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-		ObjectSelector:              ref,
-		ClientCertificateSecretName: b.ApmServer.Spec.ElasticsearchRef.ClientCertificateSecretName,
-	}
+	b.ApmServer.Spec.ElasticsearchRef.ObjectSelector = ref
 	return b
 }
 
