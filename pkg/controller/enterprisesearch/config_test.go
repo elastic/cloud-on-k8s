@@ -361,6 +361,109 @@ func TestReconcileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "with Elasticsearch association and client cert",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       true,
+				CASecretName:         "sample-ent-es-ca",
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// same as "with Elasticsearch association" plus client cert entries
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/es-client-certs/tls.key", // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name: "with Elasticsearch association and client cert, no CA",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       false,
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// client cert entries without CA
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"key: /mnt/elastic-internal/es-client-certs/tls.key",         // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
 			name: "with Elasticsearch association, support new auth config starting 8x",
 			ent: entWithAssociation("sample", "8.0.0", commonv1.AssociationConf{
 				AuthSecretName: "sample-ent-user",

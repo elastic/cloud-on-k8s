@@ -104,5 +104,5 @@ func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
 }
 
 func checkAssociation(ent *EnterpriseSearch) field.ErrorList {
-	return commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), ent.Spec.ElasticsearchRef)
+	return commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), ent.Spec.ElasticsearchRef)
 }

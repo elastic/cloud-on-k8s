@@ -299,7 +299,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]any{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
@@ -310,7 +310,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type))).
@@ -327,7 +327,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -353,8 +353,11 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector:              tweakServiceRef(ref.ElasticsearchSelector.ObjectSelector, suffix),
+						ClientCertificateSecretName: ref.ElasticsearchSelector.ClientCertificateSecretName,
+					},
+					ClusterName: ref.ClusterName,
 				})
 			}
 

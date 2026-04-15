@@ -15,6 +15,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -193,6 +194,83 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.as), tc.want)
+		})
+	}
+}
+
+func Test_withAssociationCertsVolumes(t *testing.T) {
+	tests := []struct {
+		name                 string
+		conf                 commonv1.AssociationConf
+		wantCAVolume         bool
+		wantClientCertVolume bool
+	}{
+		{
+			name: "CA and client cert both present",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       true,
+				CASecretName:         "ca-secret",
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         true,
+			wantClientCertVolume: true,
+		},
+		{
+			name: "client cert only, no CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: true,
+		},
+		{
+			name: "neither client cert nor CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			as := apmv1.ApmServer{
+				ObjectMeta: testAgentNsn,
+				Spec: apmv1.ApmServerSpec{
+					Version:          "8.0.0",
+					ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"}},
+				},
+			}
+			apmv1.NewApmEsAssociation(&as).SetAssociationConf(&tt.conf)
+
+			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, apmv1.ApmServerContainerName)
+			builder, err := withAssociationCertsVolumes(builder, as)
+			assert.NoError(t, err)
+
+			pod := builder.PodTemplate
+			var hasCAVolume, hasClientCertVolume bool
+			for _, vol := range pod.Spec.Volumes {
+				if vol.Secret != nil && vol.Secret.SecretName == "ca-secret" {
+					hasCAVolume = true
+				}
+				if vol.Secret != nil && vol.Secret.SecretName == "client-cert-secret" {
+					hasClientCertVolume = true
+				}
+			}
+			assert.Equal(t, tt.wantCAVolume, hasCAVolume, "CA volume")
+			assert.Equal(t, tt.wantClientCertVolume, hasClientCertVolume, "client cert volume")
 		})
 	}
 }

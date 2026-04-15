@@ -88,6 +88,14 @@ spec:
                   description: ElasticsearchCluster is a named reference to an Elasticsearch
                     cluster which can be used in a Logstash pipeline.
                   properties:
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                        client certificate.
+                      type: string
                     clusterName:
                       description: |-
                         ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -149,6 +150,13 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 				if policy.Status.Phase != autoopsv1alpha1.ReadyPhase {
+					// The autoops-agent (elastic-otel-collector) does not retry when its metricbeat
+					// receiver fails on the initial ES connection. If the agent started before the ES
+					// endpoint was fully reachable, its health endpoint returns HTTP 500 permanently and
+					// the pod stays not-ready forever. Delete such stuck pods so the Deployment creates a
+					// fresh one that can connect successfully.
+					// See https://github.com/elastic/beats/issues/49099
+					_ = b.deleteStuckAutoOpsAgentPods(k)
 					return fmt.Errorf("policy not ready, phase: %s", policy.Status.Phase)
 				}
 				if policy.Status.Resources == 0 {
@@ -373,4 +381,45 @@ func (b Builder) checkMatchingESClustersReachable(k *test.K8sClient) error {
 		}
 	}
 	return nil
+}
+
+// deleteStuckAutoOpsAgentPods deletes AutoOps agent pods that have been running but not-ready for
+// longer than stuckPodThreshold. This works around the elastic-otel-collector's metricbeat receiver
+// not retrying after a failed initial ES connection: the pod stays in a permanently broken state
+// where the health endpoint returns HTTP 500 and the readiness probe never passes.
+// Deleting the pod lets the Deployment controller create a fresh replacement that can connect
+// eventually when ES is reachable. This is a temporary workaround until https://github.com/elastic/beats/issues/49099
+// is resolved.
+func (b Builder) deleteStuckAutoOpsAgentPods(k *test.K8sClient) error {
+	const stuckPodThreshold = 60 * time.Second
+
+	return b.forEachAutoOpsDeployment(k, func(deployment appsv1.Deployment) error {
+		var pods corev1.PodList
+		podSelector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+			MatchLabels: deployment.Spec.Selector.MatchLabels,
+		})
+		if err != nil {
+			return err
+		}
+		if err := k.Client.List(context.Background(), &pods,
+			k8sclient.InNamespace(b.AutoOpsAgentPolicy.Namespace),
+			k8sclient.MatchingLabelsSelector{Selector: podSelector},
+		); err != nil {
+			return err
+		}
+
+		for i := range pods.Items {
+			pod := &pods.Items[i]
+			if pod.Status.Phase != corev1.PodRunning || k8s.IsPodReady(*pod) {
+				continue
+			}
+			if time.Since(pod.Status.StartTime.Time) < stuckPodThreshold {
+				continue
+			}
+			if err := k.Client.Delete(context.Background(), pod); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("deleting stuck pod %s: %w", pod.Name, err)
+			}
+		}
+		return nil
+	})
 }

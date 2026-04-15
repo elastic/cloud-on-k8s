@@ -95,17 +95,23 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.Enterpris
 	if err != nil {
 		return nil, err
 	}
-	if !esAssocConf.CAIsConfigured() {
-		return builder, nil
+	if esAssocConf.CAIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetCASecretName(),
+			"es-certs",
+			ESCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 	}
-	vol := volume.NewSecretVolumeWithMountPath(
-		esAssocConf.GetCASecretName(),
-		"es-certs",
-		ESCertsPath,
-	)
-	return builder.
-		WithVolumes(vol.Volume()).
-		WithVolumeMounts(vol.VolumeMount()), nil
+	if esAssocConf.ClientCertIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetClientCertSecretName(),
+			"es-client-certs",
+			ESClientCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+	}
+	return builder, nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1.EnterpriseSearch) *defaults.PodTemplateBuilder {

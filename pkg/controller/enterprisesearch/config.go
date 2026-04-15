@@ -37,6 +37,7 @@ import (
 
 const (
 	ESCertsPath              = "/mnt/elastic-internal/es-certs"
+	ESClientCertsPath        = "/mnt/elastic-internal/es-client-certs"
 	ConfigMountPath          = "/usr/share/enterprise-search/config/enterprise-search.yml"
 	ConfigFilename           = "enterprise-search.yml"
 	ReadinessProbeMountPath  = "/mnt/elastic-internal/scripts/readiness-probe.sh"
@@ -350,6 +351,14 @@ func associationConfig(ctx context.Context, c k8s.Client, ent entv1.EnterpriseSe
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
 			"elasticsearch.ssl.enabled":               true,
 			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CAFileName),
+		})); err != nil {
+			return nil, err
+		}
+	}
+	if entAssocConf.ClientCertIsConfigured() {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"elasticsearch.ssl.certificate": filepath.Join(ESClientCertsPath, certificates.CertFileName),
+			"elasticsearch.ssl.key":         filepath.Join(ESClientCertsPath, certificates.KeyFileName),
 		})); err != nil {
 			return nil, err
 		}
