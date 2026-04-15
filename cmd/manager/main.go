@@ -608,11 +608,14 @@ func startOperator(ctx context.Context) error {
 	}
 	selector := labels.NewSelector().Add(*req)
 
-	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
 		DefaultTransform:  cache.TransformStripManagedFields(),
 		ByObject: map[client.Object]cache.ByObject{
+			// Only resource types exclusively created by ECK (always carrying
+			// common.k8s.elastic.co/type) can be filtered here.
+			// The rest of the resources (such as Service, ConfigMap, and Secret)
+			// are excluded because ECK also watches user-provided instances of these types.
 			&corev1.Pod{}:                   {Label: selector},
 			&policyv1.PodDisruptionBudget{}: {Label: selector},
 			&appsv1.Deployment{}:            {Label: selector},
