@@ -11,6 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -164,6 +166,40 @@ func TestNodeSetsResources_Match(t *testing.T) {
 			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).withCPURequest("2000m").build()},
 			want: false,
 		},
+		{
+			name: "Pod template differs but nodeSet resources match",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: resource.MustParse("4Gi"), corev1.ResourceCPU: resource.MustParse("2000m")},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).
+				withMemoryRequest("4Gi").
+				withCPURequest("2000m").
+				withPodTemplateMemoryRequest("1Gi").
+				withPodTemplateCPURequest("1000m").
+				build()},
+			want: true,
+		},
+		{
+			name: "Pod template matches but nodeSet resources differ",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceMemory: resource.MustParse("4Gi"), corev1.ResourceCPU: resource.MustParse("2000m")},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).
+				withMemoryRequest("1Gi").
+				withCPURequest("1000m").
+				withPodTemplateMemoryRequest("4Gi").
+				withPodTemplateCPURequest("2000m").
+				build()},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -172,7 +208,7 @@ func TestNodeSetsResources_Match(t *testing.T) {
 				NodeSetNodeCount: tt.fields.NodeSetNodeCount,
 				NodeResources:    tt.fields.ResourcesSpecification,
 			}
-			got, err := Match(ntr, esv1.ElasticsearchContainerName, tt.args.nodeSet)
+			got, err := Match(ntr, tt.args.nodeSet)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetsResources.Match() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -187,9 +223,11 @@ func TestNodeSetsResources_Match(t *testing.T) {
 // - NodeSet builder
 
 type nodeSetBuilder struct {
-	name                                      string
-	count                                     int32
-	memoryRequest, cpuRequest, storageRequest *resource.Quantity
+	name                                  string
+	count                                 int32
+	memoryRequest, cpuRequest             *resource.Quantity
+	podTemplateMemoryRequest              *resource.Quantity
+	podTemplateCPURequest, storageRequest *resource.Quantity
 }
 
 func newNodeSetBuilder(name string, count int) *nodeSetBuilder {
@@ -217,11 +255,27 @@ func (nsb *nodeSetBuilder) withStorageRequest(qs string) *nodeSetBuilder {
 	return nsb
 }
 
+func (nsb *nodeSetBuilder) withPodTemplateMemoryRequest(qs string) *nodeSetBuilder {
+	q := resource.MustParse(qs)
+	nsb.podTemplateMemoryRequest = &q
+	return nsb
+}
+
+func (nsb *nodeSetBuilder) withPodTemplateCPURequest(qs string) *nodeSetBuilder {
+	q := resource.MustParse(qs)
+	nsb.podTemplateCPURequest = &q
+	return nsb
+}
+
 func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 	nodeSet := esv1.NodeSet{
 		Name:   nsb.name,
 		Config: nil,
 		Count:  nsb.count,
+		Resources: commonv1.Resources{
+			Requests: commonv1.ResourceAllocations{},
+			Limits:   commonv1.ResourceAllocations{},
+		},
 		PodTemplate: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
@@ -238,12 +292,22 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 
 	// Set memory
 	if nsb.memoryRequest != nil {
-		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory] = *nsb.memoryRequest
+		nodeSet.Resources.Requests.Memory = nsb.memoryRequest
 	}
 
 	// Set CPU
 	if nsb.cpuRequest != nil {
-		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU] = *nsb.cpuRequest
+		nodeSet.Resources.Requests.CPU = nsb.cpuRequest
+	}
+
+	// Set pod template memory request
+	if nsb.podTemplateMemoryRequest != nil {
+		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory] = *nsb.podTemplateMemoryRequest
+	}
+
+	// Set pod template CPU request
+	if nsb.podTemplateCPURequest != nil {
+		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU] = *nsb.podTemplateCPURequest
 	}
 
 	// Set storage

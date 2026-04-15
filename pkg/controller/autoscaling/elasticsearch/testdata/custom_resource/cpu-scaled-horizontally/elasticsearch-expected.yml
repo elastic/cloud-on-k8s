@@ -22,13 +22,19 @@ spec:
         - ingest
     count: 9
     name: di
+    resources:
+      limits:
+        cpu: "6"
+        memory: 8Gi
+      requests:
+        cpu: "6"
+        memory: 8Gi
     podTemplate:
       spec:
         containers:
         - name: elasticsearch
           resources:
             limits:
-              cpu: "6"
               memory: 8Gi
             requests:
               cpu: "6"

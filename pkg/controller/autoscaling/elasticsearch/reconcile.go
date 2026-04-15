@@ -19,8 +19,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
-// reconcileElasticsearch updates the resources in the NodeSets of an Elasticsearch spec according to the NodeSetsResources
-// computed by the autoscaling algorithm. It also updates the autoscaling status annotation.
+// reconcileElasticsearch updates Elasticsearch NodeSets according to autoscaling recommendations.
+// It updates NodeSet count and CPU/memory shorthand resources, and adjusts storage when needed.
 func reconcileElasticsearch(
 	log logr.Logger,
 	es *esv1.Elasticsearch,
@@ -36,20 +36,14 @@ func reconcileElasticsearch(
 			continue
 		}
 
-		container, containers := removeContainer(esv1.ElasticsearchContainerName, es.Spec.NodeSets[i].PodTemplate.Spec.Containers)
 		// Create a copy to compare if some changes have been made.
-		currentContainer := container.DeepCopy()
-		if container == nil {
-			container = &corev1.Container{
-				Name: esv1.ElasticsearchContainerName,
-			}
-		}
+		currentResources := es.Spec.NodeSets[i].Resources
 
 		// Update desired count
 		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
 
-		// Update CPU and Memory requirements
-		container.Resources = nodeSetResources.ToContainerResourcesWith(container.Resources)
+		// Update CPU and memory shorthand resources.
+		es.Spec.NodeSets[i].Resources = nodeSetResources.NodeResources.ToNodeSetResourcesWith(es.Spec.NodeSets[i].Resources)
 
 		// Update storage
 		if nodeSetResources.HasRequest(corev1.ResourceStorage) {
@@ -60,12 +54,7 @@ func reconcileElasticsearch(
 			es.Spec.NodeSets[i].VolumeClaimTemplates = nextStorage
 		}
 
-		// Add the container to other containers
-		containers = append(containers, *container)
-		// Update the NodeSet
-		es.Spec.NodeSets[i].PodTemplate.Spec.Containers = containers
-
-		if !apiequality.Semantic.DeepEqual(currentContainer, container) {
+		if !apiequality.Semantic.DeepEqual(currentResources, es.Spec.NodeSets[i].Resources) {
 			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
 	}
@@ -96,15 +85,4 @@ func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.Node
 	}
 	volumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = storageQuantity
 	return []corev1.PersistentVolumeClaim{*volumeClaimTemplate}, nil
-}
-
-// removeContainer remove a container from a slice and return the removed container if found.
-func removeContainer(name string, containers []corev1.Container) (*corev1.Container, []corev1.Container) {
-	for i, container := range containers {
-		if container.Name == name {
-			// Remove the container
-			return &container, append(containers[:i], containers[i+1:]...)
-		}
-	}
-	return nil, containers
 }

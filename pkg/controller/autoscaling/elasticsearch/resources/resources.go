@@ -7,6 +7,7 @@ package resources
 import (
 	"fmt"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,9 +15,8 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 )
 
-// Match returns true if the resources assigned to a container in a NodeSet matches the one specified in the NodeSetsResources.
-// It also returns false if the container is not found in the NodeSet.
-func Match(ntr v1alpha1.NodeSetsResources, containerName string, nodeSet esv1.NodeSet) (bool, error) {
+// Match returns true if the NodeSet count and resources match the ones specified in NodeSetsResources.
+func Match(ntr v1alpha1.NodeSetsResources, nodeSet esv1.NodeSet) (bool, error) {
 	for _, nodeSetNodeCount := range ntr.NodeSetNodeCount {
 		if nodeSetNodeCount.Name != nodeSet.Name {
 			continue
@@ -42,15 +42,12 @@ func Match(ntr v1alpha1.NodeSetsResources, containerName string, nodeSet esv1.No
 			return false, fmt.Errorf("only 1 volume claim template is allowed when autoscaling is enabled, got %d in nodeSet %s", len(nodeSet.VolumeClaimTemplates), nodeSet.Name)
 		}
 
-		// Compare CPU and Memory requests
-		container := getContainer(containerName, nodeSet.PodTemplate.Spec.Containers)
-		if container == nil {
-			return false, nil
-		}
-		return ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Requests, container.Resources.Requests) &&
-			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Requests, container.Resources.Requests) &&
-			ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Limits, container.Resources.Limits) &&
-			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Limits, container.Resources.Limits), nil
+		currentRequests := resourceAllocationsToResourceList(nodeSet.Resources.Requests)
+		currentLimits := resourceAllocationsToResourceList(nodeSet.Resources.Limits)
+		return ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Requests, currentRequests) &&
+			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Requests, currentRequests) &&
+			ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Limits, currentLimits) &&
+			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Limits, currentLimits), nil
 	}
 	return false, nil
 }
@@ -77,13 +74,18 @@ func ResourceEqual(resourceName corev1.ResourceName, expected, current corev1.Re
 	return expectedValue.Equal(currentValue)
 }
 
-func getContainer(name string, containers []corev1.Container) *corev1.Container {
-	for i := range containers {
-		container := containers[i]
-		if container.Name == name {
-			// Remove the container
-			return &container
-		}
+// resourceAllocationsToResourceList converts NodeSet shorthand CPU/memory allocations into a ResourceList.
+func resourceAllocationsToResourceList(allocations commonv1.ResourceAllocations) corev1.ResourceList {
+	var resources corev1.ResourceList
+	if allocations.CPU != nil {
+		resources = make(corev1.ResourceList)
+		resources[corev1.ResourceCPU] = *allocations.CPU
 	}
-	return nil
+	if allocations.Memory != nil {
+		if resources == nil {
+			resources = make(corev1.ResourceList)
+		}
+		resources[corev1.ResourceMemory] = *allocations.Memory
+	}
+	return resources
 }
