@@ -17,6 +17,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
+const baseMountPath = "/mnt/elastic-internal"
+
 // AppendDefaultPVCs appends defaults PVCs to a given list of PVCs.
 // Default PVCs are appended if there is no given PVCs or volumes in the poSpec with the same name.
 func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec corev1.PodSpec) []corev1.PersistentVolumeClaim {
@@ -76,7 +78,8 @@ func BuildVolumes(ls logstashv1alpha1.Logstash, useTLS bool) ([]corev1.Volume, [
 func CertificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
 	return fmt.Sprintf(
-		"/mnt/elastic-internal/%s-association/%s/%s/certs",
+		"%s/%s-association/%s/%s/certs",
+		baseMountPath,
 		association.AssociationType(),
 		ref.GetNamespace(),
 		ref.NameOrSecretName(),
@@ -113,7 +116,8 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 func ClientCertificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
 	return fmt.Sprintf(
-		"/mnt/elastic-internal/%s-association/%s/%s/client-certs",
+		"%s/%s-association/%s/%s/client-certs",
+		baseMountPath,
 		association.AssociationType(),
 		ref.GetNamespace(),
 		ref.NameOrSecretName(),
