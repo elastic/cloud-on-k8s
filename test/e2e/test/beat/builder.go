@@ -151,7 +151,15 @@ func (b Builder) WithESValidations(validations ...ValidationFunc) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.Beat.Spec.ElasticsearchRef = ref
+	b.Beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+		ObjectSelector:              ref,
+		ClientCertificateSecretName: b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName,
+	}
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 

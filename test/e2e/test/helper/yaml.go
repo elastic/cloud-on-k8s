@@ -310,7 +310,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type))).

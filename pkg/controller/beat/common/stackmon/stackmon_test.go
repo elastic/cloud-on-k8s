@@ -235,7 +235,7 @@ output:
 		Spec: v1beta1.BeatSpec{
 			Type:             "metricbeat",
 			Version:          "8.2.3",
-			ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "test"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "test"}},
 			Deployment:       &v1beta1.DeploymentSpec{},
 			Config: &commonv1.Config{
 				Data: map[string]any{},
@@ -320,7 +320,7 @@ output:
 				}),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
-					beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{}
+					beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{}
 					return beat
 				},
 			},
@@ -349,7 +349,7 @@ output:
 				client: k8s.NewFakeClient(&beatFixture, &externalESSecret),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
-					beat.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "external-es"}
+					beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "external-es"}}
 					beat.Spec.Monitoring = commonv1.Monitoring{
 						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "external-es"}},

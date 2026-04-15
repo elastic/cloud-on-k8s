@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -60,6 +61,11 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 
 	if esAssocConf.GetCACertProvided() {
 		output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
+	}
+
+	if esAssocConf.ClientCertIsConfigured() {
+		output["ssl.certificate"] = path.Join(clientCertificatesDir(&associated), certificates.CertFileName)
+		output["ssl.key"] = path.Join(clientCertificatesDir(&associated), certificates.KeyFileName)
 	}
 
 	return settings.NewCanonicalConfigFrom(map[string]any{

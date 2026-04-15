@@ -86,6 +86,17 @@ func Test_buildBeatConfig(t *testing.T) {
 	require.NoError(t, err)
 	assocConf.CACertProvided = true
 
+	withAssocWithClientCert := *withAssocWithCA.DeepCopy()
+	esAssocWithClientCert := beatv1beta1.BeatESAssociation{Beat: &withAssocWithClientCert}
+	esAssocWithClientCert.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       "secret",
+		AuthSecretKey:        "elastic",
+		CACertProvided:       true,
+		CASecretName:         "secret2",
+		URL:                  "url",
+		ClientCertSecretName: "client-cert-secret",
+	})
+
 	withAssocWithCAWithConfig := *withAssocWithCA.DeepCopy()
 	withAssocWithCAWithConfig.Spec.Config = userCfg
 
@@ -179,6 +190,31 @@ func Test_buildBeatConfig(t *testing.T) {
 			beat:          withAssocWithCAWithConfig,
 			managedConfig: managedCfg,
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
+		},
+		{
+			name:   "association with ca and client cert",
+			client: clientWithSecret,
+			beat:   withAssocWithClientCert,
+			want: merge(outputYaml, outputCAYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
+			name:   "association with client cert only, no CA",
+			client: clientWithSecret,
+			beat: func() beatv1beta1.Beat {
+				b := *withAssoc.DeepCopy()
+				assoc := beatv1beta1.BeatESAssociation{Beat: &b}
+				assoc.SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "secret",
+					AuthSecretKey:        "elastic",
+					CACertProvided:       false,
+					URL:                  "url",
+					ClientCertSecretName: "client-cert-secret",
+				})
+				return b
+			}(),
+			want: merge(outputYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
 		},
 		{
 			name: "no association, user config, with metrics monitoring enabled",
