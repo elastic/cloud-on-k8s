@@ -21,11 +21,11 @@ import (
 func TestUpdateKibanaResources(t *testing.T) {
 	resources := corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("512Mi"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
 			corev1.ResourceCPU:    resource.MustParse("100m"),
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
 			corev1.ResourceCPU:    resource.MustParse("500m"),
 		},
 	}

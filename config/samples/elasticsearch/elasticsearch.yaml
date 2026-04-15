@@ -1,4 +1,5 @@
-# This sample sets up an Elasticsearch cluster with 3 nodes.
+# This sample sets up a stateful Elasticsearch cluster with 3 nodes.
+# For a stateless deployment backed by an object store, see elasticsearch-stateless.yaml.
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:

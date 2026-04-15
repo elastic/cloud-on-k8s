@@ -28,15 +28,19 @@ func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, ns := range proposed.Spec.NodeSets {
 		// do we have a claim at all and if so is it named correctly? OK
-		if len(ns.VolumeClaimTemplates) == 0 || hasDefaultClaim(ns.VolumeClaimTemplates) {
+		if len(ns.VolumeClaimTemplates) == 0 || hasDefaultClaim(ns.VolumeClaimTemplates, proposed.IsStateless()) {
 			continue
 		}
 		// we have claims but they are using custom names, are all of them mounted as a volume?
 		for _, m := range unmountedClaims(ns) {
+			msg := pvcNotMountedStatefulErrMsg
+			if proposed.IsStateless() {
+				msg = pvcNotMountedStatelessErrMsg
+			}
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				m.Name,
-				pvcNotMountedErrMsg,
+				msg,
 			))
 		}
 	}
@@ -57,9 +61,12 @@ func unmountedClaims(ns esv1.NodeSet) []corev1.PersistentVolumeClaim {
 	return templates
 }
 
-func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
+func hasDefaultClaim(templates []corev1.PersistentVolumeClaim, isStateless bool) bool {
 	for _, t := range templates {
-		if t.Name == volume.ElasticsearchDataVolumeName {
+		if !isStateless && t.Name == volume.ElasticsearchDataVolumeName {
+			return true
+		}
+		if isStateless && t.Name == volume.ElasticsearchCacheVolumeName {
 			return true
 		}
 	}

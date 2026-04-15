@@ -9,8 +9,6 @@ import (
 	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
 
 const (
@@ -27,13 +25,16 @@ type InitContainerParameters struct {
 	KeystoreAddCommand string
 	// Keystore create command
 	KeystoreCreateCommand string
-	// CustomScript is the bash script to overrides the default Keystore script
+	// CustomScript is the bash script to override the default Keystore script
 	CustomScript string
 	// Resources for the init container
 	Resources corev1.ResourceRequirements
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
 	// to true if the keystore can be forcibly recreated.
 	SkipInitializedFlag bool
+	// KeystorePasswordPath is the path to the file containing the keystore password
+	// which is mounted from the keystore password secret, which is used to create a password-protected keystore.
+	KeystorePasswordPath string
 	// SecurityContext is the security context applied to the keystore container.
 	SecurityContext *corev1.SecurityContext
 }
@@ -62,10 +63,9 @@ echo "Initializing keystore."
 for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	{{ .KeystoreAddCommand }}
 done
-
 {{ if not .SkipInitializedFlag -}}
 touch {{ .KeystoreVolumePath }}/elastic-internal-init-keystore.ok
 {{ end -}}
@@ -75,10 +75,10 @@ echo "Keystore initialization successful."
 
 var scriptTemplate = template.Must(template.New("").Parse(script))
 
-// initContainer returns an init container that executes a bash script
-// to load secure settings in a Keystore.
+// initContainer returns an init container that executes a bash script to load
+// secure settings in a keystore from a given volume mount.
 func initContainer(
-	secureSettingsSecret volume.SecretVolume,
+	secureSettingsVolumeMount corev1.VolumeMount,
 	parameters InitContainerParameters,
 ) (corev1.Container, error) {
 	privileged := false
@@ -98,7 +98,7 @@ func initContainer(
 		Command: []string{"/usr/bin/env", "bash", "-c", tplBuffer.String()},
 		VolumeMounts: []corev1.VolumeMount{
 			// access secure settings
-			secureSettingsSecret.VolumeMount(),
+			secureSettingsVolumeMount,
 		},
 		Resources: parameters.Resources,
 	}
