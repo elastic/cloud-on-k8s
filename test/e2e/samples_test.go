@@ -85,7 +85,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().

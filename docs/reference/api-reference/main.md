@@ -202,7 +202,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`count`* __integer__ | Count of APM Server instances to deploy. |
 | *`config`* __[Config](#config)__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for the APM Server resource. |
-| *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.<br>It allows APM agent central configuration management in Kibana. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
@@ -548,6 +548,7 @@ ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by
 or a Secret describing an external cluster not managed by the operator.
 
 :::{admonition} Appears In:
+* [ApmServerSpec](#apmserverspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchCluster](#elasticsearchcluster)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

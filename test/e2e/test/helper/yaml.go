@@ -299,7 +299,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]any{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().

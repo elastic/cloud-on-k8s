@@ -42,6 +42,10 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 	return fmt.Sprintf("config/%s-certs", associationType)
 }
 
+func clientCertificatesDir(associationType commonv1.AssociationType) string {
+	return fmt.Sprintf("config/%s-client-certs", associationType)
+}
+
 func apmServerSecretTokenKeyFor(v version.Version) string {
 	if v.GTE(version.MinFor(8, 0, 0)) {
 		return APMServerSecretToken
@@ -136,6 +140,10 @@ func newElasticsearchConfigFromSpec(ctx context.Context, c k8s.Client, esAssocia
 	}
 	if esAssocConf.GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
+	}
+	if esAssocConf.ClientCertIsConfigured() {
+		tmpOutputCfg["output.elasticsearch.ssl.certificate"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.CertFileName)
+		tmpOutputCfg["output.elasticsearch.ssl.key"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.KeyFileName)
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
