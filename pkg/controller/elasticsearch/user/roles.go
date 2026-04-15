@@ -227,6 +227,11 @@ var (
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
 				{
+					// logs-elastic* covers data streams for ES-managed log datasets (e.g. logs-elasticsearch.querylog-*)
+					// that are shipped by the Filebeat sidecar starting with ES 9.4. Uses a broad pattern to
+					// accommodate additional datasets that will follow the same naming convention.
+					// auto_configure is required because data streams need it to create backing indices from
+					// the managed index template on first write.
 					Names:      []string{"logs-elastic*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
 				},
