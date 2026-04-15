@@ -82,10 +82,7 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.EMS.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-		ObjectSelector:              ref,
-		ClientCertificateSecretName: b.EMS.Spec.ElasticsearchRef.ClientCertificateSecretName,
-	}
+	b.EMS.Spec.ElasticsearchRef.ObjectSelector = ref
 	return b
 }
 
