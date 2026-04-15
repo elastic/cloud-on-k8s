@@ -1369,7 +1369,7 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			want: defaultResources,
 		},
 		{
-			name: "no pod template resources and partial override skips full defaults",
+			name: "no pod template resources and partial override keeps default base",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -1384,9 +1384,13 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			},
 			want: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
 					corev1.ResourceMemory: memoryOverride,
 				},
-				Requests: corev1.ResourceList{},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("500m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
 			},
 		},
 	}

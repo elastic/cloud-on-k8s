@@ -390,25 +390,24 @@ func (b *PodTemplateBuilder) WithInitContainers(
 	return b
 }
 
-// WithResourcesAndOverrides sets main-container CPU/memory using the pod template, CRD overrides, and operator
-// defaults. When the pod template's main container has no resources field (both Requests and Limits nil) and
-// overrides leave CPU/memory unset, the full operator defaults from resources are applied. If the pod template
-// already has a Resources value — including explicit empty requests/limits maps for LimitRange — those maps
-// are the merge base and operator defaults are not substituted wholesale. Existing nil-vs-empty map shape is
-// preserved unless an override needs to write into a missing map. Overrides only set CPU/memory keys that are
-// non-nil in overrides. The resources parameter is not mutated.
+// WithResourcesAndOverrides merges main-container resources from three sources:
+//   - main container resources from the pod template (merge base when present, including explicit empty maps for
+//     [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
+//   - resources: operator default ResourceRequirements (merge base only when the pod template omits both Requests
+//     and Limits)
+//   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers)
+//
+// Existing nil-vs-empty map shape from the chosen merge base is preserved; missing maps are initialized only when
+// an override writes to them.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
 	merged, podTemplateResourcesUnset := resourceRequirementsMergeBase(main.Resources)
-	applyCPUAndMemoryOverrides(&merged.Limits, overrides.Limits)
-	applyCPUAndMemoryOverrides(&merged.Requests, overrides.Requests)
-
-	// Only substitute full operator defaults when the pod template omitted both requests and limits.
-	// If the user explicitly provided requests/limits maps, including empty maps
-	// (`requests: {}` / `limits: {}`), keep those as-is and do not replace them with defaults.
-	if podTemplateResourcesUnset && len(merged.Requests) == 0 && len(merged.Limits) == 0 {
+	if podTemplateResourcesUnset {
+		// avoid mutating the resources argument in the subsequent calls
 		merged = *resources.DeepCopy()
 	}
+	applyCPUAndMemoryOverrides(&merged.Limits, overrides.Limits)
+	applyCPUAndMemoryOverrides(&merged.Requests, overrides.Requests)
 
 	main.Resources = merged
 	b.setContainerDefaulter()
@@ -422,10 +421,7 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 func resourceRequirementsMergeBase(existing corev1.ResourceRequirements) (corev1.ResourceRequirements, bool) {
 	podTemplateResourcesUnset := existing.Requests == nil && existing.Limits == nil
 	if podTemplateResourcesUnset {
-		return corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{},
-			Limits:   corev1.ResourceList{},
-		}, true
+		return corev1.ResourceRequirements{}, true
 	}
 
 	return *existing.DeepCopy(), false

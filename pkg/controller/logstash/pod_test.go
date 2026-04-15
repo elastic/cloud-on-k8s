@@ -119,7 +119,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Limits: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceMemory: resource.MustParse("3Gi"),
 					},
-					Requests: corev1.ResourceList{},
 				}, GetLogstashContainer(pod.Spec).Resources)
 			},
 		},

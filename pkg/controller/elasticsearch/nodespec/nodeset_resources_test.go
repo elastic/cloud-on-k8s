@@ -227,15 +227,13 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
 				t.Helper()
 				requireQuantityEqual(t, got.Requests, corev1.ResourceCPU, "250m")
+				requireQuantityEqual(t, got.Requests, corev1.ResourceMemory, "2Gi")
 				requireQuantityEqual(t, got.Limits, corev1.ResourceCPU, "1")
-				_, hasMemReq := got.Requests[corev1.ResourceMemory]
-				_, hasMemLim := got.Limits[corev1.ResourceMemory]
-				require.False(t, hasMemReq, "memory request should not be inherited from operator defaults when only CPU is set in overrides")
-				require.False(t, hasMemLim, "memory limit should not be inherited from operator defaults when only CPU is set in overrides")
+				requireQuantityEqual(t, got.Limits, corev1.ResourceMemory, "2Gi")
 			},
 		},
 		{
-			name: "nodeset_memory_request_only_does_not_inherit_default_memory_limit",
+			name: "nodeset_memory_request_only_keeps_default_memory_limit",
 			nodeSet: esv1.NodeSet{
 				Name:        "nodeset-1",
 				Count:       1,
@@ -251,8 +249,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
 				t.Helper()
 				requireQuantityEqual(t, got.Requests, corev1.ResourceMemory, "4Gi")
-				_, hasMemLim := got.Limits[corev1.ResourceMemory]
-				require.False(t, hasMemLim, "memory limit should not be left at operator default when only memory request is set in overrides")
+				requireQuantityEqual(t, got.Limits, corev1.ResourceMemory, "2Gi")
 				_, hasCPUReq := got.Requests[corev1.ResourceCPU]
 				_, hasCPULim := got.Limits[corev1.ResourceCPU]
 				require.False(t, hasCPUReq)
