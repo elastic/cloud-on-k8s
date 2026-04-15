@@ -226,6 +226,10 @@ var (
 					Names:      []string{"filebeat-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
+				{
+					Names:      []string{"logs-elastic*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
+				},
 			},
 		},
 		FleetAdminUserRole: esclient.Role{
