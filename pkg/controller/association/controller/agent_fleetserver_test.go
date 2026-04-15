@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -263,6 +264,7 @@ func TestDeleteOrphanedTransitiveClientCertSecrets(t *testing.T) {
 		"agentassociation.k8s.elastic.co/namespace": "ns",
 		"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
 		labels.ClientCertificateLabelName:           "true",
+		reconciler.SoftOwnerKindLabel:               esv1.Kind,
 	}
 
 	for _, tt := range []struct {
@@ -297,7 +299,7 @@ func TestDeleteOrphanedTransitiveClientCertSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingObjects...)
 
-			err := deleteOrphanedTransitiveClientCertSecrets(context.Background(), c, assocMeta, associated, tt.currentSecretName)
+			err := deleteOrphanedTransitiveESClientCertSecrets(context.Background(), c, assocMeta, associated, tt.currentSecretName)
 			require.NoError(t, err)
 
 			var secretList corev1.SecretList
@@ -327,6 +329,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 		"agentassociation.k8s.elastic.co/namespace": "ns",
 		"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
 		labels.ClientCertificateLabelName:           "true",
+		reconciler.SoftOwnerKindLabel:               esv1.Kind,
 	}
 
 	for _, tt := range []struct {

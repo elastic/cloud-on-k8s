@@ -141,7 +141,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 	fleetServerRef := assoc.AssociationRef()
 	if !fleetServerRef.IsSet() {
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -153,7 +153,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	// Fleet Server Agent is not associated with an Elasticsearch cluster
 	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -171,7 +171,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 	if conf == nil {
 		log.V(1).Info("Transitive ES association conf is nil")
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -181,7 +181,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	if ref.IsExternal() {
 		// For external ES references, the operator cannot determine whether client
 		// authentication is required. Skip client cert reconciliation.
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -193,7 +193,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 
 	if !annotation.HasClientAuthenticationRequired(&es) {
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -203,7 +203,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	// The secret is already copied into the agent's namespace by additionalSecrets/copySecret.
 	if esRef.GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
 		copiedSecretName := conf.GetClientCertSecretName()
-		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return &commonv1.TransitiveESRef{
@@ -227,7 +227,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		return nil, results
 	}
 
-	if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, secretName); err != nil {
+	if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, secretName); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -236,13 +236,14 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}, results
 }
 
-// deleteOrphanedTransitiveClientCertSecrets lists client cert secrets scoped to this agent
-// (via assocMeta labels) and deletes any that don't match currentSecretName. Pass empty
-// string to delete all.
-func deleteOrphanedTransitiveClientCertSecrets(ctx context.Context, c k8s.Client, assocMeta metadata.Metadata, associated commonv1.Associated, currentSecretName string) error {
-	matchingLabels := make(client.MatchingLabels, len(assocMeta.Labels)+1)
+// deleteOrphanedTransitiveESClientCertSecrets lists transitive ES client cert secrets scoped to
+// this agent (via assocMeta labels) and deletes any that don't match currentSecretName. Pass
+// empty string to delete all.
+func deleteOrphanedTransitiveESClientCertSecrets(ctx context.Context, c k8s.Client, assocMeta metadata.Metadata, associated commonv1.Associated, currentSecretName string) error {
+	matchingLabels := make(client.MatchingLabels, len(assocMeta.Labels)+2)
 	maps.Copy(matchingLabels, assocMeta.Labels)
 	matchingLabels[labels.ClientCertificateLabelName] = "true"
+	matchingLabels[reconciler.SoftOwnerKindLabel] = esv1.Kind
 
 	var secrets corev1.SecretList
 	if err := c.List(ctx, &secrets, client.InNamespace(associated.GetNamespace()), matchingLabels); err != nil {
