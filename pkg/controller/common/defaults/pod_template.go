@@ -393,8 +393,8 @@ func (b *PodTemplateBuilder) WithInitContainers(
 // WithResourcesAndOverrides merges main-container resources from three sources:
 //   - main container resources from the pod template (merge base when present, including explicit empty maps for
 //     [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
-//   - resources: operator default ResourceRequirements (merge base only when the pod template omits both Requests
-//     and Limits)
+//   - resources: operator default ResourceRequirements (merge base only when the pod template omits Requests,
+//     Limits, and Claims)
 //   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers)
 //
 // Existing nil-vs-empty map shape from the chosen merge base is preserved; missing maps are initialized only when
@@ -415,11 +415,11 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 }
 
 // resourceRequirementsMergeBase returns the merge base for resources overrides and whether the
-// pod template had no resources set at all (both requests and limits nil).
+// pod template had no resources set at all (requests, limits, and claims all unset).
 // For a non-empty pod template resource, it preserves existing map presence
 // (nil vs empty map) to avoid introducing no-op spec diffs.
 func resourceRequirementsMergeBase(existing corev1.ResourceRequirements) (corev1.ResourceRequirements, bool) {
-	podTemplateResourcesUnset := existing.Requests == nil && existing.Limits == nil
+	podTemplateResourcesUnset := existing.Requests == nil && existing.Limits == nil && len(existing.Claims) == 0
 	if podTemplateResourcesUnset {
 		return corev1.ResourceRequirements{}, true
 	}
