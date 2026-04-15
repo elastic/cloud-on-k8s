@@ -42,6 +42,8 @@ const (
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.
 	VersionLabelName = "beat.k8s.elastic.co/version"
+
+	baseMountPath = "/mnt/elastic-internal"
 )
 
 var (
@@ -58,11 +60,11 @@ var (
 )
 
 func certificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociationType())
+	return fmt.Sprintf("%s/%s-certs", baseMountPath, association.AssociationType())
 }
 
 func clientCertificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("/mnt/elastic-internal/%s-client-certs", association.AssociationType())
+	return fmt.Sprintf("%s/%s-client-certs", baseMountPath, association.AssociationType())
 }
 
 // initContainerParameters generates parameters specific to Beats for an init container that will load the secure
