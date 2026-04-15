@@ -83,6 +83,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
 		return nil, nil
 	}
+	esRef := fleetServer.Spec.ElasticsearchRefs[0]
 	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
 	if err != nil {
 		return nil, err
@@ -106,7 +107,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 			Name:      conf.CASecretName,
 		})
 	}
-	if conf.ClientCertIsConfigured() && fleetServer.Spec.ElasticsearchRefs[0].GetClientCertificateSecretName() != "" {
+	if conf.ClientCertIsConfigured() && esRef.GetClientCertificateSecretName() != "" {
 		log.V(1).Info("additional secret because user client certificate is provided")
 		secrets = append(secrets, types.NamespacedName{
 			Namespace: fleetServer.Namespace,
@@ -157,6 +158,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		}
 		return nil, nil
 	}
+	esRef := fleetServer.Spec.ElasticsearchRefs[0]
 	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
 	if err != nil {
 		return nil, results.WithError(err)
@@ -199,7 +201,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	// If the Fleet Server has a user-provided client certificate for its ES association, reuse it.
 	// The secret is already copied into the agent's namespace by additionalSecrets/copySecret.
-	if fleetServer.Spec.ElasticsearchRefs[0].GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
+	if esRef.GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
 		copiedSecretName := conf.GetClientCertSecretName()
 		if err := deleteOrphanedTransitiveClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
