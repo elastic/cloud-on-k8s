@@ -1438,15 +1438,15 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 							Name: containerName,
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:                    resource.MustParse("100m"),
-									corev1.ResourceMemory:                 resource.MustParse("512Mi"),
-									corev1.ResourceEphemeralStorage:       resource.MustParse("5Gi"),
+									corev1.ResourceCPU:                     resource.MustParse("100m"),
+									corev1.ResourceMemory:                  resource.MustParse("512Mi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
 									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
 								},
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:                    resource.MustParse("500m"),
-									corev1.ResourceMemory:                 resource.MustParse("1Gi"),
-									corev1.ResourceEphemeralStorage:       resource.MustParse("10Gi"),
+									corev1.ResourceCPU:                     resource.MustParse("500m"),
+									corev1.ResourceMemory:                  resource.MustParse("1Gi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
 									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
 								},
 							},
@@ -1465,15 +1465,15 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			},
 			want: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:                    cpuOverride,
-					corev1.ResourceMemory:                 memoryOverride,
-					corev1.ResourceEphemeralStorage:       resource.MustParse("5Gi"),
+					corev1.ResourceCPU:                     cpuOverride,
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
 					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
 				},
 				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:                    resource.MustParse("500m"),
-					corev1.ResourceMemory:                 memoryOverride,
-					corev1.ResourceEphemeralStorage:       resource.MustParse("10Gi"),
+					corev1.ResourceCPU:                     resource.MustParse("500m"),
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
 					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
 				},
 			},
