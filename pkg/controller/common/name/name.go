@@ -62,6 +62,17 @@ func NewNamer(defaultSuffixes ...string) Namer {
 	}
 }
 
+// NewSecretNamer creates a Namer for Kubernetes secrets, which allows longer suffixes than the
+// label-constrained default Namer. Secrets use DNS subdomain naming (253 chars max) so the suffix
+// limit is 253 - MaxResourceNameLength.
+func NewSecretNamer(defaultSuffixes ...string) Namer {
+	return Namer{
+		MaxSuffixLength: validation.DNS1123SubdomainMaxLength - MaxResourceNameLength,
+		MaxNameLength:   validation.DNS1123SubdomainMaxLength,
+		DefaultSuffixes: defaultSuffixes,
+	}
+}
+
 // WithDefaultSuffixes returns a new Namer with updated default suffixes.
 func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 	n.DefaultSuffixes = defaultSuffixes

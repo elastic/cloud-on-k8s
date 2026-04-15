@@ -122,7 +122,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 func clientCertSecretName(associated commonv1.Associated, ref commonv1.AssociationRef, associationName string) string {
 	associatedName := associated.GetName()
 	refHash := hash.HashObject(ref.NamespacedName())
-	return associatedName + "-" + associationName + "-" + refHash + "-client-cert"
+	return association.ClientCertNamer.Suffix(associatedName, associationName, refHash, "client-cert")
 }
 
 // fleetManagedAgentTransitiveESRef resolves the transitive Elasticsearch association
