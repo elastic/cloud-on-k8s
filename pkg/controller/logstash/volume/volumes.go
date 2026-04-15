@@ -17,6 +17,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
+const baseMountPath = "/mnt/elastic-internal"
+
 // AppendDefaultPVCs appends defaults PVCs to a given list of PVCs.
 // Default PVCs are appended if there is no given PVCs or volumes in the poSpec with the same name.
 func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec corev1.PodSpec) []corev1.PersistentVolumeClaim {
@@ -76,7 +78,8 @@ func BuildVolumes(ls logstashv1alpha1.Logstash, useTLS bool) ([]corev1.Volume, [
 func CertificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
 	return fmt.Sprintf(
-		"/mnt/elastic-internal/%s-association/%s/%s/certs",
+		"%s/%s-association/%s/%s/certs",
+		baseMountPath,
 		association.AssociationType(),
 		ref.GetNamespace(),
 		ref.NameOrSecretName(),
@@ -90,16 +93,33 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 		if err != nil {
 			return nil, err
 		}
-		if !assocConf.CAIsConfigured() {
-			// skip as there is no volume to mount if association has no CA configured
-			continue
+		if assocConf.CAIsConfigured() {
+			caSecretName := assocConf.GetCASecretName()
+			vols = append(vols, volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
+				CertificatesDir(assoc),
+			))
 		}
-		caSecretName := assocConf.GetCASecretName()
-		vols = append(vols, volume.NewSecretVolumeWithMountPath(
-			caSecretName,
-			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
-			CertificatesDir(assoc),
-		))
+		if assocConf.ClientCertIsConfigured() {
+			vols = append(vols, volume.NewSecretVolumeWithMountPath(
+				assocConf.GetClientCertSecretName(),
+				fmt.Sprintf("%s-client-certs-%d", assoc.AssociationType(), i),
+				ClientCertificatesDir(assoc),
+			))
+		}
 	}
 	return vols, nil
+}
+
+// ClientCertificatesDir returns the path where client certificates for the given association should be mounted.
+func ClientCertificatesDir(association commonv1.Association) string {
+	ref := association.AssociationRef()
+	return fmt.Sprintf(
+		"%s/%s-association/%s/%s/client-certs",
+		baseMountPath,
+		association.AssociationType(),
+		ref.GetNamespace(),
+		ref.NameOrSecretName(),
+	)
 }

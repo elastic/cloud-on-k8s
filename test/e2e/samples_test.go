@@ -103,8 +103,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix)},
+					ClusterName:           ref.ClusterName,
 				})
 			}
 			metricsRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs))
