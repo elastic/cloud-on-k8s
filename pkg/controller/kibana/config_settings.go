@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"net/url"
 	"path"
 	"path/filepath"
 
@@ -493,15 +494,26 @@ func injectFleetOutputCertificateAuthorities(cfg *settings.CanonicalConfig, esUR
 	return nil //nolint:nilerr
 }
 
-func outputHostsContain(output *ucfg.Config, url string) bool {
+func outputHostsContain(output *ucfg.Config, esURL string) bool {
 	opts := settings.Options
+	target, err := url.Parse(esURL)
+	if err != nil {
+		return false
+	}
 	numHosts, err := output.CountField("hosts", opts...)
 	if err != nil {
 		return false
 	}
 	for i := range numHosts {
 		host, err := output.String("hosts", i, opts...)
-		if err == nil && host == url {
+		if err != nil {
+			continue
+		}
+		parsed, err := url.Parse(host)
+		if err != nil {
+			continue
+		}
+		if parsed.Scheme == target.Scheme && parsed.Host == target.Host {
 			return true
 		}
 	}
