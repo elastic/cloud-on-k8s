@@ -21,9 +21,11 @@
 # 8.19 should be the last minor version in the 8 line.
 version: 8.19.0
 
-# Enterprise Search Docker image to deploy
-#
-# image:
+# Enterprise Search Docker image to deploy.
+# Supports both tag and digest formats.
+# image: docker.elastic.co/enterprise-search/enterprise-search:8.19.0-SNAPSHOT
+# image: docker.elastic.co/enterprise-search/enterprise-search:8.19.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/enterprise-search/enterprise-search@sha256:<digest>
 
 # Used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
 # Can only be used if ECK is enforcing RBAC on references.

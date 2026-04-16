@@ -219,6 +219,19 @@ tests:
       - equal:
           path: spec.image
           value: my.registry.com/elastic/elasticsearch:9.4.0
+  - it: should render image with digest properly
+    set:
+      image: my.registry.com/elastic/elasticsearch:9.4.0@sha256:abc123
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/elasticsearch:9.4.0@sha256:abc123
+  - it: should omit image when null
+    set:
+      image: null
+    asserts:
+      - notExists:
+          path: spec.image
   - it: should render no podDisruptionBudget by default
     set:
     asserts:

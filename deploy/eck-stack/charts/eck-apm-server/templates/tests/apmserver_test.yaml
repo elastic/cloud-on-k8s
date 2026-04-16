@@ -94,3 +94,29 @@ tests:
       - equal:
           path: spec.elasticsearchRef.namespace
           value: default
+  - it: should render image properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      image: my.registry.com/elastic/apm-server:9.4.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/apm-server:9.4.0
+  - it: should render image with digest properly
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      image: my.registry.com/elastic/apm-server:9.4.0@sha256:abc123
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/apm-server:9.4.0@sha256:abc123
+  - it: should omit image when null
+    set:
+      elasticsearchRef:
+        name: eck-elasticsearch
+      image: null
+    asserts:
+      - notExists:
+          path: spec.image
