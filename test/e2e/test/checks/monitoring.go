@@ -160,17 +160,17 @@ type querylogChecks struct {
 	k8sClient *test.K8sClient
 }
 
-func (qc querylogChecks) esClient(es esv1.Elasticsearch) (esClient.Client, error) {
+func (qc querylogChecks) clientFor(b *elasticsearch.Builder) (esClient.Client, error) {
+	es := esv1.Elasticsearch{}
+	ref := types.NamespacedName{Name: b.Elasticsearch.Name, Namespace: b.Elasticsearch.Namespace}
+	if err := qc.k8sClient.Client.Get(context.Background(), ref, &es); err != nil {
+		return nil, err
+	}
 	return elasticsearch.NewElasticsearchClient(es, qc.k8sClient)
 }
 
 func (qc querylogChecks) setQueryLog(enabled bool) error {
-	monitoredES := esv1.Elasticsearch{}
-	ref := types.NamespacedName{Name: qc.monitored.Elasticsearch.Name, Namespace: qc.monitored.Elasticsearch.Namespace}
-	if err := qc.k8sClient.Client.Get(context.Background(), ref, &monitoredES); err != nil {
-		return err
-	}
-	client, err := qc.esClient(monitoredES)
+	client, err := qc.clientFor(qc.monitored)
 	if err != nil {
 		return err
 	}
@@ -189,12 +189,7 @@ func (qc querylogChecks) setQueryLog(enabled bool) error {
 }
 
 func (qc querylogChecks) generateQueries() error {
-	monitoredES := esv1.Elasticsearch{}
-	ref := types.NamespacedName{Name: qc.monitored.Elasticsearch.Name, Namespace: qc.monitored.Elasticsearch.Namespace}
-	if err := qc.k8sClient.Client.Get(context.Background(), ref, &monitoredES); err != nil {
-		return err
-	}
-	client, err := qc.esClient(monitoredES)
+	client, err := qc.clientFor(qc.monitored)
 	if err != nil {
 		return err
 	}
@@ -246,12 +241,7 @@ func (qc querylogChecks) checkQuerylogIndex() test.Step {
 			if err := qc.generateQueries(); err != nil {
 				return err
 			}
-			esLogs := esv1.Elasticsearch{}
-			ref := types.NamespacedName{Name: qc.logs.Elasticsearch.Name, Namespace: qc.logs.Elasticsearch.Namespace}
-			if err := qc.k8sClient.Client.Get(context.Background(), ref, &esLogs); err != nil {
-				return err
-			}
-			client, err := qc.esClient(esLogs)
+			client, err := qc.clientFor(qc.logs)
 			if err != nil {
 				return err
 			}
