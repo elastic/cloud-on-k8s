@@ -71,7 +71,8 @@ func TestAutoscaling(t *testing.T) {
 		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC)).
 		WithRestrictedSecurityContext().
 		WithExpectedNodeSets(
-			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+			// master has no autoscaling policy — NodeSet.Resources is not managed by the autoscaler and stays empty.
+			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),
 			// Autoscaling controller should eventually update the data node count to its min. value.
 			newNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, newPVC("10Gi", storageClass)),
 			// ML node count should still be 0.
@@ -95,7 +96,7 @@ func TestAutoscaling(t *testing.T) {
 	esaScaleUpStorageBuilder := autoscalingBuilder.DeepCopy().WithFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"})
 	expectedDataPVC := newPVC("20Gi", storageClass)
 	esScaleUpStorageBuilder := esBuilder.DeepCopy().WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
@@ -103,7 +104,7 @@ func TestAutoscaling(t *testing.T) {
 	// scaleUpML uses the fixed decider to trigger the creation of a ML node.
 	esaScaleUpML := autoscalingBuilder.DeepCopy().WithFixedDecider("ml", map[string]string{"memory": "4gb", "nodes": "1"})
 	esScaleUpML := esBuilder.DeepCopy().WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 1, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, initialPVC),
 	)
@@ -114,7 +115,7 @@ func TestAutoscaling(t *testing.T) {
 	// scaleDownML use the fixed decider to trigger the scale down, and thus the deletion, of the ML node previously created.
 	esaScaleDownML := autoscalingBuilder.DeepCopy().WithFixedDecider("ml", map[string]string{"memory": "0gb", "nodes": "0"})
 	esScaleDownML := esBuilder.DeepCopy().WithExpectedNodeSets(
-		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, initialPVC),
+		newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),
 		newNodeSet("data-ingest", []string{"data", "ingest"}, 3, corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("4Gi")}, expectedDataPVC),
 		newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
 	)
