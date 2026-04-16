@@ -53,7 +53,7 @@ func TestESStackMonitoring(t *testing.T) {
 
 	// checks that the sidecar beats have sent data in the monitoring clusters
 	steps := func(k *test.K8sClient) test.StepList {
-		return checks.MonitoredSteps(&monitored, k)
+		return append(checks.MonitoredSteps(&monitored, k), checks.QuerylogSteps(&monitored, &logs, k)...)
 	}
 
 	test.Sequence(nil, steps, metrics, logs, monitored).RunSequential(t)
@@ -199,8 +199,9 @@ func TestExternalESStackMonitoring(t *testing.T) {
 			},
 		}
 
-		c := checks.MonitoredSteps(&monitored, k)
-		return append(s, c...)
+		// QuerylogSteps not added here: the external monitoring user uses built-in roles
+		// (remote_monitoring_agent, etc.) that don't include logs-elastic* privileges.
+		return append(s, checks.MonitoredSteps(&monitored, k)...)
 	}
 
 	test.Sequence(nil, steps, monitoring, monitored).RunSequential(t)
