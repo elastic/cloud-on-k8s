@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,14 +34,26 @@ func TestPauseOrchestration(t *testing.T) {
 	enabledBuilder.MutatedFrom = &initialBuilder
 
 	// Phase 2: update Elasticsearch node spec
-	updatedBuilder := enabledBuilder.DeepCopy().
+	upscaleBuilder := enabledBuilder.DeepCopy().
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithMutatedFrom(enabledBuilder)
 
 	// Phase 3: transition back to disabled
-	disabledBuilder := updatedBuilder.DeepCopy()
+	disabledBuilder := upscaleBuilder.DeepCopy()
 	disabledBuilder.Elasticsearch.Annotations[common.PauseOrchestrationAnnotation] = "false"
-	disabledBuilder.MutatedFrom = &updatedBuilder
+	disabledBuilder.MutatedFrom = &upscaleBuilder
+
+	// Phase 4: transition back to enabled again
+	reenabledBuilder := disabledBuilder.DeepCopy()
+	reenabledBuilder.Elasticsearch.Annotations[common.PauseOrchestrationAnnotation] = "true"
+	reenabledBuilder.MutatedFrom = disabledBuilder
+
+	// Phase 5: delete a pod (below)
+
+	// Phase 6: re-disable the annotation
+	redisableBuilder := reenabledBuilder.DeepCopy()
+	redisableBuilder.Elasticsearch.Annotations[common.PauseOrchestrationAnnotation] = "false"
+	redisableBuilder.MutatedFrom = reenabledBuilder
 
 	k := test.NewK8sClientOrFatal()
 
@@ -59,15 +70,29 @@ func TestPauseOrchestration(t *testing.T) {
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
 		WithSteps(enabledBuilder.MutationTestSteps(k)).
 		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
-		// Phase 2: update Elasticsearch spec
-		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(updatedBuilder, k)).
-		WithSteps(updatedBuilder.UpgradeTestSteps(k)).
+		// Phase 2: upscale Elasticsearch
+		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(upscaleBuilder, k)).
+		WithSteps(upscaleBuilder.UpgradeTestSteps(k)).
 		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
 		// Phase 3: disable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*disabledBuilder, k)).
 		WithSteps(disabledBuilder.UpgradeTestSteps(k)).
 		WithSteps(disabledBuilder.RollingRestartTestSteps(k)).
 		WithSteps(test.CheckTestSteps(disabledBuilder, k)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3)).
+		// Phase 4: re-enable pause-orchestration
+		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*reenabledBuilder, k)).
+		WithSteps(reenabledBuilder.MutationTestSteps(k)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3)).
+		// Phase 5: delete pod
+		WithSteps(deletePod(k, esNamespace, actualESName)).
+		WithSteps(test.CheckTestSteps(reenabledBuilder, k)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3)).
+		// Phase 6: re-disable pause-orchestration
+		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*redisableBuilder, k)).
+		WithSteps(redisableBuilder.UpgradeTestSteps(k)).
+		WithSteps(redisableBuilder.RollingRestartTestSteps(k)).
+		WithSteps(test.CheckTestSteps(redisableBuilder, k)).
 		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3)).
 		WithSteps(initialBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
@@ -77,7 +102,7 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 	return test.StepList{
 		{
 			Name: "Verify pause-orchestration annotation is set to true",
-			Test: test.EventuallyWithTimeout(func() error {
+			Test: test.Eventually(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: namespace,
@@ -98,11 +123,11 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 					return fmt.Errorf("condition %s should be true", esv1.OrchestrationPaused)
 				}
 				return nil
-			}, 2*time.Minute),
+			}),
 		},
 		{
 			Name: "Verify expected number of pods are running",
-			Test: test.EventuallyWithTimeout(func() error {
+			Test: test.Eventually(func() error {
 				pods, err := k.GetPods(test.ESPodListOptions(namespace, esName)...)
 				if err != nil {
 					return err
@@ -111,7 +136,7 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 					return fmt.Errorf("expected %d pods, got %d", expectedNodeCount, len(pods))
 				}
 				return nil
-			}, 10*time.Minute),
+			}),
 		},
 	}
 }
@@ -120,7 +145,7 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 	return test.StepList{
 		{
 			Name: "Verify pause-orchestration annotation is set to false",
-			Test: test.EventuallyWithTimeout(func() error {
+			Test: test.Eventually(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: namespace,
@@ -139,11 +164,11 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 					}
 				}
 				return nil
-			}, 2*time.Minute),
+			}),
 		},
 		{
 			Name: "Verify all expected pods are running",
-			Test: test.EventuallyWithTimeout(func() error {
+			Test: test.Eventually(func() error {
 				pods, err := k.GetPods(test.ESPodListOptions(namespace, esName)...)
 				if err != nil {
 					return err
@@ -152,7 +177,28 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 					return fmt.Errorf("expected %d pods, got %d", expectedNodeCount, len(pods))
 				}
 				return nil
-			}, 10*time.Minute),
+			}),
+		},
+	}
+}
+
+func deletePod(k *test.K8sClient, namespace, esName string) test.StepList {
+	return test.StepList{
+		{
+			Name: "A new pod becomes ready when a pod is deleted",
+			Test: test.Eventually(func() error {
+				pods, err := k.GetPods(test.ESPodListOptions(namespace, esName)...)
+				if err != nil {
+					return err
+				}
+				if len(pods) == 0 {
+					return fmt.Errorf("expected at least one pod for Elasticsearch %s in namespace %s", esName, namespace)
+				}
+				if err = k.DeletePod(pods[0]); err != nil {
+					return err
+				}
+				return nil
+			}),
 		},
 	}
 }

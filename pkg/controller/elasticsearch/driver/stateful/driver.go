@@ -19,13 +19,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // Driver is the stateful Elasticsearch driver implementation using StatefulSets.
@@ -123,6 +126,8 @@ func (d *Driver) reconcileCriticalSteps(
 	resolvedConfig nodespec.ResolvedConfig,
 	keystoreResources *keystore.Resources,
 ) error {
+	log := ulog.FromContext(ctx)
+	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchOrchestrationPaused)
 	actualSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return err
@@ -130,7 +135,23 @@ func (d *Driver) reconcileCriticalSteps(
 	if err = pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualSets, state.Meta); err != nil {
 		return err
 	}
-	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchOrchestrationPaused)
+	esState := NewMemoizingESState(ctx, state.ESClient)
+	nodeNameToID, err := esState.NodeNameToID()
+	if err != nil {
+		return err
+	}
+	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
+
+	nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, logger)
+	actualPods, err := es_sset.GetActualPodsForCluster(d.Client, d.ES)
+	if err != nil {
+		return err
+	}
+
+	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
+	if err = nodeShutdown.Clear(ctx, nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes)); err != nil {
+		return err
+	}
 
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
 	if err != nil {

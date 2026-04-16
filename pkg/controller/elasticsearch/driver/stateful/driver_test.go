@@ -234,7 +234,40 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	}
 }
 
-func TestDriver_reconcileCriticalSteps(t *testing.T) {
+type fakeESShutdownClient struct {
+	esclient.Client
+	restartedNodeIDs []string
+	removedNodeIDs   []string
+	deletedNodeIDs   map[string]struct{}
+}
+
+func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
+	return esclient.Nodes{}, nil
+}
+
+func (f *fakeESShutdownClient) GetShutdown(_ context.Context, _ *string) (esclient.ShutdownResponse, error) {
+	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.removedNodeIDs))
+	for _, nodeID := range f.restartedNodeIDs {
+		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart)})
+	}
+	for _, nodeID := range f.removedNodeIDs {
+		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Remove)})
+	}
+
+	return esclient.ShutdownResponse{
+		Nodes: shutdownNodes,
+	}, nil
+}
+
+func (f *fakeESShutdownClient) DeleteShutdown(_ context.Context, nodeID string) error {
+	if f.deletedNodeIDs == nil {
+		f.deletedNodeIDs = map[string]struct{}{}
+	}
+	f.deletedNodeIDs[nodeID] = struct{}{}
+	return nil
+}
+
+func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 	const esName = "test-cluster"
 	const namespace = "test-ns"
 	const nodeSetName = "default"
@@ -279,15 +312,18 @@ func TestDriver_reconcileCriticalSteps(t *testing.T) {
 	matchingStatefulSets := expectedResources.StatefulSets()
 
 	tests := []struct {
-		name              string
-		k8sObjects        []crclient.Object // pre-existing StatefulSets beyond scriptsConfigMap
-		resolvedConfig    nodespec.ResolvedConfig
-		failK8sClient     bool
-		wantErr           bool
-		wantPhase         esv1.ElasticsearchOrchestrationPhase
-		wantCondStatus    corev1.ConditionStatus
-		wantCondMsgSubstr string
-		wantEvents        []events.Event
+		name                 string
+		k8sObjects           []crclient.Object // pre-existing StatefulSets beyond scriptsConfigMap
+		resolvedConfig       nodespec.ResolvedConfig
+		failK8sClient        bool
+		restartedNodeIDs     []string
+		removedNodeIDs       []string
+		wantErr              bool
+		wantPhase            esv1.ElasticsearchOrchestrationPhase
+		wantCondStatus       corev1.ConditionStatus
+		wantCondMsgSubstr    string
+		wantEvents           []events.Event
+		wantClearedShutdowns []string
 	}{
 		{
 			name:              "actual StatefulSets match expected: no pending changes",
@@ -303,6 +339,23 @@ func TestDriver_reconcileCriticalSteps(t *testing.T) {
 			wantPhase:         esv1.ElasticsearchOrchestrationPaused,
 			wantCondStatus:    corev1.ConditionTrue,
 			wantCondMsgSubstr: "spec changes are pending and will be applied on resume",
+			wantEvents: []events.Event{
+				{
+					EventType: corev1.EventTypeWarning,
+					Reason:    events.EventReasonPaused,
+					Action:    events.EventActionPendingOrchestrationChanges,
+				},
+			},
+		},
+		{
+			name:                 "restarted pods are cleared from shutdown API and removed pods are not",
+			resolvedConfig:       resolvedConfig,
+			restartedNodeIDs:     []string{"node-to-restart"},
+			removedNodeIDs:       []string{"node-to-remove"},
+			wantClearedShutdowns: []string{"node-to-restart"},
+			wantPhase:            esv1.ElasticsearchOrchestrationPaused,
+			wantCondStatus:       corev1.ConditionTrue,
+			wantCondMsgSubstr:    "spec changes are pending and will be applied on resume",
 			wantEvents: []events.Event{
 				{
 					EventType: corev1.EventTypeWarning,
@@ -336,6 +389,12 @@ func TestDriver_reconcileCriticalSteps(t *testing.T) {
 				k8sClient = k8s.NewFakeClient(objects...)
 			}
 
+			shutdownClient := &fakeESShutdownClient{
+				restartedNodeIDs: tt.restartedNodeIDs,
+				removedNodeIDs:   tt.removedNodeIDs,
+			}
+			sharedState.ESClient = shutdownClient
+
 			reconcileState := reconcile.MustNewState(elasticsearch)
 			d := &Driver{
 				BaseDriver: driver.BaseDriver{
@@ -347,7 +406,7 @@ func TestDriver_reconcileCriticalSteps(t *testing.T) {
 				},
 			}
 
-			err := d.reconcileCriticalSteps(context.Background(), sharedState, tt.resolvedConfig)
+			err := d.reconcileCriticalStepsWhilePaused(context.Background(), sharedState, tt.resolvedConfig)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -374,6 +433,13 @@ func TestDriver_reconcileCriticalSteps(t *testing.T) {
 			_, updatedES := reconcileState.Apply()
 			require.NotNil(t, updatedES)
 			assert.Equal(t, tt.wantPhase, updatedES.Status.Phase)
+
+			// Check cleared shutdowns
+			assert.Lenf(t, shutdownClient.deletedNodeIDs, len(tt.wantClearedShutdowns), "Expected %d nodes to be shutdown but got %d", len(tt.wantClearedShutdowns), len(shutdownClient.deletedNodeIDs))
+			for _, want := range tt.wantClearedShutdowns {
+				_, cleared := shutdownClient.deletedNodeIDs[want]
+				assert.Truef(t, cleared, "%s was not cleared as expected", want)
+			}
 		})
 	}
 }
