@@ -225,6 +225,7 @@ func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolic
 				"kibana.k8s.elastic.co/name":            "test-kb",
 				"common.k8s.elastic.co/type":            "kibana",
 				"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
+				"eck.k8s.elastic.co/watched":            "true",
 			},
 			Annotations: map[string]string{
 				"policy.k8s.elastic.co/kibana-config-hash": hashValue,

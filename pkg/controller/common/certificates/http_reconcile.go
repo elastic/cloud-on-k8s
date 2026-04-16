@@ -83,6 +83,8 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		secret.Labels = make(map[string]string)
 	}
 
+	secret.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+
 	// TODO: reconcile annotations?
 	needsUpdate := false
 

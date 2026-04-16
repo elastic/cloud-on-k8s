@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -101,6 +102,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
 				}, map[string]string{
 					"existing":    "existing",                        // keep existing
 					"annotation1": "value1", "annotation2": "value2", // add expected
@@ -196,6 +198,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 				concatMaps(expectedSoftOwnerLabels, map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
 				}),
 				map[string]string{
 					"existing":    "existing",                        // keep existing
@@ -256,7 +259,8 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 			SoftOwnerNameLabel:      ownerName,
 			SoftOwnerNamespaceLabel: ownerNs,
 			SoftOwnerKindLabel:      ownerKind,
-		}}}
+		}},
+	}
 }
 
 func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.Secret {
@@ -265,7 +269,8 @@ func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.
 			SoftOwnerKindLabel: ownerKind,
 		}, Annotations: map[string]string{
 			SoftOwnerRefsAnnotation: ownerRefs,
-		}}}
+		}},
+	}
 }
 
 func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
@@ -286,7 +291,8 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 		{
 			name: "gc soft-owned secret",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs:     nil,
@@ -294,38 +300,46 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 		{
 			name: "don't gc secret with no owner label",
 			existingSecrets: []client.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}}},
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}},
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}}},
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}},
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different name",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind),
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different namespace",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different kind",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind")},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind"),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind")},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind"),
+			},
 		},
 		{
 			name: "2 secrets to gc out of 5 secrets",
@@ -353,7 +367,8 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 			deletedOwner: types.NamespacedName{Name: sampleOwner().Name, Namespace: "another-namespace"},
 			ownerKind:    "StackConfigPolicy",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 		},
 	}
 	for _, tt := range tests {

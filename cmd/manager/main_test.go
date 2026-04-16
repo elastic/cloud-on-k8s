@@ -345,7 +345,8 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 }
 
 func TestBuildByObject(t *testing.T) {
-	watchedLabel := commonv1.LabelBasedDiscoveryLabelName + "=true"
+	labelScopedExpected := commonv1.LabelBasedDiscoveryLabelName + `=true`
+
 	tests := []struct {
 		name                         string
 		labelBasedDiscovery          bool
@@ -371,9 +372,9 @@ func TestBuildByObject(t *testing.T) {
 				"*v1.Deployment":          commonv1.TypeLabelName,
 				"*v1.StatefulSet":         commonv1.TypeLabelName,
 				"*v1.DaemonSet":           commonv1.TypeLabelName,
-				"*v1.Secret":              watchedLabel,
-				"*v1.Service":             watchedLabel,
-				"*v1.ConfigMap":           watchedLabel,
+				"*v1.Secret":              labelScopedExpected,
+				"*v1.Service":             labelScopedExpected,
+				"*v1.ConfigMap":           labelScopedExpected,
 			},
 		},
 	}
