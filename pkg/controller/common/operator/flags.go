@@ -47,4 +47,5 @@ const (
 	WebhookNameFlag                      = "webhook-name"
 	WebhookSecretFlag                    = "webhook-secret"
 	WebhookPortFlag                      = "webhook-port"
+	LabelBasedDiscovery                  = "label-based-discovery"
 )

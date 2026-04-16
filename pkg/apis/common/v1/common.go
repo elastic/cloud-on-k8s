@@ -570,3 +570,5 @@ func IsConfiguredToAllowDowngrades(o metav1.Object) bool {
 	val, exists := o.GetAnnotations()[DisableDowngradeValidationAnnotation]
 	return exists && val == "true"
 }
+
+const LabelBasedDiscoveryLabelName = "eck.k8s.elastic.co/watched"
