@@ -24,6 +24,9 @@ image:
   pullPolicy: IfNotPresent
   # tag is the container image tag. If not defined, defaults to chart appVersion.
   tag: null
+  # digest pins the image to a specific content digest, e.g. sha256:abc123...
+  # When set, is in addition to the tag for immutability. Format: sha256:<hex>
+  digest: ""
   # fips specifies whether the operator will use a FIPS compliant container image for its own StatefulSet image.
   # This setting does not apply to Elastic Stack applications images.
   # Can be combined with config.ubiOnly.
