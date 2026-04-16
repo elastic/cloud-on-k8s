@@ -95,8 +95,9 @@ func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedN
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
 			Labels: map[string]string{
-				commonv1.TypeLabelName: Type,
-				LicenseLabelType:       string(LicenseTypeEnterpriseTrial),
+				commonv1.TypeLabelName:                Type,
+				LicenseLabelType:                      string(LicenseTypeEnterpriseTrial),
+				commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 			},
 			Annotations: map[string]string{
 				EULAAnnotation: EULAAcceptedValue,

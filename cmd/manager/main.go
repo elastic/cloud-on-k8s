@@ -1069,11 +1069,11 @@ func fipsLog() {
 
 func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, error) {
 	// cache filter for ECK owned resources (carrying the common.k8s.elastic.co/type label)
-	req, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
+	commonTypeExists, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
 	if err != nil {
 		return nil, err
 	}
-	eckOwnedSelector := labels.NewSelector().Add(*req)
+	eckOwnedSelector := labels.NewSelector().Add(*commonTypeExists)
 
 	byObject := map[client.Object]cache.ByObject{
 		// Only resource types exclusively created by ECK (always carrying
@@ -1092,7 +1092,7 @@ func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, 
 	}
 
 	labelBasedSelector := labels.SelectorFromSet(labels.Set{
-		commonv1.LabelBasedDiscoveryLabelName: "true",
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 	})
 	byObject[&corev1.Secret{}] = cache.ByObject{Label: labelBasedSelector}
 	byObject[&corev1.Service{}] = cache.ByObject{Label: labelBasedSelector}

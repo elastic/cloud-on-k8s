@@ -116,7 +116,8 @@ func Test_buildPodTemplate(t *testing.T) {
 					},
 				},
 			},
-		}}
+		},
+	}
 	beatWithMonitoring.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret",
 		AuthSecretKey:  "elastic",
@@ -269,6 +270,7 @@ func Test_buildPodTemplate(t *testing.T) {
 					"beat.k8s.elastic.co/name":    "beat-name",
 					"beat.k8s.elastic.co/version": "7.15.0",
 					"common.k8s.elastic.co/type":  "beat",
+					"eck.k8s.elastic.co/watched":  "true",
 				},
 				annotations: map[string]string{
 					// The sum below should reflect the version of the Secret which contain the secure settings.

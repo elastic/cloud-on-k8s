@@ -163,6 +163,7 @@ var (
 			Name:      "kbns-kbname-kibana-user",
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                     "user",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -190,6 +191,7 @@ var (
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-es-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -217,6 +219,7 @@ var (
 			Name:      "kbname-kibana-user",
 			Labels: map[string]string{
 				"eck.k8s.elastic.co/credentials":                 "true",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -508,6 +511,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-ent-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                 "true",
 				"enterprisesearch.k8s.elastic.co/name":       "entname",
 				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
 				"kibanaassociation.k8s.elastic.co/name":      "kbname",
@@ -1464,6 +1468,7 @@ func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, 
 				"agentassociation.k8s.elastic.co/name":           sourceName,
 				"agentassociation.k8s.elastic.co/namespace":      sourceNs,
 				"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      targetName,
 				"elasticsearch.k8s.elastic.co/cluster-namespace": targetNs,
 			},
