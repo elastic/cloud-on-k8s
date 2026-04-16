@@ -20,6 +20,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
+	// AgentContainerName is the name of the main Elastic Agent container in the pod.
+	AgentContainerName = "agent"
 	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )

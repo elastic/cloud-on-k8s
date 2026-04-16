@@ -760,12 +760,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -775,12 +788,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -1738,12 +1764,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -1753,12 +1792,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3089,12 +3141,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3104,12 +3169,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3768,12 +3846,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3783,12 +3874,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -4872,12 +4976,25 @@ spec:
                               anyOf:
                               - type: integer
                               - type: string
+                              description: |-
+                                CPU overrides the main container's CPU request/limit when the parent Resources
+                                is merged into a PodTemplate. A nil value means "do not override": any CPU
+                                value already set on the main container in the PodTemplate is passed through
+                                unchanged. Setting this field to nil does not unset a CPU value present in
+                                the PodTemplate; to remove it, edit the PodTemplate's container resources.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                             memory:
                               anyOf:
                               - type: integer
                               - type: string
+                              description: |-
+                                Memory overrides the main container's memory request/limit when the parent
+                                Resources is merged into a PodTemplate. A nil value means "do not override":
+                                any memory value already set on the main container in the PodTemplate is
+                                passed through unchanged. Setting this field to nil does not unset a memory
+                                value present in the PodTemplate; to remove it, edit the PodTemplate's
+                                container resources.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
@@ -4887,12 +5004,25 @@ spec:
                               anyOf:
                               - type: integer
                               - type: string
+                              description: |-
+                                CPU overrides the main container's CPU request/limit when the parent Resources
+                                is merged into a PodTemplate. A nil value means "do not override": any CPU
+                                value already set on the main container in the PodTemplate is passed through
+                                unchanged. Setting this field to nil does not unset a CPU value present in
+                                the PodTemplate; to remove it, edit the PodTemplate's container resources.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                             memory:
                               anyOf:
                               - type: integer
                               - type: string
+                              description: |-
+                                Memory overrides the main container's memory request/limit when the parent
+                                Resources is merged into a PodTemplate. A nil value means "do not override":
+                                any memory value already set on the main container in the PodTemplate is
+                                passed through unchanged. Setting this field to nil does not unset a memory
+                                value present in the PodTemplate; to remove it, edit the PodTemplate's
+                                container resources.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
@@ -8037,12 +8167,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -8052,12 +8195,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -9373,12 +9529,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -9388,12 +9557,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -10328,12 +10510,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -10343,12 +10538,25 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
                         anyOf:
                         - type: integer
                         - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object

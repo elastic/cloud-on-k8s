@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -392,6 +393,92 @@ func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {
 				actualFields[i] = warning.Field
 			}
 			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
+func Test_shorthandResourcesOverrideWarning(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	memory := resource.MustParse("1Gi")
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		warnings int
+	}{
+		{
+			name: "no warning when shorthand resources do not overlap pod template",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "default",
+							Resources: commonv1.Resources{
+								Requests: commonv1.ResourceAllocations{
+									CPU: &cpu,
+								},
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											Resources: corev1.ResourceRequirements{
+												Requests: corev1.ResourceList{
+													corev1.ResourceMemory: memory,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			warnings: 0,
+		},
+		{
+			name: "warning when shorthand resources overlap pod template",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "default",
+							Resources: commonv1.Resources{
+								Requests: commonv1.ResourceAllocations{
+									CPU: &cpu,
+								},
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											Resources: corev1.ResourceRequirements{
+												Requests: corev1.ResourceList{
+													corev1.ResourceCPU: cpu,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			warnings: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualWarnings := shorthandResourcesOverrideWarning(tt.es)
+			require.Len(t, actualWarnings, tt.warnings)
+			if tt.warnings > 0 {
+				assert.Contains(t, actualWarnings[0].Detail, "overrides")
+			}
 		})
 	}
 }

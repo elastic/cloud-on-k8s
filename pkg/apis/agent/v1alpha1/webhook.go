@@ -7,10 +7,13 @@ package v1alpha1
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -33,10 +36,30 @@ func (a *Agent) warnings() []string {
 	if a == nil {
 		return nil
 	}
+	var warnings []string
 	if a.Spec.Mode == AgentFleetMode && len(a.Spec.PolicyID) == 0 {
-		return []string{fmt.Sprintf("%s %s/%s: %s", Kind, a.Namespace, a.Name, MissingPolicyIDMessage)}
+		warnings = append(warnings, fmt.Sprintf("%s %s/%s: %s", Kind, a.Namespace, a.Name, MissingPolicyIDMessage))
 	}
-	return nil
+	if pt, path := a.activePodTemplate(); path != "" {
+		if w := commonv1.PodTemplateResourcesOverrideWarning("spec.resources", path, AgentContainerName, a.Spec.Resources, pt); w != "" {
+			warnings = append(warnings, w)
+		}
+	}
+	return warnings
+}
+
+// activePodTemplate returns the configured pod template and its spec path.
+// checkSpec ensures at most one deployment mode is set; returns ("", empty) when none.
+func (a *Agent) activePodTemplate() (corev1.PodTemplateSpec, string) {
+	switch {
+	case a.Spec.DaemonSet != nil:
+		return a.Spec.DaemonSet.PodTemplate, "spec.daemonSet.podTemplate"
+	case a.Spec.Deployment != nil:
+		return a.Spec.Deployment.PodTemplate, "spec.deployment.podTemplate"
+	case a.Spec.StatefulSet != nil:
+		return a.Spec.StatefulSet.PodTemplate, "spec.statefulSet.podTemplate"
+	}
+	return corev1.PodTemplateSpec{}, ""
 }
 
 func (a *Agent) validate(old *Agent) (admission.Warnings, error) {

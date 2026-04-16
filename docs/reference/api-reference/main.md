@@ -742,8 +742,8 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 
 | Field | Description |
 | --- | --- |
-| *`cpu`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ |  |
-| *`memory`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ |  |
+| *`cpu`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | CPU overrides the main container's CPU request/limit when the parent Resources<br>is merged into a PodTemplate. A nil value means "do not override": any CPU<br>value already set on the main container in the PodTemplate is passed through<br>unchanged. Setting this field to nil does not unset a CPU value present in<br>the PodTemplate; to remove it, edit the PodTemplate's container resources. |
+| *`memory`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | Memory overrides the main container's memory request/limit when the parent<br>Resources is merged into a PodTemplate. A nil value means "do not override":<br>any memory value already set on the main container in the PodTemplate is<br>passed through unchanged. Setting this field to nil does not unset a memory<br>value present in the PodTemplate; to remove it, edit the PodTemplate's<br>container resources. |
 
 
 ### Resources  [#resources]

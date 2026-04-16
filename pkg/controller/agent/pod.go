@@ -41,7 +41,9 @@ import (
 const (
 	CAFileName = "ca.crt"
 
-	ContainerName = "agent"
+	// ContainerName is an alias for agentv1alpha1.AgentContainerName for backward compatibility
+	// within the controller package; prefer the apis-level constant for new code.
+	ContainerName = agentv1alpha1.AgentContainerName
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/agent"
