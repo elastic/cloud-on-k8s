@@ -75,16 +75,17 @@ func ResourceEqual(resourceName corev1.ResourceName, expected, current corev1.Re
 }
 
 // resourceAllocationsToResourceList converts NodeSet shorthand CPU/memory allocations into a ResourceList.
+// It intentionally returns nil when both CPU and memory are unset so ResourceEqual can treat
+// absent shorthand allocations as "no expected value".
 func resourceAllocationsToResourceList(allocations commonv1.ResourceAllocations) corev1.ResourceList {
-	var resources corev1.ResourceList
+	if allocations.CPU == nil && allocations.Memory == nil {
+		return nil
+	}
+	resources := make(corev1.ResourceList, 2)
 	if allocations.CPU != nil {
-		resources = make(corev1.ResourceList)
 		resources[corev1.ResourceCPU] = *allocations.CPU
 	}
 	if allocations.Memory != nil {
-		if resources == nil {
-			resources = make(corev1.ResourceList)
-		}
 		resources[corev1.ResourceMemory] = *allocations.Memory
 	}
 	return resources

@@ -43,6 +43,9 @@ func reconcileElasticsearch(
 		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
 
 		// Update CPU and memory shorthand resources.
+		// During operator upgrades from versions that wrote autoscaled CPU/memory only in the
+		// PodTemplate container resources, this progressively converges NodeSet.Resources to the
+		// autoscaler recommendation while leaving the PodTemplate untouched in this loop.
 		es.Spec.NodeSets[i].Resources = nodeSetResources.NodeResources.ToNodeSetResourcesWith(es.Spec.NodeSets[i].Resources)
 
 		// Update storage

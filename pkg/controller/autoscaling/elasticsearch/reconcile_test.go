@@ -170,6 +170,65 @@ func TestReconcileElasticsearch(t *testing.T) {
 			wantPodTemplateCPU:    "900m",
 			wantPodTemplateMemory: "1Gi",
 		},
+		{
+			name: "missing cpu recommendations preserves nil cpu values",
+			initialES: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:  "cold",
+							Count: 1,
+							Resources: commonv1.Resources{
+								Requests: commonv1.ResourceAllocations{
+									Memory: quantityPtr(resource.MustParse("1Gi")),
+								},
+								Limits: commonv1.ResourceAllocations{
+									Memory: quantityPtr(resource.MustParse("2Gi")),
+								},
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											Resources: corev1.ResourceRequirements{
+												Requests: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.MustParse("700m"),
+													corev1.ResourceMemory: resource.MustParse("1400Mi"),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			nextClusterResources: v1alpha1.ClusterResources{
+				{
+					Name: "policy-cold",
+					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
+						{Name: "cold", NodeCount: 2},
+					},
+					NodeResources: v1alpha1.NodeResources{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("3Gi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("4Gi"),
+						},
+					},
+				},
+			},
+			wantNodeSetCount:      2,
+			wantCPURequest:        "",
+			wantMemoryRequest:     "3Gi",
+			wantCPULimit:          "",
+			wantMemoryLimit:       "4Gi",
+			wantPodTemplateCPU:    "700m",
+			wantPodTemplateMemory: "1400Mi",
+		},
 	}
 
 	for _, tt := range tests {
@@ -215,8 +274,13 @@ func getMainContainer(nodeSet esv1.NodeSet) *corev1.Container {
 }
 
 // assertQuantityPointerEqual compares a quantity pointer value with an expected quantity string.
+// An empty expected string asserts that the pointer is nil.
 func assertQuantityPointerEqual(t *testing.T, expected string, current *resource.Quantity) {
 	t.Helper()
+	if expected == "" {
+		assert.Nil(t, current)
+		return
+	}
 	require.NotNil(t, current)
 	assert.True(t, resource.MustParse(expected).Equal(*current))
 }

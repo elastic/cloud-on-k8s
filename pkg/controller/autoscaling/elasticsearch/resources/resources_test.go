@@ -7,6 +7,7 @@ package resources
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,6 +168,21 @@ func TestNodeSetsResources_Match(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "Empty expected CPU/memory is treated as no-op match",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).
+				withPodTemplateMemoryRequest("4Gi").
+				withPodTemplateCPURequest("2000m").
+				build()},
+			want: true,
+		},
+		{
 			name: "Pod template differs but nodeSet resources match",
 			fields: fields{
 				Name:             "data-inject",
@@ -216,6 +232,58 @@ func TestNodeSetsResources_Match(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("NodeSetsResources.Match() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestResourceAllocationsToResourceList(t *testing.T) {
+	cpu := resource.MustParse("1200m")
+	memory := resource.MustParse("4Gi")
+
+	tests := []struct {
+		name        string
+		allocations commonv1.ResourceAllocations
+		want        corev1.ResourceList
+	}{
+		{
+			name:        "returns nil when no allocations are set",
+			allocations: commonv1.ResourceAllocations{},
+			want:        nil,
+		},
+		{
+			name: "returns CPU only when only CPU is set",
+			allocations: commonv1.ResourceAllocations{
+				CPU: &cpu,
+			},
+			want: corev1.ResourceList{
+				corev1.ResourceCPU: cpu,
+			},
+		},
+		{
+			name: "returns memory only when only memory is set",
+			allocations: commonv1.ResourceAllocations{
+				Memory: &memory,
+			},
+			want: corev1.ResourceList{
+				corev1.ResourceMemory: memory,
+			},
+		},
+		{
+			name: "returns CPU and memory when both are set",
+			allocations: commonv1.ResourceAllocations{
+				CPU:    &cpu,
+				Memory: &memory,
+			},
+			want: corev1.ResourceList{
+				corev1.ResourceCPU:    cpu,
+				corev1.ResourceMemory: memory,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, resourceAllocationsToResourceList(tt.allocations))
 		})
 	}
 }
