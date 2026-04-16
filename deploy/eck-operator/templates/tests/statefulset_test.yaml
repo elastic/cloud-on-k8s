@@ -164,6 +164,27 @@ tests:
         equal:
           path: spec.template.spec.containers[0].image
           value: "docker.elastic.co/eck/eck-operator-ubi:3.5.0-SNAPSHOT@sha256:abc123"
+  - it: ECK image, digest omitted by default (null) should produce tag-only reference
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.elastic.co/eck/eck-operator:3.5.0-SNAPSHOT"
+  - it: ECK image, invalid digest format should fail with descriptive error
+    set:
+      image.digest: "notasha256digest"
+    asserts:
+      - template: statefulset.yaml
+        failedTemplate:
+          errorMessage: "image.digest must start with 'sha256:' but got: notasha256digest"
+  - it: ECK image, digest without sha256 prefix should fail
+    set:
+      image.tag: "2.16.1"
+      image.digest: "abc123"
+    asserts:
+      - template: statefulset.yaml
+        failedTemplate:
+          errorMessage: "image.digest must start with 'sha256:' but got: abc123"
   - it: should have automount service account tokens set by default
     asserts:
       - template: statefulset.yaml
