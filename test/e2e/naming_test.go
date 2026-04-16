@@ -56,7 +56,7 @@ func testLongestPossibleName(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithNodeSet(esv1.NodeSet{
 			Name:  nodeSpecName,
-			Count: 1,
+			Count: 2,
 		}).
 		WithRestrictedSecurityContext()
 
