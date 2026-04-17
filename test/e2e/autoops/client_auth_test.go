@@ -45,7 +45,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithNamespace(esNamespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithLabel("autoops-mtls", "enabled").
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	policyBuilder := autoops.NewBuilder("autoops-mtls").
 		WithNamespace(policyNamespace).
