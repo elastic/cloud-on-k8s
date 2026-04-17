@@ -398,9 +398,13 @@ func (b *PodTemplateBuilder) WithInitContainers(
 //   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers)
 //
 // Existing nil-vs-empty map shape from the chosen merge base is preserved; missing maps are initialized only when
-// an override writes to them.
+// an override writes to them. Also if the main container does not exist, this method returns the builder unchanged
+// which shouldn't happen if NewPodTemplateBuilder is called prior to this method.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
+	if main == nil {
+		return b
+	}
 	merged, podTemplateResourcesUnset := resourceRequirementsMergeBase(main.Resources)
 	if podTemplateResourcesUnset {
 		// avoid mutating the resources argument in the subsequent calls

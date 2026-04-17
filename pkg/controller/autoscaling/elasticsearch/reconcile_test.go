@@ -262,6 +262,87 @@ func TestReconcileElasticsearch(t *testing.T) {
 	}
 }
 
+// TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent simulates an operator upgrade from a
+// version that only wrote autoscaler-managed CPU/memory on the PodTemplate container to the current version
+// that writes the shorthand NodeSet.Resources field. After the first reconcile the shorthand should reflect
+// the autoscaler recommendation while leaving the PodTemplate untouched; a second reconcile with the same
+// recommendation must be a no-op so the controller's unconditional Client.Update call does not dirty the
+// Elasticsearch custom resource.
+func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testing.T) {
+	next := v1alpha1.ClusterResources{
+		{
+			Name: "policy-hot",
+			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
+				{Name: "hot", NodeCount: 2},
+			},
+			NodeResources: v1alpha1.NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1500m"),
+					corev1.ResourceMemory: resource.MustParse("3Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2000m"),
+					corev1.ResourceMemory: resource.MustParse("3Gi"),
+				},
+			},
+		},
+	}
+
+	// Initial state mimics an older operator that wrote autoscaler outputs to the PodTemplate container and
+	// left NodeSet.Resources unset.
+	es := esv1.Elasticsearch{
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:  "hot",
+					Count: 1,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Resources: corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("500m"),
+											corev1.ResourceMemory: resource.MustParse("1Gi"),
+										},
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("500m"),
+											corev1.ResourceMemory: resource.MustParse("1Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+
+	nodeSet := es.Spec.NodeSets[0]
+	assert.Equal(t, int32(2), nodeSet.Count)
+	assertQuantityPointerEqual(t, "1500m", nodeSet.Resources.Requests.CPU)
+	assertQuantityPointerEqual(t, "3Gi", nodeSet.Resources.Requests.Memory)
+	assertQuantityPointerEqual(t, "2000m", nodeSet.Resources.Limits.CPU)
+	assertQuantityPointerEqual(t, "3Gi", nodeSet.Resources.Limits.Memory)
+
+	// The PodTemplate container values from the previous operator must be preserved so running pods are not
+	// restarted by the migration alone; convergence happens through future reconciliations.
+	mainContainer := getMainContainer(nodeSet)
+	require.NotNil(t, mainContainer)
+	assert.True(t, resource.MustParse("500m").Equal(mainContainer.Resources.Requests[corev1.ResourceCPU]))
+	assert.True(t, resource.MustParse("1Gi").Equal(mainContainer.Resources.Requests[corev1.ResourceMemory]))
+
+	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream Update
+	// calls from persistently dirtying the Elasticsearch custom resource.
+	before := es.DeepCopy()
+	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+	assert.Equal(t, before.Spec, es.Spec)
+}
+
 // getMainContainer returns the Elasticsearch main container from a NodeSet pod template.
 func getMainContainer(nodeSet esv1.NodeSet) *corev1.Container {
 	for i := range nodeSet.PodTemplate.Spec.Containers {

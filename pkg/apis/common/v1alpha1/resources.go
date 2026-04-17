@@ -92,10 +92,8 @@ func newNodeSetNodeCountList(nodeSetNames []string) NodeSetNodeCountList {
 // ToNodeSetResourcesWith builds NodeSet shorthand resources by overriding existing CPU/memory values
 // with the values present in this NodeResources recommendation.
 // If a recommendation for a given resource is missing, the existing value is preserved.
-// Preserved fields keep the same underlying *resource.Quantity pointer from existing
-// (this method does not deep-copy quantities).
 func (nr NodeResources) ToNodeSetResourcesWith(existing commonv1.Resources) commonv1.Resources {
-	merged := existing
+	merged := *existing.DeepCopy()
 
 	if nr.HasRequest(corev1.ResourceCPU) {
 		request := nr.GetRequest(corev1.ResourceCPU)

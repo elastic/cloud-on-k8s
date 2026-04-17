@@ -36,17 +36,22 @@ func reconcileElasticsearch(
 			continue
 		}
 
-		// Create a copy to compare if some changes have been made.
+		// Compute the next shorthand resources. During operator upgrades from versions that wrote
+		// autoscaled CPU/memory only in the PodTemplate container resources, this progressively
+		// converges NodeSet.Resources to the autoscaler recommendation while leaving the PodTemplate
+		// untouched in this loop.
 		currentResources := es.Spec.NodeSets[i].Resources
+		nextResources := nodeSetResources.NodeResources.ToNodeSetResourcesWith(currentResources)
 
-		// Update desired count
-		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
-
-		// Update CPU and memory shorthand resources.
-		// During operator upgrades from versions that wrote autoscaled CPU/memory only in the
-		// PodTemplate container resources, this progressively converges NodeSet.Resources to the
-		// autoscaler recommendation while leaving the PodTemplate untouched in this loop.
-		es.Spec.NodeSets[i].Resources = nodeSetResources.NodeResources.ToNodeSetResourcesWith(es.Spec.NodeSets[i].Resources)
+		// Only write to the NodeSet when something changed so the upstream Client.Update call
+		// (in the controller) is a no-op and does not dirty the Elasticsearch custom resource
+		// unnecessarily on every reconcile.
+		if es.Spec.NodeSets[i].Count != nodeSetResources.NodeCount ||
+			!apiequality.Semantic.DeepEqual(currentResources, nextResources) {
+			es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
+			es.Spec.NodeSets[i].Resources = nextResources
+			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
+		}
 
 		// Update storage
 		if nodeSetResources.HasRequest(corev1.ResourceStorage) {
@@ -55,10 +60,6 @@ func reconcileElasticsearch(
 				return err
 			}
 			es.Spec.NodeSets[i].VolumeClaimTemplates = nextStorage
-		}
-
-		if !apiequality.Semantic.DeepEqual(currentResources, es.Spec.NodeSets[i].Resources) {
-			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
 	}
 	return nil

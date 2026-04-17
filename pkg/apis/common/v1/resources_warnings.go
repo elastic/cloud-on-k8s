@@ -13,6 +13,10 @@ import (
 // PodTemplateResourcesOverrideWarning returns an admission warning when shorthand
 // CPU/memory values overlap with resources set on the main container in pt.
 // Returns "" when the main container is missing or there is no overlap.
+//
+// This check intentionally covers only the main container; init containers and
+// sidecars are not evaluated because the shorthand resources field only targets
+// the main container's CPU and memory.
 func PodTemplateResourcesOverrideWarning(shortPath, templatePath, mainContainer string, shorthand Resources, pt corev1.PodTemplateSpec) string {
 	var main *corev1.Container
 	for i := range pt.Spec.Containers {
@@ -24,7 +28,7 @@ func PodTemplateResourcesOverrideWarning(shortPath, templatePath, mainContainer 
 	if main == nil {
 		return ""
 	}
-	// define a small closuer here to help with readability
+	// define a small closure here to help with readability
 	has := func(list corev1.ResourceList, name corev1.ResourceName) bool {
 		_, ok := list[name]
 		return ok

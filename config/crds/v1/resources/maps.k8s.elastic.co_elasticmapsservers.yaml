@@ -9055,6 +9055,8 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          Setting this field to the literal "0" sets the override to a zero quantity
+                          and does not clear the PodTemplate's CPU.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -9067,7 +9069,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources.
+                          container resources. Setting this field to the literal "0" sets the override
+                          to a zero quantity and does not clear the PodTemplate's memory.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -9083,6 +9086,8 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          Setting this field to the literal "0" sets the override to a zero quantity
+                          and does not clear the PodTemplate's CPU.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -9095,7 +9100,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources.
+                          container resources. Setting this field to the literal "0" sets the override
+                          to a zero quantity and does not clear the PodTemplate's memory.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
