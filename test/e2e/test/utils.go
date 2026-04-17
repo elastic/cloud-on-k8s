@@ -31,7 +31,8 @@ import (
 )
 
 const (
-	DefaultRetryDelay = 3 * time.Second
+	DefaultRetryDelay  = 3 * time.Second
+	DefaultTestTimeout = 5 * time.Minute
 )
 
 func CheckKeystoreEntries(k *K8sClient, keystoreCmd []string, expectedKeys []string, opts ...client.ListOption) Step {
@@ -78,7 +79,7 @@ func ExitOnErr(err error) {
 
 // Eventually runs the given function until success with a default timeout.
 func Eventually(f func() error) func(*testing.T) {
-	return UntilSuccess(f, ctx.TestTimeout)
+	return UntilSuccess(f, DefaultTestTimeout)
 }
 
 // UntilSuccess executes f until it succeeds, or the timeout is reached.
