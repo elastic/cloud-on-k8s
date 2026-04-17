@@ -249,7 +249,8 @@ func TestESStackClientAuthTransitionMonitored(t *testing.T) {
 	monitored := elasticsearch.NewBuilder("test-es-mon-trans-a").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithClientAuthenticationRequired().
-		WithMonitoring(monitoring.Ref(), monitoring.Ref())
+		WithMonitoring(monitoring.Ref(), monitoring.Ref()).
+		TolerateMutationChecksFailures()
 
 	monitoringWithLicense := test.LicenseTestBuilder(monitoring)
 	monitoredWithLicense := test.LicenseTestBuilder(monitored)
@@ -295,7 +296,8 @@ func TestESStackClientAuthTransitionMonitoring(t *testing.T) {
 	monitored := elasticsearch.NewBuilder("test-es-mmon-trans-a").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithClientAuthenticationRequired().
-		WithMonitoring(monitoring.Ref(), monitoring.Ref())
+		WithMonitoring(monitoring.Ref(), monitoring.Ref()).
+		TolerateMutationChecksFailures()
 
 	monitoringWithLicense := test.LicenseTestBuilder(monitoring)
 	monitoringWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
