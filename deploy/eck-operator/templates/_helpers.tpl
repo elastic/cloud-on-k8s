@@ -428,3 +428,30 @@ RBAC permissions to read node labels
   - list
   - watch
 {{- end -}}
+
+
+{{/*
+Render the full operator image reference, including optional UBI/FIPS suffix,
+tag (defaulting to chart appVersion), and optional digest pin.
+
+Digest validation: if image.digest is set, it must start with "sha256:" to
+produce a valid OCI image reference. An invalid format will cause `helm template`
+to fail with a descriptive error rather than rendering a silently broken image string.
+
+Usage:
+  image: {{ include "eck-operator.imageReference" . | quote }}
+*/}}
+{{- define "eck-operator.imageReference" -}}
+{{- $repo := .Values.image.repository -}}
+{{- if .Values.config.ubiOnly -}}{{- $repo = printf "%s-ubi" $repo -}}{{- end -}}
+{{- if .Values.image.fips -}}{{- $repo = printf "%s-fips" $repo -}}{{- end -}}
+{{- $tag := default .Chart.AppVersion .Values.image.tag -}}
+{{- if .Values.image.digest -}}
+  {{- if not (hasPrefix "sha256:" .Values.image.digest) -}}
+    {{- fail (printf "image.digest must start with 'sha256:' but got: %s" .Values.image.digest) -}}
+  {{- end -}}
+  {{- printf "%s:%s@%s" $repo $tag .Values.image.digest -}}
+{{- else -}}
+  {{- printf "%s:%s" $repo $tag -}}
+{{- end -}}
+{{- end -}}

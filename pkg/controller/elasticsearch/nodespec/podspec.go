@@ -163,7 +163,7 @@ func BuildPodTemplateSpec(
 		WithTopologySpreadConstraints(spreadConstraints...).
 		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...)
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta, clientAuthenticationRequired)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

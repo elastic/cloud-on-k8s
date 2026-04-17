@@ -147,6 +147,85 @@ ssl:
 `,
 			wantErr: false,
 		},
+		{
+			name: "association with CA and client cert",
+			args: args{
+				runtimeObjs: []client.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sample-maps-user",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"ns-sample-maps-user": []byte("password"),
+						},
+					},
+				},
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       "sample-maps-user",
+					AuthSecretKey:        "ns-sample-maps-user",
+					CACertProvided:       true,
+					CASecretName:         "sample-maps-es-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    password: password
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+        verificationMode: certificate
+    username: ns-sample-maps-user
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
+		{
+			name: "association with client cert but no CA",
+			args: args{
+				runtimeObjs: []client.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sample-maps-user",
+							Namespace: "ns",
+						},
+						Data: map[string][]byte{
+							"ns-sample-maps-user": []byte("password"),
+						},
+					},
+				},
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       "sample-maps-user",
+					AuthSecretKey:        "ns-sample-maps-user",
+					CACertProvided:       false,
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    password: password
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+    username: ns-sample-maps-user
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
