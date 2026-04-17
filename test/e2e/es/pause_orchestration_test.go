@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -103,7 +102,7 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 	return test.StepList{
 		{
 			Name: fmt.Sprintf("Verify pause-orchestration annotation is set to true when spec changes made [%t]", specChangesMade),
-			Test: test.EventuallyWithTimeout(func() error {
+			Test: test.Eventually(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: namespace,
@@ -134,7 +133,7 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 				}
 
 				return nil
-			}, 2*time.Minute),
+			}),
 		},
 		{
 			Name: "Verify expected number of pods are running",
