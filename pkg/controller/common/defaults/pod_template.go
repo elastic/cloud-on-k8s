@@ -391,10 +391,10 @@ func (b *PodTemplateBuilder) WithInitContainers(
 }
 
 // WithResourcesAndOverrides merges main-container resources from three sources:
-//   - main container resources from the pod template (merge base when present, including explicit empty maps for
-//     [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
-//   - resources: operator default ResourceRequirements (merge base only when the pod template omits Requests,
-//     Limits, and Claims)
+//   - main container resources from the pod template (merge base when Requests or Limits are set,
+//     including explicit empty maps for [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
+//   - resources: operator default ResourceRequirements (merge base when the pod template omits both
+//     Requests and Limits; any user-supplied ResourceClaims are preserved on top of the defaults)
 //   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers)
 //
 // Existing nil-vs-empty map shape from the chosen merge base is preserved; missing maps are initialized only when
@@ -407,8 +407,11 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 	}
 	merged, podTemplateResourcesUnset := resourceRequirementsMergeBase(main.Resources)
 	if podTemplateResourcesUnset {
-		// avoid mutating the resources argument in the subsequent calls
+		// Start from the operator defaults and re-attach any user-supplied Claims preserved by
+		// resourceRequirementsMergeBase so DRA references from the pod template are not dropped.
+		claims := merged.Claims
 		merged = *resources.DeepCopy()
+		merged.Claims = claims
 	}
 	applyCPUAndMemoryOverrides(&merged.Limits, overrides.Limits)
 	applyCPUAndMemoryOverrides(&merged.Requests, overrides.Requests)
@@ -419,13 +422,17 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 }
 
 // resourceRequirementsMergeBase returns the merge base for resources overrides and whether the
-// pod template had no resources set at all (requests, limits, and claims all unset).
-// For a non-empty pod template resource, it preserves existing map presence
-// (nil vs empty map) to avoid introducing no-op spec diffs.
+// pod template contributed no CPU/memory base (Requests and Limits both nil). When both are nil,
+// any user-supplied Claims are carried on the returned base so the caller can layer defaults in
+// without dropping DRA references. For a pod template with Requests or Limits set, existing map
+// presence (nil vs empty map) is preserved to avoid introducing no-op spec diffs.
 func resourceRequirementsMergeBase(existing corev1.ResourceRequirements) (corev1.ResourceRequirements, bool) {
-	podTemplateResourcesUnset := existing.Requests == nil && existing.Limits == nil && len(existing.Claims) == 0
-	if podTemplateResourcesUnset {
-		return corev1.ResourceRequirements{}, true
+	if existing.Requests == nil && existing.Limits == nil {
+		base := corev1.ResourceRequirements{}
+		if len(existing.Claims) > 0 {
+			base.Claims = append([]corev1.ResourceClaim(nil), existing.Claims...)
+		}
+		return base, true
 	}
 
 	return *existing.DeepCopy(), false

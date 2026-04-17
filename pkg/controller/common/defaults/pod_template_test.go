@@ -1479,7 +1479,7 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			},
 		},
 		{
-			name: "resource claims only in pod template: preserved without overrides",
+			name: "resource claims only in pod template: defaults merged in without dropping claims",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -1498,10 +1498,18 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 				Claims: []corev1.ResourceClaim{
 					{Name: "gpu-claim", Request: "gpu"},
 				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("500m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
 			},
 		},
 		{
-			name: "resource claims only in pod template: preserved with CPU/memory overrides",
+			name: "resource claims only in pod template: defaults merged with CPU/memory overrides",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -1529,9 +1537,11 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 					{Name: "gpu-claim", Request: "gpu"},
 				},
 				Requests: corev1.ResourceList{
-					corev1.ResourceCPU: cpuOverride,
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
 				},
 				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
 					corev1.ResourceMemory: memoryOverride,
 				},
 			},
