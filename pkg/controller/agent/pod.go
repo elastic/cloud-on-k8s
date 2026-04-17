@@ -92,6 +92,9 @@ const (
 
 	// FleetManagedAgentClientCertDir is the stable mount path for client certificates inside
 	// fleet-managed Agent pods. Also used by the Kibana controller when injecting ssl paths into fleet outputs.
+	// This is a flat path (no namespace/name components) because Fleet Server is constrained to a single
+	// ES output, and the Kibana controller injects this path into fleet outputs without knowing the ES
+	// namespace/name at that point.
 	FleetManagedAgentClientCertDir = "/mnt/elastic-internal/elasticsearch-association/client-certs"
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
