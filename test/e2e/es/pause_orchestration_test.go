@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,11 +70,11 @@ func TestPauseOrchestration(t *testing.T) {
 		// Phase 1: enable pause-orchestration annotation
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
 		WithSteps(enabledBuilder.MutationTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1, false)).
 		// Phase 2: upscale Elasticsearch
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(upscaleBuilder, k)).
 		WithSteps(upscaleBuilder.UpgradeTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 1, true)).
 		// Phase 3: disable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*disabledBuilder, k)).
 		WithSteps(disabledBuilder.UpgradeTestSteps(k)).
@@ -83,11 +84,11 @@ func TestPauseOrchestration(t *testing.T) {
 		// Phase 4: re-enable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*reenabledBuilder, k)).
 		WithSteps(reenabledBuilder.MutationTestSteps(k)).
-		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3, false)).
 		// Phase 5: delete pod
 		WithSteps(deletePod(k, esNamespace, actualESName)).
 		WithSteps(test.CheckTestSteps(reenabledBuilder, k)).
-		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3)).
+		WithSteps(verifyPauseOrchestrationEnabled(k, esNamespace, actualESName, 3, false)).
 		// Phase 6: re-disable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*redisableBuilder, k)).
 		WithSteps(redisableBuilder.UpgradeTestSteps(k)).
@@ -98,11 +99,11 @@ func TestPauseOrchestration(t *testing.T) {
 		RunSequential(t)
 }
 
-func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
+func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int, specChangesMade bool) test.StepList {
 	return test.StepList{
 		{
-			Name: "Verify pause-orchestration annotation is set to true",
-			Test: test.Eventually(func() error {
+			Name: fmt.Sprintf("Verify pause-orchestration annotation is set to true when spec changes made [%t]", specChangesMade),
+			Test: test.EventuallyWithTimeout(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: namespace,
@@ -119,11 +120,21 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 					return fmt.Errorf("%s condition does not exist on Elasticsearch resource", esv1.OrchestrationPaused)
 				}
 
-				if es.Status.Conditions[orchestrationPausedIndex].Status == corev1.ConditionFalse {
+				orchestrationCondition := es.Status.Conditions[orchestrationPausedIndex]
+				if orchestrationCondition.Status == corev1.ConditionFalse {
 					return fmt.Errorf("condition %s should be true", esv1.OrchestrationPaused)
 				}
+
+				if specChangesMade && orchestrationCondition.Message == "Orchestration paused via annotation; no pending spec changes detected" {
+					return fmt.Errorf("condition message '%s' is incorrect when spec has changed", orchestrationCondition.Message)
+				}
+
+				if !specChangesMade && orchestrationCondition.Message == "Orchestration paused via annotation; spec changes are pending and will be applied on resume" {
+					return fmt.Errorf("condition message '%s' is incorrect when spec has not changed", orchestrationCondition.Message)
+				}
+
 				return nil
-			}),
+			}, 2*time.Minute),
 		},
 		{
 			Name: "Verify expected number of pods are running",

@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -180,11 +179,14 @@ func (d *Driver) hasPendingSpecChanges(
 	if err != nil {
 		return false, err
 	}
-	return hasSpecDiff(actualSets, expectedResources.StatefulSets()), nil
+	return hasSpecDiff(ctx, actualSets, expectedResources.StatefulSets()), nil
 }
 
-func hasSpecDiff(actualSets, expectedSets es_sset.StatefulSetList) bool {
+func hasSpecDiff(ctx context.Context, actualSets, expectedSets es_sset.StatefulSetList) bool {
+	log := ulog.FromContext(ctx)
+
 	if len(actualSets) != len(expectedSets) {
+		log.V(1).Info("Different number of statefulsets found")
 		return true
 	}
 
@@ -196,10 +198,11 @@ func hasSpecDiff(actualSets, expectedSets es_sset.StatefulSetList) bool {
 	for _, thisSet := range actualSets {
 		thatSet, exists := otherSetsByName[thisSet.Name]
 		if !exists {
+			log.V(1).Info("statefulset does not exist in other sets", "name", thisSet.Name)
 			return true
 		}
 
-		if !equality.Semantic.DeepEqual(thisSet.Spec, thatSet.Spec) {
+		if !es_sset.EqualTemplateHashLabels(thatSet, thisSet) {
 			return true
 		}
 	}

@@ -20,6 +20,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -107,6 +108,7 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 		diffActualSets2[i] = *s.DeepCopy()
 	}
 	diffActualSets2[1].Spec.Replicas = ptr.To[int32](99)
+	diffActualSets2[1].Labels = hash.SetTemplateHashLabel(diffActualSets2[1].Labels, diffActualSets2[1].Spec)
 
 	tests := []struct {
 		name                      string
@@ -514,17 +516,21 @@ func Test_hasSpecDiff(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "same name but different replicas",
+			name: "same name but different ordinals",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 3}}),
+					},
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 5}}),
+					},
 				},
 			},
 			want: true,
@@ -533,46 +539,62 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "multiple StatefulSets, all specs match",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset2",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+					},
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset2",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+					},
 				},
 			},
 			want: false,
 		},
 		{
-			name: "multiple StatefulSets, one has a spec diff",
+			name: "multiple StatefulSets, one has a different number of replicas",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset2",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+					},
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset2"},
-					Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "sset2",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}),
+					},
 				},
 			},
 			want: true,
@@ -582,98 +604,16 @@ func Test_hasSpecDiff(t *testing.T) {
 			this: es_sset.StatefulSetList{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "sset1",
-					},
-					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](3),
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{},
-						},
-						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name: "sset1-pvc",
-									OwnerReferences: []metav1.OwnerReference{
-										{
-											APIVersion: "apps/v1",
-											Kind:       "StatefulSet",
-											Name:       "sset1",
-											Controller: ptr.To[bool](true),
-										},
-										{
-											APIVersion: "apps/v1",
-											Kind:       "Elasticsearch",
-											Name:       "es1",
-											Controller: ptr.To[bool](true),
-										},
-									},
-									Annotations: map[string]string{
-										"foo": "bar",
-										"bar": "foo",
-									},
-								},
-								Spec: corev1.PersistentVolumeClaimSpec{
-									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
-								},
-							},
-						},
-						ServiceName:                          "sset1",
-						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
-						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
-						RevisionHistoryLimit:                 ptr.To[int32](3),
-						MinReadySeconds:                      2,
-						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
-						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
 					},
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "sset1",
-					},
-					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](3),
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{},
-						},
-						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name: "sset1-pvc",
-									OwnerReferences: []metav1.OwnerReference{
-										{
-											APIVersion: "apps/v1",
-											Kind:       "StatefulSet",
-											Name:       "sset1",
-											Controller: ptr.To[bool](true),
-										},
-										{
-											APIVersion: "apps/v1",
-											Kind:       "Elasticsearch",
-											Name:       "es1",
-											Controller: ptr.To[bool](true),
-										},
-									},
-									Annotations: map[string]string{
-										"bar": "foo",
-										"foo": "bar",
-									},
-								},
-								Spec: corev1.PersistentVolumeClaimSpec{
-									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-									VolumeMode:  ptr.To(corev1.PersistentVolumeBlock),
-								},
-							},
-						},
-						ServiceName:                          "sset1",
-						PodManagementPolicy:                  appsv1.PodManagementPolicyType("ParallelOnly"),
-						UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{},
-						RevisionHistoryLimit:                 ptr.To[int32](3),
-						MinReadySeconds:                      2,
-						PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{},
-						Ordinals:                             &appsv1.StatefulSetOrdinals{Start: 3},
+						Name:   "sset1",
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
 					},
 				},
 			},
@@ -682,7 +622,7 @@ func Test_hasSpecDiff(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasSpecDiff(tt.this, tt.that)
+			got := hasSpecDiff(context.Background(), tt.this, tt.that)
 			assert.Equal(t, tt.want, got)
 		})
 	}
