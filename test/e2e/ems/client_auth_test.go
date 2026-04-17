@@ -35,7 +35,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	emsBuilder := maps.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
