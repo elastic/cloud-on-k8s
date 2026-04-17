@@ -7,6 +7,7 @@ package immutableconfig
 import (
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,6 +75,9 @@ func TestBuildImmutableConfigMap(t *testing.T) {
 	// Check name has content-addressed suffix
 	assert.Contains(t, cm.Name, "my-scripts-")
 	assert.Greater(t, len(cm.Name), len("my-scripts-"))
+
+	// Check that labels contain the discovery label with the expected value.
+	assert.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, cm.Labels[commonv1.LabelBasedDiscoveryLabelName])
 
 	// Check namespace
 	assert.Equal(t, "default", cm.Namespace)

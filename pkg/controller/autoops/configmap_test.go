@@ -270,6 +270,9 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
+				if l := got.Labels[commonv1.LabelBasedDiscoveryLabelName]; l != commonv1.LabelBasedDiscoveryLabelValue {
+					t.Errorf("expected to have the discovery label and it does not. Value = %s", l)
+				}
 				policy := tt.args.policy()
 				es := tt.args.es()
 				// Validate ConfigMap structure
