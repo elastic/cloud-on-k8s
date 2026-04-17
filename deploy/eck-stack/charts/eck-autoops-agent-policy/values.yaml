@@ -51,7 +51,10 @@ autoOpsRef: {}
 # config: {}
 
 # Image is the AutoOps Agent Docker image to deploy.
+# Supports both tag and digest formats.
 # image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.4.0"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.4.0@sha256:<digest>"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi@sha256:<digest>"
 
 # RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 # revisionHistoryLimit: 2

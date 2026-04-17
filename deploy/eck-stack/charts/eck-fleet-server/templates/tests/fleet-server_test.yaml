@@ -156,6 +156,58 @@ tests:
                   type: ClusterIP
             revisionHistoryLimit: 4
             serviceAccountName: elastic-fleet-server
+  - it: values.spec.image should render properly
+    set:
+      spec:
+        deployment: {}
+        image: my.registry.com/elastic/fleet-server:9.4.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/fleet-server:9.4.0
+  - it: values.image should render properly
+    set:
+      deployment: {}
+      image: my.registry.com/elastic/fleet-server:9.4.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/fleet-server:9.4.0
+  - it: values.spec.image should take precedence over values.image
+    set:
+      spec:
+        deployment: {}
+        image: quay.io/elastic/fleet-server:9.4.0
+      image: my.registry.com/elastic/fleet-server:9.4.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: quay.io/elastic/fleet-server:9.4.0
+  - it: values.spec.image null should fallback to values.image
+    set:
+      spec:
+        deployment: {}
+        image: null
+      image: my.registry.com/elastic/fleet-server:9.4.0
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/fleet-server:9.4.0
+  - it: values.image with digest should render properly
+    set:
+      deployment: {}
+      image: my.registry.com/elastic/fleet-server:9.4.0@sha256:abc123
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/fleet-server:9.4.0@sha256:abc123
+  - it: values.image null should omit spec.image
+    set:
+      deployment: {}
+      image: null
+    asserts:
+      - notExists:
+          path: spec.image
   - it: not setting version should fail
     set:
       version: ""

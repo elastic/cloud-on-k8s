@@ -45,8 +45,10 @@ annotations: {}
 type: ""
 
 # Beats image to deploy.
-#
+# Supports both tag and digest formats.
 # image: docker.elastic.co/beats/metricbeat:9.4.0
+# image: docker.elastic.co/beats/metricbeat:9.4.0@sha256:<digest>
+# image: docker.elastic.co/beats/metricbeat@sha256:<digest>
 
 # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-beat-configuration.html#k8s-beat-connect-es

@@ -125,6 +125,50 @@ tests:
       - equal:
           path: spec.image
           value: quay.io/elastic/kibana:9.4.0
+  - it: values.spec.image should take precedence over values.image
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        image: quay.io/elastic/kibana:9.4.0
+      image: my.registry.com/elastic/kibana:9.4.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.image
+          value: quay.io/elastic/kibana:9.4.0
+  - it: values.spec.image null should fallback to values.image
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+        image: null
+      image: my.registry.com/elastic/kibana:9.4.0
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/kibana:9.4.0
+  - it: values.image with digest should work properly
+    set:
+      spec:
+        elasticsearchRef:
+          name: eck-elasticsearch
+      image: my.registry.com/elastic/kibana:9.4.0@sha256:abc123
+    release:
+      name: quickstart
+    asserts:
+      - isKind:
+          of: Kibana
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/kibana:9.4.0@sha256:abc123
   - it: not setting elasticsearchRef should fail
     asserts:
       - failedTemplate:
