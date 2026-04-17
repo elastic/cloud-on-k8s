@@ -35,7 +35,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	entBuilder := enterprisesearch.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
@@ -97,7 +98,8 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	entBuilder := enterprisesearch.NewBuilder(name).
 		WithElasticsearchRef(commonv1.ObjectSelector{

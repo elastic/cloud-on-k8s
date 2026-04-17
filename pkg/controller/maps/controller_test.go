@@ -184,7 +184,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
 					},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
@@ -217,7 +217,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
 					},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,

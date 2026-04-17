@@ -35,7 +35,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	lsBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).
@@ -162,7 +163,8 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	lsBuilder := logstash.NewBuilder(name).
 		WithNodeCount(1).

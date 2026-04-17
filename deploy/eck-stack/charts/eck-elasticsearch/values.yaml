@@ -20,9 +20,11 @@
 #
 version: 9.4.0-SNAPSHOT
 
-# Elasticsearch Docker image to deploy
-#
-# image:
+# Elasticsearch Docker image to deploy.
+# Supports both tag and digest formats.
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.4.0-SNAPSHOT
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.4.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/elasticsearch/elasticsearch@sha256:<digest>
 
 # Labels that will be applied to Elasticsearch.
 #

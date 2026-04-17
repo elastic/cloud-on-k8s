@@ -21813,11 +21813,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/moby/spdystream
-Version : v0.5.0
-Time    : 2024-07-23T13:25:06Z
+Version : v0.5.1
+Time    : 2026-04-13T17:36:51Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/moby/spdystream@v0.5.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/moby/spdystream@v0.5.1/LICENSE:
 
 
                                  Apache License
