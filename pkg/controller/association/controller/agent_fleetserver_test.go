@@ -500,6 +500,40 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			},
 		},
 		{
+			name: "external ES ref skips client cert reconciliation and cleans up",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "fs-ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(commonv1.ObjectSelector{SecretName: "external-es-secret"}): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName: "external-es-secret",
+							URL:            "https://external-es:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "external-es-secret"}}},
+					},
+				},
+			},
+			orphanedSecrets: []*corev1.Secret{
+				{ObjectMeta: metav1.ObjectMeta{Name: "old-cert", Namespace: "ns", Labels: orphanLabels}},
+			},
+			wantRef:        nil,
+			wantNilResults: true,
+			wantOrphanGone: true,
+		},
+		{
 			name: "conf is nil returns nil and cleans up",
 			agent: &agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
