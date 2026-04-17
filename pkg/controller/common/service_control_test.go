@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
@@ -39,6 +40,7 @@ func TestReconcileService(t *testing.T) {
 
 	wantSvc := mkService(owner)
 	wantSvc.Labels["lbl3"] = "lblval3"
+	wantSvc.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 	wantSvc.Annotations["ann3"] = "annval3"
 
 	haveSvc, err := ReconcileService(context.Background(), client, expectedSvc, owner)

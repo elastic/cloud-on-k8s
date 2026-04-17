@@ -44,6 +44,9 @@ func WithPostUpdate(f func()) func(p *Params) {
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
 func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object, opts ...func(*Params)) (corev1.Secret, error) {
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
 	expected.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 
 	var reconciled corev1.Secret
