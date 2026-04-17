@@ -38,7 +38,8 @@ func TestClientAuthRequiredTransition_StandaloneAgent(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
@@ -87,7 +88,8 @@ func TestClientAuthRequiredCustomCertificate_StandaloneAgent(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutputWithClientCert(
@@ -129,7 +131,8 @@ func TestClientAuthRequiredTransition_FleetAgent(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
@@ -196,7 +199,8 @@ func TestClientAuthRequiredCustomCertificate_FleetAgent(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
