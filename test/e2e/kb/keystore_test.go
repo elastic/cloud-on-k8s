@@ -44,7 +44,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	// set up a 1-node Kibana deployment with secure settings
 	name := "test-kb-keystore"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).

@@ -115,7 +115,7 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 	userCertSecretName := name + "-user-client-cert"
 
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithClientAuthenticationRequired()
 
 	kbBuilder := kibana.NewBuilder(name).
