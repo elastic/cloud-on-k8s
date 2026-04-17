@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 type LogstashHealth string
@@ -35,6 +36,10 @@ const (
 	// 1) all Pods are Ready, and
 	// 2) any associations are configured and established
 	LogstashGreenHealth LogstashHealth = "green"
+
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the Logstash Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // LogstashSpec defines the desired state of Logstash
@@ -212,6 +217,17 @@ func (l *Logstash) SecureSettings() []commonv1.SecretSource {
 // IsMarkedForDeletion returns true if the Logstash is going to be deleted
 func (l *Logstash) IsMarkedForDeletion() bool {
 	return !l.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the Logstash Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (l *Logstash) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(l.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Logstash Pods.
+func (l *Logstash) HasDownwardNodeLabels() bool {
+	return len(l.DownwardNodeLabels()) > 0
 }
 
 // GetObservedGeneration will return the observedGeneration from the Elastic Logstash's status.

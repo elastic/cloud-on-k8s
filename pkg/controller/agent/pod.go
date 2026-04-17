@@ -178,6 +178,12 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 	vols = append(vols, caAssocVols...)
 
+	// Changes to the downward-node-labels annotation must roll the Agent Pods so the new annotations
+	// are re-applied on scheduling.
+	if params.Agent.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(params.Agent.Annotations[agentv1alpha1.DownwardNodeLabelsAnnotation]))
+	}
+
 	podMeta := params.Meta.Merge(metadata.Metadata{
 		Labels:      map[string]string{VersionLabelName: spec.Version},
 		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
