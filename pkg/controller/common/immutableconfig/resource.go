@@ -9,6 +9,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -61,10 +63,11 @@ func BuildImmutableConfigMap(baseName, namespace string, data map[string]string,
 	fullHash := ComputeStringContentHash(data)
 	name := ImmutableName(baseName, fullHash)
 
-	cmLabels := make(map[string]string, len(labels)+2)
+	cmLabels := make(map[string]string, len(labels)+3)
 	maps.Copy(cmLabels, labels)
 	cmLabels[ConfigTypeLabelName] = ConfigTypeImmutable
 	cmLabels[ConfigHashLabelName] = ShortHash(fullHash, hashLabelLen)
+	cmLabels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 
 	immutable := true
 	return corev1.ConfigMap{

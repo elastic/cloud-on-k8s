@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -58,6 +59,11 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 			KibanaInitScriptConfigKey: initScript,
 		},
 	}
+
+	if scriptsConfigMap.Labels == nil {
+		scriptsConfigMap.Labels = make(map[string]string)
+	}
+	scriptsConfigMap.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(
