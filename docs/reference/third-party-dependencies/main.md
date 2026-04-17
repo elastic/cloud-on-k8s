@@ -174,7 +174,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/mitchellh/go-homedir](https://github.com/mitchellh/go-homedir) | v1.1.0 | MIT |
 | [github.com/mitchellh/mapstructure](https://github.com/mitchellh/mapstructure) | v1.5.0 | MIT |
 | [github.com/mitchellh/reflectwalk](https://github.com/mitchellh/reflectwalk) | v1.0.2 | MIT |
-| [github.com/moby/spdystream](https://github.com/moby/spdystream) | v0.5.0 | Apache-2.0 |
+| [github.com/moby/spdystream](https://github.com/moby/spdystream) | v0.5.1 | Apache-2.0 |
 | [github.com/modern-go/concurrent](https://github.com/modern-go/concurrent) | v0.0.0-20180306012644-bacd9c7ef1dd | Apache-2.0 |
 | [github.com/modern-go/reflect2](https://github.com/modern-go/reflect2) | v1.0.3-0.20250322232337-35a7c28c31ee | Apache-2.0 |
 | [github.com/munnerz/goautoneg](https://github.com/munnerz/goautoneg) | v0.0.0-20191010083416-a7dc8b61c822 | BSD-3-Clause |
