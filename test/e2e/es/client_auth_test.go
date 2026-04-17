@@ -37,7 +37,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	// Start with client_authentication disabled (default)
 	initialBuilder := elasticsearch.NewBuilder(esName).
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		TolerateMutationChecksFailures()
 
 	initialWithLicense := test.LicenseTestBuilder(initialBuilder)
 

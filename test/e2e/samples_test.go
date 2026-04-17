@@ -85,7 +85,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
@@ -95,7 +95,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)

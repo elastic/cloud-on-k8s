@@ -434,7 +434,11 @@ func TestRemoveAssociationConf(t *testing.T) {
 func TestAllowVersion(t *testing.T) {
 	apmNoAssoc := &apmv1.ApmServer{}
 	apmTwoAssoc := &apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
-		ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}, KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}}}
+		ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: "some-es"},
+		},
+		KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}},
+	}
 	apmTwoAssocWithVersions := func(versions []string) *apmv1.ApmServer {
 		apm := apmTwoAssoc.DeepCopy()
 		for i, assoc := range apm.GetAssociations() {

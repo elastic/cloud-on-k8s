@@ -93,7 +93,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg, meta)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, nil, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

@@ -155,7 +155,7 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...)
 
-	builder, err = withAssociationCACertsVolumes(builder, *as)
+	builder, err = withAssociationCertsVolumes(builder, *as)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -184,23 +184,28 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, as apmv1.ApmServe
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }
 
-func withAssociationCACertsVolumes(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) (*defaults.PodTemplateBuilder, error) {
+func withAssociationCertsVolumes(builder *defaults.PodTemplateBuilder, as apmv1.ApmServer) (*defaults.PodTemplateBuilder, error) {
 	for _, association := range as.GetAssociations() {
 		assocConf, err := association.AssociationConf()
 		if err != nil {
 			return nil, err
 		}
-		if !assocConf.CAIsConfigured() {
-			continue
+		if assocConf.CAIsConfigured() {
+			vol := volume.NewSecretVolumeWithMountPath(
+				assocConf.GetCASecretName(),
+				fmt.Sprintf("%s-certs", association.AssociationType()),
+				filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
+			)
+			builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 		}
-
-		vol := volume.NewSecretVolumeWithMountPath(
-			assocConf.GetCASecretName(),
-			fmt.Sprintf("%s-certs", association.AssociationType()),
-			filepath.Join(ApmBaseDir, certificatesDir(association.AssociationType())),
-		)
-
-		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+		if assocConf.ClientCertIsConfigured() {
+			vol := volume.NewSecretVolumeWithMountPath(
+				assocConf.GetClientCertSecretName(),
+				fmt.Sprintf("%s-client-certs", association.AssociationType()),
+				filepath.Join(ApmBaseDir, clientCertificatesDir(association.AssociationType())),
+			)
+			builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+		}
 	}
 	return builder, nil
 }

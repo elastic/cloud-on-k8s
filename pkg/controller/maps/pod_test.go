@@ -12,7 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 )
 
@@ -123,6 +125,83 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 				assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, podSpec.Spec.SecurityContext.SeccompProfile.Type,
 					"SeccompProfile type should be RuntimeDefault")
 			}
+		})
+	}
+}
+
+func Test_withESCertsVolume(t *testing.T) {
+	tests := []struct {
+		name                 string
+		conf                 commonv1.AssociationConf
+		wantCAVolume         bool
+		wantClientCertVolume bool
+	}{
+		{
+			name: "CA and client cert both present",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       true,
+				CASecretName:         "ca-secret",
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         true,
+			wantClientCertVolume: true,
+		},
+		{
+			name: "client cert only, no CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: true,
+		},
+		{
+			name: "neither client cert nor CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ems := emsv1alpha1.ElasticMapsServer{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-ems", Namespace: "default"},
+				Spec: emsv1alpha1.MapsSpec{
+					Version:          "8.0.0",
+					ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"}},
+				},
+			}
+			ems.SetAssociationConf(&tt.conf)
+
+			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, emsv1alpha1.MapsContainerName)
+			builder, err := withESCertsVolume(builder, ems)
+			assert.NoError(t, err)
+
+			pod := builder.PodTemplate
+			var hasCAVolume, hasClientCertVolume bool
+			for _, vol := range pod.Spec.Volumes {
+				if vol.Secret != nil && vol.Secret.SecretName == "ca-secret" {
+					hasCAVolume = true
+				}
+				if vol.Secret != nil && vol.Secret.SecretName == "client-cert-secret" {
+					hasClientCertVolume = true
+				}
+			}
+			assert.Equal(t, tt.wantCAVolume, hasCAVolume, "CA volume")
+			assert.Equal(t, tt.wantClientCertVolume, hasClientCertVolume, "client cert volume")
 		})
 	}
 }

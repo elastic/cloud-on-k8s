@@ -55,7 +55,7 @@ func newBeatConfig(
 	assoc := associations[0]
 
 	// build the output section of the beat configuration file
-	outputCfg, caVolume, err := buildOutputConfig(ctx, client, assoc, imageVersion)
+	outputCfg, caVolume, clientCertVolume, err := buildOutputConfig(ctx, client, assoc, imageVersion)
 	if err != nil {
 		return beatConfig{}, err
 	}
@@ -76,9 +76,14 @@ func newBeatConfig(
 	configFilepath := filepath.Join(configDirPath, configFilename)
 	volumes := []volume.VolumeLike{configVolume}
 
-	// add the CA volume
+	// add the CA volume for the target ES
 	if caVolume != nil {
 		volumes = append(volumes, caVolume)
+	}
+
+	// add the client certificate volume for the target ES
+	if clientCertVolume != nil {
+		volumes = append(volumes, clientCertVolume)
 	}
 
 	// merge the base config with the generated part
@@ -115,15 +120,15 @@ func newBeatConfig(
 	}, err
 }
 
-func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association, imageVersion string) (map[string]any, volume.VolumeLike, error) {
+func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.Association, imageVersion string) (map[string]any, volume.VolumeLike, volume.VolumeLike, error) {
 	credentials, err := association.ElasticsearchAuthSettings(ctx, client, assoc)
 	if err != nil {
-		return nil, volume.SecretVolume{}, err
+		return nil, nil, nil, err
 	}
 
 	assocConf, err := assoc.AssociationConf()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	outputConfig := map[string]any{
 		"username": credentials.Username,
@@ -137,7 +142,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 
 	v, err := version.Parse(imageVersion)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// Reloading of certificates is only supported for Beats >= 8.8.0.
 	if v.GE(version.MinFor(8, 8, 0)) {
@@ -163,7 +168,21 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 		)
 	}
 
-	return outputConfig, caVolume, nil
+	var clientCertVolume volume.VolumeLike
+	if assocConf.ClientCertIsConfigured() {
+		clientCertDirPath := fmt.Sprintf(
+			"/mnt/elastic-internal/%s-association/%s/%s/client-certs",
+			assoc.AssociationType(), assoc.AssociationRef().GetNamespace(), assoc.AssociationRef().NameOrSecretName(),
+		)
+		outputConfig["ssl.certificate"] = filepath.Join(clientCertDirPath, certificates.CertFileName)
+		outputConfig["ssl.key"] = filepath.Join(clientCertDirPath, certificates.KeyFileName)
+		clientCertVolumeName := fmt.Sprintf("%s-client-cert", caVolumeName(assoc))
+		clientCertVolume = volume.NewSecretVolumeWithMountPath(
+			assocConf.GetClientCertSecretName(), clientCertVolumeName, clientCertDirPath,
+		)
+	}
+
+	return outputConfig, caVolume, clientCertVolume, nil
 }
 
 func mergeConfig(rawConfig string, config map[string]any) ([]byte, error) {
@@ -225,6 +244,18 @@ func TemplateFuncs(
 				return ""
 			}
 			return filepath.Join(caVolume.VolumeMount().MountPath, certificates.CAFileName)
+		},
+		"ClientCertPath": func(clientCertVolume volume.VolumeLike) string {
+			if clientCertVolume == nil {
+				return ""
+			}
+			return filepath.Join(clientCertVolume.VolumeMount().MountPath, certificates.CertFileName)
+		},
+		"ClientKeyPath": func(clientCertVolume volume.VolumeLike) string {
+			if clientCertVolume == nil {
+				return ""
+			}
+			return filepath.Join(clientCertVolume.VolumeMount().MountPath, certificates.KeyFileName)
 		},
 	}
 }

@@ -29,8 +29,10 @@ labels: {}
 annotations: {}
 
 # Elastic Agent image to deploy.
-#
+# Supports both tag and digest formats.
 # image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT
+# image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/beats/elastic-agent@sha256:<digest>
 
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here
