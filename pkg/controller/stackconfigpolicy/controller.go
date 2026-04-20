@@ -338,6 +338,18 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
+		// Reject policy fields that are not supported for stateless Elasticsearch.
+		// ILM is managed server-side on stateless; applying ILM via file settings has no effect and is confusing.
+		if es.IsStateless() && esConfigPolicyFinal.Spec.IndexLifecyclePolicies != nil && len(esConfigPolicyFinal.Spec.IndexLifecyclePolicies.Data) > 0 {
+			err := fmt.Errorf("indexLifecyclePolicies are not supported for stateless Elasticsearch %s/%s", es.Namespace, es.Name)
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
+			results.WithError(err)
+			if err := status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
+				return results.WithError(err), status
+			}
+			continue
+		}
+
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// Recompute expected settings secret on each retry attempt using the latest
