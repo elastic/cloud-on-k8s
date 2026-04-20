@@ -342,12 +342,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
 			expectedCerts: buildExpectedCertData(baseStatefulElasticsearch, 0),
-			expectedSecrets: func() map[string]corev1.Secret {
-				// fails before file settings secret is created
-				baseSecrets := mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1")
-				delete(baseSecrets, esv1.FileSettingsSecretName(baseStatefulElasticsearch.Name))
-				return baseSecrets
-			}(),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
 				defaultConfigMaps := mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
@@ -373,7 +368,6 @@ func TestReconcileSharedResources(t *testing.T) {
 			if tt.expectedState != nil {
 				require.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)
-				assert.EqualValues(t, tt.expectedState.KeystoreResources, s.KeystoreResources)
 				assert.EqualValues(t, tt.expectedState.Meta, s.Meta)
 
 				// Ensure expected ES client is created
@@ -796,10 +790,6 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 
 	// Non-certificate secrets (users, roles, service account token)
 	serviceAccountTokenSecret := newServiceAccountTokenSecret(es)
-	fileSettings := filesettings.NewEmptySettings(time.Now().Unix())
-	fileSettingsData, err := json.Marshal(fileSettings)
-	require.NoError(t, err, "error marshalling file-settings")
-
 	result := map[string]corev1.Secret{
 		serviceAccountTokenSecret.Name: *serviceAccountTokenSecret,
 		esv1.RolesAndFileRealmSecret(es.Name): {
@@ -842,17 +832,7 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 				user.ElasticUserName: []byte(staticPassword),
 			},
 		},
-		esv1.FileSettingsSecretName(es.Name): {
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            esv1.FileSettingsSecretName(es.Name),
-				Namespace:       es.Namespace,
-				ResourceVersion: resourceVersion,
-				Labels:          labels,
-			},
-			Data: map[string][]byte{
-				filesettings.SettingsSecretKey: fileSettingsData,
-			},
-		},
+		// File settings secret is created by the stateful driver (not by ReconcileSharedResources).
 	}
 
 	return result
