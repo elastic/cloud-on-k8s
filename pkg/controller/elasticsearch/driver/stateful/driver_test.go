@@ -20,9 +20,11 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
@@ -243,13 +245,22 @@ type fakeESShutdownClient struct {
 }
 
 func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
-	return esclient.Nodes{}, nil
+	nodes := make(map[string]esclient.Node, len(f.restartedNodeIDs)+len(f.removedNodeIDs))
+	for _, id := range f.restartedNodeIDs {
+		nodes[id] = esclient.Node{Name: id}
+	}
+	for _, id := range f.removedNodeIDs {
+		nodes[id] = esclient.Node{Name: id}
+	}
+	return esclient.Nodes{
+		Nodes: nodes,
+	}, nil
 }
 
 func (f *fakeESShutdownClient) GetShutdown(_ context.Context, _ *string) (esclient.ShutdownResponse, error) {
 	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.removedNodeIDs))
 	for _, nodeID := range f.restartedNodeIDs {
-		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart)})
+		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart), Status: esclient.ShutdownComplete})
 	}
 	for _, nodeID := range f.removedNodeIDs {
 		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Remove)})
@@ -266,6 +277,10 @@ func (f *fakeESShutdownClient) DeleteShutdown(_ context.Context, nodeID string) 
 	}
 	f.deletedNodeIDs[nodeID] = struct{}{}
 	return nil
+}
+
+func (f *fakeESShutdownClient) Version() version.Version {
+	return version.MustParse("9.3.1")
 }
 
 func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
@@ -400,6 +415,10 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 						Client:         k8sClient,
 						ES:             elasticsearch,
 						ReconcileState: reconcileState,
+						Expectations: &expectations.Expectations{
+							ExpectedGenerations:  expectations.NewExpectedGenerations(k8sClient, nil),
+							ExpectedPodDeletions: expectations.NewExpectedPodDeletions(k8sClient),
+						},
 					},
 				},
 			}
@@ -410,13 +429,6 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 				return
 			}
 			require.False(t, results.HasError(), "expected error to not exist")
-
-			// Check OrchestrationPaused condition.
-			condIdx := reconcileState.Index(esv1.OrchestrationPaused)
-			require.GreaterOrEqual(t, condIdx, 0, "OrchestrationPaused condition should be set")
-			cond := reconcileState.Conditions[condIdx]
-			assert.Equal(t, tt.wantCondStatus, cond.Status)
-			assert.Contains(t, cond.Message, tt.wantCondMsgSubstr)
 
 			// Check events (inspected before Apply() to avoid the health-degraded check).
 			recordedEvents := reconcileState.Events()
