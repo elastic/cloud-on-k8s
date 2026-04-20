@@ -365,7 +365,7 @@ func Command() *cobra.Command {
 	)
 	cmd.Flags().Bool(
 		operator.LabelBasedDiscovery,
-		false,
+		true,
 		"Restrict resource discovery (secrets and services) to labeled resources only. Unlabeled resources are skipped.",
 	)
 
