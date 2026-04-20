@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
@@ -42,6 +43,7 @@ func TestReconcileUsersAndRoles(t *testing.T) {
 	err = c.Get(context.Background(), RolesFileRealmSecretKey(sampleEsWithAuth), &reconciledSecret)
 	require.NoError(t, err)
 	require.Len(t, reconciledSecret.Data, 4)
+	require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, reconciledSecret.Labels[commonv1.LabelBasedDiscoveryLabelName])
 	require.NotEmpty(t, reconciledSecret.Data[RolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersRolesFile])
 	require.NotEmpty(t, reconciledSecret.Data[filerealm.UsersFile])
@@ -84,6 +86,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 	require.Contains(t, string(secret.Data[filerealm.UsersRolesFile]), "role1:user1")
 	require.Contains(t, string(secret.Data[filerealm.UsersFile]), "user1:hash1")
 	require.Equal(t, string(secret.Data[ServiceTokensFileName]), "fqsa1:hash1\nfqsa2:hash2\n")
+	require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, secret.Labels[commonv1.LabelBasedDiscoveryLabelName])
 }
 
 func Test_aggregateFileRealm(t *testing.T) {
