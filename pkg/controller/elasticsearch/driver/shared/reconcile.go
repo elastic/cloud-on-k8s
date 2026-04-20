@@ -47,10 +47,8 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-var (
-	// DefaultRequeue is the default requeue result for reconciliation.
-	DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
-)
+// DefaultRequeue is the default requeue result for reconciliation.
+var DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
 
 // ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
 // clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
@@ -356,7 +354,7 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 	if err != nil {
 		return false, err
 	}
-	if fs.Exists() {
+	if fs.Exists() { // TODO: if labels need update?
 		return false, nil
 	}
 
