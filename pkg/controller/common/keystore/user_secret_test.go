@@ -467,7 +467,7 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 		assert.Equal(t, map[string]any{"string_secrets": map[string]any{"MY_KEY": "my_value"}}, got)
 	})
 
-	t.Run("dotted keys are expanded into nested maps", func(t *testing.T) {
+	t.Run("dotted keys are passed through as flat keys", func(t *testing.T) {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
 			Data: map[string][]byte{
@@ -480,14 +480,8 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
-			"s3": map[string]any{
-				"client": map[string]any{
-					"default": map[string]any{
-						"access_key": "AKIA",
-						"secret_key": "secret",
-					},
-				},
-			},
+			"s3.client.default.access_key": "AKIA",
+			"s3.client.default.secret_key": "secret",
 		}}, got)
 	})
 
@@ -508,8 +502,8 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
-			"s3":  map[string]any{"client": map[string]any{"default": map[string]any{"access_key": "AKIA"}}},
-			"gcs": map[string]any{"credentials": "creds"},
+			"s3.client.default.access_key": "AKIA",
+			"gcs.credentials":              "creds",
 		}}, got)
 	})
 }

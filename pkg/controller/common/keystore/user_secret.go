@@ -8,13 +8,11 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -212,11 +210,14 @@ func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 }
 
 // BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
-// them in the nested structure expected by Elasticsearch file-based settings cluster_secrets:
+// them in the structure expected by Elasticsearch file-based settings cluster_secrets:
 //
-//	{"string_secrets": {"s3": {"client": {"default": {"access_key": "..."}}}}}
+//	{"string_secrets": {"s3.client.default.access_key": "..."}}
 //
-// Dotted keystore keys (e.g. "s3.client.default.access_key") are expanded into a nested map tree.
+// Keystore keys are passed through as-is. Elasticsearch's SecureClusterStateSettings parses the
+// inner map via Settings.fromXContent, which accepts both flat dotted keys and nested objects.
+// Keeping the flat representation avoids ambiguity at intermediate paths and matches how keystore
+// keys are stored in the source Secrets.
 // This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
 func BuildSecureSettingsData(
 	ctx context.Context,
@@ -233,9 +234,7 @@ func BuildSecureSettingsData(
 	stringSecrets := map[string]any{}
 	for _, s := range userSecrets {
 		for k, v := range s.Data {
-			if err := unstructured.SetNestedField(stringSecrets, string(v), strings.Split(k, ".")...); err != nil {
-				return nil, pkgerrors.Wrapf(err, "failed to set nested key %q in cluster_secrets", k)
-			}
+			stringSecrets[k] = string(v)
 		}
 	}
 	return map[string]any{
