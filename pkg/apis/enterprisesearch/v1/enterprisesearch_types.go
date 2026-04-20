@@ -48,7 +48,7 @@ type EnterpriseSearchSpec struct {
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
 	// ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
 	// for the Enterprise Search pods.

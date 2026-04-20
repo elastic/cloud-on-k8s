@@ -56,6 +56,12 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 			caPath := filepath.Join(volume.CertificatesDir(assoc), certificates.CAFileName)
 			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE_AUTHORITY", caPath))
 		}
+		if assocConf.ClientCertIsConfigured() {
+			certPath := filepath.Join(volume.ClientCertificatesDir(assoc), certificates.CertFileName)
+			keyPath := filepath.Join(volume.ClientCertificatesDir(assoc), certificates.KeyFileName)
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE", certPath))
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_KEY", keyPath))
+		}
 	}
 
 	return envs, nil

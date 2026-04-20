@@ -128,7 +128,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := tc.es()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, es, metadata.Metadata{})
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, es, metadata.Metadata{}, false)
 			assert.NoError(t, err)
 
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
@@ -145,12 +145,13 @@ func TestMetricbeatConfig(t *testing.T) {
 		"/mount",
 	)
 	type args struct {
-		URL      string
-		Username string
-		Password string
-		IsSSL    bool
-		CAVolume volume.VolumeLike
-		Version  semver.Version
+		URL              string
+		Username         string
+		Password         string
+		IsSSL            bool
+		CAVolume         volume.VolumeLike
+		ClientCertVolume volume.VolumeLike
+		Version          semver.Version
 	}
 	tests := []struct {
 		name string
@@ -209,10 +210,49 @@ func TestMetricbeatConfig(t *testing.T) {
 				CAVolume: volumeFixture,
 			},
 		},
+		{
+			name: "with client certificate",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "secret",
+				IsSSL:    true,
+				Version:  version.From(8, 16, 0),
+				CAVolume: volumeFixture,
+				ClientCertVolume: volume.NewSecretVolumeWithMountPath(
+					"client-cert-secret",
+					"es-client-cert",
+					"/mnt/elastic-internal/es-monitoring-client-certs",
+				),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg, err := stackmon.RenderTemplate(tt.args.Version, metricbeatConfigTemplate, tt.args)
+			require.NoError(t, err)
+			snaps.MatchSnapshot(t, cfg)
+		})
+	}
+}
+
+func TestFilebeatConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		version semver.Version
+	}{
+		{
+			name:    "pre 9.4.0",
+			version: version.From(8, 17, 0),
+		},
+		{
+			name:    "post 9.4.0 with querylog",
+			version: version.From(9, 4, 0),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := stackmon.RenderTemplate(tt.version, filebeatConfigTemplate, nil)
 			require.NoError(t, err)
 			snaps.MatchSnapshot(t, cfg)
 		})

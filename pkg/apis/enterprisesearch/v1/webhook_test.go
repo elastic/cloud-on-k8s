@@ -233,7 +233,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -244,7 +244,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -255,7 +255,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -269,7 +269,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
 				ent.Spec.Version = "7.10.0"
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailedWithWarnings(
@@ -283,7 +283,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -296,7 +296,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				ent := mkEnterpriseSearch(uid)
-				ent.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", ServiceName: "essvc"}
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", ServiceName: "essvc"}}
 				return test.MustMarshalJSON(t, ent)
 			},
 			Check: test.ValidationWebhookFailed(

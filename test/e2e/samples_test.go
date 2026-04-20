@@ -37,6 +37,10 @@ func TestSamples(t *testing.T) {
 	for _, sample := range sampleFiles {
 		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
+		if hasStatelessElasticsearch(builders) {
+			t.Logf("Skipping %s: stateless Elasticsearch samples are not yet supported in e2e tests", sample)
+			continue
+		}
 		t.Run(testName, func(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
@@ -81,7 +85,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
@@ -91,7 +95,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -99,8 +103,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix)},
+					ClusterName:           ref.ClusterName,
 				})
 			}
 			metricsRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs))
@@ -145,6 +149,15 @@ func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.Object
 	}
 
 	return ref
+}
+
+func hasStatelessElasticsearch(builders []test.Builder) bool {
+	for _, b := range builders {
+		if esBuilder, ok := b.(elasticsearch.Builder); ok && esBuilder.Elasticsearch.IsStateless() {
+			return true
+		}
+	}
+	return false
 }
 
 func tweakLocalServiceRef(ref commonv1.LocalObjectSelector, suffix string) commonv1.LocalObjectSelector {

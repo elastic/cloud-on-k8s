@@ -40,7 +40,7 @@ type ApmServerSpec struct {
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
 	// It allows APM agent central configuration management in Kibana.

@@ -441,6 +441,32 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "With keystore password secret hash",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "100",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2418629362",
+			},
+		},
+		{
+			name: "With another keystore password secret hash",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "101",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2435406981",
+			},
+		},
+		{
 			name: "With policy annotations",
 			args: args{
 				policyAnnotations: map[string]string{
@@ -542,6 +568,32 @@ func Test_buildAnnotations(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_buildAnnotations_KeystorePasswordSecretHash_changesConfigHash(t *testing.T) {
+	es := newEsSampleBuilder().build()
+	ver, err := version.Parse(sampleES.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil, false)
+	require.NoError(t, err)
+
+	const scriptsContent = "scripts content"
+	baseKeystore := &keystore.Resources{Hash: "42"}
+
+	gotA := buildAnnotations(es, cfg, &keystore.Resources{
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "100",
+	}, scriptsContent, nil, "")
+	gotB := buildAnnotations(es, cfg, &keystore.Resources{
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "101",
+	}, scriptsContent, nil, "")
+
+	hashA := gotA[ConfigHashAnnotationName]
+	hashB := gotB[ConfigHashAnnotationName]
+	require.NotEmpty(t, hashA)
+	require.NotEmpty(t, hashB)
+	require.NotEqual(t, hashA, hashB, "config hash must change when keystore password secret data hash changes")
 }
 
 func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {

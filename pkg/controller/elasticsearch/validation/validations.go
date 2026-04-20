@@ -47,6 +47,8 @@ const (
 	unsupportedVersionMsg                    = "Unsupported version"
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
+	inconsistentFIPSModeWarningMsg           = "xpack.security.fips_mode.enabled is not consistent across all NodeSets; FIPS mode should be uniform across the cluster"
+	fipsManagedKeystoreUnsupportedWarningMsg = "FIPS mode is enabled in NodeSet configuration but Elasticsearch version is below 9.4.0; the operator cannot manage the keystore password automatically."
 	restartTriggerRemovedWarningMsg          = "Removing the restart-trigger annotation does not cancel an in-progress rolling restart; pods not yet restarted will still be restarted with the previous trigger value."
 	restartTriggerUnchangedWarningMsg        = "Restart-trigger value unchanged; no new rolling restart will be triggered if pods already have this value."
 )

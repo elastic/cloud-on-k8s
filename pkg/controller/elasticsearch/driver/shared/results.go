@@ -5,6 +5,7 @@
 package shared
 
 import (
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -22,4 +23,7 @@ type ReconcileState struct {
 	ESClient esclient.Client
 	// ESReachable indicates whether Elasticsearch is reachable.
 	ESReachable bool
+
+	// KeystoreResources contains the keystore init container and volume.
+	KeystoreResources *keystore.Resources
 }
