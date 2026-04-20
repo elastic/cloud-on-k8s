@@ -145,8 +145,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -179,8 +180,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -224,8 +226,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -264,8 +267,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -291,8 +295,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -319,8 +324,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:   clusterName,
-						"common.k8s.elastic.co/type": "elasticsearch",
+						label.ClusterNameLabelName:            clusterName,
+						"common.k8s.elastic.co/type":          "elasticsearch",
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -730,6 +736,7 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 		Namespace: es.Namespace,
 		Name:      es.Name,
 	})
+	labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 	ownerReferences := newOwnerReference(es)
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
@@ -882,11 +889,13 @@ func mustGenerateRemoteCASecrets(t *testing.T, namespace, name string, quantity 
 }
 
 func newService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) corev1.Service {
+	labels := label.NewLabels(types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      es.Name,
+	})
+	labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 	md := metadata.Metadata{
-		Labels: label.NewLabels(types.NamespacedName{
-			Namespace: es.Namespace,
-			Name:      es.Name,
-		}),
+		Labels:      labels,
 		Annotations: nil,
 	}
 
