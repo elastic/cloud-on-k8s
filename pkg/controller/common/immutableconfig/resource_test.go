@@ -7,9 +7,10 @@ package immutableconfig
 import (
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 func TestBuildImmutableSecret(t *testing.T) {
