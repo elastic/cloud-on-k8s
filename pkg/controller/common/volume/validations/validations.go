@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
 )
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
