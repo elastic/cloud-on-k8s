@@ -41,7 +41,7 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 	// set up a 1-node Kibana deployment
 	name := "test-kb-scp"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).WithLabel("label", "test-scp")
@@ -137,7 +137,7 @@ func TestStackConfigPolicyKibanaMultipleWeights(t *testing.T) {
 	// set up a 1-node Kibana deployment
 	name := "test-kb-scp-multi"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).WithLabel("app", "kibana")

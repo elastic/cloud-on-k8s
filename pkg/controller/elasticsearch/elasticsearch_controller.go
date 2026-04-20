@@ -40,6 +40,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateless"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -297,7 +298,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return stateful.NewDriver(driver.Parameters{
+	driverParams := driver.Parameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,
@@ -310,7 +311,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
 		LicenseChecker:     r.licenseChecker,
-	}).Reconcile(ctx)
+	}
+
+	if es.IsStateless() {
+		return stateless.NewDriver(driverParams).Reconcile(ctx)
+	}
+
+	return stateful.NewDriver(driverParams).Reconcile(ctx)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(

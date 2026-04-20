@@ -38,7 +38,7 @@ func TestCrossNSAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	kbBuilder := kibana.NewBuilder(name).
 		WithNamespace(kbNamespace).
@@ -65,7 +65,7 @@ func TestEntSearchAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esKbNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	entBuilder := enterprisesearch.NewBuilder(name).
 		WithNamespace(entNamespace).
@@ -117,7 +117,7 @@ func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	name := "test-kb-del-referenced-es"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
@@ -191,7 +191,7 @@ func TestEPRAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esKbNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	eprBuilder := epr.NewBuilder(name).
 		WithNamespace(eprNamespace).
@@ -210,7 +210,7 @@ func TestEPRAssociation(t *testing.T) {
 func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 	name := "test-kb-assoc-non-existent-epr"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).

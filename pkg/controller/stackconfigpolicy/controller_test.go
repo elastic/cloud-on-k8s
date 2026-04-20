@@ -840,6 +840,38 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantErr:          false,
 			wantRequeueAfter: true,
 		},
+		{
+			name: "Policy with ILM is rejected for stateless Elasticsearch",
+			args: args{
+				client: k8s.NewFakeClient(
+					&policyv1alpha1.StackConfigPolicy{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-policy"},
+						Spec: policyv1alpha1.StackConfigPolicySpec{
+							ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
+							Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+								IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
+									"my-policy": map[string]any{"phases": map[string]any{}},
+								}},
+							},
+						},
+					},
+					&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es", Labels: map[string]string{"label": "test"}},
+						Spec:       esv1.ElasticsearchSpec{Version: "9.4.0", Mode: esv1.ElasticsearchModeStateless},
+					},
+				),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				events := fetchEvents(&recorder)
+				assert.Contains(t, events, "Warning Validation indexLifecyclePolicies are not supported for stateless Elasticsearch ns/test-es")
+
+				policy := r.getPolicy(t, nsnFixture)
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
+			},
+			wantErr:          true,
+			wantRequeueAfter: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -324,14 +325,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			continue
 		}
 
-		// Get the file settings secret. Create it if it doesn't exist.
-		// This resolves the race condition from https://github.com/elastic/cloud-on-k8s/issues/8912
-		var actualSettingsSecret corev1.Secret
-		err = r.Client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &actualSettingsSecret)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return results.WithError(err), status
-		}
-
 		// build the final config by merging all policies that target the given Elasticsearch cluster
 		esConfigPolicyFinal, err := getConfigPolicyForElasticsearch(&es, allPolicies, r.params)
 		switch {
@@ -345,21 +338,42 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
+		// Reject policy fields that are not supported for stateless Elasticsearch.
+		// ILM is managed server-side on stateless; applying ILM via file settings has no effect and is confusing.
+		if es.IsStateless() && esConfigPolicyFinal.Spec.IndexLifecyclePolicies != nil && len(esConfigPolicyFinal.Spec.IndexLifecyclePolicies.Data) > 0 {
+			err := fmt.Errorf("indexLifecyclePolicies are not supported for stateless Elasticsearch %s/%s", es.Namespace, es.Name)
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
+			results.WithError(err)
+			if err := status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
+				return results.WithError(err), status
+			}
+			continue
+		}
+
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
-		// create the expected Settings Secret
-		expectedSecret, expectedVersion, err := filesettings.NewSettingsSecretWithVersion(esNsn, &actualSettingsSecret, &esConfigPolicyFinal.Spec, esConfigPolicyFinal.SecretSources, meta)
-		if err != nil {
-			return results.WithError(err), status
-		}
-
-		// We must keep track of the soft owner references of the file-settings secret to ensure that the secret is reconciled
-		// back to an empty one when no policies are targeting it (look at resetOrphanSoftOwnedFileSettingSecrets)
-		if err := setMultipleSoftOwners(&expectedSecret, esConfigPolicyFinal.PolicyRefs); err != nil {
-			return results.WithError(err), status
-		}
-
-		if err := filesettings.ReconcileFileSettingsSecret(ctx, r.Client, expectedSecret, &es); err != nil {
+		// Recompute expected settings secret on each retry attempt using the latest
+		// persisted Secret to avoid stale overwrites when ES and SCP controllers
+		// concurrently update the shared file-settings Secret.
+		var expectedVersion int64
+		if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
+			return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+		}, func() error {
+			fs, err := filesettings.Load(ctx, r.Client, esNsn, es.IsStateless(), meta)
+			if err != nil {
+				return err
+			}
+			if err := fs.ApplyPolicy(esConfigPolicyFinal.Spec, esConfigPolicyFinal.SecretSources); err != nil {
+				return err
+			}
+			if err := fs.Save(ctx, r.Client, &es, filesettings.WithMutator(func(s *corev1.Secret) error {
+				return setMultipleSoftOwners(s, esConfigPolicyFinal.PolicyRefs)
+			})); err != nil {
+				return err
+			}
+			expectedVersion = fs.Version()
+			return nil
+		}); err != nil {
 			return results.WithError(err), status
 		}
 
@@ -611,7 +625,6 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 	configuredESResources esMap,
 	resourceType policyv1alpha1.ResourceType,
 ) error {
-	log := ulog.FromContext(ctx)
 	var secrets corev1.SecretList
 	matchLabels := client.MatchingLabels{
 		reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
@@ -648,33 +661,8 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 			if _, exists := configuredESResources[namespacedName]; exists {
 				continue
 			}
-
-			var es esv1.Elasticsearch
-			if err := c.Get(ctx, namespacedName, &es); err != nil && !apierrors.IsNotFound(err) {
+			if err := resetOrphanESFileSettings(ctx, c, &s, namespacedName, softOwner); err != nil {
 				return err
-			}
-			if apierrors.IsNotFound(err) {
-				// Elasticsearch has just been deleted
-				return nil
-			}
-
-			remainingOwners, err := removePolicySoftOwner(&s, softOwner)
-			if err != nil {
-				return err
-			}
-
-			if remainingOwners == 0 {
-				log.V(1).Info("Reconcile empty file settings Secret for Elasticsearch",
-					"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
-					"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
-
-				if err := filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, es, false); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			} else {
-				if err := filesettings.ReconcileFileSettingsSecret(ctx, c, s, &es); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
 			}
 		case kblabel.Type:
 			// Currently we do not reset labels for kibana, so we shouldn't hit this.
@@ -685,6 +673,66 @@ func resetOrphanSoftOwnedFileSettingSecrets(
 		}
 	}
 	return nil
+}
+
+// resetOrphanESFileSettings handles the file settings Secret for an Elasticsearch cluster
+// that is no longer targeted by the given StackConfigPolicy. If no other policies own the
+// Secret, it is reset to empty. Otherwise, only the soft owner annotation is patched.
+func resetOrphanESFileSettings(
+	ctx context.Context,
+	c k8s.Client,
+	s *corev1.Secret,
+	namespacedName types.NamespacedName,
+	softOwner types.NamespacedName,
+) error {
+	var es esv1.Elasticsearch
+	if err := c.Get(ctx, namespacedName, &es); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	remainingOwners, err := removePolicySoftOwner(s, softOwner)
+	if err != nil {
+		return err
+	}
+
+	log := ulog.FromContext(ctx)
+
+	if remainingOwners == 0 {
+		log.Info("Resetting file settings Secret to empty, last policy owner removed",
+			"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
+
+		esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
+		fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
+		if err != nil {
+			return err
+		}
+		if err := fs.Reset().Save(ctx, c, &es); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	// Metadata-only patch: persist the soft owner removal without sending Secret data.
+	log.Info("Removing policy soft owner from file settings Secret",
+		"es_namespace", namespacedName.Namespace, "es_name", namespacedName.Name,
+		"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name,
+		"remaining_owners", remainingOwners)
+	secretNN := types.NamespacedName{Namespace: s.Namespace, Name: s.Name}
+	return retry.OnError(retry.DefaultRetry, apierrors.IsConflict, func() error {
+		var current corev1.Secret
+		if err := c.Get(ctx, secretNN, &current); err != nil {
+			return err
+		}
+		base := current.DeepCopy()
+		if _, err := removePolicySoftOwner(&current, softOwner); err != nil {
+			return err
+		}
+		return c.Patch(ctx, &current, client.MergeFrom(base))
+	})
 }
 
 // deleteOrphanSoftOwnedSecrets deletes secrets for the Elasticsearch/Kibana clusters that are no longer configured
