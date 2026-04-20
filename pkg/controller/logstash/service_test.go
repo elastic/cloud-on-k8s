@@ -41,6 +41,7 @@ func TestReconcileServices(t *testing.T) {
 					Namespace: "test",
 					Labels: map[string]string{
 						"common.k8s.elastic.co/type":   "logstash",
+						"eck.k8s.elastic.co/watched":   "true",
 						"logstash.k8s.elastic.co/name": "logstash",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -91,6 +92,7 @@ func TestReconcileServices(t *testing.T) {
 					Namespace: "test",
 					Labels: map[string]string{
 						"common.k8s.elastic.co/type":   "logstash",
+						"eck.k8s.elastic.co/watched":   "true",
 						"logstash.k8s.elastic.co/name": "logstash",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -142,6 +144,7 @@ func TestReconcileServices(t *testing.T) {
 						Namespace: "test",
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":   "logstash",
+							"eck.k8s.elastic.co/watched":   "true",
 							"logstash.k8s.elastic.co/name": "logstash",
 						},
 						OwnerReferences: []metav1.OwnerReference{
@@ -197,6 +200,7 @@ func TestReconcileServices(t *testing.T) {
 						Namespace: "test",
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":   "logstash",
+							"eck.k8s.elastic.co/watched":   "true",
 							"logstash.k8s.elastic.co/name": "logstash",
 							"some.label":                   "abc",
 						},
@@ -251,6 +255,7 @@ func TestReconcileServices(t *testing.T) {
 						Namespace: "test",
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":   "logstash",
+							"eck.k8s.elastic.co/watched":   "true",
 							"logstash.k8s.elastic.co/name": "logstash",
 						},
 						OwnerReferences: []metav1.OwnerReference{
@@ -308,6 +313,7 @@ func DefaultAPIService() corev1.Service {
 			Namespace: "test",
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":   "logstash",
+				"eck.k8s.elastic.co/watched":   "true",
 				"logstash.k8s.elastic.co/name": "logstash",
 			},
 			OwnerReferences: []metav1.OwnerReference{
