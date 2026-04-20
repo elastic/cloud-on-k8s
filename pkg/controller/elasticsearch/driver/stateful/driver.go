@@ -7,14 +7,17 @@ package stateful
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 )
 
 // Driver is the stateful Elasticsearch driver implementation using StatefulSets.
@@ -58,6 +61,31 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	defer sharedState.ESClient.Close()
 	results.WithResults(sharedResults)
 
+	// File settings (stateful: SCP-deferred empty secret creation).
+	// Stateless clusters manage the file-settings Secret themselves via
+	// filesettings.ReconcileClusterSecrets; this call is stateful-only.
+	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		requeue, err := shared.MaybeReconcileEmptyFileSettingsSecret(ctx, d.Client, d.LicenseChecker, &d.ES, d.OperatorParameters.OperatorNamespace)
+		if err != nil {
+			return results.WithError(err)
+		} else if requeue {
+			results.WithReconciliationState(
+				shared.DefaultRequeue.WithReason(
+					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
+						esv1.FileSettingsSecretName(d.ES.Name)),
+				),
+			)
+		}
+	}
+
+	// Keystore (stateful: init container + volume, optional managed password Secret).
+	// Stateless clusters don't use the init container keystore — they deliver secure
+	// settings via cluster_secrets in file-based settings.
+	keystoreResources, err := d.reconcileKeystore(ctx, sharedState.Meta)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// Stateful specific: Service accounts hint
 	results.WithError(d.maybeSetServiceAccountsOrchestrationHint(
 		ctx, sharedState.ESReachable, sharedState.ESClient, sharedState.ResourcesState))
@@ -72,7 +100,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Stateful specific: Node specs (StatefulSets, upgrades, downscales)
 	return results.WithResults(d.reconcileNodeSpecs(
 		ctx, sharedState.ESReachable, sharedState.ESClient, d.ReconcileState,
-		*sharedState.ResourcesState, sharedState.KeystoreResources, sharedState.Meta, resolvedConfig))
+		*sharedState.ResourcesState, keystoreResources, sharedState.Meta, resolvedConfig))
 }
 
 // names returns the names of the given pods.

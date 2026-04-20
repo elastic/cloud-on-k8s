@@ -342,12 +342,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
 			expectedCerts: buildExpectedCertData(baseStatefulElasticsearch, 0),
-			expectedSecrets: func() map[string]corev1.Secret {
-				// fails before file settings secret is created
-				baseSecrets := mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1")
-				delete(baseSecrets, esv1.FileSettingsSecretName(baseStatefulElasticsearch.Name))
-				return baseSecrets
-			}(),
+			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
 				defaultConfigMaps := mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
@@ -837,7 +832,7 @@ func mustBuildExpectedSecrets(t *testing.T, es *esv1.Elasticsearch, resourceVers
 				user.ElasticUserName: []byte(staticPassword),
 			},
 		},
-		// File settings secret is now created by the driver (stateful/stateless), not by ReconcileSharedResources.
+		// File settings secret is created by the stateful driver (not by ReconcileSharedResources).
 	}
 
 	return result
