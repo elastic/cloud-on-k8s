@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -156,6 +157,20 @@ func NewPodTemplateSpec(
 	}
 
 	builder.WithInitContainers(initContainer)
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the Kibana container does not start while those annotations are missing from
+	// the downward-API annotations file.
+	if kb.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(kb.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit)
+	}
 
 	// Kibana 7.5.0 and above support running with a read-only root filesystem,
 	// but require a temporary volume to be mounted at /tmp for some reporting features

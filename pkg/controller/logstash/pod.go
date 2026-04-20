@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
@@ -128,7 +129,23 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithEnv(envs...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
-		WithInitContainers(initConfigContainer(params)).
+		WithInitContainers(initConfigContainer(params))
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the Logstash container does not start while those annotations are missing from
+	// the downward-API annotations file.
+	if params.Logstash.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(params.Logstash.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder = builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit)
+	}
+
+	builder = builder.
 		WithInitContainerDefaults().
 		WithPodSecurityContext(DefaultSecurityContext)
 
