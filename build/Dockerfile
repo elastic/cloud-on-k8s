@@ -31,7 +31,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # static - Default image for static binary
-FROM docker.elastic.co/wolfi/static:latest@sha256:d6d54da1c5bf5d9cecb231786adca86934607763067c8d7d9d22057abe6d5dbc AS static
+FROM docker.elastic.co/wolfi/static:latest@sha256:6d508f497fe786ba47d57f4a3cffce12ca05c04e94712ab0356b94a93c4b457f AS static
 
 ARG VERSION
 
