@@ -67,13 +67,12 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	resolvedConfig, err := ResolveConfig(context.Background(), k8sClient, elasticsearch, corev1.IPv4Protocol, false)
 	require.NoError(t, err)
 	state := &shared.ReconcileState{
-		Meta:              metadata.Metadata{},
-		KeystoreResources: nil,
+		Meta: metadata.Metadata{},
 	}
 	// Build the expected StatefulSets to use as actualSets in the "no diff" cases.
 	// existingStatefulSets=nil means no existing ssets yet (new cluster).
 	expectedResources, err := nodespec.BuildExpectedResources(
-		context.Background(), k8sClient, elasticsearch, state.KeystoreResources,
+		context.Background(), k8sClient, elasticsearch, nil,
 		nil, false, state.Meta, resolvedConfig,
 	)
 	require.NoError(t, err)
@@ -96,7 +95,7 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	resolvedConfig2, err := ResolveConfig(context.Background(), k8sClient, elasticsearch2, corev1.IPv4Protocol, false)
 	require.NoError(t, err)
 	expectedResources2, err := nodespec.BuildExpectedResources(
-		context.Background(), k8sClient, elasticsearch2, state.KeystoreResources,
+		context.Background(), k8sClient, elasticsearch2, nil,
 		nil, false, state.Meta, resolvedConfig2,
 	)
 	require.NoError(t, err)
@@ -225,7 +224,7 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 				},
 			}
 
-			got, err := d.hasPendingSpecChanges(context.Background(), tt.actualSets, state, tt.resolvedConfig)
+			got, err := d.hasPendingSpecChanges(context.Background(), tt.actualSets, state, tt.resolvedConfig, nil)
 			if tt.wantErrMsg != "" {
 				require.EqualError(t, err, tt.wantErrMsg)
 			} else {
@@ -302,12 +301,11 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 	require.NoError(t, err)
 
 	sharedState := &shared.ReconcileState{
-		Meta:              metadata.Metadata{},
-		KeystoreResources: nil,
+		Meta: metadata.Metadata{},
 	}
 
 	expectedResources, err := nodespec.BuildExpectedResources(
-		context.Background(), setupClient, elasticsearch, sharedState.KeystoreResources,
+		context.Background(), setupClient, elasticsearch, nil,
 		nil, false, sharedState.Meta, resolvedConfig,
 	)
 	require.NoError(t, err)
@@ -408,7 +406,7 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 				},
 			}
 
-			err := d.reconcileCriticalStepsWhilePaused(context.Background(), sharedState, tt.resolvedConfig)
+			err := d.reconcileCriticalStepsWhilePaused(context.Background(), sharedState, tt.resolvedConfig, nil)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

@@ -108,7 +108,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	if common.IsOrchestrationPaused(&d.ES) {
-		return results.WithError(d.reconcileCriticalSteps(ctx, sharedState, resolvedConfig, keystoreResources))
+		return results.WithError(d.reconcileCriticalStepsWhilePaused(ctx, sharedState, resolvedConfig, keystoreResources))
 	}
 
 	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "")
@@ -119,7 +119,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 		*sharedState.ResourcesState, keystoreResources, sharedState.Meta, resolvedConfig))
 }
 
-func (d *Driver) reconcileCriticalSteps(
+func (d *Driver) reconcileCriticalStepsWhilePaused(
 	ctx context.Context,
 	state *shared.ReconcileState,
 	resolvedConfig nodespec.ResolvedConfig,
