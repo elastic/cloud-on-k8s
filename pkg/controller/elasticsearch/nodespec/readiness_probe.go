@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -88,8 +89,8 @@ else
 fi
 
 # setup client certificate authentication if certificates are available
-CLIENT_CERT_PATH="` + volume.InternalClientCertMountPath + `/tls.crt"
-CLIENT_KEY_PATH="` + volume.InternalClientCertMountPath + `/tls.key"
+CLIENT_CERT_PATH="` + volume.InternalClientCertMountPath + `/` + certificates.CertFileName + `"
+CLIENT_KEY_PATH="` + volume.InternalClientCertMountPath + `/` + certificates.KeyFileName + `"
 if [ -f "${CLIENT_CERT_PATH}" ]; then
   CLIENT_CERT="--cert ${CLIENT_CERT_PATH} --key ${CLIENT_KEY_PATH}"
 else
