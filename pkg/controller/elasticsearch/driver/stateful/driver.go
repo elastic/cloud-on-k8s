@@ -8,6 +8,7 @@ package stateful
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -108,7 +109,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	if common.IsOrchestrationPaused(&d.ES) {
-		return results.WithError(d.reconcileCriticalStepsWhilePaused(ctx, sharedState, resolvedConfig, keystoreResources))
+		return results.WithResults(d.reconcileCriticalStepsWhilePaused(ctx, sharedState, resolvedConfig, keystoreResources))
 	}
 
 	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "")
@@ -124,37 +125,37 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 	state *shared.ReconcileState,
 	resolvedConfig nodespec.ResolvedConfig,
 	keystoreResources *keystore.Resources,
-) error {
+) *reconciler.Results {
 	log := ulog.FromContext(ctx)
-	d.ReconcileState.UpdateWithPhase(esv1.ElasticsearchOrchestrationPaused)
+	results := &reconciler.Results{}
 	actualSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 	if err = pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualSets, state.Meta); err != nil {
-		return err
+		return results.WithError(err)
 	}
 	esState := NewMemoizingESState(ctx, state.ESClient)
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
 
 	nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, logger)
 	actualPods, err := es_sset.GetActualPodsForCluster(d.Client, d.ES)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
 	if err = nodeShutdown.Clear(ctx, nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes)); err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	message := "Orchestration paused via annotation; no pending spec changes detected"
@@ -162,9 +163,10 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		message = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
 		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
+		results.WithRequeue(5 * time.Minute)
 	}
 	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionTrue, message)
-	return nil
+	return results
 }
 
 func (d *Driver) hasPendingSpecChanges(

@@ -124,12 +124,22 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 					return fmt.Errorf("condition %s should be true", esv1.OrchestrationPaused)
 				}
 
-				if specChangesMade && orchestrationCondition.Message == "Orchestration paused via annotation; no pending spec changes detected" {
-					return fmt.Errorf("condition message '%s' is incorrect when spec has changed", orchestrationCondition.Message)
-				}
+				if specChangesMade {
+					if es.Status.Phase != esv1.ElasticsearchApplyingChangesPhase {
+						return fmt.Errorf("elasticsearch phase should be %s but was %s", esv1.ElasticsearchApplyingChangesPhase, es.Status.Phase)
+					}
 
-				if !specChangesMade && orchestrationCondition.Message == "Orchestration paused via annotation; spec changes are pending and will be applied on resume" {
-					return fmt.Errorf("condition message '%s' is incorrect when spec has not changed", orchestrationCondition.Message)
+					if orchestrationCondition.Message != "Orchestration paused via annotation; spec changes are pending and will be applied on resume" {
+						return fmt.Errorf("condition message '%s' is incorrect when spec has changed", orchestrationCondition.Message)
+					}
+				} else {
+					if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+						return fmt.Errorf("elasticsearch phase should be %s but was %s", esv1.ElasticsearchReadyPhase, es.Status.Phase)
+					}
+
+					if orchestrationCondition.Message != "Orchestration paused via annotation; no pending spec changes detected" {
+						return fmt.Errorf("condition message '%s' is incorrect when spec has not changed", orchestrationCondition.Message)
+					}
 				}
 
 				return nil
@@ -166,6 +176,10 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 
 				if common.IsOrchestrationPaused(&es) {
 					return fmt.Errorf("annotation %s should be set to false", common.PauseOrchestrationAnnotation)
+				}
+
+				if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+					return fmt.Errorf("elasticsearch phase should be %s", esv1.ElasticsearchReadyPhase)
 				}
 
 				for _, condition := range es.Status.Conditions {

@@ -319,7 +319,7 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 		restartedNodeIDs     []string
 		removedNodeIDs       []string
 		wantErr              bool
-		wantPhase            esv1.ElasticsearchOrchestrationPhase
+		wantRequeue          bool
 		wantCondStatus       corev1.ConditionStatus
 		wantCondMsgSubstr    string
 		wantEvents           []events.Event
@@ -329,14 +329,13 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			name:              "actual StatefulSets match expected: no pending changes",
 			k8sObjects:        statefulSetsAsObjects(matchingStatefulSets),
 			resolvedConfig:    resolvedConfig,
-			wantPhase:         esv1.ElasticsearchOrchestrationPaused,
 			wantCondStatus:    corev1.ConditionTrue,
 			wantCondMsgSubstr: "no pending spec changes detected",
 		},
 		{
 			name:              "no actual StatefulSets: pending changes detected",
 			resolvedConfig:    resolvedConfig,
-			wantPhase:         esv1.ElasticsearchOrchestrationPaused,
+			wantRequeue:       true,
 			wantCondStatus:    corev1.ConditionTrue,
 			wantCondMsgSubstr: "spec changes are pending and will be applied on resume",
 			wantEvents: []events.Event{
@@ -353,7 +352,6 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			restartedNodeIDs:     []string{"node-to-restart"},
 			removedNodeIDs:       []string{"node-to-remove"},
 			wantClearedShutdowns: []string{"node-to-restart"},
-			wantPhase:            esv1.ElasticsearchOrchestrationPaused,
 			wantCondStatus:       corev1.ConditionTrue,
 			wantCondMsgSubstr:    "spec changes are pending and will be applied on resume",
 			wantEvents: []events.Event{
@@ -406,12 +404,12 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 				},
 			}
 
-			err := d.reconcileCriticalStepsWhilePaused(context.Background(), sharedState, tt.resolvedConfig, nil)
+			results := d.reconcileCriticalStepsWhilePaused(context.Background(), sharedState, tt.resolvedConfig, nil)
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Truef(t, results.HasError(), "expected error to exist")
 				return
 			}
-			require.NoError(t, err)
+			require.False(t, results.HasError(), "expected error to not exist")
 
 			// Check OrchestrationPaused condition.
 			condIdx := reconcileState.Index(esv1.OrchestrationPaused)
@@ -432,7 +430,6 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			// Check phase via Apply(), which surfaces the internal status.
 			_, updatedES := reconcileState.Apply()
 			require.NotNil(t, updatedES)
-			assert.Equal(t, tt.wantPhase, updatedES.Status.Phase)
 
 			// Check cleared shutdowns
 			assert.Lenf(t, shutdownClient.deletedNodeIDs, len(tt.wantClearedShutdowns), "Expected %d nodes to be shutdown but got %d", len(tt.wantClearedShutdowns), len(shutdownClient.deletedNodeIDs))
