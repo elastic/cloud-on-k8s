@@ -112,7 +112,10 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithResults(d.reconcileCriticalStepsWhilePaused(ctx, sharedState, resolvedConfig, keystoreResources))
 	}
 
-	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "")
+	orchestrationPausedIndex := d.ES.Status.Conditions.Index(esv1.OrchestrationPaused)
+	if orchestrationPausedIndex >= 0 {
+		d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
+	}
 
 	// Stateful specific: Node specs (StatefulSets, upgrades, downscales)
 	return results.WithResults(d.reconcileNodeSpecs(
@@ -128,6 +131,14 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 ) *reconciler.Results {
 	log := ulog.FromContext(ctx)
 	results := &reconciler.Results{}
+	done, reason, err := d.expectationsSatisfied(ctx)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !done {
+		return results.WithReconciliationState(shared.DefaultRequeue.WithReason(reason))
+	}
+
 	actualSets, err := es_sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
@@ -135,22 +146,26 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 	if err = pdb.Reconcile(ctx, d.Client, d.ES, d.OperatorParameters.OperatorNamespace, actualSets, state.Meta); err != nil {
 		return results.WithError(err)
 	}
-	esState := NewMemoizingESState(ctx, state.ESClient)
-	nodeNameToID, err := esState.NodeNameToID()
-	if err != nil {
-		return results.WithError(err)
-	}
-	logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
 
-	nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, logger)
-	actualPods, err := es_sset.GetActualPodsForCluster(d.Client, d.ES)
-	if err != nil {
-		return results.WithError(err)
-	}
+	if supportsNodeShutdown(state.ESClient.Version()) {
+		esState := NewMemoizingESState(ctx, state.ESClient)
+		nodeNameToID, err := esState.NodeNameToID()
+		if err != nil {
+			return results.WithError(err)
+		}
+		logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, logger)
+		actualPods, err := es_sset.GetActualPodsForCluster(d.Client, d.ES)
+		if err != nil {
+			return results.WithError(err)
+		}
 
-	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
-	if err = nodeShutdown.Clear(ctx, nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes)); err != nil {
-		return results.WithError(err)
+		terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
+		results = results.WithError(nodeShutdown.Clear(ctx,
+			esclient.ShutdownComplete.Applies,
+			nodeShutdown.OnlyNodesInCluster,
+			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
+		))
 	}
 
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)

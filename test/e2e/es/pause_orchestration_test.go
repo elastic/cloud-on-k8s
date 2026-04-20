@@ -65,7 +65,7 @@ func TestPauseOrchestration(t *testing.T) {
 		WithSteps(initialBuilder.InitTestSteps(k)).
 		WithSteps(initialBuilder.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initialBuilder, k)).
-		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 1)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 1, false)).
 		// Phase 1: enable pause-orchestration annotation
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
 		WithSteps(enabledBuilder.MutationTestSteps(k)).
@@ -79,7 +79,7 @@ func TestPauseOrchestration(t *testing.T) {
 		WithSteps(disabledBuilder.UpgradeTestSteps(k)).
 		WithSteps(disabledBuilder.RollingRestartTestSteps(k)).
 		WithSteps(test.CheckTestSteps(disabledBuilder, k)).
-		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3, true)).
 		// Phase 4: re-enable pause-orchestration
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*reenabledBuilder, k)).
 		WithSteps(reenabledBuilder.MutationTestSteps(k)).
@@ -93,7 +93,7 @@ func TestPauseOrchestration(t *testing.T) {
 		WithSteps(redisableBuilder.UpgradeTestSteps(k)).
 		WithSteps(redisableBuilder.RollingRestartTestSteps(k)).
 		WithSteps(test.CheckTestSteps(redisableBuilder, k)).
-		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3)).
+		WithSteps(verifyPauseOrchestrationDisabled(k, esNamespace, actualESName, 3, true)).
 		WithSteps(initialBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
 }
@@ -161,7 +161,7 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 	}
 }
 
-func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int) test.StepList {
+func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName string, expectedNodeCount int, previouslyPaused bool) test.StepList {
 	return test.StepList{
 		{
 			Name: "Verify pause-orchestration annotation is set to false",
@@ -182,10 +182,13 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 					return fmt.Errorf("elasticsearch phase should be %s", esv1.ElasticsearchReadyPhase)
 				}
 
-				for _, condition := range es.Status.Conditions {
-					if condition.Type == esv1.OrchestrationPaused && condition.Status == corev1.ConditionTrue {
-						return fmt.Errorf("condition %s should be false", esv1.OrchestrationPaused)
-					}
+				orchestrationPausedIndex := es.Status.Conditions.Index(esv1.OrchestrationPaused)
+				if !previouslyPaused && orchestrationPausedIndex >= 0 {
+					return fmt.Errorf("%s condition should not exist on Elasticsearch resource", esv1.OrchestrationPaused)
+				}
+
+				if orchestrationPausedIndex >= 0 && es.Status.Conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
+					return fmt.Errorf("condition %s should be false", esv1.OrchestrationPaused)
 				}
 				return nil
 			}),
