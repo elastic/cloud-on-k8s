@@ -18,6 +18,7 @@ import (
 	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -341,11 +342,9 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 		wantClearedShutdowns []string
 	}{
 		{
-			name:              "actual StatefulSets match expected: no pending changes",
-			k8sObjects:        statefulSetsAsObjects(matchingStatefulSets),
-			resolvedConfig:    resolvedConfig,
-			wantCondStatus:    corev1.ConditionTrue,
-			wantCondMsgSubstr: "no pending spec changes detected",
+			name:           "actual StatefulSets match expected: no pending changes",
+			k8sObjects:     statefulSetsAsObjects(matchingStatefulSets),
+			resolvedConfig: resolvedConfig,
 		},
 		{
 			name:              "no actual StatefulSets: pending changes detected",
@@ -442,6 +441,18 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			// Check phase via Apply(), which surfaces the internal status.
 			_, updatedES := reconcileState.Apply()
 			require.NotNil(t, updatedES)
+
+			idx := updatedES.Status.Conditions.Index(esv1.OrchestrationPaused)
+			assert.Equal(t, idx >= 0, tt.wantCondStatus != "", "index of OrchestrationPaused condition was [%d] when wantCondStatus was [%s]", idx, tt.wantCondStatus)
+			if tt.wantCondStatus != "" {
+				require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition")
+				assert.Equal(t, tt.wantCondStatus, updatedES.Status.Conditions[idx].Status)
+				assert.Contains(t, updatedES.Status.Conditions[idx].Message, tt.wantCondMsgSubstr)
+			}
+			if tt.wantRequeue {
+				requeue, _ := results.Aggregate()
+				assert.NotZero(t, requeue.RequeueAfter, "expected requeue")
+			}
 
 			// Check cleared shutdowns
 			assert.Lenf(t, shutdownClient.deletedNodeIDs, len(tt.wantClearedShutdowns), "Expected %d nodes to be shutdown but got %d", len(tt.wantClearedShutdowns), len(shutdownClient.deletedNodeIDs))
@@ -633,6 +644,51 @@ func Test_hasSpecDiff(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestDriver_maybeResetPausedCondition(t *testing.T) {
+	elasticsearch := esv1.Elasticsearch{
+		Status: esv1.ElasticsearchStatus{
+			Conditions: make(v1alpha1.Conditions, 0, 1),
+		},
+	}
+
+	d := &Driver{
+		BaseDriver: driver.BaseDriver{
+			Parameters: driver.Parameters{
+				ES:             elasticsearch,
+				ReconcileState: reconcile.MustNewState(elasticsearch),
+			},
+		},
+	}
+
+	t.Run("maybeResetPausedCondition called when OrchestrationPaused has never been set should remain unset", func(t *testing.T) {
+		d.maybeResetPausedCondition()
+		assert.Equal(t, -1, elasticsearch.Status.Conditions.Index(esv1.OrchestrationPaused), "OrchestrationPaused should not be set")
+	})
+
+	t.Run("maybeResetPausedCondition called when OrchestrationPaused is already False should remain False", func(t *testing.T) {
+		d.ES.Status.Conditions = v1alpha1.Conditions{{Type: esv1.OrchestrationPaused, Status: corev1.ConditionFalse}}
+		d.ReconcileState.Conditions = make(v1alpha1.Conditions, 0, 1)
+
+		d.maybeResetPausedCondition()
+		idx := d.ReconcileState.Conditions.Index(esv1.OrchestrationPaused)
+		require.Equal(t, 0, idx, "OrchestrationPaused should now be set on ReconcileState conditions")
+		condition := d.ReconcileState.Conditions[idx]
+		assert.Equal(t, corev1.ConditionFalse, condition.Status, "OrchestrationPaused condition should still be set to False on ReconcileState")
+		assert.NotEmptyf(t, condition.Message, "OrchestrationPaused condition message should have been set")
+	})
+
+	t.Run("maybeResetPausedCondition called when OrchestrationPaused is True should reset to False", func(t *testing.T) {
+		d.ES.Status.Conditions = v1alpha1.Conditions{{Type: esv1.OrchestrationPaused, Status: corev1.ConditionTrue}}
+
+		d.maybeResetPausedCondition()
+		idx := d.ReconcileState.Conditions.Index(esv1.OrchestrationPaused)
+		require.Equal(t, 0, idx, "OrchestrationPaused should now be set on ReconcileState conditions")
+		condition := d.ReconcileState.Conditions[idx]
+		assert.Equal(t, corev1.ConditionFalse, condition.Status, "OrchestrationPaused condition should be reset to False")
+		assert.NotEmptyf(t, condition.Message, "OrchestrationPaused condition message should have been set")
+	})
 }
 
 func Test_allNodesRunningServiceAccounts(t *testing.T) {

@@ -112,15 +112,19 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithResults(d.reconcileCriticalStepsWhilePaused(ctx, sharedState, resolvedConfig, keystoreResources))
 	}
 
-	orchestrationPausedIndex := d.ES.Status.Conditions.Index(esv1.OrchestrationPaused)
-	if orchestrationPausedIndex >= 0 {
-		d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
-	}
+	d.maybeResetPausedCondition()
 
 	// Stateful specific: Node specs (StatefulSets, upgrades, downscales)
 	return results.WithResults(d.reconcileNodeSpecs(
 		ctx, sharedState.ESReachable, sharedState.ESClient, d.ReconcileState,
 		*sharedState.ResourcesState, keystoreResources, sharedState.Meta, resolvedConfig))
+}
+
+func (d *Driver) maybeResetPausedCondition() {
+	orchestrationPausedIndex := d.ES.Status.Conditions.Index(esv1.OrchestrationPaused)
+	if orchestrationPausedIndex >= 0 {
+		d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
+	}
 }
 
 func (d *Driver) reconcileCriticalStepsWhilePaused(
@@ -153,8 +157,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		if err != nil {
 			return results.WithError(err)
 		}
-		logger := log.WithValues("namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, logger)
+		nodeShutdown := shutdown.NewNodeShutdown(state.ESClient, nodeNameToID, esclient.Restart, "", nil, log)
 		actualPods, err := es_sset.GetActualPodsForCluster(d.Client, d.ES)
 		if err != nil {
 			return results.WithError(err)
