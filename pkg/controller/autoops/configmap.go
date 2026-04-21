@@ -78,7 +78,7 @@ exporters:
     headers:
       Authorization: "AutoOpsToken ${env:AUTOOPS_TOKEN}"
     endpoint: ${env:AUTOOPS_OTEL_URL}
-	sending_queue:
+    sending_queue:
       batch:
         flush_timeout: 11s
         min_size: 1048576
@@ -87,7 +87,7 @@ exporters:
       block_on_overflow: true
       enabled: true
       queue_size: 52428800
-	  sizer: bytes
+      sizer: bytes
 service:
   extensions: [healthcheckv2]
   pipelines:
