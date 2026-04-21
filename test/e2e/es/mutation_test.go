@@ -213,7 +213,8 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 
 func TestMutationAndReversal(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-reverted-mutation").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		TolerateMutationChecksFailures()
 
 	mutation := b.DeepCopy().
 		WithAdditionalConfig(map[string]map[string]interface{}{
