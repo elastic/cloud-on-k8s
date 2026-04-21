@@ -214,6 +214,9 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 func TestMutationAndReversal(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-reverted-mutation").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		// Tolerate mutation check failures: the cluster can briefly go RED during
+		// the mutation when a node shuts down before a newly created replica is
+		// initialized. See https://github.com/elastic/cloud-on-k8s/issues/8267#issuecomment-4286465455.
 		TolerateMutationChecksFailures()
 
 	mutation := b.DeepCopy().
