@@ -72,6 +72,7 @@ func (b Builder) DeepCopy() *Builder {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
 	builderCopy.GlobalCA = b.GlobalCA
+	builderCopy.mutationToleratedChecksFailureCount = b.mutationToleratedChecksFailureCount
 	return &builderCopy
 }
 

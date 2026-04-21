@@ -208,3 +208,36 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
 }
+
+// BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
+// them in the structure expected by Elasticsearch file-based settings cluster_secrets:
+//
+//	{"string_secrets": {"s3.client.default.access_key": "..."}}
+//
+// Keystore keys are passed through as-is. Elasticsearch's SecureClusterStateSettings parses the
+// inner map via Settings.fromXContent, which accepts both flat dotted keys and nested objects.
+// Keeping the flat representation avoids ambiguity at intermediate paths and matches how keystore
+// keys are stored in the source Secrets.
+// This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
+func BuildSecureSettingsData(
+	ctx context.Context,
+	c k8s.Client,
+	recorder toolsevents.EventRecorder,
+	hasKeystore HasKeystore,
+	secretSources []commonv1.NamespacedSecretSource,
+) (map[string]any, error) {
+	userSecrets, err := retrieveUserSecrets(ctx, c, recorder, hasKeystore, secretSources)
+	if err != nil {
+		return nil, err
+	}
+
+	stringSecrets := map[string]any{}
+	for _, s := range userSecrets {
+		for k, v := range s.Data {
+			stringSecrets[k] = string(v)
+		}
+	}
+	return map[string]any{
+		"string_secrets": stringSecrets,
+	}, nil
+}
