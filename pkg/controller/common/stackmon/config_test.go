@@ -18,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -103,6 +104,78 @@ param2: value2
         username: default-monitored-default-monitoring-beat-es-mon-user
 param1: value1
 param2: value2
+`),
+					},
+				},
+			},
+		},
+		{
+			name: "Output config with client certificate",
+			args: args{
+				baseConfig: `
+param1: value1
+`,
+				initObjects: []client.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "monitored-default-monitoring-beat-es-mon-user",
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
+						},
+					},
+				},
+				beatName: "metricbeat",
+				image:    "8.8.0",
+				associated: &esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "monitored",
+						Namespace: "default",
+						Annotations: map[string]string{
+							commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+{
+	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
+	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
+	"isServiceAccount": false,
+	"caCertProvided": true,
+	"caSecretName": "monitored-es-monitoring-default-monitoring-ca",
+	"url": "https://monitoring-es-http.default.svc:9200",
+	"version": "8.4.0",
+	"clientCertSecretName": "monitored-es-monitoring-client-cert"
+}
+`,
+						},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Monitoring: commonv1.Monitoring{
+							Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+						},
+					},
+				},
+			},
+			want: beatConfig{
+				secret: corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "monitored-es-monitoring-metricbeat-config",
+					},
+					Data: map[string][]byte{
+						"metricbeat.yml": []byte(`output:
+    elasticsearch:
+        hosts:
+            - https://monitoring-es-http.default.svc:9200
+        password: password
+        ssl:
+            certificate: /mnt/elastic-internal/es-monitoring-association/default/monitoring/client-certs/tls.crt
+            certificate_authorities:
+                - /mnt/elastic-internal/es-monitoring-association/default/monitoring/certs/ca.crt
+            key: /mnt/elastic-internal/es-monitoring-association/default/monitoring/client-certs/tls.key
+            restart_on_cert_change:
+                enabled: true
+                period: 1m
+            verification_mode: certificate
+        username: default-monitored-default-monitoring-beat-es-mon-user
+param1: value1
 `),
 					},
 				},
@@ -199,4 +272,62 @@ func TestTemplateFuncsSignature(t *testing.T) {
 	funcs := TemplateFuncs(semver.MustParse("8.0.0"))
 	_, err := template.New("").Funcs(funcs).Parse(`{{ isVersionGTE "8.0.0" }}`)
 	require.NoError(t, err)
+}
+
+func Test_buildOutputConfig_withClientCert(t *testing.T) {
+	authSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "monitored-default-monitoring-beat-es-mon-user",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
+		},
+	}
+	fakeClient := k8s.NewFakeClient(authSecret)
+
+	associated := &esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "monitored",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+{
+	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
+	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
+	"isServiceAccount": false,
+	"caCertProvided": true,
+	"caSecretName": "monitored-es-monitoring-default-monitoring-ca",
+	"url": "https://monitoring-es-http.default.svc:9200",
+	"version": "8.4.0",
+	"clientCertSecretName": "monitored-es-monitoring-client-cert"
+}
+`,
+			},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
+			},
+		},
+	}
+
+	assocs := associated.GetAssociations()
+	require.Len(t, assocs, 1)
+
+	outputCfg, _, clientCertVolume, err := buildOutputConfig(context.Background(), fakeClient, assocs[0], "8.8.0")
+	require.NoError(t, err)
+
+	// Verify ssl.certificate and ssl.key are set in the output config
+	certPath, ok := outputCfg["ssl.certificate"]
+	require.True(t, ok, "ssl.certificate should be set in the output config")
+	assert.Contains(t, certPath, certificates.CertFileName)
+
+	keyPath, ok := outputCfg["ssl.key"]
+	require.True(t, ok, "ssl.key should be set in the output config")
+	assert.Contains(t, keyPath, certificates.KeyFileName)
+
+	// Verify the client cert volume is returned
+	require.NotNil(t, clientCertVolume, "client cert volume should be returned when clientCertSecretName is set")
+	assert.Equal(t, "monitored-es-monitoring-client-cert", clientCertVolume.Volume().VolumeSource.Secret.SecretName)
 }

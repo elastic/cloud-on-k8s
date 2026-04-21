@@ -134,6 +134,19 @@ tests:
       - equal:
           path: spec.image
           value: my.registry.com/elastic/logstash:8.9.0
+  - it: should render image with digest properly
+    set:
+      image: my.registry.com/elastic/logstash:8.9.0@sha256:abc123
+    asserts:
+      - equal:
+          path: spec.image
+          value: my.registry.com/elastic/logstash:8.9.0@sha256:abc123
+  - it: should omit image when null
+    set:
+      image: null
+    asserts:
+      - notExists:
+          path: spec.image
   - it: should render serviceAccountName properly
     set:
       serviceAccountName: my-sa

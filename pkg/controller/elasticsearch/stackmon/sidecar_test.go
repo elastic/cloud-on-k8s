@@ -128,7 +128,7 @@ func TestWithMonitoring(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			es := tc.es()
 			builder := defaults.NewPodTemplateBuilder(corev1.PodTemplateSpec{}, esv1.ElasticsearchContainerName)
-			_, err := WithMonitoring(context.Background(), fakeClient, builder, es, metadata.Metadata{})
+			_, err := WithMonitoring(context.Background(), fakeClient, builder, es, metadata.Metadata{}, false)
 			assert.NoError(t, err)
 
 			actual, err := json.MarshalIndent(builder.PodTemplate, " ", "")
@@ -145,12 +145,13 @@ func TestMetricbeatConfig(t *testing.T) {
 		"/mount",
 	)
 	type args struct {
-		URL      string
-		Username string
-		Password string
-		IsSSL    bool
-		CAVolume volume.VolumeLike
-		Version  semver.Version
+		URL              string
+		Username         string
+		Password         string
+		IsSSL            bool
+		CAVolume         volume.VolumeLike
+		ClientCertVolume volume.VolumeLike
+		Version          semver.Version
 	}
 	tests := []struct {
 		name string
@@ -207,6 +208,22 @@ func TestMetricbeatConfig(t *testing.T) {
 				IsSSL:    true,
 				Version:  version.From(8, 17, 0),
 				CAVolume: volumeFixture,
+			},
+		},
+		{
+			name: "with client certificate",
+			args: args{
+				URL:      "https://localhost:9200",
+				Username: "elastic",
+				Password: "secret",
+				IsSSL:    true,
+				Version:  version.From(8, 16, 0),
+				CAVolume: volumeFixture,
+				ClientCertVolume: volume.NewSecretVolumeWithMountPath(
+					"client-cert-secret",
+					"es-client-cert",
+					"/mnt/elastic-internal/es-monitoring-client-certs",
+				),
 			},
 		},
 	}

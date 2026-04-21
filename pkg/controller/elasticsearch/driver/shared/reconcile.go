@@ -15,21 +15,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
@@ -39,14 +34,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
@@ -317,60 +308,6 @@ func ReconcileSharedResources(
 		return nil, results.WithError(err)
 	}
 
-	// File settings
-	if params.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
-		requeue, err := maybeReconcileEmptyFileSettingsSecret(ctx, client, params.LicenseChecker, &es, params.OperatorParameters.OperatorNamespace)
-		if err != nil {
-			esClient.Close()
-			return nil, results.WithError(err)
-		} else if requeue {
-			results.WithReconciliationState(
-				DefaultRequeue.WithReason(
-					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
-						esv1.FileSettingsSecretName(es.Name)),
-				),
-			)
-		}
-	}
-
-	// Keystore
-	keystoreParams := initcontainer.KeystoreParams
-	keystoreSecurityContext := securitycontext.For(params.Version, true)
-	keystoreParams.SecurityContext = &keystoreSecurityContext
-
-	keystorePasswordSecret, err := reconcileManagedKeystorePasswordSecret(ctx, client, es, params.Version, params.OperatorParameters.PasswordGenerator, meta)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-	if keystorePasswordSecret != nil {
-		keystoreParams.KeystorePasswordPath = keystorepassword.PasswordFile
-		keystorepassword.ApplyPasswordProtectedKeystoreScript(&keystoreParams)
-	}
-
-	remoteClusterAPIKeys, err := apiKeyStoreSecretSource(ctx, &es, client)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-	keystoreResources, err := keystore.ReconcileResources(
-		ctx,
-		d,
-		&es,
-		esv1.ESNamer,
-		meta,
-		keystoreParams,
-		remoteClusterAPIKeys...,
-	)
-	if err != nil {
-		esClient.Close()
-		return nil, results.WithError(err)
-	}
-	if keystoreResources != nil && keystorePasswordSecret != nil {
-		keystoreResources.KeystorePasswordSecretName = keystorePasswordSecret.Name
-		keystoreResources.KeystorePasswordSecretHash = hash.HashObject(keystorePasswordSecret.Data)
-	}
-
 	// Cluster UUID
 	requeue, err := bootstrap.ReconcileClusterUUID(ctx, client, &es, esClient, esReachable)
 	if err != nil {
@@ -382,7 +319,7 @@ func ReconcileSharedResources(
 	}
 
 	// Stack monitoring
-	err = stackmon.ReconcileConfigSecrets(ctx, client, es, meta)
+	err = stackmon.ReconcileConfigSecrets(ctx, client, es, meta, clientAuthenticationRequired)
 	if err != nil {
 		esClient.Close()
 		return nil, results.WithError(err)
@@ -399,28 +336,28 @@ func ReconcileSharedResources(
 	}
 
 	return &ReconcileState{
-		Meta:              meta,
-		ResourcesState:    resourcesState,
-		ESClient:          esClient,
-		ESReachable:       esReachable,
-		KeystoreResources: keystoreResources,
+		Meta:           meta,
+		ResourcesState: resourcesState,
+		ESClient:       esClient,
+		ESReachable:    esReachable,
 	}, results
 }
 
-// maybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
-// based on license status and StackConfigPolicy targeting. When enterprise features are disabled always
+// MaybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
+// based on license status and StackConfigPolicy targeting. When enterprise features are disabled it always
 // creates an empty file-settings secret. When enterprise features are enabled and at least one StackConfigPolicy
-// targets this cluster returns true to requeue and doesn't create the empty file-settings secret. If no
-// StackConfigPolicy targets this cluster it creates an empty file-settings secret. Note: This logic here prevents
-// the race condition described in https://github.com/elastic/cloud-on-k8s/issues/8912.
-func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
-	// Check if file-settings secret already exists
-	var currentSecret corev1.Secret
-	if err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret); err == nil {
-		// Secret does exist
-		return false, nil
-	} else if !k8serrors.IsNotFound(err) {
+// targets this cluster it returns true to requeue (deferring to the SCP controller). If no StackConfigPolicy
+// targets this cluster it creates an empty file-settings secret.
+// See https://github.com/elastic/cloud-on-k8s/issues/8912.
+func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+	esNsn := k8s.ExtractNamespacedName(es)
+	meta := metadata.Propagate(es, metadata.Metadata{Labels: label.NewLabels(esNsn)})
+	fs, err := filesettings.Load(ctx, c, esNsn, es.IsStateless(), meta)
+	if err != nil {
 		return false, err
+	}
+	if fs.Exists() {
+		return false, nil
 	}
 
 	log := ulog.FromContext(ctx)
@@ -429,8 +366,12 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		return false, err
 	}
 	if !enabled {
-		// If the license is not enabled, we reconcile the empty file-settings secret
-		return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
+		// AlreadyExists is not an error: another controller (e.g. SCP) may have created
+		// the Secret concurrently. The goal here is only to ensure the Secret exists.
+		if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+			return false, err
+		}
+		return false, nil
 	}
 
 	// Get all StackConfigPolicies in the cluster
@@ -461,60 +402,12 @@ func maybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 		return true, nil
 	}
 
-	// No policies target this cluster, so ES controller should create the empty secret
-	return false, filesettings.ReconcileEmptyFileSettingsSecret(ctx, c, *es, true)
-}
-
-// apiKeyStoreSecretSource returns the Secret that holds the remote API keys.
-func apiKeyStoreSecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.Client) ([]commonv1.NamespacedSecretSource, error) {
-	secretName := types.NamespacedName{
-		Name:      esv1.RemoteAPIKeysSecretName(es.Name),
-		Namespace: es.Namespace,
+	// No policies target this cluster, so ES controller should create the empty secret.
+	// AlreadyExists is not an error: same race as above.
+	if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return false, err
 	}
-	if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return []commonv1.NamespacedSecretSource{
-		{
-			Namespace:  es.Namespace,
-			SecretName: secretName.Name,
-		},
-	}, nil
-}
-
-// reconcileManagedKeystorePasswordSecret reconciles the managed keystore
-// password secret when managed keystore passwords are applicable (version
-// threshold met, FIPS enabled, and no user-provided password override).
-func reconcileManagedKeystorePasswordSecret(
-	ctx context.Context,
-	client k8s.Client,
-	es esv1.Elasticsearch,
-	esVersion version.Version,
-	passwordGenerator password.RandomGenerator,
-	meta metadata.Metadata,
-) (*corev1.Secret, error) {
-	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
-	if err != nil {
-		return nil, err
-	}
-	shouldManage, err := settings.ShouldManageGeneratedKeystorePassword(
-		ctx,
-		client,
-		esVersion,
-		es.Namespace,
-		es.Spec.NodeSets,
-		policyConfig.ElasticsearchConfig,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if !shouldManage {
-		return nil, nil
-	}
-	return keystorepassword.ReconcileKeystorePasswordSecret(ctx, client, es, passwordGenerator, meta)
+	return false, nil
 }
 
 // esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.

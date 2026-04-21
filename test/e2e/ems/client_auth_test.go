@@ -2,9 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-//go:build apm || e2e
+//go:build ems || e2e
 
-package apm
+package ems
 
 import (
 	"context"
@@ -13,24 +13,24 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	apmcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	mapscontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
+	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/maps"
 )
 
 // TestClientAuthRequiredTransition tests that when Elasticsearch transitions from client authentication
-// required to disabled, APM Server remains healthy and its client certificate secrets are cleaned up.
+// required to disabled, Elastic Maps Server remains healthy and its client certificate secrets are cleaned up.
 func TestClientAuthRequiredTransition(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
 
-	name := "test-apm-mtls-trans"
+	name := "test-ems-mtls-trans"
 	namespace := test.Ctx().ManagedNamespace(0)
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -38,15 +38,14 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithClientAuthenticationRequired().
 		TolerateMutationChecksFailures()
 
-	apmBuilder := apmserver.NewBuilder(name).
+	emsBuilder := maps.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithoutIntegrationCheck().
 		WithNodeCount(1)
 
 	// Wrap the ES builder with license setup.
 	esWithLicense := test.LicenseTestBuilder(esBuilder)
 	esWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
-		// 1 client certificate; apm-server
+		// 1 client certificate; maps server
 		return test.StepList{clientauth.CheckClientCertificatesCountStep(k, namespace, esBuilder.Elasticsearch.Name, 1)}
 	}
 
@@ -56,27 +55,25 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	esMutatedWrapped := test.WrappedBuilder{
 		BuildingThis: esMutated,
 		PostMutationSteps: func(k *test.K8sClient) test.StepList {
-			return test.CheckTestSteps(apmBuilder, k).
+			return test.CheckTestSteps(emsBuilder, k).
 				WithSteps(test.StepList{
 					clientauth.CheckClientCertificatesCountStep(k, namespace, esBuilder.Elasticsearch.Name, 0),
 					{
-						Name: "Verify APM Server has no client cert in association conf",
+						Name: "Verify Maps has no client cert in association conf",
 						Test: test.Eventually(func() error {
-							var apm apmv1.ApmServer
+							var ems emsv1alpha1.ElasticMapsServer
 							if err := k.Client.Get(context.Background(), types.NamespacedName{
 								Namespace: namespace,
-								Name:      apmBuilder.ApmServer.Name,
-							}, &apm); err != nil {
+								Name:      emsBuilder.EMS.Name,
+							}, &ems); err != nil {
 								return err
 							}
-							for _, assoc := range apm.GetAssociations() {
-								conf, err := assoc.AssociationConf()
-								if err != nil {
-									return err
-								}
-								if conf != nil && conf.ClientCertIsConfigured() {
-									return fmt.Errorf("APM association conf should not have a client cert after ES transition, got %s", conf.GetClientCertSecretName())
-								}
+							assocConf, err := ems.AssociationConf()
+							if err != nil {
+								return err
+							}
+							if assocConf.ClientCertIsConfigured() {
+								return fmt.Errorf("Maps association conf should not have a client cert after ES transition, got %s", assocConf.GetClientCertSecretName())
 							}
 							return nil
 						}),
@@ -85,44 +82,42 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		},
 	}
 
-	test.RunMutations(t, []test.Builder{esWithLicense, apmBuilder}, []test.Builder{esMutatedWrapped})
+	test.RunMutations(t, []test.Builder{esWithLicense, emsBuilder}, []test.Builder{esMutatedWrapped})
 }
 
-// TestClientAuthRequiredCustomCertificate tests that APM Server works with a user-provided client certificate
-// when Elasticsearch requires client authentication.
+// TestClientAuthRequiredCustomCertificate tests that Elastic Maps Server works with a user-provided
+// client certificate when Elasticsearch requires client authentication.
 func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
 
-	name := "test-apm-mtls-custom"
+	name := "test-ems-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
 	userCertSecretName := name + "-user-client-cert"
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired().
-		TolerateMutationChecksFailures()
+		WithClientAuthenticationRequired()
 
-	apmBuilder := apmserver.NewBuilder(name).
+	emsBuilder := maps.NewBuilder(name).
 		WithElasticsearchRef(commonv1.ObjectSelector{
 			Name:      esBuilder.Elasticsearch.Name,
 			Namespace: esBuilder.Elasticsearch.Namespace,
 		}).
 		WithClientCertificateSecret(userCertSecretName).
-		WithoutIntegrationCheck().
 		WithNodeCount(1)
 
 	certPEM, keyPEM := helper.GenerateSelfSignedClientCert(t, name)
 
-	apmWrapped := test.WrappedBuilder{
-		BuildingThis: apmBuilder,
+	emsWrapped := test.WrappedBuilder{
+		BuildingThis: emsBuilder,
 		PostCheckSteps: func(k *test.K8sClient) test.StepList {
-			return test.StepList{clientauth.CheckClientCertificateDataStep(k, namespace, esBuilder.Elasticsearch.Name, apmcontroller.ApmAssociationLabelName, apmBuilder.ApmServer.Name, certPEM, keyPEM)}
+			return test.StepList{clientauth.CheckClientCertificateDataStep(k, namespace, esBuilder.Elasticsearch.Name, mapscontroller.MapsESAssociationLabelName, emsBuilder.EMS.Name, certPEM, keyPEM)}
 		},
 	}
 
 	before, after := clientauth.UserCustomCertificateSecretLifecycleSteps(namespace, userCertSecretName, certPEM, keyPEM)
 
-	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), apmWrapped).RunSequential(t)
+	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), emsWrapped).RunSequential(t)
 }

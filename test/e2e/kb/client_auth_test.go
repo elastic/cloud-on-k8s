@@ -40,7 +40,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithClientAuthenticationRequired()
+		WithClientAuthenticationRequired().
+		TolerateMutationChecksFailures()
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
@@ -114,7 +115,7 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 	userCertSecretName := name + "-user-client-cert"
 
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithClientAuthenticationRequired()
 
 	kbBuilder := kibana.NewBuilder(name).
