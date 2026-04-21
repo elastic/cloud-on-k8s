@@ -50,8 +50,14 @@ func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Cl
 		// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
 		// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
 		switch err.(type) { //nolint:errorlint
-		case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
-			// explicit apiserver error, consider as a failure for most checks
+		case *k8serrors.StatusError:
+			// Transient API server errors (500, 503, 504, 429) are infrastructure-level
+			// failures, treat them the same as network errors.
+			if k8serrors.IsInternalError(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsServiceUnavailable(err) || k8serrors.IsTooManyRequests(err) {
+				return nil, &potentialNetworkError{err: err}
+			}
+			return nil, err
+		case *k8serrors.UnexpectedObjectError:
 			return nil, err
 		default:
 			// likely a network error, can be acceptable as a transient state depending on the check
