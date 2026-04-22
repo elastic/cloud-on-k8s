@@ -342,8 +342,11 @@ func ReconcileSharedResources(
 }
 
 // MaybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
-// based on license status and StackConfigPolicy targeting. When enterprise features are disabled it always
-// creates an empty file-settings secret. When enterprise features are enabled and at least one StackConfigPolicy
+// based on license status and StackConfigPolicy targeting. The first return value is true when the
+// caller should requeue reconciliation (because ownership of the Secret has been deferred to the
+// StackConfigPolicy controller); the second is any error encountered.
+// When enterprise features are disabled it always creates an empty file-settings secret.
+// When enterprise features are enabled and at least one StackConfigPolicy
 // targets this cluster it returns true to requeue (deferring to the SCP controller). If no StackConfigPolicy
 // targets this cluster it creates an empty file-settings secret.
 // See https://github.com/elastic/cloud-on-k8s/issues/8912.
@@ -354,8 +357,11 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 	if err != nil {
 		return false, err
 	}
-	if fs.Exists() { // TODO: if labels need update?
-		return false, nil
+	if fs.Exists() {
+		// Re-save the existing Secret so that any newly-managed labels or annotations
+		// introduced by the operator (e.g. the label-based discovery label) are propagated
+		// onto it. Save is a no-op when nothing has actually changed.
+		return false, fs.Save(ctx, c, es)
 	}
 
 	log := ulog.FromContext(ctx)
