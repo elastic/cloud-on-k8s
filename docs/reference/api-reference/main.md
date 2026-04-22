@@ -556,6 +556,7 @@ or a Secret describing an external cluster not managed by the operator.
 * [ElasticsearchCluster](#elasticsearchcluster)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
+* [MapsSpec](#mapsspec)
 
 :::
 
@@ -702,7 +703,6 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 * [LogsMonitoring](#logsmonitoring)
-* [MapsSpec](#mapsspec)
 * [MetricsMonitoring](#metricsmonitoring)
 * [Output](#output)
 
@@ -2152,7 +2152,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`version`* __string__ | Version of Elastic Maps Server. |
 | *`image`* __string__ | Image is the Elastic Maps Server Docker image to deploy. |
 | *`count`* __integer__ | Count of Elastic Maps Server instances to deploy. |
-| *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`config`* __[Config](#config)__ | Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Maps Server. |
