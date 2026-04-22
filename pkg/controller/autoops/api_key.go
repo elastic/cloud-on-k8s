@@ -168,7 +168,9 @@ func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 	}
 
 	log.V(1).Info("API key is up to date", "key", apiKeyName)
-	return &secret, nil
+
+	// reconcile if labels changes are required
+	return r.storeAPIKeyInSecret(ctx, policy, es, string(secret.Data[apiKeySecretKey]), expectedHash)
 }
 
 func (r *AgentPolicyReconciler) invalidateAndCreateAPIKey(
