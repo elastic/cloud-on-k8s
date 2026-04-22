@@ -13,6 +13,13 @@ type Resources struct {
 	Requests ResourceAllocations `json:"requests,omitempty"`
 }
 
+// IsEmpty reports whether the shorthand contains no CPU or memory values on
+// either Requests or Limits.
+func (r Resources) IsEmpty() bool {
+	return r.Limits.CPU == nil && r.Limits.Memory == nil &&
+		r.Requests.CPU == nil && r.Requests.Memory == nil
+}
+
 type ResourceAllocations struct {
 	// CPU overrides the main container's CPU request/limit when the parent Resources
 	// is merged into a PodTemplate. A nil value means "do not override": any CPU

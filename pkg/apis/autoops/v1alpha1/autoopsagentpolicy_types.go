@@ -7,12 +7,16 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "AutoOpsAgentPolicy"
+	// AutoOpsAgentContainerName is the name of the main AutoOps Agent container in the pod.
+	AutoOpsAgentContainerName = "autoops-agent"
 )
 
 func init() {
@@ -63,6 +67,12 @@ type AutoOpsAgentPolicySpec struct {
 
 	// Image is the AutoOps Agent Docker image to deploy.
 	Image string `json:"image,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the AutoOps Agent container.
+	// When set, these values override any CPU or memory resource settings specified in the PodTemplate for
+	// the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitempty"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
 	// +kubebuilder:validation:Optional

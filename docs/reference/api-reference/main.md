@@ -299,6 +299,7 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | *`namespaceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | NamespaceSelector is a namespace selector for the resources to be configured.<br>Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps. |
 | *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
 | *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the AutoOps Agent container.<br>When set, these values override any CPU or memory resource settings specified in the PodTemplate for<br>the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
@@ -753,12 +754,14 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [KibanaSpec](#kibanaspec)
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
 * [NodeSet](#nodeset)
+* [PackageRegistrySpec](#packageregistryspec)
 
 :::
 
@@ -2223,6 +2226,7 @@ PackageRegistrySpec holds the specification of an Elastic Package Registry insta
 | *`config`* __[Config](#config)__ | Config holds the PackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Package Registry configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Package Registry. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Elastic Package Registry container.<br>When set, these values override any CPU or memory resource settings specified in the PodTemplate for the<br>primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 

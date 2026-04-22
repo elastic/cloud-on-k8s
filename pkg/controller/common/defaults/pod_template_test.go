@@ -1405,7 +1405,7 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			want: defaultResources,
 		},
 		{
-			name: "no pod template resources and partial override keeps default base",
+			name: "no pod template resources and partial override skips defaults and leaves untouched side nil",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -1420,12 +1420,51 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			},
 			want: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
 					corev1.ResourceMemory: memoryOverride,
 				},
+			},
+		},
+		{
+			name: "shorthand limits only with empty pod template keeps requests nil for Guaranteed QoS",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "shorthand requests only with empty pod template keeps limits nil",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("500m"),
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
 				},
 			},
 		},
@@ -1509,7 +1548,7 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 			},
 		},
 		{
-			name: "resource claims only in pod template: defaults merged with CPU/memory overrides",
+			name: "resource claims only in pod template: shorthand applied without defaults and claims preserved",
 			podTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -1537,11 +1576,9 @@ func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
 					{Name: "gpu-claim", Request: "gpu"},
 				},
 				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    cpuOverride,
-					corev1.ResourceMemory: resource.MustParse("1Gi"),
+					corev1.ResourceCPU: cpuOverride,
 				},
 				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
 					corev1.ResourceMemory: memoryOverride,
 				},
 			},

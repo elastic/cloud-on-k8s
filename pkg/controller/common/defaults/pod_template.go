@@ -391,51 +391,39 @@ func (b *PodTemplateBuilder) WithInitContainers(
 }
 
 // WithResourcesAndOverrides merges main-container resources from three sources:
-//   - main container resources from the pod template (merge base when Requests or Limits are set,
-//     including explicit empty maps for [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
-//   - resources: operator default ResourceRequirements (merge base when the pod template omits both
-//     Requests and Limits; any user-supplied ResourceClaims are preserved on top of the defaults)
-//   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers)
+//   - main container resources from the pod template (merge base; nil-vs-empty map shape for
+//     Requests/Limits is preserved, including explicit empty maps for
+//     [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
+//   - resources: operator default ResourceRequirements (used for Requests and Limits only, and
+//     only when neither the pod template nor the shorthand contribute any CPU/memory; all other
+//     fields of the pod template's ResourceRequirements, e.g. ResourceClaims, are preserved as-is)
+//   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers;
+//     when the shorthand writes to one side (Requests or Limits) and the pod template leaves the
+//     other side nil, the untouched side is left nil so the API server's built-in limit→request
+//     defaulting can still promote the pod to Guaranteed QoS)
 //
-// Existing nil-vs-empty map shape from the chosen merge base is preserved; missing maps are initialized only when
-// an override writes to them. Also if the main container does not exist, this method returns the builder unchanged
-// which shouldn't happen if NewPodTemplateBuilder is called prior to this method.
+// If the main container does not exist, this method returns the builder unchanged; that should not
+// happen if NewPodTemplateBuilder is called prior to this method.
 func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
 	main := b.MainContainer()
 	if main == nil {
 		return b
 	}
-	merged, podTemplateResourcesUnset := resourceRequirementsMergeBase(main.Resources)
-	if podTemplateResourcesUnset {
-		// Start from the operator defaults and re-attach any user-supplied Claims preserved by
-		// resourceRequirementsMergeBase so DRA references from the pod template are not dropped.
-		claims := merged.Claims
-		merged = *resources.DeepCopy()
-		merged.Claims = claims
+	merged := *main.Resources.DeepCopy()
+	// Only inject operator defaults when neither the pod template nor the shorthand contribute
+	// any CPU/memory. Otherwise, layer the shorthand directly on top of the pod template so that
+	// any side (Requests or Limits) the user left nil stays nil, and the API server's limit→
+	// request defaulting can still promote the pod to Guaranteed QoS.
+	if merged.Requests == nil && merged.Limits == nil && overrides.IsEmpty() {
+		defaults := resources.DeepCopy()
+		merged.Requests = defaults.Requests
+		merged.Limits = defaults.Limits
 	}
 	applyCPUAndMemoryOverrides(&merged.Limits, overrides.Limits)
 	applyCPUAndMemoryOverrides(&merged.Requests, overrides.Requests)
-
 	main.Resources = merged
 	b.setContainerDefaulter()
 	return b
-}
-
-// resourceRequirementsMergeBase returns the merge base for resources overrides and whether the
-// pod template contributed no CPU/memory base (Requests and Limits both nil). When both are nil,
-// any user-supplied Claims are carried on the returned base so the caller can layer defaults in
-// without dropping DRA references. For a pod template with Requests or Limits set, existing map
-// presence (nil vs empty map) is preserved to avoid introducing no-op spec diffs.
-func resourceRequirementsMergeBase(existing corev1.ResourceRequirements) (corev1.ResourceRequirements, bool) {
-	if existing.Requests == nil && existing.Limits == nil {
-		base := corev1.ResourceRequirements{}
-		if len(existing.Claims) > 0 {
-			base.Claims = append([]corev1.ResourceClaim(nil), existing.Claims...)
-		}
-		return base, true
-	}
-
-	return *existing.DeepCopy(), false
 }
 
 // applyCPUAndMemoryOverrides copies non-nil CPU/memory overrides into dst.

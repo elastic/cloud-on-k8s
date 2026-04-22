@@ -208,7 +208,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "defaults_plus_partial_nodeset_override",
+			name: "nodeset_partial_override_skips_defaults",
 			nodeSet: esv1.NodeSet{
 				Name:        "nodeset-1",
 				Count:       1,
@@ -227,13 +227,15 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
 				t.Helper()
 				requireQuantityEqual(t, got.Requests, corev1.ResourceCPU, "250m")
-				requireQuantityEqual(t, got.Requests, corev1.ResourceMemory, "2Gi")
 				requireQuantityEqual(t, got.Limits, corev1.ResourceCPU, "1")
-				requireQuantityEqual(t, got.Limits, corev1.ResourceMemory, "2Gi")
+				_, hasMemReq := got.Requests[corev1.ResourceMemory]
+				_, hasMemLim := got.Limits[corev1.ResourceMemory]
+				require.False(t, hasMemReq, "memory request should not be set when shorthand skips operator defaults")
+				require.False(t, hasMemLim, "memory limit should not be set when shorthand skips operator defaults")
 			},
 		},
 		{
-			name: "nodeset_memory_request_only_keeps_default_memory_limit",
+			name: "nodeset_memory_request_only_leaves_limit_nil_for_api_server_defaulting",
 			nodeSet: esv1.NodeSet{
 				Name:        "nodeset-1",
 				Count:       1,
@@ -249,11 +251,31 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
 				t.Helper()
 				requireQuantityEqual(t, got.Requests, corev1.ResourceMemory, "4Gi")
-				requireQuantityEqual(t, got.Limits, corev1.ResourceMemory, "2Gi")
+				require.Nil(t, got.Limits, "limits should stay nil so the API server's limit↔request defaulting can apply")
 				_, hasCPUReq := got.Requests[corev1.ResourceCPU]
-				_, hasCPULim := got.Limits[corev1.ResourceCPU]
 				require.False(t, hasCPUReq)
-				require.False(t, hasCPULim)
+			},
+		},
+		{
+			name: "nodeset_limits_only_leaves_requests_nil_for_guaranteed_qos",
+			nodeSet: esv1.NodeSet{
+				Name:        "nodeset-1",
+				Count:       1,
+				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
+				PodTemplate: basePodTemplate(esContainerMinimal),
+				Resources: commonv1.Resources{
+					Limits: commonv1.ResourceAllocations{
+						CPU:    ptr.To(resource.MustParse("1")),
+						Memory: ptr.To(resource.MustParse("3Gi")),
+					},
+				},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			},
+			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
+				t.Helper()
+				requireQuantityEqual(t, got.Limits, corev1.ResourceCPU, "1")
+				requireQuantityEqual(t, got.Limits, corev1.ResourceMemory, "3Gi")
+				require.Nil(t, got.Requests, "requests should stay nil so the API server defaults them to limits (Guaranteed QoS)")
 			},
 		},
 		{

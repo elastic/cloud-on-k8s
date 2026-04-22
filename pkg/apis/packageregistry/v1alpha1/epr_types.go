@@ -45,6 +45,12 @@ type PackageRegistrySpec struct {
 	// HTTP holds the HTTP layer configuration for Elastic Package Registry.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the Elastic Package Registry container.
+	// When set, these values override any CPU or memory resource settings specified in the PodTemplate for the
+	// primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitempty"`
+
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
