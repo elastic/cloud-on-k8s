@@ -22,20 +22,22 @@ import (
 
 func TestReconcileElasticsearch(t *testing.T) {
 	tests := []struct {
-		name                  string
-		initialES             esv1.Elasticsearch
-		nextClusterResources  v1alpha1.ClusterResources
-		wantNodeSetCount      int32
-		wantCPURequest        string
-		wantMemoryRequest     string
-		wantCPULimit          string
-		wantMemoryLimit       string
-		wantStorageRequest    string
-		wantPodTemplateCPU    string
-		wantPodTemplateMemory string
+		name                             string
+		initialES                        esv1.Elasticsearch
+		nextClusterResources             v1alpha1.ClusterResources
+		wantNodeSetCount                 int32
+		wantCPURequest                   string
+		wantMemoryRequest                string
+		wantCPULimit                     string
+		wantMemoryLimit                  string
+		wantStorageRequest               string
+		wantPodTemplateRequestsNil       bool
+		wantPodTemplateLimitsNil         bool
+		wantPodTemplateExtraRequestKey   corev1.ResourceName
+		wantPodTemplateExtraRequestValue string
 	}{
 		{
-			name: "updates nodeSet resources and keeps pod template resources untouched",
+			name: "strips cpu/memory from pod template after writing nodeSet shorthand resources",
 			initialES: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					NodeSets: []esv1.NodeSet{
@@ -100,14 +102,14 @@ func TestReconcileElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			wantNodeSetCount:      3,
-			wantCPURequest:        "2000m",
-			wantMemoryRequest:     "4Gi",
-			wantCPULimit:          "3000m",
-			wantMemoryLimit:       "6Gi",
-			wantStorageRequest:    "8Gi",
-			wantPodTemplateCPU:    "750m",
-			wantPodTemplateMemory: "1500Mi",
+			wantNodeSetCount:           3,
+			wantCPURequest:             "2000m",
+			wantMemoryRequest:          "4Gi",
+			wantCPULimit:               "3000m",
+			wantMemoryLimit:            "6Gi",
+			wantStorageRequest:         "8Gi",
+			wantPodTemplateRequestsNil: true,
+			wantPodTemplateLimitsNil:   true,
 		},
 		{
 			name: "missing cpu recommendations preserves existing cpu values",
@@ -162,13 +164,13 @@ func TestReconcileElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			wantNodeSetCount:      4,
-			wantCPURequest:        "800m",
-			wantMemoryRequest:     "5Gi",
-			wantCPULimit:          "1200m",
-			wantMemoryLimit:       "7Gi",
-			wantPodTemplateCPU:    "900m",
-			wantPodTemplateMemory: "1Gi",
+			wantNodeSetCount:           4,
+			wantCPURequest:             "800m",
+			wantMemoryRequest:          "5Gi",
+			wantCPULimit:               "1200m",
+			wantMemoryLimit:            "7Gi",
+			wantPodTemplateRequestsNil: true,
+			wantPodTemplateLimitsNil:   true,
 		},
 		{
 			name: "missing cpu recommendations preserves nil cpu values",
@@ -221,13 +223,62 @@ func TestReconcileElasticsearch(t *testing.T) {
 					},
 				},
 			},
-			wantNodeSetCount:      2,
-			wantCPURequest:        "",
-			wantMemoryRequest:     "3Gi",
-			wantCPULimit:          "",
-			wantMemoryLimit:       "4Gi",
-			wantPodTemplateCPU:    "700m",
-			wantPodTemplateMemory: "1400Mi",
+			wantNodeSetCount:           2,
+			wantCPURequest:             "",
+			wantMemoryRequest:          "3Gi",
+			wantCPULimit:               "",
+			wantMemoryLimit:            "4Gi",
+			wantPodTemplateRequestsNil: true,
+			wantPodTemplateLimitsNil:   true,
+		},
+		{
+			name: "preserves non cpu/memory keys on the main container",
+			initialES: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:  "hot",
+							Count: 1,
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: esv1.ElasticsearchContainerName,
+											Resources: corev1.ResourceRequirements{
+												Requests: corev1.ResourceList{
+													corev1.ResourceCPU:              resource.MustParse("500m"),
+													corev1.ResourceMemory:           resource.MustParse("1Gi"),
+													corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			nextClusterResources: v1alpha1.ClusterResources{
+				{
+					Name: "policy-hot",
+					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
+						{Name: "hot", NodeCount: 2},
+					},
+					NodeResources: v1alpha1.NodeResources{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1500m"),
+							corev1.ResourceMemory: resource.MustParse("3Gi"),
+						},
+					},
+				},
+			},
+			wantNodeSetCount:                 2,
+			wantCPURequest:                   "1500m",
+			wantMemoryRequest:                "3Gi",
+			wantPodTemplateLimitsNil:         true,
+			wantPodTemplateExtraRequestKey:   corev1.ResourceEphemeralStorage,
+			wantPodTemplateExtraRequestValue: "2Gi",
 		},
 	}
 
@@ -256,18 +307,34 @@ func TestReconcileElasticsearch(t *testing.T) {
 
 			mainContainer := getMainContainer(nodeSet)
 			require.NotNil(t, mainContainer)
-			assert.True(t, resource.MustParse(tt.wantPodTemplateCPU).Equal(mainContainer.Resources.Requests[corev1.ResourceCPU]))
-			assert.True(t, resource.MustParse(tt.wantPodTemplateMemory).Equal(mainContainer.Resources.Requests[corev1.ResourceMemory]))
+			_, hasCPURequest := mainContainer.Resources.Requests[corev1.ResourceCPU]
+			_, hasMemRequest := mainContainer.Resources.Requests[corev1.ResourceMemory]
+			_, hasCPULimit := mainContainer.Resources.Limits[corev1.ResourceCPU]
+			_, hasMemLimit := mainContainer.Resources.Limits[corev1.ResourceMemory]
+			assert.False(t, hasCPURequest, "pod template main container CPU request must be stripped")
+			assert.False(t, hasMemRequest, "pod template main container memory request must be stripped")
+			assert.False(t, hasCPULimit, "pod template main container CPU limit must be stripped")
+			assert.False(t, hasMemLimit, "pod template main container memory limit must be stripped")
+			if tt.wantPodTemplateRequestsNil {
+				assert.Nil(t, mainContainer.Resources.Requests, "expected requests map to be nil after stripping all keys")
+			}
+			if tt.wantPodTemplateLimitsNil {
+				assert.Nil(t, mainContainer.Resources.Limits, "expected limits map to be nil after stripping all keys")
+			}
+			if tt.wantPodTemplateExtraRequestKey != "" {
+				got, ok := mainContainer.Resources.Requests[tt.wantPodTemplateExtraRequestKey]
+				require.True(t, ok, "expected non-CPU/memory request key %q to be preserved", tt.wantPodTemplateExtraRequestKey)
+				assert.True(t, resource.MustParse(tt.wantPodTemplateExtraRequestValue).Equal(got))
+			}
 		})
 	}
 }
 
 // TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent simulates an operator upgrade from a
 // version that only wrote autoscaler-managed CPU/memory on the PodTemplate container to the current version
-// that writes the shorthand NodeSet.Resources field. After the first reconcile the shorthand should reflect
-// the autoscaler recommendation while leaving the PodTemplate untouched; a second reconcile with the same
-// recommendation must be a no-op so the controller's unconditional Client.Update call does not dirty the
-// Elasticsearch custom resource.
+// that writes the shorthand NodeSet.Resources field. After the first reconcile the shorthand must reflect
+// the autoscaler recommendation and the previously-written PodTemplate CPU/memory entries must be removed
+// so the validating webhook does not fire.
 func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testing.T) {
 	next := v1alpha1.ClusterResources{
 		{
@@ -329,12 +396,14 @@ func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testin
 	assertQuantityPointerEqual(t, "2000m", nodeSet.Resources.Limits.CPU)
 	assertQuantityPointerEqual(t, "3Gi", nodeSet.Resources.Limits.Memory)
 
-	// The PodTemplate container values from the previous operator must be preserved so running pods are not
-	// restarted by the migration alone; convergence happens through future reconciliations.
+	// PodTemplate CPU/memory entries left by the previous operator must be removed so the shorthand stays
+	// the single source of truth and the validating webhook stops emitting an admission warning every
+	// reconcile. Effective container resources are unchanged because WithResourcesAndOverrides applies the
+	// new shorthand at pod-template-build time, so this does not trigger a rolling restart on its own.
 	mainContainer := getMainContainer(nodeSet)
 	require.NotNil(t, mainContainer)
-	assert.True(t, resource.MustParse("500m").Equal(mainContainer.Resources.Requests[corev1.ResourceCPU]))
-	assert.True(t, resource.MustParse("1Gi").Equal(mainContainer.Resources.Requests[corev1.ResourceMemory]))
+	assert.Nil(t, mainContainer.Resources.Requests, "expected requests to be nil after stripping cpu/memory")
+	assert.Nil(t, mainContainer.Resources.Limits, "expected limits to be nil after stripping cpu/memory")
 
 	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream Update
 	// calls from persistently dirtying the Elasticsearch custom resource.

@@ -49,7 +49,8 @@ func (a *Agent) warnings() []string {
 }
 
 // activePodTemplate returns the configured pod template and its spec path.
-// checkSpec ensures at most one deployment mode is set; returns ("", empty) when none.
+// checkSpec ensures at most one deployment mode is set.
+// If no deployment mode (DaemonSet, Deployment, or StatefulSet) is set, it returns an empty PodTemplateSpec and an empty path.
 func (a *Agent) activePodTemplate() (corev1.PodTemplateSpec, string) {
 	switch {
 	case a.Spec.DaemonSet != nil:
