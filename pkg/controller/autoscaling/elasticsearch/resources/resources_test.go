@@ -340,18 +340,11 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 		Name:   nsb.name,
 		Config: nil,
 		Count:  nsb.count,
-		Resources: commonv1.Resources{
-			Requests: commonv1.ResourceAllocations{},
-			Limits:   commonv1.ResourceAllocations{},
-		},
 		PodTemplate: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
 						Name: esv1.ElasticsearchContainerName,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{},
-						},
 					},
 				},
 			},
@@ -370,11 +363,17 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 
 	// Set pod template memory request
 	if nsb.podTemplateMemoryRequest != nil {
+		if nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests == nil {
+			nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests = corev1.ResourceList{}
+		}
 		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory] = *nsb.podTemplateMemoryRequest
 	}
 
 	// Set pod template CPU request
 	if nsb.podTemplateCPURequest != nil {
+		if nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests == nil {
+			nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests = corev1.ResourceList{}
+		}
 		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU] = *nsb.podTemplateCPURequest
 	}
 
