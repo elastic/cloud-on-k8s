@@ -23,7 +23,7 @@ func (in *EnterpriseSearch) DeepCopyInto(out *EnterpriseSearch) {
 	if in.assocConf != nil {
 		in, out := &in.assocConf, &out.assocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

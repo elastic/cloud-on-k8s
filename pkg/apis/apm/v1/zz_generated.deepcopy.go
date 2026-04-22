@@ -63,12 +63,12 @@ func (in *ApmServer) DeepCopyInto(out *ApmServer) {
 	if in.esAssocConf != nil {
 		in, out := &in.esAssocConf, &out.esAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.kibanaAssocConf != nil {
 		in, out := &in.kibanaAssocConf, &out.kibanaAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

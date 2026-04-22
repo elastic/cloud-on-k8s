@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -33,13 +34,17 @@ func filterWithUserProvidedClientCert(associations []commonv1.Association) []com
 	return r
 }
 
+// ClientCertNamer is a Namer for client certificate secrets, which can have longer names than
+// label-constrained resources since secrets use DNS subdomain naming (253 chars max).
+var ClientCertNamer = name.NewSecretNamer()
+
 // clientCertSecretName returns the name of the client certificate secret for an association.
 // The name is collision-free: it includes a hash of the referenced (server) resource's namespace and name.
 func clientCertSecretName(association commonv1.Association, associationName string) string {
 	associatedName := association.Associated().GetName()
 	ref := association.AssociationRef()
 	refHash := hash.HashObject(ref.NamespacedName())
-	return fmt.Sprintf("%s-%s-%s-client-cert", associatedName, associationName, refHash)
+	return ClientCertNamer.Suffix(associatedName, associationName, refHash, "client-cert")
 }
 
 // reconcileClientCertificate reconciles a client certificate for an association when the referenced

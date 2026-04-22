@@ -41,14 +41,14 @@ func (in *Logstash) DeepCopyInto(out *Logstash) {
 		in, out := &in.EsAssocConfs, &out.EsAssocConfs
 		*out = make(map[v1.ObjectSelector]v1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.MonitoringAssocConfs != nil {
 		in, out := &in.MonitoringAssocConfs, &out.MonitoringAssocConfs
 		*out = make(map[v1.ObjectSelector]v1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 }
