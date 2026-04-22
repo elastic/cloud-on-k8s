@@ -52,6 +52,15 @@ For more information, check [PR #9328](https://github.com/elastic/cloud-on-k8s/p
 **Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, this change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
 ::::
 
+::::{dropdown} Default PVC handling change for {{es}} volumes
+ECK 3.4.0 unifies how the operator handles default volume claim templates. Previously, the operator only skipped adding a default PVC when a non-PVC volume (such as `emptyDir` or `hostPath`) with the same name existed. Now, it skips the default PVC whenever any volume with the same name exists, including user-provided PVCs.
+For more information, check [PR #9199](https://github.com/elastic/cloud-on-k8s/pull/9199).
+
+**Impact**<br> If you defined custom PVC volumes in `podTemplate.spec.volumes` with the same name as a default volume (for example `elasticsearch-data`), those custom volumes were previously ignored and default volumes were provisioned instead. After upgrading, the operator will attempt to use your custom PVC volumes, which may cause a StatefulSet update rejection by Kubernetes.
+
+**Action**<br> If you encounter a StatefulSet update error after upgrading, remove the custom PVC entries from `podTemplate.spec.volumes` that overlap with default volume names.
+::::
+
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
 

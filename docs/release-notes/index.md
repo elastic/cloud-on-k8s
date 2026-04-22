@@ -25,10 +25,6 @@ ECK now supports triggering rolling restarts of {{es}} clusters through a new an
 
 ECK simplifies the configuration of zone awareness for {{es}} clusters, reducing the amount of boilerplate configuration needed to set up topology-aware allocation. For more details, refer to the [zone awareness documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-zone-awareness).
 
-#### Improved default PVC handling for {{es}}
-
-The {{es}} controller now correctly skips adding default volume claim templates whenever a volume with the same name already exists in the pod spec, regardless of volume type. Previously, the operator only skipped defaults for non-PVC volumes (such as `emptyDir` or `hostPath`), which could result in redundant or conflicting volume claim templates when users supplied their own PVC for the same volume name. This change unifies the logic so that user-provided PVCs are respected in the same way as other volume types.
-
 #### Operator-managed FIPS keystore password support for {{es}}
 
 ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When FIPS mode is enabled in the {{es}} configuration (`xpack.security.fips_mode.enabled: true`), the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration. For more details, refer to the [{{es}} FIPS keystore password documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/deploy-fips-compatible-version-of-eck.md#k8s-fips-keystore-password).
@@ -61,7 +57,7 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 - Prevent StackConfigPolicy controller from performing unnecessary file-settings secret updates on every reconciliation [#9316](https://github.com/elastic/cloud-on-k8s/pull/9316)
 - Correct NetworkPolicy namespace selector label for soft multi-tenancy [#9153](https://github.com/elastic/cloud-on-k8s/pull/9153)
 - Prevent using a nodeSet name while the equivalent StatefulSet already exists [#9036](https://github.com/elastic/cloud-on-k8s/pull/9036)
-- Skip default PVC if volume with same name exists [#9199](https://github.com/elastic/cloud-on-k8s/pull/9199)
+- Skip default PVC if volume with same name exists [#9199](https://github.com/elastic/cloud-on-k8s/pull/9199) (issue: [#8744](https://github.com/elastic/cloud-on-k8s/issues/8744))
 - Avoid empty reconcile requests in StackConfigPolicy secret watch [#9179](https://github.com/elastic/cloud-on-k8s/pull/9179)
 - Make remote-ca secret generation failures non-blocking [#9271](https://github.com/elastic/cloud-on-k8s/pull/9271)
 - Garbage collect Agent soft-owned secrets on deletion [#9090](https://github.com/elastic/cloud-on-k8s/pull/9090)
