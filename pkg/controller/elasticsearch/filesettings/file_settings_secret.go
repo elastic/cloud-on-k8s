@@ -291,6 +291,7 @@ func (f *Secret) buildSecret(hash string) (corev1.Secret, error) {
 		secret.Labels = make(map[string]string)
 	}
 	secret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanSecretResetOnPolicyDelete
+	secret.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 
 	return secret, nil
 }
