@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -149,7 +150,26 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		return results.WithError(err), params.Status
 	}
 
-	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash)
+	// For fleet-managed agents, read the client cert secret name from the transitive ES ref
+	// in the Fleet Server association conf. The cert is reconciled by the agent-fleetserver
+	// association controller.
+	esClientCertSecretName := fleetManagedAgentESClientCertSecretName(params)
+
+	// Include the transitive client cert secret in the config hash so the pod rolls when it changes.
+	if esClientCertSecretName != "" {
+		var clientCertSecret corev1.Secret
+		if err := params.Client.Get(params.Context, types.NamespacedName{
+			Namespace: params.Agent.Namespace,
+			Name:      esClientCertSecretName,
+		}, &clientCertSecret); err != nil {
+			return results.WithError(err), params.Status
+		}
+		if certPem, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(certPem)
+		}
+	}
+
+	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash, esClientCertSecretName)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -193,4 +213,24 @@ func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Servi
 		},
 	}
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
+}
+
+// fleetManagedAgentESClientCertSecretName returns the client cert secret name from the
+// Fleet Server association conf's TransitiveESRef, or empty string if not applicable.
+func fleetManagedAgentESClientCertSecretName(params Params) string {
+	if params.Agent.Spec.FleetServerEnabled || !params.Agent.Spec.FleetServerRef.IsSet() {
+		return ""
+	}
+	fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+	if err != nil || fsAssociation == nil {
+		return ""
+	}
+	fsConf, err := fsAssociation.AssociationConf()
+	if err != nil || fsConf == nil {
+		return ""
+	}
+	if fsConf.TransitiveESRef.ClientCertIsConfigured() {
+		return fsConf.TransitiveESRef.ClientCertSecretName
+	}
+	return ""
 }

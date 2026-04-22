@@ -1,0 +1,54 @@
+# ECK-managed mTLS: Elasticsearch + Standalone Elastic Agent
+#
+# This recipe demonstrates ECK's built-in client certificate authentication.
+# The only change from a standard deployment is:
+#   spec.http.tls.client.authentication: true
+#
+# ECK handles all certificate lifecycle: generation, trust bundle, rotation, and cleanup.
+# Requires an enterprise license.
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 9.3.2
+  http:
+    tls:
+      client:
+        authentication: true
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name: elastic-agent
+spec:
+  version: 9.3.2
+  elasticsearchRefs:
+    - outputName: default
+      name: elasticsearch
+  daemonSet: {}
+  config:
+    id: elastic-agent-standalone
+    agent:
+      monitoring:
+        enabled: true
+        use_output: default
+        logs: true
+        metrics: true
+    inputs:
+      - id: system-metrics
+        type: system/metrics
+        data_stream:
+          namespace: default
+        use_output: default
+        streams:
+          - metricset: cpu
+            data_stream:
+              dataset: system.cpu
+              type: metrics

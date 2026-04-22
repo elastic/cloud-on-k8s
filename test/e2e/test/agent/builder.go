@@ -495,7 +495,17 @@ func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Bui
 
 func ToOutput(selector commonv1.ObjectSelector, outputName string) agentv1alpha1.Output {
 	return agentv1alpha1.Output{
-		ObjectSelector: selector,
-		OutputName:     outputName,
+		ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: selector},
+		OutputName:            outputName,
+	}
+}
+
+func ToOutputWithClientCert(selector commonv1.ObjectSelector, clientCertSecretName, outputName string) agentv1alpha1.Output {
+	return agentv1alpha1.Output{
+		ElasticsearchSelector: commonv1.ElasticsearchSelector{
+			ObjectSelector:              selector,
+			ClientCertificateSecretName: clientCertSecretName,
+		},
+		OutputName: outputName,
 	}
 }
