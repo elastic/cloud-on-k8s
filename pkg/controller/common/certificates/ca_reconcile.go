@@ -98,6 +98,11 @@ func ReconcileCAForOwner(
 		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType)
 	}
 
+	// reconcile if labels and annotations need update.
+	if _, err := reconciler.ReconcileSecret(ctx, cl, caInternalSecret, owner); err != nil {
+		return nil, err
+	}
+
 	// reuse existing CA
 	return ca, nil
 }

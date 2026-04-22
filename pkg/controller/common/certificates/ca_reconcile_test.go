@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
@@ -205,6 +206,7 @@ func checkCASecrets(
 	require.NoError(t, err)
 	require.NotEmpty(t, internalCASecret.Data[CertFileName])
 	require.NotEmpty(t, internalCASecret.Data[KeyFileName])
+	require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, internalCASecret.Labels[commonv1.LabelBasedDiscoveryLabelName])
 
 	// secret should be ok to parse as a CA
 	parsedCa := BuildCAFromSecret(context.Background(), internalCASecret)
@@ -397,8 +399,10 @@ func Test_renewCAFromExisting_PreservesSubjectKeyId(t *testing.T) {
 
 func Test_NewSelfSignedCA_WithSubjectKeyId(t *testing.T) {
 	// Test that providing a SubjectKeyID in options results in that SKI being used
-	customSKI := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-		0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14}
+	customSKI := []byte{
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+		0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14,
+	}
 
 	ca, err := NewSelfSignedCA(CABuilderOptions{
 		SubjectKeyID: customSKI,
@@ -514,8 +518,10 @@ func TestCertIsSignedByCA(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a CA with a different SKI (simulating custom CA or cross-Go-version scenarios)
-	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	differentSKI := []byte{
+		0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+	}
 	ca3DifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
 		PrivateKey:   caKey,
 		SubjectKeyID: differentSKI, // Different SKI
