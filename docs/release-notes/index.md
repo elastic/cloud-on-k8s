@@ -15,15 +15,15 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 #### {{es}} client certificate authentication support
 
-ECK now supports configuring {{es}} to require client certificates for authentication. This allows you to enforce mutual TLS (mTLS) between clients and {{es}}, strengthening security by requiring both the client and server to present valid certificates. Currently, {{es}} and {{product.kibana}} support this feature - {{product.kibana}} can be configured to present client certificates when connecting to {{es}}. Support for the remaining components that connect to {{es}} (Beats, Elastic Agent, APM Server, Logstash, and so on) will follow in future releases.
+ECK now supports configuring {{es}} to require client certificates for authentication. This allows you to enforce mutual TLS (mTLS) between clients and {{es}}, strengthening security by requiring both the client and server to present valid certificates. Currently, {{es}} and {{product.kibana}} support this feature - {{product.kibana}} can be configured to present client certificates when connecting to {{es}}. Support for the remaining components that connect to {{es}} (Beats, Elastic Agent, APM Server, Logstash, and so on) will follow in future releases. For more details, refer to the [client certificate authentication documentation](docs-content://deploy-manage/security/k8s-es-client-certificate-auth.md).
 
 #### Rolling restarts of {{es}} clusters
 
-ECK now supports triggering rolling restarts of {{es}} clusters through a new annotation-based mechanism. This enables operators to gracefully restart all nodes in a cluster without manual intervention, useful for applying configuration changes that require a restart.
+ECK now supports triggering rolling restarts of {{es}} clusters through a new annotation-based mechanism. This enables operators to gracefully restart all nodes in a cluster without manual intervention, useful for applying configuration changes that require a restart. The [rolling restart documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/nodes-orchestration.md#cluster-rolling-restart) provides more details.
 
 #### Simplified zone awareness configuration
 
-ECK simplifies the configuration of zone awareness for {{es}} clusters, reducing the amount of boilerplate configuration needed to set up topology-aware allocation.
+ECK simplifies the configuration of zone awareness for {{es}} clusters, reducing the amount of boilerplate configuration needed to set up topology-aware allocation. For more details, refer to the [zone awareness documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-zone-awareness).
 
 #### Improved default PVC handling for {{es}}
 
@@ -31,7 +31,7 @@ The {{es}} controller now correctly skips adding default volume claim templates 
 
 #### Operator-managed FIPS keystore password support for {{es}}
 
-ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When FIPS mode is enabled in the {{es}} configuration (`xpack.security.fips_mode.enabled: true`), the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration.
+ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When FIPS mode is enabled in the {{es}} configuration (`xpack.security.fips_mode.enabled: true`), the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration. For more details, refer to the [{{es}} FIPS keystore password documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/deploy-fips-compatible-version-of-eck.md#k8s-fips-keystore-password).
 
 ### Features and enhancements [elastic-cloud-kubernetes-340-features-and-enhancements]
 

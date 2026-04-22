@@ -22,10 +22,10 @@ For more information, check [PR #9012](https://github.com/elastic/cloud-on-k8s/p
 
 **Impact**<br> Upgrading to ECK 3.4.0 will trigger a rolling restart of most managed workloads. Plan the upgrade during a maintenance window.
 
-**Action**<br> Schedule the ECK operator upgrade during a maintenance window to account for the rolling restart. If you need to prevent the restart, set the operator flag `set-default-security-context` to `false` before upgrading, though this is not recommended as the new default improves security posture.
+**Action**<br> Schedule the ECK operator upgrade during a maintenance window to account for the rolling restart.
 ::::
 
-::::{dropdown} Rolling restart of Kibana pods due to init container security context change
+::::{dropdown} Rolling restart of {{product.kibana}} pods due to init container security context change
 ECK 3.4.0 sets a default security context on the {{product.kibana}} init container, which will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
 For more information, check [PR #9218](https://github.com/elastic/cloud-on-k8s/pull/9218).
 
@@ -43,7 +43,7 @@ For more information, check [PR #9229](https://github.com/elastic/cloud-on-k8s/p
 **Action**<br> No action required. Be aware that {{es}} pods will restart during the upgrade. Plan the upgrade during a maintenance window.
 ::::
 
-::::{dropdown} Rolling restart of Kibana pods due to default memory limit increase and potential OOM risk for low memory limits
+::::{dropdown} Rolling restart of {{product.kibana}} pods due to default memory limit increase and potential OOM risk for low memory limits
 ECK 3.4.0 increases the default {{product.kibana}} memory limit from 1Gi to 2Gi. {{product.kibana}} 9.4.x increased its V8 heap limit from 60% to 75% of container memory, but with 1Gi containers the resulting ~750MB of heap is not enough headroom for plugin initialization, leading to OOM crashes. This change will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
 For more information, check [PR #9328](https://github.com/elastic/cloud-on-k8s/pull/9328).
 
