@@ -44,7 +44,7 @@ func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) co
 		Agent:        agent,
 		AgentVersion: version.MustParse(agent.Spec.Version),
 	}
-	got, err := buildPodTemplate(params, nil, EnrollmentAPIKey{}, fnv.New32a())
+	got, err := buildPodTemplate(params, nil, EnrollmentAPIKey{}, fnv.New32a(), "")
 	require.NoError(t, err)
 	return got
 }
@@ -63,7 +63,7 @@ func buildAgentFleetPodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.
 		Agent:        agent,
 		AgentVersion: version.MustParse(agent.Spec.Version),
 	}
-	got, err := buildPodTemplate(params, fleetCertsFixture, EnrollmentAPIKey{}, fnv.New32a())
+	got, err := buildPodTemplate(params, fleetCertsFixture, EnrollmentAPIKey{}, fnv.New32a(), "")
 	require.NoError(t, err)
 	return got
 }
