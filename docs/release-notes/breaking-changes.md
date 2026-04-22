@@ -34,13 +34,22 @@ For more information, check [PR #9218](https://github.com/elastic/cloud-on-k8s/p
 **Action**<br> No action required. Be aware that {{product.kibana}} pods will restart during the upgrade.
 ::::
 
-::::{dropdown} Rolling restart of Kibana pods due to default memory limit increase
-ECK 3.4.0 increases the default {{product.kibana}} memory limit from 1Gi to 2Gi. Kibana 9.x raised its V8 heap limit from 60% to 75% of container memory, causing OOM crashes with the previous 1Gi default. This change will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
+::::{dropdown} Rolling restart of {{es}} pods due to client certificate authentication support
+ECK 3.4.0 adds client certificate authentication support for {{es}}. This changes the pre-stop hook and readiness probe scripts embedded in the {{es}} pod spec to handle client certificates when available, which causes a rolling restart of all {{es}} pods during the operator upgrade.
+For more information, check [PR #9229](https://github.com/elastic/cloud-on-k8s/pull/9229) and [PR #9375](https://github.com/elastic/cloud-on-k8s/pull/9375).
+
+**Impact**<br> All {{es}} pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that {{es}} pods will restart during the upgrade. Plan the upgrade during a maintenance window.
+::::
+
+::::{dropdown} Rolling restart of Kibana pods due to default memory limit increase and potential OOM risk for low memory limits
+ECK 3.4.0 increases the default {{product.kibana}} memory limit from 1Gi to 2Gi. {{product.kibana}} 9.4.x increased its V8 heap limit from 60% to 75% of container memory, but with 1Gi containers the resulting ~750MB of heap is not enough headroom for plugin initialization, leading to OOM crashes. This change will cause {{product.kibana}} pods to rolling restart during the operator upgrade.
 For more information, check [PR #9328](https://github.com/elastic/cloud-on-k8s/pull/9328).
 
-**Impact**<br> {{product.kibana}} pods will be restarted as part of the operator upgrade, and each pod will consume up to 2Gi of memory instead of 1Gi.
+**Impact**<br> {{product.kibana}} pods that do not have explicit memory limits set will be restarted as part of the operator upgrade, and each pod will consume up to 2Gi of memory instead of 1Gi.
 
-**Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, this change does not affect you.
+**Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, this change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
 ::::
 
 

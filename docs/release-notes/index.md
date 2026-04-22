@@ -54,6 +54,7 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 - Align DaemonSet `UpdateReconciled` with Deployment reconciler [#9256](https://github.com/elastic/cloud-on-k8s/pull/9256)
 - Add version-gated querylog fileset to Filebeat sidecar config [#9291](https://github.com/elastic/cloud-on-k8s/pull/9291)
 - Bump default {{product.kibana}} memory limit from 1Gi to 2Gi [#9328](https://github.com/elastic/cloud-on-k8s/pull/9328)
+- Add image digest support to eck-operator Helm chart [#9362](https://github.com/elastic/cloud-on-k8s/pull/9362)
 
 ### Fixes [elastic-cloud-kubernetes-340-fixes]
 
