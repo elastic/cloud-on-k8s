@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // PodTemplateResourcesOverrideWarning returns an admission warning when shorthand
@@ -28,15 +30,10 @@ func PodTemplateResourcesOverrideWarning(shortPath, templatePath, mainContainer 
 	if main == nil {
 		return ""
 	}
-	// define a small closure here to help with readability
-	has := func(list corev1.ResourceList, name corev1.ResourceName) bool {
-		_, ok := list[name]
-		return ok
-	}
-	overlap := (shorthand.Requests.CPU != nil && has(main.Resources.Requests, corev1.ResourceCPU)) ||
-		(shorthand.Requests.Memory != nil && has(main.Resources.Requests, corev1.ResourceMemory)) ||
-		(shorthand.Limits.CPU != nil && has(main.Resources.Limits, corev1.ResourceCPU)) ||
-		(shorthand.Limits.Memory != nil && has(main.Resources.Limits, corev1.ResourceMemory))
+	overlap := (shorthand.Requests.CPU != nil && maps.ContainsKeys(main.Resources.Requests, corev1.ResourceCPU)) ||
+		(shorthand.Requests.Memory != nil && maps.ContainsKeys(main.Resources.Requests, corev1.ResourceMemory)) ||
+		(shorthand.Limits.CPU != nil && maps.ContainsKeys(main.Resources.Limits, corev1.ResourceCPU)) ||
+		(shorthand.Limits.Memory != nil && maps.ContainsKeys(main.Resources.Limits, corev1.ResourceMemory))
 	if !overlap {
 		return ""
 	}
