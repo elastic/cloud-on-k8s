@@ -90,7 +90,7 @@ type LogstashSpec struct {
 	// values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash
 	// container. To set resources on other containers, use the PodTemplate.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitempty"`
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// PodTemplate provides customisation options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields

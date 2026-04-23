@@ -66,7 +66,7 @@ type AgentSpec struct {
 	// values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet
 	// PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitempty"`
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment` or `statefulSet`.

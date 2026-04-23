@@ -72,7 +72,7 @@ type AutoOpsAgentPolicySpec struct {
 	// When set, these values override any CPU or memory resource settings specified in the PodTemplate for
 	// the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitempty"`
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
 	// +kubebuilder:validation:Optional

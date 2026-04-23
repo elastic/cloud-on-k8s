@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -410,6 +411,162 @@ func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testin
 	before := es.DeepCopy()
 	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
 	assert.Equal(t, before.Spec, es.Spec)
+}
+
+// TestReconcileElasticsearch_NonAutoscaledNodeSetDoesNotPersistEmptyResourcesStub covers the
+// upgrade-path scenario where a cluster with a dedicated `master` NodeSet that
+// uses the legacy podTemplate.spec.containers[].resources path alongside autoscaled NodeSets
+// (`di`, `ml`) that the autoscaler manages. After reconciliation the master
+// NodeSet must:
+//
+//   - keep its zero-valued in-memory Resources (the autoscaler does not produce a recommendation
+//     for it and reconcileElasticsearch must skip it without writing the shorthand), AND
+//   - serialize without an empty `resources: { limits: {}, requests: {} }` stub when the
+//     Elasticsearch custom resource is round-tripped through JSON.
+func TestReconcileElasticsearch_NonAutoscaledNodeSetDoesNotPersistEmptyResourcesStub(t *testing.T) {
+	masterContainerCPU := resource.MustParse("1")
+	masterContainerMem := resource.MustParse("2Gi")
+
+	// Initial state: master uses the legacy podTemplate path with no shorthand; di and ml are
+	// autoscaled and currently sized to the previous recommendation.
+	es := esv1.Elasticsearch{
+		Spec: esv1.ElasticsearchSpec{
+			NodeSets: []esv1.NodeSet{
+				{
+					Name:  "master",
+					Count: 3,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Resources: corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    masterContainerCPU,
+											corev1.ResourceMemory: masterContainerMem,
+										},
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    masterContainerCPU,
+											corev1.ResourceMemory: masterContainerMem,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Name:  "di",
+					Count: 2,
+					Resources: commonv1.Resources{
+						Requests: commonv1.ResourceAllocations{
+							CPU:    quantityPtr(resource.MustParse("1")),
+							Memory: quantityPtr(resource.MustParse("4Gi")),
+						},
+					},
+				},
+				{
+					Name:  "ml",
+					Count: 1,
+					Resources: commonv1.Resources{
+						Requests: commonv1.ResourceAllocations{
+							CPU:    quantityPtr(resource.MustParse("500m")),
+							Memory: quantityPtr(resource.MustParse("2Gi")),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// The autoscaler only produces recommendations for di and ml; master has no entry.
+	next := v1alpha1.ClusterResources{
+		{
+			Name:             "policy-di",
+			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{{Name: "di", NodeCount: 3}},
+			NodeResources: v1alpha1.NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+		{
+			Name:             "policy-ml",
+			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{{Name: "ml", NodeCount: 2}},
+			NodeResources: v1alpha1.NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+
+	require.Len(t, es.Spec.NodeSets, 3)
+	master := es.Spec.NodeSets[0]
+	require.Equal(t, "master", master.Name)
+
+	// In-memory: the autoscaler must not have touched master's Resources or its podTemplate
+	// container resources.
+	assert.True(
+		t,
+		master.Resources.IsEmpty(),
+		"master NodeSet shorthand Resources must remain empty when the autoscaler does not touch it; got %+v",
+		master.Resources,
+	)
+	mainContainer := getMainContainer(master)
+	require.NotNil(t, mainContainer)
+	assert.True(
+		t,
+		masterContainerCPU.Equal(mainContainer.Resources.Requests[corev1.ResourceCPU]),
+		"master podTemplate CPU request must be preserved",
+	)
+	assert.True(
+		t,
+		masterContainerMem.Equal(mainContainer.Resources.Requests[corev1.ResourceMemory]),
+		"master podTemplate memory request must be preserved",
+	)
+
+	// Serialized: the persisted CR must not carry the empty `resources: {}` stub on master,
+	// otherwise users see two different ways of expressing container resources side by side
+	// even though they only ever set the legacy path.
+	encoded, err := json.Marshal(es)
+	require.NoError(t, err)
+
+	var roundTrip map[string]any
+	require.NoError(t, json.Unmarshal(encoded, &roundTrip))
+	spec, ok := roundTrip["spec"].(map[string]any)
+	require.True(t, ok, "expected spec object in serialized Elasticsearch")
+	nodeSets, ok := spec["nodeSets"].([]any)
+	require.True(t, ok, "expected nodeSets array in serialized spec")
+	require.Len(t, nodeSets, 3)
+
+	masterEncoded, ok := nodeSets[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "master", masterEncoded["name"])
+	_, hasResources := masterEncoded["resources"]
+	assert.False(
+		t,
+		hasResources,
+		"non-autoscaled master NodeSet must not serialize an empty resources stub; encoded: %s",
+		string(encoded),
+	)
+
+	// the autoscaled NodeSets do still serialize their (non-empty) shorthand.
+	for _, idx := range []int{1, 2} {
+		ns, ok := nodeSets[idx].(map[string]any)
+		require.True(t, ok)
+		_, hasResources := ns["resources"]
+		assert.True(
+			t,
+			hasResources,
+			"autoscaled NodeSet %q must serialize its shorthand resources",
+			ns["name"],
+		)
+	}
 }
 
 // getMainContainer returns the Elasticsearch main container from a NodeSet pod template.

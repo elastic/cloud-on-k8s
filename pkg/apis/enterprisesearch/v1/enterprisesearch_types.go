@@ -54,7 +54,7 @@ type EnterpriseSearchSpec struct {
 	// these values override any CPU or memory resource settings specified in the PodTemplate for the primary
 	// Enterprise Search container. To set resources on other containers, use the PodTemplate.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitempty"`
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
 	// for the Enterprise Search pods.

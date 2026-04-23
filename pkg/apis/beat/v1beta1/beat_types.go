@@ -75,7 +75,7 @@ type BeatSpec struct {
 	// values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for
 	// the primary Beat container. To set resources on other containers, use the PodTemplate.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitempty"`
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment`. If both are absent a default for the Type is used.
