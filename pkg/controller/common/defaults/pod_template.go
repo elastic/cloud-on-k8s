@@ -5,7 +5,7 @@
 package defaults
 
 import (
-	maps0 "maps"
+	stdmaps "maps"
 	"slices"
 	"sort"
 
@@ -438,7 +438,7 @@ func applyCPUAndMemoryOverrides(dst *corev1.ResourceList, overrides commonv1.Res
 	if *dst == nil {
 		*dst = corev1.ResourceList{}
 	}
-	maps0.Copy((*dst), src)
+	stdmaps.Copy((*dst), src)
 }
 
 // WithResources sets up the given resource requirements if both resources limits and requests
