@@ -15,8 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
-	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -47,11 +46,12 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 
 // managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
 func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
-	if es.Annotations[common.ManagedAnnotation] != "false" {
+	// Using common.ManagedAnnotation here creates an import cycle and fails CI.
+	if es.Annotations["eck.k8s.elastic.co/managed"] != "false" {
 		return nil
 	}
 	return field.ErrorList{field.Invalid(
-		field.NewPath("metadata").Child("annotations").Key(common.ManagedAnnotation),
+		field.NewPath("metadata").Child("annotations").Key("eck.k8s.elastic.co/managed"),
 		"false", managedFalseDeprecationWarningMsg)}
 }
 
@@ -61,7 +61,7 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 		if nodeSet.Config == nil {
 			continue
 		}
-		config, err := commonsettings.NewCanonicalConfigFrom(nodeSet.Config.Data)
+		config, err := common.NewCanonicalConfigFrom(nodeSet.Config.Data)
 		if err != nil {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
@@ -71,7 +71,7 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func validateSettings(config *commonsettings.CanonicalConfig, index int) field.ErrorList {
+func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList {
 	var errs field.ErrorList
 	unsupported := config.HasKeys(esv1.UnsupportedSettings)
 	for _, setting := range unsupported {
@@ -84,7 +84,7 @@ func validateSettings(config *commonsettings.CanonicalConfig, index int) field.E
 // validateClientAuthentication reports mandatory HTTP client authentication
 // (value "required") as a Forbidden field error so admission surfaces it as a
 // warning, not a denial.
-func validateClientAuthentication(config *commonsettings.CanonicalConfig, index int) field.ErrorList {
+func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
 	const forbiddenValue = "required" // we allow 'none' and 'optional' but 'required' is not supported
 
 	var errs field.ErrorList
@@ -172,7 +172,7 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 		}
 		// Since this code path is only used for warnings, we are going to ignore any errors
 		// in this whole block and continue to the next nodeSet.
-		canonicalConfig, err := commonsettings.NewCanonicalConfigFrom(userConfig)
+		canonicalConfig, err := common.NewCanonicalConfigFrom(userConfig)
 		if err != nil {
 			continue
 		}
