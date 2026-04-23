@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -187,6 +188,12 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 	vols = append(vols, caAssocVols...)
 
+	// Changes to the downward-node-labels annotation must roll the Agent Pods so the new annotations
+	// are re-applied on scheduling.
+	if params.Agent.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(params.Agent.Annotations[agentv1alpha1.DownwardNodeLabelsAnnotation]))
+	}
+
 	podMeta := params.Meta.Merge(metadata.Metadata{
 		Labels:      map[string]string{VersionLabelName: spec.Version},
 		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
@@ -204,6 +211,21 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 				},
 			}},
 		)
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the Agent container does not start while those annotations are missing from
+	// the downward-API annotations file.
+	if params.Agent.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(params.Agent.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder = builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit).
+			WithInitContainerDefaults()
+	}
 
 	return builder.PodTemplate, nil
 }

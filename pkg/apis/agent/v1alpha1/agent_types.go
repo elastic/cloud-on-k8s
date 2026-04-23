@@ -14,6 +14,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
@@ -22,6 +23,9 @@ const (
 	Kind = "Agent"
 	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the Elastic Agent Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // AgentSpec defines the desired state of the Agent
@@ -302,6 +306,17 @@ func (a *Agent) ServiceAccountName() string {
 // IsMarkedForDeletion returns true if the Agent is going to be deleted
 func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the Agent Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (a *Agent) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(a.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Agent Pods.
+func (a *Agent) HasDownwardNodeLabels() bool {
+	return len(a.DownwardNodeLabels()) > 0
 }
 
 func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {

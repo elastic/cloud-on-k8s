@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -154,7 +155,20 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
-	return reconcileStatefulSet(params, podTemplate)
+	statefulSetResults, status := reconcileStatefulSet(params, podTemplate)
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	statefulSetResults.WithResults(nodelabels.AnnotatePods(
+		params.Context,
+		params.Client,
+		params.Logstash.Namespace,
+		map[string]string{labels.NameLabelName: params.Logstash.Name},
+		params.Logstash.DownwardNodeLabels(),
+		params.Logstash.Name,
+	))
+
+	return statefulSetResults, status
 }
 
 // expectationsSatisfied checks that resources in our local cache match what we expect.
