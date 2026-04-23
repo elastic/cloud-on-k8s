@@ -19,15 +19,19 @@ ECK now supports configuring {{es}} to require client certificates for authentic
 
 #### Rolling restarts of {{es}} clusters
 
-ECK now supports triggering rolling restarts of {{es}} clusters through a new annotation-based mechanism. This enables operators to gracefully restart all nodes in a cluster without manual intervention, useful for applying configuration changes that require a restart. The [rolling restart documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/nodes-orchestration.md#cluster-rolling-restart) provides more details.
+ECK now supports triggering rolling restarts of {{es}} clusters through a new annotation-based mechanism. This enables operators to gracefully restart all nodes in a cluster without manual intervention, useful for troubleshooting. The [rolling restart documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/nodes-orchestration.md#cluster-rolling-restart) provides more details.
 
 #### Simplified zone awareness configuration
 
 ECK simplifies the configuration of zone awareness for {{es}} clusters, reducing the amount of boilerplate configuration needed to set up topology-aware allocation. For more details, refer to the [zone awareness documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-zone-awareness).
 
-#### Operator-managed FIPS keystore password support for {{es}}
+#### ECK container image signing
 
-ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When FIPS mode is enabled in the {{es}} configuration (`xpack.security.fips_mode.enabled: true`), the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration. For more details, refer to the [{{es}} FIPS keystore password documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/deploy-fips-compatible-version-of-eck.md#k8s-fips-keystore-password).
+ECK container images are now signed using [Sigstore cosign](https://docs.sigstore.dev/cosign/). This allows users to verify the authenticity and integrity of ECK operator images before deployment, strengthening the supply chain security of their Kubernetes clusters.
+
+#### Automatic password-protected keystore for {{es}} in FIPS mode
+
+ECK now automatically manages a password-protected keystore for {{es}} when FIPS mode is enabled. When `xpack.security.fips_mode.enabled` is set to `true` in the {{es}} configuration, the operator generates, stores, and configures a password-protected keystore — eliminating the need for manual `podTemplate` overrides. This feature activates for {{es}} 9.4.0+ and respects any existing user-provided keystore password configuration. For more details, refer to the [{{es}} FIPS keystore password documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/deploy-fips-compatible-version-of-eck.md#k8s-fips-keystore-password).
 
 ### Features and enhancements [elastic-cloud-kubernetes-340-features-and-enhancements]
 
@@ -41,13 +45,11 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 - Add `kubeAPIServerPort` configuration option to Helm chart [#8980](https://github.com/elastic/cloud-on-k8s/pull/8980)
 - Set `seccompProfile` to `RuntimeDefault` [#9012](https://github.com/elastic/cloud-on-k8s/pull/9012)
 - Validate user-supplied HTTP CA certificate [#8992](https://github.com/elastic/cloud-on-k8s/pull/8992)
-- Validate user-supplied CA for the transport layer of {{es}} [#8953](https://github.com/elastic/cloud-on-k8s/pull/8953)
 - Sign ECK container images (v2) [#9078](https://github.com/elastic/cloud-on-k8s/pull/9078)
 - Improve license signature verification error to diagnose wrong license type [#9262](https://github.com/elastic/cloud-on-k8s/pull/9262)
 - Improve AutoOpsAgentPolicy status reporting [#9095](https://github.com/elastic/cloud-on-k8s/pull/9095)
 - Support `runAsNonRoot` true for recent versions of EPR [#8974](https://github.com/elastic/cloud-on-k8s/pull/8974)
-- Set `TransformStripManagedFields` on informer caches [#9321](https://github.com/elastic/cloud-on-k8s/pull/9321)
-- Align DaemonSet `UpdateReconciled` with Deployment reconciler [#9256](https://github.com/elastic/cloud-on-k8s/pull/9256)
+- Reduce operator memory footprint by stripping managed fields from informer caches [#9321](https://github.com/elastic/cloud-on-k8s/pull/9321)
 - Add version-gated querylog fileset to Filebeat sidecar config [#9291](https://github.com/elastic/cloud-on-k8s/pull/9291)
 - Bump default {{product.kibana}} memory limit from 1Gi to 2Gi [#9328](https://github.com/elastic/cloud-on-k8s/pull/9328)
 - Add image digest support to eck-operator Helm chart [#9362](https://github.com/elastic/cloud-on-k8s/pull/9362)
@@ -65,6 +67,8 @@ ECK now automatically manages FIPS-compliant keystore passwords for {{es}}. When
 - Skip per-shard replica checks for GREEN clusters in `require_started_replica` predicate [#9188](https://github.com/elastic/cloud-on-k8s/pull/9188)
 - Handle server side default for `TrafficDistribution` [#8994](https://github.com/elastic/cloud-on-k8s/pull/8994)
 - Set default security context to {{product.kibana}} init container [#9218](https://github.com/elastic/cloud-on-k8s/pull/9218)
+- Validate user-supplied CA for the transport layer of {{es}} [#8953](https://github.com/elastic/cloud-on-k8s/pull/8953)
+- Align DaemonSet `UpdateReconciled` with Deployment reconciler [#9256](https://github.com/elastic/cloud-on-k8s/pull/9256) (issue: [#9246](https://github.com/elastic/cloud-on-k8s/issues/9246))
 
 ### Documentation improvements [elastic-cloud-kubernetes-340-documentation-improvements]
 
