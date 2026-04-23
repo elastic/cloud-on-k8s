@@ -33,7 +33,7 @@ The following table lists and describes all the available configuration flags fo
 | `ip-family` | `""` | Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect) |
 | `kube-client-qps` | `0` | Set the maximum number of queries per second to the Kubernetes API. Default value is inherited from the [Go client](https://github.com/kubernetes/client-go/blob/e6538dd42b4fe55b6c754e41c66b43133ba41a59/rest/config.go#L44). |
 | `kube-client-timeout` | `60s` | Set the request timeout for Kubernetes API calls made by the operator. |
-| `label-based-discovery` | `false` | Restrict resource discovery (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When disabled (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
+| `label-based-discovery` | `false` | Restrict resource discovery (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When deactivated (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
 | `log-verbosity` | `0` | Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug. |
 | `manage-webhook-certs` | `true` | Enables automatic webhook certificate management. |
 | `max-concurrent-reconciles` | `3` | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently. |
