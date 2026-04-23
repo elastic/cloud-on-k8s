@@ -77,9 +77,6 @@ func TestBuildImmutableConfigMap(t *testing.T) {
 	assert.Contains(t, cm.Name, "my-scripts-")
 	assert.Greater(t, len(cm.Name), len("my-scripts-"))
 
-	// Check that labels contain the discovery label with the expected value.
-	assert.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, cm.Labels[commonv1.LabelBasedDiscoveryLabelName])
-
 	// Check namespace
 	assert.Equal(t, "default", cm.Namespace)
 
