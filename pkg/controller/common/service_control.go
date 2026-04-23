@@ -29,6 +29,8 @@ func ReconcileService(
 	span, _ := apm.StartSpan(ctx, "reconcile_service", tracing.SpanTypeApp)
 	defer span.End()
 
+	// don't mutate expected (no side effects), make a copy
+	expected = expected.DeepCopy()
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}

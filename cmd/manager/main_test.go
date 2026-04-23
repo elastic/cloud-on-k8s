@@ -12,7 +12,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -350,31 +352,31 @@ func TestBuildByObject(t *testing.T) {
 	tests := []struct {
 		name                         string
 		labelBasedDiscovery          bool
-		expectedLabelQueryByTypeName map[string]string
+		expectedLabelQueryByTypeName map[reflect.Type]string
 	}{
 		{
 			name:                "without label scope",
 			labelBasedDiscovery: false,
-			expectedLabelQueryByTypeName: map[string]string{
-				"*v1.Pod":                 commonv1.TypeLabelName,
-				"*v1.PodDisruptionBudget": commonv1.TypeLabelName,
-				"*v1.Deployment":          commonv1.TypeLabelName,
-				"*v1.StatefulSet":         commonv1.TypeLabelName,
-				"*v1.DaemonSet":           commonv1.TypeLabelName,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
 			},
 		},
 		{
 			name:                "with label scope",
 			labelBasedDiscovery: true,
-			expectedLabelQueryByTypeName: map[string]string{
-				"*v1.Pod":                 commonv1.TypeLabelName,
-				"*v1.PodDisruptionBudget": commonv1.TypeLabelName,
-				"*v1.Deployment":          commonv1.TypeLabelName,
-				"*v1.StatefulSet":         commonv1.TypeLabelName,
-				"*v1.DaemonSet":           commonv1.TypeLabelName,
-				"*v1.Secret":              labelScopedExpected,
-				"*v1.Service":             labelScopedExpected,
-				"*v1.ConfigMap":           labelScopedExpected,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
+				reflect.TypeFor[*corev1.Secret]():                labelScopedExpected,
+				reflect.TypeFor[*corev1.Service]():               labelScopedExpected,
+				reflect.TypeFor[*corev1.ConfigMap]():             labelScopedExpected,
 			},
 		},
 	}
@@ -386,11 +388,10 @@ func TestBuildByObject(t *testing.T) {
 			require.Len(t, got, len(tc.expectedLabelQueryByTypeName), "not expected number of items")
 
 			for obj, cnf := range got {
-				kind := reflect.TypeOf(obj).String()
+				tp := reflect.TypeOf(obj)
 				query := cnf.Label.String()
-
-				expected, found := tc.expectedLabelQueryByTypeName[kind]
-				assert.True(t, found, "object not found in expected, %s", kind)
+				expected, found := tc.expectedLabelQueryByTypeName[tp]
+				assert.True(t, found, "object not found in expected, %s", tp.String())
 				assert.Equal(t, expected, query)
 			}
 		})

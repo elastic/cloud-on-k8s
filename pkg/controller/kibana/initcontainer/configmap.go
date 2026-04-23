@@ -34,7 +34,7 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 		kbv1.ScriptsConfigMap(kbName),
 		kbvolume.ScriptsVolumeName,
 		kbvolume.ScriptsVolumeMountPath,
-		0755)
+		0o755)
 }
 
 // ReconcileScriptsConfigMap reconciles the ConfigMap containing scripts used by the Kibana elastic-internal-init container.
