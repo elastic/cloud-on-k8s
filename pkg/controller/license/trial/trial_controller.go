@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -37,12 +38,10 @@ const (
 	trialOnlyOnceMsg  = "trial can be started only once"
 )
 
-var (
-	userFriendlyMsgs = map[licensing.LicenseStatus]string{
-		licensing.LicenseStatusInvalid: "trial license signature invalid",
-		licensing.LicenseStatusExpired: "trial license expired",
-	}
-)
+var userFriendlyMsgs = map[licensing.LicenseStatus]string{
+	licensing.LicenseStatusInvalid: "trial license signature invalid",
+	licensing.LicenseStatusExpired: "trial license expired",
+}
 
 // ReconcileTrials reconciles Enterprise trial licenses.
 type ReconcileTrials struct {
@@ -105,10 +104,12 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 		// valid license, let's consider the trial started and complete the activation
 		return reconcile.Result{}, r.completeTrialActivation(ctx, request.NamespacedName)
 	case trialLicensePopulated && validLicense(licenseStatus) && r.trialState.IsTrialStarted():
-		// all good nothing to do
+		// all good nothing to do, but reconcile in case new labels or annotations are added.
+		_, err = reconciler.ReconcileSecret(ctx, r, secret, nil)
+		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, err
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
@@ -149,10 +150,14 @@ func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName 
 	if err != nil {
 		return err
 	}
-	if reflect.DeepEqual(expected.Data, trialStatus.Data) {
+	if reflect.DeepEqual(expected.Data, trialStatus.Data) &&
+		maps.IsSubset(expected.Labels, trialStatus.Labels) &&
+		maps.IsSubset(expected.Annotations, trialStatus.Annotations) {
 		return nil
 	}
 	trialStatus.Data = expected.Data
+	expected.Labels = maps.Merge(expected.Labels, trialStatus.Labels)
+	expected.Labels = maps.Merge(expected.Annotations, trialStatus.Annotations)
 	return r.Update(ctx, &trialStatus)
 }
 
