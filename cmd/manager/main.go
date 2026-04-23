@@ -1090,6 +1090,7 @@ func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, 
 	if !labelBasedDiscovery {
 		return byObject, nil
 	}
+	log.Info("label based discovery is enabled")
 
 	labelBasedSelector := labels.SelectorFromSet(labels.Set{
 		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
