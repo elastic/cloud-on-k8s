@@ -116,5 +116,6 @@ func UpdateEnterpriseLicense(ctx context.Context, c k8s.Client, secret corev1.Se
 		FileName: bytes,
 	}
 	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
+	secret.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 	return c.Update(ctx, &secret)
 }
