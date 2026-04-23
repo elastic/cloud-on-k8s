@@ -9,6 +9,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// Resources is a shorthand for setting CPU and memory requests and limits on
+// the main application container of a pod-owning CRD. It is a simplified
+// alternative to the nested podTemplate.spec.containers[name=<main>].resources
+// path: any non-nil CPU or memory value in Requests or Limits is written to the
+// main container's resources at reconcile time, overriding any value already
+// present in the PodTemplate for the same key. Non-CPU/memory resource keys
+// (for example ephemeral-storage) and all other container fields set via
+// PodTemplate are preserved as-is.
 type Resources struct {
 	Limits   ResourceAllocations `json:"limits,omitempty"`
 	Requests ResourceAllocations `json:"requests,omitempty"`
