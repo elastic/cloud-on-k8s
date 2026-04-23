@@ -366,7 +366,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.LabelBasedDiscovery,
 		false,
-		"Restrict resource discovery (secrets and services) to labeled resources only. Unlabeled resources are skipped.",
+		"Restrict resource discovery (secrets, services and configmaps) to labeled resources only. Unlabeled resources are skipped.",
 	)
 
 	// hide development mode flags from the usage message
