@@ -17,8 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
@@ -127,12 +129,26 @@ func (d *Driver) maybeResetPausedCondition() {
 	}
 }
 
+// reconcileCriticalStepsWhilePaused runs when pause-orchestration is enabled.
+//
+// Motivation (see https://github.com/elastic/cloud-on-k8s/issues/9250): during node-level maintenance,
+// a concurrent Elasticsearch spec change can otherwise trigger rolling upgrades on top of the drain,
+// compounding disruption. Pausing orchestration narrows the freeze to spec-driven StatefulSet work
+// instead of using managed=false, which would skip all reconciliation (including certs and discovery)
+// and risk cluster degradation over long windows.
+//
+// Shared reconciliation (certs, services, users, health, etc.) has already completed in Reconcile;
+// this path skips reconcileNodeSpecs but still performs StatefulSet-adjacent work: wait on expectations,
+// reconcile the PDB, clear completed restart shutdown records when supported, detect pending spec changes
+// versus the live cluster, and report OrchestrationPaused (with a warning event and periodic requeue
+// when changes are pending).
 func (d *Driver) reconcileCriticalStepsWhilePaused(
 	ctx context.Context,
 	state *shared.ReconcileState,
 	resolvedConfig nodespec.ResolvedConfig,
 	keystoreResources *keystore.Resources,
 ) *reconciler.Results {
+	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	results := &reconciler.Results{}
 	done, reason, err := d.expectationsSatisfied(ctx)
@@ -206,7 +222,7 @@ func hasSpecDiff(ctx context.Context, actualSets, expectedSets es_sset.StatefulS
 	log := ulog.FromContext(ctx)
 
 	if len(actualSets) != len(expectedSets) {
-		log.V(1).Info("Different number of statefulsets found")
+		log.V(1).Info("Different number of statefulsets found", "actual_count", len(actualSets), "expected_count", len(expectedSets))
 		return true
 	}
 
@@ -218,11 +234,15 @@ func hasSpecDiff(ctx context.Context, actualSets, expectedSets es_sset.StatefulS
 	for _, thisSet := range actualSets {
 		thatSet, exists := otherSetsByName[thisSet.Name]
 		if !exists {
-			log.V(1).Info("statefulset does not exist in other sets", "name", thisSet.Name)
+			ssetLogger(ctx, thisSet).V(1).Info("statefulset does not exist in other sets", "statefulset_name", thisSet.Name)
 			return true
 		}
 
 		if !es_sset.EqualTemplateHashLabels(thatSet, thisSet) {
+			ssetLogger(ctx, thisSet).V(1).Info("statefulset template hash differs",
+				"statefulset_name", thisSet.Name,
+				"expected_hash", hash.GetTemplateHashLabel(thatSet.Labels),
+				"actual_hash", hash.GetTemplateHashLabel(thisSet.Labels))
 			return true
 		}
 	}

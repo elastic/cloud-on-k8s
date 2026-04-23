@@ -15,7 +15,8 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -25,12 +26,14 @@ import (
 const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
+	managedFalseDeprecationWarningMsg           = "eck.k8s.elastic.co/managed is deprecated, use eck.k8s.elastic.co/pause-orchestration instead"
 )
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
 	validZoneAwarenessAffinityWarnings,
 	statelessNodeRolesWarning,
+	managedFalseDeprecationWarning,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
@@ -42,13 +45,23 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
 }
 
+// managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
+func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
+	if es.Annotations[common.ManagedAnnotation] != "false" {
+		return nil
+	}
+	return field.ErrorList{field.Invalid(
+		field.NewPath("metadata").Child("annotations").Key(common.ManagedAnnotation),
+		"false", managedFalseDeprecationWarningMsg)}
+}
+
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
 			continue
 		}
-		config, err := common.NewCanonicalConfigFrom(nodeSet.Config.Data)
+		config, err := commonsettings.NewCanonicalConfigFrom(nodeSet.Config.Data)
 		if err != nil {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
@@ -58,7 +71,7 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList {
+func validateSettings(config *commonsettings.CanonicalConfig, index int) field.ErrorList {
 	var errs field.ErrorList
 	unsupported := config.HasKeys(esv1.UnsupportedSettings)
 	for _, setting := range unsupported {
@@ -71,7 +84,7 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 // validateClientAuthentication reports mandatory HTTP client authentication
 // (value "required") as a Forbidden field error so admission surfaces it as a
 // warning, not a denial.
-func validateClientAuthentication(config *common.CanonicalConfig, index int) field.ErrorList {
+func validateClientAuthentication(config *commonsettings.CanonicalConfig, index int) field.ErrorList {
 	const forbiddenValue = "required" // we allow 'none' and 'optional' but 'required' is not supported
 
 	var errs field.ErrorList
@@ -159,7 +172,7 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 		}
 		// Since this code path is only used for warnings, we are going to ignore any errors
 		// in this whole block and continue to the next nodeSet.
-		canonicalConfig, err := common.NewCanonicalConfigFrom(userConfig)
+		canonicalConfig, err := commonsettings.NewCanonicalConfigFrom(userConfig)
 		if err != nil {
 			continue
 		}
