@@ -141,6 +141,10 @@ type BeatStatus struct {
 	// controller has not yet processed the changes contained in the Beats specification.
 	// +kubebuilder:validation:Optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Conditions holds the current service state of the agent.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions,omitempty"`
 }
 
 type BeatHealth string
