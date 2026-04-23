@@ -752,7 +752,14 @@ with a zero quantity" (non-nil pointing to a zero value).
 
 ### Resources  [#resources]
 
-
+Resources is a shorthand for setting CPU and memory requests and limits on
+the main application container of a pod-owning CRD. It is a simplified
+alternative to the nested podTemplate.spec.containers[name=<main>].resources
+path: any non-nil CPU or memory value in Requests or Limits is written to the
+main container's resources at reconcile time, overriding any value already
+present in the PodTemplate for the same key. Non-CPU/memory resource keys
+(for example ephemeral-storage) and all other container fields set via
+PodTemplate are preserved as-is.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
@@ -770,7 +777,7 @@ with a zero quantity" (non-nil pointing to a zero value).
 
 | Field | Description |
 | --- | --- |
-| *`limits`* __[ResourceAllocations](#resourceallocations)__ |  |
+| *`limits`* __[ResourceAllocations](#resourceallocations)__ | Use omitzero so a zero-valued Resources (no CPU or memory set) does not<br>serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does<br>not treat a non-pointer struct value as empty, even when all of its fields<br>are nil/zero, so an unset shorthand on one NodeSet would otherwise be<br>persisted as an empty stub when the operator round-trips the CR after<br>updating a sibling NodeSet (for example via the autoscaler). |
 | *`requests`* __[ResourceAllocations](#resourceallocations)__ |  |
 
 
