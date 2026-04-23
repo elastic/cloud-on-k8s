@@ -191,6 +191,7 @@ func (h *helper) initTestContext() error {
 		AutopilotCluster:      isAutopilotCluster(h),
 		ArtefactsDir:          artefactsDir,
 		DatePrefix:            time.Now().UTC().Format("20060102"),
+		LabelBasedDiscovery:   h.labelBasedDiscovery,
 	}
 
 	// Initialize stateless config if enabled (reads bucket config from Secret annotations).

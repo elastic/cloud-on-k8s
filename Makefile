@@ -472,6 +472,8 @@ E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 # Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
 E2E_STATELESS              ?= $(or $(STATELESS),false)
+# Defaults to LABEL_BASED_DISCOVERY env var set by the Buildkite pipeline.
+E2E_LABEL_BASED_DISCOVERY  ?= $(or $(LABEL_BASED_DISCOVERY),false)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -502,7 +504,8 @@ e2e-run: go-generate
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
-		--stateless=$(E2E_STATELESS)
+		--stateless=$(E2E_STATELESS) \
+		--label-based-discovery=$(E2E_LABEL_BASED_DISCOVERY)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
@@ -527,7 +530,8 @@ e2e-local: go-generate
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--label-based-discovery=$(E2E_LABEL_BASED_DISCOVERY)
 
 ##########################
 ##  --   Helpers    --  ##
