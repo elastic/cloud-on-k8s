@@ -37,5 +37,5 @@ func PodTemplateResourcesOverrideWarning(shortPath, templatePath, mainContainer 
 	if !overlap {
 		return ""
 	}
-	return fmt.Sprintf("%s overrides CPU/memory set in %s.spec.containers[] for container %q; remove one source of truth", shortPath, templatePath, mainContainer)
+	return fmt.Sprintf("%s overrides CPU/memory set in %s.spec.containers[name=%q]; remove one source of truth", shortPath, templatePath, mainContainer)
 }

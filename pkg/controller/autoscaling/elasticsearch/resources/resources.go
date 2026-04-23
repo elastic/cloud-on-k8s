@@ -7,7 +7,6 @@ package resources
 import (
 	"fmt"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,8 +41,8 @@ func Match(ntr v1alpha1.NodeSetsResources, nodeSet esv1.NodeSet) (bool, error) {
 			return false, fmt.Errorf("only 1 volume claim template is allowed when autoscaling is enabled, got %d in nodeSet %s", len(nodeSet.VolumeClaimTemplates), nodeSet.Name)
 		}
 
-		currentRequests := resourceAllocationsToResourceList(nodeSet.Resources.Requests)
-		currentLimits := resourceAllocationsToResourceList(nodeSet.Resources.Limits)
+		currentRequests := nodeSet.Resources.Requests.ToResourceList()
+		currentLimits := nodeSet.Resources.Limits.ToResourceList()
 		return ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Requests, currentRequests) &&
 			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Requests, currentRequests) &&
 			ResourceEqual(corev1.ResourceMemory, ntr.NodeResources.Limits, currentLimits) &&
@@ -72,21 +71,4 @@ func ResourceEqual(resourceName corev1.ResourceName, expected, current corev1.Re
 		return false
 	}
 	return expectedValue.Equal(currentValue)
-}
-
-// resourceAllocationsToResourceList converts NodeSet shorthand CPU/memory allocations into a ResourceList.
-// It intentionally returns nil when both CPU and memory are unset so ResourceEqual can treat
-// absent shorthand allocations as "no expected value".
-func resourceAllocationsToResourceList(allocations commonv1.ResourceAllocations) corev1.ResourceList {
-	if allocations.CPU == nil && allocations.Memory == nil {
-		return nil
-	}
-	resources := make(corev1.ResourceList, 2)
-	if allocations.CPU != nil {
-		resources[corev1.ResourceCPU] = *allocations.CPU
-	}
-	if allocations.Memory != nil {
-		resources[corev1.ResourceMemory] = *allocations.Memory
-	}
-	return resources
 }

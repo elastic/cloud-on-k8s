@@ -385,7 +385,7 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
-	// Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+	// Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitempty"`
 

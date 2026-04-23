@@ -770,6 +770,11 @@ spec:
                   PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -781,8 +786,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -795,12 +799,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -812,8 +821,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -826,8 +834,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -1787,6 +1795,11 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -1798,8 +1811,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -1812,12 +1824,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -1829,8 +1846,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -1843,8 +1859,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -2709,6 +2725,11 @@ spec:
                   the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -2720,8 +2741,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -2734,12 +2754,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -2751,8 +2776,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -2765,8 +2789,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3248,11 +3272,16 @@ spec:
                 type: object
               resources:
                 description: |-
-                  Resources provides a shorthand to set CPU and Memory resources on the main Beat container. When set, these
+                  Resources provides a shorthand to set CPU and Memory resources on the Beat container. When set, these
                   values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for
                   the primary Beat container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -3264,8 +3293,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -3278,12 +3306,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -3295,8 +3328,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -3309,8 +3341,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -3979,6 +4011,11 @@ spec:
                   Maps Server container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -3990,8 +4027,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -4004,12 +4040,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -4021,8 +4062,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -4035,8 +4075,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -5123,12 +5163,17 @@ spec:
                     resources:
                       description: Resources specifies the resource requests and limits
                         (CPU and Memory only) for the Elasticsearch nodes in this
-                        NodeSet. When set these override the resource requests and
+                        NodeSet. When set, these override the resource requests and
                         limits set in the PodTemplate for the primary Elasticsearch
                         container. To set the resources for other containers, use
                         the PodTemplate.Spec.Containers[].Resources field.
                       properties:
                         limits:
+                          description: |-
+                            ResourceAllocations holds optional CPU and memory quantities that the
+                            shorthand Resources field applies to the main container's Requests or Limits.
+                            Using pointers lets callers distinguish "no override" (nil) from "override
+                            with a zero quantity" (non-nil pointing to a zero value).
                           properties:
                             cpu:
                               anyOf:
@@ -5140,8 +5185,7 @@ spec:
                                 value already set on the main container in the PodTemplate is passed through
                                 unchanged. Setting this field to nil does not unset a CPU value present in
                                 the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                                Setting this field to the literal "0" sets the override to a zero quantity
-                                and does not clear the PodTemplate's CPU.
+                                A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                             memory:
@@ -5154,12 +5198,17 @@ spec:
                                 any memory value already set on the main container in the PodTemplate is
                                 passed through unchanged. Setting this field to nil does not unset a memory
                                 value present in the PodTemplate; to remove it, edit the PodTemplate's
-                                container resources. Setting this field to the literal "0" sets the override
-                                to a zero quantity and does not clear the PodTemplate's memory.
+                                container resources.
+                                A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
                         requests:
+                          description: |-
+                            ResourceAllocations holds optional CPU and memory quantities that the
+                            shorthand Resources field applies to the main container's Requests or Limits.
+                            Using pointers lets callers distinguish "no override" (nil) from "override
+                            with a zero quantity" (non-nil pointing to a zero value).
                           properties:
                             cpu:
                               anyOf:
@@ -5171,8 +5220,7 @@ spec:
                                 value already set on the main container in the PodTemplate is passed through
                                 unchanged. Setting this field to nil does not unset a CPU value present in
                                 the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                                Setting this field to the literal "0" sets the override to a zero quantity
-                                and does not clear the PodTemplate's CPU.
+                                A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                             memory:
@@ -5185,8 +5233,8 @@ spec:
                                 any memory value already set on the main container in the PodTemplate is
                                 passed through unchanged. Setting this field to nil does not unset a memory
                                 value present in the PodTemplate; to remove it, edit the PodTemplate's
-                                container resources. Setting this field to the literal "0" sets the override
-                                to a zero quantity and does not clear the PodTemplate's memory.
+                                container resources.
+                                A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
@@ -8333,6 +8381,11 @@ spec:
                   Enterprise Search container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -8344,8 +8397,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -8358,12 +8410,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -8375,8 +8432,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -8389,8 +8445,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -9708,6 +9764,11 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -9719,8 +9780,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -9733,12 +9793,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -9750,8 +9815,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -9764,8 +9828,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -10702,6 +10766,11 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -10713,8 +10782,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -10727,12 +10795,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -10744,8 +10817,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -10758,8 +10830,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -12271,6 +12343,11 @@ spec:
                   primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -12282,8 +12359,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -12296,12 +12372,17 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
+                    description: |-
+                      ResourceAllocations holds optional CPU and memory quantities that the
+                      shorthand Resources field applies to the main container's Requests or Limits.
+                      Using pointers lets callers distinguish "no override" (nil) from "override
+                      with a zero quantity" (non-nil pointing to a zero value).
                     properties:
                       cpu:
                         anyOf:
@@ -12313,8 +12394,7 @@ spec:
                           value already set on the main container in the PodTemplate is passed through
                           unchanged. Setting this field to nil does not unset a CPU value present in
                           the PodTemplate; to remove it, edit the PodTemplate's container resources.
-                          Setting this field to the literal "0" sets the override to a zero quantity
-                          and does not clear the PodTemplate's CPU.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -12327,8 +12407,8 @@ spec:
                           any memory value already set on the main container in the PodTemplate is
                           passed through unchanged. Setting this field to nil does not unset a memory
                           value present in the PodTemplate; to remove it, edit the PodTemplate's
-                          container resources. Setting this field to the literal "0" sets the override
-                          to a zero quantity and does not clear the PodTemplate's memory.
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object

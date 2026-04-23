@@ -422,7 +422,7 @@ BeatSpec defines the desired state of a Beat.
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Beat configuration.<br>Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]<br>can be specified. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.<br>Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of<br>each SecureSetting. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
-| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the main Beat container. When set, these<br>values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for<br>the primary Beat container. To set resources on other containers, use the PodTemplate. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Beat container. When set, these<br>values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for<br>the primary Beat container. To set resources on other containers, use the PodTemplate. |
 | *`daemonSet`* __[DaemonSetSpec](#daemonsetspec)__ | DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.<br>Cannot be used along with `deployment`. If both are absent a default for the Type is used. |
 | *`deployment`* __[DeploymentSpec](#deploymentspec)__ | Deployment specifies the Beat should be deployed as a Deployment, and allows providing its spec.<br>Cannot be used along with `daemonSet`. If both are absent a default for the Type is used. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship logs and metrics for this Beat.<br>Metricbeat and/or Filebeat sidecars are configured and send monitoring data to an<br>Elasticsearch monitoring cluster running in the same Kubernetes cluster. |
@@ -734,7 +734,10 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 
 ### ResourceAllocations  [#resourceallocations]
 
-
+ResourceAllocations holds optional CPU and memory quantities that the
+shorthand Resources field applies to the main container's Requests or Limits.
+Using pointers lets callers distinguish "no override" (nil) from "override
+with a zero quantity" (non-nil pointing to a zero value).
 
 :::{admonition} Appears In:
 * [Resources](#resources)
@@ -743,8 +746,8 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 
 | Field | Description |
 | --- | --- |
-| *`cpu`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | CPU overrides the main container's CPU request/limit when the parent Resources<br>is merged into a PodTemplate. A nil value means "do not override": any CPU<br>value already set on the main container in the PodTemplate is passed through<br>unchanged. Setting this field to nil does not unset a CPU value present in<br>the PodTemplate; to remove it, edit the PodTemplate's container resources.<br>Setting this field to the literal "0" sets the override to a zero quantity<br>and does not clear the PodTemplate's CPU. |
-| *`memory`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | Memory overrides the main container's memory request/limit when the parent<br>Resources is merged into a PodTemplate. A nil value means "do not override":<br>any memory value already set on the main container in the PodTemplate is<br>passed through unchanged. Setting this field to nil does not unset a memory<br>value present in the PodTemplate; to remove it, edit the PodTemplate's<br>container resources. Setting this field to the literal "0" sets the override<br>to a zero quantity and does not clear the PodTemplate's memory. |
+| *`cpu`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | CPU overrides the main container's CPU request/limit when the parent Resources<br>is merged into a PodTemplate. A nil value means "do not override": any CPU<br>value already set on the main container in the PodTemplate is passed through<br>unchanged. Setting this field to nil does not unset a CPU value present in<br>the PodTemplate; to remove it, edit the PodTemplate's container resources.<br>A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity. |
+| *`memory`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | Memory overrides the main container's memory request/limit when the parent<br>Resources is merged into a PodTemplate. A nil value means "do not override":<br>any memory value already set on the main container in the PodTemplate is<br>passed through unchanged. Setting this field to nil does not unset a memory<br>value present in the PodTemplate; to remove it, edit the PodTemplate's<br>container resources.<br>A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity. |
 
 
 ### Resources  [#resources]
@@ -1403,7 +1406,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
-| *`resources`* __[Resources](#resources)__ | Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field. |
+| *`resources`* __[Resources](#resources)__ | Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field. |
 | *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |

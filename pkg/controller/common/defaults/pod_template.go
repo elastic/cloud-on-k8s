@@ -5,6 +5,7 @@
 package defaults
 
 import (
+	maps0 "maps"
 	"slices"
 	"sort"
 
@@ -430,18 +431,14 @@ func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.Resource
 // If a write is required and dst is nil, the destination map is initialized.
 // With no override values, dst is left unchanged.
 func applyCPUAndMemoryOverrides(dst *corev1.ResourceList, overrides commonv1.ResourceAllocations) {
-	if overrides.CPU == nil && overrides.Memory == nil {
+	src := overrides.ToResourceList()
+	if src == nil {
 		return
 	}
 	if *dst == nil {
 		*dst = corev1.ResourceList{}
 	}
-	if overrides.CPU != nil {
-		(*dst)[corev1.ResourceCPU] = *overrides.CPU
-	}
-	if overrides.Memory != nil {
-		(*dst)[corev1.ResourceMemory] = *overrides.Memory
-	}
+	maps0.Copy((*dst), src)
 }
 
 // WithResources sets up the given resource requirements if both resources limits and requests
