@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -114,14 +115,14 @@ func verifyPauseOrchestrationEnabled(k *test.K8sClient, namespace, esName string
 					return fmt.Errorf("annotation %s should be set to true", common.PauseOrchestrationAnnotation)
 				}
 
-				orchestrationPausedIndex := es.Status.Conditions.Index(esv1.OrchestrationPaused)
+				orchestrationPausedIndex := es.Status.Conditions.Index(commonv1alpha1.OrchestrationPaused)
 				if orchestrationPausedIndex < 0 {
-					return fmt.Errorf("%s condition does not exist on Elasticsearch resource", esv1.OrchestrationPaused)
+					return fmt.Errorf("%s condition does not exist on Elasticsearch resource", commonv1alpha1.OrchestrationPaused)
 				}
 
 				orchestrationCondition := es.Status.Conditions[orchestrationPausedIndex]
 				if orchestrationCondition.Status == corev1.ConditionFalse {
-					return fmt.Errorf("condition %s should be true", esv1.OrchestrationPaused)
+					return fmt.Errorf("condition %s should be true", commonv1alpha1.OrchestrationPaused)
 				}
 
 				if specChangesMade {
@@ -182,13 +183,13 @@ func verifyPauseOrchestrationDisabled(k *test.K8sClient, namespace, esName strin
 					return fmt.Errorf("elasticsearch phase should be %s", esv1.ElasticsearchReadyPhase)
 				}
 
-				orchestrationPausedIndex := es.Status.Conditions.Index(esv1.OrchestrationPaused)
+				orchestrationPausedIndex := es.Status.Conditions.Index(commonv1alpha1.OrchestrationPaused)
 				if !previouslyPaused && orchestrationPausedIndex >= 0 {
-					return fmt.Errorf("%s condition should not exist on Elasticsearch resource", esv1.OrchestrationPaused)
+					return fmt.Errorf("%s condition should not exist on Elasticsearch resource", commonv1alpha1.OrchestrationPaused)
 				}
 
 				if orchestrationPausedIndex >= 0 && es.Status.Conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
-					return fmt.Errorf("condition %s should be false", esv1.OrchestrationPaused)
+					return fmt.Errorf("condition %s should be false", commonv1alpha1.OrchestrationPaused)
 				}
 				return nil
 			}),

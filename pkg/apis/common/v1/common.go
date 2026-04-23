@@ -15,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 type DeploymentHealth string
@@ -38,6 +40,9 @@ type DeploymentStatus struct {
 	Version string `json:"version,omitempty"`
 	// Health of the deployment.
 	Health DeploymentHealth `json:"health,omitempty"`
+	// Conditions holds the current service state of the deployment.
+	// +optional
+	Conditions v1alpha1.Conditions `json:"conditions"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -31,6 +32,15 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
+	if common.IsOrchestrationPaused(&ent) {
+		err = deployment.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ent, deploy, &ent.Status.Conditions)
+		if err != nil {
+			return appsv1.Deployment{}, err
+		}
+		return deploy, nil
+	}
+
+	deployment.MaybeResetPausedCondition(&ent.Status.Conditions)
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ent)
 }
 

@@ -9,9 +9,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -92,4 +96,61 @@ func WithTemplateHash(d appsv1.Deployment) appsv1.Deployment {
 	dCopy := *d.DeepCopy()
 	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
 	return dCopy
+}
+
+// HasPendingChanges returns true if the given expected deployment would
+// result in an update to the existing cluster resource.
+func HasPendingChanges(ctx context.Context, c k8s.Client, expected appsv1.Deployment) (bool, error) {
+	expected = WithTemplateHash(expected)
+	var current appsv1.Deployment
+	if err := c.Get(ctx, k8s.ExtractNamespacedName(&expected), &current); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return hash.GetTemplateHashLabel(current.Labels) != hash.GetTemplateHashLabel(expected.Labels), nil
+}
+
+// SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event.
+func SetPausedConditionAndEmitEvent(
+	ctx context.Context,
+	client k8s.Client,
+	recorder toolsevents.EventRecorder,
+	object client.Object,
+	expected appsv1.Deployment,
+	conditions *commonv1alpha1.Conditions,
+) error {
+	hasPending, err := HasPendingChanges(ctx, client, expected)
+	if err != nil {
+		return err
+	}
+	msg := "Orchestration is paused"
+	if hasPending {
+		msg = "Orchestration is paused, spec changes are pending"
+	}
+
+	*conditions = conditions.MergeWith(commonv1alpha1.Condition{
+		Type:               commonv1alpha1.OrchestrationPaused,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Message:            msg,
+	})
+	k8s.EmitEvent(recorder, object, corev1.EventTypeWarning,
+		events.EventReasonPaused, events.EventActionReconciliation, msg)
+	return nil
+}
+
+// MaybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not
+// already exist.
+func MaybeResetPausedCondition(conditions *commonv1alpha1.Conditions) {
+	orchestrationPausedIndex := conditions.Index(commonv1alpha1.OrchestrationPaused)
+	if orchestrationPausedIndex >= 0 {
+		*conditions = conditions.MergeWith(commonv1alpha1.Condition{
+			Type:               commonv1alpha1.OrchestrationPaused,
+			Status:             corev1.ConditionFalse,
+			LastTransitionTime: metav1.Now(),
+			Message:            "Orchestration has resumed normally",
+		})
+	}
 }
