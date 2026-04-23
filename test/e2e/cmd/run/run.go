@@ -19,7 +19,7 @@ import (
 	"text/template"
 	"time"
 
-	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -497,8 +497,8 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestsLocally() error {
-	log.Info("Running local test script", "timeout", h.testTimeout.String())
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+	log.Info("Running local test script. Ctrl+C to cancel")
+	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr
