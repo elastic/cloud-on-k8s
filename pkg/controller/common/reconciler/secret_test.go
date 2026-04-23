@@ -32,9 +32,13 @@ const (
 )
 
 var (
-	sampleData        = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
-	sampleDataUpdated = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
-	sampleLabels      = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleData           = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
+	sampleDataUpdated    = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
+	sampleLabels         = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleLabelsExpected = map[string]string{
+		"label1": "value1", "label2": "value2",
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	}
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
 
@@ -72,25 +76,25 @@ func TestReconcileSecret(t *testing.T) {
 			name:     "actual object does not exist: create the expected one",
 			c:        k8s.NewFakeClient(),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "actual matches expected: do nothing",
-			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "data should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
 			expected: createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "label and annotations should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, nil, nil))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name: "preserve existing labels and annotations",
@@ -152,6 +156,12 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 	sampleSecret := createSecret("s", sampleData, sampleLabels, sampleAnnotations)
 	sampleLabelsWithSoftOwnerRef := concatMaps(sampleLabels, expectedSoftOwnerLabels)
 	sampleSecretWithSoftOwnerRef := createSecret("s", sampleData, sampleLabelsWithSoftOwnerRef, sampleAnnotations)
+
+	sampleExpectedLabelsWithSoftOwnerRef := concatMaps(sampleLabelsWithSoftOwnerRef, map[string]string{
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	})
+	sampleSecretWithSoftOwnerRefExpected := createSecret("s", sampleData, sampleExpectedLabelsWithSoftOwnerRef, sampleAnnotations)
+
 	tests := []struct {
 		name      string
 		c         k8s.Client
@@ -164,28 +174,28 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 			c:         k8s.NewFakeClient(),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name:      "actual matches expected: do nothing",
-			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
+			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRefExpected),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name:      "data should be updated",
 			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
 			expected:  createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
 			softOwner: softOwner,
-			want:      createSecret("s", sampleDataUpdated, sampleLabelsWithSoftOwnerRef, sampleAnnotations),
+			want:      createSecret("s", sampleDataUpdated, sampleExpectedLabelsWithSoftOwnerRef, sampleAnnotations),
 		},
 		{
 			name:      "label and annotations should be updated",
 			c:         k8s.NewFakeClient(createSecret("s", sampleData, nil, nil)),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name: "preserve existing labels and annotations",
@@ -211,7 +221,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 			c:         k8s.NewFakeClient(addOwner(addOwner(sampleSecret, softOwner.Name, softOwner.UID), "unrelated-owner", "unrelated-owner-id")),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      addOwner(sampleSecretWithSoftOwnerRef, "unrelated-owner", "unrelated-owner-id"),
+			want:      addOwner(sampleSecretWithSoftOwnerRefExpected, "unrelated-owner", "unrelated-owner-id"),
 		},
 	}
 	for _, tt := range tests {
