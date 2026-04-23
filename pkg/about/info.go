@@ -8,6 +8,7 @@ import (
 	"context"
 	"strings"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,18 +25,16 @@ const (
 	UUIDCfgMapKey = "uuid"
 )
 
-var (
-	// lookup of valid distribution channels
-	knownDistributionChannels = map[string]struct{}{
-		"all-in-one":                   {},
-		"helm":                         {},
-		"upstream-community-operators": {},
-		"community-operators":          {},
-		"certified-operators":          {},
-		"ironbank":                     {},
-		"image":                        {},
-	}
-)
+// lookup of valid distribution channels
+var knownDistributionChannels = map[string]struct{}{
+	"all-in-one":                   {},
+	"helm":                         {},
+	"upstream-community-operators": {},
+	"community-operators":          {},
+	"certified-operators":          {},
+	"ironbank":                     {},
+	"image":                        {},
+}
 
 var defaultOperatorNamespaces = []string{"elastic-system"}
 
@@ -132,6 +131,9 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: operatorNs,
 				Name:      UUIDCfgMapName,
+				Labels: map[string]string{
+					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+				},
 			},
 			Data: map[string]string{
 				UUIDCfgMapKey: string(newUUID),
