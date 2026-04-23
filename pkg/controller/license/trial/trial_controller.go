@@ -156,8 +156,8 @@ func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName 
 		return nil
 	}
 	trialStatus.Data = expected.Data
-	expected.Labels = maps.Merge(expected.Labels, trialStatus.Labels)
-	expected.Annotations = maps.Merge(expected.Annotations, trialStatus.Annotations)
+	trialStatus.Labels = maps.Merge(trialStatus.Labels, expected.Labels)
+	trialStatus.Annotations = maps.Merge(trialStatus.Annotations, expected.Annotations)
 	return r.Update(ctx, &trialStatus)
 }
 
