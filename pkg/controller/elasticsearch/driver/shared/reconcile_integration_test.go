@@ -347,8 +347,8 @@ func TestReconcileSharedResources(t *testing.T) {
 				services.ExternalServiceName(clusterName): newService(&baseStatefulElasticsearch, external, "1"),
 				services.InternalServiceName(clusterName): newService(&baseStatefulElasticsearch, internal, "1"),
 			},
-			expectedCerts: buildExpectedCertData(baseStatefulElasticsearch, 0),
-			expectedSecrets:    mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
+			expectedCerts:   buildExpectedCertData(baseStatefulElasticsearch, 0),
+			expectedSecrets: mustBuildExpectedSecrets(t, &baseStatefulElasticsearch, "1"),
 			expectedConfigMaps: func() map[string]corev1.ConfigMap {
 				defaultConfigMaps := mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer)
 				delete(defaultConfigMaps, esv1.UnicastHostsConfigMap(clusterName))
