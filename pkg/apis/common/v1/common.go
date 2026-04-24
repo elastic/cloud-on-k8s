@@ -330,6 +330,48 @@ func (e ElasticsearchSelector) WithDefaultNamespace(defaultNamespace string) Ela
 	}
 }
 
+var _ AssociationRef = (*FleetServerSelector)(nil)
+
+// FleetServerSelector defines a reference to a Fleet Server managed by the operator
+// or a Secret describing an external Fleet Server not managed by the operator.
+type FleetServerSelector struct {
+	ObjectSelector `json:",inline"`
+
+	// ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+	// (tls.crt) and private key (tls.key) for client authentication to the referenced Fleet Server.
+	// This field is only relevant when the referenced Fleet Server has client authentication enabled.
+	// If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
+	// client certificate.
+	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
+}
+
+// GetClientCertificateSecretName returns the name of the client certificate secret.
+func (f FleetServerSelector) GetClientCertificateSecretName() string {
+	return f.ClientCertificateSecretName
+}
+
+// IsValid validates the FleetServerSelector, including the embedded ObjectSelector.
+func (f FleetServerSelector) IsValid() error {
+	if err := f.ObjectSelector.IsValid(); err != nil {
+		return err
+	}
+	if f.Name == "" && f.ClientCertificateSecretName != "" {
+		return errors.New("clientCertificateSecretName can only be used in combination with name")
+	}
+	return nil
+}
+
+// WithDefaultNamespace adds a default namespace to a given FleetServerSelector if none is set.
+func (f FleetServerSelector) WithDefaultNamespace(defaultNamespace string) FleetServerSelector {
+	if len(f.Namespace) > 0 {
+		return f
+	}
+	return FleetServerSelector{
+		ObjectSelector:              f.ObjectSelector.WithDefaultNamespace(defaultNamespace),
+		ClientCertificateSecretName: f.ClientCertificateSecretName,
+	}
+}
+
 // HTTPConfig holds the HTTP layer configuration for resources.
 type HTTPConfig struct {
 	// Service defines the template for the associated Kubernetes Service object.

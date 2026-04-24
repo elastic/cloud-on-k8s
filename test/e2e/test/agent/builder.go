@@ -409,6 +409,11 @@ func (b Builder) WithFleetServer() Builder {
 	return b
 }
 
+func (b Builder) WithClientAuthenticationRequired() Builder {
+	b.Agent.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
 func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	b.Agent.Spec.KibanaRef = ref
 
@@ -416,7 +421,14 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 }
 
 func (b Builder) WithFleetServerRef(ref commonv1.ObjectSelector) Builder {
-	b.Agent.Spec.FleetServerRef = ref
+	b.Agent.Spec.FleetServerRef.ObjectSelector = ref
+
+	return b
+}
+
+func (b Builder) WithFleetServerRefWithClientCert(ref commonv1.ObjectSelector, clientCertSecretName string) Builder {
+	b.Agent.Spec.FleetServerRef.ObjectSelector = ref
+	b.Agent.Spec.FleetServerRef.ClientCertificateSecretName = clientCertSecretName
 
 	return b
 }

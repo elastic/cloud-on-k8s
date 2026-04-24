@@ -58,10 +58,11 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 	optional := false
 
 	for _, tt := range []struct {
-		name        string
-		params      Params
-		fleetCerts  *certificates.CertificatesSecret
-		wantPodSpec corev1.PodSpec
+		name               string
+		params             Params
+		fleetCerts         *certificates.CertificatesSecret
+		clientAuthRequired bool
+		wantPodSpec        corev1.PodSpec
 	}{
 		{
 			name: "running older versions of Elastic Agent in Fleet mode",
@@ -358,12 +359,12 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 					},
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: true,
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{TLSOptions: commonv1.TLSOptions{
 								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 									Disabled: true,
 								},
-							},
+							}},
 						},
 					},
 				},
@@ -441,12 +442,156 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 				return ps
 			}),
 		},
+		{
+			name: "running elastic agent, with fleet server, with client auth required",
+			params: Params{
+				AgentVersion: version.MinFor(9, 0, 0),
+				Agent: agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "default",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+					},
+				},
+				Client: k8s.NewFakeClient(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent-agent-http",
+						Namespace: "default",
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name: "https",
+								Port: 8220,
+							},
+						},
+					},
+				}),
+			},
+			fleetCerts:         fleetCertsFixture,
+			clientAuthRequired: true,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = []corev1.Volume{
+					{
+						Name: "fleet-certs",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "fleet-certs-secret-name",
+								Optional:   &optional,
+							},
+						},
+					},
+					{
+						Name: FleetServerClientTrustBundleVolumeName,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: certificates.ClientCertTrustBundleSecretName(Namer, "agent"),
+								Optional:   &optional,
+							},
+						},
+					},
+					{
+						Name: FleetServerInternalClientCertVolumeName,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: certificates.OperatorClientCertSecretName(Namer, "agent"),
+								Optional:   &optional,
+							},
+						},
+					},
+				}
+
+				ps.Containers[0].VolumeMounts = []corev1.VolumeMount{
+					{
+						Name:      "fleet-certs",
+						ReadOnly:  true,
+						MountPath: "/usr/share/fleet-server/config/http-certs",
+					},
+					{
+						Name:      FleetServerClientTrustBundleVolumeName,
+						ReadOnly:  true,
+						MountPath: FleetServerClientTrustBundleMountPath,
+					},
+					{
+						Name:      FleetServerInternalClientCertVolumeName,
+						ReadOnly:  true,
+						MountPath: FleetServerInternalClientCertMountPath,
+					},
+				}
+
+				ps.Containers[0].Ports = []corev1.ContainerPort{
+					{
+						Name:          "https",
+						ContainerPort: 8220,
+						Protocol:      corev1.ProtocolTCP,
+					},
+				}
+
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{
+						Name:  "ELASTIC_AGENT_CERT",
+						Value: path.Join(FleetServerInternalClientCertMountPath, certificates.CertFileName),
+					},
+					{
+						Name:  "ELASTIC_AGENT_CERT_KEY",
+						Value: path.Join(FleetServerInternalClientCertMountPath, certificates.KeyFileName),
+					},
+					{
+						Name:  "FLEET_CA",
+						Value: path.Join(FleetServerClientTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName),
+					},
+					{
+						Name:  "FLEET_SERVER_CERT",
+						Value: "/usr/share/fleet-server/config/http-certs/tls.crt",
+					},
+					{
+						Name:  "FLEET_SERVER_CERT_KEY",
+						Value: "/usr/share/fleet-server/config/http-certs/tls.key",
+					},
+					{
+						Name:  "FLEET_SERVER_CLIENT_AUTH",
+						Value: "required",
+					},
+					{
+						Name:  "FLEET_SERVER_ENABLE",
+						Value: "true",
+					},
+					{
+						Name:  "FLEET_URL",
+						Value: "https://agent-agent-http.default.svc:8220",
+					},
+					{
+						Name:  "STATE_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+					{
+						Name:  "CONFIG_PATH",
+						Value: "/usr/share/elastic-agent/state",
+					},
+				}
+
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+
+				return ps
+			}),
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
 			hash := sha256.New224()
 
-			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, tt.fleetCerts, EnrollmentAPIKey{}, builder, hash, "")
+			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, tt.fleetCerts, EnrollmentAPIKey{}, builder, hash, "", tt.clientAuthRequired)
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
@@ -461,7 +606,7 @@ func Test_applyEnvVars(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			FleetServerEnabled: false,
 			KibanaRef:          commonv1.ObjectSelector{Name: "kb", Namespace: "default"},
-			FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "default"},
+			FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs", Namespace: "default"}},
 		},
 	}
 
@@ -488,7 +633,7 @@ func Test_applyEnvVars(t *testing.T) {
 	})
 
 	agent2.Spec.FleetServerEnabled = true
-	agent2.Spec.FleetServerRef = commonv1.ObjectSelector{}
+	agent2.Spec.FleetServerRef = commonv1.FleetServerSelector{}
 	agent2.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "es-secret-name",
 		AuthSecretKey:  "es-user",
@@ -691,7 +836,7 @@ func Test_applyEnvVars(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBuilder, err := applyEnvVars(tt.params, tt.fleetToken, tt.fleetCerts, tt.podTemplateBuilder)
+			gotBuilder, err := applyEnvVars(tt.params, tt.fleetToken, tt.fleetCerts, tt.podTemplateBuilder, false)
 
 			require.NoError(t, err)
 
@@ -733,7 +878,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 								OutputName: "default",
 							},
 						},
-						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet"}},
 					},
 				},
 			},
@@ -757,7 +902,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					Spec: agentv1alpha1.AgentSpec{
 						Mode:           agentv1alpha1.AgentFleetMode,
 						KibanaRef:      commonv1.ObjectSelector{Name: "kibana"},
-						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet"}},
 					},
 				},
 			},
@@ -785,7 +930,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 								OutputName: "default",
 							},
 						},
-						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet"}},
 					},
 				},
 			},
@@ -868,7 +1013,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
-						FleetServerRef:     commonv1.ObjectSelector{Name: "fs"},
+						FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs"}},
 					},
 				},
 				Context: context.Background(),
@@ -886,7 +1031,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
-						FleetServerRef:     commonv1.ObjectSelector{Name: "fs"},
+						FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs"}},
 					},
 				},
 				Context: context.Background(),
@@ -1356,10 +1501,10 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 				Namespace: "ns",
 			},
 			Spec: agentv1alpha1.AgentSpec{
-				FleetServerRef: commonv1.ObjectSelector{
+				FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{
 					Name:      "fleet-server",
 					Namespace: "ns",
-				},
+				}},
 			},
 		},
 	}
@@ -1376,10 +1521,10 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 				Namespace: "ns",
 			},
 			Spec: agentv1alpha1.AgentSpec{
-				FleetServerRef: commonv1.ObjectSelector{
+				FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{
 					Name:      "fleet-server",
 					Namespace: "ns",
-				},
+				}},
 			},
 		},
 	}
@@ -1396,10 +1541,10 @@ func Test_getFleetSetupFleetEnvVars(t *testing.T) {
 				Namespace: "ns",
 			},
 			Spec: agentv1alpha1.AgentSpec{
-				FleetServerRef: commonv1.ObjectSelector{
+				FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{
 					Name:      "fleet-server",
 					Namespace: "ns",
-				},
+				}},
 				KibanaRef: commonv1.ObjectSelector{
 					Name:      "kibana",
 					Namespace: "ns",
@@ -1631,11 +1776,12 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 	})
 
 	for _, tt := range []struct {
-		name        string
-		agent       agentv1alpha1.Agent
-		wantErr     bool
-		wantEnvVars map[string]string
-		client      k8s.Client
+		name               string
+		agent              agentv1alpha1.Agent
+		clientAuthRequired bool
+		wantErr            bool
+		wantEnvVars        map[string]string
+		client             k8s.Client
 	}{
 		{
 			name:        "fleet server disabled",
@@ -1759,9 +1905,29 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 				},
 			}),
 		},
+		{
+			name: "fleet server enabled, client auth required",
+			agent: agentv1alpha1.Agent{
+				Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+				},
+			},
+			clientAuthRequired: true,
+			wantErr:            false,
+			wantEnvVars: map[string]string{
+				"FLEET_SERVER_ENABLE":      "true",
+				"FLEET_SERVER_CERT":        path.Join(FleetCertsMountPath, certificates.CertFileName),
+				"FLEET_SERVER_CERT_KEY":    path.Join(FleetCertsMountPath, certificates.KeyFileName),
+				"FLEET_CA":                 path.Join(FleetServerClientTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName),
+				"FLEET_SERVER_CLIENT_AUTH": "required",
+				"ELASTIC_AGENT_CERT":       path.Join(FleetServerInternalClientCertMountPath, certificates.CertFileName),
+				"ELASTIC_AGENT_CERT_KEY":   path.Join(FleetServerInternalClientCertMountPath, certificates.KeyFileName),
+			},
+			client: nil,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.client)(tt.agent)
+			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.client, tt.clientAuthRequired)(tt.agent)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
@@ -1805,7 +1971,7 @@ func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: true,
-						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+						FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs", Namespace: "ns"}},
 					},
 				},
 			},
@@ -1828,7 +1994,7 @@ func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
-						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+						FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs", Namespace: "ns"}},
 					},
 				},
 			},
@@ -1845,7 +2011,7 @@ func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
 				Agent: agentv1alpha1.Agent{
 					Spec: agentv1alpha1.AgentSpec{
 						FleetServerEnabled: false,
-						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+						FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fs", Namespace: "ns"}},
 					},
 				},
 			},

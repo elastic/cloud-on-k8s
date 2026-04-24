@@ -85,6 +85,10 @@ metadata:
   name: fleet-server
 spec:
   version: 9.3.2
+  http:
+    tls:
+      client:
+        authentication: true
   kibanaRef:
     name: kibana
   elasticsearchRefs:
