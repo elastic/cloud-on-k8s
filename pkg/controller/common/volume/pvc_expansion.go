@@ -13,7 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -52,8 +52,8 @@ func HandleVolumeExpansion(
 		return false, err
 	}
 
-	// resize all PVCs that can be resized
-	err := resizePVCs(ctx, k8sClient, owner, expectedSset, actualSset)
+	// resize all PVCs that can be resized and propagate expected VCT labels to existing PVCs
+	err := updatePVCs(ctx, k8sClient, owner, expectedSset, actualSset)
 	if err != nil {
 		return false, err
 	}
@@ -66,17 +66,21 @@ func HandleVolumeExpansion(
 	return false, nil
 }
 
-// ResizePVCs updates the spec of all existing PVCs whose storage requests can be expanded,
-// according to their storage class and what's specified in the expected claim.
+// updatePVCs updates the spec and labels of all existing PVCs so that:
+//   - storage requests are expanded to match the expected claim when the storage class
+//     supports it (existing behavior).
+//   - labels set on the expected VolumeClaimTemplate are propagated to each PVC,
+//     without removing labels managed by the operator or by the user.
+//
 // It returns an error if the requested storage size is incompatible with the PVC.
-func resizePVCs(
+func updatePVCs(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	owner client.Object,
 	expectedSset appsv1.StatefulSet,
 	actualSset appsv1.StatefulSet,
 ) error {
-	// match each existing PVC with an expected claim, and decide whether the PVC should be resized
+	// match each existing PVC with an expected claim, and decide whether the PVC should be updated
 	actualPVCs, err := sset.RetrieveActualPVCs(k8sClient, actualSset)
 	if err != nil {
 		return err
@@ -87,27 +91,60 @@ func resizePVCs(
 			continue
 		}
 		for _, pvc := range pvcs {
+			mutated := false
+
 			storageCmp := k8s.CompareStorageRequests(pvc.Spec.Resources, expectedClaim.Spec.Resources)
-			if !storageCmp.Increase {
-				// not an increase, nothing to do
+			if storageCmp.Increase {
+				accessor := apimeta.NewAccessor()
+				ownerName, _ := accessor.Name(owner)
+
+				newSize := expectedClaim.Spec.Resources.Requests.Storage()
+				ulog.FromContext(ctx).Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
+					"Pods may need to be manually deleted for the filesystem to be resized.",
+					"namespace", pvc.Namespace, "name", ownerName, "pvc_name", pvc.Name,
+					"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
+
+				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
+				mutated = true
+			}
+
+			if syncPVCLabels(&pvc, expectedClaim.Labels) {
+				mutated = true
+			}
+
+			if !mutated {
 				continue
 			}
-			accessor := meta.NewAccessor()
-			name, _ := accessor.Name(owner)
-
-			newSize := expectedClaim.Spec.Resources.Requests.Storage()
-			ulog.FromContext(ctx).Info("Resizing PVC storage requests. Depending on the volume provisioner, "+
-				"Pods may need to be manually deleted for the filesystem to be resized.",
-				"namespace", pvc.Namespace, "name", name, "pvc_name", pvc.Name,
-				"old_value", pvc.Spec.Resources.Requests.Storage().String(), "new_value", newSize.String())
-
-			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
 			if err := k8sClient.Update(ctx, &pvc); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// syncPVCLabels sets labels from expected onto pvc, overwriting any existing value
+// for each key. It returns true if pvc.Labels was modified.
+//
+// Labels already present on the PVC but not in expected are preserved: the PVC may
+// carry operator-managed labels (e.g. cluster-name, statefulset-name) and/or labels
+// set out of band by the user, and we must not delete them.
+func syncPVCLabels(pvc *corev1.PersistentVolumeClaim, expected map[string]string) bool {
+	if len(expected) == 0 {
+		return false
+	}
+	if pvc.Labels == nil {
+		pvc.Labels = make(map[string]string, len(expected))
+	}
+	mutated := false
+	for k, v := range expected {
+		if current, ok := pvc.Labels[k]; ok && current == v {
+			continue
+		}
+		pvc.Labels[k] = v
+		mutated = true
+	}
+	return mutated
 }
 
 // AnnotateForRecreation stores the StatefulSet spec with updated storage requirements
@@ -280,7 +317,7 @@ func updatePodOwners(ctx context.Context, k8sClient k8s.Client, owner client.Obj
 
 // removePodOwner removes any reference to the resource from the Pods, that was set in updatePodOwners.
 func removePodOwner(ctx context.Context, k8sClient k8s.Client, owner client.Object, ownerKind string, statefulSet appsv1.StatefulSet) error {
-	accessor := meta.NewAccessor()
+	accessor := apimeta.NewAccessor()
 	name, _ := accessor.Name(owner)
 	namespace, _ := accessor.Namespace(owner)
 	UID, err := accessor.UID(owner)
@@ -323,7 +360,7 @@ func updatePods(ctx context.Context, k8sClient k8s.Client, label string, statefu
 }
 
 func namespacedNameFromObject(owner client.Object) types.NamespacedName {
-	accessor := meta.NewAccessor()
+	accessor := apimeta.NewAccessor()
 	name, err := accessor.Name(owner)
 	if err != nil {
 		name = "-"
@@ -338,7 +375,7 @@ func namespacedNameFromObject(owner client.Object) types.NamespacedName {
 }
 
 func setAnnotation(owner client.Object, annotationKey string, annotationValue string) error {
-	accessor := meta.NewAccessor()
+	accessor := apimeta.NewAccessor()
 	annotations, err := accessor.Annotations(owner)
 
 	if err != nil {
@@ -356,7 +393,7 @@ func setAnnotation(owner client.Object, annotationKey string, annotationValue st
 }
 
 func deleteAnnotation(owner client.Object, annotation string) error {
-	accessor := meta.NewAccessor()
+	accessor := apimeta.NewAccessor()
 	annotations, err := accessor.Annotations(owner)
 
 	if err != nil {
@@ -378,7 +415,7 @@ func deleteAnnotation(owner client.Object, annotation string) error {
 // ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
 // in the parent component resource.
 func ssetsToRecreate(owner client.Object, ownerKind string) (map[string]appsv1.StatefulSet, error) {
-	accessor := meta.NewAccessor()
+	accessor := apimeta.NewAccessor()
 	annotations, err := accessor.Annotations(owner)
 	if err != nil {
 		return nil, err

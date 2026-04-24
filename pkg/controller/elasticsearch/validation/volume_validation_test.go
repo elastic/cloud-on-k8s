@@ -52,6 +52,17 @@ func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName strin
 	return *c
 }
 
+func withLabels(claim corev1.PersistentVolumeClaim, labels map[string]string) corev1.PersistentVolumeClaim {
+	c := claim.DeepCopy()
+	c.ObjectMeta.Labels = labels
+	return *c
+}
+
+func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
+	sc.AllowVolumeExpansion = ptr.To[bool](true)
+	return &sc
+}
+
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
@@ -194,6 +205,132 @@ func Test_validPVCModification(t *testing.T) {
 				validateStorageClass: true,
 			},
 			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/7910
+			name: "add label to claim: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(sampleClaim, map[string]string{"velero.io/exclude-from-backup": "true"}),
+						sampleClaim2,
+					}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/7910
+			name: "modify existing label on claim: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(sampleClaim, map[string]string{"team": "platform"}),
+						sampleClaim2,
+					}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(sampleClaim, map[string]string{"team": "search"}),
+						sampleClaim2,
+					}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withLabels(sampleClaim, map[string]string{"team": "platform"}),
+							sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/7910
+			name: "remove all labels from claim: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(sampleClaim, map[string]string{"team": "platform"}),
+						sampleClaim2,
+					}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withLabels(sampleClaim, map[string]string{"team": "platform"}),
+							sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/7910
+			name: "add label and increase storage in the same change: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(withStorageReq(sampleClaim, "3Gi"), map[string]string{"velero.io/exclude-from-backup": "true"}),
+						sampleClaim2,
+					}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					withVolumeExpansion(sampleStorageClass),
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/7910
+			name: "label change combined with forbidden storageClassName change: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						withLabels(withStorageClass(sampleClaim, "different-sc"), map[string]string{"team": "platform"}),
+						sampleClaim2,
+					}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, sampleClaim2,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
 		},
 		{
 			// https://github.com/elastic/cloud-on-k8s/issues/6796

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,6 +69,83 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	c := claim.DeepCopy()
 	c.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(size)
 	return *c
+}
+
+func withLabels(claim corev1.PersistentVolumeClaim, labels map[string]string) corev1.PersistentVolumeClaim {
+	c := claim.DeepCopy()
+	if c.Labels == nil {
+		c.Labels = map[string]string{}
+	}
+	maps.Copy(c.Labels, labels)
+	return *c
+}
+
+func Test_syncPVCLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		pvc      corev1.PersistentVolumeClaim
+		expected map[string]string
+		wantPVC  corev1.PersistentVolumeClaim
+		wantDiff bool
+	}{
+		{
+			name:     "nil expected: no change",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			expected: nil,
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			wantDiff: false,
+		},
+		{
+			name:     "empty expected: no change",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			expected: map[string]string{},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			wantDiff: false,
+		},
+		{
+			name:     "add new label",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			expected: map[string]string{"b": "2"},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1", "b": "2"}}},
+			wantDiff: true,
+		},
+		{
+			name:     "add label to nil labels map",
+			pvc:      corev1.PersistentVolumeClaim{},
+			expected: map[string]string{"b": "2"},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"b": "2"}}},
+			wantDiff: true,
+		},
+		{
+			name:     "update existing label value",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			expected: map[string]string{"a": "updated"},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "updated"}}},
+			wantDiff: true,
+		},
+		{
+			name:     "existing labels not in expected are preserved",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"preserved": "yes", "a": "old"}}},
+			expected: map[string]string{"a": "new"},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"preserved": "yes", "a": "new"}}},
+			wantDiff: true,
+		},
+		{
+			name:     "label already matches expected: no diff",
+			pvc:      corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			expected: map[string]string{"a": "1"},
+			wantPVC:  corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"a": "1"}}},
+			wantDiff: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pvc := *tt.pvc.DeepCopy()
+			got := syncPVCLabels(&pvc, tt.expected)
+			require.Equal(t, tt.wantDiff, got)
+			require.Equal(t, tt.wantPVC.Labels, pvc.Labels)
+		})
+	}
 }
 
 func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
@@ -187,6 +265,55 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 			},
 			runtimeObjs:  append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), &sampleStorageClass), // no expansion
 			expectedPVCs: pvcsWithSize("3Gi", "3Gi", "3Gi"),                                       // still resized
+			wantRecreate: true,
+			wantErr:      false,
+		},
+		{
+			// label-only VCT change: no storage diff, no recreate, but PVCs should pick up the new labels.
+			name: "label-only VCT change is propagated to existing PVCs",
+			args: args{
+				expectedSset: func() appsv1.StatefulSet {
+					labeled := *sset.DeepCopy()
+					labeled.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
+					return labeled
+				}(),
+				actualSset:           sset,
+				validateStorageClass: true,
+			},
+			runtimeObjs: append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
+			expectedPVCs: func() []corev1.PersistentVolumeClaim {
+				out := pvcsWithSize("1Gi", "1Gi", "1Gi")
+				for i := range out {
+					out[i].Labels = map[string]string{"team": "search"}
+				}
+				return out
+			}(),
+			wantRecreate: false,
+			wantErr:      false,
+		},
+		{
+			// combined storage increase + label change: both propagate to existing PVCs and sset is recreated.
+			name: "storage increase with VCT label change propagates both",
+			args: args{
+				expectedSset: func() appsv1.StatefulSet {
+					labeled := *resizedSset.DeepCopy()
+					labeled.Spec.VolumeClaimTemplates[0] = withLabels(
+						withStorageReq(sampleClaim, "3Gi"),
+						map[string]string{"team": "search"},
+					)
+					return labeled
+				}(),
+				actualSset:           sset,
+				validateStorageClass: true,
+			},
+			runtimeObjs: append(pvcPtrs(pvcsWithSize("1Gi", "1Gi", "1Gi")), withVolumeExpansion(sampleStorageClass)),
+			expectedPVCs: func() []corev1.PersistentVolumeClaim {
+				out := pvcsWithSize("3Gi", "3Gi", "3Gi")
+				for i := range out {
+					out[i].Labels = map[string]string{"team": "search"}
+				}
+				return out
+			}(),
 			wantRecreate: true,
 			wantErr:      false,
 		},

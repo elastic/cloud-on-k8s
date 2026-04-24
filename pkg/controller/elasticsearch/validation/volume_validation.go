@@ -105,10 +105,10 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
 		if currentNodeSet != nil {
-			// Check that no modification was made to the claims, except on storage requests.
+			// Check that no modification was made to the claims, except on storage requests and labels.
 			if !apiequality.Semantic.DeepEqual(
-				claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
-				claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
+				claimsWithoutAdjustableFields(currentNodeSet.VolumeClaimTemplates),
+				claimsWithoutAdjustableFields(proposedNodeSet.VolumeClaimTemplates),
 			) {
 				errs = append(errs, field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
@@ -170,12 +170,15 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 	return nil
 }
 
-// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
-func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+// claimsWithoutAdjustableFields returns a copy of the given claims, with all known adjustable fields set to the empty quantity.
+func claimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
+		// Quantity is allowed to be adjusted.
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		// Labels are allowed to be adjusted.
+		patchedClaim.ObjectMeta.Labels = map[string]string{}
 		result = append(result, patchedClaim)
 	}
 	return result
