@@ -20,6 +20,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
+	// AgentContainerName is the name of the main Elastic Agent container in the pod.
+	AgentContainerName = "agent"
 	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
@@ -59,6 +61,12 @@ type AgentSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the Agent container. When set, these
+	// values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet
+	// PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment` or `statefulSet`.

@@ -30,6 +30,7 @@ const (
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
+	shorthandResourcesOverrideWarning,
 	validZoneAwarenessAffinityWarnings,
 	statelessNodeRolesWarning,
 	managedFalseDeprecationWarning,
@@ -42,6 +43,35 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 		return nil
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
+}
+
+// shorthandResourcesOverrideWarning emits one warning per NodeSet where the
+// shorthand spec.nodeSets[i].resources CPU/memory values overlap with resources
+// already set on the Elasticsearch container in spec.nodeSets[i].podTemplate.
+// Shorthand values take precedence at reconciliation time, so overlap means the
+// PodTemplate values are silently shadowed; the warning prompts the user to
+// pick one source of truth.
+func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
+	var out field.ErrorList
+	for i := range es.Spec.NodeSets {
+		nodeSet := es.Spec.NodeSets[i]
+		warning := commonv1.PodTemplateResourcesOverrideWarning(
+			fmt.Sprintf("spec.nodeSets[%d].resources", i),
+			fmt.Sprintf("spec.nodeSets[%d].podTemplate", i),
+			esv1.ElasticsearchContainerName,
+			nodeSet.Resources,
+			nodeSet.PodTemplate,
+		)
+		if warning == "" {
+			continue
+		}
+		out = append(out, field.Invalid(
+			field.NewPath("spec").Child("nodeSets").Index(i).Child("resources"),
+			nodeSet.Resources,
+			warning,
+		))
+	}
+	return out
 }
 
 // managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.

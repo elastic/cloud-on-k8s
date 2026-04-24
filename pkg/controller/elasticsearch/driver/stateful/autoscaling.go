@@ -14,7 +14,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-// autoscaledResourcesSynced checks that the autoscaler controller has updated the resources
+// autoscaledResourcesSynced checks that the autoscaler controller has updated NodeSet resources
 // when autoscaling is enabled. This is to avoid situations where resources have been manually
 // deleted or replaced by an external event. The Elasticsearch controller should then wait for
 // the Elasticsearch autoscaling controller to update again the resources in the NodeSets.
@@ -59,7 +59,7 @@ func (d *Driver) autoscaledResourcesSynced(ctx context.Context, es esv1.Elastics
 			)
 			return false, nil
 		}
-		inSync, err := resources.Match(expectedNodeSetsResources, esv1.ElasticsearchContainerName, nodeSet)
+		inSync, err := resources.Match(expectedNodeSetsResources, nodeSet)
 		if err != nil {
 			return false, err
 		}

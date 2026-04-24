@@ -19,8 +19,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
-// reconcileElasticsearch updates the resources in the NodeSets of an Elasticsearch spec according to the NodeSetsResources
-// computed by the autoscaling algorithm. It also updates the autoscaling status annotation.
+// reconcileElasticsearch updates Elasticsearch NodeSets according to autoscaling recommendations.
+// It updates NodeSet count and CPU/memory shorthand resources, adjusts storage when needed, and
+// removes any CPU/memory entries the previous operator may have written to the main container in
+// the NodeSet pod template.
 func reconcileElasticsearch(
 	log logr.Logger,
 	es *esv1.Elasticsearch,
@@ -36,20 +38,28 @@ func reconcileElasticsearch(
 			continue
 		}
 
-		container, containers := removeContainer(esv1.ElasticsearchContainerName, es.Spec.NodeSets[i].PodTemplate.Spec.Containers)
-		// Create a copy to compare if some changes have been made.
-		currentContainer := container.DeepCopy()
-		if container == nil {
-			container = &corev1.Container{
-				Name: esv1.ElasticsearchContainerName,
-			}
+		// Compute the next shorthand resources. During operator upgrades from versions that wrote
+		// autoscaled CPU/memory only in the PodTemplate container resources, this progressively
+		// converges NodeSet.Resources to the autoscaler recommendation.
+		currentResources := es.Spec.NodeSets[i].Resources
+		nextResources := nodeSetResources.NodeResources.ToNodeSetResourcesWith(currentResources)
+
+		// Strip CPU/memory entries from the main container in the pod template. Autoscaler-managed
+		// NodeSets must have a single source of truth (NodeSet.Resources) for CPU/memory; leaving
+		// stale values in the PodTemplate causes the validating webhook to emit an admission warning
+		// on every reconcile of an existing autoscaled cluster.
+		podTemplateChanged := stripAutoscaledResourcesFromPodTemplate(&es.Spec.NodeSets[i])
+
+		// Only write to the NodeSet when something changed so the upstream Client.Update call
+		// (in the controller) is a no-op and does not dirty the Elasticsearch custom resource
+		// unnecessarily on every reconcile.
+		if es.Spec.NodeSets[i].Count != nodeSetResources.NodeCount ||
+			!apiequality.Semantic.DeepEqual(currentResources, nextResources) ||
+			podTemplateChanged {
+			es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
+			es.Spec.NodeSets[i].Resources = nextResources
+			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
-
-		// Update desired count
-		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
-
-		// Update CPU and Memory requirements
-		container.Resources = nodeSetResources.ToContainerResourcesWith(container.Resources)
 
 		// Update storage
 		if nodeSetResources.HasRequest(corev1.ResourceStorage) {
@@ -59,17 +69,41 @@ func reconcileElasticsearch(
 			}
 			es.Spec.NodeSets[i].VolumeClaimTemplates = nextStorage
 		}
-
-		// Add the container to other containers
-		containers = append(containers, *container)
-		// Update the NodeSet
-		es.Spec.NodeSets[i].PodTemplate.Spec.Containers = containers
-
-		if !apiequality.Semantic.DeepEqual(currentContainer, container) {
-			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
-		}
 	}
 	return nil
+}
+
+// stripAutoscaledResourcesFromPodTemplate removes CPU and memory entries from the Elasticsearch
+// main container's Resources in the NodeSet pod template, returning true if anything was changed.
+// Non-CPU/memory keys and ResourceClaims are preserved. Empty Requests/Limits maps are reset to
+// nil so the LimitRange escape hatch in defaults.WithResourcesAndOverrides is not accidentally
+// triggered by leftover empty-but-non-nil maps.
+func stripAutoscaledResourcesFromPodTemplate(nodeSet *esv1.NodeSet) bool {
+	changed := false
+	for i := range nodeSet.PodTemplate.Spec.Containers {
+		container := &nodeSet.PodTemplate.Spec.Containers[i]
+		if container.Name != esv1.ElasticsearchContainerName {
+			continue
+		}
+		for _, key := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+			if _, ok := container.Resources.Requests[key]; ok {
+				delete(container.Resources.Requests, key)
+				changed = true
+			}
+			if _, ok := container.Resources.Limits[key]; ok {
+				delete(container.Resources.Limits, key)
+				changed = true
+			}
+		}
+		if len(container.Resources.Requests) == 0 && container.Resources.Requests != nil {
+			container.Resources.Requests = nil
+		}
+		if len(container.Resources.Limits) == 0 && container.Resources.Limits != nil {
+			container.Resources.Limits = nil
+		}
+		break
+	}
+	return changed
 }
 
 func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {
@@ -96,15 +130,4 @@ func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.Node
 	}
 	volumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = storageQuantity
 	return []corev1.PersistentVolumeClaim{*volumeClaimTemplate}, nil
-}
-
-// removeContainer remove a container from a slice and return the removed container if found.
-func removeContainer(name string, containers []corev1.Container) (*corev1.Container, []corev1.Container) {
-	for i, container := range containers {
-		if container.Name == name {
-			// Remove the container
-			return &container, append(containers[:i], containers[i+1:]...)
-		}
-	}
-	return nil, containers
 }

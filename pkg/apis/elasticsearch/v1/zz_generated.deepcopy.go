@@ -511,6 +511,7 @@ func (in *NodeSet) DeepCopyInto(out *NodeSet) {
 		in, out := &in.Config, &out.Config
 		*out = (*in).DeepCopy()
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.ZoneAwareness != nil {
 		in, out := &in.ZoneAwareness, &out.ZoneAwareness
 		*out = new(ZoneAwareness)

@@ -175,6 +175,7 @@ func (in *AgentSpec) DeepCopyInto(out *AgentSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.DaemonSet != nil {
 		in, out := &in.DaemonSet, &out.DaemonSet
 		*out = new(DaemonSetSpec)

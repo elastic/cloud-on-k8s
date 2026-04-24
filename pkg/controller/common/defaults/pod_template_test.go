@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 var varFalse = false
@@ -1229,6 +1231,42 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 				Limits: map[corev1.ResourceName]resource.Quantity{},
 			},
 		},
+		{
+			name: "resource claims only: apply default requests/limits without dropping claims",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "my-claim"},
+								},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU: resource.MustParse("1"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "my-claim"},
+				},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU: resource.MustParse("1"),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1236,6 +1274,322 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 			if got := b.WithResources(tt.defaultResources).containerDefaulter.Container().Resources; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
+	containerName := "default-container"
+	cpuOverride := resource.MustParse("200m")
+	memoryOverride := resource.MustParse("6Gi")
+	defaultResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+	}
+
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		overrides   commonv1.Resources
+		want        corev1.ResourceRequirements
+	}{
+		{
+			name: "limits-only pod template keeps requests nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "requests-only pod template keeps limits nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "explicit empty maps are preserved",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits:   corev1.ResourceList{},
+								Requests: corev1.ResourceList{},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits:   corev1.ResourceList{},
+				Requests: corev1.ResourceList{},
+			},
+		},
+		{
+			name: "requests override initializes missing requests map only when needed",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU: &cpuOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: cpuOverride,
+				},
+			},
+		},
+		{
+			name: "no pod template resources and no overrides uses full defaults",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			want: defaultResources,
+		},
+		{
+			name: "no pod template resources and partial override skips defaults and leaves untouched side nil",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "shorthand limits only with empty pod template keeps requests nil for Guaranteed QoS",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "shorthand requests only with empty pod template keeps limits nil",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "non-CPU/memory resource keys preserved when applying overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:                     resource.MustParse("100m"),
+									corev1.ResourceMemory:                  resource.MustParse("512Mi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
+									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:                     resource.MustParse("500m"),
+									corev1.ResourceMemory:                  resource.MustParse("1Gi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
+									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:                     cpuOverride,
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
+					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:                     resource.MustParse("500m"),
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
+					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+				},
+			},
+		},
+		{
+			name: "resource claims only in pod template: defaults merged in without dropping claims",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "gpu-claim", Request: "gpu"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "gpu-claim", Request: "gpu"},
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("500m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		},
+		{
+			name: "resource claims only in pod template: shorthand applied without defaults and claims preserved",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "gpu-claim", Request: "gpu"},
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU: &cpuOverride,
+				},
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "gpu-claim", Request: "gpu"},
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: cpuOverride,
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.podTemplate, containerName)
+			got := b.WithResourcesAndOverrides(defaultResources, tt.overrides).MainContainer().Resources
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

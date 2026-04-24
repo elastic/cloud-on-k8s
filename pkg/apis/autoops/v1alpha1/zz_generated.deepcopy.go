@@ -77,6 +77,7 @@ func (in *AutoOpsAgentPolicySpec) DeepCopyInto(out *AutoOpsAgentPolicySpec) {
 	in.ResourceSelector.DeepCopyInto(&out.ResourceSelector)
 	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
 	out.AutoOpsRef = in.AutoOpsRef
+	in.Resources.DeepCopyInto(&out.Resources)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
