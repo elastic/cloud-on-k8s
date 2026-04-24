@@ -234,13 +234,12 @@ func hasSpecDiff(ctx context.Context, actualSets, expectedSets es_sset.StatefulS
 	for _, thisSet := range actualSets {
 		thatSet, exists := otherSetsByName[thisSet.Name]
 		if !exists {
-			ssetLogger(ctx, thisSet).V(1).Info("statefulset does not exist in other sets", "statefulset_name", thisSet.Name)
+			ssetLogger(ctx, thisSet).V(1).Info("statefulset does not exist in other sets")
 			return true
 		}
 
 		if !es_sset.EqualTemplateHashLabels(thatSet, thisSet) {
 			ssetLogger(ctx, thisSet).V(1).Info("statefulset template hash differs",
-				"statefulset_name", thisSet.Name,
 				"expected_hash", hash.GetTemplateHashLabel(thatSet.Labels),
 				"actual_hash", hash.GetTemplateHashLabel(thisSet.Labels))
 			return true
