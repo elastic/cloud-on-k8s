@@ -16,3 +16,5 @@ ANN_KEY="my.domain/annotation" ./annotator.sh ls
 # Remove the my.domain/annotation from all Elastic resources
 ANN_KEY="my.domain/annotation" PAUSE_SECS=10 ./annotator.sh remove
 ```
+
+Usage of this script with the `ANN_KEY` value of `eck.k8s.elastic.co/managed` is deprecated in favor of setting the value of the `eck.k8s.elastic.co/pause-orchestration` annotation.
