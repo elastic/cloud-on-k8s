@@ -448,7 +448,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 						Namespace: "ns-1",
 					},
 					Data: map[string][]byte{
-						"tls.crt": []byte("test-ca-cert"),
+						"tls.crt": []byte("test-server-cert"),
 						"ca.crt":  []byte("test-ca-cert"),
 					},
 				},

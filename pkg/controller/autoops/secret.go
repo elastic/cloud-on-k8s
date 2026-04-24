@@ -58,9 +58,9 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 		return fmt.Errorf("while retrieving http-certs-public secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
-	caCert, ok := sourceSecret.Data[certificates.CertFileName]
+	caCert, ok := sourceSecret.Data[certificates.CAFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping")
+		log.V(1).Info("ca.crt not found in http-certs-public secret, skipping")
 		return nil
 	}
 
