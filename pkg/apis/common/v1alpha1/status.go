@@ -9,6 +9,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// OrchestrationPaused is the condition that is shown when the eck.k8s.elastic.co/pause-orchestration annotation
+	// has or has had been set to true and orchestration has been paused.
+	//
+	// This condition will be True when orchestration is actively paused, False when orchestration has previously been
+	// paused but no longer is, or non-existent if orchestration has never been paused.
+	OrchestrationPaused ConditionType = "OrchestrationPaused"
+)
+
 // Condition represents Elasticsearch resource's condition.
 // **This API is in technical preview and may be changed or removed in a future release.**
 type Condition struct {

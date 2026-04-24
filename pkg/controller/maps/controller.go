@@ -364,6 +364,15 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
+	if common.IsOrchestrationPaused(&ems) {
+		err = deployment.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ems, deploy, &ems.Status.Conditions)
+		if err != nil {
+			return appsv1.Deployment{}, err
+		}
+		return deploy, nil
+	}
+
+	deployment.MaybeResetPausedCondition(&ems.Status.Conditions)
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ems)
 }
 
