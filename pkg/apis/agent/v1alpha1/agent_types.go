@@ -80,7 +80,7 @@ type AgentSpec struct {
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
 	// Mode specifies the runtime mode for the Agent. The configuration can be specified locally through
 	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with
@@ -104,11 +104,11 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
-	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+	// FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.
 	// Don't set unless `mode` is set to `fleet`.
-	// References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
+	// References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported.
 	// +kubebuilder:validation:Optional
-	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
+	FleetServerRef commonv1.FleetServerSelector `json:"fleetServerRef,omitempty"`
 }
 
 type Output struct {
