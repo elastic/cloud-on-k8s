@@ -25,12 +25,14 @@ import (
 const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
+	managedFalseDeprecationWarningMsg           = "eck.k8s.elastic.co/managed is deprecated, use eck.k8s.elastic.co/pause-orchestration instead"
 )
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
 	validZoneAwarenessAffinityWarnings,
 	statelessNodeRolesWarning,
+	managedFalseDeprecationWarning,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
@@ -40,6 +42,17 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 		return nil
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
+}
+
+// managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
+func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
+	// Using common.ManagedAnnotation here creates an import cycle and fails go vet.
+	if value, exists := es.Annotations["eck.k8s.elastic.co/managed"]; exists {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("metadata").Child("annotations").Key("eck.k8s.elastic.co/managed"),
+			value, managedFalseDeprecationWarningMsg)}
+	}
+	return nil
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
