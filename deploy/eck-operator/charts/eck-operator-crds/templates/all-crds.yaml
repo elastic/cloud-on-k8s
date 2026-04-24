@@ -770,13 +770,8 @@ spec:
                   PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -807,11 +802,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -841,9 +833,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -1800,13 +1789,8 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -1837,11 +1821,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -1871,9 +1852,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -2735,13 +2713,8 @@ spec:
                   the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -2772,11 +2745,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -2806,9 +2776,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -3292,13 +3259,8 @@ spec:
                   the primary Beat container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -3329,11 +3291,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -3363,9 +3322,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -4031,13 +3987,8 @@ spec:
                   Maps Server container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -4068,11 +4019,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -4102,9 +4050,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -5194,13 +5139,8 @@ spec:
                         the PodTemplate.Spec.Containers[].Resources field.
                       properties:
                         limits:
-                          description: |-
-                            Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                            serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                            not treat a non-pointer struct value as empty, even when all of its fields
-                            are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                            persisted as an empty stub when the operator round-trips the CR after
-                            updating a sibling NodeSet (for example via the autoscaler).
+                          description: Limits is the shorthand for the main container's
+                            CPU and memory limits.
                           properties:
                             cpu:
                               anyOf:
@@ -5231,11 +5171,8 @@ spec:
                               x-kubernetes-int-or-string: true
                           type: object
                         requests:
-                          description: |-
-                            ResourceAllocations holds optional CPU and memory quantities that the
-                            shorthand Resources field applies to the main container's Requests or Limits.
-                            Using pointers lets callers distinguish "no override" (nil) from "override
-                            with a zero quantity" (non-nil pointing to a zero value).
+                          description: Requests is the shorthand for the main container's
+                            CPU and memory requests.
                           properties:
                             cpu:
                               anyOf:
@@ -5265,9 +5202,6 @@ spec:
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
-                      required:
-                      - limits
-                      - requests
                       type: object
                     tier:
                       description: |-
@@ -8411,13 +8345,8 @@ spec:
                   Enterprise Search container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -8448,11 +8377,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -8482,9 +8408,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -9799,13 +9722,8 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -9836,11 +9754,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -9870,9 +9785,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -10806,13 +10718,8 @@ spec:
                   container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -10843,11 +10750,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -10877,9 +10781,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
@@ -12388,13 +12289,8 @@ spec:
                   primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate.
                 properties:
                   limits:
-                    description: |-
-                      Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-                      serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-                      not treat a non-pointer struct value as empty, even when all of its fields
-                      are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-                      persisted as an empty stub when the operator round-trips the CR after
-                      updating a sibling NodeSet (for example via the autoscaler).
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
                     properties:
                       cpu:
                         anyOf:
@@ -12425,11 +12321,8 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   requests:
-                    description: |-
-                      ResourceAllocations holds optional CPU and memory quantities that the
-                      shorthand Resources field applies to the main container's Requests or Limits.
-                      Using pointers lets callers distinguish "no override" (nil) from "override
-                      with a zero quantity" (non-nil pointing to a zero value).
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
                     properties:
                       cpu:
                         anyOf:
@@ -12459,9 +12352,6 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
-                required:
-                - limits
-                - requests
                 type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain

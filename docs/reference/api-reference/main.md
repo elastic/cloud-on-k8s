@@ -777,8 +777,8 @@ PodTemplate are preserved as-is.
 
 | Field | Description |
 | --- | --- |
-| *`limits`* __[ResourceAllocations](#resourceallocations)__ | Use omitzero so a zero-valued Resources (no CPU or memory set) does not<br>serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does<br>not treat a non-pointer struct value as empty, even when all of its fields<br>are nil/zero, so an unset shorthand on one NodeSet would otherwise be<br>persisted as an empty stub when the operator round-trips the CR after<br>updating a sibling NodeSet (for example via the autoscaler). |
-| *`requests`* __[ResourceAllocations](#resourceallocations)__ |  |
+| *`limits`* __[ResourceAllocations](#resourceallocations)__ | Limits is the shorthand for the main container's CPU and memory limits. |
+| *`requests`* __[ResourceAllocations](#resourceallocations)__ | Requests is the shorthand for the main container's CPU and memory requests. |
 
 
 ### SecretRef  [#secretref]
