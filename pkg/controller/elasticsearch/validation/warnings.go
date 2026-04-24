@@ -46,13 +46,13 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 
 // managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
 func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
-	// Using common.ManagedAnnotation here creates an import cycle and fails CI.
-	if es.Annotations["eck.k8s.elastic.co/managed"] != "false" {
-		return nil
+	// Using common.ManagedAnnotation here creates an import cycle and fails go vet.
+	if value, exists := es.Annotations["eck.k8s.elastic.co/managed"]; exists {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("metadata").Child("annotations").Key("eck.k8s.elastic.co/managed"),
+			value, managedFalseDeprecationWarningMsg)}
 	}
-	return field.ErrorList{field.Invalid(
-		field.NewPath("metadata").Child("annotations").Key("eck.k8s.elastic.co/managed"),
-		"false", managedFalseDeprecationWarningMsg)}
+	return nil
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
