@@ -18,13 +18,21 @@ import (
 // (for example ephemeral-storage) and all other container fields set via
 // PodTemplate are preserved as-is.
 type Resources struct {
-	// Use omitzero so a zero-valued Resources (no CPU or memory set) does not
-	// serialize as `{"limits":{},"requests":{}}`. encoding/json's omitempty does
-	// not treat a non-pointer struct value as empty, even when all of its fields
-	// are nil/zero, so an unset shorthand on one NodeSet would otherwise be
-	// persisted as an empty stub when the operator round-trips the CR after
-	// updating a sibling NodeSet (for example via the autoscaler).
-	Limits   ResourceAllocations `json:"limits,omitzero"`
+	// The omitzero JSON tag below is used (instead of omitempty) because
+	// encoding/json's omitempty does not treat a non-pointer struct value as
+	// empty even when all of its fields are nil. Without omitzero, an unset
+	// shorthand on one NodeSet would be persisted as
+	// `{"limits":{},"requests":{}}` when the operator round-trips the CR after
+	// updating a sibling NodeSet (for example via the autoscaler). Both fields
+	// must also carry +kubebuilder:validation:Optional because controller-gen
+	// infers "optional" from omitempty (or an explicit marker), not from
+	// omitzero.
+
+	// Limits is the shorthand for the main container's CPU and memory limits.
+	// +kubebuilder:validation:Optional
+	Limits ResourceAllocations `json:"limits,omitzero"`
+	// Requests is the shorthand for the main container's CPU and memory requests.
+	// +kubebuilder:validation:Optional
 	Requests ResourceAllocations `json:"requests,omitzero"`
 }
 
