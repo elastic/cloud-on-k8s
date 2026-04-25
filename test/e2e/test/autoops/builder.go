@@ -16,6 +16,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
+// PolicyNameLabelKey is re-exported from the controller package for use in e2e tests.
+const PolicyNameLabelKey = controllerautoops.PolicyNameLabelKey
+
 type Builder struct {
 	AutoOpsAgentPolicy autoopsv1alpha1.AutoOpsAgentPolicy
 	ConfigSecret       corev1.Secret

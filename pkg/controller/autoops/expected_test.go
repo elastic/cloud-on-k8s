@@ -21,7 +21,9 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
@@ -59,6 +61,19 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 	}
 
+	esWithTLSFixtureAndClientAuthenticationEnabled := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-cluster",
+			Namespace: "default",
+			Annotations: map[string]string{
+				annotation.ClientAuthenticationRequiredAnnotation: "true",
+			},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "9.1.0",
+		},
+	}
+
 	type args struct {
 		autoops autoopsv1alpha1.AutoOpsAgentPolicy
 		es      esv1.Elasticsearch
@@ -73,6 +88,14 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			args: args{
 				autoops: autoopsFixture,
 				es:      esFixture,
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment with client auth mounts client cert volume",
+			args: args{
+				autoops: autoopsFixture,
+				es:      esWithTLSFixtureAndClientAuthenticationEnabled,
 			},
 			wantErr: false,
 		},
@@ -201,20 +224,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-volume",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: autoopsv1alpha1.Config(policy.GetName(), es),
-									},
-									DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
-									Optional:    ptr.To(false),
-								},
-							},
-						},
-					},
+					Volumes:                      expectedVolumes(policy, es),
 					AutomountServiceAccountToken: ptr.To(false),
 					Containers: []corev1.Container{
 						{
@@ -232,13 +242,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config-volume",
-									MountPath: "/mnt/config",
-									ReadOnly:  true,
-								},
-							},
+							VolumeMounts: expectedVolumeMounts(es),
 							ReadinessProbe: &corev1.Probe{
 								FailureThreshold:    3,
 								InitialDelaySeconds: 5,
@@ -267,7 +271,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 								{
 									Name:  "AUTOOPS_ES_URL",
-									Value: "http://es-cluster-es-internal-http.default.svc:9200",
+									Value: services.InternalServiceURL(es),
 								},
 								{
 									Name: "AUTOOPS_OTEL_URL",
@@ -330,6 +334,73 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 			},
 		},
 	}
+}
+
+func expectedVolumeMounts(es esv1.Elasticsearch) []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "config-volume",
+			MountPath: "/mnt/config",
+			ReadOnly:  true,
+		},
+	}
+	if es.Spec.HTTP.TLS.Enabled() {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
+			ReadOnly:  true,
+		})
+	}
+	if annotation.HasClientAuthenticationRequired(&es) {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
+			ReadOnly:  true,
+		})
+	}
+	return mounts
+}
+
+func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: autoopsv1alpha1.Config(policy.GetName(), es),
+					},
+					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
+					Optional:    ptr.To(false),
+				},
+			},
+		},
+	}
+	if es.Spec.HTTP.TLS.Enabled() {
+		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
+		volumes = append(volumes, corev1.Volume{
+			Name: fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: caSecretName,
+					Optional:   ptr.To(false),
+				},
+			},
+		})
+	}
+	if annotation.HasClientAuthenticationRequired(&es) {
+		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+		volumes = append(volumes, corev1.Volume{
+			Name: fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientCertSecretName,
+					Optional:   ptr.To(false),
+				},
+			},
+		})
+	}
+	return volumes
 }
 
 func Test_readinessProbe(t *testing.T) {
