@@ -71,11 +71,16 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	}
 	checkResults()
 
+	expectedLabels := map[string]string{
+		"foo":                                 "bar",
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	}
 	labelsWithSoftOwner := map[string]string{
-		"foo":                              "bar",
-		reconciler.SoftOwnerKindLabel:      obj.Kind,
-		reconciler.SoftOwnerNamespaceLabel: obj.Namespace,
-		reconciler.SoftOwnerNameLabel:      obj.Name,
+		"foo":                                 "bar",
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		reconciler.SoftOwnerKindLabel:         obj.Kind,
+		reconciler.SoftOwnerNamespaceLabel:    obj.Namespace,
+		reconciler.SoftOwnerNameLabel:         obj.Name,
 	}
 
 	// the 3 secrets should have been created in the apiserver,
@@ -87,7 +92,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, caCerts.Data, 2)
 		require.NotEmpty(t, caCerts.Data[CertFileName])
 		require.NotEmpty(t, caCerts.Data[KeyFileName])
-		require.Equal(t, testLabels, caCerts.Labels)
+		require.Equal(t, expectedLabels, caCerts.Labels)
 
 		var internalCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
@@ -96,7 +101,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, internalCerts.Data[CAFileName])
 		require.NotEmpty(t, internalCerts.Data[CertFileName])
 		require.NotEmpty(t, internalCerts.Data[KeyFileName])
-		require.Equal(t, testLabels, internalCerts.Labels)
+		require.Equal(t, expectedLabels, internalCerts.Labels)
 
 		var publicCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)

@@ -269,37 +269,42 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 				t.Errorf("buildAutoOpsESConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				policy := tt.args.policy()
-				es := tt.args.es()
-				// Validate ConfigMap structure
-				expectedName := autoopsv1alpha1.Config(policy.GetName(), es)
-				if got.Name != expectedName {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap name = %v, want %v", got.Name, expectedName)
-				}
-				if got.Namespace != policy.GetNamespace() {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap namespace = %v, want %v", got.Namespace, policy.GetNamespace())
-				}
-				configYAML, exists := got.Data[autoOpsESConfigFileName]
-				if !exists {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap missing key %v", autoOpsESConfigFileName)
-					return
-				}
+			if tt.wantErr {
+				return
+			}
 
-				// Parse both configs for comparison
-				var gotCfg map[string]any
-				gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
-				require.NoError(t, err)
-				require.NoError(t, gotParsed.Unpack(&gotCfg))
+			if l := got.Labels[commonv1.LabelBasedDiscoveryLabelName]; l != commonv1.LabelBasedDiscoveryLabelValue {
+				t.Errorf("expected to have the discovery label and it does not. Value = %s", l)
+			}
+			policy := tt.args.policy()
+			es := tt.args.es()
+			// Validate ConfigMap structure
+			expectedName := autoopsv1alpha1.Config(policy.GetName(), es)
+			if got.Name != expectedName {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap name = %v, want %v", got.Name, expectedName)
+			}
+			if got.Namespace != policy.GetNamespace() {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap namespace = %v, want %v", got.Namespace, policy.GetNamespace())
+			}
+			configYAML, exists := got.Data[autoOpsESConfigFileName]
+			if !exists {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap missing key %v", autoOpsESConfigFileName)
+				return
+			}
 
-				var wantCfg map[string]any
-				wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
-				require.NoError(t, err)
-				require.NoError(t, wantParsed.Unpack(&wantCfg))
+			// Parse both configs for comparison
+			var gotCfg map[string]any
+			gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
+			require.NoError(t, err)
+			require.NoError(t, gotParsed.Unpack(&gotCfg))
 
-				if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
-					t.Errorf("buildAutoOpsESConfigMap() config mismatch: %v", diff)
-				}
+			var wantCfg map[string]any
+			wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
+			require.NoError(t, err)
+			require.NoError(t, wantParsed.Unpack(&wantCfg))
+
+			if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
+				t.Errorf("buildAutoOpsESConfigMap() config mismatch: %v", diff)
 			}
 		})
 	}

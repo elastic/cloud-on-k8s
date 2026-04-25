@@ -363,6 +363,11 @@ func Command() *cobra.Command {
 		"auto-detect",
 		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods and Kibana 7.10+ Pods. Possible values: true, false, auto-detect",
 	)
+	cmd.Flags().Bool(
+		operator.LabelBasedDiscovery,
+		false,
+		"Restrict resource discovery (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
+	)
 
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
@@ -600,28 +605,16 @@ func startOperator(ctx context.Context) error {
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 	}
 
-	// cache filters
-	req, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
+	byObject, err := buildByObject(viper.GetBool(operator.LabelBasedDiscovery))
 	if err != nil {
-		log.Error(err, "Failed to create cache label filter")
+		log.Error(err, "Failed to build cache option ByObject")
 		return err
 	}
-	selector := labels.NewSelector().Add(*req)
 
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
 		DefaultTransform:  cache.TransformStripManagedFields(),
-		ByObject: map[client.Object]cache.ByObject{
-			// Only resource types exclusively created by ECK (always carrying
-			// common.k8s.elastic.co/type) can be filtered here.
-			// The rest of the resources (such as Service, ConfigMap, and Secret)
-			// are excluded because ECK also watches user-provided instances of these types.
-			&corev1.Pod{}:                   {Label: selector},
-			&policyv1.PodDisruptionBudget{}: {Label: selector},
-			&appsv1.Deployment{}:            {Label: selector},
-			&appsv1.StatefulSet{}:           {Label: selector},
-			&appsv1.DaemonSet{}:             {Label: selector},
-		},
+		ByObject:          byObject,
 	}
 	for _, ns := range managedNamespaces {
 		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
@@ -1072,4 +1065,39 @@ func fipsLog() {
 	}
 
 	log.Info("operator runs without FIPS mode")
+}
+
+func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, error) {
+	// cache filter for ECK owned resources (carrying the common.k8s.elastic.co/type label)
+	commonTypeExists, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
+	if err != nil {
+		return nil, err
+	}
+	eckOwnedSelector := labels.NewSelector().Add(*commonTypeExists)
+
+	byObject := map[client.Object]cache.ByObject{
+		// Only resource types exclusively created by ECK (always carrying
+		// common.k8s.elastic.co/type) can be filtered here.
+		// The rest of the resources (such as Service, ConfigMap, and Secret)
+		// are excluded because ECK also watches user-provided instances of these types.
+		&corev1.Pod{}:                   {Label: eckOwnedSelector},
+		&policyv1.PodDisruptionBudget{}: {Label: eckOwnedSelector},
+		&appsv1.Deployment{}:            {Label: eckOwnedSelector},
+		&appsv1.StatefulSet{}:           {Label: eckOwnedSelector},
+		&appsv1.DaemonSet{}:             {Label: eckOwnedSelector},
+	}
+
+	if !labelBasedDiscovery {
+		return byObject, nil
+	}
+	log.Info("label based discovery is enabled")
+
+	labelBasedSelector := labels.SelectorFromSet(labels.Set{
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	})
+	byObject[&corev1.Secret{}] = cache.ByObject{Label: labelBasedSelector}
+	byObject[&corev1.Service{}] = cache.ByObject{Label: labelBasedSelector}
+	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: labelBasedSelector}
+
+	return byObject, nil
 }

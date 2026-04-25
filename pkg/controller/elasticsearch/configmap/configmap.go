@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 
@@ -59,6 +60,9 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(es),
 		},
 	}
+
+	scriptsConfigMap.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+
 	return reconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }
 

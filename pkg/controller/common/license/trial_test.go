@@ -16,6 +16,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 func TestInitTrialLicense(t *testing.T) {
@@ -278,6 +280,9 @@ func TestExpectedTrialStatus(t *testing.T) {
 						TrialLicenseSecretName:      "name",
 						TrialLicenseSecretNamespace: "ns",
 					},
+					Labels: map[string]string{
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+					},
 				},
 				Data: map[string][]byte{
 					TrialPubkeyKey:     pubKey,
@@ -300,6 +305,9 @@ func TestExpectedTrialStatus(t *testing.T) {
 					Annotations: map[string]string{
 						TrialLicenseSecretName:      "name",
 						TrialLicenseSecretNamespace: "ns",
+					},
+					Labels: map[string]string{
+						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 					},
 				},
 				Data: map[string][]byte{

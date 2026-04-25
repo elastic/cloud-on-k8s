@@ -184,6 +184,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns1",
@@ -405,6 +406,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es1",
 						},
 						Namespace: "ns1",
@@ -424,6 +426,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns2",
@@ -443,6 +446,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es3",
 						},
 						Namespace: "ns3",
@@ -460,6 +464,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es4",
 						},
 						Namespace: "ns4",
@@ -646,6 +651,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns2",

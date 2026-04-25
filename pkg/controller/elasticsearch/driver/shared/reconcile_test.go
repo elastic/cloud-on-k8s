@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -107,6 +108,30 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
 			wantSecretCreated: true,
+			wantRequeue:       false,
+			wantErr:           false,
+		},
+		{
+			name: "No policies exist - empty secret already exists with missing label",
+			es: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "default",
+					Labels: map[string]string{
+						"app": "elasticsearch",
+					},
+				},
+			},
+			existingSecrets: []corev1.Secret{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      esv1.FileSettingsSecretName("test-es"),
+						Namespace: "default",
+					},
+				},
+			},
+			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
+			wantSecretCreated: true, // technically not created but we want the secret found
 			wantRequeue:       false,
 			wantErr:           false,
 		},
@@ -368,6 +393,8 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 
 			if tt.wantSecretCreated {
 				assert.NoError(t, secretErr, "expected no error at getting file-settings secret")
+				// secret should eventually end up having the watch label.
+				assert.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, secret.Labels[commonv1.LabelBasedDiscoveryLabelName])
 			} else {
 				assert.True(t, apierrors.IsNotFound(secretErr), "expected IsNotFound error at getting file-settings secret")
 			}

@@ -61,7 +61,7 @@ func BuildImmutableConfigMap(baseName, namespace string, data map[string]string,
 	fullHash := ComputeStringContentHash(data)
 	name := ImmutableName(baseName, fullHash)
 
-	cmLabels := make(map[string]string, len(labels)+2)
+	cmLabels := make(map[string]string, len(labels)+3)
 	maps.Copy(cmLabels, labels)
 	cmLabels[ConfigTypeLabelName] = ConfigTypeImmutable
 	cmLabels[ConfigHashLabelName] = ShortHash(fullHash, hashLabelLen)

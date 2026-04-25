@@ -95,8 +95,9 @@ func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedN
 			Name:      nsn.Name,
 			Namespace: nsn.Namespace,
 			Labels: map[string]string{
-				commonv1.TypeLabelName: Type,
-				LicenseLabelType:       string(LicenseTypeEnterpriseTrial),
+				commonv1.TypeLabelName:                Type,
+				LicenseLabelType:                      string(LicenseTypeEnterpriseTrial),
+				commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
 			},
 			Annotations: map[string]string{
 				EULAAnnotation: EULAAcceptedValue,
@@ -115,5 +116,6 @@ func UpdateEnterpriseLicense(ctx context.Context, c k8s.Client, secret corev1.Se
 		FileName: bytes,
 	}
 	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
+	secret.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
 	return c.Update(ctx, &secret)
 }

@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -31,9 +32,13 @@ const (
 )
 
 var (
-	sampleData        = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
-	sampleDataUpdated = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
-	sampleLabels      = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleData           = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
+	sampleDataUpdated    = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
+	sampleLabels         = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleLabelsExpected = map[string]string{
+		"label1": "value1", "label2": "value2",
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	}
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
 
@@ -71,25 +76,25 @@ func TestReconcileSecret(t *testing.T) {
 			name:     "actual object does not exist: create the expected one",
 			c:        k8s.NewFakeClient(),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "actual matches expected: do nothing",
-			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "data should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
 			expected: createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "label and annotations should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, nil, nil))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name: "preserve existing labels and annotations",
@@ -101,6 +106,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
 				}, map[string]string{
 					"existing":    "existing",                        // keep existing
 					"annotation1": "value1", "annotation2": "value2", // add expected
@@ -150,6 +156,12 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 	sampleSecret := createSecret("s", sampleData, sampleLabels, sampleAnnotations)
 	sampleLabelsWithSoftOwnerRef := concatMaps(sampleLabels, expectedSoftOwnerLabels)
 	sampleSecretWithSoftOwnerRef := createSecret("s", sampleData, sampleLabelsWithSoftOwnerRef, sampleAnnotations)
+
+	sampleExpectedLabelsWithSoftOwnerRef := concatMaps(sampleLabelsWithSoftOwnerRef, map[string]string{
+		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	})
+	sampleSecretWithSoftOwnerRefExpected := createSecret("s", sampleData, sampleExpectedLabelsWithSoftOwnerRef, sampleAnnotations)
+
 	tests := []struct {
 		name      string
 		c         k8s.Client
@@ -162,28 +174,28 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 			c:         k8s.NewFakeClient(),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name:      "actual matches expected: do nothing",
-			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
+			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRefExpected),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name:      "data should be updated",
 			c:         k8s.NewFakeClient(sampleSecretWithSoftOwnerRef),
 			expected:  createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
 			softOwner: softOwner,
-			want:      createSecret("s", sampleDataUpdated, sampleLabelsWithSoftOwnerRef, sampleAnnotations),
+			want:      createSecret("s", sampleDataUpdated, sampleExpectedLabelsWithSoftOwnerRef, sampleAnnotations),
 		},
 		{
 			name:      "label and annotations should be updated",
 			c:         k8s.NewFakeClient(createSecret("s", sampleData, nil, nil)),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      sampleSecretWithSoftOwnerRef,
+			want:      sampleSecretWithSoftOwnerRefExpected,
 		},
 		{
 			name: "preserve existing labels and annotations",
@@ -196,6 +208,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 				concatMaps(expectedSoftOwnerLabels, map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
 				}),
 				map[string]string{
 					"existing":    "existing",                        // keep existing
@@ -208,7 +221,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 			c:         k8s.NewFakeClient(addOwner(addOwner(sampleSecret, softOwner.Name, softOwner.UID), "unrelated-owner", "unrelated-owner-id")),
 			expected:  sampleSecret,
 			softOwner: softOwner,
-			want:      addOwner(sampleSecretWithSoftOwnerRef, "unrelated-owner", "unrelated-owner-id"),
+			want:      addOwner(sampleSecretWithSoftOwnerRefExpected, "unrelated-owner", "unrelated-owner-id"),
 		},
 	}
 	for _, tt := range tests {
@@ -256,7 +269,8 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 			SoftOwnerNameLabel:      ownerName,
 			SoftOwnerNamespaceLabel: ownerNs,
 			SoftOwnerKindLabel:      ownerKind,
-		}}}
+		}},
+	}
 }
 
 func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.Secret {
@@ -265,7 +279,8 @@ func ownedSecretMultiRefs(namespace, name, ownerRefs, ownerKind string) *corev1.
 			SoftOwnerKindLabel: ownerKind,
 		}, Annotations: map[string]string{
 			SoftOwnerRefsAnnotation: ownerRefs,
-		}}}
+		}},
+	}
 }
 
 func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
@@ -286,7 +301,8 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 		{
 			name: "gc soft-owned secret",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs:     nil,
@@ -294,38 +310,46 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 		{
 			name: "don't gc secret with no owner label",
 			existingSecrets: []client.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}}},
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}},
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}}},
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sampleOwner().Namespace, Name: sampleOwner().Name}},
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different name",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, "another-name", sampleOwner().Kind),
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different namespace",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 		},
 		{
 			name: "don't gc secret pointing to a soft owner with a different kind",
 			existingSecrets: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind")},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind"),
+			},
 			deletedOwner: k8s.ExtractNamespacedName(sampleOwner()),
 			ownerKind:    "Secret",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind")},
+				ownedSecret("ns", "secret-1", sampleOwner().Namespace, sampleOwner().Name, "another-kind"),
+			},
 		},
 		{
 			name: "2 secrets to gc out of 5 secrets",
@@ -353,7 +377,8 @@ func TestGarbageCollectSoftOwnedSecrets(t *testing.T) {
 			deletedOwner: types.NamespacedName{Name: sampleOwner().Name, Namespace: "another-namespace"},
 			ownerKind:    "StackConfigPolicy",
 			wantObjs: []client.Object{
-				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind)},
+				ownedSecret("ns", "secret-1", "another-namespace", sampleOwner().Name, sampleOwner().Kind),
+			},
 		},
 	}
 	for _, tt := range tests {

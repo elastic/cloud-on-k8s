@@ -7,10 +7,14 @@ package manager
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,6 +26,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -35,7 +40,8 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 			reconciler.SoftOwnerNameLabel:      ownerName,
 			reconciler.SoftOwnerNamespaceLabel: ownerNs,
 			reconciler.SoftOwnerKindLabel:      ownerKind,
-		}}}
+		}},
+	}
 }
 
 //nolint:thelper
@@ -268,7 +274,8 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 			},
 			true,
 			false,
-		}, {
+		},
+		{
 			"false set, returning no error, will not set security context",
 			args{
 				"false",
@@ -276,7 +283,8 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 			},
 			false,
 			false,
-		}, {
+		},
+		{
 			"invalid bool set, returns error",
 			args{
 				"invalid",
@@ -336,4 +344,56 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 		discovery: discoveryClient,
 	}
 	return client
+}
+
+func TestBuildByObject(t *testing.T) {
+	labelScopedExpected := commonv1.LabelBasedDiscoveryLabelName + `=true`
+
+	tests := []struct {
+		name                         string
+		labelBasedDiscovery          bool
+		expectedLabelQueryByTypeName map[reflect.Type]string
+	}{
+		{
+			name:                "without label scope",
+			labelBasedDiscovery: false,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
+			},
+		},
+		{
+			name:                "with label scope",
+			labelBasedDiscovery: true,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
+				reflect.TypeFor[*corev1.Secret]():                labelScopedExpected,
+				reflect.TypeFor[*corev1.Service]():               labelScopedExpected,
+				reflect.TypeFor[*corev1.ConfigMap]():             labelScopedExpected,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := buildByObject(tc.labelBasedDiscovery)
+			require.NoError(t, err)
+			require.Len(t, got, len(tc.expectedLabelQueryByTypeName), "not expected number of items")
+
+			for obj, cnf := range got {
+				tp := reflect.TypeOf(obj)
+				query := cnf.Label.String()
+				expected, found := tc.expectedLabelQueryByTypeName[tp]
+				assert.True(t, found, "object not found in expected, %s", tp.String())
+				assert.Equal(t, expected, query)
+			}
+		})
+	}
 }

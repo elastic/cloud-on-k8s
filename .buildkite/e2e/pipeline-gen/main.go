@@ -44,6 +44,7 @@ const (
 	EnvVarOperatorImage        = "OPERATOR_IMAGE"
 	EnvVarE2EImage             = "E2E_IMG"
 	EnvVarStateless            = "STATELESS"
+	EnvVarLabelBasedDiscovery  = "LABEL_BASED_DISCOVERY"
 
 	K8sInDockerMachineType = "n1-standard-16"
 )
@@ -63,11 +64,12 @@ var (
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
 
 	shortcuts = map[string]string{
-		"p":  EnvVarProvider,
-		"k":  EnvVarK8sVersion,
-		"s":  EnvVarStackVersion,
-		"t":  EnvVarTestsMatch,
-		"sl": EnvVarStateless,
+		"p":   EnvVarProvider,
+		"k":   EnvVarK8sVersion,
+		"s":   EnvVarStackVersion,
+		"t":   EnvVarTestsMatch,
+		"sl":  EnvVarStateless,
+		"lbd": EnvVarLabelBasedDiscovery,
 	}
 
 	fixed   string
