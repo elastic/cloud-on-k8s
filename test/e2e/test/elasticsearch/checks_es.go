@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -177,17 +178,7 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 			}
 		}
 
-		var esResources *corev1.ResourceRequirements
-		for _, c := range nodeSet.PodTemplate.Spec.Containers {
-			if c.Name == "elasticsearch" {
-				c := c
-				esResources = &c.Resources
-			}
-		}
-		if esResources == nil {
-			// Elasticsearch container not found, very unlikely to happen in an E2E test.
-			return false, nil
-		}
+		esResources := getNodeSetResources(nodeSet)
 		memReq, hasMemReq := esResources.Requests[corev1.ResourceMemory]
 		memLimit, hasMemLimit := esResources.Limits[corev1.ResourceMemory]
 		if !hasMemLimit {
@@ -205,6 +196,35 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// getNodeSetResources returns the effective ResourceRequirements for the elasticsearch container,
+// checking both the Resources shorthand and the PodTemplate container resources.
+// The shorthand takes precedence over PodTemplate values for CPU and memory.
+func getNodeSetResources(nodeSet esv1.NodeSet) corev1.ResourceRequirements {
+	var result corev1.ResourceRequirements
+	for _, c := range nodeSet.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			result = *c.Resources.DeepCopy()
+			break
+		}
+	}
+	if nodeSet.Resources.IsEmpty() {
+		return result
+	}
+	if limits := nodeSet.Resources.Limits.ToResourceList(); limits != nil {
+		if result.Limits == nil {
+			result.Limits = corev1.ResourceList{}
+		}
+		maps.Copy(result.Limits, limits)
+	}
+	if requests := nodeSet.Resources.Requests.ToResourceList(); requests != nil {
+		if result.Requests == nil {
+			result.Requests = corev1.ResourceList{}
+		}
+		maps.Copy(result.Requests, requests)
+	}
+	return result
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {
