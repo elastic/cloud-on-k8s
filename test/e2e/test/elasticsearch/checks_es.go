@@ -178,7 +178,11 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 			}
 		}
 
-		esResources := getNodeSetResources(nodeSet)
+		esResources, found := effectiveContainerResources(nodeSet)
+		if !found {
+			// Elasticsearch container not found, very unlikely to happen in an E2E test.
+			return false, nil
+		}
 		memReq, hasMemReq := esResources.Requests[corev1.ResourceMemory]
 		memLimit, hasMemLimit := esResources.Limits[corev1.ResourceMemory]
 		if !hasMemLimit {
@@ -198,19 +202,25 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 	return true, nil
 }
 
-// getNodeSetResources returns the effective ResourceRequirements for the elasticsearch container,
-// checking both the Resources shorthand and the PodTemplate container resources.
-// The shorthand takes precedence over PodTemplate values for CPU and memory.
-func getNodeSetResources(nodeSet esv1.NodeSet) corev1.ResourceRequirements {
+// effectiveContainerResources returns the effective ResourceRequirements for the elasticsearch container,
+// merging the PodTemplate container resources with the Resources shorthand. The shorthand takes precedence
+// over PodTemplate values for CPU and memory. Returns false if no elasticsearch container exists in the PodTemplate.
+//
+// Note: Unlike the production WithResourcesAndOverrides, this does not apply operator DefaultResources
+// when both sources are empty. This works because DefaultResources currently has no CPU value, so the empty case still
+// results in expectDesiredNodesAPI returning false.
+func effectiveContainerResources(nodeSet esv1.NodeSet) (corev1.ResourceRequirements, bool) {
 	var result corev1.ResourceRequirements
+	var found bool
 	for _, c := range nodeSet.PodTemplate.Spec.Containers {
 		if c.Name == esv1.ElasticsearchContainerName {
 			result = *c.Resources.DeepCopy()
+			found = true
 			break
 		}
 	}
-	if nodeSet.Resources.IsEmpty() {
-		return result
+	if !found {
+		return result, false
 	}
 	if limits := nodeSet.Resources.Limits.ToResourceList(); limits != nil {
 		if result.Limits == nil {
@@ -224,7 +234,7 @@ func getNodeSetResources(nodeSet esv1.NodeSet) corev1.ResourceRequirements {
 		}
 		maps.Copy(result.Requests, requests)
 	}
-	return result
+	return result, true
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {
