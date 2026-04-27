@@ -7,16 +7,16 @@ toolchain go1.26.2
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-git/go-git/v5 v5.17.2
+	github.com/go-git/go-git/v5 v5.18.0
 	github.com/google/go-containerregistry v0.21.5
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/otiai10/copy v1.14.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	k8s.io/api v0.35.3
-	k8s.io/apiextensions-apiserver v0.35.3
-	k8s.io/apimachinery v0.35.3
-	k8s.io/kubectl v0.35.3
+	k8s.io/api v0.35.4
+	k8s.io/apiextensions-apiserver v0.35.4
+	k8s.io/apimachinery v0.35.4
+	k8s.io/kubectl v0.35.4
 )
 
 require (
@@ -99,7 +99,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/client-go v0.35.3 // indirect
+	k8s.io/client-go v0.35.4 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect

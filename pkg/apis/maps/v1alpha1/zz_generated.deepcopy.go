@@ -23,7 +23,7 @@ func (in *ElasticMapsServer) DeepCopyInto(out *ElasticMapsServer) {
 	if in.assocConf != nil {
 		in, out := &in.assocConf, &out.assocConf
 		*out = new(v1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -91,6 +91,7 @@ func (in *MapsSpec) DeepCopyInto(out *MapsSpec) {
 		**out = **in
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
+	in.Resources.DeepCopyInto(&out.Resources)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit

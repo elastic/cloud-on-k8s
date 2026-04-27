@@ -814,7 +814,13 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				ElasticsearchRefs: []agentv1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+				ElasticsearchRefs: []agentv1alpha1.Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+						},
+					},
+				},
 			},
 		}
 		associations := agent.GetAssociations()
@@ -878,12 +884,16 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			Version: "7.7.0",
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
-					OutputName:     "default",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
+					},
+					OutputName: "default",
 				},
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es2", Namespace: "es2Namespace"},
-					OutputName:     "monitoring",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es2", Namespace: "es2Namespace"},
+					},
+					OutputName: "monitoring",
 				},
 			},
 		},
@@ -1214,8 +1224,10 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			FleetServerEnabled: false,
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
-					OutputName:     "default",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
+					},
+					OutputName: "default",
 				},
 			},
 		},

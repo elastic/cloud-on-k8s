@@ -95,13 +95,13 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
+	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoopsv1alpha1.AutoOpsAgentContainerName).
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
 		WithEnv(autoopsEnvVars(policy, es)...).
-		WithResources(defaultResources).
+		WithResourcesAndOverrides(defaultResources, policy.Spec.Resources).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).

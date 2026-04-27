@@ -134,7 +134,7 @@ func BuildPodTemplateSpec(
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, ver)).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, nodeSet.Resources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
@@ -163,7 +163,7 @@ func BuildPodTemplateSpec(
 		WithTopologySpreadConstraints(spreadConstraints...).
 		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...)
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta, clientAuthenticationRequired)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

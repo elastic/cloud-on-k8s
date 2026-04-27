@@ -88,7 +88,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
-	scpEsConfig := commonv1.NewConfig(map[string]interface{}{"cluster.name": clusterNameFromConfig})
+	scpEsConfig := commonv1.NewConfig(map[string]any{"cluster.name": clusterNameFromConfig})
 	esConfigSpec.Config = &scpEsConfig
 
 	policy := policyv1alpha1.StackConfigPolicy{
@@ -376,13 +376,13 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"cluster.name": "low-priority-cluster",
 					},
 				},
 				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
+					Data: map[string]any{
+						"indices": map[string]any{
 							"recovery.max_bytes_per_sec": "50mb",
 						},
 					},
@@ -404,16 +404,16 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"cluster": map[string]interface{}{
+					Data: map[string]any{
+						"cluster": map[string]any{
 							"name": "high-priority-cluster",
 						},
 					},
 				},
 				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
-							"recovery": map[string]interface{}{
+					Data: map[string]any{
+						"indices": map[string]any{
+							"recovery": map[string]any{
 								"max_bytes_per_sec": "200mb",
 							},
 						},
@@ -436,7 +436,7 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"cluster.name": "should-not-apply",
 					},
 				},
@@ -566,7 +566,7 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
-	var items map[string]interface{}
+	var items map[string]any
 	_, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -575,7 +575,7 @@ func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode i
 }
 
 func checkAPIResponse(esClient client.Client, url string, expectedStatusCode int, expectedResponse string) error {
-	var items map[string]interface{}
+	var items map[string]any
 	response, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -613,7 +613,7 @@ type SnapshotRepositorySettings struct {
 }
 
 // request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
-func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) ([]byte, int, error) {
+func request(esClient client.Client, method string, url string, body io.Reader, response any) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, body) //nolint:noctx
 	statusCode := 0
 	if err != nil {

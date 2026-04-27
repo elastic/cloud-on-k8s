@@ -32,7 +32,7 @@ type MapsSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -45,6 +45,12 @@ type MapsSpec struct {
 
 	// HTTP holds the HTTP layer configuration for Elastic Maps Server.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the Elastic Maps Server container. When set,
+	// these values override any CPU or memory resource settings specified in the PodTemplate for the primary Elastic
+	// Maps Server container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
 	// +kubebuilder:validation:Optional

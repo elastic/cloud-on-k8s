@@ -91,6 +91,12 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
 	// PodTemplate provides customisation options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

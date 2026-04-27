@@ -77,7 +77,7 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, ems.Spec.Resources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
@@ -132,17 +132,23 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.Ela
 	if err != nil {
 		return nil, err
 	}
-	if !esAssocConf.CAIsConfigured() {
-		return builder, nil
+	if esAssocConf.CAIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetCASecretName(),
+			"es-certs",
+			ESCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 	}
-	vol := volume.NewSecretVolumeWithMountPath(
-		esAssocConf.GetCASecretName(),
-		"es-certs",
-		ESCertsPath,
-	)
-	return builder.
-		WithVolumes(vol.Volume()).
-		WithVolumeMounts(vol.VolumeMount()), nil
+	if esAssocConf.ClientCertIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetClientCertSecretName(),
+			"es-client-certs",
+			ESClientCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+	}
+	return builder, nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.ElasticMapsServer) *defaults.PodTemplateBuilder {

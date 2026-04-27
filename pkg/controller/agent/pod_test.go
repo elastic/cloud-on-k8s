@@ -446,7 +446,7 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			builder := generateBuilder()
 			hash := sha256.New224()
 
-			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, tt.fleetCerts, EnrollmentAPIKey{}, builder, hash)
+			gotBuilder, gotErr := amendBuilderForFleetMode(tt.params, tt.fleetCerts, EnrollmentAPIKey{}, builder, hash, "")
 
 			require.Nil(t, gotErr)
 			require.NotNil(t, gotBuilder)
@@ -468,8 +468,10 @@ func Test_applyEnvVars(t *testing.T) {
 	agent2 := agent
 	agent2.Spec.ElasticsearchRefs = []agentv1alpha1.Output{
 		{
-			ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"},
-			OutputName:     "default",
+			ElasticsearchSelector: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"},
+			},
+			OutputName: "default",
 		},
 	}
 
@@ -724,7 +726,12 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 						Mode:      agentv1alpha1.AgentFleetMode,
 						KibanaRef: commonv1.ObjectSelector{Name: "kibana"},
 						ElasticsearchRefs: []agentv1alpha1.Output{
-							{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"}, OutputName: "default"},
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+								},
+								OutputName: "default",
+							},
 						},
 						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
 					},
@@ -764,6 +771,38 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			},
 			wantAssociationsLength: 1,
 		},
+		{
+			name: "fleet mode enabled, es ref with client cert",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode: agentv1alpha1.AgentFleetMode,
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch", Namespace: "es-ns"},
+								},
+								OutputName: "default",
+							},
+						},
+						FleetServerRef: commonv1.ObjectSelector{Name: "fleet"},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				// ES association with CA and client cert
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-ca",
+					ClientCertSecretName: "es-client-cert",
+				})
+				// Fleet Server association with CA only
+				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName: "fleet-agent-http-certs-public",
+				})
+			},
+			// 1 CA vol for ES + 1 client cert vol for ES + 1 CA vol for Fleet Server = 3
+			wantAssociationsLength: 3,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			assocs := tt.params.Agent.GetAssociations()
@@ -779,7 +818,7 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
 		params  Params
-		wantRef *commonv1.ObjectSelector
+		wantRef *commonv1.ElasticsearchSelector
 	}{
 		{
 			name: "fleet server enabled, no es ref",
@@ -800,13 +839,17 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 						FleetServerEnabled: true,
 						ElasticsearchRefs: []agentv1alpha1.Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+								},
 							},
 						},
 					},
 				},
 			},
-			wantRef: &commonv1.ObjectSelector{Name: "es"},
+			wantRef: &commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+			},
 		},
 		{
 			name: "fleet server disabled, no fs ref",
@@ -854,13 +897,17 @@ func Test_getRelatedEsAssoc(t *testing.T) {
 					Spec: agentv1alpha1.AgentSpec{
 						ElasticsearchRefs: []agentv1alpha1.Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+								},
 							},
 						},
 					},
 				}),
 			},
-			wantRef: &commonv1.ObjectSelector{Name: "es"},
+			wantRef: &commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es"},
+			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -884,9 +931,11 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						Name:      "elasticsearch",
-						Namespace: agentNs,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "elasticsearch",
+							Namespace: agentNs,
+						},
 					},
 				},
 			},
@@ -900,9 +949,11 @@ func Test_applyRelatedEsAssoc(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						Name:      "elasticsearch",
-						Namespace: "elasticsearch-ns",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "elasticsearch",
+							Namespace: "elasticsearch-ns",
+						},
 					},
 				},
 			},
@@ -948,11 +999,12 @@ fi
 `, ns)}
 	}
 	for _, tt := range []struct {
-		name        string
-		agent       agentv1alpha1.Agent
-		assoc       commonv1.Association
-		wantPodSpec corev1.PodSpec
-		wantErr     bool
+		name                   string
+		agent                  agentv1alpha1.Agent
+		assoc                  commonv1.Association
+		esClientCertSecretName string
+		wantPodSpec            corev1.PodSpec
+		wantErr                bool
 	}{
 		{
 			name:        "nil es association",
@@ -1050,10 +1102,103 @@ fi
 				return ps
 			}),
 		},
+		{
+			name: "client cert from esClientCertSecretName parameter",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: false,
+				},
+			},
+			assoc:                  assocToSameNs,
+			esClientCertSecretName: "my-client-cert-secret",
+			wantErr:                false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = append(ps.Volumes, expectedCAVolume...)
+				ps.Volumes = append(ps.Volumes, corev1.Volume{
+					Name: "elasticsearch-client-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "my-client-cert-secret",
+							Optional:   &optional,
+						},
+					},
+				})
+				ps.Containers[0].VolumeMounts = append(
+					expectedCAVolumeMountFunc(agentNs),
+					corev1.VolumeMount{
+						Name:      "elasticsearch-client-certs",
+						ReadOnly:  true,
+						MountPath: FleetManagedAgentClientCertDir,
+					},
+				)
+				return ps
+			}),
+		},
+		{
+			name: "client cert from assoc conf ClientCertSecretName",
+			agent: agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "agent",
+					Namespace: agentNs,
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: false,
+				},
+			},
+			assoc: func() commonv1.Association {
+				a := (&agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{
+										Name:      "elasticsearch",
+										Namespace: agentNs,
+									},
+								},
+							},
+						},
+					},
+				}).GetAssociations()[0]
+				a.SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-http-certs-public",
+					ClientCertSecretName: "es-client-cert-from-conf",
+				})
+				return a
+			}(),
+			wantErr: false,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				ps.Volumes = append(ps.Volumes, expectedCAVolume...)
+				ps.Volumes = append(ps.Volumes, corev1.Volume{
+					Name: "elasticsearch-client-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "es-client-cert-from-conf",
+							Optional:   &optional,
+						},
+					},
+				})
+				ps.Containers[0].VolumeMounts = append(
+					expectedCAVolumeMountFunc(agentNs),
+					corev1.VolumeMount{
+						Name:      "elasticsearch-client-certs",
+						ReadOnly:  true,
+						MountPath: FleetManagedAgentClientCertDir,
+					},
+				)
+				return ps
+			}),
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := generateBuilder()
-			gotBuilder, gotErr := applyRelatedEsAssoc(tt.agent, tt.assoc, builder)
+			gotBuilder, gotErr := applyRelatedEsAssoc(tt.agent, tt.assoc, tt.esClientCertSecretName, builder)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 			if !tt.wantErr {
 				require.Nil(t, gotErr)
@@ -1072,9 +1217,11 @@ func Test_writeEsAssocToConfigHash(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						Name:      "es",
-						Namespace: "ns",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "es",
+							Namespace: "ns",
+						},
 					},
 				},
 			},
@@ -1454,9 +1601,11 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						Name:      "es",
-						Namespace: "es-ns",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "es",
+							Namespace: "es-ns",
+						},
 					},
 				},
 			},
@@ -1555,12 +1704,169 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 				},
 			}),
 		},
+		{
+			name: "fleet server enabled, elasticsearch ref with client cert configured",
+			agent: func() agentv1alpha1.Agent {
+				a := agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "agent",
+						Namespace: "ns",
+					},
+					Spec: agentv1alpha1.AgentSpec{
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{
+										Name:      "es",
+										Namespace: "es-ns",
+									},
+								},
+							},
+						},
+						FleetServerEnabled: true,
+					},
+				}
+				assoc := a.GetAssociations()[0]
+				assoc.SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "secret-name",
+					AuthSecretKey:        "user",
+					URL:                  "url",
+					CACertProvided:       true,
+					CASecretName:         "ca-secret-name",
+					ClientCertSecretName: "es-client-cert",
+				})
+				return a
+			}(),
+			wantErr: false,
+			wantEnvVars: map[string]string{
+				"FLEET_SERVER_ENABLE":                 "true",
+				"FLEET_SERVER_CERT":                   path.Join(FleetCertsMountPath, certificates.CertFileName),
+				"FLEET_SERVER_CERT_KEY":               path.Join(FleetCertsMountPath, certificates.KeyFileName),
+				"FLEET_SERVER_ELASTICSEARCH_HOST":     "url",
+				"FLEET_SERVER_ELASTICSEARCH_USERNAME": "user",
+				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": "password",
+				"FLEET_SERVER_ELASTICSEARCH_CA":       "/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt",
+				FleetServerESCert:                     path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.CertFileName),
+				FleetServerESCertKey:                  path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.KeyFileName),
+			},
+			client: k8s.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secret-name",
+					Namespace: "ns",
+				},
+				Data: map[string][]byte{
+					"user": []byte("password"),
+				},
+			}),
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			gotEnvVars, gotErr := getFleetSetupFleetServerEnvVars(context.Background(), tt.client)(tt.agent)
 
 			require.Equal(t, tt.wantEnvVars, gotEnvVars)
 			require.Equal(t, tt.wantErr, gotErr != nil)
+		})
+	}
+}
+
+func Test_standaloneAgentClientCertificatesDir(t *testing.T) {
+	assoc := (&agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "agent-ns",
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "elasticsearch",
+							Namespace: "es-ns",
+						},
+					},
+				},
+			},
+		},
+	}).GetAssociations()[0]
+
+	got := standaloneAgentClientCertificatesDir(assoc)
+	require.Equal(t, "/mnt/elastic-internal/elasticsearch-association/es-ns/elasticsearch/client-certs", got)
+}
+
+func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		params         Params
+		setAssocConfs  func(assocs []commonv1.Association)
+		wantSecretName string
+	}{
+		{
+			name: "fleet server enabled returns empty",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+					},
+				},
+			},
+			wantSecretName: "",
+		},
+		{
+			name: "no fleet server ref returns empty",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: false,
+					},
+				},
+			},
+			wantSecretName: "",
+		},
+		{
+			name: "fleet server ref set but no transitive ES ref returns empty",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: false,
+						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					URL: "https://fs:8220",
+				})
+			},
+			wantSecretName: "",
+		},
+		{
+			name: "fleet server ref set with transitive ES ref containing client cert",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: false,
+						FleetServerRef:     commonv1.ObjectSelector{Name: "fs", Namespace: "ns"},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					URL: "https://fs:8220",
+					TransitiveESRef: &commonv1.TransitiveESRef{
+						ClientCertSecretName: "my-transitive-client-cert",
+					},
+				})
+			},
+			wantSecretName: "my-transitive-client-cert",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setAssocConfs != nil {
+				assocs := tt.params.Agent.GetAssociations()
+				tt.setAssocConfs(assocs)
+			}
+			got := fleetManagedAgentESClientCertSecretName(tt.params)
+			require.Equal(t, tt.wantSecretName, got)
 		})
 	}
 }

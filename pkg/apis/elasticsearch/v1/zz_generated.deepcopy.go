@@ -176,7 +176,7 @@ func (in *Elasticsearch) DeepCopyInto(out *Elasticsearch) {
 		in, out := &in.AssocConfs, &out.AssocConfs
 		*out = make(map[commonv1.ObjectSelector]commonv1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 }
@@ -511,6 +511,7 @@ func (in *NodeSet) DeepCopyInto(out *NodeSet) {
 		in, out := &in.Config, &out.Config
 		*out = (*in).DeepCopy()
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.ZoneAwareness != nil {
 		in, out := &in.ZoneAwareness, &out.ZoneAwareness
 		*out = new(ZoneAwareness)

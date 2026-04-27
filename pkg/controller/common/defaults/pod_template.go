@@ -5,11 +5,13 @@
 package defaults
 
 import (
+	stdmaps "maps"
 	"slices"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -387,6 +389,56 @@ func (b *PodTemplateBuilder) WithInitContainers(
 	b.PodTemplate.Spec.InitContainers = append(containers, b.PodTemplate.Spec.InitContainers...)
 
 	return b
+}
+
+// WithResourcesAndOverrides merges main-container resources from three sources:
+//   - main container resources from the pod template (merge base; nil-vs-empty map shape for
+//     Requests/Limits is preserved, including explicit empty maps for
+//     [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range))
+//   - resources: operator default ResourceRequirements (used for Requests and Limits only, and
+//     only when neither the pod template nor the shorthand contribute any CPU/memory; all other
+//     fields of the pod template's ResourceRequirements, e.g. ResourceClaims, are preserved as-is)
+//   - overrides: CRD spec.resources CPU/memory values (applied only for non-nil override pointers;
+//     when the shorthand writes to one side (Requests or Limits) and the pod template leaves the
+//     other side nil, the untouched side is left nil so the API server's built-in limit→request
+//     defaulting can still promote the pod to Guaranteed QoS)
+//
+// If the main container does not exist, this method returns the builder unchanged; that should not
+// happen if NewPodTemplateBuilder is called prior to this method.
+func (b *PodTemplateBuilder) WithResourcesAndOverrides(resources corev1.ResourceRequirements, overrides commonv1.Resources) *PodTemplateBuilder {
+	main := b.MainContainer()
+	if main == nil {
+		return b
+	}
+	merged := *main.Resources.DeepCopy()
+	// Only inject operator defaults when neither the pod template nor the shorthand contribute
+	// any CPU/memory. Otherwise, layer the shorthand directly on top of the pod template so that
+	// any side (Requests or Limits) the user left nil stays nil, and the API server's limit→
+	// request defaulting can still promote the pod to Guaranteed QoS.
+	if merged.Requests == nil && merged.Limits == nil && overrides.IsEmpty() {
+		defaults := resources.DeepCopy()
+		merged.Requests = defaults.Requests
+		merged.Limits = defaults.Limits
+	}
+	applyCPUAndMemoryOverrides(&merged.Limits, overrides.Limits)
+	applyCPUAndMemoryOverrides(&merged.Requests, overrides.Requests)
+	main.Resources = merged
+	b.setContainerDefaulter()
+	return b
+}
+
+// applyCPUAndMemoryOverrides copies non-nil CPU/memory overrides into dst.
+// If a write is required and dst is nil, the destination map is initialized.
+// With no override values, dst is left unchanged.
+func applyCPUAndMemoryOverrides(dst *corev1.ResourceList, overrides commonv1.ResourceAllocations) {
+	src := overrides.ToResourceList()
+	if src == nil {
+		return
+	}
+	if *dst == nil {
+		*dst = corev1.ResourceList{}
+	}
+	stdmaps.Copy((*dst), src)
 }
 
 // WithResources sets up the given resource requirements if both resources limits and requests

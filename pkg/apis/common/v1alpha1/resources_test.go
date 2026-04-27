@@ -5,154 +5,122 @@
 package v1alpha1
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func TestNodeResources_ToContainerResourcesWith(t *testing.T) {
-	type fields struct {
-		Limits   corev1.ResourceList
-		Requests corev1.ResourceList
-	}
-	type args struct {
-		into corev1.ResourceRequirements
-	}
+func TestNodeResources_ToNodeSetResourcesWith(t *testing.T) {
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   corev1.ResourceRequirements
+		name     string
+		node     NodeResources
+		existing commonv1.Resources
+		want     commonv1.Resources
 	}{
 		{
-			name: "Source requirements are nil",
-			fields: fields{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					// corev1.ResourceCPU is not set and should not be present in the result.
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-			},
-			args: args{into: corev1.ResourceRequirements{
-				Requests: nil,
-				Limits:   nil,
-			}},
-			want: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					// corev1.ResourceCPU is not expected
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-			},
-		},
-		{
-			name: "Preserve original requirements if not present",
-			fields: fields{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					// no recommendation for corev1.ResourceCPU
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					// no recommendation for corev1.ResourceCPU
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-			},
-			args: args{into: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("1"), // should be preserved in the result
+			name: "overrides cpu and memory requests and limits when recommended",
+			node: NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2000m"),
 					corev1.ResourceMemory: resource.MustParse("4Gi"),
 				},
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"), // should be preserved in the result
-					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("3000m"),
+					corev1.ResourceMemory: resource.MustParse("6Gi"),
 				},
-			}},
-			want: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
+			},
+			existing: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("500m"),
+					Memory: qPtr("2Gi"),
 				},
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("1000m"),
+					Memory: qPtr("2Gi"),
+				},
+			},
+			want: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("2000m"),
+					Memory: qPtr("4Gi"),
+				},
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("3000m"),
+					Memory: qPtr("6Gi"),
 				},
 			},
 		},
 		{
-			name: "Do not delete extended resource",
-			fields: fields{
-				Limits:   nil,
-				Requests: nil,
+			name: "preserves existing cpu values when only memory is recommended",
+			node: NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("5Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("7Gi"),
+				},
 			},
-			args: args{into: corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("4"),
+			existing: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("800m"),
+					Memory: qPtr("2Gi"),
 				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("8"),
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("1200m"),
+					Memory: qPtr("3Gi"),
 				},
-			}},
-			want: corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("4"),
+			},
+			want: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("800m"),
+					Memory: qPtr("5Gi"),
 				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("8"),
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("1200m"),
+					Memory: qPtr("7Gi"),
 				},
 			},
 		},
 		{
-			name: "Merge with extended resource",
-			fields: fields{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
+			name: "keeps existing values when no cpu or memory recommendation exists",
+			node: NodeResources{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("8Gi"),
 				},
 			},
-			args: args{into: corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("4"),
+			existing: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("1000m"),
+					Memory: qPtr("2Gi"),
 				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("8"),
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("1500m"),
+					Memory: qPtr("3Gi"),
 				},
-			}},
-			want: corev1.ResourceRequirements{
-				Limits: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("4"),
-					corev1.ResourceMemory:     resource.MustParse("8Gi"),
+			},
+			want: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    qPtr("1000m"),
+					Memory: qPtr("2Gi"),
 				},
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					"requests.nvidia.com/gpu": resource.MustParse("8"),
-					corev1.ResourceMemory:     resource.MustParse("8Gi"),
-					corev1.ResourceCPU:        resource.MustParse("2"),
+				Limits: commonv1.ResourceAllocations{
+					CPU:    qPtr("1500m"),
+					Memory: qPtr("3Gi"),
 				},
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := &NodeResources{
-				Limits:   tt.fields.Limits,
-				Requests: tt.fields.Requests,
-			}
-			if got := nr.ToContainerResourcesWith(tt.args.into); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NodeResources.ToContainerResourcesWith() = %v, want %v", got, tt.want)
-			}
+			got := tt.node.ToNodeSetResourcesWith(tt.existing)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

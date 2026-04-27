@@ -217,7 +217,7 @@ func buildPodTemplate(
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
-		WithResources(defaultResources).
+		WithResourcesAndOverrides(defaultResources, spec.Resources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, v)).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
