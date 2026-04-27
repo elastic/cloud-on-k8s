@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -177,14 +178,8 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 			}
 		}
 
-		var esResources *corev1.ResourceRequirements
-		for _, c := range nodeSet.PodTemplate.Spec.Containers {
-			if c.Name == "elasticsearch" {
-				c := c
-				esResources = &c.Resources
-			}
-		}
-		if esResources == nil {
+		esResources, found := effectiveContainerResources(nodeSet)
+		if !found {
 			// Elasticsearch container not found, very unlikely to happen in an E2E test.
 			return false, nil
 		}
@@ -205,6 +200,41 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// effectiveContainerResources returns the effective ResourceRequirements for the elasticsearch container,
+// merging the PodTemplate container resources with the Resources shorthand. The shorthand takes precedence
+// over PodTemplate values for CPU and memory. Returns false if no elasticsearch container exists in the PodTemplate.
+//
+// Note: Unlike the production WithResourcesAndOverrides, this does not apply operator DefaultResources
+// when both sources are empty. This works because DefaultResources currently has no CPU value, so the empty case still
+// results in expectDesiredNodesAPI returning false.
+func effectiveContainerResources(nodeSet esv1.NodeSet) (corev1.ResourceRequirements, bool) {
+	var result corev1.ResourceRequirements
+	var found bool
+	for _, c := range nodeSet.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			result = *c.Resources.DeepCopy()
+			found = true
+			break
+		}
+	}
+	if !found {
+		return result, false
+	}
+	if limits := nodeSet.Resources.Limits.ToResourceList(); limits != nil {
+		if result.Limits == nil {
+			result.Limits = corev1.ResourceList{}
+		}
+		maps.Copy(result.Limits, limits)
+	}
+	if requests := nodeSet.Resources.Requests.ToResourceList(); requests != nil {
+		if result.Requests == nil {
+			result.Requests = corev1.ResourceList{}
+		}
+		maps.Copy(result.Requests, requests)
+	}
+	return result, true
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {
