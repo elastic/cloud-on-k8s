@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -57,12 +58,12 @@ func NewAutoscalingCapacityTest(es esv1.Elasticsearch, k8sClient *test.K8sClient
 type AutoscalingStatusTestBuilder struct {
 	k                  *test.K8sClient
 	ab                 *AutoscalingBuilder
-	expectedConditions map[v1alpha1.ConditionType]bool
+	expectedConditions map[commonv1.ConditionType]bool
 }
 
 func (ab *AutoscalingBuilder) NewAutoscalingStatusTestBuilder(k8sClient *test.K8sClient) *AutoscalingStatusTestBuilder {
 	return &AutoscalingStatusTestBuilder{
-		expectedConditions: make(map[v1alpha1.ConditionType]bool),
+		expectedConditions: make(map[commonv1.ConditionType]bool),
 		k:                  k8sClient,
 		ab:                 ab,
 	}
@@ -96,7 +97,7 @@ func (astb *AutoscalingStatusTestBuilder) ToStep() test.Step {
 			if err := astb.k.Client.Get(context.Background(), k8s.ExtractNamespacedName(astb.ab.Build()), &autoscaler); err != nil {
 				return err
 			}
-			for _, conditionType := range []v1alpha1.ConditionType{
+			for _, conditionType := range []commonv1.ConditionType{
 				v1alpha1.ElasticsearchAutoscalerActive,
 				v1alpha1.ElasticsearchAutoscalerOnline,
 				v1alpha1.ElasticsearchAutoscalerHealthy,
