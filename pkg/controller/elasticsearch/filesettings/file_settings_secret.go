@@ -104,6 +104,11 @@ func (f *Secret) Exists() bool {
 	return f.current != nil
 }
 
+// IsSettingsCorrupted returns true if the file contented could not be parsed.
+func (f *Secret) IsSettingsCorrupted() bool {
+	return f.settingsCorrupted
+}
+
 // Version returns the settings version that will be written on Save.
 // The version is adjusted during Save if the settings hash is unchanged.
 // Call after Save to get the final version.

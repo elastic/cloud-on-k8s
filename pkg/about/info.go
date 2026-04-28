@@ -149,8 +149,7 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 	}
 
 	// add the watch label if missing.
-	_, hasWatchLabel := reconciledCfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName]
-	if !hasWatchLabel {
+	if _, hasWatchLabel := reconciledCfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName]; !hasWatchLabel {
 		if reconciledCfgMap.Labels == nil {
 			reconciledCfgMap.Labels = map[string]string{}
 		}

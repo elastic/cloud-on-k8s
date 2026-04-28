@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	emaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
@@ -198,7 +199,9 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 			maps.Copy(reconciledData, reconciled.Data)
 			delete(expectedData, "timestamp")
 			delete(reconciledData, "timestamp")
-			return !reflect.DeepEqual(expectedData, reconciledData)
+			return !reflect.DeepEqual(expectedData, reconciledData) ||
+				!emaps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!emaps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(reconciled)
