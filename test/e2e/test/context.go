@@ -133,7 +133,7 @@ type Context struct {
 	// If nil, stateless mode is disabled.
 	Stateless *StatelessConfig `json:"stateless,omitempty"`
 	// RestrictWatchedResources enables the operator's --restrict-watched-resources flag, restricting
-	// resource discovery (secrets, services and configmaps) to resources carrying the
+	// resource watching (secrets, services and configmaps) to resources carrying the
 	// eck.k8s.elastic.co/watched=true label.
 	RestrictWatchedResources bool `json:"restrict_watched_resources"`
 }

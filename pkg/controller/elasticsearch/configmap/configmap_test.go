@@ -110,7 +110,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.NotContains(t, updatedConfigMap.Data, "old-key")
 				assert.Contains(t, updatedConfigMap.Data, nodespec.PreStopHookScriptConfigKey)
 				assert.Contains(t, updatedConfigMap.Data, initcontainer.PrepareFsScriptConfigKey)
-				// label discovery
+				// label watch
 				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, updatedConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			},
 		},
@@ -132,7 +132,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				// fallback: internal HTTP certificates
 				assert.Contains(t, script, "http-certs/tls.crt")
 				assert.Contains(t, script, "http-certs/tls.key")
-				// label discovery
+				// label watch
 				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, cm.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			},
 		},

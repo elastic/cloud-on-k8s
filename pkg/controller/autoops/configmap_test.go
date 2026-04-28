@@ -274,7 +274,7 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 			}
 
 			if l := got.Labels[commonv1.RestrictWatchedResourcesLabelName]; l != commonv1.RestrictWatchedResourcesLabelValue {
-				t.Errorf("expected to have the discovery label and it does not. Value = %s", l)
+				t.Errorf("expected to have the watch label and it does not. Value = %s", l)
 			}
 			policy := tt.args.policy()
 			es := tt.args.es()

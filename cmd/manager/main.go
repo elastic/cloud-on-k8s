@@ -366,7 +366,7 @@ func Command() *cobra.Command {
 	cmd.Flags().Bool(
 		operator.RestrictWatchedResources,
 		false,
-		"Restrict resource discovery (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
+		"Restrict resource watching (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
 	)
 
 	// hide development mode flags from the usage message

@@ -298,7 +298,7 @@ config:
   # Cannot be combined with the containerSuffix value.
   ubiOnly: false
 
-  # restrictWatchedResources restricts resource discovery (secrets, services and configmaps) to resources carrying the
+  # restrictWatchedResources restricts resource watching (secrets, services and configmaps) to resources carrying the
   # eck.k8s.elastic.co/watched=true label. When false (default), the operator watches all resources cluster-wide.
   restrictWatchedResources: false
 

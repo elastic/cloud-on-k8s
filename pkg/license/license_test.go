@@ -21,7 +21,7 @@ import (
 )
 
 func TestToMap(t *testing.T) {
-	dateFixture := time.Date(2021, 11, 03, 0, 0, 0, 0, time.UTC)
+	dateFixture := time.Date(2021, 11, 0o3, 0, 0, 0, 0, time.UTC)
 
 	t.Run("empty_object", func(t *testing.T) {
 		i := LicensingInfo{memoryUsage: newMemoryUsage()}
@@ -95,7 +95,7 @@ func TestLicensingResolver_Save(t *testing.T) {
 		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	}
 
-	t.Run("creates config map with discovery label when it does not exist", func(t *testing.T) {
+	t.Run("creates config map with watch label when it does not exist", func(t *testing.T) {
 		client := k8s.NewFakeClient()
 		r := LicensingResolver{operatorNs: ns, client: client}
 
@@ -106,7 +106,7 @@ func TestLicensingResolver_Save(t *testing.T) {
 		assert.Equal(t, wantLabels, got.Labels)
 	})
 
-	t.Run("adds discovery label when config map already exists with stale data", func(t *testing.T) {
+	t.Run("adds watch label when config map already exists with stale data", func(t *testing.T) {
 		// pre-existing config map carrying only the legacy type label and stale data,
 		// so that NeedsUpdate triggers and labels get reconciled to the expected set.
 		existing := &corev1.ConfigMap{
