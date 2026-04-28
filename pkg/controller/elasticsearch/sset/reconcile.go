@@ -52,7 +52,10 @@ func ReconcileStatefulSet(ctx context.Context, c k8s.Client, es esv1.Elasticsear
 			// preserve the existing VolumeClaimTemplates: they are immutable on an existing
 			// StatefulSet, and the recreate-annotation path handles storage resizes separately.
 			// Any label changes on volumeClaimTemplates are propagated to existing PVCs by
-			// HandleVolumeExpansion instead of the StatefulSet update path.
+			// HandleVolumeExpansion instead of the StatefulSet update path. Note that on a
+			// scale-up the StatefulSet controller will create new PVCs from this stale VCT,
+			// so they are briefly unlabeled until the next reconcile pass labels them via
+			// HandleVolumeExpansion (eventual consistency).
 			existingVCTs := reconciled.Spec.VolumeClaimTemplates
 			reconciled.Spec = expected.Spec
 			reconciled.Spec.VolumeClaimTemplates = existingVCTs

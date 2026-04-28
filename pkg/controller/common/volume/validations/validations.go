@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -19,7 +20,26 @@ import (
 
 const (
 	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
+
+	// eckLabelDomainSuffix matches the apex domain (k8s.elastic.co) and any
+	// subdomain (e.g. elasticsearch.k8s.elastic.co, common.k8s.elastic.co,
+	// association.k8s.elastic.co) that ECK uses for operator-managed labels.
+	eckLabelDomainSuffix = "k8s.elastic.co"
 )
+
+// IsReservedLabelKey reports whether key is owned by ECK and must not be set
+// or modified by users via VolumeClaimTemplate labels. ECK-reserved keys live
+// under any *.k8s.elastic.co/ domain (e.g. elasticsearch.k8s.elastic.co/cluster-name,
+// common.k8s.elastic.co/type, association.k8s.elastic.co/...). Overwriting them
+// on a PVC would break PVC GC and owner-ref reconciliation, which select on
+// ClusterNameLabelName / StatefulSetNameLabelName.
+func IsReservedLabelKey(key string) bool {
+	domain, _, ok := strings.Cut(key, "/")
+	if !ok {
+		return false
+	}
+	return domain == eckLabelDomainSuffix || strings.HasSuffix(domain, "."+eckLabelDomainSuffix)
+}
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
 // - a storage decrease is attempted

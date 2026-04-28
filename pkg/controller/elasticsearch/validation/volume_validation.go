@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
@@ -23,6 +24,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
+
+const reservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 
 func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
@@ -73,9 +76,16 @@ func hasDefaultClaim(templates []corev1.PersistentVolumeClaim, isStateless bool)
 	return false
 }
 
-// validPVCModification ensures the only part of volume claim templates that can be changed is storage requests.
-// Storage increase is allowed as long as the storage class supports volume expansion.
-// Storage decrease is not supported if the corresponding StatefulSet has been resized already.
+// validPVCModification ensures only the adjustable parts of volume claim templates are changed.
+// The currently adjustable fields are:
+//   - spec.resources.requests.storage: increases are allowed when the storage class supports
+//     volume expansion; decreases are rejected unless the matching StatefulSet still has the
+//     "old" storage size (revert scenario).
+//   - metadata.labels: free-form user labels can be added, modified, or removed (additive-only
+//     propagation to existing PVCs is performed by HandleVolumeExpansion). Reserved ECK label
+//     keys (see validPVCReservedLabels) are rejected by a separate validation.
+//
+// Any other change to a VolumeClaimTemplate field is forbidden.
 func validPVCModification(ctx context.Context, current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
@@ -168,6 +178,33 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 		}
 	}
 	return nil
+}
+
+// validPVCReservedLabels rejects volumeClaimTemplates that carry ECK-reserved label keys
+// (anything under the *.k8s.elastic.co/ domain). Such labels would propagate to the
+// resulting PVCs and break PVC GC and owner-ref reconciliation, both of which select on
+// elasticsearch.k8s.elastic.co/cluster-name. Runs on both create and update so a freshly
+// applied CR with a reserved key is rejected up front, not silently neutralized later by
+// the reconciler's defensive guard.
+func validPVCReservedLabels(es esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, nodeSet := range es.Spec.NodeSets {
+		for j, claim := range nodeSet.VolumeClaimTemplates {
+			for key := range claim.ObjectMeta.Labels {
+				if !volumevalidations.IsReservedLabelKey(key) {
+					continue
+				}
+				errs = append(errs, field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).
+						Child("volumeClaimTemplates").Index(j).
+						Child("metadata", "labels").Key(key),
+					key,
+					fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key),
+				))
+			}
+		}
+	}
+	return errs
 }
 
 // claimsWithoutAdjustableFields returns a copy of the given claims, with all known adjustable fields set to the empty quantity.

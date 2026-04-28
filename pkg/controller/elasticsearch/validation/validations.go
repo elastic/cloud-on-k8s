@@ -90,6 +90,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validSanIP,
 		validAutoscalingConfiguration,
 		validPVCNaming,
+		validPVCReservedLabels,
 		validMonitoring,
 		validAssociations,
 		func(proposed esv1.Elasticsearch) field.ErrorList {

@@ -57,6 +57,32 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	return *c
 }
 
+func TestIsReservedLabelKey(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want bool
+	}{
+		{name: "elasticsearch subdomain reserved", key: "elasticsearch.k8s.elastic.co/cluster-name", want: true},
+		{name: "common subdomain reserved", key: "common.k8s.elastic.co/type", want: true},
+		{name: "association subdomain reserved", key: "association.k8s.elastic.co/es-conf", want: true},
+		{name: "apex domain reserved", key: "k8s.elastic.co/foo", want: true},
+		{name: "empty string not reserved", key: "", want: false},
+		{name: "no slash not reserved", key: "elasticsearch.k8s.elastic.co", want: false},
+		{name: "lookalike suffix not reserved", key: "notk8s.elastic.co/foo", want: false},
+		{name: "third-party label not reserved", key: "velero.io/exclude-from-backup", want: false},
+		{name: "user label not reserved", key: "team", want: false},
+		{name: "user label with prefix not reserved", key: "example.com/team", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsReservedLabelKey(tt.key); got != tt.want {
+				t.Errorf("IsReservedLabelKey(%q) = %v, want %v", tt.key, got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_ensureClaimSupportsExpansion(t *testing.T) {
 	tests := []struct {
 		name                string

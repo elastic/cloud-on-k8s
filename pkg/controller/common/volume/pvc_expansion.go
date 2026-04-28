@@ -123,23 +123,29 @@ func updatePVCs(
 	return nil
 }
 
-// syncPVCLabels sets labels from expected onto pvc, overwriting any existing value
-// for each key. It returns true if pvc.Labels was modified.
+// syncPVCLabels copies labels from expected onto pvc. It is intentionally additive-only:
+//   - keys present in expected are added or updated on the PVC,
+//   - keys absent from expected are NOT removed (PVCs may carry operator-managed labels
+//     and/or labels set out of band by the user that we must not delete),
+//   - keys reserved by ECK (see volumevalidations.IsReservedLabelKey) are skipped to keep
+//     PVC GC and owner-ref reconciliation correct even if a reserved key somehow appears
+//     in the VolumeClaimTemplate (e.g. a CR was created bypassing the webhook).
 //
-// Labels already present on the PVC but not in expected are preserved: the PVC may
-// carry operator-managed labels (e.g. cluster-name, statefulset-name) and/or labels
-// set out of band by the user, and we must not delete them.
+// Returns true if pvc.Labels was modified.
 func syncPVCLabels(pvc *corev1.PersistentVolumeClaim, expected map[string]string) bool {
 	if len(expected) == 0 {
 		return false
 	}
-	if pvc.Labels == nil {
-		pvc.Labels = make(map[string]string, len(expected))
-	}
 	mutated := false
 	for k, v := range expected {
+		if volumevalidations.IsReservedLabelKey(k) {
+			continue
+		}
 		if current, ok := pvc.Labels[k]; ok && current == v {
 			continue
+		}
+		if pvc.Labels == nil {
+			pvc.Labels = make(map[string]string, len(expected))
 		}
 		pvc.Labels[k] = v
 		mutated = true

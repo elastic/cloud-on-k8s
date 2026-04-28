@@ -369,6 +369,76 @@ func Test_validPVCModification(t *testing.T) {
 	}
 }
 
+func Test_validPVCReservedLabels(t *testing.T) {
+	es := func(claims ...corev1.PersistentVolumeClaim) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
+			Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				{Name: "set1", VolumeClaimTemplates: claims},
+			}},
+		}
+	}
+	tests := []struct {
+		name    string
+		es      esv1.Elasticsearch
+		wantErr bool
+	}{
+		{
+			name:    "no labels: ok",
+			es:      es(sampleClaim),
+			wantErr: false,
+		},
+		{
+			name:    "non-reserved label: ok",
+			es:      es(withLabels(sampleClaim, map[string]string{"team": "search"})),
+			wantErr: false,
+		},
+		{
+			name:    "third-party label that looks similar: ok",
+			es:      es(withLabels(sampleClaim, map[string]string{"velero.io/exclude-from-backup": "true"})),
+			wantErr: false,
+		},
+		{
+			name:    "elasticsearch reserved cluster-name label: error",
+			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "elasticsearch reserved statefulset-name label: error",
+			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/statefulset-name": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "common reserved type label: error",
+			es:      es(withLabels(sampleClaim, map[string]string{"common.k8s.elastic.co/type": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "apex k8s.elastic.co label: error",
+			es:      es(withLabels(sampleClaim, map[string]string{"k8s.elastic.co/foo": "bar"})),
+			wantErr: true,
+		},
+		{
+			name: "reserved key in second claim is also detected",
+			es: es(
+				sampleClaim,
+				withLabels(sampleClaim2, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"}),
+			),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validPVCReservedLabels(tt.es)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
+}
+
 func Test_validPVCNaming(t *testing.T) {
 	esFixture := func() esv1.Elasticsearch {
 		return esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
