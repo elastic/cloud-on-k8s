@@ -318,5 +318,5 @@ func Test_buildSecret(t *testing.T) {
 
 	// Operator-managed labels are applied.
 	assert.Equal(t, commonlabel.OrphanSecretResetOnPolicyDelete, secret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName])
-	assert.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, secret.Labels[commonv1.LabelBasedDiscoveryLabelName])
+	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 }

@@ -135,11 +135,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	}
 
 	labels := map[string]string{
-		"expected":                            "default-labels",
-		commonv1.LabelBasedDiscoveryLabelName: "true",
-		reconciler.SoftOwnerKindLabel:         owner.Kind,
-		reconciler.SoftOwnerNamespaceLabel:    owner.Namespace,
-		reconciler.SoftOwnerNameLabel:         owner.Name,
+		"expected": "default-labels",
+		commonv1.RestrictWatchedResourcesLabelName: "true",
+		reconciler.SoftOwnerKindLabel:              owner.Kind,
+		reconciler.SoftOwnerNamespaceLabel:         owner.Namespace,
+		reconciler.SoftOwnerNameLabel:              owner.Name,
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {

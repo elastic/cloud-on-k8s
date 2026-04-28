@@ -93,8 +93,8 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		}
 	}
 
-	if current, ok := secret.Labels[commonv1.LabelBasedDiscoveryLabelName]; !ok || current != commonv1.LabelBasedDiscoveryLabelValue {
-		secret.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	if current, ok := secret.Labels[commonv1.RestrictWatchedResourcesLabelName]; !ok || current != commonv1.RestrictWatchedResourcesLabelValue {
+		secret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 		needsUpdate = true
 	}
 

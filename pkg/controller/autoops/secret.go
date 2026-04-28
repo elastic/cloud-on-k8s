@@ -111,7 +111,7 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 
 	labels := resourceLabelsFor(policy, es)
 	labels[policySecretTypeLabelKey] = caSecretType
-	labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	meta := metadata.Propagate(&policy, metadata.Metadata{
 		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),

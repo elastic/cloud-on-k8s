@@ -194,7 +194,7 @@ func reconcileRolesFileRealmSecret(
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}
-	expected.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret

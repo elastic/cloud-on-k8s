@@ -394,7 +394,7 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			if tt.wantSecretCreated {
 				assert.NoError(t, secretErr, "expected no error at getting file-settings secret")
 				// secret should eventually end up having the watch label.
-				assert.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, secret.Labels[commonv1.LabelBasedDiscoveryLabelName])
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			} else {
 				assert.True(t, apierrors.IsNotFound(secretErr), "expected IsNotFound error at getting file-settings secret")
 			}

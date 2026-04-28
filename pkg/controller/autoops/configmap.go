@@ -165,7 +165,7 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),
 	})
-	meta.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	meta.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	// Build CA certificate path if SSL is enabled
 	caCertPath := ""

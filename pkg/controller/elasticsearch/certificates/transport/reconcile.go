@@ -225,8 +225,8 @@ func ensureTransportCertificatesSecretExists(
 	meta = meta.Merge(metadata.Metadata{
 		Labels: map[string]string{
 			// label indicating to which StatefulSet these certificates belong
-			label.StatefulSetNameLabelName:        ssetName,
-			commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+			label.StatefulSetNameLabelName:             ssetName,
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 		},
 	})
 	expected := corev1.Secret{

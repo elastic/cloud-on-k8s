@@ -33,7 +33,6 @@ The following table lists and describes all the available configuration flags fo
 | `ip-family` | `""` | Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect) |
 | `kube-client-qps` | `0` | Set the maximum number of queries per second to the Kubernetes API. Default value is inherited from the [Go client](https://github.com/kubernetes/client-go/blob/e6538dd42b4fe55b6c754e41c66b43133ba41a59/rest/config.go#L44). |
 | `kube-client-timeout` | `60s` | Set the request timeout for Kubernetes API calls made by the operator. |
-| `label-based-discovery` | `false` | Restrict resource discovery (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When deactivated (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
 | `log-verbosity` | `0` | Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug. |
 | `manage-webhook-certs` | `true` | Enables automatic webhook certificate management. |
 | `max-concurrent-reconciles` | `3` | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently. |
@@ -45,6 +44,7 @@ The following table lists and describes all the available configuration flags fo
 | `operator-namespace` | `""` | Namespace the operator runs in. Required. |
 | `password-hash-cache-size` | `5 x max-concurrent-reconciles` | Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value. |
 | `password-length` | `24` | Length of generated file-based passwords (enterprise-only feature) |
+| `restrict-watched-resources` | `false` | Restrict resource discovery (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When deactivated (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
 | `set-default-security-context` | `auto-detect` | Enables adding a default Pod Security Context to Elasticsearch Pods in Elasticsearch `8.0.0` and later. `fsGroup` is set to `1000` by default to match Elasticsearch container default UID. This behavior might not be appropriate for OpenShift and PSP-secured Kubernetes clusters, so it can be disabled. |
 | `ubi-only` | `false` | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with `--container-suffix` flag. |
 | `validate-storage-class` | `true` | Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available. |

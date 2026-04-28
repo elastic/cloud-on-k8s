@@ -133,7 +133,7 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 				TrialLicenseSecretNamespace: license.Namespace,
 			},
 			Labels: map[string]string{
-				commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 			},
 		},
 		Data: map[string][]byte{

@@ -572,6 +572,6 @@ func IsConfiguredToAllowDowngrades(o metav1.Object) bool {
 }
 
 const (
-	LabelBasedDiscoveryLabelName  = "eck.k8s.elastic.co/watched"
-	LabelBasedDiscoveryLabelValue = "true"
+	RestrictWatchedResourcesLabelName  = "eck.k8s.elastic.co/watched"
+	RestrictWatchedResourcesLabelValue = "true"
 )

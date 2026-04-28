@@ -61,7 +61,7 @@ func reconcileSecret(
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}
-	expected.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{

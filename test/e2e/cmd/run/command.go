@@ -54,8 +54,8 @@ type runFlags struct {
 	statelessEnabled         bool
 	statelessSecretName      string
 	statelessSecretNamespace string
-	// labelBasedDiscovery enables the operator's --label-based-discovery flag.
-	labelBasedDiscovery bool
+	// restrictWatchedResources enables the operator's --restrict-watched-resources flag.
+	restrictWatchedResources bool
 }
 
 var log logr.Logger
@@ -117,7 +117,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.statelessEnabled, "stateless", false, "Enable stateless Elasticsearch tests")
 	cmd.Flags().StringVar(&flags.statelessSecretName, "stateless-secret-name", "elasticsearch-object-store", "Name of the K8s Secret containing bucket credentials")
 	cmd.Flags().StringVar(&flags.statelessSecretNamespace, "stateless-secret-namespace", "default", "Namespace where the bucket credentials Secret is located")
-	cmd.Flags().BoolVar(&flags.labelBasedDiscovery, "label-based-discovery", false, "Deploy the operator with the --label-based-discovery flag enabled")
+	cmd.Flags().BoolVar(&flags.restrictWatchedResources, "restrict-watched-resources", false, "Deploy the operator with the --restrict-watched-resources flag enabled")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

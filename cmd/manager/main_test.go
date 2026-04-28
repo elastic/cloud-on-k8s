@@ -347,16 +347,16 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 }
 
 func TestBuildByObject(t *testing.T) {
-	labelScopedExpected := commonv1.LabelBasedDiscoveryLabelName + `=true`
+	labelScopedExpected := commonv1.RestrictWatchedResourcesLabelName + `=true`
 
 	tests := []struct {
 		name                         string
-		labelBasedDiscovery          bool
+		restrictWatchedResources     bool
 		expectedLabelQueryByTypeName map[reflect.Type]string
 	}{
 		{
-			name:                "without label scope",
-			labelBasedDiscovery: false,
+			name:                     "without label scope",
+			restrictWatchedResources: false,
 			expectedLabelQueryByTypeName: map[reflect.Type]string{
 				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
 				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
@@ -366,8 +366,8 @@ func TestBuildByObject(t *testing.T) {
 			},
 		},
 		{
-			name:                "with label scope",
-			labelBasedDiscovery: true,
+			name:                     "with label scope",
+			restrictWatchedResources: true,
 			expectedLabelQueryByTypeName: map[reflect.Type]string{
 				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
 				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
@@ -383,7 +383,7 @@ func TestBuildByObject(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := buildByObject(tc.labelBasedDiscovery)
+			got, err := buildByObject(tc.restrictWatchedResources)
 			require.NoError(t, err)
 			require.Len(t, got, len(tc.expectedLabelQueryByTypeName), "not expected number of items")
 

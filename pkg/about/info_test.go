@@ -90,7 +90,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			// watch label should exists in all scenarios
 			cfgMap, err := fakeClientset.CoreV1().ConfigMaps(fakeOperatorNs).Get(t.Context(), UUIDCfgMapName, metav1.GetOptions{})
 			require.NoError(t, err)
-			require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, cfgMap.Labels[commonv1.LabelBasedDiscoveryLabelName])
+			require.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, cfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName])
 		})
 	}
 }

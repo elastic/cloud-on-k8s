@@ -281,7 +281,7 @@ func TestExpectedTrialStatus(t *testing.T) {
 						TrialLicenseSecretNamespace: "ns",
 					},
 					Labels: map[string]string{
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 				},
 				Data: map[string][]byte{
@@ -307,7 +307,7 @@ func TestExpectedTrialStatus(t *testing.T) {
 						TrialLicenseSecretNamespace: "ns",
 					},
 					Labels: map[string]string{
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 				},
 				Data: map[string][]byte{

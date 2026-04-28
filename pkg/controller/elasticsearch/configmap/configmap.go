@@ -61,7 +61,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 		},
 	}
 
-	scriptsConfigMap.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	scriptsConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	return reconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }

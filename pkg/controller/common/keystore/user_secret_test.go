@@ -143,7 +143,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		Name:      "kb-kb-secure-settings",
 		Namespace: "ns",
 		Labels: map[string]string{
-			commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 		},
 		OwnerReferences: []metav1.OwnerReference{
 			{

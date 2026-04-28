@@ -45,7 +45,7 @@ telemetry:
 config:
   logVerbosity: "1"
   metricsPort: "9090"
-  labelBasedDiscovery: {{ .LabelBasedDiscovery }}
+  restrictWatchedResources: {{ .RestrictWatchedResources }}
 
 internal:
   createOperatorNamespace: false

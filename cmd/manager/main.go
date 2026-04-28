@@ -364,7 +364,7 @@ func Command() *cobra.Command {
 		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods and Kibana 7.10+ Pods. Possible values: true, false, auto-detect",
 	)
 	cmd.Flags().Bool(
-		operator.LabelBasedDiscovery,
+		operator.RestrictWatchedResources,
 		false,
 		"Restrict resource discovery (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
 	)
@@ -605,7 +605,7 @@ func startOperator(ctx context.Context) error {
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 	}
 
-	byObject, err := buildByObject(viper.GetBool(operator.LabelBasedDiscovery))
+	byObject, err := buildByObject(viper.GetBool(operator.RestrictWatchedResources))
 	if err != nil {
 		log.Error(err, "Failed to build cache option ByObject")
 		return err
@@ -1067,7 +1067,7 @@ func fipsLog() {
 	log.Info("operator runs without FIPS mode")
 }
 
-func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, error) {
+func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObject, error) {
 	// cache filter for ECK owned resources (carrying the common.k8s.elastic.co/type label)
 	commonTypeExists, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
 	if err != nil {
@@ -1087,17 +1087,17 @@ func buildByObject(labelBasedDiscovery bool) (map[client.Object]cache.ByObject, 
 		&appsv1.DaemonSet{}:             {Label: eckOwnedSelector},
 	}
 
-	if !labelBasedDiscovery {
+	if !restrictWatchedResources {
 		return byObject, nil
 	}
-	log.Info("label based discovery is enabled")
+	log.Info("watched resources restriction is enabled")
 
-	labelBasedSelector := labels.SelectorFromSet(labels.Set{
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+	watchedResourcesSelector := labels.SelectorFromSet(labels.Set{
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	})
-	byObject[&corev1.Secret{}] = cache.ByObject{Label: labelBasedSelector}
-	byObject[&corev1.Service{}] = cache.ByObject{Label: labelBasedSelector}
-	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: labelBasedSelector}
+	byObject[&corev1.Secret{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.Service{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: watchedResourcesSelector}
 
 	return byObject, nil
 }

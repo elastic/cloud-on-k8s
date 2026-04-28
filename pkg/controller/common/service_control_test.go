@@ -40,7 +40,7 @@ func TestReconcileService(t *testing.T) {
 
 	wantSvc := mkService(owner)
 	wantSvc.Labels["lbl3"] = "lblval3"
-	wantSvc.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	wantSvc.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	wantSvc.Annotations["ann3"] = "annval3"
 
 	haveSvc, err := ReconcileService(context.Background(), client, expectedSvc, owner)

@@ -63,7 +63,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 	if scriptsConfigMap.Labels == nil {
 		scriptsConfigMap.Labels = make(map[string]string)
 	}
-	scriptsConfigMap.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	scriptsConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(

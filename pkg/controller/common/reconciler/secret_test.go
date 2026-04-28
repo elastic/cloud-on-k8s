@@ -37,7 +37,7 @@ var (
 	sampleLabels         = map[string]string{"label1": "value1", "label2": "value2"}
 	sampleLabelsExpected = map[string]string{
 		"label1": "value1", "label2": "value2",
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	}
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
@@ -106,7 +106,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
-					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
+					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue, // watched resources
 				}, map[string]string{
 					"existing":    "existing",                        // keep existing
 					"annotation1": "value1", "annotation2": "value2", // add expected
@@ -158,7 +158,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 	sampleSecretWithSoftOwnerRef := createSecret("s", sampleData, sampleLabelsWithSoftOwnerRef, sampleAnnotations)
 
 	sampleExpectedLabelsWithSoftOwnerRef := concatMaps(sampleLabelsWithSoftOwnerRef, map[string]string{
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	})
 	sampleSecretWithSoftOwnerRefExpected := createSecret("s", sampleData, sampleExpectedLabelsWithSoftOwnerRef, sampleAnnotations)
 
@@ -208,7 +208,7 @@ func TestReconcileSecretNoOwnerRef(t *testing.T) {
 				concatMaps(expectedSoftOwnerLabels, map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
-					commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue, // label-based discovery
+					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue, // watched resources
 				}),
 				map[string]string{
 					"existing":    "existing",                        // keep existing

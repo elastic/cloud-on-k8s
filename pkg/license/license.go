@@ -178,8 +178,8 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 			Namespace: nsn.Namespace,
 			Name:      nsn.Name,
 			Labels: map[string]string{
-				commonv1.TypeLabelName:                Type,
-				commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+				commonv1.TypeLabelName:                     Type,
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 			},
 		},
 		Data: info.toMap(),

@@ -259,9 +259,9 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, encodedKey string, expectedHash string) corev1.Secret {
 	baseLabels := resourceLabelsFor(policy, es)
 	apiKeyLabels := maps.Merge(baseLabels, map[string]string{
-		policySecretTypeLabelKey:              apiKeySecretType,
-		commonapikey.MetadataKeyConfigHash:    expectedHash,
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		policySecretTypeLabelKey:                   apiKeySecretType,
+		commonapikey.MetadataKeyConfigHash:         expectedHash,
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	})
 
 	meta := metadata.Propagate(&policy, metadata.Metadata{

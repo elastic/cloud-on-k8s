@@ -206,7 +206,7 @@ func checkCASecrets(
 	require.NoError(t, err)
 	require.NotEmpty(t, internalCASecret.Data[CertFileName])
 	require.NotEmpty(t, internalCASecret.Data[KeyFileName])
-	require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, internalCASecret.Labels[commonv1.LabelBasedDiscoveryLabelName])
+	require.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, internalCASecret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 
 	// secret should be ok to parse as a CA
 	parsedCa := BuildCAFromSecret(context.Background(), internalCASecret)

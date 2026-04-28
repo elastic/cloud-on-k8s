@@ -132,10 +132,10 @@ type Context struct {
 	// Stateless holds configuration for stateless Elasticsearch tests.
 	// If nil, stateless mode is disabled.
 	Stateless *StatelessConfig `json:"stateless,omitempty"`
-	// LabelBasedDiscovery enables the operator's --label-based-discovery flag, restricting
+	// RestrictWatchedResources enables the operator's --restrict-watched-resources flag, restricting
 	// resource discovery (secrets, services and configmaps) to resources carrying the
 	// eck.k8s.elastic.co/watched=true label.
-	LabelBasedDiscovery bool `json:"label_based_discovery"`
+	RestrictWatchedResources bool `json:"restrict_watched_resources"`
 }
 
 // StatelessConfig holds configuration for stateless Elasticsearch tests.

@@ -49,7 +49,7 @@ func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, 
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}
-	expected.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	var reconciled corev1.Secret
 
@@ -348,7 +348,7 @@ func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}
-	expected.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	expected.Labels[SoftOwnerNamespaceLabel] = ownerMeta.GetNamespace()
 	expected.Labels[SoftOwnerNameLabel] = ownerMeta.GetName()
 	expected.Labels[SoftOwnerKindLabel] = softOwner.GetObjectKind().GroupVersionKind().Kind

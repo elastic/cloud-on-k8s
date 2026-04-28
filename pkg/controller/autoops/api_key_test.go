@@ -108,14 +108,14 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					Name:      "secret-1",
 					Namespace: "ns-1",
 					Labels: map[string]string{
-						commonapikey.MetadataKeyConfigHash:    "hash123",
-						commonapikey.MetadataKeyESName:        "es-1",
-						commonapikey.MetadataKeyESNamespace:   "ns-2",
-						commonv1.TypeLabelName:                autoOpsAgentType,
-						policySecretTypeLabelKey:              "api-key",
-						PolicyNameLabelKey:                    "policy-1",
-						policyNamespaceLabelKey:               "ns-1",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						commonapikey.MetadataKeyConfigHash:         "hash123",
+						commonapikey.MetadataKeyESName:             "es-1",
+						commonapikey.MetadataKeyESNamespace:        "ns-2",
+						commonv1.TypeLabelName:                     autoOpsAgentType,
+						policySecretTypeLabelKey:                   "api-key",
+						PolicyNameLabelKey:                         "policy-1",
+						policyNamespaceLabelKey:                    "ns-1",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: map[string]string{
 						"annotation1": "value1",
@@ -148,14 +148,14 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 					Name:      "secret-1",
 					Namespace: "ns-1",
 					Labels: map[string]string{
-						commonapikey.MetadataKeyConfigHash:    "hash123",
-						commonapikey.MetadataKeyESName:        "es-1",
-						commonapikey.MetadataKeyESNamespace:   "ns-2",
-						commonv1.TypeLabelName:                autoOpsAgentType,
-						policySecretTypeLabelKey:              "api-key",
-						PolicyNameLabelKey:                    "policy-1",
-						policyNamespaceLabelKey:               "ns-1",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						commonapikey.MetadataKeyConfigHash:         "hash123",
+						commonapikey.MetadataKeyESName:             "es-1",
+						commonapikey.MetadataKeyESNamespace:        "ns-2",
+						commonv1.TypeLabelName:                     autoOpsAgentType,
+						policySecretTypeLabelKey:                   "api-key",
+						PolicyNameLabelKey:                         "policy-1",
+						policyNamespaceLabelKey:                    "ns-1",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 				},
 				Data: map[string][]byte{
@@ -174,10 +174,10 @@ func Test_buildAutoOpsESAPIKeySecret(t *testing.T) {
 	}
 }
 
-// Test_maybeUpdateAPIKey_AddsLabelBasedDiscoveryLabel verifies that when the API key
+// Test_maybeUpdateAPIKey_AddsRestrictWatchedResourcesLabel verifies that when the API key
 // is up to date and the secret already exists, the reconciler still updates the secret
-// to add the label-based discovery label introduced for the watch mechanism.
-func Test_maybeUpdateAPIKey_AddsLabelBasedDiscoveryLabel(t *testing.T) {
+// to add the watched resources label introduced for the watch mechanism.
+func Test_maybeUpdateAPIKey_AddsRestrictWatchedResourcesLabel(t *testing.T) {
 	scheme.SetupScheme()
 
 	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
@@ -198,7 +198,7 @@ func Test_maybeUpdateAPIKey_AddsLabelBasedDiscoveryLabel(t *testing.T) {
 	apiKeyName := apiKeyNameFor(policy, es)
 	secretName := autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es))
 
-	// Pre-existing secret without the LabelBasedDiscoveryLabelName label - this
+	// Pre-existing secret without the RestrictWatchedResourcesLabelName label - this
 	// simulates a secret created before the label was introduced.
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -249,9 +249,9 @@ func Test_maybeUpdateAPIKey_AddsLabelBasedDiscoveryLabel(t *testing.T) {
 
 	// The returned secret must carry the new label.
 	require.Equal(t,
-		commonv1.LabelBasedDiscoveryLabelValue,
-		got.Labels[commonv1.LabelBasedDiscoveryLabelName],
-		"returned secret is missing the label-based discovery label",
+		commonv1.RestrictWatchedResourcesLabelValue,
+		got.Labels[commonv1.RestrictWatchedResourcesLabelName],
+		"returned secret is missing the watched resources label",
 	)
 
 	// The persisted secret in the API server must also carry the new label.
@@ -261,9 +261,9 @@ func Test_maybeUpdateAPIKey_AddsLabelBasedDiscoveryLabel(t *testing.T) {
 		Name:      secretName,
 	}, &persisted))
 	require.Equal(t,
-		commonv1.LabelBasedDiscoveryLabelValue,
-		persisted.Labels[commonv1.LabelBasedDiscoveryLabelName],
-		"persisted secret is missing the label-based discovery label",
+		commonv1.RestrictWatchedResourcesLabelValue,
+		persisted.Labels[commonv1.RestrictWatchedResourcesLabelName],
+		"persisted secret is missing the watched resources label",
 	)
 
 	// The API key value must be preserved (not rotated).

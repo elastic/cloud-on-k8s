@@ -91,8 +91,8 @@ func TestLicensingResolver_Save(t *testing.T) {
 	}
 
 	wantLabels := map[string]string{
-		commonv1.TypeLabelName:                Type,
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		commonv1.TypeLabelName:                     Type,
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	}
 
 	t.Run("creates config map with discovery label when it does not exist", func(t *testing.T) {

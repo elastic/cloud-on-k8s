@@ -359,7 +359,7 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 	}
 	if fs.Exists() {
 		// Re-save the existing Secret so that any newly-managed labels or annotations
-		// introduced by the operator (e.g. the label-based discovery label) are propagated
+		// introduced by the operator (e.g. the watched resources label) are propagated
 		// onto it. Save is a no-op when nothing has actually changed.
 		return false, fs.Save(ctx, c, es)
 	}

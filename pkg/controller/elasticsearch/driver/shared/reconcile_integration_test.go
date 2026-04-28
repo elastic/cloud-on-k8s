@@ -145,9 +145,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -180,9 +180,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -226,9 +226,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -267,9 +267,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -295,9 +295,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -324,9 +324,9 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
 					Labels: map[string]string{
-						label.ClusterNameLabelName:            clusterName,
-						"common.k8s.elastic.co/type":          "elasticsearch",
-						commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+						label.ClusterNameLabelName:                 clusterName,
+						"common.k8s.elastic.co/type":               "elasticsearch",
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: nil,
 				},
@@ -736,7 +736,7 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 		Namespace: es.Namespace,
 		Name:      es.Name,
 	})
-	labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	ownerReferences := newOwnerReference(es)
 
 	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
@@ -893,7 +893,7 @@ func newService(es *esv1.Elasticsearch, st serviceType, resourceVersion string) 
 		Namespace: es.Namespace,
 		Name:      es.Name,
 	})
-	labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	md := metadata.Metadata{
 		Labels:      labels,
 		Annotations: nil,

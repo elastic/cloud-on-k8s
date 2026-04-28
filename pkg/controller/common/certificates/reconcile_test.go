@@ -72,15 +72,15 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	checkResults()
 
 	expectedLabels := map[string]string{
-		"foo":                                 "bar",
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
+		"foo": "bar",
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	}
 	labelsWithSoftOwner := map[string]string{
-		"foo":                                 "bar",
-		commonv1.LabelBasedDiscoveryLabelName: commonv1.LabelBasedDiscoveryLabelValue,
-		reconciler.SoftOwnerKindLabel:         obj.Kind,
-		reconciler.SoftOwnerNamespaceLabel:    obj.Namespace,
-		reconciler.SoftOwnerNameLabel:         obj.Name,
+		"foo": "bar",
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		reconciler.SoftOwnerKindLabel:              obj.Kind,
+		reconciler.SoftOwnerNamespaceLabel:         obj.Namespace,
+		reconciler.SoftOwnerNameLabel:              obj.Name,
 	}
 
 	// the 3 secrets should have been created in the apiserver,
