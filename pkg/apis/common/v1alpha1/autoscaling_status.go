@@ -33,6 +33,9 @@ const (
 )
 
 const (
+	// The following ConditionTypes are autoscaling-specific, and therefore remain alongside the remainder of the autoscaling
+	// feature in v1alpha1 until the entire feature is promoted to v1.
+
 	// ElasticsearchAutoscalerActive status is True when the ElasticsearchAutoscaler resource is managed by the operator and the target
 	// Elasticsearch cluster does exist. It makes it possible to attempt to calculate the required compute and storage resources
 	// for the targeted cluster.
