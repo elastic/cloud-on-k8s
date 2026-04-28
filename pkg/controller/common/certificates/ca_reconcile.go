@@ -43,6 +43,16 @@ const (
 
 const (
 	caInternalSecretSuffix = "ca-internal"
+
+	// caRotationTimestampAnnotation records when the CA was last rotated so that GetPreviousCABytes
+	// knows whether the grace period is still active.
+	caRotationTimestampAnnotation = "certificates.k8s.elastic.co/ca-rotation-time"
+
+	// CATransitionGracePeriod is how long the previous CA certificate is kept in the trust bundle
+	// alongside the new CA after a rotation. This must exceed the maximum kubelet Secret sync
+	// period so that every pod receives the new CA before the old one is removed from its trust
+	// store, preventing the split-brain described in https://github.com/elastic/cloud-on-k8s/issues/509.
+	CATransitionGracePeriod = 1 * time.Hour
 )
 
 // CAInternalSecretName returns the name of the internal secret containing the CA certs and keys
@@ -78,24 +88,28 @@ func ReconcileCAForOwner(
 	}
 	if apierrors.IsNotFound(err) {
 		log.Info("No internal CA certificate Secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, nil)
 	}
 
 	// build CA
 	ca := BuildCAFromSecret(ctx, caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, nil)
 	}
 
 	// renew or recreate from private key if cannot reuse
 	if !CanReuseCA(ctx, ca, rotationParams.RotateBefore) {
+		// Preserve the current CA cert so it can be included in the trust bundle during the
+		// grace period (see CATransitionGracePeriod). This prevents the split-brain where some
+		// pods have already received the new CA while others still present certs signed by the old one.
+		previousCACert := EncodePEMCert(ca.Cert.Raw)
 		if ca.PrivateKey != nil && certExpiring(time.Now(), *ca.Cert, rotationParams.RotateBefore) {
 			log.Info("Existing CA is expiring, creating a new one from existing private key", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-			return renewCAFromExisting(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, ca)
+			return renewCAFromExisting(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, ca, previousCACert)
 		}
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType)
+		return renewCA(ctx, cl, namer, owner, meta, rotationParams.Validity, caType, previousCACert)
 	}
 
 	// reuse existing CA
@@ -116,6 +130,7 @@ func renewCAFromExisting(
 	expireIn time.Duration,
 	caType CAType,
 	existingCA *CA,
+	previousCACert []byte,
 ) (*CA, error) {
 	log := ulog.FromContext(ctx)
 	if existingCA == nil || existingCA.Cert == nil {
@@ -125,7 +140,7 @@ func renewCAFromExisting(
 			"name", owner.GetName(),
 			"ca_type", caType,
 		)
-		return renewCA(ctx, client, namer, owner, meta, expireIn, caType)
+		return renewCA(ctx, client, namer, owner, meta, expireIn, caType, previousCACert)
 	}
 	privateKey, ok := existingCA.PrivateKey.(*rsa.PrivateKey)
 	if !ok {
@@ -136,7 +151,7 @@ func renewCAFromExisting(
 			"name", owner.GetName(),
 			"type", fmt.Sprintf("%T", existingCA.PrivateKey),
 		)
-		return renewCA(ctx, client, namer, owner, meta, expireIn, caType)
+		return renewCA(ctx, client, namer, owner, meta, expireIn, caType, previousCACert)
 	}
 
 	log.Info(
@@ -152,7 +167,7 @@ func renewCAFromExisting(
 		ExpireIn:     &expireIn,
 		PrivateKey:   privateKey,
 		SubjectKeyID: existingCA.Cert.SubjectKeyId,
-	})
+	}, previousCACert)
 }
 
 // renewCA creates and stores a new CA to replace one that might exist using a set of default builder options.
@@ -164,6 +179,7 @@ func renewCA(
 	meta metadata.Metadata,
 	expireIn time.Duration,
 	caType CAType,
+	previousCACert []byte,
 ) (*CA, error) {
 	return renewCAWithOptions(ctx, client, namer, owner, meta, caType, CABuilderOptions{
 		Subject: pkix.Name{
@@ -171,7 +187,7 @@ func renewCA(
 			OrganizationalUnit: []string{owner.GetName()},
 		},
 		ExpireIn: &expireIn,
-	})
+	}, previousCACert)
 }
 
 // renewCAWithOptions will create and store a new CA to replace one that might exist using a set of given builder options
@@ -184,12 +200,13 @@ func renewCAWithOptions(
 	meta metadata.Metadata,
 	caType CAType,
 	options CABuilderOptions,
+	previousCACert []byte,
 ) (*CA, error) {
 	ca, err := NewSelfSignedCA(options)
 	if err != nil {
 		return nil, err
 	}
-	caInternalSecret, err := internalSecretForCA(ca, namer, owner, meta, caType)
+	caInternalSecret, err := internalSecretForCA(ca, namer, owner, meta, caType, previousCACert)
 	if err != nil {
 		return nil, err
 	}
@@ -230,29 +247,99 @@ func certExpiring(t time.Time, cert x509.Certificate, expirationSafetyMargin tim
 }
 
 // internalSecretForCA returns a new internal Secret for the given CA.
+// When previousCACert is non-empty it is stored under PreviousCAFileName together with a
+// rotation timestamp annotation so that GetPreviousCABytes can serve it during the grace period.
 func internalSecretForCA(
 	ca *CA,
 	namer name.Namer,
 	owner v1.Object,
 	meta metadata.Metadata,
 	caType CAType,
+	previousCACert []byte,
 ) (corev1.Secret, error) {
 	privateKeyData, err := EncodePEMPrivateKey(ca.PrivateKey)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
+
+	annotations := meta.Annotations
+	data := map[string][]byte{
+		CertFileName: EncodePEMCert(ca.Cert.Raw),
+		KeyFileName:  privateKeyData,
+	}
+
+	if len(previousCACert) > 0 {
+		data[PreviousCAFileName] = previousCACert
+		// Copy annotations map before mutating to avoid touching the shared metadata object.
+		copied := make(map[string]string, len(annotations)+1)
+		for k, v := range annotations {
+			copied[k] = v
+		}
+		copied[caRotationTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339)
+		annotations = copied
+	}
+
 	return corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace:   owner.GetNamespace(),
 			Name:        CAInternalSecretName(namer, owner.GetName(), caType),
 			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
+			Annotations: annotations,
 		},
-		Data: map[string][]byte{
-			CertFileName: EncodePEMCert(ca.Cert.Raw),
-			KeyFileName:  privateKeyData,
-		},
+		Data: data,
 	}, nil
+}
+
+// GetPreviousCABytes returns the previous CA certificate bytes that were stored in the CA
+// internal secret during the last rotation. It returns nil once CATransitionGracePeriod has
+// elapsed since the rotation, and removes the stale data from the secret so subsequent calls
+// are cheap. This implements the first step of Option A from the design doc referenced in
+// https://github.com/elastic/cloud-on-k8s/issues/509: both old and new CAs are trusted by
+// every pod during the transition window so that kubelet propagation delays cannot cause a
+// split-brain where one pod rejects another's certificate.
+func GetPreviousCABytes(
+	ctx context.Context,
+	cl k8s.Client,
+	namer name.Namer,
+	owner client.Object,
+	caType CAType,
+) ([]byte, error) {
+	caInternalSecret := corev1.Secret{}
+	if err := cl.Get(ctx, types.NamespacedName{
+		Namespace: owner.GetNamespace(),
+		Name:      CAInternalSecretName(namer, owner.GetName(), caType),
+	}, &caInternalSecret); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	previousCA := caInternalSecret.Data[PreviousCAFileName]
+	if len(previousCA) == 0 {
+		return nil, nil
+	}
+
+	// Determine whether we are still within the grace period.
+	tsStr := caInternalSecret.Annotations[caRotationTimestampAnnotation]
+	if tsStr != "" {
+		if ts, err := time.Parse(time.RFC3339, tsStr); err == nil {
+			if time.Since(ts) < CATransitionGracePeriod {
+				return previousCA, nil
+			}
+		}
+	}
+
+	// Grace period has elapsed (or timestamp is missing/unparseable): clean up.
+	patch := client.MergeFrom(caInternalSecret.DeepCopy())
+	delete(caInternalSecret.Data, PreviousCAFileName)
+	if caInternalSecret.Annotations != nil {
+		delete(caInternalSecret.Annotations, caRotationTimestampAnnotation)
+	}
+	if err := cl.Patch(ctx, &caInternalSecret, patch); err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	return nil, nil
 }
 
 func detectCAFileNames(path string) (string, string, error) {

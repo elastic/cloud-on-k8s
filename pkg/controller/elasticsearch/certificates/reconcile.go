@@ -172,7 +172,7 @@ func ReconcileTransport(
 	}
 
 	// reconcile transport CA and certs
-	transportCA, err := transport.ReconcileOrRetrieveCA(
+	transportCA, previousTransportCA, err := transport.ReconcileOrRetrieveCA(
 		ctx,
 		driver,
 		es,
@@ -190,8 +190,20 @@ func ReconcileTransport(
 			ReconciliationComplete(), // This reconciliation result should not prevent the reconciliation loop to be considered as completed in the status
 	)
 
+	// During a CA rotation, include the previous CA in the trust bundle for CATransitionGracePeriod
+	// so that pods which have not yet received the updated Secret can still verify peer certificates.
+	// This implements Option A from https://github.com/elastic/cloud-on-k8s/issues/509.
+	allAdditionalCAs := additionalCAs
+	if len(previousTransportCA) > 0 {
+		allAdditionalCAs = append(allAdditionalCAs, previousTransportCA...)
+		// Requeue shortly so the previous CA is cleaned up once the grace period expires.
+		results.WithReconciliationState(
+			reconciler.RequeueAfter(certificates.CATransitionGracePeriod).ReconciliationComplete(),
+		)
+	}
+
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, additionalCAs, meta); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(ctx, driver.K8sClient(), es, transportCA, allAdditionalCAs, meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -200,7 +212,7 @@ func ReconcileTransport(
 		ctx,
 		driver.K8sClient(),
 		transportCA,
-		additionalCAs,
+		allAdditionalCAs,
 		es,
 		certRotation,
 		meta,

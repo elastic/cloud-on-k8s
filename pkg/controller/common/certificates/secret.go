@@ -24,6 +24,9 @@ const (
 	CAFileName = "ca.crt"
 	// CAKeyFileName is used for the CA certificate's private key inside a secret.
 	CAKeyFileName = "ca.key"
+	// PreviousCAFileName holds the previous CA certificate during the rotation grace period so that
+	// pods which have not yet received the new CA can still verify peer certificates.
+	PreviousCAFileName = "previous-ca.crt"
 	// CertFileName is used for Certificates inside a secret.
 	CertFileName = "tls.crt"
 	// KeyFileName is used for Private Keys inside a secret.
