@@ -495,7 +495,114 @@ func Test_webhook_Update(t *testing.T) {
 				},
 			}},
 			wantAllowed: false,
-			wantMessage: "Volume claim templates can only have storage requests modified",
+			wantMessage: "Volume claim templates can only have their storage requests and labels modified",
+		},
+		{
+			name: "allows label-only VCT change",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{Name: "test-pq"},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{
+											Name:   "test-pq",
+											Labels: map[string]string{"team": "search"},
+										},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+			}},
+			wantAllowed: true,
+		},
+		{
+			name: "denies newly added reserved label on VCT",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{Name: "test-pq"},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{
+											Name:   "test-pq",
+											Labels: map[string]string{"common.k8s.elastic.co/type": "evil"},
+										},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+			}},
+			wantAllowed: false,
+			wantMessage: "is reserved by ECK",
 		},
 	}
 	for _, tt := range tests {

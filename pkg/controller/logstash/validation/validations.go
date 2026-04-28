@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	pvcImmutableMsg = "Volume claim templates can only have storage requests modified"
+	pvcImmutableMsg              = "Volume claim templates can only have their storage requests and labels modified"
+	reservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 )
 
 type validation func(*lsv1alpha1.Logstash) field.ErrorList
@@ -35,6 +36,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 		func(current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash) field.ErrorList {
 			return checkPVCchanges(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
+		checkPVCReservedLabels,
 	}
 }
 
@@ -117,17 +119,25 @@ func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 	return errorList
 }
 
-// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+// checkPVCchanges ensures only the adjustable parts of volume claim templates are changed.
+// The currently adjustable fields are:
+//   - spec.resources.requests.storage: increases are allowed when the storage class supports
+//     volume expansion; decreases are rejected.
+//   - metadata.labels: free-form user labels can be added, modified, or removed (additive-only
+//     propagation to existing PVCs is performed by HandleVolumeExpansion). Reserved ECK label
+//     keys (see checkPVCReservedLabels) are rejected by a separate validation.
+//
+// Any other change to a VolumeClaimTemplate field is forbidden.
 func checkPVCchanges(ctx context.Context, current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	var errs field.ErrorList
 	if current == nil || proposed == nil {
 		return errs
 	}
 
-	// Check that no modification was made to the claims, except on storage requests.
+	// Check that no modification was made to the claims, except on storage requests and labels.
 	if !apiequality.Semantic.DeepEqual(
-		claimsWithoutStorageReq(current.Spec.VolumeClaimTemplates),
-		claimsWithoutStorageReq(proposed.Spec.VolumeClaimTemplates),
+		claimsWithoutAdjustableFields(current.Spec.VolumeClaimTemplates),
+		claimsWithoutAdjustableFields(proposed.Spec.VolumeClaimTemplates),
 	) {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, pvcImmutableMsg))
 	}
@@ -143,12 +153,66 @@ func checkPVCchanges(ctx context.Context, current *lsv1alpha1.Logstash, proposed
 	return errs
 }
 
-// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
-func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+// checkPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or modify
+// ECK-reserved label keys (anything under the *.k8s.elastic.co/ domain). Such labels would
+// propagate to the resulting PVCs and could break PVC reconciliation paths that rely on
+// those keys.
+//
+// Runs on update only and grandfathers (key, value) pairs already present on the matching
+// current claim so existing CRs that carry such labels are not bricked at upgrade time.
+// New CRs bypass this admission check; the reconciler's defensive guard in syncPVCLabels
+// still strips any reserved key before applying labels to PVCs.
+func checkPVCReservedLabels(current, proposed *lsv1alpha1.Logstash) field.ErrorList {
+	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
+	for j, proposedClaim := range proposed.Spec.VolumeClaimTemplates {
+		currentClaim := matchingClaim(current.Spec.VolumeClaimTemplates, proposedClaim.Name)
+		for key, value := range proposedClaim.ObjectMeta.Labels {
+			if !volumevalidations.IsReservedLabelKey(key) {
+				continue
+			}
+			if currentClaim != nil {
+				if currentValue, exists := currentClaim.ObjectMeta.Labels[key]; exists && currentValue == value {
+					// grandfather pre-existing (key, value) pair
+					continue
+				}
+			}
+			errs = append(errs, field.Invalid(
+				field.NewPath("spec").Child("volumeClaimTemplates").Index(j).
+					Child("metadata", "labels").Key(key),
+				key,
+				fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key),
+			))
+		}
+	}
+	return errs
+}
+
+// matchingClaim returns the claim with the given name in claims, or nil if not found.
+func matchingClaim(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
+	for i := range claims {
+		if claims[i].Name == name {
+			return &claims[i]
+		}
+	}
+	return nil
+}
+
+// claimsWithoutAdjustableFields returns a copy of the given claims, with all known adjustable
+// fields cleared so unrelated changes can be compared via deep equality.
+func claimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
+		// Storage quantity is allowed to be adjusted.
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		// Labels are allowed to be adjusted.
+		patchedClaim.ObjectMeta.Labels = map[string]string{}
 		result = append(result, patchedClaim)
 	}
 	return result

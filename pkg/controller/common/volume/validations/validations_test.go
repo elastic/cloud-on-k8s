@@ -377,6 +377,22 @@ func TestValidateClaimsUpdate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			// label-only diff is invisible to storage validation: changing labels (with no
+			// storage diff) must not regress into a storage validation error.
+			name: "label-only change with no storage diff: ok",
+			args: args{
+				k8sClient: k8s.NewFakeClient(withVolumeExpansion(sampleStorageClass)),
+				initial:   []corev1.PersistentVolumeClaim{sampleClaim},
+				updated: func() []corev1.PersistentVolumeClaim {
+					c := *sampleClaim.DeepCopy()
+					c.Labels = map[string]string{"team": "search"}
+					return []corev1.PersistentVolumeClaim{c}
+				}(),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

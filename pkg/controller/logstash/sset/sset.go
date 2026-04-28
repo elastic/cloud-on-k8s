@@ -67,6 +67,14 @@ func New(params Params) appsv1.StatefulSet {
 }
 
 // Reconcile creates or updates the expected StatefulSet.
+//
+// VolumeClaimTemplates are immutable on an existing StatefulSet, with the sole
+// exception of storage size updates handled separately by HandleVolumeExpansion
+// via the recreate-annotation path. To avoid a spurious "forbidden" error from
+// the Kubernetes apiserver on otherwise-valid updates (e.g. a user adding
+// labels to spec.volumeClaimTemplates), in-place updates preserve the existing
+// StatefulSet's VolumeClaimTemplates. VCT label changes are propagated to
+// existing PVCs directly by HandleVolumeExpansion.
 func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, ls lsv1alpha1.Logstash, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
 	podTemplateValidator := statefulset.NewPodTemplateValidator(ctx, c, &ls, expected)
@@ -89,7 +97,16 @@ func Reconcile(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, l
 			// manually set by the user on the existing resource
 			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
 			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			// preserve the existing VolumeClaimTemplates: they are immutable on an existing
+			// StatefulSet, and the recreate-annotation path handles storage resizes separately.
+			// Any label changes on volumeClaimTemplates are propagated to existing PVCs by
+			// HandleVolumeExpansion instead of the StatefulSet update path. Note that on a
+			// scale-up the StatefulSet controller will create new PVCs from this stale VCT,
+			// so they are briefly unlabeled until the next reconcile pass labels them via
+			// HandleVolumeExpansion (eventual consistency).
+			existingVCTs := reconciled.Spec.VolumeClaimTemplates
 			reconciled.Spec = expected.Spec
+			reconciled.Spec.VolumeClaimTemplates = existingVCTs
 		},
 		PreCreate: podTemplateValidator,
 		PreUpdate: podTemplateValidator,

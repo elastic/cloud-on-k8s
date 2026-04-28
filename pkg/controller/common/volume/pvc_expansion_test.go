@@ -445,6 +445,151 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 	}
 }
 
+// Test_handleVolumeExpansion_scaleUpSequence simulates the time-ordered scale-up scenario
+// flagged in PR review: the first reconcile labels existing PVCs, the StatefulSet
+// controller then creates a new PVC from the still-stale (immutable) VCT, and the next
+// reconcile pass picks up that new PVC and labels it. This locks in the eventual
+// consistency contract documented on ReconcileStatefulSet's UpdateReconciled.
+func Test_handleVolumeExpansion_scaleUpSequence(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
+	}
+
+	// initial state: 3 replicas, label-less VCT, 3 unlabeled PVCs.
+	initialSset := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:             ptr.To[int32](3),
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
+		},
+	}
+	pvc := func(idx int, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      fmt.Sprintf("sample-claim-sample-sset-%d", idx),
+				Labels:    labels,
+			},
+			Spec: sampleClaim.Spec,
+		}
+	}
+	initialPVCs := []corev1.PersistentVolumeClaim{pvc(0, nil), pvc(1, nil), pvc(2, nil)}
+
+	k8sClient := k8s.NewFakeClient(
+		&es,
+		withVolumeExpansion(sampleStorageClass),
+		&initialPVCs[0], &initialPVCs[1], &initialPVCs[2],
+	)
+
+	// === Pass 1 ===
+	// User adds a label to the VCT. ReconcileStatefulSet preserves the existing VCT in
+	// the apiserver but HandleVolumeExpansion still labels the existing PVCs.
+	expectedSset := *initialSset.DeepCopy()
+	expectedSset.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
+
+	recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, expectedSset, initialSset, true)
+	require.NoError(t, err)
+	require.False(t, recreate)
+
+	for i := range 3 {
+		var got corev1.PersistentVolumeClaim
+		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&initialPVCs[i]), &got))
+		require.Equal(t, map[string]string{"team": "search"}, got.Labels, "existing PVC %d should be labeled after pass 1", i)
+	}
+
+	// === Time passes, then the StatefulSet is scaled up to 4 replicas ===
+	// ReconcileStatefulSet preserves the immutable label-less VCT on the apiserver, so
+	// the StatefulSet controller creates the 4th PVC from the stale template (no label).
+	scaledSset := *initialSset.DeepCopy()
+	scaledSset.Spec.Replicas = ptr.To[int32](4)
+	freshPVC := pvc(3, nil)
+	require.NoError(t, k8sClient.Create(context.Background(), &freshPVC))
+
+	// === Pass 2 ===
+	// On the next reconcile pass, expectedSset reflects the new replica count and the
+	// labeled VCT; HandleVolumeExpansion must label the freshly-created PVC.
+	expectedSset.Spec.Replicas = ptr.To[int32](4)
+	recreate, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, expectedSset, scaledSset, true)
+	require.NoError(t, err)
+	require.False(t, recreate)
+
+	var allPVCs corev1.PersistentVolumeClaimList
+	require.NoError(t, k8sClient.List(context.Background(), &allPVCs))
+	require.Len(t, allPVCs.Items, 4)
+	for i := range allPVCs.Items {
+		require.Equal(t, map[string]string{"team": "search"}, allPVCs.Items[i].Labels,
+			"PVC %s should be labeled after pass 2 (eventual consistency)", allPVCs.Items[i].Name)
+	}
+}
+
+// Test_handleVolumeExpansion_labelRemovalAndRename locks in the additive-only contract
+// documented on syncPVCLabels: removing a label from the VCT does not remove it from
+// existing PVCs, and renaming a label adds the new key without removing the old one.
+// This guards against silent product behavior changes if the additive-only design ever
+// shifts to full sync.
+func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
+	}
+	initialSset := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:             ptr.To[int32](2),
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
+		},
+	}
+	pvc := func(idx int) *corev1.PersistentVolumeClaim {
+		return &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      fmt.Sprintf("sample-claim-sample-sset-%d", idx),
+			},
+			Spec: sampleClaim.Spec,
+		}
+	}
+
+	k8sClient := k8s.NewFakeClient(&es, withVolumeExpansion(sampleStorageClass), pvc(0), pvc(1))
+
+	// === Pass 1: add label "team=search" ===
+	step1 := *initialSset.DeepCopy()
+	step1.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
+	_, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, step1, initialSset, true)
+	require.NoError(t, err)
+
+	// === Pass 2: remove "team" entirely ===
+	// actualSset is now step1 (the VCT was previously updated logically; in reality the
+	// apiserver VCT stays stale because of immutability, but HandleVolumeExpansion
+	// compares storage only, so what we pass as actual does not matter for labels).
+	step2 := *initialSset.DeepCopy() // VCT has no labels
+	_, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, step2, step1, true)
+	require.NoError(t, err)
+
+	// PVCs should retain "team=search" — additive-only, removal does not propagate.
+	for i := range 2 {
+		var got corev1.PersistentVolumeClaim
+		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(pvc(i)), &got))
+		require.Equal(t, map[string]string{"team": "search"}, got.Labels,
+			"PVC %d must retain stale label after VCT label removal", i)
+	}
+
+	// === Pass 3: rename to "squad=search" (different key entirely) ===
+	step3 := *initialSset.DeepCopy()
+	step3.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"squad": "search"})
+	_, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, step3, step2, true)
+	require.NoError(t, err)
+
+	// PVCs should now carry BOTH the stale "team" key and the new "squad" key — the
+	// rename adds the new key but does not remove the old one.
+	for i := range 2 {
+		var got corev1.PersistentVolumeClaim
+		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(pvc(i)), &got))
+		require.Equal(t, map[string]string{"team": "search", "squad": "search"}, got.Labels,
+			"PVC %d must carry both stale and new label after rename (additive-only)", i)
+	}
+}
+
 func Test_handleVolumeExpansionLogstash(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},

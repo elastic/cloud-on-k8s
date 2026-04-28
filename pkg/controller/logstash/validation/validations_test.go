@@ -5,16 +5,21 @@
 package validation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func TestCheckNameLength(t *testing.T) {
@@ -324,6 +329,167 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 			assert.Equal(t, tt.wantErr, len(got) > 0)
 		})
 	}
+}
+
+func Test_checkPVCchanges(t *testing.T) {
+	storageClass := storagev1.StorageClass{
+		ObjectMeta:           metav1.ObjectMeta{Name: "sample-sc"},
+		AllowVolumeExpansion: ptr.To[bool](true),
+	}
+	claim := func(name, size string, labels map[string]string) corev1.PersistentVolumeClaim {
+		c := corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				StorageClassName: ptr.To[string](storageClass.Name),
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)},
+				},
+			},
+		}
+		return c
+	}
+	ls := func(claims ...corev1.PersistentVolumeClaim) *lsv1alpha1.Logstash {
+		return &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: claims}}
+	}
+
+	tests := []struct {
+		name      string
+		current   *lsv1alpha1.Logstash
+		proposed  *lsv1alpha1.Logstash
+		k8sClient k8s.Client
+		wantErr   bool
+	}{
+		{
+			name:      "no change: ok",
+			current:   ls(claim("data", "1Gi", nil)),
+			proposed:  ls(claim("data", "1Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
+		},
+		{
+			name:      "storage increase: ok",
+			current:   ls(claim("data", "1Gi", nil)),
+			proposed:  ls(claim("data", "3Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
+		},
+		{
+			name:      "label-only change: ok",
+			current:   ls(claim("data", "1Gi", nil)),
+			proposed:  ls(claim("data", "1Gi", map[string]string{"team": "search"})),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
+		},
+		{
+			name:      "label removal: ok",
+			current:   ls(claim("data", "1Gi", map[string]string{"team": "search"})),
+			proposed:  ls(claim("data", "1Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
+		},
+		{
+			name:      "label change combined with storage increase: ok",
+			current:   ls(claim("data", "1Gi", nil)),
+			proposed:  ls(claim("data", "3Gi", map[string]string{"team": "search"})),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
+		},
+		{
+			name:    "storageClassName change: error",
+			current: ls(claim("data", "1Gi", nil)),
+			proposed: func() *lsv1alpha1.Logstash {
+				c := claim("data", "1Gi", nil)
+				c.Spec.StorageClassName = ptr.To[string]("other-sc")
+				return ls(c)
+			}(),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   true,
+		},
+		{
+			name:      "storage decrease: error",
+			current:   ls(claim("data", "3Gi", nil)),
+			proposed:  ls(claim("data", "1Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := checkPVCchanges(context.Background(), tt.current, tt.proposed, tt.k8sClient, true)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
+}
+
+func Test_checkPVCReservedLabels(t *testing.T) {
+	withClaims := func(claims ...corev1.PersistentVolumeClaim) *lsv1alpha1.Logstash {
+		return &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: claims}}
+	}
+	claim := func(name string, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels}}
+	}
+
+	tests := []struct {
+		name     string
+		current  *lsv1alpha1.Logstash
+		proposed *lsv1alpha1.Logstash
+		wantErr  bool
+	}{
+		{
+			name:     "nil current/proposed: ok",
+			current:  nil,
+			proposed: nil,
+			wantErr:  false,
+		},
+		{
+			name:     "non-reserved label added: ok",
+			current:  withClaims(claim("data", nil)),
+			proposed: withClaims(claim("data", map[string]string{"team": "search"})),
+			wantErr:  false,
+		},
+		{
+			name:     "reserved label newly added: error",
+			current:  withClaims(claim("data", nil)),
+			proposed: withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
+			wantErr:  true,
+		},
+		{
+			name:     "reserved label already present and unchanged: grandfathered",
+			current:  withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			proposed: withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			wantErr:  false,
+		},
+		{
+			name:     "reserved label already present but value changed: error",
+			current:  withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			proposed: withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "new"})),
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := checkPVCReservedLabels(tt.current, tt.proposed)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
+}
+
+func Test_claimsWithoutAdjustableFieldsLogstash(t *testing.T) {
+	// Ensures the function does not panic when Resources.Requests is nil.
+	claims := []corev1.PersistentVolumeClaim{
+		{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+	}
+	require.NotPanics(t, func() {
+		_ = claimsWithoutAdjustableFields(claims)
+	})
 }
 
 func Test_checkESRefsNamed(t *testing.T) {

@@ -180,19 +180,31 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 	return nil
 }
 
-// validPVCReservedLabels rejects volumeClaimTemplates that carry ECK-reserved label keys
-// (anything under the *.k8s.elastic.co/ domain). Such labels would propagate to the
-// resulting PVCs and break PVC GC and owner-ref reconciliation, both of which select on
-// elasticsearch.k8s.elastic.co/cluster-name. Runs on both create and update so a freshly
-// applied CR with a reserved key is rejected up front, not silently neutralized later by
-// the reconciler's defensive guard.
-func validPVCReservedLabels(es esv1.Elasticsearch) field.ErrorList {
+// validPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or
+// modify ECK-reserved label keys (anything under the *.k8s.elastic.co/ domain). Such
+// labels would propagate to the resulting PVCs and could break PVC GC and owner-ref
+// reconciliation, which select on elasticsearch.k8s.elastic.co/cluster-name and
+// elasticsearch.k8s.elastic.co/statefulset-name.
+//
+// Runs on update only and grandfathers (key, value) pairs already present on the matching
+// current claim so existing clusters that carry such labels are not bricked at upgrade
+// time. New clusters bypass this admission check; the reconciler's defensive guard in
+// syncPVCLabels still strips any reserved key before applying labels to PVCs.
+func validPVCReservedLabels(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	for i, nodeSet := range es.Spec.NodeSets {
-		for j, claim := range nodeSet.VolumeClaimTemplates {
-			for key := range claim.ObjectMeta.Labels {
+	for i, proposedNodeSet := range proposed.Spec.NodeSets {
+		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
+		for j, proposedClaim := range proposedNodeSet.VolumeClaimTemplates {
+			currentClaim := matchingClaim(currentNodeSet, proposedClaim.Name)
+			for key, value := range proposedClaim.ObjectMeta.Labels {
 				if !volumevalidations.IsReservedLabelKey(key) {
 					continue
+				}
+				if currentClaim != nil {
+					if currentValue, exists := currentClaim.ObjectMeta.Labels[key]; exists && currentValue == value {
+						// grandfather pre-existing (key, value) pair
+						continue
+					}
 				}
 				errs = append(errs, field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).
@@ -207,12 +219,31 @@ func validPVCReservedLabels(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// claimsWithoutAdjustableFields returns a copy of the given claims, with all known adjustable fields set to the empty quantity.
+// matchingClaim returns the claim with the given name in the nodeSet, or nil if not found
+// or the nodeSet itself is nil.
+func matchingClaim(nodeSet *esv1.NodeSet, name string) *corev1.PersistentVolumeClaim {
+	if nodeSet == nil {
+		return nil
+	}
+	for i := range nodeSet.VolumeClaimTemplates {
+		if nodeSet.VolumeClaimTemplates[i].Name == name {
+			return &nodeSet.VolumeClaimTemplates[i]
+		}
+	}
+	return nil
+}
+
+// claimsWithoutAdjustableFields returns a copy of the given claims, with all known
+// adjustable fields cleared so unrelated changes can be compared via deep equality.
 func claimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
-		// Quantity is allowed to be adjusted.
+		// Storage quantity is allowed to be adjusted. Defensively initialize Requests
+		// to avoid panicking on malformed claims with a nil Requests map.
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
 		// Labels are allowed to be adjusted.
 		patchedClaim.ObjectMeta.Labels = map[string]string{}

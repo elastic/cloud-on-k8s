@@ -369,6 +369,16 @@ func Test_validPVCModification(t *testing.T) {
 	}
 }
 
+func Test_claimsWithoutAdjustableFields_nilRequests(t *testing.T) {
+	// A claim with nil Spec.Resources.Requests must not panic during validation.
+	claims := []corev1.PersistentVolumeClaim{
+		{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+	}
+	require.NotPanics(t, func() {
+		_ = claimsWithoutAdjustableFields(claims)
+	})
+}
+
 func Test_validPVCReservedLabels(t *testing.T) {
 	es := func(claims ...corev1.PersistentVolumeClaim) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
@@ -379,57 +389,87 @@ func Test_validPVCReservedLabels(t *testing.T) {
 		}
 	}
 	tests := []struct {
-		name    string
-		es      esv1.Elasticsearch
-		wantErr bool
+		name     string
+		current  esv1.Elasticsearch
+		proposed esv1.Elasticsearch
+		wantErr  bool
 	}{
 		{
-			name:    "no labels: ok",
-			es:      es(sampleClaim),
-			wantErr: false,
+			name:     "no labels: ok",
+			current:  es(sampleClaim),
+			proposed: es(sampleClaim),
+			wantErr:  false,
 		},
 		{
-			name:    "non-reserved label: ok",
-			es:      es(withLabels(sampleClaim, map[string]string{"team": "search"})),
-			wantErr: false,
+			name:     "non-reserved label added: ok",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"team": "search"})),
+			wantErr:  false,
 		},
 		{
-			name:    "third-party label that looks similar: ok",
-			es:      es(withLabels(sampleClaim, map[string]string{"velero.io/exclude-from-backup": "true"})),
-			wantErr: false,
+			name:     "third-party label that looks similar: ok",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"velero.io/exclude-from-backup": "true"})),
+			wantErr:  false,
 		},
 		{
-			name:    "elasticsearch reserved cluster-name label: error",
-			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
-			wantErr: true,
+			name:     "elasticsearch reserved cluster-name label newly added: error",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
+			wantErr:  true,
 		},
 		{
-			name:    "elasticsearch reserved statefulset-name label: error",
-			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/statefulset-name": "evil"})),
-			wantErr: true,
+			name:     "elasticsearch reserved statefulset-name label newly added: error",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/statefulset-name": "evil"})),
+			wantErr:  true,
 		},
 		{
-			name:    "common reserved type label: error",
-			es:      es(withLabels(sampleClaim, map[string]string{"common.k8s.elastic.co/type": "evil"})),
-			wantErr: true,
+			name:     "common reserved type label newly added: error",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"common.k8s.elastic.co/type": "evil"})),
+			wantErr:  true,
 		},
 		{
-			name:    "apex k8s.elastic.co label: error",
-			es:      es(withLabels(sampleClaim, map[string]string{"k8s.elastic.co/foo": "bar"})),
-			wantErr: true,
+			name:     "apex k8s.elastic.co label newly added: error",
+			current:  es(sampleClaim),
+			proposed: es(withLabels(sampleClaim, map[string]string{"k8s.elastic.co/foo": "bar"})),
+			wantErr:  true,
 		},
 		{
-			name: "reserved key in second claim is also detected",
-			es: es(
+			name:    "reserved key in second claim is also detected",
+			current: es(sampleClaim, sampleClaim2),
+			proposed: es(
 				sampleClaim,
 				withLabels(sampleClaim2, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"}),
 			),
 			wantErr: true,
 		},
+		{
+			// regression guard: existing CRs with a reserved label already on the VCT
+			// must not be bricked at upgrade time. The check grandfathers unchanged
+			// (key, value) pairs.
+			name:     "reserved label already present and unchanged: grandfathered",
+			current:  es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			proposed: es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			wantErr:  false,
+		},
+		{
+			name:     "reserved label already present but value changed: error",
+			current:  es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			proposed: es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "new"})),
+			wantErr:  true,
+		},
+		{
+			name:     "newly added reserved label alongside grandfathered one: error only on the new one",
+			current:  es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})),
+			proposed: es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old", "common.k8s.elastic.co/type": "evil"})),
+			wantErr:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validPVCReservedLabels(tt.es)
+			errs := validPVCReservedLabels(tt.current, tt.proposed)
 			if tt.wantErr {
 				require.NotEmpty(t, errs)
 			} else {
