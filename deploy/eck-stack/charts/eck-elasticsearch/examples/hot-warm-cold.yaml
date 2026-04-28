@@ -10,14 +10,13 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch
-        resources:
-          limits:
-            memory: 8Gi
-            cpu: 2
+  resources:
+    limits:
+      memory: 8Gi
+      cpu: 2
+  # Optional podTemplate for non-resource customizations (affinity, nodeSelector, ...).
+  # podTemplate:
+  #   spec:
       # Affinity/Anti-affinity settings for controlling the 'spreading' of Elasticsearch
       # pods across existing hosts.
       # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -59,14 +58,13 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch
-        resources:
-          limits:
-            memory: 16Gi
-            cpu: 4
+  resources:
+    limits:
+      memory: 16Gi
+      cpu: 4
+  # Optional podTemplate for non-resource customizations (affinity, nodeSelector, ...).
+  # podTemplate:
+  #   spec:
       # Affinity/Anti-affinity settings for controlling the 'spreading' of Elasticsearch
       # pods across existing hosts.
       # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -108,14 +106,13 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch
-        resources:
-          limits:
-            memory: 16Gi
-            cpu: 2
+  resources:
+    limits:
+      memory: 16Gi
+      cpu: 2
+  # Optional podTemplate for non-resource customizations (affinity, nodeSelector, ...).
+  # podTemplate:
+  #   spec:
       # Affinity/Anti-affinity settings for controlling the 'spreading' of Elasticsearch
       # pods across existing hosts.
       # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -157,14 +154,13 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch
-        resources:
-          limits:
-            memory: 8Gi
-            cpu: 2
+  resources:
+    limits:
+      memory: 8Gi
+      cpu: 2
+  # Optional podTemplate for non-resource customizations (affinity, nodeSelector, ...).
+  # podTemplate:
+  #   spec:
       # Affinity/Anti-affinity settings for controlling the 'spreading' of Elasticsearch
       # pods across existing hosts.
       # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity

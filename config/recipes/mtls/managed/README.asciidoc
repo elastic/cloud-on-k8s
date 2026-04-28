@@ -1,0 +1,57 @@
+= ECK-Managed Mutual TLS (mTLS) Configuration Examples
+
+This directory contains YAML manifests that demonstrate how to enable mutual TLS (mTLS) for Elastic Stack components using ECK's built-in client certificate management. Unlike the `manual` recipes that require cert-manager, these recipes use a single spec field (`spec.http.tls.client.authentication: true`) and let ECK handle all certificate lifecycle automatically.
+
+IMPORTANT: These recipes are for illustration purposes only and should not be considered production-ready.
+
+IMPORTANT: Client certificate authentication is an enterprise-only feature and requires an enterprise license.
+
+CAUTION: Some of these recipes use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+== How it works
+
+When `spec.http.tls.client.authentication` is set to `true` on the Elasticsearch resource, ECK:
+
+1. Sets `xpack.security.http.ssl.client_authentication: required` in the Elasticsearch configuration.
+2. Generates a self-signed operator client certificate and uses it for all operator-to-Elasticsearch communication (health checks, user management, etc.).
+3. Builds a trust bundle containing all client certificates and configures Elasticsearch to trust them via `xpack.security.http.ssl.certificate_authorities`.
+4. Signals associated resources (Kibana, Elastic Agent, etc.) via an annotation so their association controllers automatically generate and present client certificates.
+
+No external certificate infrastructure (cert-manager, custom CA, etc.) is required. ECK manages the full lifecycle: issuance, rotation, trust bundle assembly, and cleanup when client authentication is disabled.
+
+== Recipes
+
+=== Standalone Elastic Agent - `standalone-agent.yaml`
+
+[source,sh]
+----
+kubectl apply -f standalone-agent.yaml
+----
+
+Deploys Elasticsearch and a standalone Elastic Agent with ECK-managed mTLS. The only change from a standard deployment is `spec.http.tls.client.authentication: true` on the Elasticsearch resource. ECK automatically:
+
+- Generates a client certificate for the operator.
+- Generates a client certificate for the standalone agent's association with Elasticsearch.
+- Configures the trust bundle so Elasticsearch trusts both certificates.
+- Presents the client certificate when the agent connects to Elasticsearch.
+
+=== Fleet-managed Elastic Agent - `fleet.yaml`
+
+[source,sh]
+----
+kubectl apply -f fleet.yaml
+----
+
+Deploys Elasticsearch, Kibana, Fleet Server and a Fleet-managed Elastic Agent with ECK-managed mTLS. All association controllers automatically generate and present client certificates to Elasticsearch.
+
+ECK handles the transitive certificate chain: Fleet Server's client certificate is propagated to fleet-managed agents so they can also present a client certificate when shipping data directly to Elasticsearch.
+
+The Kibana configuration includes `xpack.fleet.outputs` to define the default Fleet output. ECK automatically injects `ssl.certificate` and `ssl.key` into this output so that Fleet Server and enrolled agents present client certificates to Elasticsearch.
+
+== Disabling client authentication
+
+To disable client authentication, set `spec.http.tls.client.authentication: false` (or remove the field). ECK will:
+
+1. Roll the Elasticsearch cluster to remove `client_authentication: required`.
+2. Clean up the operator client certificate, trust bundle, and annotation.
+3. Association controllers will clean up their client certificate secrets on the next reconciliation.
