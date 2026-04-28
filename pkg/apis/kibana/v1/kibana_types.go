@@ -164,6 +164,9 @@ func (k *Kibana) ServiceAccountName() string {
 
 var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
+// KibanaSpacesMinVersion is the minimum Kibana version that supports space-scoped Fleet APIs.
+var KibanaSpacesMinVersion = version.MustParse("9.1.0")
+
 // -- associations
 
 var _ commonv1.Associated = (*Kibana)(nil)

@@ -421,6 +421,18 @@ func (b Builder) WithFleetServerRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithPolicyID(policyID string) Builder {
+	b.Agent.Spec.PolicyID = policyID
+
+	return b
+}
+
+func (b Builder) WithSpaceID(spaceID string) Builder {
+	b.Agent.Spec.SpaceID = spaceID
+
+	return b
+}
+
 func (b Builder) WithObjects(objs ...k8sclient.Object) Builder {
 	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
 	return b

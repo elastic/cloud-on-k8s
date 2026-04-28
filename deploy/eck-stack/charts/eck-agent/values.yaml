@@ -123,6 +123,9 @@ fleetServerEnabled: false
 # policyID determines into which Agent Policy this Agent will be enrolled.
 # policyID: eck-agent
 
+# spaceID is the Kibana Space where the Agent Policy resides. Leave unset for the default Space.
+# spaceID: default
+
 # DaemonSet, StatefulSet, or Deployment specification for Agent.
 # At least one is required of [daemonSet, deployment, statefulSet].
 # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.

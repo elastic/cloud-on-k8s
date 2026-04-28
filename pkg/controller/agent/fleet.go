@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -79,10 +81,23 @@ type fleetAPI struct {
 	username      string
 	password      string
 	kibanaVersion string
+	spacePrefix   string
 	log           logr.Logger
 }
 
-func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
+func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger, spaceID string) fleetAPI {
+	spacePrefix := ""
+	nonDefaultSpace := spaceID != "" && !strings.EqualFold(spaceID, "default")
+	kibanaVersion, err := version.Parse(settings.version)
+	switch {
+	case err != nil:
+		logger.Error(err, "cannot parse Kibana version for Fleet API", "kibana_version", settings.version)
+	case nonDefaultSpace && kibanaVersion.GTE(v1.KibanaSpacesMinVersion):
+		spacePrefix = fmt.Sprintf("/s/%s", url.PathEscape(spaceID))
+	case nonDefaultSpace:
+		logger.Info("Kibana version does not support space-scoped Fleet APIs", "space_id", spaceID, "kibana_version", settings.version)
+	}
+
 	return fleetAPI{
 		client: apmhttp.WrapClient(
 			commonhttp.Client(dialer, settings.caCerts, 60*time.Second),
@@ -93,6 +108,7 @@ func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Log
 		endpoint:      settings.host,
 		username:      settings.credentials.Username,
 		password:      settings.credentials.Password,
+		spacePrefix:   spacePrefix,
 		log:           logger,
 	}
 }
@@ -111,7 +127,7 @@ func (f fleetAPI) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, "/api/fleet/", pathWithQuery), body)
+	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, f.spacePrefix, "/api/fleet/", pathWithQuery), body)
 	if err != nil {
 		return err
 	}
@@ -264,7 +280,8 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		newFleetAPI(
 			params.OperatorParams.Dialer,
 			kbConnectionSettings,
-			log),
+			log,
+			params.Agent.Spec.SpaceID),
 	)
 	switch {
 	case commonhttp.IsUnauthorized(err):
