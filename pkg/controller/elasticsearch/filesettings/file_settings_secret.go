@@ -259,6 +259,7 @@ func isSecretUpdateNeeded(ctx context.Context, current, reconciled corev1.Secret
 }
 
 // buildSecret constructs the expected corev1.Secret from the current settings state.
+// It is used in the file settings [Secret] type in Save function.
 func (f *Secret) buildSecret(hash string) (corev1.Secret, error) {
 	secretMeta := f.meta.Merge(metadata.Metadata{
 		Annotations: map[string]string{

@@ -7,6 +7,7 @@ package about
 import (
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +17,10 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
-const fakeOperatorNs = "elastic-system-test"
-const fakeDistributionChannel = "channel-1"
+const (
+	fakeOperatorNs          = "elastic-system-test"
+	fakeDistributionChannel = "channel-1"
+)
 
 func TestGetOperatorInfo(t *testing.T) {
 	tests := []struct {
@@ -82,6 +85,11 @@ func TestGetOperatorInfo(t *testing.T) {
 
 			// the operator uuid should be the same than the first time
 			assert.Equal(t, uuid, operatorInfo.OperatorUUID)
+
+			// watch label should exists in all scenarios
+			cfgMap, err := fakeClientset.CoreV1().ConfigMaps(fakeOperatorNs).Get(t.Context(), UUIDCfgMapName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, commonv1.LabelBasedDiscoveryLabelValue, cfgMap.Labels[commonv1.LabelBasedDiscoveryLabelName])
 		})
 	}
 }

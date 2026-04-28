@@ -148,6 +148,19 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 		return newUUID, nil
 	}
 
+	// add the watch label if missing.
+	_, hasWatchLabel := reconciledCfgMap.Labels[commonv1.LabelBasedDiscoveryLabelName]
+	if !hasWatchLabel {
+		if reconciledCfgMap.Labels == nil {
+			reconciledCfgMap.Labels = map[string]string{}
+		}
+		reconciledCfgMap.Labels[commonv1.LabelBasedDiscoveryLabelName] = commonv1.LabelBasedDiscoveryLabelValue
+		_, err := c.Update(ctx, reconciledCfgMap, metav1.UpdateOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return types.UID(""), err
+		}
+	}
+
 	UUID, ok := reconciledCfgMap.Data[UUIDCfgMapKey]
 	// or update it
 	if !ok {
