@@ -44,9 +44,7 @@ func (c Conditions) Index(conditionType ConditionType) int {
 
 func (c Conditions) MergeWith(nextConditions ...Condition) Conditions {
 	if c == nil {
-		// deliberately set this to 0 rather than len(nextConditions) so that items are not prematurely
-		// set to empty Conditions
-		c = make(Conditions, 0)
+		c = make(Conditions, 0, len(nextConditions))
 	}
 	cp := c.DeepCopy()
 	for i := range nextConditions {
