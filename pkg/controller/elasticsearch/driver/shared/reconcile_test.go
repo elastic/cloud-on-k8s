@@ -128,6 +128,9 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 						Name:      esv1.FileSettingsSecretName("test-es"),
 						Namespace: "default",
 					},
+					Data: map[string][]byte{
+						"settings.json": []byte("{}"),
+					},
 				},
 			},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
@@ -321,6 +324,9 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      esv1.FileSettingsSecretName("test-es"),
 						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"settings.json": []byte("{}"),
 					},
 				},
 			},
