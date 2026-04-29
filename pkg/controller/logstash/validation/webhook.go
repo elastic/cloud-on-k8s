@@ -96,6 +96,15 @@ func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	if w, _ := commonv1.CheckDeprecatedStackVersion(ls.Spec.Version); w != "" {
 		warnings = admission.Warnings{w}
 	}
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		lsv1alpha1.LogstashContainerName,
+		ls.Spec.Resources,
+		ls.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
+	}
 	errs := check(ls, validations())
 	if len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(

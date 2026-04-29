@@ -137,7 +137,7 @@ func NewPodTemplateSpec(
 		Annotations: DefaultAnnotations,
 	})
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).

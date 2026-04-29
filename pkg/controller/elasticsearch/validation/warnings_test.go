@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -392,6 +393,151 @@ func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {
 				actualFields[i] = warning.Field
 			}
 			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
+func Test_shorthandResourcesOverrideWarning(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	memory := resource.MustParse("1Gi")
+
+	// nodeSet is a small helper to build a NodeSet with a main container carrying the given resources.
+	nodeSet := func(name string, shorthand commonv1.Resources, containerName string, containerResources corev1.ResourceRequirements) esv1.NodeSet {
+		return esv1.NodeSet{
+			Name:      name,
+			Resources: shorthand,
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName, Resources: containerResources},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		warnings int
+	}{
+		{
+			name: "no warning when shorthand resources do not overlap pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "warning when shorthand requests.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand requests.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "no warning when main container is absent from pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					"not-"+esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "multiple NodeSets - warning only emitted for overlapping one",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"clean",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+				nodeSet(
+					"overlapping",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "multiple NodeSets - warning emitted for every overlapping NodeSet",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"cpu-overlap",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+				nodeSet(
+					"limits-memory-overlap",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualWarnings := shorthandResourcesOverrideWarning(tt.es)
+			require.Len(t, actualWarnings, tt.warnings)
+			for _, w := range actualWarnings {
+				assert.Contains(t, w.Detail, "overrides")
+			}
 		})
 	}
 }

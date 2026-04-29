@@ -171,7 +171,7 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 
 	// added to debug https://github.com/elastic/cloud-on-k8s/issues/5865 can be removed once stable
 	if version.MustParse(b.Elasticsearch.Spec.Version).GTE(version.MinFor(7, 7, 0)) {
-		b = b.WithAdditionalConfig(map[string]map[string]interface{}{
+		b = b.WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
@@ -182,7 +182,7 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 			},
 		})
 
-		mutated = mutated.WithAdditionalConfig(map[string]map[string]interface{}{
+		mutated = mutated.WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				"logger.org.elasticsearch.http.HttpTracer": "TRACE",
 				"http.tracer.include":                      []string{"*_cluster/health*"},
@@ -203,7 +203,7 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
 		WithNamedESDataNodes(1, "data-2", elasticsearch.DefaultResources). // scaling down data-2
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"data-1": {
 				"node.attr.important": "attribute", // triggers the rolling update on data-1
 			},
@@ -213,10 +213,14 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 
 func TestMutationAndReversal(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-reverted-mutation").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		// Tolerate mutation check failures: the cluster can briefly go RED during
+		// the mutation when a node shuts down before a newly created replica is
+		// initialized. See https://github.com/elastic/cloud-on-k8s/issues/8267#issuecomment-4286465455.
+		TolerateMutationChecksFailures()
 
 	mutation := b.DeepCopy().
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				"node.attr.box_type": "mixed",
 			},
@@ -251,7 +255,7 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 	mutated := b.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources).
-		WithAdditionalConfig(map[string]map[string]interface{}{
+		WithAdditionalConfig(map[string]map[string]any{
 			"data1": {
 				"node.attr.value": "this-is-fine",
 			},

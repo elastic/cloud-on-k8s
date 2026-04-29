@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"path"
 	"testing"
 
 	ucfg "github.com/elastic/go-ucfg"
@@ -16,9 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -799,4 +803,261 @@ func Test_elasticsearchTLSSettings(t *testing.T) {
 		require.Equal(t, esClientCertVolumeMountPath+"/tls.key", cfg[ElasticsearchSslKey])
 		require.Equal(t, true, cfg[ElasticsearchSslAlwaysPresentCertificate])
 	})
+}
+
+// mockAssociationRef implements commonv1.AssociationRef for testing.
+type mockAssociationRef struct {
+	namespace string
+	name      string
+}
+
+func (m mockAssociationRef) IsExternal() bool                       { return false }
+func (m mockAssociationRef) IsSet() bool                            { return true }
+func (m mockAssociationRef) GetName() string                        { return m.name }
+func (m mockAssociationRef) GetNamespace() string                   { return m.namespace }
+func (m mockAssociationRef) GetSecretName() string                  { return "" }
+func (m mockAssociationRef) GetServiceName() string                 { return "" }
+func (m mockAssociationRef) GetClientCertificateSecretName() string { return "" }
+func (m mockAssociationRef) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: m.namespace, Name: m.name}
+}
+func (m mockAssociationRef) NameOrSecretName() string { return m.name }
+
+// mockAssociation implements commonv1.Association for testing.
+// It embeds a Kibana object to satisfy the metav1.Object and runtime.Object
+// interfaces required by the Associated interface.
+type mockAssociation struct {
+	kbv1.Kibana
+	assocType commonv1.AssociationType
+	ref       commonv1.AssociationRef
+}
+
+func (m *mockAssociation) AssociationType() commonv1.AssociationType { return m.assocType }
+func (m *mockAssociation) AssociationRef() commonv1.AssociationRef   { return m.ref }
+func (m *mockAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+func (m *mockAssociation) Associated() commonv1.Associated                     { return nil }
+func (m *mockAssociation) AssociationConfAnnotationName() string               { return "" }
+func (m *mockAssociation) AssociationConf() (*commonv1.AssociationConf, error) { return nil, nil }
+func (m *mockAssociation) SetAssociationConf(*commonv1.AssociationConf)        {}
+func (m *mockAssociation) SupportsAuthAPIKey() bool                            { return false }
+func (m *mockAssociation) AssociationID() string                               { return "" }
+
+func Test_injectFleetOutputClientCerts(t *testing.T) {
+	esURL := "https://es.default.svc:9200"
+	wantCert := path.Join(agent.FleetManagedAgentClientCertDir, certificates.CertFileName)
+	wantKey := path.Join(agent.FleetManagedAgentClientCertDir, certificates.KeyFileName)
+
+	tests := []struct {
+		name     string
+		cfg      *settings.CanonicalConfig
+		wantCert string
+		wantKey  string
+	}{
+		{
+			name: "injects cert and key into matching ES output",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCert: wantCert,
+			wantKey:  wantKey,
+		},
+		{
+			name: "preserves user-provided cert and key",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+						"ssl": map[string]any{
+							"certificate": "/custom/cert.pem",
+							"key":         "/custom/key.pem",
+						},
+					},
+				},
+			}),
+			wantCert: "/custom/cert.pem",
+			wantKey:  "/custom/key.pem",
+		},
+		{
+			name: "skips non-elasticsearch output type",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "logstash",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCert: "",
+			wantKey:  "",
+		},
+		{
+			name: "skips output with non-matching URL",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{"https://other.default.svc:9200"},
+					},
+				},
+			}),
+			wantCert: "",
+			wantKey:  "",
+		},
+		{
+			name:     "no outputs defined",
+			cfg:      settings.MustCanonicalConfig(map[string]any{}),
+			wantCert: "",
+			wantKey:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := injectFleetOutputClientCerts(tt.cfg, esURL)
+			require.NoError(t, err)
+
+			ucfgCfg := (*ucfg.Config)(tt.cfg)
+			opts := settings.Options
+
+			output, childErr := ucfgCfg.Child("xpack.fleet.outputs", 0, opts...)
+			if tt.wantCert == "" && tt.wantKey == "" {
+				// Either no outputs or the output should not have been modified.
+				if childErr != nil {
+					// No outputs at all.
+					return
+				}
+				hasCert, _ := output.Has("ssl.certificate", -1, opts...)
+				hasKey, _ := output.Has("ssl.key", -1, opts...)
+				require.False(t, hasCert, "ssl.certificate should not be set")
+				require.False(t, hasKey, "ssl.key should not be set")
+				return
+			}
+
+			require.NoError(t, childErr)
+			gotCert, err := output.String("ssl.certificate", -1, opts...)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCert, gotCert)
+
+			gotKey, err := output.String("ssl.key", -1, opts...)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantKey, gotKey)
+		})
+	}
+}
+
+func Test_injectFleetOutputCertificateAuthorities(t *testing.T) {
+	esURL := "https://es.default.svc:9200"
+	assoc := &mockAssociation{
+		assocType: commonv1.ElasticsearchAssociationType,
+		ref:       mockAssociationRef{namespace: "default", name: "my-es"},
+	}
+	wantCA := path.Join(agent.CertificatesDir(assoc), agent.CAFileName)
+
+	tests := []struct {
+		name    string
+		cfg     *settings.CanonicalConfig
+		wantCAs []string
+	}{
+		{
+			name: "injects CA into matching ES output",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCAs: []string{wantCA},
+		},
+		{
+			name: "appends CA to existing certificate_authorities",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+						"ssl": map[string]any{
+							"certificate_authorities": []any{"/existing/ca.pem"},
+						},
+					},
+				},
+			}),
+			wantCAs: []string{"/existing/ca.pem", wantCA},
+		},
+		{
+			name: "skips non-elasticsearch output type",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "logstash",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCAs: nil,
+		},
+		{
+			name: "skips output with non-matching URL",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{"https://other.default.svc:9200"},
+					},
+				},
+			}),
+			wantCAs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := injectFleetOutputCertificateAuthorities(tt.cfg, esURL, assoc)
+			require.NoError(t, err)
+
+			ucfgCfg := (*ucfg.Config)(tt.cfg)
+			opts := settings.Options
+
+			output, childErr := ucfgCfg.Child("xpack.fleet.outputs", 0, opts...)
+			if tt.wantCAs == nil {
+				// Output should not have been modified.
+				require.NoError(t, childErr)
+				has, _ := output.Has("ssl.certificate_authorities", -1, opts...)
+				require.False(t, has, "ssl.certificate_authorities should not be set")
+				return
+			}
+
+			require.NoError(t, childErr)
+
+			// Unpack the output to read ssl.certificate_authorities reliably.
+			var outputMap map[string]any
+			require.NoError(t, output.Unpack(&outputMap, opts...))
+			ssl, ok := outputMap["ssl"].(map[string]any)
+			require.True(t, ok, "expected ssl map in output")
+			cas, ok := ssl["certificate_authorities"]
+			require.True(t, ok, "expected certificate_authorities in ssl")
+
+			var gotCAs []string
+			switch v := cas.(type) {
+			case string:
+				gotCAs = []string{v}
+			case []any:
+				for _, item := range v {
+					s, ok := item.(string)
+					require.True(t, ok, "expected string, got %T", item)
+					gotCAs = append(gotCAs, s)
+				}
+			}
+			require.Equal(t, tt.wantCAs, gotCAs)
+		})
+	}
 }

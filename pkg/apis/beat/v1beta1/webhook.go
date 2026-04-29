@@ -5,10 +5,13 @@
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -39,6 +42,11 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 	if deprecationWarning != "" {
 		warnings = append(warnings, deprecationWarning)
 	}
+	if pt, path := b.activePodTemplate(); path != "" {
+		if w := commonv1.PodTemplateResourcesOverrideWarning("spec.resources", path, b.Spec.Type, b.Spec.Resources, pt); w != "" {
+			warnings = append(warnings, w)
+		}
+	}
 
 	if old != nil {
 		for _, uc := range updateChecks {
@@ -62,4 +70,16 @@ func (b *Beat) validate(old *Beat) (admission.Warnings, error) {
 		return warnings, apierrors.NewInvalid(groupKind, b.Name, errors)
 	}
 	return warnings, nil
+}
+
+// activePodTemplate returns the configured pod template and its spec path.
+// checkBeatSpec ensures at most one deployment mode is set; returns ("", empty) when none.
+func (b *Beat) activePodTemplate() (corev1.PodTemplateSpec, string) {
+	switch {
+	case b.Spec.DaemonSet != nil:
+		return b.Spec.DaemonSet.PodTemplate, "spec.daemonSet.podTemplate"
+	case b.Spec.Deployment != nil:
+		return b.Spec.Deployment.PodTemplate, "spec.deployment.podTemplate"
+	}
+	return corev1.PodTemplateSpec{}, ""
 }

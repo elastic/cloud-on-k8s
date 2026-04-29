@@ -99,7 +99,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 	builder = builder.
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, epr.Spec.Resources).
 		WithDockerImage(epr.Spec.Image, container.ImageRepository(container.PackageRegistryImage, v)).
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).

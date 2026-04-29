@@ -41,7 +41,9 @@ import (
 const (
 	CAFileName = "ca.crt"
 
-	ContainerName = "agent"
+	// ContainerName is an alias for agentv1alpha1.AgentContainerName for backward compatibility
+	// within the controller package; prefer the apis-level constant for new code.
+	ContainerName = agentv1alpha1.AgentContainerName
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/agent"
@@ -85,8 +87,17 @@ const (
 	FleetServerElasticsearchUsername = "FLEET_SERVER_ELASTICSEARCH_USERNAME"
 	FleetServerElasticsearchPassword = "FLEET_SERVER_ELASTICSEARCH_PASSWORD" //nolint:gosec
 	FleetServerElasticsearchCA       = "FLEET_SERVER_ELASTICSEARCH_CA"
+	FleetServerESCert                = "FLEET_SERVER_ES_CERT"
+	FleetServerESCertKey             = "FLEET_SERVER_ES_CERT_KEY"
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
+
+	// FleetManagedAgentClientCertDir is the stable mount path for client certificates inside
+	// fleet-managed Agent pods. Also used by the Kibana controller when injecting ssl paths into fleet outputs.
+	// This is a flat path (no namespace/name components) because Fleet Server is constrained to a single
+	// ES output, and the Kibana controller injects this path into fleet outputs without knowing the ES
+	// namespace/name at that point.
+	FleetManagedAgentClientCertDir = "/mnt/elastic-internal/elasticsearch-association/client-certs"
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
 	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
@@ -128,7 +139,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32, esClientCertSecretName string) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -145,7 +156,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
 		var err error
-		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash); err != nil {
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash, esClientCertSecretName); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 		if params.AgentVersion.GTE(agentv1alpha1.FleetAdvancedConfigMinVersion) {
@@ -159,7 +170,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		}
 
 		builder = builder.
-			WithResources(defaultResources).
+			WithResourcesAndOverrides(defaultResources, spec.Resources).
 			WithEnv(corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath}).
 			// Point agent to static config file mounted from a secret to /etc/agent/elastic-agent.yml
 			WithArgs("-e", "-c", path.Join(ConfigMountPath, ConfigFileName))
@@ -208,13 +219,13 @@ func fleetConfigPath(v version.Version) string {
 	return DataMountPath
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash, esClientCertSecretName string) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
 	}
 
-	builder, err = applyRelatedEsAssoc(params.Agent, esAssociation, builder)
+	builder, err = applyRelatedEsAssoc(params.Agent, esAssociation, esClientCertSecretName, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +257,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	builder = builder.
-		WithResources(defaultFleetResources).
+		WithResourcesAndOverrides(defaultFleetResources, params.Agent.Spec.Resources).
 		WithEnv(
 			corev1.EnvVar{Name: "STATE_PATH", Value: DataMountPath},
 			corev1.EnvVar{Name: "CONFIG_PATH", Value: fleetConfigPath(params.AgentVersion)},
@@ -344,35 +355,50 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 	return esAssociation, nil
 }
 
-func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Association, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Association, esClientCertSecretName string, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
 	if esAssociation == nil {
 		return builder, nil
 	}
 
-	// no ES CA to configure, skip
 	assocConf, err := esAssociation.AssociationConf()
 	if err != nil {
 		return nil, err
 	}
-	if !assocConf.CAIsConfigured() {
-		return builder, nil
-	}
-	builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
-		assocConf.GetCASecretName(),
-		fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
-		certificatesDir(esAssociation),
-	))
+	if assocConf.CAIsConfigured() {
+		builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
+			assocConf.GetCASecretName(),
+			fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
+			CertificatesDir(esAssociation),
+		))
 
-	// If agent is set to run as root, then we will add the Elasticsearch CA to the
-	// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
-	// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
-	// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
-	//
-	// For historic purposes (https://github.com/elastic/beats/pull/26529). Agent didn't respect
-	// FLEET_CA until 7.14.0, which is the lowest valid version we support of Agent + Fleet.
-	if runningAsRoot(agent) {
-		cmd := trustCAScript(path.Join(certificatesDir(esAssociation), CAFileName))
-		return builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd}), nil
+		// If agent is set to run as root, then we will add the Elasticsearch CA to the
+		// pod's trusted CA store as both FLEET_CA and ELASTICSEARCH_CA environment variables
+		// are not respected by Agent in fleet mode. If we're not running as root, then we'll document the procedure
+		// to add the Elasticsearch CA to the Kibana's xpack output configuration pertaining to Fleet.
+		//
+		// For historic purposes (https://github.com/elastic/beats/pull/26529). Agent didn't respect
+		// FLEET_CA until 7.14.0, which is the lowest valid version we support of Agent + Fleet.
+		if runningAsRoot(agent) {
+			cmd := trustCAScript(path.Join(CertificatesDir(esAssociation), CAFileName))
+			builder = builder.WithCommand([]string{"/usr/bin/env", "bash", "-c", cmd})
+		}
+	}
+
+	// Mount the client certificate for mTLS with Elasticsearch at the same path that
+	// Kibana injects into fleet outputs. This covers both fleet-managed agents (where
+	// esClientCertSecretName is set) and Fleet Server (where the cert comes from its
+	// own ES association conf). Fleet Server needs this because its monitoring output
+	// config comes from Fleet/Kibana and uses this flat path.
+	clientCertSecret := esClientCertSecretName
+	if clientCertSecret == "" && assocConf.ClientCertIsConfigured() {
+		clientCertSecret = assocConf.GetClientCertSecretName()
+	}
+	if clientCertSecret != "" {
+		builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
+			clientCertSecret,
+			fmt.Sprintf("%s-client-certs", esAssociation.AssociationType()),
+			FleetManagedAgentClientCertDir,
+		))
 	}
 	return builder, nil
 }
@@ -435,16 +461,20 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 		if err != nil {
 			return nil, err
 		}
-		if !assocConf.CAIsConfigured() {
-			// skip as there is no volume to mount if association has no CA configured
-			continue
+		if assocConf.CAIsConfigured() {
+			vols = append(vols, volume.NewSecretVolumeWithMountPath(
+				assocConf.GetCASecretName(),
+				fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
+				CertificatesDir(assoc),
+			))
 		}
-		caSecretName := assocConf.GetCASecretName()
-		vols = append(vols, volume.NewSecretVolumeWithMountPath(
-			caSecretName,
-			fmt.Sprintf("%s-certs-%d", assoc.AssociationType(), i),
-			certificatesDir(assoc),
-		))
+		if assocConf.ClientCertIsConfigured() {
+			vols = append(vols, volume.NewSecretVolumeWithMountPath(
+				assocConf.GetClientCertSecretName(),
+				fmt.Sprintf("%s-client-certs-%d", assoc.AssociationType(), i),
+				standaloneAgentClientCertificatesDir(assoc),
+			))
+		}
 	}
 	return vols, nil
 }
@@ -476,10 +506,20 @@ func createDataVolume(params Params) volume.VolumeLike {
 		corev1.HostPathDirectoryOrCreate)
 }
 
-func certificatesDir(association commonv1.Association) string {
+func CertificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
 	return fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/certs",
+		association.AssociationType(),
+		ref.GetNamespace(),
+		ref.NameOrSecretName(),
+	)
+}
+
+func standaloneAgentClientCertificatesDir(association commonv1.Association) string {
+	ref := association.AssociationRef()
+	return fmt.Sprintf(
+		"/mnt/elastic-internal/%s-association/%s/%s/client-certs",
 		association.AssociationType(),
 		ref.GetNamespace(),
 		ref.NameOrSecretName(),
@@ -577,7 +617,7 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 			}
 
 			if assocConf.GetCACertProvided() {
-				fleetCfg[FleetCA] = path.Join(certificatesDir(assoc), CAFileName)
+				fleetCfg[FleetCA] = path.Join(CertificatesDir(assoc), CAFileName)
 			}
 		}
 
@@ -606,28 +646,46 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client) fun
 
 		esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsSet()
 		if esExpected {
-			esConnectionSettings, _, err := extractPodConnectionSettings(ctx, agent, client, commonv1.ElasticsearchAssociationType)
-			if err != nil {
+			if err := populateFleetServerESConfig(ctx, agent, client, fleetServerCfg); err != nil {
 				return nil, err
-			}
-
-			fleetServerCfg[FleetServerElasticsearchHost] = esConnectionSettings.host
-
-			if esConnectionSettings.credentials.HasServiceAccountToken() {
-				fleetServerCfg[FleetServerServiceToken] = esConnectionSettings.credentials.ServiceAccountToken
-			} else {
-				fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.credentials.Username
-				fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.credentials.Password
-			}
-
-			// don't set ca key if ca is not available
-			if esConnectionSettings.caFileName != "" {
-				fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.caFileName
 			}
 		}
 
 		return fleetServerCfg, nil
 	}
+}
+
+func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent, client k8s.Client, fleetServerCfg map[string]string) error {
+	esConnectionSettings, esAssocConf, err := extractPodConnectionSettings(ctx, agent, client, commonv1.ElasticsearchAssociationType)
+	if err != nil {
+		return err
+	}
+
+	fleetServerCfg[FleetServerElasticsearchHost] = esConnectionSettings.host
+
+	if esConnectionSettings.credentials.HasServiceAccountToken() {
+		fleetServerCfg[FleetServerServiceToken] = esConnectionSettings.credentials.ServiceAccountToken
+	} else {
+		fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.credentials.Username
+		fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.credentials.Password
+	}
+
+	// don't set ca key if ca is not available
+	if esConnectionSettings.caFileName != "" {
+		fleetServerCfg[FleetServerElasticsearchCA] = esConnectionSettings.caFileName
+	}
+
+	if esAssocConf.ClientCertIsConfigured() {
+		esAssoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
+		if err != nil {
+			return err
+		}
+		clientCertDir := standaloneAgentClientCertificatesDir(esAssoc)
+		fleetServerCfg[FleetServerESCert] = path.Join(clientCertDir, certificates.CertFileName)
+		fleetServerCfg[FleetServerESCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
+	}
+
+	return nil
 }
 
 func secretSource(name, key string) *corev1.EnvVarSource {

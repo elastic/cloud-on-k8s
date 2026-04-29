@@ -177,6 +177,18 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
+  # CPU/memory shorthand for the elasticsearch container. This is equivalent to
+  # podTemplate.spec.containers[name=elasticsearch].resources but avoids the four
+  # levels of nesting. When both are set, this shorthand wins for CPU/memory keys
+  # and an admission warning is emitted; non-CPU/memory keys (e.g. ephemeral-storage)
+  # in podTemplate are preserved.
+  # resources:
+  #   limits:
+  #     cpu: 1
+  #     memory: 2Gi
+  #   requests:
+  #     cpu: 1
+  #     memory: 2Gi
   podTemplate:
     # The following spec is exactly the Kubernetes Core V1 PodTemplateSpec. Any fields within the PodTemplateSpec
     # are supported within the 'spec' field below.  Please see below documentation for the exhaustive list of fields.

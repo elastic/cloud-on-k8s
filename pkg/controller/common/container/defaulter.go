@@ -141,9 +141,17 @@ func (d Defaulter) WithNewEnv(vars []corev1.EnvVar) (Defaulter, bool) {
 }
 
 // WithResources ensures that resource requirements are set in the container.
+// When the container has resource Claims but nil Requests and Limits, defaults are merged in
+// without dropping [Claims](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation).
 func (d Defaulter) WithResources(resources corev1.ResourceRequirements) Defaulter {
 	if d.base.Resources.Requests == nil && d.base.Resources.Limits == nil {
-		d.base.Resources = resources
+		if len(d.base.Resources.Claims) == 0 {
+			d.base.Resources = resources
+			return d
+		}
+		merged := *resources.DeepCopy()
+		merged.Claims = append([]corev1.ResourceClaim(nil), d.base.Resources.Claims...)
+		d.base.Resources = merged
 	}
 	return d
 }

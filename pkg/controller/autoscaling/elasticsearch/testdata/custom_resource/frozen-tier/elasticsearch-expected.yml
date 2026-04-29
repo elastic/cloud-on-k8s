@@ -28,17 +28,18 @@ spec:
         - transform
     count: 2
     name: di-hot
+    resources:
+      limits:
+        cpu: "1"
+        memory: 2Gi
+      requests:
+        cpu: "1"
+        memory: 2Gi
     podTemplate:
       spec:
         containers:
         - name: elasticsearch
-          resources:
-            limits:
-              memory: 2Gi
-              cpu: "1"
-            requests:
-              cpu: "1"
-              memory: 2Gi
+          resources: {}
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -55,17 +56,18 @@ spec:
         - data_frozen
     count: 1
     name: di-frozen
+    resources:
+      limits:
+        cpu: "2"
+        memory: 3Gi
+      requests:
+        cpu: "2"
+        memory: 3Gi
     podTemplate:
       spec:
         containers:
         - name: elasticsearch
-          resources:
-            limits:
-              cpu: "2"
-              memory: 3Gi
-            requests:
-              cpu: "2"
-              memory: 3Gi
+          resources: {}
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -82,17 +84,18 @@ spec:
         - ml
     count: 0
     name: ml
+    resources:
+      limits:
+        cpu: "2"
+        memory: 2Gi
+      requests:
+        cpu: "2"
+        memory: 2Gi
     podTemplate:
       spec:
         containers:
         - name: elasticsearch
-          resources:
-            limits:
-              cpu: "2"
-              memory: 2Gi
-            requests:
-              cpu: "2"
-              memory: 2Gi
+          resources: {}
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data

@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -45,7 +46,17 @@ type validator struct {
 }
 
 func (v *validator) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {
-	return nil, Validate(ctx, policy, v.licenseChecker)
+	var warnings admission.Warnings
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		autoopsv1alpha1.AutoOpsAgentContainerName,
+		policy.Spec.Resources,
+		policy.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
+	}
+	return warnings, Validate(ctx, policy, v.licenseChecker)
 }
 
 func (v *validator) ValidateCreate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) (admission.Warnings, error) {

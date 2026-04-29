@@ -110,6 +110,7 @@ const (
 	ReconciliationComplete   v1alpha1.ConditionType = "ReconciliationComplete"
 	ResourcesAwareManagement v1alpha1.ConditionType = "ResourcesAwareManagement"
 	RunningDesiredVersion    v1alpha1.ConditionType = "RunningDesiredVersion"
+	OrchestrationPaused      v1alpha1.ConditionType = "OrchestrationPaused"
 )
 
 // NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.

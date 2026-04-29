@@ -24,19 +24,17 @@ spec:
   nodeSets:
   - name: default
     count: 1
+    resources:
+      requests:
+        memory: 4Gi
+        cpu: 4
+      limits:
+        memory: 4Gi
+        cpu: 4
     podTemplate:
       spec:
         nodeSelector:
           cloud.google.com/compute-class: "elasticsearch"
-        containers:
-        - name: elasticsearch
-          resources:
-            requests:
-              memory: 4Gi
-              cpu: 4
-            limits:
-              memory: 4Gi
-              cpu: 4
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
@@ -88,19 +86,17 @@ spec:
       - package:
           name: kubernetes
         name: kubernetes-1
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 2
+    limits:
+      memory: 2Gi
+      cpu: 2
   podTemplate:
     spec:
       nodeSelector:
         cloud.google.com/compute-class: "Balanced"
-      containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: 2Gi
-            cpu: 2
-          limits:
-            memory: 2Gi
-            cpu: 2
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -115,6 +111,10 @@ spec:
   mode: fleet
   fleetServerEnabled: true
   policyID: eck-fleet-server
+  resources:
+    requests:
+      cpu: 200m
+      memory: 700Mi
   deployment:
     replicas: 1
     podTemplate:
@@ -124,9 +124,6 @@ spec:
         containers:
           - name: agent
             resources:
-              requests:
-                cpu: 200m
-                memory: 700Mi
               limits:
                 ephemeral-storage: "10Gi"
         volumes:
@@ -155,6 +152,10 @@ spec:
     name: fleet-server
   mode: fleet
   policyID: eck-agent
+  resources:
+    requests:
+      cpu: 200m
+      memory: 700Mi
   daemonSet:
     podTemplate:
       spec:
@@ -172,9 +173,6 @@ spec:
         containers:
           - name: agent
             resources:
-              requests:
-                cpu: 200m
-                memory: 700Mi
               limits:
                 ephemeral-storage: "10Gi"
         serviceAccountName: elastic-agent

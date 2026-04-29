@@ -107,6 +107,14 @@ linters:
         # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed
         text: 'SA1019: .* is deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.'
       - linters:
+          - staticcheck
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: common.IsUnmanaged is deprecated: Migrate to IsOrchestrationPaused instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
+          - staticcheck
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: common.ManagedAnnotation is deprecated: Use PauseOrchestrationAnnotation instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
           - revive
         # revive naming rules are not that happy with our packages/var names in common/utils/shared packages
         path: '.*/(common|utils|shared|test)/.*.go|pkg/controller/(maps|elasticsearch/driver|elasticsearch/user|elasticsearch/version).*.go|hack/deployer/exec/.*.go'
