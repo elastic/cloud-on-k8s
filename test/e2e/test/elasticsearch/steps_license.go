@@ -129,8 +129,9 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 					Namespace: test.Ctx().ManagedNamespace(0),
 					Name:      secretName,
 					Labels: map[string]string{
-						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
-						commonv1.TypeLabelName:   license.Type,
+						license.LicenseLabelType:                   string(license.LicenseTypeEnterpriseTrial),
+						commonv1.TypeLabelName:                     license.Type,
+						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 					},
 					Annotations: map[string]string{
 						license.EULAAnnotation: license.EULAAcceptedValue,
