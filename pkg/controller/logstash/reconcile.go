@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
@@ -46,6 +47,15 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		return results.WithRequeue(), params.Status
 	}
 
+	// Strip any ECK-reserved label keys (under *.k8s.elastic.co/) from VCTs before the
+	// StatefulSet is built. The validating webhook rejects creates that introduce these
+	// keys (checkPVCReservedLabelsOnCreate) but operators running with --enable-webhook=false
+	// or CRs that otherwise bypass admission would let reserved keys propagate from the VCT
+	// onto freshly provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs
+	// at creation time, before HandleVolumeExpansion's syncPVCLabels can run). This
+	// reconciler-side guard provides defense-in-depth.
+	claims := volumevalidations.StripReservedLabelKeys(params.Logstash.Spec.VolumeClaimTemplates)
+
 	expected := sset.New(sset.Params{
 		Name:                 logstashv1alpha1.Name(params.Logstash.Name),
 		Namespace:            params.Logstash.Namespace,
@@ -56,7 +66,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		Replicas:             params.Logstash.Spec.Count,
 		RevisionHistoryLimit: params.Logstash.Spec.RevisionHistoryLimit,
 		UpdateStrategy:       params.Logstash.Spec.UpdateStrategy,
-		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
+		VolumeClaimTemplates: claims,
 	})
 
 	recreations, err := volume.RecreateStatefulSets(params.Context, params.Client, params.Logstash)

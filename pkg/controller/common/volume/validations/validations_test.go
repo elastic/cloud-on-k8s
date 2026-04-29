@@ -83,6 +83,102 @@ func TestIsReservedLabelKey(t *testing.T) {
 	}
 }
 
+func TestStripReservedLabelKeys(t *testing.T) {
+	claim := func(name string, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
+		}
+	}
+	tests := []struct {
+		name string
+		in   []corev1.PersistentVolumeClaim
+		want []corev1.PersistentVolumeClaim
+	}{
+		{
+			name: "nil input: nil output",
+			in:   nil,
+			want: nil,
+		},
+		{
+			name: "empty slice: empty slice (input returned unchanged)",
+			in:   []corev1.PersistentVolumeClaim{},
+			want: []corev1.PersistentVolumeClaim{},
+		},
+		{
+			name: "no labels at all: no-op",
+			in:   []corev1.PersistentVolumeClaim{claim("data", nil)},
+			want: []corev1.PersistentVolumeClaim{claim("data", nil)},
+		},
+		{
+			name: "only non-reserved labels: no-op (input returned unchanged)",
+			in:   []corev1.PersistentVolumeClaim{claim("data", map[string]string{"team": "search", "velero.io/exclude-from-backup": "true"})},
+			want: []corev1.PersistentVolumeClaim{claim("data", map[string]string{"team": "search", "velero.io/exclude-from-backup": "true"})},
+		},
+		{
+			name: "single reserved key removed",
+			in:   []corev1.PersistentVolumeClaim{claim("data", map[string]string{"common.k8s.elastic.co/type": "evil"})},
+			// reserved key removed; resulting empty label map is dropped to nil so the
+			// produced StatefulSet is byte-equivalent to one that never carried labels.
+			want: []corev1.PersistentVolumeClaim{claim("data", nil)},
+		},
+		{
+			name: "reserved key removed, non-reserved keys preserved",
+			in: []corev1.PersistentVolumeClaim{claim("data", map[string]string{
+				"team": "search",
+				"elasticsearch.k8s.elastic.co/cluster-name": "evil",
+				"velero.io/exclude-from-backup":             "true",
+			})},
+			want: []corev1.PersistentVolumeClaim{claim("data", map[string]string{
+				"team":                          "search",
+				"velero.io/exclude-from-backup": "true",
+			})},
+		},
+		{
+			name: "multiple claims: only the offending one is rewritten",
+			in: []corev1.PersistentVolumeClaim{
+				claim("clean", map[string]string{"team": "search"}),
+				claim("dirty", map[string]string{"common.k8s.elastic.co/type": "evil", "team": "search"}),
+			},
+			want: []corev1.PersistentVolumeClaim{
+				claim("clean", map[string]string{"team": "search"}),
+				claim("dirty", map[string]string{"team": "search"}),
+			},
+		},
+		{
+			name: "apex k8s.elastic.co reserved key removed",
+			in:   []corev1.PersistentVolumeClaim{claim("data", map[string]string{"k8s.elastic.co/foo": "bar"})},
+			want: []corev1.PersistentVolumeClaim{claim("data", nil)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StripReservedLabelKeys(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("StripReservedLabelKeys() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStripReservedLabelKeys_doesNotMutateInput(t *testing.T) {
+	in := []corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: map[string]string{
+			"common.k8s.elastic.co/type": "evil",
+			"team":                       "search",
+		}},
+	}}
+
+	_ = StripReservedLabelKeys(in)
+
+	// input must still carry both labels — defense-in-depth helper deep-copies before mutating.
+	if _, ok := in[0].ObjectMeta.Labels["common.k8s.elastic.co/type"]; !ok {
+		t.Errorf("StripReservedLabelKeys mutated its input: reserved label was removed from the source")
+	}
+	if _, ok := in[0].ObjectMeta.Labels["team"]; !ok {
+		t.Errorf("StripReservedLabelKeys mutated its input: non-reserved label disappeared from the source")
+	}
+}
+
 func Test_ensureClaimSupportsExpansion(t *testing.T) {
 	tests := []struct {
 		name                string

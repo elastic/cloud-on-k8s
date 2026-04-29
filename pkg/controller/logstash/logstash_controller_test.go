@@ -827,6 +827,65 @@ func addLabel(labels map[string]string, key, value string) map[string]string {
 	return newLabels
 }
 
+// TestReconcileLogstash_StripsReservedVCTLabels exercises the defense-in-depth path
+// that guards against reserved (`*.k8s.elastic.co/...`) VCT label keys leaking onto
+// PVCs when the validating webhook is disabled. Even if a Logstash CR is admitted with
+// such labels, the reconciler must strip them before the StatefulSet is built so that
+// the StatefulSet controller never copies them onto freshly provisioned PVCs.
+func TestReconcileLogstash_StripsReservedVCTLabels(t *testing.T) {
+	ctx := context.Background()
+	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "test", Name: "testLogstash"}}
+
+	ls := createLogstash("1Gi", resizableStorageClass.Name)
+	ls.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels = map[string]string{
+		// reserved keys: must be stripped before reaching the StatefulSet spec
+		"elasticsearch.k8s.elastic.co/cluster-name": "evil",
+		"common.k8s.elastic.co/type":                "evil",
+		"k8s.elastic.co/foo":                        "bar",
+		// non-reserved keys: must be preserved
+		"team":                          "search",
+		"velero.io/exclude-from-backup": "true",
+	}
+	pod := createPod()
+	r := newReconcileLogstash(&ls, &pod, &resizableStorageClass)
+
+	_, err := r.Reconcile(ctx, request)
+	require.NoError(t, err)
+
+	ssNamespacedName := types.NamespacedName{Namespace: "test", Name: "testLogstash-ls"}
+	var sts appsv1.StatefulSet
+	require.NoError(t, r.Client.Get(ctx, ssNamespacedName, &sts))
+
+	// Locate the user's claim by name; Logstash may also append a default `logstash-data` VCT.
+	var userClaim *corev1.PersistentVolumeClaim
+	for i, c := range sts.Spec.VolumeClaimTemplates {
+		if c.Name == "test-pq" {
+			userClaim = &sts.Spec.VolumeClaimTemplates[i]
+			break
+		}
+	}
+	require.NotNil(t, userClaim, "expected the user-defined VCT 'test-pq' to be present on the produced StatefulSet")
+
+	gotLabels := userClaim.ObjectMeta.Labels
+	for _, reserved := range []string{
+		"elasticsearch.k8s.elastic.co/cluster-name",
+		"common.k8s.elastic.co/type",
+		"k8s.elastic.co/foo",
+	} {
+		_, present := gotLabels[reserved]
+		require.False(t, present, "reserved key %q must be stripped from the produced StatefulSet's VCT labels", reserved)
+	}
+	require.Equal(t, "search", gotLabels["team"], "non-reserved key 'team' must be preserved")
+	require.Equal(t, "true", gotLabels["velero.io/exclude-from-backup"], "non-reserved key 'velero.io/exclude-from-backup' must be preserved")
+
+	// The persisted Logstash CR must not be mutated by the reconciler-side strip helper
+	// — only the produced StatefulSet should be sanitized.
+	updated := logstashv1alpha1.Logstash{}
+	require.NoError(t, r.Client.Get(ctx, request.NamespacedName, &updated))
+	require.Contains(t, updated.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels, "common.k8s.elastic.co/type",
+		"reconciler-side strip must not mutate the input Logstash resource's VCT labels")
+}
+
 type expectedObject struct {
 	t    client.Object
 	name types.NamespacedName

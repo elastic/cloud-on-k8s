@@ -41,6 +41,48 @@ func IsReservedLabelKey(key string) bool {
 	return domain == eckLabelDomainSuffix || strings.HasSuffix(domain, "."+eckLabelDomainSuffix)
 }
 
+// StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys
+// removed from each claim's metadata.labels. This is the reconciler-side complement to
+// the create-time webhook check (validPVCReservedLabelsOnCreate / checkPVCReservedLabelsOnCreate):
+// it provides defense-in-depth so that operators running with webhooks disabled, or CRs
+// that otherwise bypass admission, still cannot leak reserved label keys onto freshly
+// provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs at creation time).
+//
+// Claims are cloned only when at least one reserved key is present; the returned slice is
+// safe to mutate. If no reserved keys are present, the input slice is returned unchanged.
+func StripReservedLabelKeys(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	if !anyClaimCarriesReservedKey(claims) {
+		return claims
+	}
+	out := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		c := *claim.DeepCopy()
+		for k := range c.ObjectMeta.Labels {
+			if IsReservedLabelKey(k) {
+				delete(c.ObjectMeta.Labels, k)
+			}
+		}
+		// Drop empty maps so the resulting object is byte-equivalent to one that never
+		// carried labels in the first place (avoids spurious StatefulSet diff on update).
+		if len(c.ObjectMeta.Labels) == 0 {
+			c.ObjectMeta.Labels = nil
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+func anyClaimCarriesReservedKey(claims []corev1.PersistentVolumeClaim) bool {
+	for _, claim := range claims {
+		for k := range claim.ObjectMeta.Labels {
+			if IsReservedLabelKey(k) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
 // - a storage decrease is attempted
 // - a storage increase is attempted but the storage class does not support volume expansion
@@ -55,7 +97,7 @@ func ValidateClaimsStorageUpdate(
 	for _, updatedClaim := range updated {
 		initialClaim := claimMatchingName(initial, updatedClaim.Name)
 		if initialClaim == nil {
-			// existing claim does not exist in updated
+			// updated declares a claim that does not exist in initial: adding new claims is forbidden.
 			return errors.New(PvcImmutableErrMsg)
 		}
 		cmp := k8s.CompareStorageRequests(initialClaim.Spec.Resources, updatedClaim.Spec.Resources)
