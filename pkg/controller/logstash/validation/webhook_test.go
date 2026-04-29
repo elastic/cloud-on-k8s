@@ -11,11 +11,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -32,6 +32,30 @@ func asJSON(obj any) []byte {
 		panic(err)
 	}
 	return data
+}
+
+// liveSsetWithStorage returns a fake StatefulSet matching the Logstash naming convention
+// with the given storage size, for tests that exercise checkPVCchanges' new "compare
+// against live StatefulSet" baseline.
+func liveSsetWithStorage(namespace, lsName, claimName, size string) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      v1alpha1.Name(lsName),
+		},
+		Spec: appsv1.StatefulSetSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: claimName},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func Test_webhook_Create(t *testing.T) {
@@ -62,6 +86,59 @@ func Test_webhook_Create(t *testing.T) {
 							},
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
+							},
+						},
+					),
+				}},
+			},
+			wantAllowed: true,
+		},
+		{
+			name: "rejects creation with reserved VCT label key",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{
+										Name:   "test-pq",
+										Labels: map[string]string{"common.k8s.elastic.co/type": "evil"},
+									}},
+								},
+							},
+						},
+					),
+				}},
+			},
+			wantAllowed: false,
+			wantMessage: "is reserved by ECK",
+		},
+		{
+			name: "accepts creation with non-reserved VCT label key",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{
+										Name:   "test-pq",
+										Labels: map[string]string{"team": "search"},
+									}},
+								},
 							},
 						},
 					),
@@ -368,9 +445,11 @@ func Test_webhook_Update(t *testing.T) {
 			wantAllowed: true,
 		},
 		{
+			// Storage validation now compares the proposed CR against the **live StatefulSet**,
+			// not the previous CR. Seed a matching StatefulSet so the decrease is detected.
 			name: "does not allow storage decrease",
 			fields: fields{
-				client: k8s.NewFakeClient(),
+				client: k8s.NewFakeClient(liveSsetWithStorage("ns", "webhook-test", "test-pq", "2Gi")),
 			},
 			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
 				Operation: admissionv1.Update,
@@ -431,9 +510,62 @@ func Test_webhook_Update(t *testing.T) {
 			wantMessage: "decreasing storage size is not supported",
 		},
 		{
+			// Allows the revert-after-failed-expansion flow: user moved 1Gi -> 2Gi, expansion
+			// failed, user reverts CR back to 1Gi. The live StatefulSet still shows 1Gi, so the
+			// "decrease" is a no-op rather than a forbidden change. Mirrors elasticsearch behavior.
+			name: "allows revert when proposed matches live StatefulSet storage",
+			fields: fields{
+				client: k8s.NewFakeClient(liveSsetWithStorage("ns", "webhook-test", "test-pq", "1Gi")),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{Name: "test-pq"},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							ObjectMeta: metav1.ObjectMeta{Name: "webhook-test", Namespace: "ns"},
+							Spec: v1alpha1.LogstashSpec{
+								Version: "8.12.0",
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{
+										ObjectMeta: metav1.ObjectMeta{Name: "test-pq"},
+										Spec: corev1.PersistentVolumeClaimSpec{
+											Resources: corev1.VolumeResourceRequirements{
+												Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+											},
+										},
+									},
+								},
+							},
+						},
+					),
+				},
+			}},
+			wantAllowed: true,
+		},
+		{
 			name: "denies storage increase with default storage class",
 			fields: fields{
-				client: k8s.NewFakeClient(),
+				client: k8s.NewFakeClient(liveSsetWithStorage("ns", "webhook-test", "test-pq", "1Gi")),
 			},
 			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
 				Operation: admissionv1.Update,

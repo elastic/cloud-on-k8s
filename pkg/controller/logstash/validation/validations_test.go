@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -349,7 +350,21 @@ func Test_checkPVCchanges(t *testing.T) {
 		return c
 	}
 	ls := func(claims ...corev1.PersistentVolumeClaim) *lsv1alpha1.Logstash {
-		return &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: claims}}
+		return &lsv1alpha1.Logstash{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-ls", Namespace: "ns"},
+			Spec:       lsv1alpha1.LogstashSpec{VolumeClaimTemplates: claims},
+		}
+	}
+	// liveSset returns a fake StatefulSet whose VCT matches the given claim, so storage
+	// validation reads the same size as the test setup.
+	liveSset := func(c corev1.PersistentVolumeClaim) *appsv1.StatefulSet {
+		return &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      lsv1alpha1.Name("test-ls"),
+			},
+			Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{c}},
+		}
 	}
 
 	tests := []struct {
@@ -363,35 +378,35 @@ func Test_checkPVCchanges(t *testing.T) {
 			name:      "no change: ok",
 			current:   ls(claim("data", "1Gi", nil)),
 			proposed:  ls(claim("data", "1Gi", nil)),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   false,
 		},
 		{
 			name:      "storage increase: ok",
 			current:   ls(claim("data", "1Gi", nil)),
 			proposed:  ls(claim("data", "3Gi", nil)),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   false,
 		},
 		{
 			name:      "label-only change: ok",
 			current:   ls(claim("data", "1Gi", nil)),
 			proposed:  ls(claim("data", "1Gi", map[string]string{"team": "search"})),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   false,
 		},
 		{
 			name:      "label removal: ok",
 			current:   ls(claim("data", "1Gi", map[string]string{"team": "search"})),
 			proposed:  ls(claim("data", "1Gi", nil)),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   false,
 		},
 		{
 			name:      "label change combined with storage increase: ok",
 			current:   ls(claim("data", "1Gi", nil)),
 			proposed:  ls(claim("data", "3Gi", map[string]string{"team": "search"})),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   false,
 		},
 		{
@@ -402,15 +417,36 @@ func Test_checkPVCchanges(t *testing.T) {
 				c.Spec.StorageClassName = ptr.To[string]("other-sc")
 				return ls(c)
 			}(),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
 			wantErr:   true,
 		},
 		{
-			name:      "storage decrease: error",
+			name:      "storage decrease vs live StatefulSet: error",
 			current:   ls(claim("data", "3Gi", nil)),
 			proposed:  ls(claim("data", "1Gi", nil)),
-			k8sClient: k8s.NewFakeClient(&storageClass),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "3Gi", nil))),
 			wantErr:   true,
+		},
+		{
+			// revert-after-failed-expansion: user upgraded CR 1Gi -> 3Gi, expansion failed, user
+			// reverts CR back to 1Gi. The live StatefulSet still shows 1Gi because the failed
+			// expansion never reached it. Mirrors elasticsearch validPVCModification semantics:
+			// proposed 1Gi vs live STS 1Gi is a no-op, not a forbidden decrease.
+			name:      "revert proposed storage decrease that matches live StatefulSet: ok",
+			current:   ls(claim("data", "3Gi", nil)),
+			proposed:  ls(claim("data", "1Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
+			wantErr:   false,
+		},
+		{
+			// initial creation path: no StatefulSet yet exists. checkPVCchanges only runs on
+			// updates, but a fresh CR re-applied immediately after creation may also hit this
+			// code path before the reconciler has built the StatefulSet. We must not fail open.
+			name:      "no live StatefulSet (initial creation): ok",
+			current:   ls(claim("data", "1Gi", nil)),
+			proposed:  ls(claim("data", "1Gi", nil)),
+			k8sClient: k8s.NewFakeClient(&storageClass),
+			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
@@ -480,6 +516,72 @@ func Test_checkPVCReservedLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_checkPVCReservedLabelsOnCreate(t *testing.T) {
+	withClaims := func(claims ...corev1.PersistentVolumeClaim) *lsv1alpha1.Logstash {
+		return &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: claims}}
+	}
+	claim := func(name string, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels}}
+	}
+	tests := []struct {
+		name    string
+		ls      *lsv1alpha1.Logstash
+		wantErr bool
+	}{
+		{
+			name:    "no labels: ok",
+			ls:      withClaims(claim("data", nil)),
+			wantErr: false,
+		},
+		{
+			name:    "non-reserved label: ok",
+			ls:      withClaims(claim("data", map[string]string{"team": "search"})),
+			wantErr: false,
+		},
+		{
+			name:    "reserved cluster-name label: rejected (no grandfathering on create)",
+			ls:      withClaims(claim("data", map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "reserved common.k8s.elastic.co label: rejected",
+			ls:      withClaims(claim("data", map[string]string{"common.k8s.elastic.co/type": "evil"})),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := checkPVCReservedLabelsOnCreate(tt.ls)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
+}
+
+func Test_checkPVCchanges_annotationsAreStillImmutable(t *testing.T) {
+	// Locks in the contract that VCT *annotations* (unlike labels) are still rejected
+	// when modified on update. This guards against confusion since users frequently
+	// conflate metadata.labels and metadata.annotations.
+	claim := func(annotations map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: "data", Annotations: annotations},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+				},
+			},
+		}
+	}
+	current := &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claim(nil)}}}
+	proposed := &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claim(map[string]string{"team": "search"})}}}
+
+	errs := checkPVCchanges(context.Background(), current, proposed, k8s.NewFakeClient(), true)
+	require.NotEmpty(t, errs, "adding an annotation to a VCT must be rejected (annotations are not in the adjustable-fields list)")
 }
 
 func Test_claimsWithoutAdjustableFieldsLogstash(t *testing.T) {

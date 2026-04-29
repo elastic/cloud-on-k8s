@@ -369,6 +369,97 @@ func Test_validPVCModification(t *testing.T) {
 	}
 }
 
+func Test_validPVCReservedLabelsOnCreate(t *testing.T) {
+	es := func(claims ...corev1.PersistentVolumeClaim) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
+			Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				{Name: "set1", VolumeClaimTemplates: claims},
+			}},
+		}
+	}
+	tests := []struct {
+		name    string
+		es      esv1.Elasticsearch
+		wantErr bool
+	}{
+		{
+			name:    "no labels: ok",
+			es:      es(sampleClaim),
+			wantErr: false,
+		},
+		{
+			name:    "non-reserved label: ok",
+			es:      es(withLabels(sampleClaim, map[string]string{"team": "search"})),
+			wantErr: false,
+		},
+		{
+			name:    "reserved cluster-name label: rejected (no grandfathering on create)",
+			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "reserved statefulset-name label: rejected",
+			es:      es(withLabels(sampleClaim, map[string]string{"elasticsearch.k8s.elastic.co/statefulset-name": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "reserved common.k8s.elastic.co label: rejected",
+			es:      es(withLabels(sampleClaim, map[string]string{"common.k8s.elastic.co/type": "evil"})),
+			wantErr: true,
+		},
+		{
+			name:    "third-party look-alike key: ok",
+			es:      es(withLabels(sampleClaim, map[string]string{"velero.io/exclude-from-backup": "true"})),
+			wantErr: false,
+		},
+		{
+			name: "reserved key in second claim is also detected",
+			es: es(
+				sampleClaim,
+				withLabels(sampleClaim2, map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "evil"}),
+			),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validPVCReservedLabelsOnCreate(tt.es)
+			if tt.wantErr {
+				require.NotEmpty(t, errs)
+			} else {
+				require.Empty(t, errs)
+			}
+		})
+	}
+}
+
+func Test_validPVCAnnotations_areStillImmutable(t *testing.T) {
+	// Locks in the contract that VCT *annotations* (unlike labels) are still rejected
+	// when modified on update. This guards against confusion since users frequently
+	// conflate metadata.labels and metadata.annotations.
+	es := func(claim corev1.PersistentVolumeClaim) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
+			Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claim}},
+			}},
+		}
+	}
+	withAnnotations := func(claim corev1.PersistentVolumeClaim, annotations map[string]string) corev1.PersistentVolumeClaim {
+		c := claim.DeepCopy()
+		c.ObjectMeta.Annotations = annotations
+		return *c
+	}
+
+	current := es(sampleClaim)
+	proposed := es(withAnnotations(sampleClaim, map[string]string{"team": "search"}))
+	k8sClient := k8s.NewFakeClient()
+
+	errs := validPVCModification(context.Background(), current, proposed, k8sClient, true)
+	require.NotEmpty(t, errs, "adding an annotation to a VCT must be rejected (annotations are not in the adjustable-fields list)")
+}
+
 func Test_claimsWithoutAdjustableFields_nilRequests(t *testing.T) {
 	// A claim with nil Spec.Resources.Requests must not panic during validation.
 	claims := []corev1.PersistentVolumeClaim{

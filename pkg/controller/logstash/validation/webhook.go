@@ -48,7 +48,18 @@ type validator struct {
 
 func (v *validator) ValidateCreate(_ context.Context, ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	lslog.V(1).Info("validate create", "name", ls.Name)
-	return ValidateLogstash(ls)
+	warnings, validationErr := ValidateLogstash(ls)
+	// Reserved-VCT-label validation runs on create only (no current CR to compare against).
+	// On update, checkPVCReservedLabels handles diff-aware checks with grandfathering for
+	// already-present (key, value) pairs. This check is intentionally NOT in validations()
+	// because ValidateLogstash is also invoked by the reconciler on every reconcile pass,
+	// which would otherwise reject any CR carrying grandfathered reserved keys.
+	if errs := checkPVCReservedLabelsOnCreate(ls); len(errs) > 0 {
+		return warnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},
+			ls.Name, errs)
+	}
+	return warnings, validationErr
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alpha1.Logstash) (admission.Warnings, error) {

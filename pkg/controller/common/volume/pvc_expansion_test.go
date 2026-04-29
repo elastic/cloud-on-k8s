@@ -590,6 +590,77 @@ func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
 	}
 }
 
+// Test_handleVolumeExpansionLogstash_scaleUpSequence is the Logstash mirror of
+// Test_handleVolumeExpansion_scaleUpSequence: simulates the time-ordered scale-up
+// scenario where the StatefulSet controller creates a new PVC from the still-stale
+// (immutable) VCT after a label change, and the next reconcile pass labels it.
+func Test_handleVolumeExpansionLogstash_scaleUpSequence(t *testing.T) {
+	ls := logstashv1alpha1.Logstash{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
+		TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind},
+	}
+
+	// initial state: 3 replicas, label-less VCT, 3 unlabeled PVCs.
+	initialSset := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:             ptr.To[int32](3),
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
+		},
+	}
+	pvc := func(idx int, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns",
+				Name:      fmt.Sprintf("sample-claim-sample-sset-%d", idx),
+				Labels:    labels,
+			},
+			Spec: sampleClaim.Spec,
+		}
+	}
+	initialPVCs := []corev1.PersistentVolumeClaim{pvc(0, nil), pvc(1, nil), pvc(2, nil)}
+
+	k8sClient := k8s.NewFakeClient(
+		&ls,
+		withVolumeExpansion(sampleStorageClass),
+		&initialPVCs[0], &initialPVCs[1], &initialPVCs[2],
+	)
+
+	// === Pass 1 ===
+	expectedSset := *initialSset.DeepCopy()
+	expectedSset.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
+
+	recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls, expectedSset, initialSset, true)
+	require.NoError(t, err)
+	require.False(t, recreate)
+
+	for i := range 3 {
+		var got corev1.PersistentVolumeClaim
+		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&initialPVCs[i]), &got))
+		require.Equal(t, map[string]string{"team": "search"}, got.Labels, "existing PVC %d should be labeled after pass 1", i)
+	}
+
+	// === Time passes, then the StatefulSet is scaled up to 4 replicas ===
+	scaledSset := *initialSset.DeepCopy()
+	scaledSset.Spec.Replicas = ptr.To[int32](4)
+	freshPVC := pvc(3, nil)
+	require.NoError(t, k8sClient.Create(context.Background(), &freshPVC))
+
+	// === Pass 2 ===
+	expectedSset.Spec.Replicas = ptr.To[int32](4)
+	recreate, err = HandleVolumeExpansion(context.Background(), k8sClient, &ls, expectedSset, scaledSset, true)
+	require.NoError(t, err)
+	require.False(t, recreate)
+
+	var allPVCs corev1.PersistentVolumeClaimList
+	require.NoError(t, k8sClient.List(context.Background(), &allPVCs))
+	require.Len(t, allPVCs.Items, 4)
+	for i := range allPVCs.Items {
+		require.Equal(t, map[string]string{"team": "search"}, allPVCs.Items[i].Labels,
+			"PVC %s should be labeled after pass 2 (eventual consistency)", allPVCs.Items[i].Name)
+	}
+}
+
 func Test_handleVolumeExpansionLogstash(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},

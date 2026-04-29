@@ -180,16 +180,45 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 	return nil
 }
 
-// validPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or
-// modify ECK-reserved label keys (anything under the *.k8s.elastic.co/ domain). Such
-// labels would propagate to the resulting PVCs and could break PVC GC and owner-ref
-// reconciliation, which select on elasticsearch.k8s.elastic.co/cluster-name and
-// elasticsearch.k8s.elastic.co/statefulset-name.
+// validPVCReservedLabelsOnCreate rejects any volumeClaimTemplate label entry that
+// uses an ECK-reserved label key (anything under the *.k8s.elastic.co/ domain) on a
+// brand-new Elasticsearch resource. Such labels would propagate to the freshly
+// provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs at
+// creation time, bypassing the reconciler's syncPVCLabels guard) and could break PVC
+// GC and owner-ref reconciliation, which select on
+// elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name.
 //
-// Runs on update only and grandfathers (key, value) pairs already present on the matching
-// current claim so existing clusters that carry such labels are not bricked at upgrade
-// time. New clusters bypass this admission check; the reconciler's defensive guard in
-// syncPVCLabels still strips any reserved key before applying labels to PVCs.
+// No grandfathering applies on create: there is no "current" CR to compare against.
+// Re-application of an existing (already-validated) CR goes through the update path.
+func validPVCReservedLabelsOnCreate(proposed esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, nodeSet := range proposed.Spec.NodeSets {
+		for j, claim := range nodeSet.VolumeClaimTemplates {
+			for key := range claim.ObjectMeta.Labels {
+				if !volumevalidations.IsReservedLabelKey(key) {
+					continue
+				}
+				errs = append(errs, field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).
+						Child("volumeClaimTemplates").Index(j).
+						Child("metadata", "labels").Key(key),
+					key,
+					fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key),
+				))
+			}
+		}
+	}
+	return errs
+}
+
+// validPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or
+// modify ECK-reserved label keys on update.
+//
+// Grandfathers (key, value) pairs already present on the matching current claim so
+// existing clusters that carry such labels are not bricked at upgrade time (e.g.
+// users who applied the labels before validPVCReservedLabelsOnCreate existed).
+// The reconciler's defensive guard in syncPVCLabels still skips any reserved key
+// when reapplying labels to existing PVCs.
 func validPVCReservedLabels(current, proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
