@@ -11,6 +11,8 @@ The Elastic Stack supports SAML single sign-on (SSO) into Kibana, using Elastics
 
 NOTE: Elastic Stack SSO requires a valid Enterprise license or Enterprise trial license. Check <<{p}-licensing,the license documentation>> for more details about managing licenses.
 
+IMPORTANT: SAML SSO authentication behind a proxy is currently not supported. For a workaround, refer to the section at the bottom of this page.
+
 TIP: Make sure you check the complete link:https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html[Configuring SAML single sign-on on the Elastic Stack] guide before setting up SAML SSO for Kibana and Elasticsearch deployments managed by ECK.
 
 == Add a SAML realm to X-Pack security settings 
@@ -134,3 +136,215 @@ kubectl exec -it elasticsearch-sample-es-default-0 -- sh -c "/usr/share/elastics
 # Copy metadata file
 kubectl cp elasticsearch-sample-es-default-0:/usr/share/elasticsearch/saml-elasticsearch-metadata.xml saml-elasticsearch-metadata.xml
 ----
+
+== Workaround: configuring SAML authentication behind a proxy
+Use a locally mounted metadata file instead of a remote metadata URL.
+
+## Step 1: Download the Azure federation metadata XML
+
+From any machine with internet access, download the Azure federation metadata file. If required, use your corporate proxy.
+
+```bash
+curl -x http://hostproxy.es.oneadp.com:8080 \
+  "https://login.microsoftonline.com/4c2c8480-d3f0-485b-b750-807ff693802f/federationmetadata/2007-06/federationmetadata.xml?appid=cbe345bf-5012-4de7-b795-ff8a040a7c33" \
+  -o federationmetadata.xml
+```
+
+Validate that the downloaded file is XML and not an HTML error page:
+
+```bash
+head -5 federationmetadata.xml
+```
+
+Expected output should begin with:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+```
+
+---
+
+## Step 2: Create a ConfigMap in the Elasticsearch namespace
+
+Create a ConfigMap containing the metadata file:
+
+```bash
+kubectl create configmap azure-saml-metadata \
+  --from-file=federationmetadata.xml=./federationmetadata.xml \
+  -n crm-eck-tra2
+```
+
+Verify that the ConfigMap exists:
+
+```bash
+kubectl get configmap azure-saml-metadata -n crm-eck-tra2
+```
+
+---
+
+## Step 3: Mount the ConfigMap into every Elasticsearch nodeset
+
+Update the Elasticsearch resource so the ConfigMap is mounted into **every nodeset** used by the cluster.
+
+This includes all master, data, ingest, coordinating, or default nodesets in the deployment. If the mount is missing from even one nodeset, pods in that nodeset may still fail to initialize the SAML realm correctly.
+
+Example `podTemplate` snippet:
+
+```yaml
+podTemplate:
+  spec:
+    volumes:
+      - name: saml-metadata
+        configMap:
+          name: azure-saml-metadata
+    containers:
+      - name: elasticsearch
+        volumeMounts:
+          - name: saml-metadata
+            mountPath: /usr/share/elasticsearch/config/saml
+```
+
+### Important
+- The mount path must be inside the Elasticsearch config directory.
+- Apply this change to **all** nodesets.
+
+---
+
+## Step 4: Update the SAML realm configuration to use the local file
+
+In the Elasticsearch configuration, replace `idp.metadata.url` with `idp.metadata.path`.
+
+Example:
+
+```yaml
+xpack.security.authc.realms.saml.azure-entra-realm:
+  order: 2
+  idp.metadata.path: /usr/share/elasticsearch/config/saml/federationmetadata.xml
+  idp.entity_id: "https://sts.windows.net/4c2c8480-d3f0-485b-b750-807ff693802f/"
+  sp.entity_id: "https://<your-kibana-url>"
+  sp.acs: "https://<your-kibana-url>/api/security/saml/callback"
+  sp.logout: "https://<your-kibana-url>/logout"
+  attributes.principal: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"
+  attributes.groups: "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"
+```
+
+### Important
+Remove or comment out any existing `idp.metadata.url` setting. Do not configure both `idp.metadata.url` and `idp.metadata.path` for the same realm.
+
+---
+
+## Step 5: Apply the updated Elasticsearch spec
+
+Apply the updated manifest:
+
+```bash
+kubectl apply -f your-es-spec.yaml
+```
+
+Watch the rollout:
+
+```bash
+kubectl get pods -n crm-eck-tra2 -l elasticsearch.k8s.elastic.co/cluster-name=crm-eck-tra2 -w
+```
+
+Allow the pods to restart and the cluster to complete the rolling update.
+
+---
+
+## Step 6: Validate the configuration
+
+Check the Elasticsearch logs on a master node for SAML-related warnings:
+
+```bash
+kubectl logs <master-pod-name> -n crm-eck-tra2 | grep -i saml
+```
+
+### Before the fix
+You may see:
+
+```text
+[WARN][o.e.x.s.a.s.SamlRealm] cannot load SAML metadata for [...]; SAML authentication for this realm will fail
+```
+
+### After the fix
+The SAML realm should initialize without those warnings.
+
+Also verify cluster health after the rollout:
+
+```bash
+kubectl exec -it <master-pod-name> -n crm-eck-tra2 -- \
+  curl -s -u elastic:<password> http://localhost:9200/_cluster/health | python3 -m json.tool
+```
+
+Confirm the cluster returns to a healthy state.
+
+---
+
+## Keeping the metadata up to date
+Azure AD federation metadata changes infrequently, but signing certificates can rotate. To keep the local metadata current, periodically refresh the ConfigMap.
+
+### Refresh procedure
+
+Re-download the latest metadata:
+
+```bash
+curl -x http://hostproxy.es.oneadp.com:8080 \
+  "https://login.microsoftonline.com/4c2c8480-d3f0-485b-b750-807ff693802f/federationmetadata/2007-06/federationmetadata.xml?appid=cbe345bf-5012-4de7-b795-ff8a040a7c33" \
+  -o federationmetadata.xml
+```
+
+Update the ConfigMap in place:
+
+```bash
+kubectl create configmap azure-saml-metadata \
+  --from-file=federationmetadata.xml=./federationmetadata.xml \
+  -n crm-eck-tra2 \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+### Notes
+- Kubernetes propagates ConfigMap updates to mounted volumes automatically.
+- Elasticsearch can reload metadata from `idp.metadata.path`, so a pod restart is typically not required for metadata refresh.
+
+---
+
+## Optional automation with a CronJob
+
+If you want to automate metadata refresh, you can use a Kubernetes CronJob.
+
+Example:
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: refresh-saml-metadata
+  namespace: crm-eck-tra2
+spec:
+  schedule: "0 2 * * 0"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: refresh
+              image: alpine/curl:latest
+              env:
+                - name: HTTPS_PROXY
+                  value: "http://hostproxy.es.oneadp.com:8080"
+              command:
+                - sh
+                - -c
+                - |
+                  curl -o /tmp/federationmetadata.xml \
+                    "https://login.microsoftonline.com/4c2c8480-d3f0-485b-b750-807ff693802f/federationmetadata/2007-06/federationmetadata.xml?appid=cbe345bf-5012-4de7-b795-ff8a040a7c33"
+
+                  kubectl create configmap azure-saml-metadata \
+                    --from-file=federationmetadata.xml=/tmp/federationmetadata.xml \
+                    -n crm-eck-tra2 \
+                    --dry-run=client -o yaml | kubectl apply -f -
+          serviceAccountName: saml-metadata-refresher
+```
+
+The service account used by this CronJob must have permission to read and update ConfigMaps in the target namespace.
