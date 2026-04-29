@@ -127,6 +127,7 @@ func updatePVCs(
 //   - keys present in expected are added or updated on the PVC,
 //   - keys absent from expected are NOT removed (PVCs may carry operator-managed labels
 //     and/or labels set out of band by the user that we must not delete),
+//   - removing labels from the CR does not remove them from existing PVCs,
 //   - keys reserved by ECK (see volumevalidations.IsReservedLabelKey) are skipped to keep
 //     PVC GC and owner-ref reconciliation correct even if a reserved key somehow appears
 //     in the VolumeClaimTemplate (e.g. a CR was created bypassing the webhook).
