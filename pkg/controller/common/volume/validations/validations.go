@@ -12,7 +12,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -20,6 +22,10 @@ import (
 
 const (
 	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
+
+	// ReservedPVCLabelKeyErrMsgFmt is the admission error message when a user sets or changes
+	// an ECK-reserved label key on a volumeClaimTemplate.
+	ReservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 
 	// eckReservedLabelsRootSubdomain is the shortest DNS subdomain (`k8s.elastic.co`)
 	// reserved for ECK-managed label keys; longer subdomains ending in
@@ -45,7 +51,7 @@ func IsReservedLabelKey(key string) bool {
 
 // StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys
 // removed from each claim's metadata.labels. This is the reconciler-side complement to
-// the create-time webhook check (validPVCReservedLabelsOnCreate / checkPVCReservedLabelsOnCreate):
+// the create-time webhook check (ValidateReservedLabelsOnCreate):
 // it provides defense-in-depth so that operators running with webhooks disabled, or CRs
 // that otherwise bypass admission, still cannot leak reserved label keys onto freshly
 // provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs at creation time).
@@ -85,6 +91,74 @@ func anyClaimCarriesReservedKey(claims []corev1.PersistentVolumeClaim) bool {
 	return false
 }
 
+// ClaimsWithoutAdjustableFields returns a copy of the given claims with all adjustable
+// fields cleared so unrelated changes can be compared via deep equality. Adjustable
+// fields are storage requests and metadata labels.
+func ClaimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		patchedClaim := *claim.DeepCopy()
+		// Storage quantity is allowed to be adjusted. Defensively initialize Requests
+		// to avoid panicking on malformed claims with a nil Requests map.
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
+		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		// Labels are allowed to be adjusted.
+		patchedClaim.ObjectMeta.Labels = map[string]string{}
+		result = append(result, patchedClaim)
+	}
+	return result
+}
+
+// ValidateReservedLabelsOnCreate rejects any volumeClaimTemplate label that uses an
+// ECK-reserved label key on a brand-new resource. templatesPath must point at the
+// volumeClaimTemplates array (e.g. spec.volumeClaimTemplates or
+// spec.nodeSets[i].volumeClaimTemplates).
+func ValidateReservedLabelsOnCreate(proposed []corev1.PersistentVolumeClaim, templatesPath *field.Path) field.ErrorList {
+	var errs field.ErrorList
+	for j, claim := range proposed {
+		for key := range claim.ObjectMeta.Labels {
+			if !IsReservedLabelKey(key) {
+				continue
+			}
+			errs = append(errs, field.Invalid(
+				templatesPath.Index(j).Child("metadata", "labels").Key(key),
+				key,
+				fmt.Sprintf(ReservedPVCLabelKeyErrMsgFmt, key),
+			))
+		}
+	}
+	return errs
+}
+
+// ValidateReservedLabelsOnUpdate rejects volumeClaimTemplate labels that introduce or
+// change ECK-reserved keys. Identical (key, value) pairs already present on the
+// matching current claim (by name) are grandfathered. templatesPath must point at the
+// volumeClaimTemplates array.
+func ValidateReservedLabelsOnUpdate(current, proposed []corev1.PersistentVolumeClaim, templatesPath *field.Path) field.ErrorList {
+	var errs field.ErrorList
+	for j, proposedClaim := range proposed {
+		currentClaim := ClaimMatchingName(current, proposedClaim.Name)
+		for key, value := range proposedClaim.ObjectMeta.Labels {
+			if !IsReservedLabelKey(key) {
+				continue
+			}
+			if currentClaim != nil {
+				if currentValue, exists := currentClaim.ObjectMeta.Labels[key]; exists && currentValue == value {
+					continue
+				}
+			}
+			errs = append(errs, field.Invalid(
+				templatesPath.Index(j).Child("metadata", "labels").Key(key),
+				key,
+				fmt.Sprintf(ReservedPVCLabelKeyErrMsgFmt, key),
+			))
+		}
+	}
+	return errs
+}
+
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
 // - a storage decrease is attempted
 // - a storage increase is attempted but the storage class does not support volume expansion
@@ -97,7 +171,7 @@ func ValidateClaimsStorageUpdate(
 	validateStorageClass bool,
 ) error {
 	for _, updatedClaim := range updated {
-		initialClaim := claimMatchingName(initial, updatedClaim.Name)
+		initialClaim := ClaimMatchingName(initial, updatedClaim.Name)
 		if initialClaim == nil {
 			// updated declares a claim that does not exist in initial: adding new claims is forbidden.
 			return errors.New(PvcImmutableErrMsg)
@@ -117,7 +191,8 @@ func ValidateClaimsStorageUpdate(
 	return nil
 }
 
-func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
+// ClaimMatchingName returns the claim with the given name in claims, or nil if not found.
+func ClaimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
 	for i, claim := range claims {
 		if claim.Name == name {
 			return &claims[i]

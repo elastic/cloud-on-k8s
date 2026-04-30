@@ -584,16 +584,6 @@ func Test_checkPVCchanges_annotationsAreStillImmutable(t *testing.T) {
 	require.NotEmpty(t, errs, "adding an annotation to a VCT must be rejected (annotations are not in the adjustable-fields list)")
 }
 
-func Test_claimsWithoutAdjustableFieldsLogstash(t *testing.T) {
-	// Ensures the function does not panic when Resources.Requests is nil.
-	claims := []corev1.PersistentVolumeClaim{
-		{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
-	}
-	require.NotPanics(t, func() {
-		_ = claimsWithoutAdjustableFields(claims)
-	})
-}
-
 func Test_checkESRefsNamed(t *testing.T) {
 	type args struct {
 		b *lsv1alpha1.Logstash

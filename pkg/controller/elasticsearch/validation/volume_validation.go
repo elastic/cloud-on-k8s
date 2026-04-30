@@ -6,7 +6,6 @@ package validation
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
@@ -15,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -24,8 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
-
-const reservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 
 func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
@@ -117,8 +113,8 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 		if currentNodeSet != nil {
 			// Check that no modification was made to the claims, except on storage requests and labels.
 			if !apiequality.Semantic.DeepEqual(
-				claimsWithoutAdjustableFields(currentNodeSet.VolumeClaimTemplates),
-				claimsWithoutAdjustableFields(proposedNodeSet.VolumeClaimTemplates),
+				volumevalidations.ClaimsWithoutAdjustableFields(currentNodeSet.VolumeClaimTemplates),
+				volumevalidations.ClaimsWithoutAdjustableFields(proposedNodeSet.VolumeClaimTemplates),
 			) {
 				errs = append(errs, field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
@@ -193,20 +189,8 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 func validPVCReservedLabelsOnCreate(proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range proposed.Spec.NodeSets {
-		for j, claim := range nodeSet.VolumeClaimTemplates {
-			for key := range claim.ObjectMeta.Labels {
-				if !volumevalidations.IsReservedLabelKey(key) {
-					continue
-				}
-				errs = append(errs, field.Invalid(
-					field.NewPath("spec").Child("nodeSets").Index(i).
-						Child("volumeClaimTemplates").Index(j).
-						Child("metadata", "labels").Key(key),
-					key,
-					fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key),
-				))
-			}
-		}
+		templatesPath := field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates")
+		errs = append(errs, volumevalidations.ValidateReservedLabelsOnCreate(nodeSet.VolumeClaimTemplates, templatesPath)...)
 	}
 	return errs
 }
@@ -223,60 +207,13 @@ func validPVCReservedLabels(current, proposed esv1.Elasticsearch) field.ErrorLis
 	var errs field.ErrorList
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
-		for j, proposedClaim := range proposedNodeSet.VolumeClaimTemplates {
-			currentClaim := matchingClaim(currentNodeSet, proposedClaim.Name)
-			for key, value := range proposedClaim.ObjectMeta.Labels {
-				if !volumevalidations.IsReservedLabelKey(key) {
-					continue
-				}
-				if currentClaim != nil {
-					if currentValue, exists := currentClaim.ObjectMeta.Labels[key]; exists && currentValue == value {
-						// grandfather pre-existing (key, value) pair
-						continue
-					}
-				}
-				errs = append(errs, field.Invalid(
-					field.NewPath("spec").Child("nodeSets").Index(i).
-						Child("volumeClaimTemplates").Index(j).
-						Child("metadata", "labels").Key(key),
-					key,
-					fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key),
-				))
-			}
+		var currentClaims []corev1.PersistentVolumeClaim
+		if currentNodeSet != nil {
+			currentClaims = currentNodeSet.VolumeClaimTemplates
 		}
+		templatesPath := field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates")
+		errs = append(errs, volumevalidations.ValidateReservedLabelsOnUpdate(
+			currentClaims, proposedNodeSet.VolumeClaimTemplates, templatesPath)...)
 	}
 	return errs
-}
-
-// matchingClaim returns the claim with the given name in the nodeSet, or nil if not found
-// or the nodeSet itself is nil.
-func matchingClaim(nodeSet *esv1.NodeSet, name string) *corev1.PersistentVolumeClaim {
-	if nodeSet == nil {
-		return nil
-	}
-	for i := range nodeSet.VolumeClaimTemplates {
-		if nodeSet.VolumeClaimTemplates[i].Name == name {
-			return &nodeSet.VolumeClaimTemplates[i]
-		}
-	}
-	return nil
-}
-
-// claimsWithoutAdjustableFields returns a copy of the given claims, with all known
-// adjustable fields cleared so unrelated changes can be compared via deep equality.
-func claimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
-	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
-	for _, claim := range claims {
-		patchedClaim := *claim.DeepCopy()
-		// Storage quantity is allowed to be adjusted. Defensively initialize Requests
-		// to avoid panicking on malformed claims with a nil Requests map.
-		if patchedClaim.Spec.Resources.Requests == nil {
-			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
-		}
-		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
-		// Labels are allowed to be adjusted.
-		patchedClaim.ObjectMeta.Labels = map[string]string{}
-		result = append(result, patchedClaim)
-	}
-	return result
 }

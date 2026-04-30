@@ -460,16 +460,6 @@ func Test_validPVCAnnotations_areStillImmutable(t *testing.T) {
 	require.NotEmpty(t, errs, "adding an annotation to a VCT must be rejected (annotations are not in the adjustable-fields list)")
 }
 
-func Test_claimsWithoutAdjustableFields_nilRequests(t *testing.T) {
-	// A claim with nil Spec.Resources.Requests must not panic during validation.
-	claims := []corev1.PersistentVolumeClaim{
-		{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
-	}
-	require.NotPanics(t, func() {
-		_ = claimsWithoutAdjustableFields(claims)
-	})
-}
-
 func Test_validPVCReservedLabels(t *testing.T) {
 	es := func(claims ...corev1.PersistentVolumeClaim) esv1.Elasticsearch {
 		return esv1.Elasticsearch{

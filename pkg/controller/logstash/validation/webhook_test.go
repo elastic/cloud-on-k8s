@@ -22,6 +22,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -627,7 +628,7 @@ func Test_webhook_Update(t *testing.T) {
 				},
 			}},
 			wantAllowed: false,
-			wantMessage: "Volume claim templates can only have their storage requests and labels modified",
+			wantMessage: volumevalidations.PvcImmutableErrMsg,
 		},
 		{
 			name: "allows label-only VCT change",

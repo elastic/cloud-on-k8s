@@ -13,6 +13,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -496,5 +497,95 @@ func TestValidateClaimsUpdate(t *testing.T) {
 				t.Errorf("ValidateClaimsStorageUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestClaimsWithoutAdjustableFields_nilRequestsDoesNotPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ClaimsWithoutAdjustableFields panicked: %v", r)
+		}
+	}()
+	claims := []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "data"}}}
+	_ = ClaimsWithoutAdjustableFields(claims)
+}
+
+func TestValidateReservedLabelsOnCreate(t *testing.T) {
+	templatesPath := field.NewPath("spec").Child("volumeClaimTemplates")
+	claim := func(name string, labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels}}
+	}
+	tests := []struct {
+		name     string
+		proposed []corev1.PersistentVolumeClaim
+		want     int
+	}{
+		{name: "no labels", proposed: []corev1.PersistentVolumeClaim{claim("data", nil)}, want: 0},
+		{name: "non-reserved label", proposed: []corev1.PersistentVolumeClaim{claim("data", map[string]string{"team": "a"})}, want: 0},
+		{name: "reserved label", proposed: []corev1.PersistentVolumeClaim{claim("data", map[string]string{"common.k8s.elastic.co/type": "evil"})}, want: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := ValidateReservedLabelsOnCreate(tt.proposed, templatesPath)
+			if len(errs) != tt.want {
+				t.Fatalf("len(errs)=%d want %d", len(errs), tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateReservedLabelsOnUpdate(t *testing.T) {
+	templatesPath := field.NewPath("spec").Child("volumeClaimTemplates")
+	data := func(labels map[string]string) corev1.PersistentVolumeClaim {
+		return corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: labels}}
+	}
+	tests := []struct {
+		name     string
+		current  []corev1.PersistentVolumeClaim
+		proposed []corev1.PersistentVolumeClaim
+		want     int
+	}{
+		{
+			name:     "grandfather unchanged reserved",
+			current:  []corev1.PersistentVolumeClaim{data(map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})},
+			proposed: []corev1.PersistentVolumeClaim{data(map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})},
+			want:     0,
+		},
+		{
+			name:     "new reserved key",
+			current:  []corev1.PersistentVolumeClaim{data(nil)},
+			proposed: []corev1.PersistentVolumeClaim{data(map[string]string{"common.k8s.elastic.co/type": "x"})},
+			want:     1,
+		},
+		{
+			name:     "change reserved value",
+			current:  []corev1.PersistentVolumeClaim{data(map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "old"})},
+			proposed: []corev1.PersistentVolumeClaim{data(map[string]string{"elasticsearch.k8s.elastic.co/cluster-name": "new"})},
+			want:     1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := ValidateReservedLabelsOnUpdate(tt.current, tt.proposed, templatesPath)
+			if len(errs) != tt.want {
+				t.Fatalf("len(errs)=%d want %d: %v", len(errs), tt.want, errs)
+			}
+		})
+	}
+}
+
+func TestClaimMatchingName(t *testing.T) {
+	claims := []corev1.PersistentVolumeClaim{
+		{ObjectMeta: metav1.ObjectMeta{Name: "a"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "b"}},
+	}
+	if ClaimMatchingName(claims, "a") == nil {
+		t.Fatal("expected claim a")
+	}
+	if ClaimMatchingName(claims, "missing") != nil {
+		t.Fatal("expected nil for missing")
+	}
+	if ClaimMatchingName(nil, "a") != nil {
+		t.Fatal("nil slice should yield nil")
 	}
 }
