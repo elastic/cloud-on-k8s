@@ -522,7 +522,7 @@ func Test_validPVCReservedLabels(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "apex k8s.elastic.co label newly added: error",
+			name:     "k8s.elastic.co subdomain label newly added: error",
 			current:  es(sampleClaim),
 			proposed: es(withLabels(sampleClaim, map[string]string{"k8s.elastic.co/foo": "bar"})),
 			wantErr:  true,

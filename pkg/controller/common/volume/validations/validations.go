@@ -21,16 +21,18 @@ import (
 const (
 	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
 
-	// eckLabelDomainSuffix matches the apex domain (k8s.elastic.co) and any
-	// subdomain (e.g. elasticsearch.k8s.elastic.co, common.k8s.elastic.co,
-	// association.k8s.elastic.co) that ECK uses for operator-managed labels.
-	eckLabelDomainSuffix = "k8s.elastic.co"
+	// eckReservedLabelsRootSubdomain is the shortest DNS subdomain (`k8s.elastic.co`)
+	// reserved for ECK-managed label keys; longer subdomains ending in
+	// `.<eckReservedLabelsRootSubdomain>` (e.g. elasticsearch.k8s.elastic.co,
+	// common.k8s.elastic.co, association.k8s.elastic.co) are reserved too.
+	eckReservedLabelsRootSubdomain = "k8s.elastic.co"
 )
 
 // IsReservedLabelKey reports whether key is owned by ECK and must not be set
-// or modified by users via VolumeClaimTemplate labels. ECK-reserved keys live
-// under any *.k8s.elastic.co/ domain (e.g. elasticsearch.k8s.elastic.co/cluster-name,
-// common.k8s.elastic.co/type, association.k8s.elastic.co/...). Overwriting them
+// or modified by users via VolumeClaimTemplate labels. ECK-reserved keys use a
+// label subdomain that equals k8s.elastic.co or ends with .k8s.elastic.co
+// (e.g. elasticsearch.k8s.elastic.co/cluster-name, common.k8s.elastic.co/type,
+// association.k8s.elastic.co/...). Overwriting them
 // on a PVC would break PVC GC and owner-ref reconciliation, which select on
 // ClusterNameLabelName / StatefulSetNameLabelName.
 func IsReservedLabelKey(key string) bool {
@@ -38,7 +40,7 @@ func IsReservedLabelKey(key string) bool {
 	if !ok {
 		return false
 	}
-	return domain == eckLabelDomainSuffix || strings.HasSuffix(domain, "."+eckLabelDomainSuffix)
+	return domain == eckReservedLabelsRootSubdomain || strings.HasSuffix(domain, "."+eckReservedLabelsRootSubdomain)
 }
 
 // StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys

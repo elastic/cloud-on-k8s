@@ -66,7 +66,7 @@ func TestIsReservedLabelKey(t *testing.T) {
 		{name: "elasticsearch subdomain reserved", key: "elasticsearch.k8s.elastic.co/cluster-name", want: true},
 		{name: "common subdomain reserved", key: "common.k8s.elastic.co/type", want: true},
 		{name: "association subdomain reserved", key: "association.k8s.elastic.co/es-conf", want: true},
-		{name: "apex domain reserved", key: "k8s.elastic.co/foo", want: true},
+		{name: "k8s.elastic.co subdomain reserved", key: "k8s.elastic.co/foo", want: true},
 		{name: "empty string not reserved", key: "", want: false},
 		{name: "no slash not reserved", key: "elasticsearch.k8s.elastic.co", want: false},
 		{name: "lookalike suffix not reserved", key: "notk8s.elastic.co/foo", want: false},
@@ -145,7 +145,7 @@ func TestStripReservedLabelKeys(t *testing.T) {
 			},
 		},
 		{
-			name: "apex k8s.elastic.co reserved key removed",
+			name: "k8s.elastic.co subdomain reserved key removed",
 			in:   []corev1.PersistentVolumeClaim{claim("data", map[string]string{"k8s.elastic.co/foo": "bar"})},
 			want: []corev1.PersistentVolumeClaim{claim("data", nil)},
 		},
