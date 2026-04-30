@@ -17,6 +17,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -40,6 +41,10 @@ const autoOpsESConfigTemplate = `receivers:
 {{- if .SSLEnabled}}
           ssl.verification_mode: certificate
           ssl.certificate_authorities: ["{{ .CACertPath }}"]
+{{- if .ClientCertPath}}
+          ssl.certificate: "{{ .ClientCertPath }}"
+          ssl.key: "{{ .ClientKeyPath }}"
+{{- end}}
 {{- else}}
           ssl.verification_mode: none
 {{- end}}
@@ -57,6 +62,10 @@ const autoOpsESConfigTemplate = `receivers:
 {{- if .SSLEnabled}}
           ssl.verification_mode: certificate
           ssl.certificate_authorities: ["{{ .CACertPath }}"]
+{{- if .ClientCertPath}}
+          ssl.certificate: "{{ .ClientCertPath }}"
+          ssl.key: "{{ .ClientKeyPath }}"
+{{- end}}
 {{- else}}
           ssl.verification_mode: none
 {{- end}}
@@ -116,8 +125,10 @@ extensions:
 
 // configTemplateData holds the data for rendering the config template
 type configTemplateData struct {
-	SSLEnabled bool
-	CACertPath string
+	SSLEnabled     bool
+	CACertPath     string
+	ClientCertPath string
+	ClientKeyPath  string
 }
 
 // ReconcileAutoOpsESConfigMap reconciles the ConfigMap containing the autoops configuration
@@ -181,9 +192,18 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 	}
 
 	var configBuf bytes.Buffer
+	var clientCertPath, clientKeyPath string
+	if annotation.HasClientAuthenticationRequired(&es) {
+		clientCertDir := fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name)
+		clientCertPath = filepath.Join(clientCertDir, certificates.CertFileName)
+		clientKeyPath = filepath.Join(clientCertDir, certificates.KeyFileName)
+	}
+
 	templateData := configTemplateData{
-		SSLEnabled: sslEnabled,
-		CACertPath: caCertPath,
+		SSLEnabled:     sslEnabled,
+		CACertPath:     caCertPath,
+		ClientCertPath: clientCertPath,
+		ClientKeyPath:  clientKeyPath,
 	}
 	if err := tmpl.Execute(&configBuf, templateData); err != nil {
 		return corev1.ConfigMap{}, err

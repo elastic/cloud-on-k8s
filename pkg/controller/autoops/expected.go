@@ -20,6 +20,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
@@ -91,6 +92,18 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		)
 		volumes = append(volumes, caVolume.Volume())
 		volumeMounts = append(volumeMounts, caVolume.VolumeMount())
+	}
+
+	if annotation.HasClientAuthenticationRequired(&es) {
+		// Add client certificate volume for this ES instance when client authentication is required
+		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+		clientCertVolume := volume.NewSecretVolumeWithMountPath(
+			clientCertSecretName,
+			fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
+		)
+		volumes = append(volumes, clientCertVolume.Volume())
+		volumeMounts = append(volumeMounts, clientCertVolume.VolumeMount())
 	}
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
