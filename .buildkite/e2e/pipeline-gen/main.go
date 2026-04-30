@@ -25,25 +25,26 @@ import (
 )
 
 const (
-	EnvVarProvider             = "E2E_PROVIDER"
-	EnvVarK8sVersion           = "DEPLOYER_K8S_VERSION"
-	EnvVarStackVersion         = "E2E_STACK_VERSION"
-	EnvVarBuildkiteBuildNumber = "BUILDKITE_BUILD_NUMBER"
-	EnvVarBuildNumber          = "BUILD_NUMBER"
-	EnvVarPipeline             = "PIPELINE"
-	EnvVarClusterName          = "CLUSTER_NAME"
-	EnvVarTestOpts             = "TEST_OPTS"
-	EnvVarTestsMatch           = "TESTS_MATCH"
-	EnvVarTestLicensePKeyPath  = "TEST_LICENSE_PKEY_PATH"
-	EnvVarBuildLicensePubkey   = "BUILD_LICENSE_PUBKEY"
-	EnvVarLicensePubKey        = "export LICENSE_PUBKEY"
-	EnvVarTestLicense          = "TEST_LICENSE"
-	EnvVarMonitoringSecrets    = "MONITORING_SECRETS"
-	EnvVarE2EJson              = "E2E_JSON"
-	EnvVarGoTags               = "GO_TAGS"
-	EnvVarOperatorImage        = "OPERATOR_IMAGE"
-	EnvVarE2EImage             = "E2E_IMG"
-	EnvVarStateless            = "STATELESS"
+	EnvVarProvider                 = "E2E_PROVIDER"
+	EnvVarK8sVersion               = "DEPLOYER_K8S_VERSION"
+	EnvVarStackVersion             = "E2E_STACK_VERSION"
+	EnvVarBuildkiteBuildNumber     = "BUILDKITE_BUILD_NUMBER"
+	EnvVarBuildNumber              = "BUILD_NUMBER"
+	EnvVarPipeline                 = "PIPELINE"
+	EnvVarClusterName              = "CLUSTER_NAME"
+	EnvVarTestOpts                 = "TEST_OPTS"
+	EnvVarTestsMatch               = "TESTS_MATCH"
+	EnvVarTestLicensePKeyPath      = "TEST_LICENSE_PKEY_PATH"
+	EnvVarBuildLicensePubkey       = "BUILD_LICENSE_PUBKEY"
+	EnvVarLicensePubKey            = "export LICENSE_PUBKEY"
+	EnvVarTestLicense              = "TEST_LICENSE"
+	EnvVarMonitoringSecrets        = "MONITORING_SECRETS"
+	EnvVarE2EJson                  = "E2E_JSON"
+	EnvVarGoTags                   = "GO_TAGS"
+	EnvVarOperatorImage            = "OPERATOR_IMAGE"
+	EnvVarE2EImage                 = "E2E_IMG"
+	EnvVarStateless                = "STATELESS"
+	EnvVarRestrictWatchedResources = "RESTRICT_WATCHED_RESOURCES"
 
 	K8sInDockerMachineType = "n1-standard-16"
 )
@@ -63,11 +64,12 @@ var (
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
 
 	shortcuts = map[string]string{
-		"p":  EnvVarProvider,
-		"k":  EnvVarK8sVersion,
-		"s":  EnvVarStackVersion,
-		"t":  EnvVarTestsMatch,
-		"sl": EnvVarStateless,
+		"p":   EnvVarProvider,
+		"k":   EnvVarK8sVersion,
+		"s":   EnvVarStackVersion,
+		"t":   EnvVarTestsMatch,
+		"sl":  EnvVarStateless,
+		"rwr": EnvVarRestrictWatchedResources,
 	}
 
 	fixed   string

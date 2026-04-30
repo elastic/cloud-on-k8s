@@ -64,6 +64,7 @@ pipeline-gen -e -f E2E_PROVIDER=gke,DEPLOYER_K8S_VERSION=1.23,E2E_STACK_VERSION=
 | `s` | `E2E_STACK_VERSION` |
 | `t` | `TESTS_MATCH` |
 | `sl` | `STATELESS` |
+| `rwr` | `RESTRICT_WATCHED_RESOURCES` |
 
 ```sh
 pipeline-gen -f p=gke,k=1.23,t=TestSmoke -m s=8.5.0,s=8.6.0 | tee pipeline.yml
@@ -71,4 +72,7 @@ pipeline-gen -e -f p=gke,k=1.23,s=8.6.0,t=TestSmoke | tee ../../../.env
 
 # Run tests in stateless mode
 pipeline-gen -f p=gke,sl=true,t=TestSmoke | tee pipeline.yml
+
+# Run tests with the operator deployed with --restrict-watched-resources enabled
+pipeline-gen -f p=kind,rwr=true,t=TestSmoke | tee pipeline.yml
 ```

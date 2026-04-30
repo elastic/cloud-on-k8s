@@ -168,7 +168,9 @@ func (r *AgentPolicyReconciler) maybeUpdateAPIKey(
 	}
 
 	log.V(1).Info("API key is up to date", "key", apiKeyName)
-	return &secret, nil
+
+	// reconcile if labels changes are required
+	return r.storeAPIKeyInSecret(ctx, policy, es, string(secret.Data[apiKeySecretKey]), expectedHash)
 }
 
 func (r *AgentPolicyReconciler) invalidateAndCreateAPIKey(
@@ -257,8 +259,9 @@ func (r *AgentPolicyReconciler) storeAPIKeyInSecret(
 func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, encodedKey string, expectedHash string) corev1.Secret {
 	baseLabels := resourceLabelsFor(policy, es)
 	apiKeyLabels := maps.Merge(baseLabels, map[string]string{
-		policySecretTypeLabelKey:           apiKeySecretType,
-		commonapikey.MetadataKeyConfigHash: expectedHash,
+		policySecretTypeLabelKey:                   apiKeySecretType,
+		commonapikey.MetadataKeyConfigHash:         expectedHash,
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 	})
 
 	meta := metadata.Propagate(&policy, metadata.Metadata{

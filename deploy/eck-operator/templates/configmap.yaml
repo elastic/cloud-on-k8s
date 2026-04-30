@@ -76,6 +76,7 @@ data:
     {{- if not .Values.config.containerSuffix }}
     ubi-only: {{ .Values.config.ubiOnly }}
     {{- end }}
+    restrict-watched-resources: {{ .Values.config.restrictWatchedResources }}
     {{- with .Values.webhook.certsSecret }}
     webhook-secret: {{ . }}
     {{- end }}

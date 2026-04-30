@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -189,6 +190,12 @@ func reconcileRolesFileRealmSecret(
 		},
 		Data: secretData,
 	}
+
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{

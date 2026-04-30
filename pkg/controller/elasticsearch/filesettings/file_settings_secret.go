@@ -104,6 +104,11 @@ func (f *Secret) Exists() bool {
 	return f.current != nil
 }
 
+// IsSettingsCorrupted returns true if the file contented could not be parsed.
+func (f *Secret) IsSettingsCorrupted() bool {
+	return f.settingsCorrupted
+}
+
 // Version returns the settings version that will be written on Save.
 // The version is adjusted during Save if the settings hash is unchanged.
 // Call after Save to get the final version.
@@ -259,6 +264,7 @@ func isSecretUpdateNeeded(ctx context.Context, current, reconciled corev1.Secret
 }
 
 // buildSecret constructs the expected corev1.Secret from the current settings state.
+// It is used in the file settings [Secret] type in Save function.
 func (f *Secret) buildSecret(hash string) (corev1.Secret, error) {
 	secretMeta := f.meta.Merge(metadata.Metadata{
 		Annotations: map[string]string{
@@ -291,6 +297,7 @@ func (f *Secret) buildSecret(hash string) (corev1.Secret, error) {
 		secret.Labels = make(map[string]string)
 	}
 	secret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName] = commonlabel.OrphanSecretResetOnPolicyDelete
+	secret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	return secret, nil
 }
