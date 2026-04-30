@@ -53,7 +53,7 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	// or CRs that otherwise bypass admission would let reserved keys propagate from the VCT
 	// onto freshly provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs
 	// at creation time, before HandleVolumeExpansion's syncPVCLabels can run). This
-	// reconciler-side guard provides defense-in-depth.
+	// reconciler-side guard prevents this behavior.
 	claims := volumevalidations.StripReservedLabelKeys(params.Logstash.Spec.VolumeClaimTemplates)
 
 	expected := sset.New(sset.Params{
