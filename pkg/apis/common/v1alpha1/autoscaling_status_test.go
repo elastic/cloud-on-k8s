@@ -11,6 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 func TestAutoscalingStatusBuilder_Build(t *testing.T) {
@@ -35,22 +37,22 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerLimited,
 						Status: corev1.ConditionFalse,
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerOnline,
 						Status: corev1.ConditionUnknown,
 					},
@@ -84,22 +86,22 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerLimited,
 						Status: corev1.ConditionFalse,
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionFalse,
 						Message: "Reason for not being online",
@@ -160,23 +162,23 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerLimited,
 						Status:  corev1.ConditionTrue,
 						Message: "Limit reached for policies policy1,policy2",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionTrue,
 						Message: "Elasticsearch is available",
@@ -269,23 +271,23 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API. Issues reported for the following policies: [policy0,policy1]. Check operator logs, Kubernetes events, and policies status for more details",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerLimited,
 						Status:  corev1.ConditionTrue,
 						Message: "Limit reached for policies policy2",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionFalse,
 						Message: "Elasticsearch is not available",
@@ -347,7 +349,7 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 	}
 }
 
-func cmpConditions(t *testing.T, expectedConditions, gotConditions Conditions) {
+func cmpConditions(t *testing.T, expectedConditions, gotConditions commonv1.Conditions) {
 	t.Helper()
 	for _, expected := range expectedConditions {
 		idx := gotConditions.Index(expected.Type)

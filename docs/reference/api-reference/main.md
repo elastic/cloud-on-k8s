@@ -486,6 +486,51 @@ ClientOptions configures client certificate authentication for incoming connecti
 | *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
 
 
+### Condition  [#condition]
+
+Condition represents Elasticsearch resource's condition.
+
+:::{admonition} Appears In:
+* [Conditions](#conditions)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`type`* __[ConditionType](#conditiontype)__ |  |
+| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
+| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
+| *`message`* __string__ |  |
+
+
+### ConditionType (string)  [#conditiontype]
+
+ConditionType defines the condition of an Elasticsearch resource.
+
+:::{admonition} Appears In:
+* [Condition](#condition)
+
+:::
+
+
+
+### Conditions ([Condition](#condition))  [#conditions]
+
+
+
+:::{admonition} Appears In:
+* [ElasticsearchStatus](#elasticsearchstatus)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`type`* __[ConditionType](#conditiontype)__ |  |
+| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
+| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
+| *`message`* __string__ |  |
+
+
 ### Config  [#config]
 
 Config represents untyped YAML configuration.
@@ -919,52 +964,6 @@ Package v1alpha1 contains API schema definitions for common types used by all re
 
 
 
-### Condition  [#condition]
-
-Condition represents Elasticsearch resource's condition.
-**This API is in technical preview and may be changed or removed in a future release.**
-
-:::{admonition} Appears In:
-* [Conditions](#conditions)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`type`* __[ConditionType](#conditiontype)__ |  |
-| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
-| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
-| *`message`* __string__ |  |
-
-
-### ConditionType (string)  [#conditiontype]
-
-ConditionType defines the condition of an Elasticsearch resource.
-
-:::{admonition} Appears In:
-* [Condition](#condition)
-
-:::
-
-
-
-### Conditions ([Condition](#condition))  [#conditions]
-
-
-
-:::{admonition} Appears In:
-* [ElasticsearchStatus](#elasticsearchstatus)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`type`* __[ConditionType](#conditiontype)__ |  |
-| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
-| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
-| *`message`* __string__ |  |
-
-
 
 
 
@@ -1316,7 +1315,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run<br>in parallel: this value specifies the lowest version currently running. |
 | *`health`* __[ElasticsearchHealth](#elasticsearchhealth)__ |  |
 | *`phase`* __[ElasticsearchOrchestrationPhase](#elasticsearchorchestrationphase)__ |  |
-| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
+| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster. |
 | *`inProgressOperations`* __[InProgressOperations](#inprogressoperations)__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
 
