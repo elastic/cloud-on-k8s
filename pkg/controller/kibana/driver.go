@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -212,6 +213,17 @@ func (d *driver) Reconcile(
 	}
 	state.Kibana.Status.DeploymentStatus = deploymentStatus
 
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(nodelabels.AnnotatePods(
+		ctx,
+		d.K8sClient(),
+		kb.Namespace,
+		map[string]string{kblabel.KibanaNameLabelName: kb.Name},
+		kb.DownwardNodeLabels(),
+		kb.Name,
+	))
+
 	return results
 }
 
@@ -276,6 +288,12 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	// we need to deref the secret here to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if err := commonassociation.WriteAssocsToConfigHash(d.client, kb.GetAssociations(), configHash); err != nil {
 		return deployment.Params{}, err
+	}
+
+	// Changes to the downward-node-labels annotation must roll the Kibana Pods so the new annotations
+	// are re-applied on scheduling.
+	if kb.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(kb.Annotations[kbv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
