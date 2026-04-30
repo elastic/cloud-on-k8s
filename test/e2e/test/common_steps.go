@@ -50,9 +50,8 @@ func CreateEnterpriseLicenseSecret(t *testing.T, k *K8sClient, secretName string
 				Namespace: Ctx().ManagedNamespace(0),
 				Name:      secretName,
 				Labels: map[string]string{
-					commonv1.TypeLabelName:                     license.Type,
-					license.LicenseLabelScope:                  string(license.LicenseScopeOperator),
-					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+					commonv1.TypeLabelName:    license.Type,
+					license.LicenseLabelScope: string(license.LicenseScopeOperator),
 				},
 			},
 			Data: map[string][]byte{
