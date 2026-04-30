@@ -85,7 +85,14 @@ type fleetAPI struct {
 	log           logr.Logger
 }
 
-func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger, spaceID string) fleetAPI {
+func newFleetAPI(
+	dialer net.Dialer,
+	agent agentv1alpha1.Agent,
+	settings connectionSettings,
+	logger logr.Logger,
+	eventRecorder toolsevents.EventRecorder,
+) fleetAPI {
+	spaceID := agent.Spec.SpaceID
 	spacePrefix := ""
 	nonDefaultSpace := spaceID != "" && !strings.EqualFold(spaceID, "default")
 	kibanaVersion, err := version.Parse(settings.version)
@@ -95,7 +102,9 @@ func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Log
 	case nonDefaultSpace && kibanaVersion.GTE(v1.KibanaSpacesMinVersion):
 		spacePrefix = fmt.Sprintf("/s/%s", url.PathEscape(spaceID))
 	case nonDefaultSpace:
-		logger.Info("Kibana version does not support space-scoped Fleet APIs", "space_id", spaceID, "kibana_version", settings.version)
+		const message = "Kibana version does not support space-scoped Fleet APIs"
+		logger.Info(message, "space_id", spaceID, "kibana_version", settings.version)
+		k8s.EmitEvent(eventRecorder, &agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, message)
 	}
 
 	return fleetAPI{
@@ -279,9 +288,11 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		params,
 		newFleetAPI(
 			params.OperatorParams.Dialer,
+			params.Agent,
 			kbConnectionSettings,
 			log,
-			params.Agent.Spec.SpaceID),
+			params.EventRecorder,
+		),
 	)
 	switch {
 	case commonhttp.IsUnauthorized(err):
