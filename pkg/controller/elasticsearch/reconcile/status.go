@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -21,7 +21,7 @@ import (
 )
 
 type StatusReporter struct {
-	commonv1alpha1.Conditions
+	commonv1.Conditions
 	*UpscaleReporter
 	*DownscaleReporter
 	*UpgradeReporter
@@ -45,10 +45,10 @@ func (s *StatusReporter) MergeStatusReportingWith(otherStatus esv1.Elasticsearch
 // ReportCondition records a condition to be reported in the status.
 // Any existing condition with the same Type is overridden.
 func (s *StatusReporter) ReportCondition(
-	conditionType commonv1alpha1.ConditionType,
+	conditionType commonv1.ConditionType,
 	status corev1.ConditionStatus,
 	message string) {
-	s.Conditions = s.Conditions.MergeWith(commonv1alpha1.Condition{
+	s.Conditions = s.Conditions.MergeWith(commonv1.Condition{
 		Type:               conditionType,
 		Status:             status,
 		LastTransitionTime: metav1.Now(),

@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
@@ -32,24 +33,27 @@ const (
 )
 
 const (
+	// The following ConditionTypes are autoscaling-specific, and therefore remain alongside the remainder of the autoscaling
+	// feature in v1alpha1 until the entire feature is promoted to v1.
+
 	// ElasticsearchAutoscalerActive status is True when the ElasticsearchAutoscaler resource is managed by the operator and the target
 	// Elasticsearch cluster does exist. It makes it possible to attempt to calculate the required compute and storage resources
 	// for the targeted cluster.
-	ElasticsearchAutoscalerActive ConditionType = "Active"
+	ElasticsearchAutoscalerActive commonv1.ConditionType = "Active"
 
 	// ElasticsearchAutoscalerHealthy status is True if resources have been calculated for all the autoscaling policies
 	// and no error has been encountered during the reconciliation process.
 	// The fact that this condition is False does not necessarily imply that the calculation of resources has failed
 	// for all the tiers.
-	ElasticsearchAutoscalerHealthy ConditionType = "Healthy"
+	ElasticsearchAutoscalerHealthy commonv1.ConditionType = "Healthy"
 
 	// ElasticsearchAutoscalerLimited status is True when a resource limit is reached.
-	ElasticsearchAutoscalerLimited ConditionType = "Limited"
+	ElasticsearchAutoscalerLimited commonv1.ConditionType = "Limited"
 
 	// ElasticsearchAutoscalerOnline status is True if the Elasticsearch API is available.
 	// For example, it is expected for this condition to be False if the cluster is being bootstrapped, however it should
 	// become True when the operator is able to connect to Elasticsearch.
-	ElasticsearchAutoscalerOnline ConditionType = "Online"
+	ElasticsearchAutoscalerOnline commonv1.ConditionType = "Online"
 )
 
 type ElasticsearchAutoscalerStatus struct {
@@ -57,7 +61,7 @@ type ElasticsearchAutoscalerStatus struct {
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
 	// Conditions holds the current service state of the autoscaling controller.
 	// +kubebuilder:validation:Optional
-	Conditions Conditions `json:"conditions,omitempty"`
+	Conditions commonv1.Conditions `json:"conditions,omitempty"`
 	// AutoscalingPolicyStatuses is used to expose state messages to user or external system.
 	// +kubebuilder:validation:Optional
 	AutoscalingPolicyStatuses []AutoscalingPolicyStatus `json:"policies"`
@@ -253,12 +257,12 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	}
 
 	now := metav1.Now()
-	var conditions Conditions
+	var conditions commonv1.Conditions
 
 	// Update the ElasticsearchAutoscalerLimited condition.
 	if asb.scalingLimitEvents.Count() > 0 {
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerLimited,
 				Status:             corev1.ConditionTrue,
 				LastTransitionTime: now,
@@ -266,7 +270,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 			})
 	} else {
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerLimited,
 				Status:             corev1.ConditionFalse,
 				LastTransitionTime: now,
@@ -276,7 +280,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	// Update the ElasticsearchAutoscalerHealthy condition if there is any other event to report.
 	if asb.nonScalingLimitEvents.Count() > 0 {
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerHealthy,
 				Status:             corev1.ConditionFalse,
 				LastTransitionTime: now,
@@ -287,7 +291,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 			})
 	} else {
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerHealthy,
 				Status:             corev1.ConditionTrue,
 				LastTransitionTime: now,
@@ -296,7 +300,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 
 	// Set active status
 	conditions = conditions.MergeWith(
-		Condition{
+		commonv1.Condition{
 			Type:               ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: now,
@@ -308,7 +312,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	case asb.online == nil:
 		// Unlikely to happen since online status should be set early by the driver.
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerOnline,
 				Status:             corev1.ConditionUnknown,
 				LastTransitionTime: now,
@@ -317,7 +321,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	case *asb.online:
 		// The operator attempted a call to the Elasticsearch API
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerOnline,
 				Status:             corev1.ConditionTrue,
 				LastTransitionTime: now,
@@ -327,7 +331,7 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 	default:
 		// The operator did not attempt a call to the Elasticsearch API, or the call failed.
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerOnline,
 				Status:             corev1.ConditionFalse,
 				LastTransitionTime: now,
@@ -338,13 +342,13 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 
 	if asb.online == nil || !*asb.online {
 		// Also update the healthy condition if not online
-		var healthyCondition Condition
+		var healthyCondition commonv1.Condition
 		healthyConditionIdx := conditions.Index(ElasticsearchAutoscalerHealthy)
 		if healthyConditionIdx > 0 {
 			healthyCondition = conditions[healthyConditionIdx]
 		}
 		conditions = conditions.MergeWith(
-			Condition{
+			commonv1.Condition{
 				Type:               ElasticsearchAutoscalerHealthy,
 				Status:             corev1.ConditionFalse,
 				LastTransitionTime: now,

@@ -18,7 +18,7 @@ import (
 	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -442,7 +442,7 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			_, updatedES := reconcileState.Apply()
 			require.NotNil(t, updatedES)
 
-			idx := updatedES.Status.Conditions.Index(esv1.OrchestrationPaused)
+			idx := updatedES.Status.Conditions.Index(commonv1.OrchestrationPaused)
 			assert.Equal(t, idx >= 0, tt.wantCondStatus != "", "index of OrchestrationPaused condition was [%d] when wantCondStatus was [%s]", idx, tt.wantCondStatus)
 			if tt.wantCondStatus != "" {
 				require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition")
@@ -649,7 +649,7 @@ func Test_hasSpecDiff(t *testing.T) {
 func TestDriver_maybeResetPausedCondition(t *testing.T) {
 	elasticsearch := esv1.Elasticsearch{
 		Status: esv1.ElasticsearchStatus{
-			Conditions: make(v1alpha1.Conditions, 0, 1),
+			Conditions: make(commonv1.Conditions, 0, 1),
 		},
 	}
 
@@ -664,15 +664,15 @@ func TestDriver_maybeResetPausedCondition(t *testing.T) {
 
 	t.Run("maybeResetPausedCondition called when OrchestrationPaused has never been set should remain unset", func(t *testing.T) {
 		d.maybeResetPausedCondition()
-		assert.Equal(t, -1, elasticsearch.Status.Conditions.Index(esv1.OrchestrationPaused), "OrchestrationPaused should not be set")
+		assert.Equal(t, -1, elasticsearch.Status.Conditions.Index(commonv1.OrchestrationPaused), "OrchestrationPaused should not be set")
 	})
 
 	t.Run("maybeResetPausedCondition called when OrchestrationPaused is already False should remain False", func(t *testing.T) {
-		d.ES.Status.Conditions = v1alpha1.Conditions{{Type: esv1.OrchestrationPaused, Status: corev1.ConditionFalse}}
-		d.ReconcileState.Conditions = make(v1alpha1.Conditions, 0, 1)
+		d.ES.Status.Conditions = commonv1.Conditions{{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionFalse}}
+		d.ReconcileState.Conditions = make(commonv1.Conditions, 0, 1)
 
 		d.maybeResetPausedCondition()
-		idx := d.ReconcileState.Conditions.Index(esv1.OrchestrationPaused)
+		idx := d.ReconcileState.Conditions.Index(commonv1.OrchestrationPaused)
 		require.Equal(t, 0, idx, "OrchestrationPaused should now be set on ReconcileState conditions")
 		condition := d.ReconcileState.Conditions[idx]
 		assert.Equal(t, corev1.ConditionFalse, condition.Status, "OrchestrationPaused condition should still be set to False on ReconcileState")
@@ -680,10 +680,10 @@ func TestDriver_maybeResetPausedCondition(t *testing.T) {
 	})
 
 	t.Run("maybeResetPausedCondition called when OrchestrationPaused is True should reset to False", func(t *testing.T) {
-		d.ES.Status.Conditions = v1alpha1.Conditions{{Type: esv1.OrchestrationPaused, Status: corev1.ConditionTrue}}
+		d.ES.Status.Conditions = commonv1.Conditions{{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionTrue}}
 
 		d.maybeResetPausedCondition()
-		idx := d.ReconcileState.Conditions.Index(esv1.OrchestrationPaused)
+		idx := d.ReconcileState.Conditions.Index(commonv1.OrchestrationPaused)
 		require.Equal(t, 0, idx, "OrchestrationPaused should now be set on ReconcileState conditions")
 		condition := d.ReconcileState.Conditions[idx]
 		assert.Equal(t, corev1.ConditionFalse, condition.Status, "OrchestrationPaused condition should be reset to False")

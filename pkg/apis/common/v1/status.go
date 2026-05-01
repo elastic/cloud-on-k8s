@@ -2,15 +2,23 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package v1alpha1
+package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// OrchestrationPaused is the condition that is shown when the eck.k8s.elastic.co/pause-orchestration annotation
+	// has or has had been set to true and orchestration has been paused.
+	//
+	// This condition will be True when orchestration is actively paused, False when orchestration has previously been
+	// paused but no longer is, or non-existent if orchestration has never been paused.
+	OrchestrationPaused ConditionType = "OrchestrationPaused"
+)
+
 // Condition represents Elasticsearch resource's condition.
-// **This API is in technical preview and may be changed or removed in a future release.**
 type Condition struct {
 	Type   ConditionType          `json:"type"`
 	Status corev1.ConditionStatus `json:"status"`
@@ -35,6 +43,9 @@ func (c Conditions) Index(conditionType ConditionType) int {
 }
 
 func (c Conditions) MergeWith(nextConditions ...Condition) Conditions {
+	if c == nil {
+		c = make(Conditions, 0, len(nextConditions))
+	}
 	cp := c.DeepCopy()
 	for i := range nextConditions {
 		nextCondition := nextConditions[i]
