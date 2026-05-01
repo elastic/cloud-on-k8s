@@ -194,6 +194,10 @@ type AgentStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elastic
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Conditions holds the current service state of the agent.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions,omitempty"`
 }
 
 type AgentHealth string

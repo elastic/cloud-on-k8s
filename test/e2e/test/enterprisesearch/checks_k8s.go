@@ -7,6 +7,7 @@ package enterprisesearch
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -137,7 +138,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				ExternalService: b.EnterpriseSearch.Name + "-ent-http",
 				Association:     commonv1.AssociationEstablished,
 			}
-			if ent.Status != expected {
+			if reflect.DeepEqual(ent.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ent.Status)
 			}
 			return nil
