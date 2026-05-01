@@ -1166,6 +1166,28 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the agent
+                  resource.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationsStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
@@ -1898,6 +1920,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -3363,6 +3406,28 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the beat
+                  resource.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationStatus:
                 description: AssociationStatus is the status of an association resource.
                 type: string
@@ -4043,6 +4108,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -8374,6 +8460,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -8948,6 +9055,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -9782,6 +9910,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -12291,6 +12440,27 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents Elasticsearch resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of an Elasticsearch
+                        resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
