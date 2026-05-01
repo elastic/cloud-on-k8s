@@ -59,6 +59,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20240808152545-0cdaa3abc0fa | BSD-3-Clause |
 | [google.golang.org/api](https://google.golang.org/api) | v0.276.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
+| [gotest.tools/v3](https://gotest.tools/v3) | v3.5.2 | Apache-2.0 |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.35.4 | Apache-2.0 |
 | [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.35.4 | Apache-2.0 |
 | [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.35.4 | Apache-2.0 |
@@ -252,7 +253,6 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [gopkg.in/inf.v0](https://gopkg.in/inf.v0) | v0.9.1 | BSD-3-Clause |
 | [gopkg.in/tomb.v1](https://gopkg.in/tomb.v1) | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause |
 | [gopkg.in/yaml.v2](https://gopkg.in/yaml.v2) | v2.4.0 | Apache-2.0 |
-| [gotest.tools/v3](https://gotest.tools/v3) | v3.5.2 | Apache-2.0 |
 | [howett.net/plist](https://gitlab.howett.net/go/plist) | v1.0.1 | BSD-2-Clause |
 | [k8s.io/apiextensions-apiserver](https://github.com/kubernetes/apiextensions-apiserver) | v0.35.0 | Apache-2.0 |
 | [k8s.io/apiserver](https://github.com/kubernetes/apiserver) | v0.35.0 | Apache-2.0 |
