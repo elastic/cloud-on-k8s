@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Mergifyio/docs/main/public/mergify-configuration-schema.json
+# https://docs.mergify.com/configuration/file-format/
+
+commands_restrictions:
+  backport:
+    conditions:
+      - or:
+          - sender-permission>=write
+          - sender=elastic-renovate-prod[bot]
+
+defaults:
+  actions:
+    backport:
+      title: "[{{ destination_branch }}] (backport #{{ number }}) {{ title }}"
+      assignees:
+        - "{{ author }}"
+      labels:
+        - "backport"
+
+pull_request_rules:
+
+  # Forward-ports merged PRs labeled "forwardport-main" to the main branch via backport. In case we merge something in a release branch first, and then we need it in main branch.
+  - name: forward-port patches to main branch
+    conditions:
+      - merged
+      - label=forwardport-main
+    actions:
+      backport:
+        title: "[{{ destination_branch }}] (forward-port #{{ number }}) {{ title }}"
+        branches: ["main"]
+
+  # Backports merged PRs labeled "backport-v3.3" to the 3.3 release branch.
+  - name: backport patches to 3.3 branch
+    conditions:
+      - merged
+      - label=backport-v3.3
+    actions:
+      backport:
+        branches: ["3.3"]
+
+  # Backports merged PRs labeled "backport-v3.4" to the 3.4 release branch.
+  - name: backport patches to 3.4 branch
+    conditions:
+      - merged
+      - label=backport-v3.4
+    actions:
+      backport:
+        branches: ["3.4"]
