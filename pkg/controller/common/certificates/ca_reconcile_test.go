@@ -217,7 +217,7 @@ func checkCASecrets(
 func Test_renewCA(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	internalCASecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -240,7 +240,7 @@ func Test_renewCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := renewCA(context.Background(), tt.client, testNamer, &testCluster, metadata.Metadata{}, tt.expireIn, TransportCAType)
+			ca, err := renewCA(context.Background(), tt.client, testNamer, &testCluster, metadata.Metadata{}, tt.expireIn, TransportCAType, nil)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
@@ -252,7 +252,7 @@ func Test_renewCA(t *testing.T) {
 func TestReconcileCAForCluster(t *testing.T) {
 	validCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret, err := internalSecretForCA(validCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	internalCASecret, err := internalSecretForCA(validCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
 	require.NoError(t, err)
 
 	internalCASecretWithoutPrivateKey := internalCASecret.DeepCopy()
@@ -267,7 +267,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	})
 	require.NoError(t, err)
 	soonToExpireInternalCASecret, err := internalSecretForCA(
-		soonToExpireCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType,
+		soonToExpireCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil,
 	)
 	require.NoError(t, err)
 	soonToExpireCAPrivateKey, ok := soonToExpireCa.PrivateKey.(*rsa.PrivateKey)
@@ -338,7 +338,7 @@ func Test_internalSecretForCA(t *testing.T) {
 
 	labels := map[string]string{"foo": "bar"}
 
-	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{Labels: labels}, TransportCAType)
+	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{Labels: labels}, TransportCAType, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, testNamespace, internalSecret.Namespace)
@@ -361,7 +361,7 @@ func Test_renewCAFromExisting_PreservesSubjectKeyId(t *testing.T) {
 	require.NotEmpty(t, initialCa.Cert.SubjectKeyId, "Initial CA should have a SubjectKeyID")
 
 	// Store it in a secret
-	internalCASecret, err := internalSecretForCA(initialCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	internalCASecret, err := internalSecretForCA(initialCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
 	require.NoError(t, err)
 
 	client := k8s.NewFakeClient(&internalCASecret)
@@ -377,6 +377,7 @@ func Test_renewCAFromExisting_PreservesSubjectKeyId(t *testing.T) {
 		newExpiry,
 		TransportCAType,
 		initialCa,
+		nil,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, renewedCa)
@@ -424,7 +425,7 @@ func Test_buildCAFromSecret(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
 
-	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType)
+	internalSecret, err := internalSecretForCA(testCa, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
 	require.NoError(t, err)
 
 	internalSecretMissingCert := internalSecret.DeepCopy()
@@ -490,6 +491,204 @@ func Test_buildCAFromSecret(t *testing.T) {
 				privateKeysEqual(t, ca.PrivateKey, tt.wantCa.PrivateKey)
 			}
 		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests for previous-CA storage and retrieval during the rotation grace period
+// (implements https://github.com/elastic/cloud-on-k8s/issues/509 Option A)
+// ---------------------------------------------------------------------------
+
+func Test_internalSecretForCA_withPreviousCA(t *testing.T) {
+	currentCA, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	previousCACert := []byte("-----BEGIN CERTIFICATE-----\nfake-previous-ca\n-----END CERTIFICATE-----\n")
+
+	t.Run("no previous CA: no extra data or annotation", func(t *testing.T) {
+		secret, err := internalSecretForCA(currentCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
+		require.NoError(t, err)
+		assert.Len(t, secret.Data, 2, "only tls.crt and tls.key expected")
+		assert.Empty(t, secret.Data[PreviousCAFileName])
+		if secret.Annotations != nil {
+			assert.Empty(t, secret.Annotations[caRotationTimestampAnnotation])
+		}
+	})
+
+	t.Run("with previous CA: stored with rotation timestamp", func(t *testing.T) {
+		before := time.Now().Add(-time.Second)
+		secret, err := internalSecretForCA(currentCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, previousCACert)
+		after := time.Now().Add(time.Second)
+		require.NoError(t, err)
+
+		assert.Len(t, secret.Data, 3, "tls.crt, tls.key and previous-ca.crt expected")
+		assert.Equal(t, previousCACert, secret.Data[PreviousCAFileName])
+
+		tsStr := secret.Annotations[caRotationTimestampAnnotation]
+		require.NotEmpty(t, tsStr)
+		ts, err := time.Parse(time.RFC3339, tsStr)
+		require.NoError(t, err)
+		assert.True(t, ts.After(before) && ts.Before(after), "rotation timestamp should be approximately now")
+	})
+
+	t.Run("existing metadata annotations are preserved", func(t *testing.T) {
+		existingAnnotation := map[string]string{"custom-key": "custom-value"}
+		secret, err := internalSecretForCA(currentCA, testNamer, &testCluster, metadata.Metadata{Annotations: existingAnnotation}, TransportCAType, previousCACert)
+		require.NoError(t, err)
+		assert.Equal(t, "custom-value", secret.Annotations["custom-key"])
+		assert.NotEmpty(t, secret.Annotations[caRotationTimestampAnnotation])
+	})
+}
+
+func TestGetPreviousCABytes(t *testing.T) {
+	currentCA, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	previousCACert := EncodePEMCert(currentCA.Cert.Raw) // reuse the same cert bytes for simplicity
+
+	// Build a helper that creates the internal secret in the fake client.
+	makeSecret := func(previousCA []byte, tsAnnotation string) corev1.Secret {
+		s, e := internalSecretForCA(currentCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
+		require.NoError(t, e)
+		if len(previousCA) > 0 {
+			s.Data[PreviousCAFileName] = previousCA
+		}
+		if s.Annotations == nil {
+			s.Annotations = make(map[string]string)
+		}
+		if tsAnnotation != "" {
+			s.Annotations[caRotationTimestampAnnotation] = tsAnnotation
+		}
+		return s
+	}
+
+	recentTS := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
+	expiredTS := time.Now().Add(-(CATransitionGracePeriod + time.Minute)).UTC().Format(time.RFC3339)
+
+	tests := []struct {
+		name           string
+		client         k8s.Client
+		wantBytes      []byte
+		wantSecretClean bool // whether previous-ca.crt should be absent after the call
+	}{
+		{
+			name:      "no internal secret: returns nil without error",
+			client:    k8s.NewFakeClient(),
+			wantBytes: nil,
+		},
+		{
+			name:      "secret has no previous-ca.crt: returns nil",
+			client:    k8s.NewFakeClient(func() *corev1.Secret { s, _ := internalSecretForCA(currentCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil); return &s }()),
+			wantBytes: nil,
+		},
+		{
+			name:      "previous-ca.crt present and within grace period: returned",
+			client:    k8s.NewFakeClient(func() *corev1.Secret { s := makeSecret(previousCACert, recentTS); return &s }()),
+			wantBytes: previousCACert,
+		},
+		{
+			name:            "previous-ca.crt present but grace period elapsed: cleaned up, returns nil",
+			client:          k8s.NewFakeClient(func() *corev1.Secret { s := makeSecret(previousCACert, expiredTS); return &s }()),
+			wantBytes:       nil,
+			wantSecretClean: true,
+		},
+		{
+			name:            "previous-ca.crt present but no timestamp annotation: cleaned up, returns nil",
+			client:          k8s.NewFakeClient(func() *corev1.Secret { s := makeSecret(previousCACert, ""); return &s }()),
+			wantBytes:       nil,
+			wantSecretClean: true,
+		},
+		{
+			name:            "previous-ca.crt present but unparseable timestamp: cleaned up, returns nil",
+			client:          k8s.NewFakeClient(func() *corev1.Secret { s := makeSecret(previousCACert, "not-a-timestamp"); return &s }()),
+			wantBytes:       nil,
+			wantSecretClean: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetPreviousCABytes(context.Background(), tt.client, testNamer, &testCluster, TransportCAType)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBytes, got)
+
+			if tt.wantSecretClean {
+				// After the call the previous-ca.crt entry and the timestamp annotation must be gone.
+				updated := corev1.Secret{}
+				getErr := tt.client.Get(context.Background(), types.NamespacedName{
+					Namespace: testNamespace,
+					Name:      CAInternalSecretName(testNamer, testName, TransportCAType),
+				}, &updated)
+				require.NoError(t, getErr)
+				assert.Empty(t, updated.Data[PreviousCAFileName], "previous-ca.crt should have been removed")
+				if updated.Annotations != nil {
+					assert.Empty(t, updated.Annotations[caRotationTimestampAnnotation], "rotation timestamp annotation should have been removed")
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileCAForOwner_storesPreviousCAOnRotation(t *testing.T) {
+	// Create a CA that is about to expire so that ReconcileCAForOwner will rotate it.
+	almostExpired := 1 * time.Minute
+	expiredCA, err := NewSelfSignedCA(CABuilderOptions{ExpireIn: &almostExpired})
+	require.NoError(t, err)
+
+	expiredSecret, err := internalSecretForCA(expiredCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
+	require.NoError(t, err)
+
+	cl := k8s.NewFakeClient(&expiredSecret)
+	newCA, err := ReconcileCAForOwner(
+		context.Background(), cl, testNamer, &testCluster, metadata.Metadata{}, TransportCAType,
+		RotationParams{Validity: DefaultCertValidity, RotateBefore: DefaultRotateBefore},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, newCA)
+
+	// The new internal secret must contain the old CA cert under previous-ca.crt.
+	internalSecret := corev1.Secret{}
+	require.NoError(t, cl.Get(context.Background(), types.NamespacedName{
+		Namespace: testNamespace,
+		Name:      CAInternalSecretName(testNamer, testName, TransportCAType),
+	}, &internalSecret))
+
+	require.NotEmpty(t, internalSecret.Data[PreviousCAFileName], "previous-ca.crt should be stored after rotation")
+	require.NotEmpty(t, internalSecret.Annotations[caRotationTimestampAnnotation], "rotation timestamp annotation should be set")
+
+	// The stored previous CA must parse to the certificate we just rotated away.
+	prevCerts, err := ParsePEMCerts(internalSecret.Data[PreviousCAFileName])
+	require.NoError(t, err)
+	require.Len(t, prevCerts, 1)
+	assert.True(t, prevCerts[0].Equal(expiredCA.Cert), "stored previous CA should match the cert that was rotated away")
+
+	// The new current CA must differ from the old one.
+	assert.False(t, newCA.Cert.Equal(expiredCA.Cert), "new CA cert should differ from the rotated-away cert")
+}
+
+func TestReconcileCAForOwner_noPreviousCAWhenReused(t *testing.T) {
+	validCA, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+
+	internalCASecret, err := internalSecretForCA(validCA, testNamer, &testCluster, metadata.Metadata{}, TransportCAType, nil)
+	require.NoError(t, err)
+
+	cl := k8s.NewFakeClient(&internalCASecret)
+	reusedCA, err := ReconcileCAForOwner(
+		context.Background(), cl, testNamer, &testCluster, metadata.Metadata{}, TransportCAType,
+		RotationParams{Validity: DefaultCertValidity, RotateBefore: DefaultRotateBefore},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, reusedCA)
+
+	// When the CA is reused no rotation happened, so previous-ca.crt must not appear.
+	internalSecret := corev1.Secret{}
+	require.NoError(t, cl.Get(context.Background(), types.NamespacedName{
+		Namespace: testNamespace,
+		Name:      CAInternalSecretName(testNamer, testName, TransportCAType),
+	}, &internalSecret))
+
+	assert.Empty(t, internalSecret.Data[PreviousCAFileName], "previous-ca.crt should not be present when CA is reused")
+	if internalSecret.Annotations != nil {
+		assert.Empty(t, internalSecret.Annotations[caRotationTimestampAnnotation])
 	}
 }
 
