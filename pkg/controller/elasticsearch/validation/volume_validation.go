@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -73,9 +72,16 @@ func hasDefaultClaim(templates []corev1.PersistentVolumeClaim, isStateless bool)
 	return false
 }
 
-// validPVCModification ensures the only part of volume claim templates that can be changed is storage requests.
-// Storage increase is allowed as long as the storage class supports volume expansion.
-// Storage decrease is not supported if the corresponding StatefulSet has been resized already.
+// validPVCModification ensures only the adjustable parts of volume claim templates are changed.
+// The currently adjustable fields are:
+//   - spec.resources.requests.storage: increases are allowed when the storage class supports
+//     volume expansion; decreases are rejected unless the matching StatefulSet still has the
+//     "old" storage size (revert scenario).
+//   - metadata.labels: free-form user labels can be added, modified, or removed (additive-only
+//     propagation to existing PVCs is performed by HandleVolumeExpansion). Reserved ECK label
+//     keys (see validPVCReservedLabels) are rejected by a separate validation.
+//
+// Any other change to a VolumeClaimTemplate field is forbidden.
 func validPVCModification(ctx context.Context, current esv1.Elasticsearch, proposed esv1.Elasticsearch, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
@@ -105,10 +111,10 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
 		if currentNodeSet != nil {
-			// Check that no modification was made to the claims, except on storage requests.
+			// Check that no modification was made to the claims, except on storage requests and labels.
 			if !apiequality.Semantic.DeepEqual(
-				claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
-				claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
+				volumevalidations.ClaimsWithoutAdjustableFields(currentNodeSet.VolumeClaimTemplates),
+				volumevalidations.ClaimsWithoutAdjustableFields(proposedNodeSet.VolumeClaimTemplates),
 			) {
 				errs = append(errs, field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
@@ -170,13 +176,44 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 	return nil
 }
 
-// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
-func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
-	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
-	for _, claim := range claims {
-		patchedClaim := *claim.DeepCopy()
-		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
-		result = append(result, patchedClaim)
+// validPVCReservedLabelsOnCreate rejects any volumeClaimTemplate label entry that
+// uses an ECK-reserved label key (anything under the *.k8s.elastic.co/ domain) on a
+// brand-new Elasticsearch resource. Such labels would propagate to the freshly
+// provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs at
+// creation time, bypassing the reconciler's syncPVCLabels guard) and could break PVC
+// GC and owner-ref reconciliation, which select on
+// elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name.
+//
+// No grandfathering applies on create: there is no "current" CR to compare against.
+// Re-application of an existing (already-validated) CR goes through the update path.
+func validPVCReservedLabelsOnCreate(proposed esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, nodeSet := range proposed.Spec.NodeSets {
+		templatesPath := field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates")
+		errs = append(errs, volumevalidations.ValidateReservedLabelsOnCreate(nodeSet.VolumeClaimTemplates, templatesPath)...)
 	}
-	return result
+	return errs
+}
+
+// validPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or
+// modify ECK-reserved label keys on update.
+//
+// Grandfathers (key, value) pairs already present on the matching current claim so
+// existing clusters that carry such labels are not bricked at upgrade time (e.g.
+// users who applied the labels before validPVCReservedLabelsOnCreate existed).
+// The reconciler's defensive guard in syncPVCLabels still skips any reserved key
+// when reapplying labels to existing PVCs.
+func validPVCReservedLabels(current, proposed esv1.Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	for i, proposedNodeSet := range proposed.Spec.NodeSets {
+		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
+		var currentClaims []corev1.PersistentVolumeClaim
+		if currentNodeSet != nil {
+			currentClaims = currentNodeSet.VolumeClaimTemplates
+		}
+		templatesPath := field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates")
+		errs = append(errs, volumevalidations.ValidateReservedLabelsOnUpdate(
+			currentClaims, proposedNodeSet.VolumeClaimTemplates, templatesPath)...)
+	}
+	return errs
 }

@@ -8,9 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/resource"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -18,10 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-)
-
-const (
-	pvcImmutableMsg = "Volume claim templates can only have storage requests modified"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 type validation func(*lsv1alpha1.Logstash) field.ErrorList
@@ -35,6 +33,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 		func(current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash) field.ErrorList {
 			return checkPVCchanges(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
+		checkPVCReservedLabels,
 	}
 }
 
@@ -117,22 +116,51 @@ func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 	return errorList
 }
 
-// checkPVCchanges ensures no PVCs are changed, as volume claim templates are immutable in StatefulSets.
+// checkPVCchanges ensures only the adjustable parts of volume claim templates are changed.
+// The currently adjustable fields are:
+//   - spec.resources.requests.storage: increases are allowed when the storage class supports
+//     volume expansion; decreases are rejected unless the matching StatefulSet still has
+//     the "old" storage size (revert scenario).
+//   - metadata.labels: free-form user labels can be added, modified, or removed (additive-only
+//     propagation to existing PVCs is performed by HandleVolumeExpansion). Reserved ECK label
+//     keys (see checkPVCReservedLabels) are rejected by a separate validation.
+//
+// Any other change to a VolumeClaimTemplate field is forbidden.
 func checkPVCchanges(ctx context.Context, current *lsv1alpha1.Logstash, proposed *lsv1alpha1.Logstash, k8sClient k8s.Client, validateStorageClass bool) field.ErrorList {
+	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
 	if current == nil || proposed == nil {
 		return errs
 	}
 
-	// Check that no modification was made to the claims, except on storage requests.
+	// Check that no modification was made to the claims, except on storage requests and labels.
 	if !apiequality.Semantic.DeepEqual(
-		claimsWithoutStorageReq(current.Spec.VolumeClaimTemplates),
-		claimsWithoutStorageReq(proposed.Spec.VolumeClaimTemplates),
+		volumevalidations.ClaimsWithoutAdjustableFields(current.Spec.VolumeClaimTemplates),
+		volumevalidations.ClaimsWithoutAdjustableFields(proposed.Spec.VolumeClaimTemplates),
 	) {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, pvcImmutableMsg))
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("volumeClaimTemplates"), proposed.Spec.VolumeClaimTemplates, volumevalidations.PvcImmutableErrMsg))
 	}
 
-	if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, current.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates, validateStorageClass); err != nil {
+	// Storage validation baseline: compare proposed claims with the **live StatefulSet** claims
+	// (mirrors elasticsearch validPVCModification) so that a revert-after-failed-expansion is
+	// accepted, e.g. user upgrades 1Gi -> 2Gi, expansion fails, user reverts to 1Gi: the live
+	// StatefulSet still has 1Gi so the revert is a no-op rather than a forbidden decrease.
+	matchingSsetName := lsv1alpha1.Name(proposed.Name)
+	var matchingSset appsv1.StatefulSet
+	err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: proposed.Namespace, Name: matchingSsetName}, &matchingSset)
+	switch {
+	case apierrors.IsNotFound(err):
+		// matching StatefulSet does not exist (e.g. the resource was just created and the
+		// reconciler has not yet built it). Skip storage validation in that case.
+		return errs
+	case err != nil:
+		// k8s client error - unlikely on a cached client. In doubt, skip storage validation;
+		// it is performed again during reconciliation.
+		log.Error(err, "error while validating pvc modification, skipping storage validation")
+		return errs
+	}
+
+	if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates, validateStorageClass); err != nil {
 		errs = append(errs, field.Invalid(
 			field.NewPath("spec").Child("volumeClaimTemplates"),
 			proposed.Spec.VolumeClaimTemplates,
@@ -143,15 +171,32 @@ func checkPVCchanges(ctx context.Context, current *lsv1alpha1.Logstash, proposed
 	return errs
 }
 
-// claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
-func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
-	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
-	for _, claim := range claims {
-		patchedClaim := *claim.DeepCopy()
-		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
-		result = append(result, patchedClaim)
+// checkPVCReservedLabelsOnCreate rejects any volumeClaimTemplate label entry that uses
+// an ECK-reserved label key (anything under the *.k8s.elastic.co/ domain) on a brand-new
+// Logstash resource. Such labels would propagate to the freshly provisioned PVCs (the
+// StatefulSet controller copies VCT metadata to PVCs at creation time, bypassing the
+// reconciler's syncPVCLabels guard) and could break PVC reconciliation paths that rely
+// on those keys.
+//
+// No grandfathering applies on create: there is no "current" CR to compare against.
+// Re-application of an existing (already-validated) CR goes through the update path.
+func checkPVCReservedLabelsOnCreate(l *lsv1alpha1.Logstash) field.ErrorList {
+	return volumevalidations.ValidateReservedLabelsOnCreate(l.Spec.VolumeClaimTemplates, field.NewPath("spec").Child("volumeClaimTemplates"))
+}
+
+// checkPVCReservedLabels rejects volumeClaimTemplate label entries that introduce or modify
+// ECK-reserved label keys on update.
+//
+// Grandfathers (key, value) pairs already present on the matching current claim so existing
+// CRs that carry such labels are not bricked at upgrade time (e.g. users who applied the
+// labels before checkPVCReservedLabelsOnCreate existed). The reconciler's defensive guard
+// in syncPVCLabels still skips any reserved key when reapplying labels to existing PVCs.
+func checkPVCReservedLabels(current, proposed *lsv1alpha1.Logstash) field.ErrorList {
+	if current == nil || proposed == nil {
+		return nil
 	}
-	return result
+	return volumevalidations.ValidateReservedLabelsOnUpdate(
+		current.Spec.VolumeClaimTemplates, proposed.Spec.VolumeClaimTemplates, field.NewPath("spec").Child("volumeClaimTemplates"))
 }
 
 func check(ls *lsv1alpha1.Logstash, validations []validation) field.ErrorList {

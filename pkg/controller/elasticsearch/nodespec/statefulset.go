@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -111,6 +112,14 @@ func BuildStatefulSet(
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
 	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
+	// Strip any ECK-reserved label keys (under *.k8s.elastic.co/) from VCTs before the
+	// StatefulSet is built. The validating webhook rejects creates that introduce these
+	// keys (validPVCReservedLabelsOnCreate) but operators running with --enable-webhook=false
+	// or CRs that otherwise bypass admission would let reserved keys propagate from the VCT
+	// onto freshly provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs
+	// at creation time, before HandleVolumeExpansion's syncPVCLabels can run). This
+	// reconciler-side guard prevents this behavior.
+	claims = volumevalidations.StripReservedLabelKeys(claims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

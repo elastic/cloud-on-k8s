@@ -684,6 +684,107 @@ func Test_validator_Handle(t *testing.T) {
 			wantMessage:  noDowngradesMsg,
 			wantWarnings: []string{"Version 7.9.0 is EOL and support for it will be removed in a future release of the ECK operator"},
 		},
+		{
+			name: "denies newly added reserved VCT label on update",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Update,
+				OldObject: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{{
+								Name:  "set1",
+								Count: 3,
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
+								},
+							}},
+						},
+					}),
+				},
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{{
+								Name:  "set1",
+								Count: 3,
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{
+										Name:   "elasticsearch-data",
+										Labels: map[string]string{"common.k8s.elastic.co/type": "evil"},
+									}},
+								},
+							}},
+						},
+					}),
+				},
+			}},
+			wantAllowed: false,
+			wantMessage: "is reserved by ECK",
+		},
+		{
+			name: "reject creation with reserved VCT label key",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{{
+								Name:  "set1",
+								Count: 3,
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{
+										Name:   "elasticsearch-data",
+										Labels: map[string]string{"common.k8s.elastic.co/type": "evil"},
+									}},
+								},
+							}},
+						},
+					}),
+				}},
+			},
+			wantAllowed: false,
+			wantMessage: "is reserved by ECK",
+		},
+		{
+			name: "accept creation with non-reserved VCT label key",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(&esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Spec: esv1.ElasticsearchSpec{
+							Version: "8.9.0",
+							NodeSets: []esv1.NodeSet{{
+								Name:  "set1",
+								Count: 3,
+								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+									{ObjectMeta: metav1.ObjectMeta{
+										Name:   "elasticsearch-data",
+										Labels: map[string]string{"team": "search"},
+									}},
+								},
+							}},
+						},
+					}),
+				}},
+			},
+			wantAllowed: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

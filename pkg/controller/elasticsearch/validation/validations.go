@@ -66,6 +66,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 		func(current esv1.Elasticsearch, proposed esv1.Elasticsearch) field.ErrorList {
 			return validPVCModification(ctx, current, proposed, k8sClient, validateStorageClass)
 		},
+		validPVCReservedLabels,
 	}
 }
 
