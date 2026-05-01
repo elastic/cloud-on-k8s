@@ -78,6 +78,12 @@ const (
 	// *note* that the trailing 'Env' is required as 'FleetServerPort' is previously declared as int32.
 	FleetServerPortEnv = "FLEET_SERVER_PORT"
 
+	// ElasticAgentCert and ElasticAgentCertKey configure the client certificate
+	// that Elastic Agent presents to Fleet Server during enrollment and check-ins.
+	// For Fleet Servers they configure the certificate the internal agent presents to its own listener.
+	ElasticAgentCert    = "ELASTIC_AGENT_CERT"
+	ElasticAgentCertKey = "ELASTIC_AGENT_CERT_KEY"
+
 	// Below are the names of environment variables used to configure Fleet Server and its connection to Elasticsearch
 	// in Fleet mode.
 	FleetServerEnable                = "FLEET_SERVER_ENABLE"
@@ -92,12 +98,25 @@ const (
 	FleetServerPolicyID              = "FLEET_SERVER_POLICY_ID"
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
+	// FleetServerClientAuth configures Fleet Server to require client certificates from connecting agents.
+	FleetServerClientAuth = "FLEET_SERVER_CLIENT_AUTH"
+
 	// FleetManagedAgentClientCertDir is the stable mount path for client certificates inside
 	// fleet-managed Agent pods. Also used by the Kibana controller when injecting ssl paths into fleet outputs.
 	// This is a flat path (no namespace/name components) because Fleet Server is constrained to a single
 	// ES output, and the Kibana controller injects this path into fleet outputs without knowing the ES
 	// namespace/name at that point.
 	FleetManagedAgentClientCertDir = "/mnt/elastic-internal/elasticsearch-association/client-certs"
+
+	// FleetServerClientTrustBundleVolumeName is the volume name for the Fleet Server client certificate trust bundle.
+	FleetServerClientTrustBundleVolumeName = "fleet-server-client-trust-bundle"
+	// FleetServerClientTrustBundleMountPath is the mount path for the client certificate trust bundle inside Fleet Server pods.
+	FleetServerClientTrustBundleMountPath = "/mnt/elastic-internal/fleet-server/client-trust-bundle"
+
+	// FleetServerInternalClientCertVolumeName is the volume name for the operator internal client certificate.
+	FleetServerInternalClientCertVolumeName = "fleet-server-internal-client-cert"
+	// FleetServerInternalClientCertMountPath is the mount path for the operator internal client certificate inside Fleet Server pods.
+	FleetServerInternalClientCertMountPath = "/mnt/elastic-internal/fleet-server/internal-client-cert"
 
 	ubiSharedCAPath    = "/etc/pki/ca-trust/source/anchors/"
 	ubiUpdateCmd       = "/usr/bin/update-ca-trust"
@@ -139,7 +158,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32, esClientCertSecretName string) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32, esClientCertSecretName string, clientAuthRequired bool) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -156,7 +175,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
 		var err error
-		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash, esClientCertSecretName); err != nil {
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash, esClientCertSecretName, clientAuthRequired); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 		if params.AgentVersion.GTE(agentv1alpha1.FleetAdvancedConfigMinVersion) {
@@ -219,7 +238,7 @@ func fleetConfigPath(v version.Version) string {
 	return DataMountPath
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash, esClientCertSecretName string) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash, esClientCertSecretName string, clientAuthRequired bool) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
@@ -236,7 +255,7 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	}
 
 	// ES, Kibana and FleetServer connection info are injected using environment variables
-	builder, err = applyEnvVars(params, fleetToken, fleetCerts, builder)
+	builder, err = applyEnvVars(params, fleetToken, fleetCerts, builder, clientAuthRequired)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +273,24 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 					FleetCertsMountPath,
 				))
 		}
+
+		// Mount the client certificate trust bundle and operator internal client cert
+		// when client authentication is required.
+		if clientAuthRequired {
+			trustBundleSecretName := certificates.ClientCertTrustBundleSecretName(Namer, params.Agent.Name)
+			internalClientCertSecretName := certificates.OperatorClientCertSecretName(Namer, params.Agent.Name)
+			builder = builder.WithVolumeLikes(
+				volume.NewSecretVolumeWithMountPath(
+					trustBundleSecretName,
+					FleetServerClientTrustBundleVolumeName,
+					FleetServerClientTrustBundleMountPath,
+				),
+				volume.NewSecretVolumeWithMountPath(
+					internalClientCertSecretName,
+					FleetServerInternalClientCertVolumeName,
+					FleetServerInternalClientCertMountPath,
+				))
+		}
 	}
 
 	builder = builder.
@@ -266,8 +303,8 @@ func amendBuilderForFleetMode(params Params, fleetCerts *certificates.Certificat
 	return builder, nil
 }
 
-func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, certs *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
-	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, fleetToken, certs)
+func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, certs *certificates.CertificatesSecret, builder *defaults.PodTemplateBuilder, clientAuthRequired bool) (*defaults.PodTemplateBuilder, error) {
+	fleetModeEnvVars, err := getFleetModeEnvVars(params.Context, params.Agent, params.Client, fleetToken, certs, clientAuthRequired)
 	if err != nil {
 		return nil, err
 	}
@@ -532,13 +569,14 @@ func getFleetModeEnvVars(
 	client k8s.Client,
 	fleetToken EnrollmentAPIKey,
 	certs *certificates.CertificatesSecret,
+	clientAuthRequired bool,
 ) (map[string]string, error) {
 	result := map[string]string{}
 
 	for _, f := range []func(agentv1alpha1.Agent) (map[string]string, error){
 		getFleetSetupKibanaEnvVars(fleetToken),
 		getFleetSetupFleetEnvVars(client, fleetToken, certs),
-		getFleetSetupFleetServerEnvVars(ctx, client),
+		getFleetSetupFleetServerEnvVars(ctx, client, clientAuthRequired),
 	} {
 		envVars, err := f(agent)
 		if err != nil {
@@ -619,13 +657,19 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 			if assocConf.GetCACertProvided() {
 				fleetCfg[FleetCA] = path.Join(CertificatesDir(assoc), CAFileName)
 			}
+
+			if assocConf.ClientCertIsConfigured() {
+				clientCertDir := standaloneAgentClientCertificatesDir(assoc)
+				fleetCfg[ElasticAgentCert] = path.Join(clientCertDir, certificates.CertFileName)
+				fleetCfg[ElasticAgentCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
+			}
 		}
 
 		return fleetCfg, nil
 	}
 }
 
-func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client) func(agent agentv1alpha1.Agent) (map[string]string, error) {
+func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client, clientAuthRequired bool) func(agent agentv1alpha1.Agent) (map[string]string, error) {
 	return func(agent agentv1alpha1.Agent) (map[string]string, error) {
 		if !agent.Spec.FleetServerEnabled {
 			return map[string]string{}, nil
@@ -642,6 +686,17 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client) fun
 			fleetServerCfg[FleetServerInsecureHTTP] = "true"
 			fleetServerCfg[FleetServerHost] = "0.0.0.0"
 			fleetServerCfg[FleetServerPortEnv] = fmt.Sprintf("%d", FleetServerPort)
+		}
+
+		if clientAuthRequired {
+			// FLEET_CA is passed as --certificate-authorities to enrollment, which populates
+			// Server.TLS.CAs for client cert verification. Point it to the trust bundle so
+			// fleet-server can verify connecting agents' client certificates.
+			fleetServerCfg[FleetCA] = path.Join(FleetServerClientTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
+			fleetServerCfg[FleetServerClientAuth] = "required"
+			// Fleet Server's internal agent also needs a client certificate to connect to its own listener.
+			fleetServerCfg[ElasticAgentCert] = path.Join(FleetServerInternalClientCertMountPath, certificates.CertFileName)
+			fleetServerCfg[ElasticAgentCertKey] = path.Join(FleetServerInternalClientCertMountPath, certificates.KeyFileName)
 		}
 
 		esExpected := len(agent.Spec.ElasticsearchRefs) > 0 && agent.Spec.ElasticsearchRefs[0].IsSet()

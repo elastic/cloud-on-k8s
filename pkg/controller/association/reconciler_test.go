@@ -1082,7 +1082,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				FleetServerRef: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+				FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}},
 			},
 		}
 		associations := agent.GetAssociations()
@@ -1186,7 +1186,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			KibanaRef:      commonv1.ObjectSelector{Name: "kb", Namespace: "default"},
-			FleetServerRef: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"},
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"}},
 		},
 	}
 	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{

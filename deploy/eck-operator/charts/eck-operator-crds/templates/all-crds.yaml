@@ -264,10 +264,18 @@ spec:
                 type: boolean
               fleetServerRef:
                 description: |-
-                  FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+                  FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.
                   Don't set unless `mode` is set to `fleet`.
-                  References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
+                  References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced Fleet Server.
+                      This field is only relevant when the referenced Fleet Server has client authentication enabled.
+                      If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
+                      client certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -684,6 +692,14 @@ spec:
                           secretName:
                             description: SecretName is the name of the secret.
                             type: string
+                        type: object
+                      client:
+                        description: Client holds client configuration options.
+                        properties:
+                          authentication:
+                            description: Authentication enables client authentication
+                              (enterprise-only feature).
+                            type: boolean
                         type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the

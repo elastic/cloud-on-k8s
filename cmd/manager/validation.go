@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
@@ -31,6 +30,7 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -87,7 +87,6 @@ func setupWebhook(
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, agentv1alpha1.WebhookPath, checker, managedNamespaces, agentv1alpha1.Validate, "Agent")
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
 	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
@@ -107,6 +106,7 @@ func setupWebhook(
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
 	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
+	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

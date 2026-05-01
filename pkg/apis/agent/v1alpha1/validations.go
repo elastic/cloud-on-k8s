@@ -34,6 +34,7 @@ var (
 		checkReferenceSetForMode,
 		checkSingleESRefInFleetMode,
 		checkAssociations,
+		checkClientAuthentication,
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -243,7 +244,7 @@ func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
 }
 
 func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
-	if !a.Spec.FleetServerEnabled && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfig{}) {
+	if !a.Spec.FleetServerEnabled && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfigWithClientOptions{}) {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec").Child("http"),
@@ -302,6 +303,34 @@ func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
 func checkAssociations(a *Agent) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), a.ElasticsearchRefs()...)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
-	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
+	var err3 field.ErrorList
+	if err := a.Spec.FleetServerRef.IsValid(); err != nil {
+		err3 = field.ErrorList{field.Forbidden(field.NewPath("spec").Child("fleetServerRef"), fmt.Sprintf("Invalid association reference: %s", err))}
+	}
 	return append(append(err1, err2...), err3...)
+}
+
+func checkClientAuthentication(a *Agent) field.ErrorList {
+	if !a.Spec.HTTP.TLS.Client.Authentication {
+		return nil
+	}
+	if !a.Spec.FleetServerEnabled {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication is only supported when Fleet Server is enabled",
+			),
+		}
+	}
+	if !a.Spec.HTTP.TLS.Enabled() {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires TLS to be enabled",
+			),
+		}
+	}
+	return nil
 }

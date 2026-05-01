@@ -273,6 +273,91 @@ func TestClientAuthRequiredCustomCertificate_FleetAgent(t *testing.T) {
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), kbBuilder, fleetServerBuilder, agentWrapped).RunSequential(t)
 }
 
+// TestClientAuthRequiredCustomCertificate_FleetServerToAgent tests that a fleet-managed Agent uses a user-provided
+// client certificate when connecting to a Fleet Server that has client authentication enabled.
+func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.Skip("Skipping client authentication test: no enterprise test license configured")
+	}
+
+	name := "test-fs-mtls-custom"
+	namespace := test.Ctx().ManagedNamespace(0)
+	userCertSecretName := name + "-user-client-cert"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	fleetServerBuilder := agent.NewBuilder(name + "-fs").
+		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithDeployment().
+		WithFleetMode().
+		WithFleetServer().
+		WithClientAuthenticationRequired().
+		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithFleetAgentDataStreamsValidation()
+
+	kbBuilder = kbBuilder.WithConfig(fleetConfigWithOutputsForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
+
+	agentBuilder := agent.NewBuilder(name+"-ea").
+		WithRoles(agent.AgentFleetModeRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithFleetMode().
+		WithKibanaRef(kbBuilder.Ref()).
+		WithFleetServerRefWithClientCert(fleetServerBuilder.Ref(), userCertSecretName)
+
+	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
+
+	certPEM, keyPEM := helper.GenerateSelfSignedClientCert(t, name)
+
+	// Wrap the agent builder to verify the custom cert is used in the fleet-server trust bundle.
+	agentWrapped := test.WrappedBuilder{
+		BuildingThis: agentBuilder,
+		PostCheckSteps: func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				clientauth.CheckClientCertificateDataStep(k, namespace, fleetServerBuilder.Agent.Name,
+					agentcontroller.AgentAssociationLabelName, agentBuilder.Agent.Name, certPEM, keyPEM),
+				{
+					Name: "Verify fleet-managed Agent has fleet-server client cert configured",
+					Test: test.Eventually(func() error {
+						var ag agentv1alpha1.Agent
+						if err := k.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: namespace,
+							Name:      agentBuilder.Agent.Name,
+						}, &ag); err != nil {
+							return err
+						}
+						for _, assoc := range ag.GetAssociations() {
+							if assoc.AssociationType() != commonv1.FleetServerAssociationType {
+								continue
+							}
+							conf, err := assoc.AssociationConf()
+							if err != nil {
+								return err
+							}
+							if conf == nil || !conf.ClientCertIsConfigured() {
+								return fmt.Errorf("fleet-managed Agent should have a fleet-server client cert configured")
+							}
+							return nil
+						}
+						return fmt.Errorf("fleet-managed Agent has no Fleet Server association")
+					}),
+				},
+			}
+		},
+	}
+
+	before, after := clientauth.UserCustomCertificateSecretLifecycleSteps(namespace, userCertSecretName, certPEM, keyPEM)
+
+	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), kbBuilder, fleetServerBuilder, agentWrapped).RunSequential(t)
+}
+
 // fleetConfigWithOutputsForKibana builds a Kibana config that uses xpack.fleet.outputs instead of
 // xpack.fleet.agents.elasticsearch.hosts. The two cannot coexist. Defining outputs explicitly is
 // necessary for mTLS tests so the Kibana controller can inject ssl.certificate and ssl.key into

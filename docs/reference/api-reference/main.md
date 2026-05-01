@@ -90,12 +90,12 @@ AgentSpec defines the desired state of the Agent
 | *`deployment`* __[DeploymentSpec](#deploymentspec)__ | Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec.<br>Cannot be used along with `daemonSet` or `statefulSet`. |
 | *`statefulSet`* __[StatefulSetSpec](#statefulsetspec)__ | StatefulSet specifies the Agent should be deployed as a StatefulSet, and allows providing its spec.<br>Cannot be used along with `daemonSet` or `deployment`. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying DaemonSet or Deployment or StatefulSet. |
-| *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled. |
+| *`http`* __[HTTPConfigWithClientOptions](#httpconfigwithclientoptions)__ | HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled. |
 | *`mode`* __[AgentMode](#agentmode)__ | Mode specifies the runtime mode for the Agent. The configuration can be specified locally through<br>`config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with<br>version 8.13.0 Fleet-managed agents support advanced configuration via a local configuration file.<br>See https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet<br>Defaults to `standalone` mode. |
 | *`fleetServerEnabled`* __boolean__ | FleetServerEnabled determines whether this Agent will launch Fleet Server. Don't set unless `mode` is set to `fleet`. |
 | *`policyID`* __string__ | PolicyID determines into which Agent Policy this Agent will be enrolled.<br>This field will become mandatory in a future release, default policies are deprecated since 8.1.0. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set<br>unless `mode` is set to `fleet`. |
-| *`fleetServerRef`* __[ObjectSelector](#objectselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported. |
+| *`fleetServerRef`* __[FleetServerSelector](#fleetserverselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported. |
 
 
 ### DaemonSetSpec  [#daemonsetspec]
@@ -616,12 +616,30 @@ or a Secret describing an external cluster not managed by the operator.
 | *`clientCertificateSecretName`* __string__ | ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate<br>(tls.crt) and private key (tls.key) for client authentication to the referenced resource.<br>This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.<br>If not specified and the referenced resource requires client authentication, ECK will auto-generate a<br>client certificate. |
 
 
+### FleetServerSelector  [#fleetserverselector]
+
+FleetServerSelector defines a reference to a Fleet Server managed by the operator
+or a Secret describing an external Fleet Server not managed by the operator.
+
+:::{admonition} Appears In:
+* [AgentSpec](#agentspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace. |
+| *`name`* __string__ | Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK. |
+| *`serviceName`* __string__ | ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced<br>object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of<br>the referenced resource is used. |
+| *`secretName`* __string__ | SecretName is the name of an existing Kubernetes secret that contains connection information for associating an<br>Elastic resource not managed by the operator.<br>The referenced secret must contain the following:<br>- `url`: the URL to reach the Elastic resource<br>- `username`: the username of the user to be authenticated to the Elastic resource<br>- `password`: the password of the user to be authenticated to the Elastic resource<br>- `ca.crt`: the CA certificate in PEM format (optional)<br>- `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)<br>This field cannot be used in combination with the other fields name, namespace or serviceName. |
+| *`clientCertificateSecretName`* __string__ | ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate<br>(tls.crt) and private key (tls.key) for client authentication to the referenced Fleet Server.<br>This field is only relevant when the referenced Fleet Server has client authentication enabled.<br>If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a<br>client certificate. |
+
+
 ### HTTPConfig  [#httpconfig]
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
 :::{admonition} Appears In:
-* [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -642,6 +660,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 HTTPConfigWithClientOptions holds the HTTP layer configuration for resources.
 
 :::{admonition} Appears In:
+* [AgentSpec](#agentspec)
 * [ElasticsearchSpec](#elasticsearchspec)
 
 :::
@@ -748,6 +767,7 @@ or a Secret describing an external Elastic resource not managed by the operator.
 * [BeatSpec](#beatspec)
 * [ElasticsearchSelector](#elasticsearchselector)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
+* [FleetServerSelector](#fleetserverselector)
 * [KibanaSpec](#kibanaspec)
 * [LogsMonitoring](#logsmonitoring)
 * [MetricsMonitoring](#metricsmonitoring)
