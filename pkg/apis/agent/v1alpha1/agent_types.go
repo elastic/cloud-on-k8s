@@ -107,6 +107,11 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
 
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Stack version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	SpaceID string `json:"spaceID,omitempty"`
+
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
 	// +kubebuilder:validation:Optional

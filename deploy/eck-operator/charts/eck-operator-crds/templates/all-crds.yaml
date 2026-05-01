@@ -881,6 +881,11 @@ spec:
                   ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
+              spaceID:
+                description: |-
+                  SpaceID is the ID of the Space where the Agent Policy is defined.
+                  When empty, the default Space is used. Only effective for Stack version 9.1.0+.
+                type: string
               statefulSet:
                 description: |-
                   StatefulSet specifies the Agent should be deployed as a StatefulSet, and allows providing its spec.

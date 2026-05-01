@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -24,6 +25,42 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
+
+func Test_newFleetAPI_spacePrefix(t *testing.T) {
+	tests := []struct {
+		name          string
+		spaceID       string
+		kibanaVersion string
+		want          string
+		wantWarning   bool
+	}{
+		{name: "empty", spaceID: "", kibanaVersion: "9.1.0", want: ""},
+		{name: "default_lower", spaceID: "default", kibanaVersion: "9.1.0", want: ""},
+		{name: "default_mixed_case", spaceID: "Default", kibanaVersion: "9.1.0", want: ""},
+		{name: "dev", spaceID: "dev", kibanaVersion: "9.1.0", want: "/s/dev"},
+		{name: "my-space", spaceID: "my-space", kibanaVersion: "9.1.0", want: "/s/my-space"},
+		{name: "path_escape", spaceID: "a b", kibanaVersion: "9.1.0", want: "/s/a%20b"},
+		{name: "kibana_version_below_9.1.0", spaceID: "dev", kibanaVersion: "8.17.0", want: "", wantWarning: true},
+		{name: "kibana_version_9.0.0", spaceID: "dev", kibanaVersion: "9.0.0", want: "", wantWarning: true},
+		{name: "kibana_version_9.1.0", spaceID: "dev", kibanaVersion: "9.1.0", want: "/s/dev"},
+		{name: "kibana_version_9.2.0", spaceID: "dev", kibanaVersion: "9.2.0", want: "/s/dev"},
+		{name: "invalid_kibana_version_string", spaceID: "dev", kibanaVersion: "not-a-semver", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			agent := v1alpha1.Agent{Spec: v1alpha1.AgentSpec{SpaceID: tt.spaceID}}
+			fakeRecorder := toolsevents.NewFakeRecorder(10)
+			api := newFleetAPI(&net.Dialer{}, agent, connectionSettings{host: "https://kb", version: tt.kibanaVersion}, ulog.Log, fakeRecorder)
+			if api.spacePrefix != tt.want {
+				t.Errorf("spacePrefix = %q, want %q", api.spacePrefix, tt.want)
+			}
+			if tt.wantWarning {
+				gotEvents := test.ReadAtMostEvents(t, 1, fakeRecorder)
+				assert.NotEmpty(t, gotEvents, "should contain warning about incompatible version of Kibana with Spaces")
+			}
+		})
+	}
+}
 
 var (
 	emptyList                   = `{"items":[]}`
@@ -67,6 +104,26 @@ func Test_reconcileEnrollmentToken(t *testing.T) {
 				api: mockFleetResponses(map[request]response{
 					{"GET", "/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
 				}),
+			},
+			want:       asObject(enrollmentKeySample),
+			wantEvents: nil, // PolicyID is provided.
+			wantErr:    false,
+		},
+		{
+			name: "Agent annotated and fixed policy non-default space",
+			args: args{
+				agent: v1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+						FleetTokenAnnotation: "some-token-id",
+					}},
+					Spec: v1alpha1.AgentSpec{
+						PolicyID: "a-policy-id",
+						SpaceID:  "dev",
+					},
+				},
+				api: mockFleetResponsesWithSpace(map[request]response{
+					{"GET", "/s/dev/api/fleet/enrollment_api_keys/some-token-id"}: {code: 200, body: enrollmentKeySample},
+				}, "dev"),
 			},
 			want:       asObject(enrollmentKeySample),
 			wantEvents: nil, // PolicyID is provided.
@@ -297,6 +354,15 @@ func (m *mockFleetAPI) missingRequests() []request {
 }
 
 func mockFleetResponses(rs map[request]response) *mockFleetAPI {
+	return mockFleetResponsesWithSpace(rs, "")
+}
+
+// mockFleetResponsesWithSpace sets fleetAPI.spacePrefix the same way as newFleetAPI for the given spaceID
+// so HTTP paths match Kibana space-scoped Fleet API URLs. Uses Kibana 9.1.0 to enable space support.
+func mockFleetResponsesWithSpace(rs map[request]response, spaceID string) *mockFleetAPI {
+	agent := v1alpha1.Agent{Spec: v1alpha1.AgentSpec{SpaceID: spaceID}}
+	fakeRecorder := toolsevents.NewFakeRecorder(10)
+	spacePrefix := newFleetAPI(&net.Dialer{}, agent, connectionSettings{version: "9.1.0"}, ulog.Log, fakeRecorder).spacePrefix
 	callLog := map[request]int{}
 	fn := func(req *http.Request) *http.Response {
 		r := request{method: req.Method, path: req.URL.Path}
@@ -316,7 +382,8 @@ func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 			client: &http.Client{
 				Transport: RoundTripFunc(fn),
 			},
-			log: ulog.Log,
+			spacePrefix: spacePrefix,
+			log:         ulog.Log,
 		},
 		callLog:  callLog,
 		requests: rs,
