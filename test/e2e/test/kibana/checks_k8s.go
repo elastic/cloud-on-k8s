@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -165,10 +166,11 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.Kibana.Spec.Count,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
+					Conditions:     commonv1.Conditions{},
 				},
 			}
-			if kb.Status.DeploymentStatus != expected.DeploymentStatus {
-				return fmt.Errorf("expected status %+v but got %+v", expected, kb.Status)
+			if reflect.DeepEqual(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
+				return fmt.Errorf("expected status %+v but got %+v", expected.DeploymentStatus, kb.Status.DeploymentStatus)
 			}
 			return nil
 		}),

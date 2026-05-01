@@ -7,6 +7,7 @@ package apmserver
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -140,9 +141,10 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.ApmServer.Spec.Count,
 					Version:        b.ApmServer.Spec.Version,
 					Health:         "green",
+					Conditions:     commonv1.Conditions{},
 				},
 			}
-			if as.Status != expected {
+			if reflect.DeepEqual(as.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, as.Status)
 			}
 			return nil
