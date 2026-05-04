@@ -239,9 +239,7 @@ spec:
                 description: Conditions holds the current service state of the autoscaling
                   controller.
                 items:
-                  description: |-
-                    Condition represents Elasticsearch resource's condition.
-                    **This API is in technical preview and may be changed or removed in a future release.**
+                  description: Condition represents Elasticsearch resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time

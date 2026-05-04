@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
@@ -123,9 +124,9 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 }
 
 func (d *Driver) maybeResetPausedCondition() {
-	orchestrationPausedIndex := d.ES.Status.Conditions.Index(esv1.OrchestrationPaused)
+	orchestrationPausedIndex := d.ES.Status.Conditions.Index(commonv1.OrchestrationPaused)
 	if orchestrationPausedIndex >= 0 {
-		d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
+		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
 	}
 }
 
@@ -199,7 +200,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
 		results.WithRequeue(5 * time.Minute)
 	}
-	d.ReconcileState.ReportCondition(esv1.OrchestrationPaused, corev1.ConditionTrue, message)
+	d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, message)
 	return results
 }
 
