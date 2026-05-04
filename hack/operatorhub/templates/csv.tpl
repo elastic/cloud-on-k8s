@@ -394,7 +394,7 @@ spec:
   - logstash
   links:
   - name: Documentation
-    url: https://www.elastic.co/guide/en/cloud-on-k8s/{{ .ShortVersion }}/index.html
+    url: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s
   maintainers:
   - email: eck@elastic.co
     name: Elastic
