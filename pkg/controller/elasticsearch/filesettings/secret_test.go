@@ -19,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	commonlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -283,4 +284,39 @@ func parseSettings(t *testing.T, secret corev1.Secret) Settings {
 	err := json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
 	assert.NoError(t, err)
 	return settings
+}
+
+func Test_buildSecret(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	meta := metadata.Metadata{
+		Labels:      map[string]string{"propagated-label": "v1"},
+		Annotations: map[string]string{"propagated-annotation": "v2"},
+	}
+
+	fs := &Secret{
+		es:       esNsn,
+		meta:     meta,
+		settings: NewEmptySettings(42, false),
+		version:  42,
+	}
+
+	secret, err := fs.buildSecret("some-hash")
+	require.NoError(t, err)
+
+	assert.Equal(t, esNsn.Namespace, secret.Namespace)
+	assert.Equal(t, esv1.FileSettingsSecretName(esNsn.Name), secret.Name)
+
+	// Settings payload is present.
+	assert.NotEmpty(t, secret.Data[SettingsSecretKey])
+
+	// Propagated metadata is merged in.
+	assert.Equal(t, "v1", secret.Labels["propagated-label"])
+	assert.Equal(t, "v2", secret.Annotations["propagated-annotation"])
+
+	// Hash annotation is set from the argument.
+	assert.Equal(t, "some-hash", secret.Annotations[commonannotation.SettingsHashAnnotationName])
+
+	// Operator-managed labels are applied.
+	assert.Equal(t, commonlabel.OrphanSecretResetOnPolicyDelete, secret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName])
+	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 }

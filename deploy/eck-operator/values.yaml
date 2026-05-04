@@ -298,6 +298,10 @@ config:
   # Cannot be combined with the containerSuffix value.
   ubiOnly: false
 
+  # restrictWatchedResources restricts resource watching (secrets, services and configmaps) to resources carrying the
+  # eck.k8s.elastic.co/watched=true label. When false (default), the operator watches all resources cluster-wide.
+  restrictWatchedResources: false
+
 # Prometheus PodMonitor configuration
 # Reference: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#podmonitor
 podMonitor:

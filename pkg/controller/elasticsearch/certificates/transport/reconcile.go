@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -224,7 +225,9 @@ func ensureTransportCertificatesSecretExists(
 	meta = meta.Merge(metadata.Metadata{
 		Labels: map[string]string{
 			// label indicating to which StatefulSet these certificates belong
-			label.StatefulSetNameLabelName: ssetName},
+			label.StatefulSetNameLabelName:             ssetName,
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		},
 	})
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
