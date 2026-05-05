@@ -488,7 +488,7 @@ ClientOptions configures client certificate authentication for incoming connecti
 
 ### Condition  [#condition]
 
-Condition represents Elasticsearch resource's condition.
+Condition represents the ECK resource's condition.
 
 :::{admonition} Appears In:
 * [Conditions](#conditions)

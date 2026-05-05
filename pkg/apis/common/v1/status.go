@@ -18,7 +18,7 @@ const (
 	OrchestrationPaused ConditionType = "OrchestrationPaused"
 )
 
-// Condition represents Elasticsearch resource's condition.
+// Condition represents the ECK resource's condition.
 type Condition struct {
 	Type   ConditionType          `json:"type"`
 	Status corev1.ConditionStatus `json:"status"`

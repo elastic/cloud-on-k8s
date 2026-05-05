@@ -17649,7 +17649,7 @@ spec:
                 description: Conditions holds the current service state of the beat
                   resource.
                 items:
-                  description: Condition represents Elasticsearch resource's condition.
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time

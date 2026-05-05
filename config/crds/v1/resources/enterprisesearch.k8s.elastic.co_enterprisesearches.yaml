@@ -9144,7 +9144,7 @@ spec:
               conditions:
                 description: Conditions holds the current service state of the deployment.
                 items:
-                  description: Condition represents Elasticsearch resource's condition.
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -18241,7 +18241,7 @@ spec:
               conditions:
                 description: Conditions holds the current service state of the deployment.
                 items:
-                  description: Condition represents Elasticsearch resource's condition.
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
