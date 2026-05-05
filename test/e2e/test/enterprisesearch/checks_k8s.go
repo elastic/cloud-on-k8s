@@ -134,7 +134,6 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EnterpriseSearch.Spec.Count,
 					Version:        b.EnterpriseSearch.Spec.Version,
 					Health:         "green",
-					Conditions:     commonv1.Conditions{},
 				},
 				ExternalService: b.EnterpriseSearch.Name + "-ent-http",
 				Association:     commonv1.AssociationEstablished,
