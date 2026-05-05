@@ -1180,8 +1180,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -1933,8 +1932,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -3420,8 +3418,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -4121,8 +4118,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -4414,8 +4410,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -6689,8 +6684,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -8473,8 +8467,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -9068,8 +9061,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -9923,8 +9915,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -12453,8 +12444,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status

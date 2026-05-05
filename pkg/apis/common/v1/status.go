@@ -30,7 +30,7 @@ type Condition struct {
 
 type Conditions []Condition
 
-// ConditionType defines the condition of an Elasticsearch resource.
+// ConditionType defines the condition of a resource.
 type ConditionType string
 
 func (c Conditions) Index(conditionType ConditionType) int {
