@@ -139,7 +139,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				ExternalService: b.EnterpriseSearch.Name + "-ent-http",
 				Association:     commonv1.AssociationEstablished,
 			}
-			if reflect.DeepEqual(ent.Status, expected) {
+			if !reflect.DeepEqual(ent.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ent.Status)
 			}
 			return nil

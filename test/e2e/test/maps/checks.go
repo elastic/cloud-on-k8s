@@ -118,11 +118,10 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EMS.Spec.Count,
 					Version:        b.EMS.Spec.Version,
 					Health:         "green",
-					Conditions:     commonv1.Conditions{},
 				},
 				AssociationStatus: "",
 			}
-			if reflect.DeepEqual(ems.Status, expected) {
+			if !reflect.DeepEqual(ems.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ems.Status)
 			}
 			return nil

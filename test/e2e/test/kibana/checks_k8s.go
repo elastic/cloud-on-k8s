@@ -166,10 +166,9 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.Kibana.Spec.Count,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
-					Conditions:     commonv1.Conditions{},
 				},
 			}
-			if reflect.DeepEqual(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
+			if !reflect.DeepEqual(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
 				return fmt.Errorf("expected status %+v but got %+v", expected.DeploymentStatus, kb.Status.DeploymentStatus)
 			}
 			return nil
