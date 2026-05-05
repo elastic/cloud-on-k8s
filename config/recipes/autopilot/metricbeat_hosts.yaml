@@ -8,19 +8,17 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 200m
   podTemplate:
     spec:
       nodeSelector:
         cloud.google.com/compute-class: "Balanced"
-      containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: 200m
-          limits:
-            memory: 1Gi
-            cpu: 200m
 ---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
@@ -75,6 +73,9 @@ spec:
     processors:
     - add_cloud_metadata: {}
     - add_host_metadata: {}
+  resources:
+    requests:
+      cpu: 200m
   daemonSet:
     podTemplate:
       spec:
@@ -89,8 +90,6 @@ spec:
           - /etc/beat.yml
           name: metricbeat
           resources:
-            requests:
-              cpu: 200m
             limits:
               ephemeral-storage: "10Gi"
           env:

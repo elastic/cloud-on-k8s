@@ -145,7 +145,7 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 	builder := defaults.NewPodTemplateBuilder(p.PodTemplate, apmv1.ApmServerContainerName).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, as.Spec.Resources).
 		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, v)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).

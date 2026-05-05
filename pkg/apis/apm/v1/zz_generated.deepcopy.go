@@ -63,12 +63,12 @@ func (in *ApmServer) DeepCopyInto(out *ApmServer) {
 	if in.esAssocConf != nil {
 		in, out := &in.esAssocConf, &out.esAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.kibanaAssocConf != nil {
 		in, out := &in.kibanaAssocConf, &out.kibanaAssocConf
 		*out = new(commonv1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -132,6 +132,7 @@ func (in *ApmServerSpec) DeepCopyInto(out *ApmServerSpec) {
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	out.ElasticsearchRef = in.ElasticsearchRef
 	out.KibanaRef = in.KibanaRef
+	in.Resources.DeepCopyInto(&out.Resources)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit

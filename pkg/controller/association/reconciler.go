@@ -89,6 +89,12 @@ type AssociationInfo struct { //nolint:revive
 	// pointing to the Beat resource).
 	AssociationResourceNamespaceLabelName string
 
+	// ReconcileTransitiveESSecrets is an optional callback invoked during association reconciliation to manage
+	// secrets related to a transitive Elasticsearch reference (e.g. Agent -> Fleet Server -> Elasticsearch).
+	// It receives the association metadata for label propagation and returns a TransitiveESRef (stored in the
+	// association conf annotation) along with reconciler results for requeue scheduling.
+	ReconcileTransitiveESSecrets func(context.Context, k8s.Client, commonv1.Association, metadata.Metadata) (*commonv1.TransitiveESRef, *reconciler.Results)
+
 	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
@@ -325,6 +331,15 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		Version:              ver,
 		Serverless:           isServerless,
 		ClientCertSecretName: clientCertSecretName,
+	}
+
+	if r.ReconcileTransitiveESSecrets != nil {
+		transitiveES, ret := r.ReconcileTransitiveESSecrets(ctx, r.Client, association, assocMeta)
+		results.WithResults(ret)
+		if ret.HasError() {
+			return commonv1.AssociationPending, results
+		}
+		expectedAssocConf.TransitiveESRef = transitiveES
 	}
 
 	if secretsHash != nil {

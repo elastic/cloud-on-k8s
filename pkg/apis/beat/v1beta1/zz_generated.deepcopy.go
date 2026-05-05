@@ -23,18 +23,18 @@ func (in *Beat) DeepCopyInto(out *Beat) {
 	if in.esAssocConf != nil {
 		in, out := &in.esAssocConf, &out.esAssocConf
 		*out = new(v1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.kbAssocConf != nil {
 		in, out := &in.kbAssocConf, &out.kbAssocConf
 		*out = new(v1.AssociationConf)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.monitoringAssocConfs != nil {
 		in, out := &in.monitoringAssocConfs, &out.monitoringAssocConfs
 		*out = make(map[v1.ObjectSelector]v1.AssociationConf, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 }
@@ -171,6 +171,7 @@ func (in *BeatSpec) DeepCopyInto(out *BeatSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.DaemonSet != nil {
 		in, out := &in.DaemonSet, &out.DaemonSet
 		*out = new(DaemonSetSpec)

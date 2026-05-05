@@ -54,6 +54,8 @@ type runFlags struct {
 	statelessEnabled         bool
 	statelessSecretName      string
 	statelessSecretNamespace string
+	// restrictWatchedResources enables the operator's --restrict-watched-resources flag.
+	restrictWatchedResources bool
 }
 
 var log logr.Logger
@@ -100,7 +102,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
-	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 15*time.Minute, "Timeout before failing a test")
+	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 15*time.Minute, "Maximum duration of a single retry loop inside a test step (e.g. Eventually); does not bound the overall test or run duration")
 	cmd.Flags().StringVar(&flags.pipeline, "pipeline", "", "E2E test pipeline name")
 	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
 	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
@@ -115,6 +117,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.statelessEnabled, "stateless", false, "Enable stateless Elasticsearch tests")
 	cmd.Flags().StringVar(&flags.statelessSecretName, "stateless-secret-name", "elasticsearch-object-store", "Name of the K8s Secret containing bucket credentials")
 	cmd.Flags().StringVar(&flags.statelessSecretNamespace, "stateless-secret-namespace", "default", "Namespace where the bucket credentials Secret is located")
+	cmd.Flags().BoolVar(&flags.restrictWatchedResources, "restrict-watched-resources", false, "Deploy the operator with the --restrict-watched-resources flag enabled")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

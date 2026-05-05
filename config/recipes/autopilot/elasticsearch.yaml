@@ -25,17 +25,15 @@ spec:
   nodeSets:
   - name: default
     count: 1
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 1Gi
+        cpu: 500m
     podTemplate:
       spec:
         nodeSelector:
           cloud.google.com/compute-class: "elasticsearch"
-        containers:
-        - name: elasticsearch
-          resources:
-            requests:
-              memory: 1Gi
-              cpu: 500m
-            limits:
-              memory: 1Gi
-              cpu: 500m
 ---

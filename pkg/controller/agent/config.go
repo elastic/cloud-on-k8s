@@ -144,7 +144,12 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["password"] = credentials.Password
 		}
 		if assocConf.GetCACertProvided() {
-			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
+			output["ssl.certificate_authorities"] = []string{path.Join(CertificatesDir(assoc), CAFileName)}
+		}
+		if assocConf.ClientCertIsConfigured() {
+			clientCertDir := standaloneAgentClientCertificatesDir(assoc)
+			output["ssl.certificate"] = path.Join(clientCertDir, certificates.CertFileName)
+			output["ssl.key"] = path.Join(clientCertDir, certificates.KeyFileName)
 		}
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
@@ -202,7 +207,7 @@ func extractPodConnectionSettings(
 
 	ca := ""
 	if assocConf.GetCACertProvided() {
-		ca = path.Join(certificatesDir(assoc), CAFileName)
+		ca = path.Join(CertificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{

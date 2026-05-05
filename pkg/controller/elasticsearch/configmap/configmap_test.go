@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
@@ -54,7 +55,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, configMapName, createdConfigMap.Name)
 				assert.Equal(t, namespace, createdConfigMap.Namespace)
-				assert.Equal(t, map[string]string{"label1": "value1"}, createdConfigMap.Labels)
+				assert.Equal(t, map[string]string{"label1": "value1", commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue}, createdConfigMap.Labels)
 				assert.Equal(t, map[string]string{"annotation1": "value1"}, createdConfigMap.Annotations)
 
 				// Verify content of the config map
@@ -64,6 +65,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.Contains(t, createdConfigMap.Data, initcontainer.PrepareFsScriptConfigKey)
 				assert.Contains(t, createdConfigMap.Data, initcontainer.SuspendScriptConfigKey)
 				assert.Contains(t, createdConfigMap.Data, initcontainer.SuspendedHostsFile)
+
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, createdConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			},
 		},
 		{
@@ -95,6 +98,7 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.Equal(t, map[string]string{
 					"existing-label": "old-value",
 					"label1":         "value1",
+					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 				}, updatedConfigMap.Labels)
 				// Annotations should be updated
 				assert.Equal(t, map[string]string{
@@ -106,6 +110,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				assert.NotContains(t, updatedConfigMap.Data, "old-key")
 				assert.Contains(t, updatedConfigMap.Data, nodespec.PreStopHookScriptConfigKey)
 				assert.Contains(t, updatedConfigMap.Data, initcontainer.PrepareFsScriptConfigKey)
+				// label watch
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, updatedConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			},
 		},
 		{
@@ -126,6 +132,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 				// fallback: internal HTTP certificates
 				assert.Contains(t, script, "http-certs/tls.crt")
 				assert.Contains(t, script, "http-certs/tls.key")
+				// label watch
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, cm.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			},
 		},
 	}

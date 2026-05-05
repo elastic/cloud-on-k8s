@@ -6,6 +6,7 @@ package agent
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -237,4 +239,75 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_buildOutputConfig_withClientCert(t *testing.T) {
+	agent := &agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "agent",
+			Namespace: "ns",
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      "es",
+							Namespace: "es-ns",
+						},
+					},
+					OutputName: "default",
+				},
+			},
+		},
+	}
+
+	assoc := agent.GetAssociations()[0]
+	assoc.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       "auth-secret",
+		AuthSecretKey:        "user",
+		URL:                  "https://es:9200",
+		CACertProvided:       true,
+		CASecretName:         "ca-secret",
+		ClientCertSecretName: "es-client-cert",
+	})
+
+	params := Params{
+		Context: context.Background(),
+		Agent:   *agent,
+		Client: k8s.NewFakeClient(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "auth-secret",
+				Namespace: "ns",
+			},
+			Data: map[string][]byte{
+				"user": []byte("password"),
+			},
+		}),
+	}
+
+	got, err := buildOutputConfig(params)
+	require.NoError(t, err)
+
+	expectedClientCertDir := "/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs"
+	expectedCfg, err := settings.NewCanonicalConfigFrom(map[string]any{
+		"outputs": map[string]any{
+			"default": map[string]any{
+				"type":                        "elasticsearch",
+				"hosts":                       []string{"https://es:9200"},
+				"username":                    "user",
+				"password":                    "password",
+				"ssl.certificate_authorities": []string{"/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt"},
+				"ssl.certificate":             path.Join(expectedClientCertDir, certificates.CertFileName),
+				"ssl.key":                     path.Join(expectedClientCertDir, certificates.KeyFileName),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	expectedBytes, err := expectedCfg.Render()
+	require.NoError(t, err)
+	gotBytes, err := got.Render()
+	require.NoError(t, err)
+	require.Equal(t, string(expectedBytes), string(gotBytes))
 }

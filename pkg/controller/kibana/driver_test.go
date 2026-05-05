@@ -40,7 +40,8 @@ import (
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Requests: corev1.ResourceList{},
 }
 
 func Test_getStrategyType(t *testing.T) {

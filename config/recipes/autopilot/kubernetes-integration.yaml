@@ -8,19 +8,17 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 200m
   podTemplate:
     spec:
       nodeSelector:
         cloud.google.com/compute-class: "Balanced"
-      containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: 200m
-          limits:
-            memory: 1Gi
-            cpu: 200m
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -30,6 +28,9 @@ spec:
   version: 9.3.2
   elasticsearchRefs:
   - name: elasticsearch
+  resources:
+    requests:
+      cpu: 200m
   daemonSet:
     podTemplate:
       spec:
@@ -45,8 +46,6 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             resources:
-              requests:
-                cpu: 200m
               limits:
                 ephemeral-storage: "10Gi"
             volumeMounts:

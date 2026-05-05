@@ -19,7 +19,7 @@ import (
 	"text/template"
 	"time"
 
-	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,30 +167,31 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 			Replicas:          h.operatorReplicas,
 		},
-		OperatorImage:         h.operatorImage,
-		OperatorImageRepo:     imageParts[0],
-		OperatorImageTag:      imageParts[1],
-		TestLicense:           h.testLicense,
-		TestLicensePKeyPath:   h.testLicensePKeyPath,
-		MonitoringSecrets:     h.monitoringSecrets,
-		TestRegex:             h.testRegex,
-		TestRun:               h.testRunName,
-		TestTimeout:           h.testTimeout,
-		Pipeline:              h.pipeline,
-		BuildNumber:           h.buildNumber,
-		Provider:              h.provider,
-		ClusterName:           h.clusterName,
-		KubernetesVersion:     getKubernetesVersion(h),
-		IgnoreWebhookFailures: h.ignoreWebhookFailures,
-		OcpCluster:            isOcpCluster(h),
-		AksCluster:            isAKSCluster(h),
-		DeployChaosJob:        h.deployChaosJob,
-		TestEnvTags:           h.testEnvTags,
-		E2ETags:               h.e2eTags,
-		LogToFile:             h.logToFile,
-		AutopilotCluster:      isAutopilotCluster(h),
-		ArtefactsDir:          artefactsDir,
-		DatePrefix:            time.Now().UTC().Format("20060102"),
+		OperatorImage:            h.operatorImage,
+		OperatorImageRepo:        imageParts[0],
+		OperatorImageTag:         imageParts[1],
+		TestLicense:              h.testLicense,
+		TestLicensePKeyPath:      h.testLicensePKeyPath,
+		MonitoringSecrets:        h.monitoringSecrets,
+		TestRegex:                h.testRegex,
+		TestRun:                  h.testRunName,
+		TestTimeout:              h.testTimeout,
+		Pipeline:                 h.pipeline,
+		BuildNumber:              h.buildNumber,
+		Provider:                 h.provider,
+		ClusterName:              h.clusterName,
+		KubernetesVersion:        getKubernetesVersion(h),
+		IgnoreWebhookFailures:    h.ignoreWebhookFailures,
+		OcpCluster:               isOcpCluster(h),
+		AksCluster:               isAKSCluster(h),
+		DeployChaosJob:           h.deployChaosJob,
+		TestEnvTags:              h.testEnvTags,
+		E2ETags:                  h.e2eTags,
+		LogToFile:                h.logToFile,
+		AutopilotCluster:         isAutopilotCluster(h),
+		ArtefactsDir:             artefactsDir,
+		DatePrefix:               time.Now().UTC().Format("20060102"),
+		RestrictWatchedResources: h.restrictWatchedResources,
 	}
 
 	// Initialize stateless config if enabled (reads bucket config from Secret annotations).
@@ -497,8 +498,8 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestsLocally() error {
-	log.Info("Running local test script", "timeout", h.testTimeout.String())
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+	log.Info("Running local test script. Ctrl+C to cancel")
+	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr

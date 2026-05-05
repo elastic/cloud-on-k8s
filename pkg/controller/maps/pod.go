@@ -77,7 +77,7 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, ems.Spec.Resources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
