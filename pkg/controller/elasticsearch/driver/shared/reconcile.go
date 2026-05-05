@@ -363,7 +363,9 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 			// introduced by the operator (e.g. the watched resources label) are propagated
 			// onto it. Save is a no-op when nothing has actually changed.
 			// Re-save only when the content of file is not corrupt to avoid overwriting with empty settings.
-			return false, fs.Save(ctx, c, es)
+			// Use WithAdditiveMetadata because the ES controller doesn't own all managed
+			// annotations (e.g. secure-settings-secrets is managed by the SCP controller).
+			return false, fs.Save(ctx, c, es, filesettings.WithAdditiveMetadata())
 		}
 
 		return false, nil
