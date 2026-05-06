@@ -18,7 +18,7 @@
 
 # Version of Elastic Beats.
 #
-version: 9.4.0-SNAPSHOT
+version: 9.5.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Beats.
 #
@@ -46,8 +46,8 @@ type: ""
 
 # Beats image to deploy.
 # Supports both tag and digest formats.
-# image: docker.elastic.co/beats/metricbeat:9.4.0-SNAPSHOT
-# image: docker.elastic.co/beats/metricbeat:9.4.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/beats/metricbeat:9.5.0-SNAPSHOT
+# image: docker.elastic.co/beats/metricbeat:9.5.0-SNAPSHOT@sha256:<digest>
 # image: docker.elastic.co/beats/metricbeat@sha256:<digest>
 
 # Referenced resources are below and depending on the setup, at least elasticsearchRef is required for a functional Beat.
