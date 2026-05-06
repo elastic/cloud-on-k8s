@@ -142,7 +142,8 @@ type BeatStatus struct {
 	// +kubebuilder:validation:Optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// Conditions holds the current service state of the beat resource.
-	Conditions commonv1.Conditions `json:"conditions,omitempty"`
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type BeatHealth string

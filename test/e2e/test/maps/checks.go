@@ -8,7 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
+
+	"github.com/google/go-cmp/cmp"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
@@ -121,7 +122,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				},
 				AssociationStatus: "",
 			}
-			if !reflect.DeepEqual(ems.Status, expected) {
+			if !cmp.Equal(ems.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ems.Status)
 			}
 			return nil

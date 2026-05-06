@@ -39,7 +39,8 @@ type DeploymentStatus struct {
 	// Health of the deployment.
 	Health DeploymentHealth `json:"health,omitempty"`
 	// Conditions holds the current service state of the deployment.
-	Conditions Conditions `json:"conditions,omitempty"`
+	// +optional
+	Conditions Conditions `json:"conditions"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

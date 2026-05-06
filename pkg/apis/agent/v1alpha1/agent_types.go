@@ -195,7 +195,8 @@ type AgentStatus struct {
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// Conditions holds the current service state of the agent resource.
-	Conditions commonv1.Conditions `json:"conditions,omitempty"`
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type AgentHealth string
