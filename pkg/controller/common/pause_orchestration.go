@@ -6,6 +6,8 @@ package common
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,7 +25,10 @@ const (
 	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
 	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
 	// health monitoring).
-	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
+	PauseOrchestrationAnnotation    = "eck.k8s.elastic.co/pause-orchestration"
+	PausedWithPendingChangesMessage = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
+	PausedNoChangesMessage          = "Orchestration paused via annotation; no pending spec changes detected"
+	PausedOrchestrationResumed      = "Orchestration has resumed normally"
 )
 
 // IsOrchestrationPaused returns true if the PauseOrchestrationAnnotation exists and is set to true on the given resource
@@ -32,34 +37,22 @@ func IsOrchestrationPaused(object metav1.Object) bool {
 	return object.GetAnnotations()[PauseOrchestrationAnnotation] == "true"
 }
 
-// HasPendingChanges returns true if the given expected Object would result in an update to the existing cluster resource.
-func HasPendingChanges(ctx context.Context, c k8s.Client, expected client.Object) (bool, error) {
-	var existing client.Object
-	if err := c.Get(ctx, k8s.ExtractNamespacedName(expected), existing); err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, err
-	}
-	return hash.GetTemplateHashLabel(existing.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels()), nil
-}
-
 // SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event.
 func SetPausedConditionAndEmitEvent(
 	ctx context.Context,
 	client k8s.Client,
 	recorder toolsevents.EventRecorder,
-	object client.Object,
+	parent client.Object,
 	expected client.Object,
 	conditions *commonv1.Conditions,
 ) error {
-	hasPending, err := HasPendingChanges(ctx, client, expected)
+	hasPending, err := hasPendingChanges(ctx, client, expected)
 	if err != nil {
 		return err
 	}
-	msg := "Orchestration is paused"
+	msg := PausedNoChangesMessage
 	if hasPending {
-		msg = "Orchestration is paused, spec changes are pending"
+		msg = PausedWithPendingChangesMessage
 	}
 
 	*conditions = conditions.MergeWith(commonv1.Condition{
@@ -68,7 +61,7 @@ func SetPausedConditionAndEmitEvent(
 		LastTransitionTime: metav1.Now(),
 		Message:            msg,
 	})
-	k8s.EmitEvent(recorder, object, corev1.EventTypeWarning,
+	k8s.EmitEvent(recorder, parent, corev1.EventTypeWarning,
 		events.EventReasonPaused, events.EventActionReconciliation, msg)
 	return nil
 }
@@ -82,7 +75,25 @@ func MaybeResetPausedCondition(conditions *commonv1.Conditions) {
 			Type:               commonv1.OrchestrationPaused,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: metav1.Now(),
-			Message:            "Orchestration has resumed normally",
+			Message:            PausedOrchestrationResumed,
 		})
 	}
+}
+
+// hasPendingChanges returns true if the given expected Object would result in an update to the existing cluster resource.
+func hasPendingChanges(ctx context.Context, c k8s.Client, expected client.Object) (bool, error) {
+	existing, ok := reflect.New(reflect.TypeOf(expected).Elem()).Interface().(client.Object)
+	if !ok {
+		// This would obviously have been caught at compile time and would therefore never happen, but golangci-lint
+		// requires checking that the cast was successful
+		return false, fmt.Errorf("%T does not implement the client.Object interface", expected)
+	}
+	if err := c.Get(ctx, k8s.ExtractNamespacedName(expected), existing); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	return hash.GetTemplateHashLabel(existing.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels()), nil
 }

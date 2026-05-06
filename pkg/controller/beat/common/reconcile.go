@@ -6,6 +6,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -33,11 +34,24 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	results := reconciler.NewResult(params.Context)
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
+	rp := ReconciliationParams{
+		ctx:         params.Context,
+		client:      params.Client,
+		beat:        params.Beat,
+		podTemplate: podTemplate,
+		meta:        meta,
+	}
 
 	var toDelete client.Object
-	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
+	var expectedVehicle client.Object
+	var reconciliationFunc func(params ReconciliationParams, obj client.Object) (int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
+		ds, err := buildExpectedDaemonSet(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &ds
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = &v1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -46,6 +60,11 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 			},
 		}
 	case spec.Deployment != nil:
+		d, err := buildExpectedDeployment(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &d
 		reconciliationFunc = reconcileDeployment
 		toDelete = &v1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -55,13 +74,14 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		}
 	}
 
-	ready, desired, err := reconciliationFunc(ReconciliationParams{
-		ctx:         params.Context,
-		client:      params.Client,
-		beat:        params.Beat,
-		podTemplate: podTemplate,
-		meta:        meta,
-	})
+	if common.IsOrchestrationPaused(&params.Beat) {
+		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
+			&params.Beat, expectedVehicle, &params.Status.Conditions)
+		return results.WithError(err), params.Status
+	}
+	common.MaybeResetPausedCondition(&params.Status.Conditions)
+
+	ready, desired, err := reconciliationFunc(rp, expectedVehicle)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -92,7 +112,7 @@ type ReconciliationParams struct {
 	meta        metadata.Metadata
 }
 
-func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
+func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:            rp.beat.Namespace,
@@ -104,18 +124,24 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Strategy:             rp.beat.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
-		return 0, 0, err
+		return v1.Deployment{}, err
 	}
+	return deployment.WithTemplateHash(d), nil
+}
 
-	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.beat)
+func reconcileDeployment(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+	expected, ok := obj.(*v1.Deployment)
+	if !ok {
+		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+	}
+	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, *expected, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}
-
 	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
 }
 
-func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
+func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	ds := daemonset.New(daemonset.Params{
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
@@ -125,16 +151,21 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Selectors:            rp.beat.GetIdentityLabels(),
 		Strategy:             rp.beat.Spec.DaemonSet.UpdateStrategy,
 	})
-
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
-		return 0, 0, err
+		return v1.DaemonSet{}, err
 	}
+	return daemonset.WithTemplateHash(ds), nil
+}
 
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, ds, &rp.beat)
+func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+	expected, ok := obj.(*v1.DaemonSet)
+	if !ok {
+		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+	}
+	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, *expected, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}
-
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 

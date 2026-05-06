@@ -126,7 +126,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 func (d *Driver) maybeResetPausedCondition() {
 	orchestrationPausedIndex := d.ES.Status.Conditions.Index(commonv1.OrchestrationPaused)
 	if orchestrationPausedIndex >= 0 {
-		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
+		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, common.PausedOrchestrationResumed)
 	}
 }
 
@@ -193,9 +193,9 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		return results.WithError(err)
 	}
 
-	message := "Orchestration paused via annotation; no pending spec changes detected"
+	message := common.PausedNoChangesMessage
 	if hasPendingChanges {
-		message = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
+		message = common.PausedWithPendingChangesMessage
 		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
 		results.WithRequeue(5 * time.Minute)

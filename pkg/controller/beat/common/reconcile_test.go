@@ -25,7 +25,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		ServiceAccountName: "my-service-account",
 		HostNetwork:        true,
 	}
-	int10 := intstr.FromInt(10)
+	int10 := intstr.FromInt32(10)
 	tests := []struct {
 		name      string
 		args      ReconciliationParams
@@ -99,7 +99,9 @@ func Test_reconcileDaemonSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := reconcileDaemonSet(tt.args)
+			expected, err := buildExpectedDaemonSet(tt.args)
+			require.NoError(t, err)
+			_, _, err = reconcileDaemonSet(tt.args, &expected)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileDaemonSet() error = %v, wantErr %v", err, tt.wantErr)
 				return
