@@ -7,8 +7,7 @@ package scheme
 import (
 	"sync"
 
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
-
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,7 +37,10 @@ var (
 	addToSchemeV1beta1 sync.Once
 )
 
-var CommonV1 = &scheme.Builder{GroupVersion: schema.GroupVersion{Group: commonv1.Group, Version: commonv1.Version}}
+var CommonV1 = runtime.NewSchemeBuilder(func(scheme *runtime.Scheme) error {
+	metav1.AddToGroupVersion(scheme, schema.GroupVersion{Group: commonv1.Group, Version: commonv1.Version})
+	return nil
+})
 
 func mustAddSchemeOnce(once *sync.Once, schemes []func(scheme *runtime.Scheme) error) {
 	once.Do(func() {

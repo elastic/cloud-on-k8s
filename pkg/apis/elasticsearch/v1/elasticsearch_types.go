@@ -103,10 +103,6 @@ type ElasticsearchList struct {
 	Items           []Elasticsearch `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
-}
-
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 type ElasticsearchSpec struct {
 	// Version of Elasticsearch.

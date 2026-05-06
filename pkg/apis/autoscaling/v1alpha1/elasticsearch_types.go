@@ -84,7 +84,3 @@ type ElasticsearchAutoscalerList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticsearchAutoscaler `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ElasticsearchAutoscaler{}, &ElasticsearchAutoscalerList{})
-}

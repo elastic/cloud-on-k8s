@@ -23,10 +23,6 @@ const (
 	unknownVersion = 0
 )
 
-func init() {
-	SchemeBuilder.Register(&StackConfigPolicy{}, &StackConfigPolicyList{})
-}
-
 // +kubebuilder:object:root=true
 
 // StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluster.

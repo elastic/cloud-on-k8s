@@ -438,7 +438,3 @@ func (l *Logstash) APIServerService() LogstashService {
 func (l *Logstash) APIServerTLSOptions() commonv1.TLSOptions {
 	return l.APIServerService().TLS
 }
-
-func init() {
-	SchemeBuilder.Register(&Logstash{}, &LogstashList{})
-}

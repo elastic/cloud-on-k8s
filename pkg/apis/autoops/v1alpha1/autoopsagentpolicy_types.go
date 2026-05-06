@@ -19,10 +19,6 @@ const (
 	AutoOpsAgentContainerName = "autoops-agent"
 )
 
-func init() {
-	SchemeBuilder.Register(&AutoOpsAgentPolicy{}, &AutoOpsAgentPolicyList{})
-}
-
 // +kubebuilder:object:root=true
 
 // AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.

@@ -195,7 +195,3 @@ type ElasticMapsServerList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticMapsServer `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ElasticMapsServer{}, &ElasticMapsServerList{})
-}

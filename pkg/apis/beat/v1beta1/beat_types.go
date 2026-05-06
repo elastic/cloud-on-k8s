@@ -390,10 +390,6 @@ type BeatList struct {
 	Items           []Beat `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&Beat{}, &BeatList{})
-}
-
 // -- association with monitoring Elasticsearch clusters
 
 // BeatMonitoringAssociation helps to manage the Beats / monitoring Elasticsearch clusters association.

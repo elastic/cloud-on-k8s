@@ -60,10 +60,6 @@ type KibanaList struct {
 	Items           []Kibana `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
-}
-
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
 	// Version of Kibana.

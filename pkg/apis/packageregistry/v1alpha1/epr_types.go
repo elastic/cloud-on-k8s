@@ -108,7 +108,3 @@ type PackageRegistryList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PackageRegistry `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&PackageRegistry{}, &PackageRegistryList{})
-}

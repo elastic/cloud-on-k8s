@@ -207,7 +207,3 @@ type EnterpriseSearchList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EnterpriseSearch `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&EnterpriseSearch{}, &EnterpriseSearchList{})
-}
