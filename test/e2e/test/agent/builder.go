@@ -229,8 +229,13 @@ func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
 		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
 		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default"))
+	// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
+	// so beat/metrics-monitoring is not created and metrics-elastic_agent.metricbeat-default
+	// is no longer populated. See https://github.com/elastic/elastic-agent/pull/13411.
+	if v.LT(version.MinFor(9, 5, 0)) {
+		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+	}
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
 	if v.LT(version.MinFor(8, 12, 0)) {
 		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
