@@ -95,20 +95,16 @@ func (nr NodeResources) ToNodeSetResourcesWith(existing commonv1.Resources) comm
 	merged := *existing.DeepCopy()
 
 	if nr.HasRequest(corev1.ResourceCPU) {
-		request := nr.GetRequest(corev1.ResourceCPU)
-		merged.Requests.CPU = new(request)
+		merged.Requests.CPU = new(nr.GetRequest(corev1.ResourceCPU))
 	}
 	if nr.HasRequest(corev1.ResourceMemory) {
-		request := nr.GetRequest(corev1.ResourceMemory)
-		merged.Requests.Memory = new(request)
+		merged.Requests.Memory = new(nr.GetRequest(corev1.ResourceMemory))
 	}
 	if nr.HasLimit(corev1.ResourceCPU) {
-		limit := nr.GetLimit(corev1.ResourceCPU)
-		merged.Limits.CPU = new(limit)
+		merged.Limits.CPU = new(nr.GetLimit(corev1.ResourceCPU))
 	}
 	if nr.HasLimit(corev1.ResourceMemory) {
-		limit := nr.GetLimit(corev1.ResourceMemory)
-		merged.Limits.Memory = new(limit)
+		merged.Limits.Memory = new(nr.GetLimit(corev1.ResourceMemory))
 	}
 
 	return merged
