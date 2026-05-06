@@ -33,38 +33,40 @@ func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) 
 	// It is used either as the API service, or it is used to fill in missing fields in the user-defined API service.
 	defaultAPIService := newAPIService(params.Logstash, params.Meta)
 
-	svcs := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
+	services := make([]corev1.Service, 0, len(params.Logstash.Spec.Services)+1)
 	for _, userDefinedService := range params.Logstash.Spec.Services {
 		logstash := params.Logstash
 		svc := newService(userDefinedService, params.Logstash)
-		if logstashv1alpha1.UserServiceName(logstash.Name, userDefinedService.Name) == logstashv1alpha1.APIServiceName(logstash.Name) {
+		isAPISvc := logstashv1alpha1.UserServiceName(logstash.Name, userDefinedService.Name) == logstashv1alpha1.APIServiceName(logstash.Name)
+		if isAPISvc {
 			// Ensure the API service is created with the correct defaults.
 			defaults.SetServiceDefaults(svc, params.Meta, defaultAPIService.Spec.Selector, defaultAPIService.Spec.Ports)
-			apiSvc = svc
 		}
-		if err := reconcileService(params, svc); err != nil {
+		reconciled, err := reconcileService(params, svc)
+		if err != nil {
 			return []corev1.Service{}, corev1.Service{}, err
 		}
-		svcs = append(svcs, *svc)
+		if isAPISvc {
+			apiSvc = reconciled
+		}
+		services = append(services, *reconciled)
 	}
+
 	if apiSvc == nil {
 		// If no user-defined API service was found, create the default API service.
-		if err := reconcileService(params, defaultAPIService); err != nil {
+		reconciled, err := reconcileService(params, defaultAPIService)
+		if err != nil {
 			return []corev1.Service{}, corev1.Service{}, err
 		}
-		apiSvc = defaultAPIService
-		svcs = append(svcs, *defaultAPIService)
+		apiSvc = reconciled
+		services = append(services, *reconciled)
 	}
 
-	return svcs, *apiSvc, nil
+	return services, *apiSvc, nil
 }
 
-func reconcileService(params Params, service *corev1.Service) error {
-	_, err := common.ReconcileService(params.Context, params.Client, service, &params.Logstash)
-	if err != nil {
-		return err
-	}
-	return nil
+func reconcileService(params Params, service *corev1.Service) (*corev1.Service, error) {
+	return common.ReconcileService(params.Context, params.Client, service, &params.Logstash)
 }
 
 func newService(service logstashv1alpha1.LogstashService, logstash logstashv1alpha1.Logstash) *corev1.Service {

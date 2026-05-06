@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
@@ -68,8 +67,7 @@ type ElasticsearchStatus struct {
 
 	// +optional
 	// Conditions holds the current service state of an Elasticsearch cluster.
-	// **This API is in technical preview and may be changed or removed in a future release.**
-	Conditions v1alpha1.Conditions `json:"conditions"`
+	Conditions commonv1.Conditions `json:"conditions"`
 
 	// +optional
 	// InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
@@ -106,11 +104,10 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 }
 
 const (
-	ElasticsearchIsReachable v1alpha1.ConditionType = "ElasticsearchIsReachable"
-	ReconciliationComplete   v1alpha1.ConditionType = "ReconciliationComplete"
-	ResourcesAwareManagement v1alpha1.ConditionType = "ResourcesAwareManagement"
-	RunningDesiredVersion    v1alpha1.ConditionType = "RunningDesiredVersion"
-	OrchestrationPaused      v1alpha1.ConditionType = "OrchestrationPaused"
+	ElasticsearchIsReachable commonv1.ConditionType = "ElasticsearchIsReachable"
+	ReconciliationComplete   commonv1.ConditionType = "ReconciliationComplete"
+	ResourcesAwareManagement commonv1.ConditionType = "ResourcesAwareManagement"
+	RunningDesiredVersion    commonv1.ConditionType = "RunningDesiredVersion"
 )
 
 // NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.

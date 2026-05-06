@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -43,6 +44,13 @@ func WithPostUpdate(f func()) func(p *Params) {
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
 func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object, opts ...func(*Params)) (corev1.Secret, error) {
+	// don't mutate expected (no side effects), make a copy
+	expected = *expected.DeepCopy()
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	var reconciled corev1.Secret
 
 	params := Params{
@@ -340,6 +348,7 @@ func ReconcileSecretNoOwnerRef(ctx context.Context, c k8s.Client, expected corev
 	if expected.Labels == nil {
 		expected.Labels = make(map[string]string)
 	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	expected.Labels[SoftOwnerNamespaceLabel] = ownerMeta.GetNamespace()
 	expected.Labels[SoftOwnerNameLabel] = ownerMeta.GetName()
 	expected.Labels[SoftOwnerKindLabel] = softOwner.GetObjectKind().GroupVersionKind().Kind

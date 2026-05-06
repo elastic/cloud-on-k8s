@@ -45,6 +45,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Watched resource label.
+Applied to Services, ConfigMaps and Secrets created by this chart so they remain
+discoverable by the operator when config.restrictWatchedResources is enabled.
+*/}}
+{{- define "eck-operator.watchedLabel" -}}
+eck.k8s.elastic.co/watched: "true"
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "eck-operator.selectorLabels" -}}

@@ -142,6 +142,9 @@ func Test_reconcileSecureSettings(t *testing.T) {
 	expectedMeta := metav1.ObjectMeta{
 		Name:      "kb-kb-secure-settings",
 		Namespace: "ns",
+		Labels: map[string]string{
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		},
 		OwnerReferences: []metav1.OwnerReference{
 			{
 				APIVersion:         "kibana.k8s.elastic.co/v1",
@@ -181,7 +184,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 					{
 						Data: map[string][]byte{
 							"key1": []byte("value1"),
-						}},
+						},
+					},
 				},
 				namer: kbNamer,
 			},
@@ -189,7 +193,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -215,7 +220,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{
