@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -927,7 +926,7 @@ func mustBuildNewPod(t *testing.T, es *esv1.Elasticsearch, addr net.Addr, versio
 		statefulSetName,
 		ver,
 		&esv1.Node{
-			Master: ptr.To[bool](true),
+			Master: new(bool(true)),
 		},
 		"https")
 
@@ -967,8 +966,8 @@ func newOwnerReference(es *esv1.Elasticsearch) []metav1.OwnerReference {
 		Kind:               "Elasticsearch",
 		Name:               es.Name,
 		UID:                es.UID,
-		Controller:         ptr.To(true),
-		BlockOwnerDeletion: ptr.To(true),
+		Controller:         new(true),
+		BlockOwnerDeletion: new(true),
 	}}
 }
 

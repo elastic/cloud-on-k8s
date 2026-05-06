@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -185,10 +184,10 @@ func TestHandleDownscale(t *testing.T) {
 
 	// request master nodes downscale from 3 to 1 replicas the other master StatefulSet should not be there anymore
 	ssetMaster3ReplicasDownscaled := *ssetMaster3Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, ptr.To[int32](1))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, new(int32(1)))
 	// request data nodes downscale from 4 to 2 replicas
 	ssetData4ReplicasDownscaled := *ssetData4Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetData4ReplicasDownscaled, ptr.To[int32](2))
+	nodespec.UpdateReplicas(&ssetData4ReplicasDownscaled, new(int32(2)))
 	requestedStatefulSets := es_sset.StatefulSetList{ssetMaster3ReplicasDownscaled, ssetData4ReplicasDownscaled}
 
 	// do the downscale
@@ -214,12 +213,12 @@ func TestHandleDownscale(t *testing.T) {
 	// only part of the expected replicas of ssetMaster1Replicas should be updated,
 	// since we remove only one master at a time
 	ssetMaster1ReplicaExpectedAfterDownscale := *ssetMaster1Replica.DeepCopy()
-	nodespec.UpdateReplicas(&ssetMaster1ReplicaExpectedAfterDownscale, ptr.To[int32](0))
+	nodespec.UpdateReplicas(&ssetMaster1ReplicaExpectedAfterDownscale, new(int32(0)))
 
 	// only part of the expected replicas of ssetData4Replicas should be updated,
 	// since a node still needs to migrate data
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, ptr.To[int32](3))
+	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, new(int32(3)))
 
 	expectedAfterDownscale := []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster1ReplicaExpectedAfterDownscale, ssetMaster3Replicas}
 
@@ -262,7 +261,7 @@ func TestHandleDownscale(t *testing.T) {
 	)
 	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
 	// one less master and second master sset should be gone now
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, ptr.To[int32](2))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, new(int32(2)))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 
 	err = k8sClient.List(context.Background(), &actual)
@@ -294,7 +293,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	ssetMaster3ReplicasExpectedAfterDownscale = *ssetMaster3Replicas.DeepCopy()
 	// we should be at the expected number of masters now
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, ptr.To[int32](1))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, new(int32(1)))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetData4ReplicasExpectedAfterDownscale, ssetMaster3ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
@@ -312,7 +311,7 @@ func TestHandleDownscale(t *testing.T) {
 		},
 	)
 	downscaleCtx.nodeShutdown = shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState)
-	nodespec.UpdateReplicas(&expectedAfterDownscale[0], ptr.To[int32](2))
+	nodespec.UpdateReplicas(&expectedAfterDownscale[0], new(int32(2)))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
@@ -404,7 +403,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset0",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](3),
+				Replicas: new(int32(3)),
 			},
 		},
 		{
@@ -413,7 +412,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset1",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](3)},
+				Replicas: new(int32(3))},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -421,7 +420,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset2",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](3)},
+				Replicas: new(int32(3))},
 		},
 	}
 
@@ -448,7 +447,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset0",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](4),
+						Replicas: new(int32(4)),
 					},
 				},
 				{
@@ -457,7 +456,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](5)},
+						Replicas: new(int32(5))},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -465,7 +464,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](3)},
+						Replicas: new(int32(3))},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -512,7 +511,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset0",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](3),
+						Replicas: new(int32(3)),
 					},
 				},
 				{
@@ -521,7 +520,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](2)},
+						Replicas: new(int32(2))},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -529,7 +528,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](1)},
+						Replicas: new(int32(1))},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -558,7 +557,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](1)},
+						Replicas: new(int32(1))},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -566,7 +565,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset3",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 			},
 			actualStatefulSets: es_sset.StatefulSetList{
@@ -577,7 +576,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 				// statefulset with 0 replicas which has a corresponding expected statefulset with 1 replica: should be kept
 				{
@@ -586,7 +585,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 				// statefulset with 1 replicas that should be downscaled to 0
 				{
@@ -595,7 +594,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset3",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](1)},
+						Replicas: new(int32(1))},
 				},
 			},
 			wantDownscales: []ssetDownscale{
@@ -606,7 +605,7 @@ func Test_calculateDownscales(t *testing.T) {
 							Name:      "sset3",
 						},
 						Spec: appsv1.StatefulSetSpec{
-							Replicas: ptr.To[int32](1)},
+							Replicas: new(int32(1))},
 					},
 					initialReplicas: 1,
 					targetReplicas:  0,
@@ -620,7 +619,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 			},
 		},
@@ -633,7 +632,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      esv1.StatefulSet(clusterName, "nodeset-2"),
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](1)},
+						Replicas: new(int32(1))},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -641,7 +640,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 			},
 			actualStatefulSets: es_sset.StatefulSetList{
@@ -652,7 +651,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 				// statefulset with 0 replicas which has a corresponding expected statefulset with 0 replica but is used by a nodeSet: should be kept
 				{
@@ -661,7 +660,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 			},
 			wantDownscales: nil, // No downscale expected
@@ -672,7 +671,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: ptr.To[int32](0)},
+						Replicas: new(int32(0))},
 				},
 			},
 		},
@@ -812,7 +811,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](1)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: new(int32(1))},
 			statefulSets: es_sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -829,7 +828,7 @@ func Test_attemptDownscale(t *testing.T) {
 				targetReplicas:  3,
 				finalReplicas:   2,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: ptr.To[int32](0)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: new(int32(0))},
 			statefulSets: es_sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},

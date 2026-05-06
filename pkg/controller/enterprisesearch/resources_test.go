@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -63,11 +62,11 @@ func TestEnterpriseSearchResources(t *testing.T) {
 					Version: "8.17.0",
 					Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
-							CPU:    ptr.To(resource.MustParse("2")),
-							Memory: ptr.To(resource.MustParse("4Gi")),
+							CPU:    new(resource.MustParse("2")),
+							Memory: new(resource.MustParse("4Gi")),
 						},
 						Limits: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("4Gi")),
+							Memory: new(resource.MustParse("4Gi")),
 						},
 					},
 				}
@@ -106,10 +105,10 @@ func TestEnterpriseSearchResources(t *testing.T) {
 					},
 					Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("3Gi")),
+							Memory: new(resource.MustParse("3Gi")),
 						},
 						Limits: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("3Gi")),
+							Memory: new(resource.MustParse("3Gi")),
 						},
 					},
 				}

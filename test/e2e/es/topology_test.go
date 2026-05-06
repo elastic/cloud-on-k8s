@@ -9,13 +9,11 @@ package es
 import (
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/ptr"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -37,12 +35,12 @@ func TestResourcesRequirements(t *testing.T) {
 			Count: int32(1),
 			Resources: commonv1.Resources{
 				Requests: commonv1.ResourceAllocations{
-					Memory: ptr.To(resource.MustParse("4Gi")),
-					CPU:    ptr.To(resource.MustParse("1000m")),
+					Memory: new(resource.MustParse("4Gi")),
+					CPU:    new(resource.MustParse("1000m")),
 				},
 				Limits: commonv1.ResourceAllocations{
-					Memory: ptr.To(resource.MustParse("4Gi")),
-					CPU:    ptr.To(resource.MustParse("1600m")),
+					Memory: new(resource.MustParse("4Gi")),
+					CPU:    new(resource.MustParse("1600m")),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

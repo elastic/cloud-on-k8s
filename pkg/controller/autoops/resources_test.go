@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -59,12 +58,12 @@ func TestAutoOpsResources(t *testing.T) {
 			mutate: func(p *autoopsv1alpha1.AutoOpsAgentPolicy) {
 				p.Spec.Resources = commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("250m")),
-						Memory: ptr.To(resource.MustParse("512Mi")),
+						CPU:    new(resource.MustParse("250m")),
+						Memory: new(resource.MustParse("512Mi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("500m")),
-						Memory: ptr.To(resource.MustParse("1Gi")),
+						CPU:    new(resource.MustParse("500m")),
+						Memory: new(resource.MustParse("1Gi")),
 					},
 				}
 			},
@@ -100,10 +99,10 @@ func TestAutoOpsResources(t *testing.T) {
 				}
 				p.Spec.Resources = commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("1Gi")),
+						Memory: new(resource.MustParse("1Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("1Gi")),
+						Memory: new(resource.MustParse("1Gi")),
 					},
 				}
 			},

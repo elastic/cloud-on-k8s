@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/utils/ptr"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -82,12 +81,12 @@ func (s *upscaleState) limitNodesCreation(
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
-	nodespec.UpdateReplicas(&toApply, ptr.To[int32](actualReplicas))
+	nodespec.UpdateReplicas(&toApply, new(actualReplicas))
 	replicasToCreate := targetReplicas - actualReplicas
 	replicasToCreate = s.getMaxNodesToCreate(replicasToCreate)
 
 	if replicasToCreate > 0 {
-		nodespec.UpdateReplicas(&toApply, ptr.To[int32](actualReplicas+replicasToCreate))
+		nodespec.UpdateReplicas(&toApply, new(actualReplicas+replicasToCreate))
 		s.recordNodesCreation(replicasToCreate)
 		s.loggerFor(toApply).Info(
 			"Creating nodes",
