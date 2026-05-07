@@ -11,5 +11,7 @@ applies_to:
 
 This section contains reference information about third-party dependencies used by {{eck}}.
 
+Select the page for your {{eck}} operator version:
+
 :::{list-sub-pages}
 :::
