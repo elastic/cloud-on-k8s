@@ -4,9 +4,12 @@ mapped_pages:
 navigation_title: Third-party dependencies 
 applies_to:
   deployment:
-    eck: all
+    eck: ga
 ---
 
 # Third-party dependencies [k8s-reference-dependencies]
 
 This section contains reference information about third-party dependencies used by {{eck}}.
+
+:::{list-sub-pages}
+:::

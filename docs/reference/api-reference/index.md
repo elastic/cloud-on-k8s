@@ -4,9 +4,12 @@ mapped_pages:
 navigation_title: API Reference
 applies_to:
   deployment:
-    eck: all
+    eck: ga
 ---
 
 # {{eck}} API Reference [k8s-api-reference]
 
 This section contains the API references for {{eck}}.
+
+:::{list-sub-pages}
+:::
