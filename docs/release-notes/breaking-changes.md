@@ -14,6 +14,33 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.4.0 [elastic-cloud-kubernetes-340-breaking-changes]
+
+::::{dropdown} Rolling restart of {{es}} pods during operator upgrade
+ECK 3.4.0 includes changes that modify the {{es}} pod spec, triggering a rolling restart of all {{es}} pods during the operator upgrade. These changes include setting `seccompProfile` to `RuntimeDefault` and updated pre-stop hook and readiness probe scripts for client certificate authentication support.
+
+**Impact**<br> All {{es}} pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that {{es}} pods will restart during the upgrade.
+::::
+
+::::{dropdown} Rolling restart of {{product.kibana}} pods during operator upgrade and potential OOM risk for low memory limits
+ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggering a rolling restart of {{product.kibana}} pods during the operator upgrade. These changes include setting `seccompProfile` to `RuntimeDefault`, a new default security context on the init container, and an increase of the default memory limit from 1Gi to 2Gi. The memory limit increase addresses OOM crashes for {{product.kibana}} 9.4.0+ where the 1Gi limit does not provide enough headroom for plugin initialization.
+
+**Impact**<br> {{product.kibana}} pods will be restarted as part of the operator upgrade. Pods without explicit memory limits will consume up to 2Gi of memory instead of 1Gi.
+
+**Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, the memory limit change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
+::::
+
+::::{dropdown} Default PVC handling change for {{es}} volumes
+ECK 3.4.0 unifies how the operator handles default volume claim templates. Previously, the operator only skipped adding a default PVC when a non-PVC volume (such as `emptyDir` or `hostPath`) with the same name existed. Now, it skips the default PVC whenever any volume with the same name exists, including user-provided PVCs.
+
+**Impact**<br> If you defined custom PVC volumes in `podTemplate.spec.volumes` with the same name as a default volume (for example `elasticsearch-data`), those custom volumes were previously ignored and default volumes were provisioned instead. After upgrading, the operator will attempt to use your custom PVC volumes, which may cause a StatefulSet update rejection by Kubernetes.
+
+**Action**<br> If you encounter a StatefulSet update error after upgrading, remove the custom PVC entries from `podTemplate.spec.volumes` that overlap with default volume names.
+::::
+
+
 ## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
 
 There are no breaking changes for ECK 3.3.2

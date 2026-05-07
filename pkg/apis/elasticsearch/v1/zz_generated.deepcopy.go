@@ -10,7 +10,6 @@ package v1
 
 import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -321,7 +320,7 @@ func (in *ElasticsearchStatus) DeepCopyInto(out *ElasticsearchStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make(v1alpha1.Conditions, len(*in))
+		*out = make(commonv1.Conditions, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

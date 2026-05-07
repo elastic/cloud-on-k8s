@@ -83,7 +83,6 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		secret.Labels = make(map[string]string)
 	}
 
-	// TODO: reconcile annotations?
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
@@ -93,6 +92,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 			needsUpdate = true
 		}
 	}
+
+	if current, ok := secret.Labels[commonv1.RestrictWatchedResourcesLabelName]; !ok || current != commonv1.RestrictWatchedResourcesLabelValue {
+		secret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+		needsUpdate = true
+	}
+
 	// same for annotations
 	if secret.Annotations == nil {
 		secret.Annotations = make(map[string]string)

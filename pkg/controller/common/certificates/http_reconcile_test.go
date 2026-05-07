@@ -135,10 +135,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	}
 
 	labels := map[string]string{
-		"expected":                         "default-labels",
-		reconciler.SoftOwnerKindLabel:      owner.Kind,
-		reconciler.SoftOwnerNamespaceLabel: owner.Namespace,
-		reconciler.SoftOwnerNameLabel:      owner.Name,
+		"expected": "default-labels",
+		commonv1.RestrictWatchedResourcesLabelName: "true",
+		reconciler.SoftOwnerKindLabel:              owner.Kind,
+		reconciler.SoftOwnerNamespaceLabel:         owner.Namespace,
+		reconciler.SoftOwnerNameLabel:              owner.Name,
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
@@ -247,8 +248,10 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	key := loadFileBytes("tls.key")
 	// Create a CA with a DIFFERENT SKI to simulate custom CA rotation
 	// where the SKI changes even though the private key is the same
-	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
-		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	differentSKI := []byte{
+		0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+	}
 	testCAWithDifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
 		Subject:      pkix.Name{CommonName: "test-common-name"},
 		PrivateKey:   testRSAPrivateKey,
