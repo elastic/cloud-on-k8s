@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -49,7 +51,7 @@ type GKEDriverFactory struct {
 
 type GKEDriver struct {
 	plan        Plan
-	ctx         map[string]interface{}
+	ctx         map[string]any
 	vaultClient vault.Client
 }
 
@@ -76,7 +78,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 
 	return &GKEDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
 			"ClusterName":            plan.ClusterName,
 			"PVCPrefix":              pvcPrefix,
@@ -109,11 +111,18 @@ func (d *GKEDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if exists {
 			err = d.delete()
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
+		err = errors.Join(err, bucketErr)
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
@@ -165,6 +174,9 @@ func (d *GKEDriver) Execute() error {
 			if err := apply(kyverno.GKEPolicies); err != nil {
 				return err
 			}
+		}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			return err
 		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
@@ -270,7 +282,7 @@ func (d *GKEDriver) resourcesLabels() (string, error) {
 func (d *GKEDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
-	cmd := "gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
+	cmd := "gcloud container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
 	contains, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
 	if contains {
 		return false, nil
@@ -305,7 +317,7 @@ func (d *GKEDriver) create() error {
 
 	var createGKEClusterCommand string
 	if !d.plan.Gke.Autopilot {
-		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
+		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 50 ` +
 			`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
@@ -316,7 +328,7 @@ func (d *GKEDriver) create() error {
 	} else {
 		// Autopilot cluster.
 		log.Println("autopilot cluster enabled")
-		createGKEClusterCommand = `gcloud beta container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
+		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create-auto {{.ClusterName}} ` +
 			`--region {{.Region}} --cluster-version {{.KubernetesVersion}} ` +
 			`--scopes {{.GcpScopes}} --network projects/{{.GCloudProject}}/global/networks/default ` +
 			strings.Join(opts, " ")
@@ -332,7 +344,7 @@ func (d *GKEDriver) create() error {
 
 	// Since gcloud doesn't support labels at creation time for autopilot clusters, update the labels after creation.
 	if d.plan.Gke.Autopilot {
-		return exec.NewCommand(`gcloud beta container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
+		return exec.NewCommand(`gcloud container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
 			AsTemplate(d.ctx).
 			Run()
 	}
@@ -400,16 +412,67 @@ func (d *GKEDriver) GetCredentials() error {
 	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
+// waitForClusterOperations waits for any running GKE cluster operations to complete.
+// GKE does not allow cluster deletion while operations like auto-upgrades, auto-repairs,
+// or node pool modifications are in progress. Attempting to delete during such operations
+// results in: "Cluster is running incompatible operation" error.
+func (d *GKEDriver) waitForClusterOperations() error {
+	log.Println("Checking for running cluster operations...")
+	cmd := `gcloud container operations list --project {{.GCloudProject}} --region {{.Region}} --filter="targetLink~{{.ClusterName}} AND status=RUNNING" --format="value(name)"`
+	operations, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputList()
+	if err != nil {
+		return fmt.Errorf("while listing cluster operations: %w", err)
+	}
+
+	for _, op := range operations {
+		log.Printf("Waiting for operation %s to complete...", op)
+		waitCmd := fmt.Sprintf(`gcloud container operations wait %s --project {{.GCloudProject}} --region {{.Region}}`, op)
+		if err := exec.NewCommand(waitCmd).AsTemplate(d.ctx).Run(); err != nil {
+			return fmt.Errorf("while waiting for operation %s: %w", op, err)
+		}
+	}
+
+	return nil
+}
+
 func (d *GKEDriver) delete() error {
-	log.Println("Deleting cluster...")
-	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-	if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
-		return err
+	// Retry deletion up to 3 times to handle transient failures. GKE cluster deletion can fail
+	// due to race conditions where new operations start between our check and delete attempt,
+	// or due to temporary API errors.
+	const maxDeleteAttempts = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxDeleteAttempts; attempt++ {
+		if attempt > 1 {
+			log.Printf("Retrying cluster deletion (attempt %d/%d)...", attempt, maxDeleteAttempts)
+		}
+
+		if err := d.waitForClusterOperations(); err != nil {
+			lastErr = err
+			log.Printf("Error waiting for cluster operations: %v", err)
+			continue
+		}
+
+		log.Println("Deleting cluster...")
+		cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+		if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+			lastErr = err
+			log.Printf("Error deleting cluster: %v", err)
+			continue
+		}
+
+		// Deletion succeeded, break out of retry loop
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("failed to delete cluster after %d attempts: %w", maxDeleteAttempts, lastErr)
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err := exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	diskCmd := `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err := exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
@@ -419,8 +482,8 @@ func (d *GKEDriver) delete() error {
 	deletedDisks := len(disks)
 
 	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
-	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err = exec.NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	diskCmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err = exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
@@ -447,7 +510,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		name, zone := nameZone[0], nameZone[1]
 		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
-			AsTemplate(map[string]interface{}{
+			AsTemplate(map[string]any{
 				GoogleCloudProjectCtxKey: d.plan.Gke.GCloudProject,
 				"Name":                   name,
 				"Zone":                   zone,
@@ -458,6 +521,28 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		}
 	}
 	return nil
+}
+
+func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if d.plan.Bucket.FromVault {
+		return newVaultBucketManager(GKEDriverID, d.vaultClient)
+	}
+
+	// Use GCSManager for dynamic bucket creation
+	if err := bucket.ValidateShellArg(d.plan.Gke.GCloudProject, "GCP project"); err != nil {
+		return nil, err
+	}
+	if d.plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+			return nil, err
+		}
+	}
+	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject, d.plan.Bucket.StorageClass), nil
 }
 
 func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -487,7 +572,11 @@ func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	}
 
 	for _, cluster := range clusters {
+		d.plan.ClusterName = cluster
 		d.ctx["ClusterName"] = cluster
+		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+		}
 		if err = d.delete(); err != nil {
 			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 			continue

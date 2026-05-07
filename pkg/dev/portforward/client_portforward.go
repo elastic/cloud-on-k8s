@@ -54,7 +54,7 @@ func newKubectlPortForwarder(
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &u)
 
 	// wrap stdout / stderr through logging
-	w := &logWriter{keysAndValues: []interface{}{
+	w := &logWriter{keysAndValues: []any{
 		"namespace", namespace,
 		"pod", podName,
 		"ports", ports,
@@ -64,7 +64,7 @@ func newKubectlPortForwarder(
 
 // logWriter is a small utility that writes data from an io.Writer to a log
 type logWriter struct {
-	keysAndValues []interface{}
+	keysAndValues []any
 }
 
 func (w *logWriter) Write(p []byte) (n int, err error) {

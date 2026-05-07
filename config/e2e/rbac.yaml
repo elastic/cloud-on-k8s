@@ -127,6 +127,8 @@ rules:
     resources:
       - persistentvolumes
     verbs:
+      - get # for elastic-agent kubernetes integration
+      - watch # for elastic-agent kubernetes integration
       - list # for ECK Diagnostics
   - apiGroups:
       - "security.openshift.io"
@@ -400,6 +402,18 @@ rules:
     verbs:
       - get
       - list
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
   - apiGroups:
       - autoops.k8s.elastic.co
     resources:

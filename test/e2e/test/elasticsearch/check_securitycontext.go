@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -62,12 +63,6 @@ func assertSecurityContext(t *testing.T, ver version.Version, securityContext *c
 	// OpenShift may add others Capabilities. We only check that ALL is included in "Drop".
 	require.NotNil(t, securityContext.Capabilities)
 	droppedCapabilities := securityContext.Capabilities.Drop
-	hasDropAllCapability := false
-	for _, capability := range droppedCapabilities {
-		if capability == "ALL" {
-			hasDropAllCapability = true
-			break
-		}
-	}
+	hasDropAllCapability := slices.Contains(droppedCapabilities, "ALL")
 	require.True(t, hasDropAllCapability, "ALL capability not found in securityContext.Capabilities.Drop")
 }

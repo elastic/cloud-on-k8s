@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -183,9 +183,8 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 		kb.ObjectMeta.Annotations = map[string]string{
 			kb.EsAssociation().AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
 		}
-		kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{
-			Name:      "es-test",
-			Namespace: "es-ns",
+		kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: "es-test", Namespace: "es-ns"},
 		}
 	}
 
@@ -196,27 +195,27 @@ func TestAreConfiguredIfSet(t *testing.T) {
 	tests := []struct {
 		name         string
 		associations []commonv1.Association
-		recorder     *record.FakeRecorder
+		recorder     *toolsevents.FakeRecorder
 		wantEvent    bool
 		want         bool
 	}{
 		{
 			name:         "All associations are configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withElasticsearchAssoc().withKibanaRef().withKibanaAssoc().build().GetAssociations(),
 			wantEvent:    false,
 			want:         true,
 		},
 		{
 			name:         "One association is not configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withElasticsearchAssoc().withKibanaRef().build().GetAssociations(),
 			wantEvent:    true,
 			want:         false,
 		},
 		{
 			name:         "All associations are not configured",
-			recorder:     record.NewFakeRecorder(100),
+			recorder:     toolsevents.NewFakeRecorder(100),
 			associations: newTestAPMServer().withElasticsearchRef().withKibanaRef().build().GetAssociations(),
 			wantEvent:    true,
 			want:         false,
@@ -435,7 +434,11 @@ func TestRemoveAssociationConf(t *testing.T) {
 func TestAllowVersion(t *testing.T) {
 	apmNoAssoc := &apmv1.ApmServer{}
 	apmTwoAssoc := &apmv1.ApmServer{Spec: apmv1.ApmServerSpec{
-		ElasticsearchRef: commonv1.ObjectSelector{Name: "some-es"}, KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}}}
+		ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: "some-es"},
+		},
+		KibanaRef: commonv1.ObjectSelector{Name: "some-kb"}},
+	}
 	apmTwoAssocWithVersions := func(versions []string) *apmv1.ApmServer {
 		apm := apmTwoAssoc.DeepCopy()
 		for i, assoc := range apm.GetAssociations() {
@@ -448,8 +451,10 @@ func TestAllowVersion(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{
-						SecretName: "my-secret",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							SecretName: "my-secret",
+						},
 					},
 				},
 			},
@@ -537,7 +542,7 @@ func TestAllowVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		logger := ulog.Log.WithValues("a", "b")
-		recorder := record.NewFakeRecorder(10)
+		recorder := toolsevents.NewFakeRecorder(10)
 		t.Run(tt.name, func(t *testing.T) {
 			if got, err := AllowVersion(tt.args.resourceVersion, tt.args.associated, logger, recorder); err != nil && got != tt.want {
 				t.Errorf("AllowVersion() = %v, want %v", got, tt.want)
@@ -579,8 +584,10 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 				outputName = "default"
 			}
 			agent.Spec.ElasticsearchRefs = append(agent.Spec.ElasticsearchRefs, agentv1alpha1.Output{
-				ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
-				OutputName:     outputName,
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
+				},
+				OutputName: outputName,
 			})
 		}
 		return agent
@@ -589,7 +596,13 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				ElasticsearchRefs: []agentv1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+				ElasticsearchRefs: []agentv1alpha1.Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+						},
+					},
+				},
 			},
 		}
 		associations := agent.GetAssociations()
@@ -643,7 +656,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 			var got agentv1alpha1.Agent
 			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(tt.associated), &got))
 
-			gotAnnotations := make([]string, 0)
+			gotAnnotations := make([]string, 0, len(got.Annotations))
 			for key := range got.Annotations {
 				gotAnnotations = append(gotAnnotations, key)
 			}

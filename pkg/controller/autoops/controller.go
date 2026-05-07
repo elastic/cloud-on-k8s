@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -24,6 +24,7 @@ import (
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -57,11 +58,11 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &AgentPolicyReconciler{
 		Client:           k8sClient,
 		accessReviewer:   accessReviewer,
-		recorder:         mgr.GetEventRecorderFor(controllerName),
-		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
+		recorder:         mgr.GetEventRecorder(controllerName),
 		params:           params,
 		dynamicWatches:   watches.NewDynamicWatches(),
 		esClientProvider: commonesclient.NewClient,
+		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 	}
 }
 
@@ -126,11 +127,11 @@ var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
 type AgentPolicyReconciler struct {
 	k8s.Client
 	accessReviewer   rbac.AccessReviewer
-	recorder         record.EventRecorder
-	licenseChecker   license.Checker
+	recorder         toolsevents.EventRecorder
 	params           operator.Parameters
 	dynamicWatches   watches.DynamicWatches
 	esClientProvider commonesclient.Provider
+	licenseChecker   license.Checker
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -166,52 +167,26 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	results := r.doReconcile(ctx, policy, state)
-	updatePhaseFromResults(results, state)
+	state.Finalize(results.IsReconciled())
 
 	result, err := r.updateStatusFromState(ctx, state)
 	results = results.WithResult(result).WithError(err)
 
 	// requeue if the phase is in the set of phases that require a requeue
-	if autoopsv1alpha1.RequeuePhases.Has(string(state.status.Phase)) {
+	if state.status.Phase.NeedsRequeue() {
 		return results.WithRequeue(reconciler.DefaultRequeue).Aggregate()
 	}
 
 	return results.Aggregate()
 }
 
-// updatePhaseFromResults updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation
-func updatePhaseFromResults(results *reconciler.Results, state *State) {
-	if isReconciled, message := results.IsReconciled(); !isReconciled {
-		state.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		state.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, message)
-		return
-	}
-
-	// Determine phase based on status counts, in order of priority:
-	// 1. Errors take highest priority
-	// 2. Resources not ready (have resources but none ready)
-	// 3. Ready (have resources and at least one ready)
-	// 4. No resources
-	switch {
-	case state.status.Errors > 0:
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	case state.status.Resources == 0:
-		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase)
-	case state.status.Ready == state.status.Resources:
-		state.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
-	default:
-		// Resources > 0 && Ready < Resources
-		state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
-	}
-}
-
 func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1alpha1.AutoOpsAgentPolicy) error {
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := policy.ValidateCreate(); err != nil {
+	if err := autoopsvalidation.Validate(ctx, policy, r.licenseChecker); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 
@@ -226,7 +201,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	events, policy := state.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Event(&state.policy, evt.EventType, evt.Reason, evt.Message)
+		k8s.EmitEvent(r.recorder, &state.policy, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if policy == nil {
 		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))

@@ -6,6 +6,10 @@ package transport
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"testing"
 	"time"
 
@@ -18,9 +22,72 @@ import (
 )
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
+	// Helper to create a pod certificate signed by a CA
+	createPodCertWithCA := func(t *testing.T, ca *certificates.CA) (secret corev1.Secret, privateKey *rsa.PrivateKey) {
+		t.Helper()
+		podPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+		require.NoError(t, err)
+
+		podCSRBytes, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, podPrivateKey)
+		require.NoError(t, err)
+		podCSR, err := x509.ParseCertificateRequest(podCSRBytes)
+		require.NoError(t, err)
+
+		podCertTemplate, err := createValidatedCertificateTemplate(testPod, testES, podCSR, certificates.DefaultCertValidity)
+		require.NoError(t, err)
+
+		podCertData, err := ca.CreateCertificate(*podCertTemplate)
+		require.NoError(t, err)
+
+		podCertWithChain := certificates.EncodePEMCert(podCertData, ca.Cert.Raw)
+		pemPrivateKey, err := certificates.EncodePEMPrivateKey(podPrivateKey)
+		require.NoError(t, err)
+
+		return corev1.Secret{
+			Data: map[string][]byte{
+				PodCertFileName(testPod.Name): podCertWithChain,
+				PodKeyFileName(testPod.Name):  pemPrivateKey,
+			},
+		}, podPrivateKey
+	}
+
+	// Create the original CA for CA rotation tests
+	originalCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-ca", OrganizationalUnit: []string{"test"}},
+		PrivateKey: testRSAPrivateKey,
+	})
+	require.NoError(t, err)
+
+	// Create rotated CA with DIFFERENT SKI (simulates custom CA or cross-Go-version scenarios)
+	differentSKI := []byte{0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+	rotatedCADifferentSKI, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-ca", OrganizationalUnit: []string{"test"}},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: differentSKI,
+	})
+	require.NoError(t, err)
+
+	// Create rotated CA with SAME SKI (simulates ECK-managed CA rotation with SKI pinning)
+	rotatedCASameSKI, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-ca", OrganizationalUnit: []string{"test"}},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: originalCA.Cert.SubjectKeyId,
+	})
+	require.NoError(t, err)
+
+	// Verify CA setup for rotation tests
+	require.NotEqual(t, originalCA.Cert.SubjectKeyId, rotatedCADifferentSKI.Cert.SubjectKeyId, "CAs should have different SKIs")
+	require.Equal(t, originalCA.Cert.SubjectKeyId, rotatedCASameSKI.Cert.SubjectKeyId, "CAs should have same SKI")
+
+	// Create pod certificate signed by originalCA for CA rotation tests
+	secretWithOriginalCA, podPrivateKeyForRotationTests := createPodCertWithCA(t, originalCA)
+
 	type args struct {
 		secret       corev1.Secret
 		pod          *corev1.Pod
+		privateKey   *rsa.PrivateKey  // optional, defaults to testRSAPrivateKey
+		ca           *certificates.CA // optional, defaults to testRSACA
 		rotateBefore time.Duration
 	}
 	tests := []struct {
@@ -85,20 +152,49 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "CA rotated with different SKI - should reissue",
+			args: args{
+				secret:       secretWithOriginalCA,
+				privateKey:   podPrivateKeyForRotationTests,
+				ca:           rotatedCADifferentSKI, // rotated CA has different SKI
+				rotateBefore: certificates.DefaultRotateBefore,
+			},
+			want: true, // different SKI means we need to reissue
+		},
+		{
+			name: "CA rotated with same SKI - should NOT reissue",
+			args: args{
+				secret:       secretWithOriginalCA,
+				privateKey:   podPrivateKeyForRotationTests,
+				ca:           rotatedCASameSKI, // rotated CA has same SKI (pinned)
+				rotateBefore: certificates.DefaultRotateBefore,
+			},
+			want: false, // same SKI means the chain is still valid, no reissuance needed
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.args.pod == nil {
-				tt.args.pod = &testPod
+			pod := tt.args.pod
+			if pod == nil {
+				pod = &testPod
+			}
+			privateKey := tt.args.privateKey
+			if privateKey == nil {
+				privateKey = testRSAPrivateKey
+			}
+			ca := tt.args.ca
+			if ca == nil {
+				ca = testRSACA
 			}
 
 			if got := shouldIssueNewCertificate(
 				context.Background(),
 				testES,
 				tt.args.secret,
-				*tt.args.pod,
-				testRSAPrivateKey,
-				testRSACA,
+				*pod,
+				privateKey,
+				ca,
 				tt.args.rotateBefore,
 			); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)

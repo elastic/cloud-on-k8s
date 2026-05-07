@@ -104,6 +104,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate is invalid or expired
 // - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
+// - leaf certificate's AKI does not match the current CA's SKI (AKI→SKI chain broken)
 func shouldIssueNewCertificate(
 	ctx context.Context,
 	es esv1.Elasticsearch,
@@ -125,6 +126,16 @@ func shouldIssueNewCertificate(
 
 	cert := extractTransportCert(ctx, secret, pod, certCommonName)
 	if cert == nil {
+		return true
+	}
+
+	if !certificates.CertIsSignedByCA(cert, ca.Cert) {
+		log.Info("Certificate is not valid for current CA, should issue new certificate",
+			"namespace", pod.Namespace,
+			"pod_name", pod.Name,
+			"cert_aki", fmt.Sprintf("%x", cert.AuthorityKeyId),
+			"ca_ski", fmt.Sprintf("%x", ca.Cert.SubjectKeyId),
+		)
 		return true
 	}
 

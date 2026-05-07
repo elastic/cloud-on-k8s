@@ -134,4 +134,4 @@ const (
 	LicenseStatusInvalid LicenseStatus = "Invalid"
 )
 
-var _ Signable = &EnterpriseLicense{}
+var _ Signable = (*EnterpriseLicense)(nil)

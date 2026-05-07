@@ -134,7 +134,7 @@ func mustWriteChart(t *testing.T, dir, name string) {
 	if err := os.Mkdir(filepath.Join(dir, name), 0700); err != nil {
 		t.Errorf("failing making directory: %s", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, name, "Chart.yaml"), []byte(fmt.Sprintf(chartYamlData, name)), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name, "Chart.yaml"), fmt.Appendf(nil, chartYamlData, name), 0600); err != nil {
 		t.Errorf("failing writing chart file: %s", err)
 	}
 }

@@ -72,7 +72,9 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
+	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ConfigMap{}, &corev1.ConfigMapList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
+	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.Deployment{}, &appsv1.DeploymentList{})
 	scheme.AddKnownTypes(packageregistryv1alpha1.GroupVersion, &packageregistryv1alpha1.PackageRegistry{}, &packageregistryv1alpha1.PackageRegistryList{})
 
 	// Register ComputeClass types for Autopilot recipes.
@@ -286,7 +288,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
@@ -297,9 +299,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
-				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
+				WithConfig(map[string]any{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -308,7 +310,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type))).
@@ -325,7 +327,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -351,8 +353,11 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector:              tweakServiceRef(ref.ElasticsearchSelector.ObjectSelector, suffix),
+						ClientCertificateSecretName: ref.ElasticsearchSelector.ClientCertificateSecretName,
+					},
+					ClusterName: ref.ClusterName,
 				})
 			}
 
@@ -483,16 +488,16 @@ func tweakOutputRefs(outputs []agentv1alpha1.Output, suffix string) (results []a
 	return results
 }
 
-func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace string) map[string]interface{} {
+func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace string) map[string]any {
 	if config == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 
 	data := config.Data
 
 	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
 	if untypedHosts, ok := data[elasticsearchHostsKey]; ok {
-		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+		if untypedHostsSlice, ok := untypedHosts.([]any); ok {
 			for i, untypedHost := range untypedHostsSlice {
 				if host, ok := untypedHost.(string); ok {
 					untypedHostsSlice[i] = strings.ReplaceAll(
@@ -507,7 +512,7 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	fleetServerHostsKey := "xpack.fleet.agents.fleet_server.hosts"
 	if untypedHosts, ok := data[fleetServerHostsKey]; ok {
-		if untypedHostsSlice, ok := untypedHosts.([]interface{}); ok {
+		if untypedHostsSlice, ok := untypedHosts.([]any); ok {
 			for i, untypedHost := range untypedHostsSlice {
 				if host, ok := untypedHost.(string); ok {
 					untypedHostsSlice[i] = strings.ReplaceAll(
@@ -528,11 +533,11 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 	// 1. Point to the valid Elasticsearch instance with suffix + namespace being random
 	// 2. Point to the valid mounted Elasticsearch CA with a random suffix + namespace in the mount path.
 	if untypedOutputs, ok := data[fleetOutputsKey]; ok { //nolint:nestif
-		if untypedXpackOutputsSlice, ok := untypedOutputs.([]interface{}); ok {
+		if untypedXpackOutputsSlice, ok := untypedOutputs.([]any); ok {
 			for _, untypedOutputMap := range untypedXpackOutputsSlice {
-				if outputMap, ok := untypedOutputMap.(map[string]interface{}); ok {
+				if outputMap, ok := untypedOutputMap.(map[string]any); ok {
 					if outputMap["id"] == "eck-fleet-agent-output-elasticsearch" {
-						if outputSlice, ok := outputMap["hosts"].([]interface{}); ok {
+						if outputSlice, ok := outputMap["hosts"].([]any); ok {
 							for j, untypedHost := range outputSlice {
 								if host, ok := untypedHost.(string); ok {
 									outputSlice[j] = strings.ReplaceAll(
@@ -543,8 +548,8 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 								}
 							}
 						}
-						if untypedSSL, ok := outputMap["ssl"].(map[string]interface{}); ok {
-							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]interface{}); ok {
+						if untypedSSL, ok := outputMap["ssl"].(map[string]any); ok {
+							if untypedCAs, ok := untypedSSL["certificate_authorities"].([]any); ok {
 								for k, untypedCA := range untypedCAs {
 									if ca, ok := untypedCA.(string); ok {
 										untypedCAs[k] = strings.ReplaceAll(

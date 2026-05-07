@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	ElasticSearchConfigKey = "elasticsearch.json"
-	SecretsMountKey        = "secretMounts.json"
+	SecretsMountKey = "secretMounts.json"
 )
 
 func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (corev1.Secret, error) {
@@ -50,8 +49,13 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		if err != nil {
 			return corev1.Secret{}, err
 		}
-		data[ElasticSearchConfigKey] = configDataJSONBytes
+		data[esv1.StackConfigElasticsearchConfigKey] = configDataJSONBytes
 	}
+
+	if len(data) == 0 {
+		data = nil
+	}
+
 	meta := metadata.Propagate(&es, metadata.Metadata{
 		Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es)),
 		Annotations: map[string]string{
@@ -90,7 +94,8 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			return err
 		}
 
-		meta = meta.Merge(metadata.Metadata{
+		// Use a fresh copy of meta per iteration to avoid accumulating annotations across iterations.
+		secretMeta := meta.Merge(metadata.Metadata{
 			Annotations: map[string]string{
 				commonannotation.SourceSecretAnnotationName: secretMount.SecretName,
 			},
@@ -101,8 +106,8 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:   es.Namespace,
 				Name:        secretName,
-				Labels:      meta.Labels,
-				Annotations: meta.Annotations,
+				Labels:      secretMeta.Labels,
+				Annotations: secretMeta.Annotations,
 			},
 			Data: additionalSecret.Data,
 		}
@@ -170,7 +175,7 @@ func cleanupOrphanedSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elas
 
 func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {
 	if elasticsearchConfig != nil {
-		return hash.HashObject([]interface{}{elasticsearchConfig, secretMounts})
+		return hash.HashObject([]any{elasticsearchConfig, secretMounts})
 	}
 	return hash.HashObject(secretMounts)
 }

@@ -9,11 +9,12 @@ package logstash
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func TestSingleLogstash(t *testing.T) {

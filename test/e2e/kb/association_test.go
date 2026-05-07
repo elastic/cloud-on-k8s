@@ -9,6 +9,7 @@ package kb
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,7 +19,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -28,6 +28,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
+var associationEventRegex = regexp.MustCompile(`Association status changed from \[(.+?)] to \[(.+?)]`)
+
 // TestCrossNSAssociation tests associating Elasticsearch and Kibana running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
 	esNamespace := test.Ctx().ManagedNamespace(0)
@@ -36,7 +38,7 @@ func TestCrossNSAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	kbBuilder := kibana.NewBuilder(name).
 		WithNamespace(kbNamespace).
@@ -63,7 +65,7 @@ func TestEntSearchAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esKbNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	entBuilder := enterprisesearch.NewBuilder(name).
 		WithNamespace(entNamespace).
@@ -115,7 +117,7 @@ func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	name := "test-kb-del-referenced-es"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
@@ -150,14 +152,15 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							// build expected string and use it for comparisons with actual
 							establishedString := commonv1.NewSingleAssociationStatusMap(commonv1.AssociationEstablished).String()
-							prevStatus, currStatus := annotation.ExtractAssociationStatusStrings(evt.ObjectMeta)
 
-							if prevStatus == establishedString && currStatus != prevStatus {
-								assocLostEventSeen = true
-							}
-
-							if currStatus == establishedString {
-								assocEstablishedEventSeen = true
+							m := associationEventRegex.FindStringSubmatch(evt.Note)
+							if m != nil {
+								if m[1] == establishedString && m[2] != establishedString {
+									assocLostEventSeen = true
+								}
+								if m[2] == establishedString {
+									assocEstablishedEventSeen = true
+								}
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:
 							noBackendEventSeen = true
@@ -188,7 +191,7 @@ func TestEPRAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithNamespace(esKbNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	eprBuilder := epr.NewBuilder(name).
 		WithNamespace(eprNamespace).
@@ -207,17 +210,19 @@ func TestEPRAssociation(t *testing.T) {
 func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 	name := "test-kb-assoc-non-existent-epr"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithPackageRegistryRef(commonv1.ObjectSelector{Name: "some-epr"}).
+		WithPackageRegistryRef(commonv1.LocalObjectSelector{Name: "some-epr"}).
 		WithNodeCount(1)
 
 	k := test.NewK8sClientOrFatal()
 	steps := test.StepList{}
 	steps = steps.WithSteps(esBuilder.InitTestSteps(k))
 	steps = steps.WithSteps(esBuilder.CreationTestSteps(k))
+	steps = steps.WithSteps(esBuilder.CheckK8sTestSteps(k))
+	steps = steps.WithSteps(esBuilder.CheckStackTestSteps(k))
 	steps = steps.WithSteps(kbBuilder.InitTestSteps(k))
 	steps = steps.WithSteps(kbBuilder.CreationTestSteps(k))
 	steps = steps.WithStep(test.Step{
@@ -235,7 +240,7 @@ func TestKibanaAssociationWithNonExistentEPR(t *testing.T) {
 				if evt.Reason != events.EventAssociationError {
 					continue
 				}
-				if strings.Contains(evt.Message, "package-registry") {
+				if strings.Contains(evt.Note, "package-registry") {
 					return nil
 				}
 			}

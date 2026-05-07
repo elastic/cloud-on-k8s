@@ -95,13 +95,13 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	podTemplateSpec := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
+	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoopsv1alpha1.AutoOpsAgentContainerName).
 		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
 		WithEnv(autoopsEnvVars(policy, es)...).
-		WithResources(defaultResources).
+		WithResourcesAndOverrides(defaultResources, policy.Spec.Resources).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
@@ -121,11 +121,15 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			// Can't currently do this because of:
 			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
 			// RunAsNonRoot:           ptr.To(true),
+		})
+
+	if r.params.SetDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
-		}).
-		PodTemplate
+		})
+	}
 
 	return common_deployment.New(common_deployment.Params{
 		Name:      autoopsv1alpha1.Deployment(policy.GetName(), es),
@@ -134,7 +138,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			PolicyNameLabelKey: policy.GetName(),
 		},
 		Metadata:             meta,
-		PodTemplateSpec:      podTemplateSpec,
+		PodTemplateSpec:      builder.PodTemplate,
 		Replicas:             1,
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil

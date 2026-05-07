@@ -170,12 +170,22 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "not deprecated",
-			version: "7.17.0",
+			name:    "not deprecated - greater than max deprecated version",
+			version: "8.0.1",
 			want:    "",
 		},
 		{
-			name:    "deprecated",
+			name:    "deprecated - equal to max deprecated version",
+			version: "7.17.29",
+			want:    "Version 7.17.29 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - equal to min deprecated version",
+			version: "7.0.0",
+			want:    "Version 7.0.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - middle of the pack",
 			version: "7.4.0",
 			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
 		},
@@ -304,8 +314,10 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "default",
 							},
 						},
 					},
@@ -320,12 +332,16 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "default",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "bla",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "bla",
 							},
 						},
 					},
@@ -340,12 +356,16 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "default",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "default",
 							},
 						},
 					},
@@ -385,7 +405,9 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
 							},
 						},
 					},
@@ -400,12 +422,16 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "bla",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "bla",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "blub",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "blub",
 							},
 						},
 					},
@@ -420,12 +446,16 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
+								OutputName: "default",
 							},
 						},
 					},
@@ -668,8 +698,10 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 					Mode:               AgentFleetMode,
 					FleetServerEnabled: true,
 					ElasticsearchRefs: []Output{{
-						ObjectSelector: commonv1.ObjectSelector{Name: "name"},
-						OutputName:     "name",
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: "name"},
+						},
+						OutputName: "name",
 					}},
 				},
 			},
@@ -682,8 +714,10 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 					Mode:               AgentFleetMode,
 					FleetServerEnabled: false,
 					ElasticsearchRefs: []Output{{
-						ObjectSelector: commonv1.ObjectSelector{Name: "name"},
-						OutputName:     "name",
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: "name"},
+						},
+						OutputName: "name",
 					}},
 				},
 			},
@@ -720,10 +754,14 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
+								},
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								},
 							},
 						},
 						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
@@ -740,7 +778,9 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+								},
 							},
 						},
 					},

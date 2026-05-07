@@ -320,7 +320,7 @@ func TestMinFrom(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			gotVer := MinFor(tt.major, tt.minor, tt.patch)
-			require.True(t, gotVer.LT(From(int(tt.major), int(tt.minor), int(tt.patch))))
+			require.True(t, gotVer.LT(From(tt.major, tt.minor, tt.patch)))
 			require.True(t, gotVer.EQ(MustParse(fmt.Sprintf("%d.%d.%d-1", tt.major, tt.minor, tt.patch))))
 		})
 	}

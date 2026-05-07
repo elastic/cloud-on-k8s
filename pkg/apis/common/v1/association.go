@@ -11,6 +11,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 )
@@ -150,6 +151,29 @@ type Associated interface {
 	SetAssociationStatusMap(typ AssociationType, statusMap AssociationStatusMap) error
 }
 
+// AssociationRef defines an interface that captures a reference to a resource.
+// +kubebuilder:object:generate=false
+type AssociationRef interface {
+	// IsExternal returns true when the reference points to an external resource not managed by the operator.
+	IsExternal() bool
+	// IsSet returns true if the reference has a name or secret name set.
+	IsSet() bool
+	// GetName returns the name of the referenced resource.
+	GetName() string
+	// GetNamespace returns the namespace of the referenced resource.
+	GetNamespace() string
+	// GetSecretName returns the secret name (useful for external/unmanaged associations).
+	GetSecretName() string
+	// GetServiceName returns the service name of the referenced resource.
+	GetServiceName() string
+	// NamespacedName returns the NamespacedName of the referenced resource.
+	NamespacedName() types.NamespacedName
+	// NameOrSecretName returns the name or the secret name of the reference.
+	NameOrSecretName() string
+	// GetClientCertificateSecretName returns the name of the user-provided client certificate secret, or empty if none.
+	GetClientCertificateSecretName() string
+}
+
 // Association interface helps to manage the Spec fields involved in an association.
 // +kubebuilder:object:generate=false
 type Association interface {
@@ -167,7 +191,7 @@ type Association interface {
 
 	// AssociationRef is a reference to the associated resource. If defined with a Name then the Namespace is expected
 	// to be set in the returned object.
-	AssociationRef() ObjectSelector
+	AssociationRef() AssociationRef
 
 	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
 	// It is used by the association controller to store the configuration and by the controller which is
@@ -220,6 +244,29 @@ type AssociationConf struct {
 	Version string `json:"version"`
 	// Serverless is true when the referenced resource is a serverless project.
 	Serverless bool `json:"serverless,omitempty"`
+	// ClientCertSecretName is the name of the Kubernetes secret containing the client certificate
+	// and private key for client authentication. This secret is created in the associated resource's
+	// namespace and should be mounted into the associated resource's pods.
+	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
+	// TransitiveESRef holds state about a transitive Elasticsearch association (e.g. the Elasticsearch
+	// that a Fleet Server connects to on behalf of fleet-managed agents). Populated by the association
+	// controller; changes propagate through the annotation and trigger reconciliation of the associated resource.
+	TransitiveESRef *TransitiveESRef `json:"transitiveESRef,omitempty"`
+}
+
+// TransitiveESRef captures state about a transitive Elasticsearch association, such as the name
+// of a client certificate secret reconciled for mTLS. It is stored in the association conf
+// annotation so that changes trigger reconciliation of the associated resource.
+type TransitiveESRef struct {
+	// ClientCertSecretName is the name of the client certificate secret reconciled in the
+	// associated resource's namespace for mTLS with the transitive Elasticsearch.
+	// Empty when the Elasticsearch does not require client authentication.
+	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
+}
+
+// ClientCertIsConfigured returns true if a client certificate secret name is set.
+func (t *TransitiveESRef) ClientCertIsConfigured() bool {
+	return t != nil && t.ClientCertSecretName != ""
 }
 
 // IsConfigured returns true if all the fields are set.
@@ -297,6 +344,22 @@ func (ac *AssociationConf) GetURL() string {
 		return ""
 	}
 	return ac.URL
+}
+
+// GetClientCertSecretName returns the name of the client certificate secret.
+func (ac *AssociationConf) GetClientCertSecretName() string {
+	if ac == nil {
+		return ""
+	}
+	return ac.ClientCertSecretName
+}
+
+// ClientCertIsConfigured returns true if the client certificate secret name is set.
+func (ac *AssociationConf) ClientCertIsConfigured() bool {
+	if ac == nil {
+		return false
+	}
+	return ac.ClientCertSecretName != ""
 }
 
 func ElasticsearchConfigAnnotationName(o ObjectSelector) string {

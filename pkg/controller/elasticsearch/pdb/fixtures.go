@@ -125,6 +125,9 @@ func (b Builder) buildStatefulSet(name string, replicas int32, nodeRoles []esv1.
 			continue
 		case esv1.VotingOnlyRole:
 			continue
+		case esv1.IndexRole, esv1.SearchRole:
+			// stateless-specific roles, not applicable to PDB fixtures
+			continue
 		}
 	}
 
@@ -167,7 +170,7 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 
 	for i, sset := range b.StatefulSets {
 		// Create config based on the nodeset if available
-		config := &v1.Config{Data: map[string]interface{}{}}
+		config := &v1.Config{Data: map[string]any{}}
 		if i < len(b.Elasticsearch.Spec.NodeSets) {
 			config = b.Elasticsearch.Spec.NodeSets[i].Config
 		}
@@ -179,6 +182,8 @@ func (b Builder) BuildResourcesList() (nodespec.ResourcesList, error) {
 			b.Elasticsearch.Spec.HTTP,
 			*config,
 			nil,
+			false,
+			false,
 			false,
 			false,
 		)

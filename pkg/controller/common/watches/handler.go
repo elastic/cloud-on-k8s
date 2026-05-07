@@ -93,7 +93,7 @@ func (d *DynamicEnqueueRequest[T]) Registrations() []string {
 }
 
 // DynamicEnqueueRequest implements TypedEventHandler
-var _ handler.TypedEventHandler[client.Object, reconcile.Request] = &DynamicEnqueueRequest[client.Object]{}
+var _ handler.TypedEventHandler[client.Object, reconcile.Request] = (*DynamicEnqueueRequest[client.Object])(nil)
 
 // Create is called in response to a create event - e.g. Pod Creation.
 func (d *DynamicEnqueueRequest[T]) Create(ctx context.Context, evt event.TypedCreateEvent[T], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {

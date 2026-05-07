@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"net/url"
 	"path"
 	"path/filepath"
 
@@ -18,6 +19,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -43,6 +45,8 @@ const (
 	entCertsVolumeMountPath = "/usr/share/kibana/config/ent-certs"
 	// eprCertsVolumeMountPath is the directory into which trusted Package Registry CA certs are mounted.
 	eprCertsVolumeMountPath = "/usr/share/kibana/config/epr-certs"
+	// esClientCertVolumeMountPath is the directory containing client certificate for Elasticsearch.
+	esClientCertVolumeMountPath = "/usr/share/kibana/config/elasticsearch-client-certs"
 
 	// EncryptionKeyMinimumBytes is the minimum number of bytes required for the encryption key.
 	// This is in line with the documentation (32 characters) as of 9.0 (unicode characters can use > 1 byte):
@@ -63,8 +67,11 @@ const (
 	XpackEncryptedSavedObjectsEncryptionKey        = "xpack.encryptedSavedObjects.encryptionKey"
 	XpackFleetRegistryURL                          = "xpack.fleet.registryUrl"
 
-	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
-	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
+	ElasticsearchSslCertificateAuthorities   = "elasticsearch.ssl.certificateAuthorities"
+	ElasticsearchSslVerificationMode         = "elasticsearch.ssl.verificationMode"
+	ElasticsearchSslCertificate              = "elasticsearch.ssl.certificate"
+	ElasticsearchSslKey                      = "elasticsearch.ssl.key"
+	ElasticsearchSslAlwaysPresentCertificate = "elasticsearch.ssl.alwaysPresentCertificate"
 
 	ElasticsearchUsername            = "elasticsearch.username"
 	ElasticsearchPassword            = "elasticsearch.password"
@@ -149,13 +156,13 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 		if err != nil {
 			return CanonicalConfig{}, err
 		}
-		var esCreds map[string]interface{}
+		var esCreds map[string]any
 		if credentials.HasServiceAccountToken() {
-			esCreds = map[string]interface{}{
+			esCreds = map[string]any{
 				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
 			}
 		} else {
-			esCreds = map[string]interface{}{
+			esCreds = map[string]any{
 				ElasticsearchUsername: credentials.Username,
 				ElasticsearchPassword: credentials.Password,
 			}
@@ -170,6 +177,17 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	// Kibana settings from a StackConfigPolicy takes precedence over user provided settings, merge them last.
 	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
+	}
+
+	if esAssocConf.GetCACertProvided() {
+		if err := injectFleetOutputCertificateAuthorities(cfg, esAssocConf.GetURL(), kb.EsAssociation()); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+	if esAssocConf.ClientCertIsConfigured() {
+		if err := injectFleetOutputClientCerts(cfg, esAssocConf.GetURL()); err != nil {
+			return CanonicalConfig{}, err
+		}
 	}
 
 	return CanonicalConfig{cfg}, nil
@@ -192,7 +210,7 @@ func filterConfigSettings(kb kbv1.Kibana, cfg *settings.CanonicalConfig) error {
 func VersionDefaults(_ *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
 	if v.GTE(version.From(7, 6, 0)) {
 		// setting exists only as of 7.6.0
-		return settings.MustCanonicalConfig(map[string]interface{}{XpackLicenseManagementUIEnabled: false})
+		return settings.MustCanonicalConfig(map[string]any{XpackLicenseManagementUIEnabled: false})
 	}
 
 	return settings.NewCanonicalConfig()
@@ -281,13 +299,13 @@ func getOrCreateReusableSettings(ctx context.Context, c k8s.Client, kb kbv1.Kiba
 	return settings.MustCanonicalConfig(r), nil
 }
 
-func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interface{}, error) {
+func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]any, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	conf := map[string]interface{}{
+	conf := map[string]any{
 		ServerHost: net.InAddrAnyFor(ipFamily).String(),
 	}
 
@@ -305,25 +323,32 @@ func baseSettings(kb *kbv1.Kibana, ipFamily corev1.IPFamily) (map[string]interfa
 	return conf, nil
 }
 
-func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {
+func kibanaTLSSettings(kb kbv1.Kibana) map[string]any {
 	if !kb.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		ServerSSLEnabled:     true,
 		ServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		ServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 }
 
-func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]interface{} {
-	cfg := map[string]interface{}{
+func elasticsearchTLSSettings(esAssocConf commonv1.AssociationConf) map[string]any {
+	cfg := map[string]any{
 		ElasticsearchSslVerificationMode: "certificate",
 	}
 
 	if esAssocConf.GetCACertProvided() {
 		esCertsVolumeMountPath := esCaCertSecretVolume(esAssocConf).VolumeMount().MountPath
 		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
+	}
+
+	if esAssocConf.ClientCertIsConfigured() {
+		clientCertMountPath := esClientCertSecretVolume(esAssocConf).VolumeMount().MountPath
+		cfg[ElasticsearchSslCertificate] = path.Join(clientCertMountPath, certificates.CertFileName)
+		cfg[ElasticsearchSslKey] = path.Join(clientCertMountPath, certificates.KeyFileName)
+		cfg[ElasticsearchSslAlwaysPresentCertificate] = true
 	}
 
 	return cfg
@@ -335,6 +360,15 @@ func esCaCertSecretVolume(esAssocConf commonv1.AssociationConf) volume.SecretVol
 		esAssocConf.GetCASecretName(),
 		"elasticsearch-certs",
 		esCertsVolumeMountPath,
+	)
+}
+
+// esClientCertSecretVolume returns a SecretVolume to hold the client certificate for Elasticsearch.
+func esClientCertSecretVolume(esAssocConf commonv1.AssociationConf) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		esAssocConf.GetClientCertSecretName(),
+		"elasticsearch-client-certs",
+		esClientCertVolumeMountPath,
 	)
 }
 
@@ -356,8 +390,8 @@ func eprCaCertSecretVolume(eprAssocConf commonv1.AssociationConf) volume.SecretV
 	)
 }
 
-func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
-	cfg := map[string]interface{}{}
+func enterpriseSearchSettings(kb kbv1.Kibana) map[string]any {
+	cfg := map[string]any{}
 	assocConf, _ := kb.EntAssociation().AssociationConf()
 	if assocConf.URLIsConfigured() {
 		cfg[EnterpriseSearchHost] = assocConf.GetURL()
@@ -372,11 +406,116 @@ func enterpriseSearchSettings(kb kbv1.Kibana) map[string]interface{} {
 	return cfg
 }
 
-func packageRegistrySettings(kb kbv1.Kibana) map[string]interface{} {
-	cfg := map[string]interface{}{}
+func packageRegistrySettings(kb kbv1.Kibana) map[string]any {
+	cfg := map[string]any{}
 	assocConf, _ := kb.EPRAssociation().AssociationConf()
 	if assocConf.URLIsConfigured() {
 		cfg[XpackFleetRegistryURL] = assocConf.GetURL()
 	}
 	return cfg
+}
+
+// injectFleetOutputClientCerts post-processes the merged Kibana config to inject
+// ssl.certificate and ssl.key into any xpack.fleet.outputs entry that is of type
+// "elasticsearch" and whose hosts list contains the given esURL. User-provided
+// values are preserved (not overwritten).
+func injectFleetOutputClientCerts(cfg *settings.CanonicalConfig, esURL string) error {
+	ucfgCfg := (*ucfg.Config)(cfg)
+	opts := settings.Options
+
+	for i := 0; ; i++ {
+		output, childErr := ucfgCfg.Child("xpack.fleet.outputs", i, opts...)
+		if childErr != nil {
+			// childErr signals end of indexed children, not a real error
+			break
+		}
+
+		outputType, err := output.String("type", -1, opts...)
+		if err != nil || outputType != "elasticsearch" {
+			continue
+		}
+
+		if !outputHostsContain(output, esURL) {
+			continue
+		}
+
+		if has, _ := output.Has("ssl.certificate", -1, opts...); !has {
+			if err := output.SetString("ssl.certificate", -1, path.Join(agent.FleetManagedAgentClientCertDir,
+				certificates.CertFileName), opts...); err != nil {
+				return err
+			}
+		}
+		if has, _ := output.Has("ssl.key", -1, opts...); !has {
+			if err := output.SetString("ssl.key", -1, path.Join(agent.FleetManagedAgentClientCertDir,
+				certificates.KeyFileName), opts...); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil //nolint:nilerr
+}
+
+// injectFleetOutputCertificateAuthorities post-processes the merged Kibana config to inject
+// ssl.certificate_authorities into any xpack.fleet.outputs entry that is of type "elasticsearch"
+// and whose hosts list contains the given esURL. The CA path is constructed from the ES association
+// ref to match the mount path inside fleet-managed Agent pods. User-provided values are preserved.
+func injectFleetOutputCertificateAuthorities(cfg *settings.CanonicalConfig, esURL string, esAssoc commonv1.Association) error {
+	ucfgCfg := (*ucfg.Config)(cfg)
+	opts := settings.Options
+
+	caPath := path.Join(
+		agent.CertificatesDir(esAssoc),
+		agent.CAFileName,
+	)
+
+	for i := 0; ; i++ {
+		output, childErr := ucfgCfg.Child("xpack.fleet.outputs", i, opts...)
+		if childErr != nil {
+			break
+		}
+
+		outputType, err := output.String("type", -1, opts...)
+		if err != nil || outputType != "elasticsearch" {
+			continue
+		}
+
+		if !outputHostsContain(output, esURL) {
+			continue
+		}
+
+		outputCanonical := (*settings.CanonicalConfig)(output)
+
+		if err := outputCanonical.AppendString("ssl.certificate_authorities", caPath); err != nil {
+			return err
+		}
+	}
+
+	return nil //nolint:nilerr
+}
+
+func outputHostsContain(output *ucfg.Config, esURL string) bool {
+	opts := settings.Options
+	target, err := url.Parse(esURL)
+	if err != nil {
+		return false
+	}
+	numHosts, err := output.CountField("hosts", opts...)
+	if err != nil {
+		return false
+	}
+	for i := range numHosts {
+		host, err := output.String("hosts", i, opts...)
+		if err != nil {
+			continue
+		}
+		parsed, err := url.Parse(host)
+		if err != nil {
+			continue
+		}
+		if parsed.Scheme == target.Scheme && parsed.Host == target.Host {
+			return true
+		}
+	}
+	return false
 }

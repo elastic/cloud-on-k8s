@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -68,8 +69,8 @@ func TestGlobalCA(t *testing.T) {
 		WithNodeCount(1).
 		WithElasticsearchRefs(
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: es.Ref(),
-				ClusterName:    "es",
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: es.Ref()},
+				ClusterName:           "es",
 			}).
 		WithGlobalCA(true)
 

@@ -6,6 +6,7 @@ package user
 
 import (
 	"fmt"
+	"maps"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/utils/ptr"
@@ -225,6 +226,15 @@ var (
 					Names:      []string{"filebeat-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
+				{
+					// logs-elastic* covers data streams for ES-managed log datasets (e.g. logs-elasticsearch.querylog-*)
+					// that are shipped by the Filebeat sidecar starting with ES 9.4. Uses a broad pattern to
+					// accommodate additional datasets that will follow the same naming convention.
+					// auto_configure is required because data streams need it to create backing indices from
+					// the managed index template on first write.
+					Names:      []string{"logs-elastic*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
+				},
 			},
 		},
 		FleetAdminUserRole: esclient.Role{
@@ -348,7 +358,7 @@ func BeatKibanaRoleName(version, beatType string) string {
 
 // RolesFileContent is a map {role name -> yaml role spec}.
 // We care about the role names here, but consider the roles spec as a yaml blob we don't need to access.
-type RolesFileContent map[string]interface{}
+type RolesFileContent map[string]any
 
 // parseRolesFileContent returns a RolesFileContent from the given data.
 // Since rolesFileContent already corresponds to a deserialized yaml representation of the roles files,
@@ -369,11 +379,7 @@ func (r RolesFileContent) FileBytes() ([]byte, error) {
 // mergeWith merges multiple rolesFileContent, giving priority to other returning a new RolesFileContent.
 func (r RolesFileContent) MergeWith(other RolesFileContent) RolesFileContent {
 	result := make(RolesFileContent)
-	for roleName, roleSpec := range r {
-		result[roleName] = roleSpec
-	}
-	for roleName, roleSpec := range other {
-		result[roleName] = roleSpec
-	}
+	maps.Copy(result, r)
+	maps.Copy(result, other)
 	return result
 }

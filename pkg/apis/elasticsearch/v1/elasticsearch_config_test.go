@@ -41,7 +41,7 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "set node.master=true",
 			args: args{
 				c: commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						NodeMaster: true,
 					},
 				},
@@ -58,7 +58,7 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "set node.data=false",
 			args: args{
 				c: commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						NodeData: false,
 					},
 				},
@@ -87,8 +87,8 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "set node.data=false on 7.7.0",
 			args: args{
 				c: commonv1.Config{
-					Data: map[string]interface{}{
-						"node": map[string]interface{}{
+					Data: map[string]any{
+						"node": map[string]any{
 							"data": false,
 						},
 					},
@@ -106,7 +106,7 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "set node.transform=true and node.data=false on 7.7.0",
 			args: args{
 				c: commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						NodeData:      false,
 						NodeTransform: true,
 					},
@@ -133,29 +133,29 @@ func TestConfig_RoleDefaults(t *testing.T) {
 }
 
 var testFixture = commonv1.Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": 1,
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{1, 2, 3},
+		"e":       []any{1, 2, 3},
 		"f":       true,
 	},
 }
 
 var expectedJSONized = commonv1.Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": float64(1),
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{float64(1), float64(2), float64(3)},
+		"e":       []any{float64(1), float64(2), float64(3)},
 		"f":       true,
 	},
 }
@@ -400,8 +400,8 @@ func TestConfig_Unpack(t *testing.T) {
 		{
 			name: "no node config",
 			args: &commonv1.Config{
-				Data: map[string]interface{}{
-					"cluster": map[string]interface{}{
+				Data: map[string]any{
+					"cluster": map[string]any{
 						"initial_master_nodes": []string{"a", "b"},
 					},
 				},
@@ -416,12 +416,12 @@ func TestConfig_Unpack(t *testing.T) {
 		{
 			name: "happy path",
 			args: &commonv1.Config{
-				Data: map[string]interface{}{
-					"node": map[string]interface{}{
+				Data: map[string]any{
+					"node": map[string]any{
 						"master": false,
 						"data":   true,
 					},
-					"cluster": map[string]interface{}{
+					"cluster": map[string]any{
 						"initial_master_nodes": []string{"a", "b"},
 					},
 				},
@@ -440,11 +440,11 @@ func TestConfig_Unpack(t *testing.T) {
 		{
 			name: "happy path with node roles",
 			args: &commonv1.Config{
-				Data: map[string]interface{}{
-					"node": map[string]interface{}{
+				Data: map[string]any{
+					"node": map[string]any{
 						"roles": []string{"master", "data"},
 					},
-					"cluster": map[string]interface{}{
+					"cluster": map[string]any{
 						"initial_master_nodes": []string{"a", "b"},
 					},
 				},

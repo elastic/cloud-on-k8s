@@ -182,8 +182,8 @@ func maybeUpdateAPIKey(
 
 // newMetadataFor returns the metadata to be set in the Elasticsearch API keys metadata in the Elasticsearch cluster
 // state, not on a Kubernetes object.
-func newMetadataFor(clientES *esv1.Elasticsearch, expectedHash string) map[string]interface{} {
-	return map[string]interface{}{
+func newMetadataFor(clientES *esv1.Elasticsearch, expectedHash string) map[string]any {
+	return map[string]any{
 		"elasticsearch.k8s.elastic.co/config-hash": expectedHash,
 		"elasticsearch.k8s.elastic.co/name":        clientES.Name,
 		"elasticsearch.k8s.elastic.co/namespace":   clientES.Namespace,

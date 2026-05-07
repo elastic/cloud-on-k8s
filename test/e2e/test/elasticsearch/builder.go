@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -71,6 +72,7 @@ func (b Builder) DeepCopy() *Builder {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
 	builderCopy.GlobalCA = b.GlobalCA
+	builderCopy.mutationToleratedChecksFailureCount = b.mutationToleratedChecksFailureCount
 	return &builderCopy
 }
 
@@ -150,23 +152,21 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+		})
 	return b
 }
 
 func (b Builder) WithRemoteClusterAPIKey(remoteEs Builder, apiKey *esv1.RemoteClusterAPIKey) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-				APIKey:           apiKey,
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+			APIKey:           apiKey,
+		})
 	return b
 }
 
@@ -223,6 +223,11 @@ func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	return b
 }
 
+func (b Builder) WithClientAuthenticationRequired() Builder {
+	b.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
 func (b Builder) WithGlobalCA(v bool) Builder {
 	b.GlobalCA = v
 	return b
@@ -238,7 +243,7 @@ func (b Builder) WithNoESTopology() Builder {
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: MasterRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -249,7 +254,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -260,7 +265,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -271,13 +276,13 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:        "masterdata",
-		Count:       int32(count),
+		Count:       int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
 func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceRequirements) Builder {
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	v := version.MustParse(b.Elasticsearch.Spec.Version)
 
 	if v.GTE(version.From(7, 9, 0)) {
@@ -300,7 +305,7 @@ func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceReq
 
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "coordinating",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: cfg,
 		},
@@ -321,7 +326,7 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	// Make sure the config specifies "node.store.allow_mmap: false".
 	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
 	if nodeSet.Config == nil {
-		nodeSet.Config = &commonv1.Config{Data: map[string]interface{}{}}
+		nodeSet.Config = &commonv1.Config{Data: map[string]any{}}
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
 	// helpful to debug test failures with red cluster health
@@ -389,6 +394,37 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
+// WithSecretVolumeMountForElasticsearch appends a Secret-backed volume and mounts it read-only on the Elasticsearch
+// container for every node set. Call after WithEmptyDirVolumes (or any setup that defines pod volumes) so the secret
+// volume is merged with existing volumes. The Secret must exist in the namespace before pods are scheduled.
+func (b Builder) WithSecretVolumeMountForElasticsearch(volumeName, secretName, mountPath string) Builder {
+	// 0440 is required as any mode with world readable bits are rejected.
+	defaultMode := int32(0o440)
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		ns := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
+		ns.Volumes = append(ns.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  secretName,
+					DefaultMode: &defaultMode,
+				},
+			},
+		})
+		for j := range ns.Containers {
+			if ns.Containers[j].Name != esv1.ElasticsearchContainerName {
+				continue
+			}
+			ns.Containers[j].VolumeMounts = append(ns.Containers[j].VolumeMounts, corev1.VolumeMount{
+				Name:      volumeName,
+				ReadOnly:  true,
+				MountPath: mountPath,
+			})
+		}
+	}
+	return b
+}
+
 func (b Builder) WithDefaultPersistentVolumes() Builder {
 	storageClass := test.DefaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
@@ -434,14 +470,12 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 	return b
 }
 
-func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
+func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]any) Builder {
 	newNodeSets := make([]esv1.NodeSet, 0, len(b.Elasticsearch.Spec.NodeSets))
 	for _, n := range b.Elasticsearch.Spec.NodeSets {
 		if cfg, exists := nodeSetCfg[n.Name]; exists {
 			newCfg := n.Config.DeepCopy()
-			for k, v := range cfg {
-				newCfg.Data[k] = v
-			}
+			maps.Copy(newCfg.Data, cfg)
 			n.Config = newCfg
 		}
 		newNodeSets = append(newNodeSets, n)
@@ -595,31 +629,42 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	return false
 }
 
-func MixedRolesCfg(ver string) map[string]interface{} {
+func (b Builder) TriggersRollingRestart() bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+
+	oldV := b.MutatedFrom.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+	v, ok := b.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+
+	return ok && v != "" && v != oldV
+}
+
+func MixedRolesCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole, esv1.DataRole}, map[string]bool{
 		esv1.NodeMaster: true,
 		esv1.NodeData:   true,
 	})
 }
 
-func DataRoleCfg(ver string) map[string]interface{} {
+func DataRoleCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.DataRole}, map[string]bool{
 		esv1.NodeMaster: false,
 		esv1.NodeData:   true,
 	})
 }
 
-func MasterRoleCfg(ver string) map[string]interface{} {
+func MasterRoleCfg(ver string) map[string]any {
 	return roleCfg(ver, []esv1.NodeRole{esv1.MasterRole}, map[string]bool{
 		esv1.NodeMaster: true,
 		esv1.NodeData:   false,
 	})
 }
 
-func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]interface{} {
+func roleCfg(ver string, post78roles []esv1.NodeRole, pre79roles map[string]bool) map[string]any {
 	v := version.MustParse(ver)
 
-	cfg := map[string]interface{}{}
+	cfg := map[string]any{}
 	if v.GTE(version.From(7, 9, 0)) {
 		cfg[esv1.NodeRoles] = post78roles
 	} else {

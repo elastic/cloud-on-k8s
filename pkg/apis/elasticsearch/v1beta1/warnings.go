@@ -5,14 +5,13 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
-
-var warnings = []validation{
-	noUnsupportedSettings,
-}
 
 func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
@@ -33,10 +32,31 @@ func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func (es *Elasticsearch) CheckForWarnings() error {
-	warnings := es.check(warnings)
-	if len(warnings) > 0 {
-		return warnings.ToAggregate()
+// settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
+// violations (Forbidden) are surfaced as non-blocking admission warnings;
+// unparsable or invalid config from NewCanonicalConfigFrom (Invalid) must still
+// deny the request.
+func settingsWarningsAndErrors(es *Elasticsearch) (admission.Warnings, field.ErrorList) {
+	var (
+		warnings admission.Warnings
+		blocking field.ErrorList
+	)
+	for _, e := range noUnsupportedSettings(es) {
+		switch e.Type {
+		case field.ErrorTypeForbidden:
+			warnings = append(warnings, fmt.Sprintf("%s: %s", e.Field, e.Detail))
+		case field.ErrorTypeInvalid:
+			blocking = append(blocking, e)
+		default:
+			blocking = append(blocking, e)
+		}
 	}
-	return nil
+	return warnings, blocking
+}
+
+// settingsWarnings converts unsupported reserved-key findings into admission
+// warnings. Invalid configuration (see settingsWarningsAndErrors) is excluded.
+func settingsWarnings(es *Elasticsearch) admission.Warnings {
+	w, _ := settingsWarningsAndErrors(es)
+	return w
 }

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -150,7 +151,7 @@ func (e *esClusterChecks) CheckDesiredNodesAPI(k *test.K8sClient) test.Step {
 }
 
 type PathDataSetting struct {
-	PathData interface{} `config:"path.data"`
+	PathData any `config:"path.data"`
 }
 
 // expectDesiredNodesAPI attempts to detect when the desired nodes state is expected to be set.
@@ -177,17 +178,7 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 			}
 		}
 
-		var esResources *corev1.ResourceRequirements
-		for _, c := range nodeSet.PodTemplate.Spec.Containers {
-			if c.Name == "elasticsearch" {
-				c := c
-				esResources = &c.Resources
-			}
-		}
-		if esResources == nil {
-			// Elasticsearch container not found, very unlikely to happen in an E2E test.
-			return false, nil
-		}
+		esResources := effectiveContainerResources(nodeSet)
 		memReq, hasMemReq := esResources.Requests[corev1.ResourceMemory]
 		memLimit, hasMemLimit := esResources.Limits[corev1.ResourceMemory]
 		if !hasMemLimit {
@@ -205,6 +196,36 @@ func expectDesiredNodesAPI(es *esv1.Elasticsearch) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// effectiveContainerResources returns the effective ResourceRequirements for the elasticsearch container,
+// merging the PodTemplate container resources with the Resources shorthand. The shorthand takes precedence
+// over PodTemplate values for CPU and memory.
+//
+// Note: Unlike the production WithResourcesAndOverrides, this does not apply operator DefaultResources
+// when both Limits and Requests are empty. This works because DefaultResources currently has no CPU value,
+// so the empty case still results in expectDesiredNodesAPI returning false.
+func effectiveContainerResources(nodeSet esv1.NodeSet) corev1.ResourceRequirements {
+	var result corev1.ResourceRequirements
+	for _, c := range nodeSet.PodTemplate.Spec.Containers {
+		if c.Name == esv1.ElasticsearchContainerName {
+			result = *c.Resources.DeepCopy()
+			break
+		}
+	}
+	if limits := nodeSet.Resources.Limits.ToResourceList(); limits != nil {
+		if result.Limits == nil {
+			result.Limits = corev1.ResourceList{}
+		}
+		maps.Copy(result.Limits, limits)
+	}
+	if requests := nodeSet.Resources.Requests.ToResourceList(); requests != nil {
+		if result.Requests == nil {
+			result.Requests = corev1.ResourceList{}
+		}
+		maps.Copy(result.Requests, requests)
+	}
+	return result
 }
 
 func (e *esClusterChecks) CheckESNodesTopology() test.Step {
@@ -364,14 +385,9 @@ func canCompareCgroupLimits(nodeStats client.NodeStats, nodeVersion string) (boo
 
 // compareCgroupMemoryLimit compares the memory limit specified in a nodeSet with the limit set in the memory control group at the OS level
 func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
-	var memoryLimit *resource.Quantity
-	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == esv1.ElasticsearchContainerName {
-			memoryLimit = c.Resources.Limits.Memory()
-		}
-	}
+	esResources := effectiveContainerResources(topologyElement)
+	memoryLimit := esResources.Limits.Memory()
 	if memoryLimit == nil || memoryLimit.IsZero() {
-		// no expected memory, consider it's ok
 		return nil
 	}
 
@@ -391,14 +407,9 @@ func compareCgroupMemoryLimit(topologyElement esv1.NodeSet, nodeStats client.Nod
 
 // compareCgroupCPULimit compares the CPU limit specified in a nodeSet with the limit set in the CPU control group at the OS level
 func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeStats) error {
-	var expectedCPULimit *resource.Quantity
-	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == esv1.ElasticsearchContainerName {
-			expectedCPULimit = c.Resources.Limits.Cpu()
-		}
-	}
+	esResources := effectiveContainerResources(topologyElement)
+	expectedCPULimit := esResources.Limits.Cpu()
 	if expectedCPULimit == nil || expectedCPULimit.IsZero() {
-		// no expected cpu, consider it's ok
 		return nil
 	}
 
@@ -413,15 +424,9 @@ func compareCgroupCPULimit(topologyElement esv1.NodeSet, nodeStats client.NodeSt
 // compareSpecResources compares the resources specified in the Elasticsearch resource with the resources
 // specified in the pods
 func compareSpecResources(topologyElement esv1.NodeSet, pods []corev1.Pod) error {
-	var expected *corev1.ResourceRequirements
-	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		container := c
-		if c.Name == esv1.ElasticsearchContainerName {
-			expected = &container.Resources
-		}
-	}
-	if expected == nil {
-		expected = &nodespec.DefaultResources
+	expected := effectiveContainerResources(topologyElement)
+	if expected.Requests == nil && expected.Limits == nil {
+		expected = nodespec.DefaultResources
 	}
 
 	for _, pod := range pods {

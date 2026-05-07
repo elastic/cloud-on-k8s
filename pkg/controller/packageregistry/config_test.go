@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -52,8 +52,8 @@ package_paths:
 			args: args{
 				runtimeObjs: nil,
 				epr: v1alpha1.PackageRegistry{
-					Spec: v1alpha1.PackageRegistrySpec{Config: &commonv1.Config{Data: map[string]interface{}{
-						"cache_time": map[string]interface{}{
+					Spec: v1alpha1.PackageRegistrySpec{Config: &commonv1.Config{Data: map[string]any{
+						"cache_time": map[string]any{
 							"index": "11s",
 						},
 					}}},
@@ -91,8 +91,8 @@ package_paths:
 			name: "configRef takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("cache_time:\n  index: 20s"))},
-				epr: eprWithConfigRef("cfg", &commonv1.Config{Data: map[string]interface{}{
-					"cache_time": map[string]interface{}{
+				epr: eprWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
+					"cache_time": map[string]any{
 						"index": "50s",
 					},
 				}}),
@@ -138,7 +138,7 @@ package_paths:
 		t.Run(tt.name, func(t *testing.T) {
 			d := ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 

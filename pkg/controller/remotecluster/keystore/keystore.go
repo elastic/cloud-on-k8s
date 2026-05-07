@@ -34,6 +34,27 @@ const (
 	RemoteClusterAPIKeysType = "remote-cluster-api-keys"
 )
 
+// APIKeySecretSource returns the remote API keys secret as a NamespacedSecretSource if it exists.
+// Returns nil if the secret does not exist.
+func APIKeySecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.Client) ([]commonv1.NamespacedSecretSource, error) {
+	secretName := types.NamespacedName{
+		Name:      esv1.RemoteAPIKeysSecretName(es.Name),
+		Namespace: es.Namespace,
+	}
+	if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return []commonv1.NamespacedSecretSource{
+		{
+			Namespace:  es.Namespace,
+			SecretName: secretName.Name,
+		},
+	}, nil
+}
+
 var (
 	credentialsSecretSettingsRegEx = regexp.MustCompile(`^cluster\.remote\.([\w-]+)\.credentials$`)
 )

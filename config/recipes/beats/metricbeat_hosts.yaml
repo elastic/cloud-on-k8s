@@ -4,7 +4,7 @@ metadata:
   name: metricbeat
 spec:
   type: metricbeat
-  version: 9.2.2
+  version: 9.3.2
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -122,6 +122,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - "extensions"
   resources:
   - replicasets
@@ -174,7 +182,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.2
+  version: 9.3.2
   nodeSets:
   - name: default
     count: 3
@@ -186,7 +194,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.2
+  version: 9.3.2
   count: 1
   elasticsearchRef:
     name: elasticsearch

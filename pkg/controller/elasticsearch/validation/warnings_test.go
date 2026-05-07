@@ -7,6 +7,12 @@ package validation
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 )
@@ -31,7 +37,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.ClusterInitialMasterNodes: "foo",
 								},
 							},
@@ -50,14 +56,14 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.ClusterInitialMasterNodes: "foo",
 								},
 							},
 						},
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityTransportSslVerificationMode: "bar",
 								},
 							},
@@ -75,7 +81,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"node.attr.box_type": "foo",
 								},
 							},
@@ -93,7 +99,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityTransportSslCertificateAuthorities: "foo",
 								},
 							},
@@ -111,8 +117,8 @@ func Test_noUnsupportedSettings(t *testing.T) {
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
-									"cluster": map[string]interface{}{
+								Data: map[string]any{
+									"cluster": map[string]any{
 										"initial_master_nodes": []string{"foo", "bar"},
 									},
 									"node.attr.box_type": "foo",
@@ -125,14 +131,14 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: true,
 		},
 		{
-			name: "supported client auth setting and value combination OK",
+			name: "client auth setting optional OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityHttpSslClientAuthentication: "optional",
 								},
 							},
@@ -143,14 +149,14 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "unsupported client auth setting and value combination",
+			name: "client auth setting required yields forbidden field error for warning split",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									esv1.XPackSecurityHttpSslClientAuthentication: "required",
 								},
 							},
@@ -167,6 +173,370 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			actualErrors := len(actual) > 0
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
+			}
+		})
+	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
+	t.Run("mandatory client authentication is warning only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityHttpSslClientAuthentication: "required",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
+	})
+}
+
+func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {
+	requiredAffinityWithExpression := func(key string, operator corev1.NodeSelectorOperator) *corev1.Affinity {
+		return &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: key, Operator: operator, Values: []string{"a"}},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	topologyExprPath := func(nodeSetIndex int) string {
+		return field.NewPath("spec").Child("nodeSets").Index(nodeSetIndex).Child("podTemplate", "spec", "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms").Index(0).Child("matchExpressions").Index(0).String()
+	}
+
+	tests := []struct {
+		name           string
+		es             esv1.Elasticsearch
+		expectedFields []string
+	}{
+		{
+			name: "warns on not-in for zone-aware nodeset topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "warns on not-in for non-zone-aware nodeset in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("topology.custom.io/rack", corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(1)},
+		},
+		{
+			name: "does not warn when no nodeset enables zone awareness",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "does not warn on unrelated key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("nodepool", corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "warns on does-not-exist on default zone-awareness topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "warns on does-not-exist on non-zone-aware nodeset in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("topology.custom.io/rack", corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(1)},
+		},
+		{
+			name: "does not warn on does-not-exist when no nodeset enables zone awareness",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := validZoneAwarenessAffinityWarnings(tt.es)
+			actualFields := make([]string, len(warnings))
+			for i, warning := range warnings {
+				actualFields[i] = warning.Field
+			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
+func Test_shorthandResourcesOverrideWarning(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	memory := resource.MustParse("1Gi")
+
+	// nodeSet is a small helper to build a NodeSet with a main container carrying the given resources.
+	nodeSet := func(name string, shorthand commonv1.Resources, containerName string, containerResources corev1.ResourceRequirements) esv1.NodeSet {
+		return esv1.NodeSet{
+			Name:      name,
+			Resources: shorthand,
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName, Resources: containerResources},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		warnings int
+	}{
+		{
+			name: "no warning when shorthand resources do not overlap pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "warning when shorthand requests.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand requests.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "no warning when main container is absent from pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					"not-"+esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "multiple NodeSets - warning only emitted for overlapping one",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"clean",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+				nodeSet(
+					"overlapping",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "multiple NodeSets - warning emitted for every overlapping NodeSet",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"cpu-overlap",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+				nodeSet(
+					"limits-memory-overlap",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualWarnings := shorthandResourcesOverrideWarning(tt.es)
+			require.Len(t, actualWarnings, tt.warnings)
+			for _, w := range actualWarnings {
+				assert.Contains(t, w.Detail, "overrides")
 			}
 		})
 	}

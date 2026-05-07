@@ -86,7 +86,7 @@ func checkAssociations(l *lsv1alpha1.Logstash) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), l.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
-	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
+	err3 := commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
 	return append(append(err1, err2...), err3...)
 }
 

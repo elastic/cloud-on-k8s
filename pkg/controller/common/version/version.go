@@ -23,7 +23,7 @@ var GlobalMinStackVersion Version
 
 // supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
 var (
-	DeprecatedVersions = MinMaxVersion{Min: From(7, 0, 0), Max: From(7, 16, 0)}
+	DeprecatedVersions = MinMaxVersion{Min: From(7, 0, 0), Max: From(7, 99, 99)}
 	// Some of the versions below might be EOL but we do not want to block users from using ECK with those versions yet.
 	// We will add a warning when users try to create a resource with an EOL version.
 	SupportedAPMServerVersions        = MinMaxVersion{Min: From(7, 0, 0), Max: From(9, 99, 99)}
@@ -39,8 +39,12 @@ var (
 	SupportedPackageRegistryVersions = MinMaxVersion{Min: From(7, 17, 8), Max: From(9, 99, 99)}
 	SupportedLogstashVersions        = MinMaxVersion{Min: From(8, 12, 0), Max: From(9, 99, 99)}
 
-	// AutoOpsAgent was introduced in 9.1.0 and is supported on all 9.x versions.
-	SupportedAutoOpsAgentVersions = MinMaxVersion{Min: MustParse("9.1.0"), Max: From(9, 99, 99)}
+	// AutoOpsAgent was introduced in 9.1.0, but 9.2.1 is now required due to
+	// performance optimizations and the lack of the healthcheckv2 extension in earlier versions.
+	// For Basic users, 9.2.4 is the minimum supported version as earlier versions require an
+	// Enterprise license to function correctly.
+	SupportedAutoOpsAgentBasicVersions      = MinMaxVersion{Min: MustParse("9.2.4"), Max: From(9, 99, 99)}
+	SupportedAutoOpsAgentEnterpriseVersions = MinMaxVersion{Min: MustParse("9.2.1"), Max: From(9, 99, 99)}
 
 	// minPreReleaseVersion is the lowest prerelease identifier as numeric prerelease takes precedence before
 	// alphanumeric ones and it can't have leading zeros.
@@ -88,8 +92,8 @@ func MustParse(v string) Version {
 }
 
 // From creates a new version from the given major, minor, patch numbers.
-func From(major, minor, patch int) Version {
-	return Version{Major: uint64(major), Minor: uint64(minor), Patch: uint64(patch)}
+func From(major, minor, patch uint64) Version {
+	return Version{Major: major, Minor: minor, Patch: patch}
 }
 
 // MinFor creates a new version for the given major, minor, patch numbers with lowest PreRelease version, ie.

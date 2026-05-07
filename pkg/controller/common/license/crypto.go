@@ -9,6 +9,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"errors"
 )
 
 const customPadding = 20
@@ -60,4 +61,36 @@ func pkcs5Pad(data []byte) []byte {
 	padLen := aes.BlockSize - len(data)%aes.BlockSize
 	padding := bytes.Repeat([]byte{byte(padLen)}, padLen)
 	return append(data, padding...)
+}
+
+// decryptWithAESECB is the inverse of encryptWithAESECB.
+func decryptWithAESECB(ciphertext []byte) ([]byte, error) {
+	block, err := aes.NewCipher(aesKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(ciphertext) == 0 || len(ciphertext)%block.BlockSize() != 0 {
+		return nil, errors.New("ciphertext length is not a multiple of the block size")
+	}
+	plaintext := make([]byte, len(ciphertext))
+	for i := 0; i < len(ciphertext); i += block.BlockSize() {
+		block.Decrypt(plaintext[i:], ciphertext[i:])
+	}
+	// Remove PKCS5 padding. We only validate the last-byte length indicator rather than
+	// checking that all padding bytes match, because callers (checkKeyFingerprint) treat
+	// any subsequent parse failure as non-fatal and fall through to RSA verification.
+	padLen := int(plaintext[len(plaintext)-1])
+	if padLen <= 0 || padLen > block.BlockSize() || padLen > len(plaintext) {
+		return nil, errors.New("invalid PKCS5 padding")
+	}
+	plaintext = plaintext[:len(plaintext)-padLen]
+	// remove custom padding: the last byte encodes the number of bytes to strip
+	if len(plaintext) == 0 {
+		return nil, errors.New("empty plaintext after PKCS5 unpadding")
+	}
+	customPadLen := int(plaintext[len(plaintext)-1])
+	if customPadLen <= 0 || customPadLen > len(plaintext) {
+		return nil, errors.New("invalid custom padding")
+	}
+	return plaintext[:len(plaintext)-customPadLen], nil
 }

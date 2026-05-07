@@ -5,8 +5,10 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/env"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
@@ -33,36 +36,50 @@ func init() {
 
 type K3dDriverFactory struct{}
 
-var _ DriverFactory = &K3dDriverFactory{}
+var _ DriverFactory = (*K3dDriverFactory)(nil)
 
 func (k K3dDriverFactory) Create(plan Plan) (Driver, error) {
-	dockerSocket, err := getDockerSocket()
-	if err != nil {
+	if err := checkDockerAvailable(); err != nil {
 		return nil, err
 	}
 	return &K3dDriver{
-		plan:         plan,
-		vaultClient:  vault.NewClientProvider(),
-		clientImage:  plan.K3d.ClientImage,
-		nodeImage:    plan.K3d.NodeImage,
-		dockerSocket: dockerSocket,
+		plan:        plan,
+		vaultClient: vault.NewClientProvider(),
+		clientImage: plan.K3d.ClientImage,
+		nodeImage:   plan.K3d.NodeImage,
 	}, nil
 }
 
 type K3dDriver struct {
-	plan         Plan
-	clientImage  string
-	vaultClient  vault.ClientProvider
-	nodeImage    string
-	dockerSocket string
+	plan        Plan
+	clientImage string
+	vaultClient vault.ClientProvider
+	nodeImage   string
 }
 
 func (k *K3dDriver) Execute() error {
 	switch k.plan.Operation {
 	case CreateAction:
-		return k.create()
+		if err := k.create(); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(k.plan, k.newBucketManager); err != nil {
+			return err
+		}
+		return nil
 	case DeleteAction:
-		return k.delete()
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(k.plan, k.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
+		if err := k.delete(); err != nil {
+			return errors.Join(err, bucketErr)
+		}
+		if bucketErr != nil {
+			return bucketErr
+		}
 	}
 	return nil
 }
@@ -131,7 +148,7 @@ func (k *K3dDriver) delete() error {
 }
 
 func (k *K3dDriver) cmd(args ...string) *exec.Command {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"ClusterName":    k.plan.ClusterName,
 		"SharedVolume":   env.SharedVolumeName(),
 		"K3dClientImage": k.clientImage,
@@ -139,12 +156,16 @@ func (k *K3dDriver) cmd(args ...string) *exec.Command {
 		"Args":           args,
 	}
 
-	// We need the docker socket so that k3d can bootstrap
+	// We need the docker socket so that k3d can bootstrap.
+	// The source path /var/run/docker.sock is evaluated by the Docker daemon (inside the Colima/Docker VM),
+	// so it always resolves to the actual daemon socket regardless of the macOS-visible socket path.
+	// DOCKER_HOST is explicitly set to override any host env var pointing at a macOS-side socket path.
 	// --userns=host to support Docker daemon host configured to run containers only in user namespaces
 	command := `docker run --rm \
 		--userns=host \
-		-v /var/run/docker.sock:` + k.dockerSocket + ` \
+		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e HOME=/home \
+		-e DOCKER_HOST=unix:///var/run/docker.sock \
 		-e PATH=/ \
 		{{.K3dClientImage}} \
 		{{Join .Args " "}} {{.ClusterName}}`
@@ -192,8 +213,22 @@ func (k *K3dDriver) createTmpStorageClass() (string, error) {
 	return tmpFile, err
 }
 
+func (k *K3dDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if k.plan.Bucket != nil && k.plan.Bucket.FromVault {
+		c, err := k.vaultClient()
+		if err != nil {
+			return nil, err
+		}
+		return newVaultBucketManager(K3dDriverID, c)
+	}
+
+	// Use GCSManager for dynamic bucket creation
+	return newLocalGCSBucketManager(k.plan)
+}
+
 func (k *K3dDriver) Cleanup(string, time.Duration) error {
 	return fmt.Errorf("unimplemented")
 }
 
-var _ Driver = &K3dDriver{}
+var _ Driver = (*K3dDriver)(nil)

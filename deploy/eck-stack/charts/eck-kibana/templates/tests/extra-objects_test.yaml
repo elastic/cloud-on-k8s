@@ -1,0 +1,61 @@
+suite: test extra objects
+templates:
+  - templates/extra-objects.yaml
+tests:
+  - it: should render no extra objects by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render extra objects when provided
+    set:
+      extraObjects:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: test-extra-cm
+          data:
+            key: value
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-extra-cm
+  - it: should render multiple extra objects when provided
+    set:
+      extraObjects:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: test-cm-1
+          data:
+            key: value1
+        - |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: test-secret-1
+          stringData:
+            key: value2
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentIndex: 0
+        isKind:
+          of: ConfigMap
+      - documentIndex: 0
+        equal:
+          path: metadata.name
+          value: test-cm-1
+      - documentIndex: 1
+        isKind:
+          of: Secret
+      - documentIndex: 1
+        equal:
+          path: metadata.name
+          value: test-secret-1
+

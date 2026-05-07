@@ -67,7 +67,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -91,10 +91,15 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		eprVars = append(eprVars, corev1.EnvVar{Name: TLSCertEnvName, Value: "/mnt/elastic-internal/http-certs/tls.crt"})
 	}
 
+	var runAsNonRoot *bool
+	if supportsRunAsNonRoot(v) {
+		runAsNonRoot = ptr.To(true)
+	}
+
 	builder = builder.
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, epr.Spec.Resources).
 		WithDockerImage(epr.Spec.Image, container.ImageRepository(container.PackageRegistryImage, v)).
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
@@ -105,11 +110,17 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged: ptr.To(false),
+			RunAsNonRoot: runAsNonRoot,
+			Privileged:   ptr.To(false),
+		})
+
+	if setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 		})
+	}
 
 	// Add configuration volume
 	configVolume := configSecretVolume(epr)
@@ -127,4 +138,30 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.P
 	}
 	vol := certificates.HTTPCertSecretVolume(eprv1alpha1.Namer, epr.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+}
+
+// supportsRunAsNonRoot returns true if the given version supports running as non-root.
+// See https://github.com/elastic/package-registry/pull/1503
+func supportsRunAsNonRoot(v version.Version) bool {
+	// Strip pre-release suffix (e.g., -SNAPSHOT) for comparison since
+	// SNAPSHOT builds of a version include the feature if the release does.
+	v = version.WithoutPre(v)
+
+	// 9.3.0+ (including 9.4+, 10+, etc.)
+	if v.GTE(version.From(9, 3, 0)) {
+		return true
+	}
+	// 9.2.4+ (backport to 9.2.x line)
+	if v.GTE(version.From(9, 2, 4)) && v.LT(version.From(9, 3, 0)) {
+		return true
+	}
+	// 9.1.10+ (backport to 9.1.x line)
+	if v.GTE(version.From(9, 1, 10)) && v.LT(version.From(9, 2, 0)) {
+		return true
+	}
+	// 8.19.10+ (backport to 8.19.x and 8.20+ lines)
+	if v.GTE(version.From(8, 19, 10)) && v.LT(version.From(9, 0, 0)) {
+		return true
+	}
+	return false
 }

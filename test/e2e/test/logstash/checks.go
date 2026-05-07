@@ -43,7 +43,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			// If TLS is not enabled, the API keystore password is not set.
 			lsConfigKeys = []string{"logstash.yml"}
 		}
-		expected := []test.ExpectedSecret{
+		expected := []test.ExpectedSecret{ //nolint:prealloc
 			{
 				Name: logstashName + "-ls-config",
 				Keys: lsConfigKeys,
@@ -68,7 +68,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		lsNamespace := nn.Namespace
 
 		for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
-			esNamespace := ref.WithDefaultNamespace(lsNamespace).Namespace
+			esNamespace := ref.WithDefaultNamespace(lsNamespace).GetNamespace()
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: fmt.Sprintf("%s-logstash-es-%s-%s-ca", lsName, esNamespace, ref.Name),
@@ -219,7 +219,7 @@ func (b Builder) CheckMetricsRequest(k *test.K8sClient, req Request, want Want) 
 				return err
 			}
 
-			var response map[string]interface{}
+			var response map[string]any
 			err = json.Unmarshal(bytes, &response)
 			if err != nil {
 				return err

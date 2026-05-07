@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -78,6 +79,16 @@ exporters:
     headers:
       Authorization: "AutoOpsToken ${env:AUTOOPS_TOKEN}"
     endpoint: ${env:AUTOOPS_OTEL_URL}
+    sending_queue:
+      batch:
+        flush_timeout: 11s
+        min_size: 1048576
+        max_size: 4194304
+        sizer: bytes
+      block_on_overflow: true
+      enabled: true
+      queue_size: 52428800
+      sizer: bytes
 service:
   extensions: [healthcheckv2]
   pipelines:
@@ -154,6 +165,7 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		Labels:      maps.Merge(policy.GetLabels(), labels),
 		Annotations: policy.GetAnnotations(),
 	})
+	meta.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	// Build CA certificate path if SSL is enabled
 	caCertPath := ""

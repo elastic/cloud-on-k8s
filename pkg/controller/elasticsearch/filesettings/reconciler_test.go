@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -26,9 +27,13 @@ const (
 )
 
 var (
-	sampleData        = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
-	sampleDataUpdated = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
-	sampleLabels      = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleData           = map[string][]byte{"key1": []byte("data1"), "key2": []byte("data2")}
+	sampleDataUpdated    = map[string][]byte{"key1updated": []byte("data1updated"), "key2": []byte("data2")}
+	sampleLabels         = map[string]string{"label1": "value1", "label2": "value2"}
+	sampleLabelsExpected = map[string]string{
+		"label1": "value1", "label2": "value2",
+		"eck.k8s.elastic.co/watched": "true",
+	}
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
 
@@ -65,25 +70,25 @@ func TestReconcileSecret(t *testing.T) {
 			name:     "actual object does not exist: create the expected one",
 			c:        k8s.NewFakeClient(),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "actual matches expected: do nothing",
-			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
+			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "data should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations))),
 			expected: createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleDataUpdated, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name:     "label and annotations should be updated",
 			c:        k8s.NewFakeClient(withOwnerRef(t, createSecret("s", sampleData, nil, nil))),
 			expected: createSecret("s", sampleData, sampleLabels, sampleAnnotations),
-			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabels, sampleAnnotations)),
+			want:     withOwnerRef(t, createSecret("s", sampleData, sampleLabelsExpected, sampleAnnotations)),
 		},
 		{
 			name: "preserve existing labels and annotations",
@@ -95,6 +100,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					"eck.k8s.elastic.co/watched": "true", // watched resources
 				}, map[string]string{
 					"existing":    "existing",                        // keep existing
 					"annotation1": "value1", "annotation2": "value2", // add expected
@@ -118,6 +124,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					"eck.k8s.elastic.co/watched": "true", // watched resources
 				}, map[string]string{
 					"existing":    "existing",                        // keep existing
 					"annotation1": "value1", "annotation2": "value2", // add expected
@@ -140,6 +147,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					"eck.k8s.elastic.co/watched": "true", // watched resources
 				}, sampleAnnotations,
 			)),
 		},
@@ -161,6 +169,7 @@ func TestReconcileSecret(t *testing.T) {
 				map[string]string{
 					"existing": "existing",                   // keep existing
 					"label1":   "value1", "label2": "value2", // add expected
+					"eck.k8s.elastic.co/watched": "true", // watched resources
 				}, map[string]string{
 					"policy.k8s.elastic.co/secure-settings-secrets": `[{"secretName":"secret-2"}]`,
 					"policy.k8s.elastic.co/settings-hash":           "hash-2",
@@ -182,7 +191,8 @@ func TestReconcileSecret(t *testing.T) {
 			}),
 			want: withOwnerRef(t, createSecret("s", sampleData,
 				map[string]string{
-					"existing": "existing", // keep existing
+					"existing":                   "existing", // keep existing
+					"eck.k8s.elastic.co/watched": "true",     // watched resources
 				}, map[string]string{
 					"policy.k8s.elastic.co/settings-hash": "hash-1",
 				}),
@@ -210,6 +220,7 @@ func TestReconcileSecret(t *testing.T) {
 					"eck.k8s.elastic.co/owner-namespace": "test",
 					"eck.k8s.elastic.co/owner-name":      "test",
 					"eck.k8s.elastic.co/owner-kind":      "StackConfigPolicy",
+					"eck.k8s.elastic.co/watched":         "true", // watched resources
 				}, sampleAnnotations,
 			)),
 		},
@@ -217,7 +228,7 @@ func TestReconcileSecret(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ReconcileSecret(context.Background(), tt.c, *tt.expected, owner)
+			err := reconcileSecret(context.Background(), tt.c, *tt.expected, owner, fileSettingsManagedAnnotations)
 			require.NoError(t, err)
 
 			var secret corev1.Secret
@@ -235,15 +246,20 @@ func TestReconcileSecret(t *testing.T) {
 	}
 }
 
-func Test_ReconcileEmptyFileSettingsSecret(t *testing.T) {
+func Test_FileSettingsSecret_CreateAndIdempotent(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
-		Namespace: "esNs",
-		Name:      "esName",
+		Namespace: esNsn.Namespace,
+		Name:      esNsn.Name,
 	}}
 
 	fakeClient := k8s.NewFakeClient()
 
-	err := ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, true)
+	// First save: creates the Secret
+	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	assert.NoError(t, err)
+	assert.False(t, fs.Exists())
+	err = fs.Save(context.Background(), fakeClient, &es)
 	assert.NoError(t, err)
 
 	var secret corev1.Secret
@@ -257,23 +273,16 @@ func Test_ReconcileEmptyFileSettingsSecret(t *testing.T) {
 	assert.Empty(t, settings.State.SnapshotRepositories.Data)
 	assert.Empty(t, settings.State.SLM.Data)
 
-	// reconcile again with create only: secret is not reconciled
-	err = ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, true)
+	// Load again: exists, save with no changes should not update
+	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	assert.NoError(t, err)
+	assert.True(t, fs2.Exists())
+	err = fs2.Save(context.Background(), fakeClient, &es)
 	assert.NoError(t, err)
 
 	var secret2 corev1.Secret
 	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret2)
 	assert.NoError(t, err)
-	// check that the Secret was not updated
-	assert.Equal(t, "1", secret2.ResourceVersion)
-
-	// reconcile again without create only: secret is reconciled but its content hasn't changed
-	err = ReconcileEmptyFileSettingsSecret(context.Background(), fakeClient, es, false)
-	assert.NoError(t, err)
-
-	var secret3 corev1.Secret
-	err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "esNs", Name: "esName-es-file-settings"}, &secret3)
-	assert.NoError(t, err)
-	// check that the Secret was not updated
-	assert.NotEqual(t, "1", secret3.ResourceVersion)
+	// check that the Secret was not updated (same resource version)
+	assert.Equal(t, secret.ResourceVersion, secret2.ResourceVersion)
 }

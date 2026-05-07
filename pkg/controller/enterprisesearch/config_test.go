@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -102,7 +102,7 @@ func Test_parseConfigRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
-			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
+			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -172,7 +172,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				t.Helper()
-				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
+				expectedSettings := settings.MustCanonicalConfig(map[string]any{
 					SecretSessionSetting: "alreadysetsessionkey",
 					// we don't want "user-provided-encryption-key" here
 					EncryptionKeysSetting: []string{"operator-managed-encryption-key"},
@@ -361,6 +361,109 @@ func TestReconcileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "with Elasticsearch association and client cert",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       true,
+				CASecretName:         "sample-ent-es-ca",
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// same as "with Elasticsearch association" plus client cert entries
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/es-client-certs/tls.key", // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name: "with Elasticsearch association and client cert, no CA",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       false,
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// client cert entries without CA
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"key: /mnt/elastic-internal/es-client-certs/tls.key",         // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
 			name: "with Elasticsearch association, support new auth config starting 8x",
 			ent: entWithAssociation("sample", "8.0.0", commonv1.AssociationConf{
 				AuthSecretName: "sample-ent-user",
@@ -419,7 +522,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
@@ -488,7 +591,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.10.0",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"ent_search.auth.native1.source.": "elasticsearch-native", // customized auth
 					}},
 				},
@@ -537,7 +640,7 @@ func TestReconcileConfig(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
 						"foo":                     "bar",                    // new setting
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
@@ -572,7 +675,7 @@ func TestReconcileConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -584,6 +687,7 @@ func TestReconcileConfig(t *testing.T) {
 			assert.Equal(t, map[string]string{
 				"common.k8s.elastic.co/type":           "enterprise-search",
 				"eck.k8s.elastic.co/credentials":       "true",
+				"eck.k8s.elastic.co/watched":           "true",
 				"enterprisesearch.k8s.elastic.co/name": "sample",
 			}, got.Labels)
 
@@ -638,8 +742,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1",
 								"user-provided-key-2",
@@ -666,8 +770,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1",
 								"user-provided-key-2",
@@ -710,8 +814,8 @@ secret_session_key: alreadysetsessionkey
 				},
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.1",
-					Config: &commonv1.Config{Data: map[string]interface{}{
-						"secret_management": map[string]interface{}{
+					Config: &commonv1.Config{Data: map[string]any{
+						"secret_management": map[string]any{
 							"encryption_keys": []string{
 								"user-provided-key-1", // already exists in the secret
 								"user-provided-key-2", // already exists in the secret
@@ -754,7 +858,7 @@ secret_session_key: alreadysetsessionkey
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -888,7 +992,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 

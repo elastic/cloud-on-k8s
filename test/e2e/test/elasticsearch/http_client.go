@@ -10,6 +10,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -49,8 +50,14 @@ func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Cl
 		// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
 		// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
 		switch err.(type) { //nolint:errorlint
-		case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
-			// explicit apiserver error, consider as a failure for most checks
+		case *k8serrors.StatusError:
+			// Transient API server errors (500, 503, 504, 429) are infrastructure-level
+			// failures, treat them the same as network errors.
+			if k8serrors.IsInternalError(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsServiceUnavailable(err) || k8serrors.IsTooManyRequests(err) {
+				return nil, &potentialNetworkError{err: err}
+			}
+			return nil, err
+		case *k8serrors.UnexpectedObjectError:
 			return nil, err
 		default:
 			// likely a network error, can be acceptable as a transient state depending on the check
@@ -62,7 +69,7 @@ func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Cl
 
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
 func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth) (client.Client, error) {
-	caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
+	caCerts, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +81,21 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
+
+	// Try to get operator client certificate if it exists
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
 		services.NewElasticsearchURLProvider(es, k.Client),
 		user,
 		v,
-		caCert,
+		caCerts,
+		clientCert,
 		client.Timeout(context.Background(), es),
 		true,
 	)

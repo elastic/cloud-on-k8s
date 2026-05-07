@@ -59,7 +59,7 @@ func (e ESLicense) Version() int {
 	return 5 // or the new enterprise capable license version
 }
 
-var _ license.Signable = &ESLicense{}
+var _ license.Signable = (*ESLicense)(nil)
 
 func GenerateTestLicense(signer *license.Signer, typ client.ElasticsearchLicenseType) (client.License, error) {
 	uuid, err := uuid.NewUUID()

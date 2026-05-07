@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -21,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
-func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCert []*x509.Certificate) error {
+func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCerts []*x509.Certificate) error {
 	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {
 		return err
@@ -41,6 +42,12 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 		return err
 	}
 
+	// Try to get operator client certificate if it exists
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return err
+	}
+
 	for _, p := range reconcile.AvailableElasticsearchNodes(pods) {
 		url := services.ElasticsearchPodURL(p)
 		esClient := client.NewElasticsearchClient(
@@ -49,7 +56,8 @@ func CheckHTTPConnectivityWithCA(es esv1.Elasticsearch, k *test.K8sClient, caCer
 			client.NewStaticURLProvider(url),
 			user,
 			v,
-			caCert,
+			caCerts,
+			clientCert,
 			client.Timeout(context.Background(), es),
 			true,
 		)

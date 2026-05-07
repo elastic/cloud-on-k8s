@@ -20,11 +20,11 @@ const (
 
 // SetTemplateHashLabel adds a label containing the hash of the given template into the
 // given labels. This label can then be used for template comparisons.
-func SetTemplateHashLabel(labels map[string]string, template interface{}) map[string]string {
+func SetTemplateHashLabel(labels map[string]string, template any) map[string]string {
 	return setHashLabel(TemplateHashLabelName, labels, template)
 }
 
-func setHashLabel(labelName string, labels map[string]string, template interface{}) map[string]string {
+func setHashLabel(labelName string, labels map[string]string, template any) map[string]string {
 	if labels == nil {
 		labels = map[string]string{}
 	}
@@ -41,7 +41,7 @@ func GetTemplateHashLabel(labels map[string]string) string {
 // and the spew library to print the object (see WriteHashObject).
 // This is inspired by controller revisions in StatefulSets:
 // https://github.com/kubernetes/kubernetes/blob/8de1569ddae62e8fab559fe6bd210a5d6100a277/pkg/controller/history/controller_history.go#L89-L101
-func HashObject(object interface{}) string { //nolint:revive
+func HashObject(object any) string { //nolint:revive
 	objHash := fnv.New32a()
 	WriteHashObject(objHash, object)
 	return fmt.Sprint(objHash.Sum32())
@@ -52,7 +52,7 @@ func HashObject(object interface{}) string { //nolint:revive
 // ensuring the hash does not change when a pointer changes.
 // The hash can be used for object comparisons.
 // Copy of https://github.com/kubernetes/kubernetes/blob/ea0764452222146c47ec826977f49d7001b0ea8c/pkg/util/hash/hash.go#L28
-func WriteHashObject(hasher hash.Hash, objectToWrite interface{}) {
+func WriteHashObject(hasher hash.Hash, objectToWrite any) {
 	printer := spew.ConfigState{
 		Indent:         " ",
 		SortKeys:       true,

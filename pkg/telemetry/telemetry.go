@@ -2,6 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+// When changes/additions are made to the following code, ensure that the index field
+// mappings are also updated to allow these new fields to be indexed.
+// (see internal telemetry documentation)
 package telemetry
 
 import (
@@ -51,11 +54,11 @@ type ECKTelemetry struct {
 
 type ECK struct {
 	about.OperatorInfo
-	Stats   map[string]interface{} `json:"stats"`
-	License map[string]string      `json:"license"`
+	Stats   map[string]any    `json:"stats"`
+	License map[string]string `json:"license"`
 }
 
-type getStatsFn func(k8s.Client, []string) (string, interface{}, error)
+type getStatsFn func(k8s.Client, []string) (string, any, error)
 
 func NewReporter(
 	info about.OperatorInfo,
@@ -97,7 +100,7 @@ func (r *Reporter) Start(ctx context.Context) {
 	}
 }
 
-func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]interface{}, license map[string]string) ([]byte, error) {
+func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[string]any, license map[string]string) ([]byte, error) {
 	span, _ := apm.StartSpan(ctx, "marshal_telemetry", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -110,11 +113,11 @@ func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[st
 	})
 }
 
-func (r *Reporter) getResourceStats(ctx context.Context) (map[string]interface{}, error) {
+func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
 
-	stats := map[string]interface{}{}
+	stats := map[string]any{}
 	for _, f := range []getStatsFn{
 		esStats,
 		kbStats,
@@ -226,7 +229,7 @@ type downwardNodeLabelsStats struct {
 	DistinctNodeLabelsCount int32 `json:"distinct_node_labels_count"`
 }
 
-func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := struct {
 		ResourceCount               int32                    `json:"resource_count"`
 		HelmManagedResourceCount    int32                    `json:"helm_resource_count"`
@@ -247,7 +250,6 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		}
 
 		for _, es := range esList.Items {
-			es := es
 			stats.ResourceCount++
 			stats.PodCount += es.Status.AvailableNodes
 
@@ -276,7 +278,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 	if resourcesWithDownwardLabels > 0 {
 		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
 			ResourceCount:           resourcesWithDownwardLabels,
-			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115: distinct label count cannot realistically overflow int32
 		}
 	}
 
@@ -285,7 +287,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 		if err := k8sClient.List(context.Background(), &esaList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
-		stats.AutoscaledResourceCount += int32(len(esaList.Items))
+		stats.AutoscaledResourceCount += int32(len(esaList.Items)) //nolint:gosec // G115: resource count cannot realistically overflow int32
 	}
 
 	return "elasticsearches", stats, nil
@@ -307,7 +309,7 @@ func isManagedByHelm(labels map[string]string) bool {
 	return false
 }
 
-func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{resourceCount: 0, podCount: 0, helmManagedResourceCount: 0}
 
 	var kbList kbv1.KibanaList
@@ -328,11 +330,12 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfac
 	return "kibanas", stats, nil
 }
 
-func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
@@ -351,13 +354,14 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 	return "apms", stats, nil
 }
 
-func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	typeToName := func(typ string) string { return fmt.Sprintf("%s_count", typ) }
 
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 	for typ := range beatv1beta1.KnownTypes {
 		stats[typeToName(typ)] = 0
 	}
@@ -381,11 +385,12 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, interf
 	return "beats", stats, nil
 }
 
-func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var entList entv1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
@@ -404,7 +409,7 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 	return "enterprisesearches", stats, nil
 }
 
-func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	multipleRefsKey := "multiple_refs"
 	fleetModeKey := "fleet_mode"
 	fleetServerKey := "fleet_server"
@@ -412,7 +417,8 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 		resourceCount:            0,
 		podCount:                 0,
 		multipleRefsKey:          0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var agentList agentv1alpha1.AgentList
 	for _, ns := range managedNamespaces {
@@ -440,7 +446,7 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, inter
 	return "agents", stats, nil
 }
 
-func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	const (
 		pipelineCount               = "pipeline_count"
 		pipelineRefCount            = "pipeline_ref_count"
@@ -456,7 +462,8 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 		serviceCount:                0,
 		pipelineCount:               0,
 		pipelineRefCount:            0,
-		helmManagedResourceCount:    0}
+		helmManagedResourceCount:    0,
+	}
 
 	var logstashList logstashv1alpha1.LogstashList
 	for _, ns := range managedNamespaces {
@@ -465,11 +472,10 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 		}
 
 		for _, ls := range logstashList.Items {
-			ls := ls
 			stats[resourceCount]++
-			stats[serviceCount] += int32(len(ls.Spec.Services))
+			stats[serviceCount] += int32(len(ls.Spec.Services)) //nolint:gosec // G115: service count cannot realistically overflow int32
 			stats[podCount] += ls.Status.AvailableNodes
-			stats[pipelineCount] += int32(len(ls.Spec.Pipelines))
+			stats[pipelineCount] += int32(len(ls.Spec.Pipelines)) //nolint:gosec // G115: pipeline count cannot realistically overflow int32
 			if ls.Spec.PipelinesRef != nil {
 				stats[pipelineRefCount]++
 			}
@@ -487,7 +493,7 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, in
 	return "logstashes", stats, nil
 }
 
-func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := map[string]int32{resourceCount: 0, podCount: 0}
 
 	var mapsList mapsv1alpha1.ElasticMapsServerList
@@ -520,7 +526,7 @@ type stackConfigPolicyStats struct {
 	} `json:"settings"`
 }
 
-func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := stackConfigPolicyStats{}
 	for _, ns := range managedNamespaces {
 		var scpList policyv1alpha1.StackConfigPolicyList
@@ -570,7 +576,7 @@ type autoopsAgentPolicyStats struct {
 	HelmManagedResourceCount int32 `json:"helm_resource_count"`
 }
 
-func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, interface{}, error) {
+func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
 	stats := autoopsAgentPolicyStats{}
 	for _, ns := range managedNamespaces {
 		var autoopsAgentPolicyList autoopsv1alpha1.AutoOpsAgentPolicyList
@@ -580,7 +586,7 @@ func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, interfa
 
 		for _, autoopsAgentPolicy := range autoopsAgentPolicyList.Items {
 			stats.ResourceCount++
-			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources)
+			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources) //nolint:gosec // G115: resource count cannot realistically overflow int32
 			if isManagedByHelm(autoopsAgentPolicy.Labels) {
 				stats.HelmManagedResourceCount++
 			}

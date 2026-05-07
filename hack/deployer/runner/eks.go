@@ -6,14 +6,17 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -61,13 +64,17 @@ func init() {
 	drivers[EKSDriverID] = &EKSDriverFactory{}
 }
 
-type EKSDriverFactory struct {
-}
+type EKSDriverFactory struct{}
 
 func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
+	c, err := vault.NewClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &EKSDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			"ClusterName":       plan.ClusterName,
 			"Region":            plan.Eks.Region,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -77,15 +84,17 @@ func (e EKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"WorkDir":           plan.Eks.WorkDir,
 			"Tags":              elasticTags,
 		},
+		vaultClient: c,
 	}, nil
 }
 
-var _ DriverFactory = &EKSDriverFactory{}
+var _ DriverFactory = (*EKSDriverFactory)(nil)
 
 type EKSDriver struct {
-	plan    Plan
-	cleanUp []func()
-	ctx     map[string]interface{}
+	plan        Plan
+	cleanUp     []func()
+	ctx         map[string]any
+	vaultClient vault.Client
 }
 
 func (e *EKSDriver) newCmd(cmd string) *exec.Command {
@@ -104,12 +113,22 @@ func (e *EKSDriver) Execute() error {
 	}
 	switch e.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(e.plan, e.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if exists {
 			if err = e.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
+		} else {
+			log.Printf("Not deleting cluster as it does not exist")
 		}
-		log.Printf("Not deleting cluster as it does not exist")
+		if bucketErr != nil {
+			return bucketErr
+		}
 	case CreateAction:
 		//nolint:nestif
 		if !exists {
@@ -123,23 +142,30 @@ func (e *EKSDriver) Execute() error {
 			}
 			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml") //nolint:forcetypeassert
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
+			if err := os.WriteFile(createCfgFile, createCfg.Bytes(), 0o600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 1 -f {{.CreateCfgFile}}`).Run(); err != nil {
-				return err
-			}
-			if err := e.GetCredentials(); err != nil {
 				return err
 			}
 		} else {
 			log.Printf("Not creating cluster as it already exists")
 		}
 
+		// Always get credentials so kubectl targets the right cluster.
+		if err := e.GetCredentials(); err != nil {
+			return err
+		}
+
 		if err := setupDisks(e.plan); err != nil {
 			return err
 		}
-		return createStorageClass()
+		if err := createStorageClass(); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -231,7 +257,7 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	path := filepath.Join(dir, ".aws")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.Mkdir(path, 0600); err != nil {
+		if err = os.Mkdir(path, 0o600); err != nil {
 			return err
 		}
 	}
@@ -242,7 +268,39 @@ func (e *EKSDriver) writeAWSCredentials() error {
 	}
 	log.Printf("Writing aws credentials")
 	fileContents := fmt.Sprintf(awsAuthTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
-	return os.WriteFile(file, []byte(fileContents), 0600)
+	return os.WriteFile(file, []byte(fileContents), 0o600)
+}
+
+func (e *EKSDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if e.plan.Bucket.FromVault {
+		// Determine if this is EKS ARM based on plan ID
+		providerID := EKSDriverID
+		if strings.Contains(e.plan.Id, "arm") {
+			providerID = "eks-arm"
+		}
+		return newVaultBucketManager(providerID, e.vaultClient)
+	}
+
+	// Use S3Manager for dynamic bucket creation
+	cfg, err := newBucketConfig(e.plan, e.ctx, e.plan.Eks.Region)
+	if err != nil {
+		return nil, err
+	}
+	if e.plan.Bucket.S3 == nil {
+		return nil, fmt.Errorf("bucket.s3 configuration is required for EKS")
+	}
+	s3 := bucket.S3Config{
+		IAMUserPath:      e.plan.Bucket.S3.IamUserPath,
+		ManagedPolicyARN: e.plan.Bucket.S3.ManagedPolicyARN,
+	}
+	if err := bucket.ValidateShellArg(s3.IAMUserPath, "IAM user path"); err != nil {
+		return nil, err
+	}
+	if err := bucket.ValidateShellArg(s3.ManagedPolicyARN, "managed policy ARN"); err != nil {
+		return nil, err
+	}
+	return bucket.NewS3Manager(cfg, s3), nil
 }
 
 func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
@@ -263,12 +321,16 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	describeClusterCmd := `aws eks describe-cluster --name "{{.ClusterName}}" --region "{{.Region}}" | jq -r --arg d "{{.Date}}" 'select(.cluster.createdAt | . <= $d) | .cluster.name'`
 
 	for _, cluster := range allClusters {
+		e.plan.ClusterName = cluster
 		e.ctx["ClusterName"] = cluster
 		clustersToDelete, err := exec.NewCommand(describeClusterCmd).AsTemplate(e.ctx).WithoutStreaming().Output()
 		if err != nil {
 			return fmt.Errorf("while describing cluster %s: %w", cluster, err)
 		}
 		if clustersToDelete != "" {
+			if err := deleteBucketIfConfigured(e.plan, e.newBucketManager); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+			}
 			if err = e.delete(); err != nil {
 				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
 				continue
@@ -286,4 +348,4 @@ func (e *EKSDriver) delete() error {
 	return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait --disable-nodegroup-eviction").Run()
 }
 
-var _ Driver = &EKSDriver{}
+var _ Driver = (*EKSDriver)(nil)

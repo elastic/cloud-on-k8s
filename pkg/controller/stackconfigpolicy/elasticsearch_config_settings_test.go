@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -118,6 +119,34 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNewElasticsearchConfigSecret_NilDataWhenEmpty verifies that newElasticsearchConfigSecret
+// returns a secret with nil Data when there are no SecretMounts and no Config.
+// This is the root cause of https://github.com/elastic/cloud-on-k8s/issues/9175:
+// when Data was initialized as an empty map (make(map[string][]byte)), the Kubernetes API server
+// would normalize it to nil on storage. On the next reconciliation, reflect.DeepEqual(map[string][]byte{}, nil)
+// returns false, causing NeedsUpdate to return true and triggering an unnecessary Update API call every cycle.
+func TestNewElasticsearchConfigSecret_NilDataWhenEmpty(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es"},
+		Spec:       esv1.ElasticsearchSpec{Version: "9.3.1"},
+	}
+
+	// Policy with only clusterSettings — no Config, no SecretMounts
+	esConfig := policyv1alpha1.ElasticsearchConfigPolicySpec{
+		ClusterSettings: &commonv1.Config{Data: map[string]any{
+			"indices.recovery.max_bytes_per_sec": "40mb",
+		}},
+	}
+
+	secret, err := newElasticsearchConfigSecret(esConfig, es)
+	require.NoError(t, err)
+
+	// Data must be nil (not empty map) so that reflect.DeepEqual matches what the API server returns
+	require.Nil(t, secret.Data,
+		"Data should be nil when there are no SecretMounts and no Config; "+
+			"an empty map causes spurious updates because the API server normalizes it to nil")
 }
 
 func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, orphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {

@@ -104,7 +104,7 @@ func (c *ApmClient) request(
 	pathWithQuery string,
 	headers http.Header,
 	requestObj,
-	responseObj interface{},
+	responseObj any,
 ) error {
 	var body io.Reader = http.NoBody
 
@@ -153,7 +153,7 @@ type ApmServerInfo6 struct { //nolint:revive
 
 // ServerInfo requests the Server Information API
 func (c *ApmClient) ServerInfo(ctx context.Context) (*ApmServerInfo, error) {
-	requester := func(responseObj interface{}) error {
+	requester := func(responseObj any) error {
 		return c.request(ctx, http.MethodGet, "", http.Header{
 			"Accept": []string{"application/json"},
 		}, nil, &responseObj)

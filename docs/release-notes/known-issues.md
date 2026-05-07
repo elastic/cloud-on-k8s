@@ -12,12 +12,115 @@ Known issues are significant defects or limitations that may impact your impleme
 % Applicable versions for the known issue and the version for when the known issue was fixed % On [Month Day, Year], a known issue was discovered that [description of known issue]. 
 % For more information, check [Issue #](Issue link).
 
-% Workaround 
+% Workaround
 % Workaround description.
 
 :::
 
+## 3.4.0 [elastic-cloud-kubernetes-340-known-issues]
+
+There are no known issues in ECK 3.4.0
+
+## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
+
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
+
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
+
+For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
+
+**Workaround**
+
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
+
+:::
+
+## 3.3.1 [elastic-cloud-kubernetes-331-known-issues]
+
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
+
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
+
+For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
+
+**Workaround**
+
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
+
+:::
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
+
+:::{dropdown} AutoOps - Enterprise license expiring may cause policy phase to be set to `Invalid` prior to 9.2.4
+
+In clusters running AutoOps Agent versions earlier than 9.2.4, an Enterprise license expiring may cause the policy phase to be set to `Invalid`. In this state, the AutoOps Agent stops sending data to AutoOps because the policy no longer passes validation on the controller.
+
+**Workaround**
+
+Renew or restore the Enterprise license so that the AutoOps policy can be validated again. To prevent this issue in the future, upgrade the AutoOps Agent to version 9.2.4 or later.
+
+:::
+
+## 3.3.0 [elastic-cloud-kubernetes-330-known-issues]
+
+:::{dropdown} Certificate mismatch causing {{es}} and {{product.kibana}} connection failure during ECK operator upgrade
+
+During or after upgrading the ECK operator to 3.3.0–3.3.2, HTTP and transport certificate issues can arise due to mismatched Authority Key Identifier (AKI) and Subject Key Identifier (SKI) values. This results in SSL handshake failures, preventing ES nodes from joining the cluster and Kibana, Fleet, and other HTTP clients from connecting to it.
+
+For more information, check [PR #9197](https://github.com/elastic/cloud-on-k8s/pull/9197).
+
+**Workaround**
+
+Delete the transport certificate secret (`<cluster>-es-<nodeset>-es-transport-certs`) and the HTTP certificate secret (`<cluster>-es-http-certs-internal`) to force ECK to regenerate all certificates. For more details, refer to the [KB article](https://ela.st/eck-operator-upgrade-cert-issue). Alternatively, upgrade to ECK 3.4.0 or later once available.
+
+:::
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
+
+:::{dropdown} Stack Config Policies - File settings may not reload correctly on {{es}} versions prior to 8.11.0
+
+{{es}} versions prior to 8.11.0 contain a bug where updates to file-based cluster settings may not be reloaded correctly when the file changes. This is caused by an {{es}} issue where new keys in file-settings are incorrectly deleted during file monitoring and reload operations.
+
+When using Stack Config Policies with affected {{es}} versions, updated settings may not appear correctly when querying the `_cluster/settings` endpoint, even though the Stack Config Policy has been updated. Making an additional manual update to the Stack Config Policy may trigger the settings to reload correctly.
+
+This issue was fixed in {{es}} 8.11.0 via [elasticsearch#99212](https://github.com/elastic/elasticsearch/pull/99212).
+
+**Workaround**
+
+Use {{es}} version 8.11.0 or later when deploying Stack Config Policies.
+
+:::
+
 ## 3.2.0 [elastic-cloud-kubernetes-320-known-issues]
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 :::{dropdown} Elastic Agent fails with "cipher: message authentication failed" on ECK 3.2.0 re-upgrade
 
@@ -61,9 +164,29 @@ spec:
 
 ## 3.1.0 [elastic-cloud-kubernetes-310-known-issues]
 
-There are no known issues in ECK 3.1
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 ## 3.0.0 [elastic-cloud-kubernetes-300-known-issues]
+
+:::{dropdown} FIPS operator images use standard Go cryptography instead of BoringCrypto
+Due to a build configuration issue, ECK operator FIPS images published between versions 2.9.0 and 3.3.1 use the standard Go cryptography library instead of BoringCrypto. Standard Go does not use FIPS 140-2/3 validated cryptographic libraries. Upgrade to version 3.3.2 or later to get images built using FIPS 140-2/3 validated cryptographic libraries.
+
+For more information, check [PR #9263](https://github.com/elastic/cloud-on-k8s/pull/9263).
+
+**Workaround**
+
+Upgrade to ECK 3.3.2 or later.
+
+:::
 
 :::{dropdown} Elastic Maps Server does not start on certain container runtimes
 On May 19th 2025, it was discovered that the Elastic Maps Server container image in versions 7.17.28, 8.18.0, 8.18.1, 9.0.0 and 9.0.1 does not start on OpenShift Container Platform with the following error: `container create failed: open executable: Operation not permitted`.

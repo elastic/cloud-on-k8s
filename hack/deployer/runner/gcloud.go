@@ -24,7 +24,7 @@ const (
 //nolint:unparam
 func authToGCP(
 	client vault.Client, vaultPath string, serviceAccountVaultFieldName string,
-	asServiceAccount bool, configureDocker bool, gCloudProject interface{},
+	asServiceAccount bool, configureDocker bool, gCloudProject any,
 ) error {
 	//nolint:nestif
 	if asServiceAccount {

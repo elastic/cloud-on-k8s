@@ -7,7 +7,6 @@ package autoops
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +21,9 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -33,21 +34,9 @@ func (r *AgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv
 
 	results := reconciler.NewResult(ctx)
 
-	// Enterprise license check
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !enabled {
-		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg)
-		state.UpdateInvalidPhaseWithEvent(msg)
-		return results.WithRequeue(5 * time.Minute)
-	}
-
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionValidation, err.Error())
 		return results.WithError(err)
 	}
 
@@ -74,7 +63,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
 		log.Error(err, "while validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionConfigSecretValidation, err.Error())
+		return results.WithError(err)
+	}
+
+	isNamespaceAllowed, err := k8s.NamespaceFilterFunc(ctx, r.Client, policy.Spec.NamespaceSelector)
+	if err != nil {
+		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
 		return results.WithError(err)
 	}
 
@@ -99,18 +94,41 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	// This ensures resources are cleaned up when access is revoked.
 	accessibleClusters := make([]esv1.Elasticsearch, 0, len(esList.Items))
 	for _, es := range esList.Items {
+		// filter by namespace (if set)
+		if !isNamespaceAllowed(es.Namespace) {
+			log.V(1).Info("Skipping ES cluster due to namespace filtering", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
+		}
+
+		// filter by RBAC (if set)
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			state.ResourceError(es, "Failed trying to perform RBAC check", err)
 			results.WithError(err)
 			continue
 		}
-		if accessAllowed {
-			accessibleClusters = append(accessibleClusters, es)
-		} else {
+		if !accessAllowed {
+			state.ResourceSkippedDueToRBAC(es)
 			log.V(1).Info("Skipping ES cluster due to access denied", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
 		}
+
+		// check for deprecated version clusters.
+		esVersion, err := version.Parse(es.Spec.Version)
+		if err != nil {
+			log.Error(err, "while parsing ES version")
+			state.ResourceError(es, "Failed trying to parse cluster version", err)
+			results.WithError(err)
+			continue
+		}
+		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
+			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
+			state.ResourceSkippedDueToVersion(es)
+			continue
+		}
+
+		accessibleClusters = append(accessibleClusters, es)
 	}
 
 	// Clean up resources that no longer match the Policy's selector OR where access was revoked
@@ -120,32 +138,26 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		results.WithError(err)
 	}
 
+	state.UpdateMonitoredResources(len(accessibleClusters))
 	if len(accessibleClusters) == 0 {
 		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
-		state.UpdateWithPhase(autoopsv1alpha1.NoResourcesPhase).
-			UpdateResources(0)
 		return results
 	}
-
-	state.UpdateResources(len(accessibleClusters))
-	readyCount := 0
-	errorCount := 0
 
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
 
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
-			log.V(1).Info("Skipping ES cluster that is not ready", "es_namespace", es.Namespace, "es_name", es.Name)
-			state.UpdateWithPhase(autoopsv1alpha1.ResourcesNotReadyPhase)
+			log.V(1).Info("Skipping ES cluster that is not ready")
+			state.UpdateWithPhase(autoopsv1alpha1.MonitoredResourcesNotReadyPhase)
 			results = results.WithRequeue(reconciler.DefaultRequeue)
 			continue
 		}
 
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
-				log.Error(err, "while reconciling AutoOps ES CA secret", "es_namespace", es.Namespace, "es_name", es.Name)
-				errorCount++
-				state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+				log.Error(err, "while reconciling AutoOps ES CA secret")
+				state.ResourceError(es, "Failed to reconcile AutoOps ES CA secret", err)
 				results.WithError(err)
 				continue
 			}
@@ -153,56 +165,48 @@ func (r *AgentPolicyReconciler) internalReconcile(
 
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
-			log.Error(err, "while reconciling AutoOps ES API key", "es_namespace", es.Namespace, "es_name", es.Name)
-			errorCount++
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			log.Error(err, "while reconciling AutoOps ES API key")
+			state.ResourceError(es, "Failed to reconcile AutoOps ES API key", err)
 			results.WithError(err)
 			continue
 		}
 
 		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
 		if err != nil {
-			log.Error(err, "while reconciling AutoOps ES config map", "es_namespace", es.Namespace, "es_name", es.Name)
-			errorCount++
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			log.Error(err, "while reconciling AutoOps ES config map")
+			state.ResourceError(es, "Failed to reconcile AutoOps ES config map", err)
 			results.WithError(err)
 			continue
 		}
 
 		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
 		if err != nil {
-			log.Error(err, "while building config hash", "es_namespace", es.Namespace, "es_name", es.Name)
-			errorCount++
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			log.Error(err, "while building config hash")
+			state.ResourceError(es, "Failed to prepare AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
 
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
-			log.Error(err, "while getting deployment params", "es_namespace", es.Namespace, "es_name", es.Name)
-			errorCount++
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			log.Error(err, "while getting deployment params")
+			state.ResourceError(es, "Failed to build AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
-			log.Error(err, "while reconciling deployment", "es_namespace", es.Namespace, "es_name", es.Name)
-			errorCount++
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			log.Error(err, "while reconciling deployment")
+			state.ResourceError(es, "Failed to reconcile AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
 
 		if isDeploymentReady(reconciledDeployment) {
-			readyCount++
+			state.MarkResourceReady()
 		}
 	}
-
-	state.UpdateReady(readyCount).
-		UpdateErrors(errorCount)
 
 	// Schedule a requeue to periodically re-check RBAC permissions.
 	// Use ReconciliationComplete() to indicate this is a periodic check, not an incomplete reconciliation.

@@ -32,13 +32,13 @@ func TestConfig_RoleDefaults(t *testing.T) {
 		{
 			name: "same is equal",
 			c: v1beta1.Config{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					NodeMaster: true,
 				},
 			},
 			args: args{
 				c2: v1beta1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						NodeMaster: true,
 					},
 				},
@@ -48,14 +48,14 @@ func TestConfig_RoleDefaults(t *testing.T) {
 		{
 			name: "detect differences",
 			c: v1beta1.Config{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					NodeMaster: false,
 					NodeData:   true,
 				},
 			},
 			args: args{
 				c2: v1beta1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						NodeData: true,
 					},
 				},
@@ -77,29 +77,29 @@ func TestConfig_RoleDefaults(t *testing.T) {
 }
 
 var testFixture = v1beta1.Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": 1,
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{1, 2, 3},
+		"e":       []any{1, 2, 3},
 		"f":       true,
 	},
 }
 
 var expectedJSONized = v1beta1.Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
+	Data: map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{
 				"c": 1.0,
 			},
 			"d": float64(1),
 		},
 		"a.b.foo": "bar",
-		"e":       []interface{}{float64(1), float64(2), float64(3)},
+		"e":       []any{float64(1), float64(2), float64(3)},
 		"f":       true,
 	},
 }
@@ -158,12 +158,12 @@ func TestConfig_Unpack(t *testing.T) {
 		{
 			name: "happy path",
 			args: &v1beta1.Config{
-				Data: map[string]interface{}{
-					"node": map[string]interface{}{
+				Data: map[string]any{
+					"node": map[string]any{
 						"master": false,
 						"data":   true,
 					},
-					"cluster": map[string]interface{}{
+					"cluster": map[string]any{
 						"initial_master_nodes": []string{"a", "b"},
 					},
 				},

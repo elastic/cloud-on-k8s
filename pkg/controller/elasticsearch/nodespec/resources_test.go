@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 )
 
@@ -39,6 +40,45 @@ func TestResourcesList_MasterNodesNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.l.MasterNodesNames(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ResourcesList.MasterNodesNames() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNodeSetListHasZoneAwareness(t *testing.T) {
+	tests := []struct {
+		name     string
+		nodeSets []esv1.NodeSet
+		want     bool
+	}{
+		{
+			name:     "no node sets",
+			nodeSets: nil,
+			want:     false,
+		},
+		{
+			name: "node sets without zone awareness",
+			nodeSets: []esv1.NodeSet{
+				{Name: "master"},
+				{Name: "data"},
+			},
+			want: false,
+		},
+		{
+			name: "some node sets with zone awareness",
+			nodeSets: []esv1.NodeSet{
+				{Name: "master"},
+				{Name: "data", ZoneAwareness: &esv1.ZoneAwareness{}},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := esv1.NodeSetList(tt.nodeSets).HasZoneAwareness()
+			if got != tt.want {
+				t.Errorf("NodeSetList.HasZoneAwareness() = %v, want %v", got, tt.want)
 			}
 		})
 	}

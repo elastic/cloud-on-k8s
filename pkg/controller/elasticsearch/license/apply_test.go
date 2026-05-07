@@ -351,7 +351,7 @@ func (f *fakeLicenseUpdater) StartBasic(_ context.Context) (esclient.StartBasicR
 	return esclient.StartBasicResponse{}, nil
 }
 
-var _ esclient.LicenseClient = &fakeLicenseUpdater{}
+var _ esclient.LicenseClient = (*fakeLicenseUpdater)(nil)
 
 type fakeClient struct {
 	k8s.Client
@@ -365,4 +365,4 @@ func (f *fakeClient) Get(_ context.Context, key client.ObjectKey, obj client.Obj
 	return f.Client.Get(context.Background(), key, obj)
 }
 
-var _ k8s.Client = &fakeClient{}
+var _ k8s.Client = (*fakeClient)(nil)

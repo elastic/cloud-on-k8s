@@ -58,7 +58,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -77,13 +77,21 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 	builder := defaults.NewPodTemplateBuilder(ems.Spec.PodTemplate, emsv1alpha1.MapsContainerName).
 		WithAnnotations(podMeta.Annotations).
 		WithLabels(podMeta.Labels).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, ems.Spec.Resources).
 		WithDockerImage(ems.Spec.Image, container.ImageRepository(container.MapsImage, v)).
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
 		WithVolumes(cfgVolume.Volume(), logsVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
 		WithInitContainerDefaults()
+
+	if setDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		})
+	}
 
 	// Add command override for affected versions to fix OpenShift permission issue
 	// See issue #8655: container create fails with "open executable: Operation not permitted"
@@ -124,17 +132,23 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.Ela
 	if err != nil {
 		return nil, err
 	}
-	if !esAssocConf.CAIsConfigured() {
-		return builder, nil
+	if esAssocConf.CAIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetCASecretName(),
+			"es-certs",
+			ESCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 	}
-	vol := volume.NewSecretVolumeWithMountPath(
-		esAssocConf.GetCASecretName(),
-		"es-certs",
-		ESCertsPath,
-	)
-	return builder.
-		WithVolumes(vol.Volume()).
-		WithVolumeMounts(vol.VolumeMount()), nil
+	if esAssocConf.ClientCertIsConfigured() {
+		vol := volume.NewSecretVolumeWithMountPath(
+			esAssocConf.GetClientCertSecretName(),
+			"es-client-certs",
+			ESClientCertsPath,
+		)
+		builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
+	}
+	return builder, nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ems emsv1alpha1.ElasticMapsServer) *defaults.PodTemplateBuilder {

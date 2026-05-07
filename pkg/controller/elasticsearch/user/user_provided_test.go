@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -159,7 +159,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			recorder := record.NewFakeRecorder(10)
+			recorder := toolsevents.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
 			gotFileRealm, err := reconcileUserProvidedFileRealm(context.Background(), c, tt.es, filerealm.New(), tt.watched, recorder, testPasswordHasher)
 			require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			recorder := record.NewFakeRecorder(10)
+			recorder := toolsevents.NewFakeRecorder(10)
 			c := k8s.NewFakeClient(tt.secrets...)
 			gotRoles, err := reconcileUserProvidedRoles(context.Background(), c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)

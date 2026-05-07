@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -43,7 +44,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 		return settings.NewCanonicalConfig(), err
 	}
 
-	output := map[string]interface{}{
+	output := map[string]any{
 		"hosts": []string{esAssocConf.GetURL()},
 	}
 
@@ -62,7 +63,12 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 		output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
 
-	return settings.NewCanonicalConfigFrom(map[string]interface{}{
+	if esAssocConf.ClientCertIsConfigured() {
+		output["ssl.certificate"] = path.Join(clientCertificatesDir(&associated), certificates.CertFileName)
+		output["ssl.key"] = path.Join(clientCertificatesDir(&associated), certificates.KeyFileName)
+	}
+
+	return settings.NewCanonicalConfigFrom(map[string]any{
 		"output.elasticsearch": output,
 	})
 }
@@ -82,9 +88,9 @@ func BuildKibanaConfig(ctx context.Context, client k8s.Client, associated beatv1
 		return settings.NewCanonicalConfig(), err
 	}
 
-	kibanaCfg := map[string]interface{}{
+	kibanaCfg := map[string]any{
 		"setup.dashboards.enabled": true,
-		"setup.kibana": map[string]interface{}{
+		"setup.kibana": map[string]any{
 			"host":     kbAssocConf.GetURL(),
 			"username": credentials.Username,
 			"password": credentials.Password,
@@ -134,7 +140,7 @@ func buildBeatConfig(
 	// 5. disable stderr, and syslog monitoring
 	// 6. enable files monitoring, and configure path
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
 			"http.enabled":       true,
 			"http.host":          stackmon.GetStackMonitoringSocketURL(&params.Beat),
 			"http.port":          nil,

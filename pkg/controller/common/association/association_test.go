@@ -178,3 +178,74 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		})
 	}
 }
+
+func Test_writeClientCertSecretToConfigHash(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		client     k8s.Client
+		assoc      commonv1.Association
+		wantHashed string
+		wantErr    bool
+	}{
+		{
+			name:  "no association conf",
+			assoc: associationFixture(nil),
+		},
+		{
+			name:   "client cert not configured",
+			client: k8s.NewFakeClient(),
+			assoc:  associationFixture(&commonv1.AssociationConf{}),
+		},
+		{
+			name:   "client cert secret missing",
+			client: k8s.NewFakeClient(),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				ClientCertSecretName: "client-cert-secret",
+			}),
+			wantErr: true,
+		},
+		{
+			name: "client cert secret with tls.crt and tls.key",
+			client: k8s.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "client-cert-secret",
+					Namespace: "test-ns",
+				},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("cert-data"),
+					certificates.KeyFileName:  []byte("key-data"),
+				},
+			}),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				ClientCertSecretName: "client-cert-secret",
+			}),
+			wantHashed: "cert-datakey-data",
+		},
+		{
+			name: "client cert secret with only tls.crt",
+			client: k8s.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "client-cert-secret",
+					Namespace: "test-ns",
+				},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("cert-only"),
+				},
+			}),
+			assoc: associationFixture(&commonv1.AssociationConf{
+				ClientCertSecretName: "client-cert-secret",
+			}),
+			wantHashed: "cert-only",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			configHashPassed := sha256.New224()
+			gotErr := writeClientCertSecretToConfigHash(tt.client, tt.assoc, configHashPassed)
+			require.Equal(t, tt.wantErr, gotErr != nil)
+
+			configHash := sha256.New224()
+			_, _ = configHash.Write([]byte(tt.wantHashed))
+			require.Equal(t, configHash.Sum(nil), configHashPassed.Sum(nil))
+		})
+	}
+}

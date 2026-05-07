@@ -94,8 +94,8 @@ func (b Builder) WithNamespace(namespace string) Builder {
 	return b
 }
 
-func (b Builder) Ref() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
+func (b Builder) Ref() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
 		Name:      b.EPR.Name,
 		Namespace: b.EPR.Namespace,
 	}
@@ -106,8 +106,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.EPR.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.EPR.Spec.Count = count
 	return b
 }
 
@@ -146,7 +146,7 @@ func (b Builder) Kind() string {
 	return v1alpha1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.EPR.Spec
 }
 

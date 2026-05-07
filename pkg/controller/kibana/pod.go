@@ -62,7 +62,11 @@ var (
 	// readOnlyRootFilesystem set to true.
 	TempVolume = volume.NewEmptyDirVolume(kbvolume.TempVolumeName, kbvolume.TempVolumeMountPath)
 
-	DefaultMemoryLimits = resource.MustParse("1Gi")
+	// Bumped from 1Gi to 2Gi as a temporary measure: Kibana 9.x raised its V8 heap limit from
+	// 60% to 75% of container memory (elastic/kibana#260491) to reduce OOMs, but 1Gi containers
+	// still don't provide enough headroom and crash during plugin initialization.
+	// Revisit once the Kibana team provides guidance on whether to change the defaults permanently.
+	DefaultMemoryLimits = resource.MustParse("2Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
@@ -133,7 +137,7 @@ func NewPodTemplateSpec(
 		Annotations: DefaultAnnotations,
 	})
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
@@ -145,6 +149,13 @@ func NewPodTemplateSpec(
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
+
+	initContainer, err := initcontainer.NewInitContainer(kb)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder.WithInitContainers(initContainer)
 
 	// Kibana 7.5.0 and above support running with a read-only root filesystem,
 	// but require a temporary volume to be mounted at /tmp for some reporting features
@@ -162,20 +173,13 @@ func NewPodTemplateSpec(
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb, setDefaultSecurityContext)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
-	builder.WithInitContainers(initContainer)
-
 	if keystore != nil {
 		builder.WithVolumes(keystore.Volume).
 			WithInitContainers(keystore.InitContainer)
 	}
 
 	var additionalInitEnvVars []corev1.EnvVar
-	if kb.Spec.PackageRegistryRef.IsDefined() {
+	if kb.Spec.PackageRegistryRef.IsSet() {
 		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
 		builder, err = withEPRCertsVolume(
 			builder,

@@ -117,7 +117,7 @@ func checkSpec(b *Beat) field.ErrorList {
 
 func checkAssociations(b *Beat) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
-	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
+	err1 := commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), b.Spec.ElasticsearchRef)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), b.Spec.KibanaRef)
 	err3 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), b.GetMonitoringMetricsRefs()...)
 	err4 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), b.GetMonitoringLogsRefs()...)

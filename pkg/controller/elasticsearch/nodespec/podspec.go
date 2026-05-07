@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
@@ -40,7 +42,7 @@ const (
 	defaultFsGroup                    = 1000
 	log4j2FormatMsgNoLookupsParamName = "-Dlog4j2.formatMsgNoLookups"
 	// ConfigHashAnnotationName is an annotation used to store a hash of the Elasticsearch configuration.
-	configHashAnnotationName = "elasticsearch.k8s.elastic.co/config-hash"
+	ConfigHashAnnotationName = "elasticsearch.k8s.elastic.co/config-hash"
 )
 
 // Starting 8.0.0, the Elasticsearch container does not run with the root user anymore. As a result,
@@ -63,6 +65,8 @@ func BuildPodTemplateSpec(
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
+	actualPodsRestartTriggerAnnotationValue string,
+	clientAuthenticationRequired bool,
 ) (corev1.PodTemplateSpec, error) {
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
@@ -70,7 +74,7 @@ func BuildPodTemplateSpec(
 	}
 
 	downwardAPIVolume := volume.DownwardAPI{}.WithAnnotations(es.HasDownwardNodeLabels())
-	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes)
+	volumes, volumeMounts := buildVolumes(es.Name, ver, nodeSet, keystoreResources, downwardAPIVolume, policyConfig.AdditionalVolumes, clientAuthenticationRequired)
 
 	labels, err := buildLabels(es, cfg, nodeSet)
 	if err != nil {
@@ -94,17 +98,24 @@ func BuildPodTemplateSpec(
 	if ver.GTE(minDefaultSecurityContextVersion) && setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			FSGroup: ptr.To[int64](defaultFsGroup),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
 		})
 	}
 
 	headlessServiceName := HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name))
+	ssetName := esv1.StatefulSet(es.Name, nodeSet.Name)
+	nodeSets := esv1.NodeSetList(es.Spec.NodeSets)
+	clusterHasZoneAwareness := nodeSets.HasZoneAwareness()
+	clusterZoneAwarenessTopologyKey := nodeSets.ZoneAwarenessTopologyKey()
 
 	// We retrieve the ConfigMap that holds the scripts to trigger a Pod restart if it is updated.
 	esScripts := &corev1.ConfigMap{}
-	if err := client.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations)
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, actualPodsRestartTriggerAnnotationValue)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -123,12 +134,12 @@ func BuildPodTemplateSpec(
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, ver)).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, nodeSet.Resources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName)...).
+		WithEnv(append(DefaultEnvVars(ver, es.Spec.HTTP, headlessServiceName), zoneAwarenessEnv(nodeSet, clusterHasZoneAwareness, clusterZoneAwarenessTopologyKey)...)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
@@ -138,7 +149,21 @@ func BuildPodTemplateSpec(
 		WithContainersSecurityContext(securitycontext.For(ver, enableReadOnlyRootFilesystem)).
 		WithPreStopHook(*NewPreStopHook())
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta)
+	if keystoreResources != nil && keystoreResources.KeystorePasswordSecretName != "" {
+		builder = keystorepassword.InjectKeystorePassword(builder, keystoreResources.KeystorePasswordSecretName)
+	}
+	spreadConstraints, requiredMatchExpressions := zoneAwarenessSchedulingDirectives(
+		nodeSet,
+		es.Name,
+		ssetName,
+		clusterHasZoneAwareness,
+		clusterZoneAwarenessTopologyKey,
+	)
+	builder = builder.
+		WithTopologySpreadConstraints(spreadConstraints...).
+		WithRequiredNodeAffinityMatchExpressions(requiredMatchExpressions...)
+
+	builder, err = stackmon.WithMonitoring(ctx, client, builder, es, meta, clientAuthenticationRequired)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -198,6 +223,7 @@ func buildAnnotations(
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
 	policyAnnotations map[string]string,
+	actualPodsRestartTriggerAnnotationValue string,
 ) map[string]string {
 	// start from our defaults
 	annotations := map[string]string{
@@ -211,26 +237,124 @@ func buildAnnotations(
 	_, _ = configHash.Write([]byte(scriptsContent))
 
 	if es.HasDownwardNodeLabels() {
-		// list of node labels expected on the pod to rotate the pod when the list is updated
-		_, _ = configHash.Write([]byte(es.Annotations[esv1.DownwardNodeLabelsAnnotation]))
+		// Hash user-provided labels in their original annotation order for backward compatibility,
+		// then append any zone-awareness-derived labels that were not explicitly listed.
+		_, _ = configHash.Write([]byte(es.DownwardNodeLabelsHashInput()))
 	}
 
 	if keystoreResources != nil {
 		// resource version of the secure settings secret to rotate the pod on secure settings change
 		_, _ = configHash.Write([]byte(keystoreResources.Hash))
+		if keystoreResources.KeystorePasswordSecretHash != "" {
+			_, _ = configHash.Write([]byte(keystoreResources.KeystorePasswordSecretHash))
+		}
 	}
 
 	if !es.Spec.Transport.TLS.SelfSignedEnabled() {
 		annotations[esv1.TransportCertDisabledAnnotationName] = "true"
 	}
 
+	// if the restart annotation is set, add it to pods' annotations.
+	restartTrigger := es.Annotations[esv1.RestartTriggerAnnotation]
+	if restartTrigger == "" {
+		// if restart annotation is missing but it was previously present on pods,
+		// keep the old one, to avoid restarting when the annotation is deleted by user.
+		if actualPodsRestartTriggerAnnotationValue != "" {
+			restartTrigger = actualPodsRestartTriggerAnnotationValue
+		}
+	}
+	// RestartTriggerAnnotation is not part of the config hash to distinguish between
+	// spec changes and pod rotation caused by the restart annotation later on.
+	if restartTrigger != "" {
+		annotations[esv1.RestartTriggerAnnotation] = restartTrigger
+	}
+
 	// set the annotation in place
-	annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
+	annotations[ConfigHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 
 	// set policy annotations
 	maps.Merge(annotations, policyAnnotations)
 
 	return annotations
+}
+
+// zoneAwarenessEnv returns the zone environment variable when zone awareness is enabled
+// at either cluster or NodeSet level. NodeSet-level configuration takes precedence.
+func zoneAwarenessEnv(nodeSet esv1.NodeSet, clusterHasZoneAwareness bool, clusterTopologyKey string) []corev1.EnvVar {
+	if !clusterHasZoneAwareness {
+		return nil
+	}
+
+	topologyKey := clusterTopologyKey
+	if za := nodeSet.ZoneAwareness; za != nil {
+		topologyKey = za.TopologyKeyOrDefault()
+	}
+
+	return []corev1.EnvVar{
+		{
+			Name: settings.EnvZone,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  fmt.Sprintf("metadata.annotations['%s']", topologyKey),
+				},
+			},
+		},
+	}
+}
+
+// zoneAwarenessSchedulingDirectives returns topology spread constraints and required
+// node affinity expressions derived from NodeSet and cluster zone-awareness settings.
+func zoneAwarenessSchedulingDirectives(
+	nodeSet esv1.NodeSet,
+	clusterName,
+	statefulSetName string,
+	clusterHasZoneAwareness bool,
+	clusterTopologyKey string,
+) ([]corev1.TopologySpreadConstraint, []corev1.NodeSelectorRequirement) {
+	if nodeSet.ZoneAwareness == nil && clusterHasZoneAwareness {
+		// Require nodes that carry the cluster topology key label. The shared init script
+		// waits for the corresponding annotation (set by the operator from the node label),
+		// so pods must not land on nodes where the label is absent or the init container
+		// will deadlock.
+		return nil, []corev1.NodeSelectorRequirement{
+			{
+				Key:      clusterTopologyKey,
+				Operator: corev1.NodeSelectorOpExists,
+			},
+		}
+	}
+	if nodeSet.ZoneAwareness == nil {
+		return nil, nil
+	}
+
+	topologyKey := nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	spreadConstraints := []corev1.TopologySpreadConstraint{
+		{
+			MaxSkew:           1,
+			TopologyKey:       topologyKey,
+			WhenUnsatisfiable: corev1.DoNotSchedule,
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					label.ClusterNameLabelName:     clusterName,
+					label.StatefulSetNameLabelName: statefulSetName,
+				},
+			},
+		},
+	}
+
+	// If the nodeSet has zone awareness and zones are configured, we want to ensure
+	// that the nodeSet is only scheduled on nodes that have the zone values.
+	// When zones are not explicitly listed, still require the topology key to exist:
+	// the prepare-fs init script waits for a pod annotation derived from this node
+	// label, and topology spread constraints alone do not enforce label existence.
+	req := corev1.NodeSelectorRequirement{Key: topologyKey, Operator: corev1.NodeSelectorOpExists}
+	if len(nodeSet.ZoneAwareness.Zones) > 0 {
+		req.Operator = corev1.NodeSelectorOpIn
+		req.Values = append([]string(nil), nodeSet.ZoneAwareness.Zones...)
+	}
+	requiredMatchExpressions := []corev1.NodeSelectorRequirement{req}
+	return spreadConstraints, requiredMatchExpressions
 }
 
 // enableLog4JFormatMsgNoLookups prepends the JVM parameter `-Dlog4j2.formatMsgNoLookups=true` to the environment variable `ES_JAVA_OPTS`

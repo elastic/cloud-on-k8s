@@ -7,6 +7,7 @@ package log
 import (
 	"context"
 	"flag"
+	"math"
 	"os"
 	"strconv"
 
@@ -120,7 +121,7 @@ func setLogger(v *int) {
 func determineLogLevel(v *int) zap.AtomicLevel {
 	switch {
 	case v != nil && *v > -3:
-		return zap.NewAtomicLevelAt(zapcore.Level(*v * -1))
+		return zap.NewAtomicLevelAt(zapcore.Level(max(*v*-1, math.MinInt8))) //nolint:gosec // G115: clamped to [math.MinInt8, 2]
 	case dev.Enabled:
 		return zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	default:
@@ -139,14 +140,14 @@ func NewFromContext(ctx context.Context) logr.Logger {
 }
 
 // TraceContextKV returns logger key-values for the current trace context.
-func TraceContextKV(ctx context.Context) []interface{} {
+func TraceContextKV(ctx context.Context) []any {
 	tx := apm.TransactionFromContext(ctx)
 	if tx == nil {
 		return nil
 	}
 
 	traceCtx := tx.TraceContext()
-	fields := []interface{}{apmzap.FieldKeyTraceID, traceCtx.Trace, apmzap.FieldKeyTransactionID, traceCtx.Span}
+	fields := []any{apmzap.FieldKeyTraceID, traceCtx.Trace, apmzap.FieldKeyTransactionID, traceCtx.Span}
 
 	if span := apm.SpanFromContext(ctx); span != nil {
 		fields = append(fields, apmzap.FieldKeySpanID, span.TraceContext().Span)
@@ -161,7 +162,7 @@ var loggerCtxKey = ctxKey{}
 
 // InitInContext initializes a logger named `loggerName` with `keysAndValues` and transaction metadata values.
 // Returns a context containing the newly created logger.
-func InitInContext(ctx context.Context, loggerName string, keysAndValues ...interface{}) context.Context {
+func InitInContext(ctx context.Context, loggerName string, keysAndValues ...any) context.Context {
 	logger := NewFromContext(ctx).WithName(loggerName).WithValues(keysAndValues...)
 	return AddToContext(ctx, logger)
 }

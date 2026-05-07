@@ -1,6 +1,12 @@
 toc:
   - file: index.md
   - folder: api-reference
+    sort: desc
+    exclude:
+      - main.md
   - folder: third-party-dependencies
+    sort: desc
+    exclude:
+      - main.md
   - file: eck-configuration-flags.md
   - file: upgrade-predicates.md

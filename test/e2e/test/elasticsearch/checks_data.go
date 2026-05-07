@@ -28,7 +28,7 @@ type DataIntegrityCheck struct {
 	clientFactory       func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
 	indexName           string
 	createIndexSettings createIndexSettings
-	sampleData          map[string]interface{}
+	sampleData          map[string]any
 	docCount            int
 }
 
@@ -38,7 +38,7 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 			return NewElasticsearchClient(b.Elasticsearch, k)
 		},
 		indexName: DataIntegrityIndex,
-		sampleData: map[string]interface{}{
+		sampleData: map[string]any{
 			"foo": "bar",
 		},
 		docCount: 5,
@@ -125,7 +125,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		if err != nil {
 			return fmt.Errorf("failed to index document %d/%d: %w", i, dc.docCount, err)
 		}
-		defer resp.Body.Close()
+		resp.Body.Close() // Close immediately in loop to avoid leaking file descriptors
 	}
 	return nil
 }
@@ -183,7 +183,7 @@ func dataIntegrityReplicas(b Builder) int {
 		// a 1 node cluster can only be green if shards have no replicas
 		return 0
 	}
-	if b.TriggersRollingUpgrade() {
+	if b.TriggersRollingUpgrade() || b.TriggersRollingRestart() {
 		// a rolling upgrade will happen during the mutation: nodes will go down
 		// we need at least 1 replica per shard for the cluster to remain green during the operation
 		return 1

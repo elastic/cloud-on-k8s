@@ -322,7 +322,7 @@ func scaleElasticsearch(param TestParam, count int64) func(*TestContext) error {
 			}
 
 			if len(nodeSets) > 0 {
-				firstNodeSet, ok := nodeSets[0].(map[string]interface{})
+				firstNodeSet, ok := nodeSets[0].(map[string]any)
 				if !ok {
 					return errors.New("unexpected format for nodeSets slice")
 				}

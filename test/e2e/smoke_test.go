@@ -24,7 +24,23 @@ import (
 const sampleFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
 // TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
+// If STATELESS env var is set, it also runs a stateless Elasticsearch variant.
 func TestSmoke(t *testing.T) {
+	// Always run stateful mode first
+	t.Run("Stateful", func(t *testing.T) {
+		runStatefulSmoke(t)
+	})
+
+	// Run stateless mode if configured
+	if test.Ctx().IsStateless() {
+		t.Run("Stateless", func(t *testing.T) {
+			runStatelessSmoke(t)
+		})
+	}
+}
+
+// runStatefulSmoke runs the original stateful Elasticsearch smoke test.
+func runStatefulSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
 	var apmBuilder apmserver.Builder
@@ -70,4 +86,10 @@ func TestSmoke(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
+}
+
+// runStatelessSmoke runs a stateless Elasticsearch smoke test.
+// This creates a minimal stateless ES cluster with Kibana.
+func runStatelessSmoke(t *testing.T) {
+	t.Skip("stateless smoke test not implemented yet")
 }

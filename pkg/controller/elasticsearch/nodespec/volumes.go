@@ -26,6 +26,7 @@ func buildVolumes(
 	keystoreResources *keystore.Resources,
 	downwardAPIVolume volume.DownwardAPI,
 	additionalMountsFromPolicy []volume.VolumeLike,
+	clientAuthenticationRequired bool,
 ) ([]corev1.Volume, []corev1.VolumeMount) {
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
@@ -119,6 +120,26 @@ func buildVolumes(
 	if version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		volumes = append(volumes, fileSettingsVolume.Volume())
 		volumeMounts = append(volumeMounts, fileSettingsVolume.VolumeMount())
+	}
+
+	// Mount the client trust bundle and the internal client certificate when client certificate validation is enabled.
+	if clientAuthenticationRequired {
+		trustBundleVolume := volume.NewSecretVolumeWithMountPath(
+			certificates.ClientCertTrustBundleSecretName(esv1.ESNamer, esName),
+			esvolume.ClientCertificatesTrustBundleVolumeName,
+			esvolume.ClientCertificatesTrustBundleMountPath,
+		)
+		volumes = append(volumes, trustBundleVolume.Volume())
+		volumeMounts = append(volumeMounts, trustBundleVolume.VolumeMount())
+
+		// Mount the internal (operator) client certificate so the pre-stop hook can authenticate via mTLS.
+		internalClientCertVolume := volume.NewSecretVolumeWithMountPath(
+			certificates.OperatorClientCertSecretName(esv1.ESNamer, esName),
+			esvolume.InternalClientCertVolumeName,
+			esvolume.InternalClientCertMountPath,
+		)
+		volumes = append(volumes, internalClientCertVolume.Volume())
+		volumeMounts = append(volumeMounts, internalClientCertVolume.VolumeMount())
 	}
 
 	// additional volumes from stack config policy

@@ -15,19 +15,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/status"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -61,14 +63,14 @@ type baseReconcileAutoscaling struct {
 	k8s.Client
 	operator.Parameters
 	esClientProvider EsClientProvider
-	recorder         record.EventRecorder
+	recorder         toolsevents.EventRecorder
 	licenseChecker   license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64 //nolint:structcheck
 }
 
-func (r baseReconcileAutoscaling) withRecorder(recorder record.EventRecorder) baseReconcileAutoscaling {
+func (r baseReconcileAutoscaling) withRecorder(recorder toolsevents.EventRecorder) baseReconcileAutoscaling {
 	r.recorder = recorder
 	return r
 }
@@ -87,11 +89,11 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		Client:           c,
 		Parameters:       params,
 		esClientProvider: commonesclient.NewClient,
-		recorder:         mgr.GetEventRecorderFor(ControllerName),
+		recorder:         mgr.GetEventRecorder(ControllerName),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 	return &ReconcileElasticsearchAutoscaler{
-		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorderFor(ControllerName)),
+		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorder(ControllerName)),
 		Watches:                  watches.NewDynamicWatches(),
 	}
 }
@@ -139,7 +141,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 	if !enabled {
 		log.Info(enterpriseFeaturesDisabledMsg)
-		r.recorder.Eventf(&esa, corev1.EventTypeWarning, license.EventInvalidLicense, enterpriseFeaturesDisabledMsg)
+		k8s.EmitEvent(r.recorder, &esa, corev1.EventTypeWarning, license.EventInvalidLicense, events.EventActionLicenseCheck, enterpriseFeaturesDisabledMsg)
 		_, err := r.reportAsInactive(ctx, log, esa, enterpriseFeaturesDisabledMsg)
 		// We still schedule a reconciliation in case a valid license is applied later
 		return licenseCheckRequeue, err
@@ -157,7 +159,8 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 
 	// Validate the autoscaling specification
-	if validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker); validationErr != nil || runtimeErr != nil {
+	warnings, validationErr, runtimeErr := validation.ValidateElasticsearchAutoscaler(ctx, r.Client, esa, r.licenseChecker)
+	if validationErr != nil || runtimeErr != nil {
 		if validationErr != nil {
 			log.Error(
 				validationErr,
@@ -177,6 +180,9 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		err := errors.NewAggregate([]error{validationErr, runtimeErr})
 		_, _ = r.reportAsUnhealthy(ctx, log, esa, err.Error())
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, &esa, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	// Get autoscaling policies and the associated node sets.
@@ -259,19 +265,19 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	newStatus := esa.Status.DeepCopy()
 	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is unhealthy",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
@@ -280,7 +286,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	)
 	// Insert a new limited status if there is none.
 	if newStatus.Conditions.Index(v1alpha1.ElasticsearchAutoscalerLimited) < 0 {
-		newStatus.Conditions = newStatus.Conditions.MergeWith(v1alpha1.Condition{
+		newStatus.Conditions = newStatus.Conditions.MergeWith(commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
@@ -301,25 +307,25 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 	newStatus := esa.Status.DeepCopy()
 	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,

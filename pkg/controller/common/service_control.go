@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
@@ -27,6 +28,13 @@ func ReconcileService(
 ) (*corev1.Service, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_service", tracing.SpanTypeApp)
 	defer span.End()
+
+	// don't mutate expected (no side effects), make a copy
+	expected = expected.DeepCopy()
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
@@ -161,6 +169,11 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 
 	if expected.Spec.AllocateLoadBalancerNodePorts == nil {
 		expected.Spec.AllocateLoadBalancerNodePorts = reconciled.Spec.AllocateLoadBalancerNodePorts
+	}
+
+	// TrafficDistribution may be defaulted by the API server starting K8s v1.31
+	if expected.Spec.TrafficDistribution == nil {
+		expected.Spec.TrafficDistribution = reconciled.Spec.TrafficDistribution
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -32,7 +32,7 @@ func UpdateSettings(
 	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
-	eventRecorder record.EventRecorder,
+	eventRecorder toolsevents.EventRecorder,
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
 ) (bool, error) {
@@ -57,7 +57,7 @@ func UpdateSettings(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
-		eventRecorder.Eventf(&es, corev1.EventTypeWarning, events.EventAssociationError, enterpriseFeaturesDisabledMsg)
+		k8s.EmitEvent(eventRecorder, &es, corev1.EventTypeWarning, events.EventAssociationError, events.EventActionLicenseCheck, enterpriseFeaturesDisabledMsg)
 		return false, nil
 	}
 
@@ -171,7 +171,7 @@ func getRemoteClustersInElasticsearch(ctx context.Context, esClient esclient.Cli
 func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluster {
 	remoteClusters := make(map[string]esv1.RemoteCluster)
 	for _, remoteCluster := range es.Spec.RemoteClusters {
-		if !remoteCluster.ElasticsearchRef.IsDefined() {
+		if !remoteCluster.ElasticsearchRef.IsSet() {
 			continue
 		}
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)

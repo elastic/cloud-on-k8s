@@ -4,6 +4,8 @@
 
 package maps
 
+import "maps"
+
 // IsSubset compares two maps to determine if one of them is fully contained in the other.
 func IsSubset(toCheck, fullSet map[string]string) bool {
 	if len(toCheck) > len(fullSet) {
@@ -38,9 +40,7 @@ func Merge(dest, src map[string]string) map[string]string {
 		dest = make(map[string]string, len(src))
 	}
 
-	for k, v := range src {
-		dest[k] = v
-	}
+	maps.Copy(dest, src)
 
 	return dest
 }
@@ -63,8 +63,8 @@ func MergePreservingExistingKeys(dest, src map[string]string) map[string]string 
 	return dest
 }
 
-// ContainsKeys determines if a set of label (keys) are present in a map of labels (keys and values).
-func ContainsKeys(m map[string]string, labels ...string) bool {
+// ContainsKeys determines if a set of keys are present in a map.
+func ContainsKeys[K comparable, V any](m map[K]V, labels ...K) bool {
 	for _, label := range labels {
 		if _, exists := m[label]; !exists {
 			return false

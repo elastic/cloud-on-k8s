@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -227,8 +228,8 @@ func endpointSliceMatches(slice discoveryv1.EndpointSlice, filters ...func(slice
 	return true
 }
 
-func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {
-	var eventList corev1.EventList
+func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]eventsv1.Event, error) {
+	var eventList eventsv1.EventList
 	if err := k.Client.List(context.Background(), &eventList, opts...); err != nil {
 		return nil, err
 	}
@@ -340,7 +341,15 @@ func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeC
 }
 
 // Exec runs the given cmd into the given pod.
+// If the pod has multiple containers, Kubernetes chooses the first container; prefer ExecInContainer when the target
+// container is known.
 func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
+	return k.ExecInContainer(pod, "", cmd)
+}
+
+// ExecInContainer runs the given cmd in the named pod container. If container is empty, Kubernetes uses its default
+// (first container in the pod spec).
+func (k *K8sClient) ExecInContainer(pod types.NamespacedName, container string, cmd []string) (string, string, error) {
 	// create the exec client
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -351,6 +360,15 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		return "", "", err
 	}
 
+	opts := &corev1.PodExecOptions{
+		Command: cmd,
+		Stdout:  true,
+		Stderr:  true,
+	}
+	if container != "" {
+		opts.Container = container
+	}
+
 	// build the exec url
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -358,11 +376,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		Namespace(pod.Namespace).
 		SubResource("exec").
 		VersionedParams(
-			&corev1.PodExecOptions{
-				Command: cmd,
-				Stdout:  true,
-				Stderr:  true,
-			},
+			opts,
 			runtime.NewParameterCodec(scheme.Scheme),
 		)
 	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())
@@ -419,6 +433,20 @@ func (k *K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified
 		obj := k8s.DeepCopyObject(obj)
+
+		switch obj.(type) {
+		case *corev1.Secret, *corev1.Service, *corev1.ConfigMap:
+			// add watch labels in Services, Secrets and ConfigMaps
+			lbs := obj.GetLabels()
+			if lbs == nil {
+				lbs = make(map[string]string)
+			}
+			if _, exists := lbs[commonv1.RestrictWatchedResourcesLabelName]; !exists {
+				lbs[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+			}
+			obj.SetLabels(lbs)
+		}
+
 		// optimistic creation
 		err := k.Client.Create(context.Background(), obj)
 		if err != nil {
@@ -535,8 +563,8 @@ func OperatorPodListOptions(opNs string) []k8sclient.ListOption {
 func EventListOptions(namespace, name string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(namespace)
 	matchFields := k8sclient.MatchingFields(map[string]string{
-		"involvedObject.name":      name,
-		"involvedObject.namespace": namespace,
+		"regarding.name":      name,
+		"regarding.namespace": namespace,
 	})
 	return []k8sclient.ListOption{ns, matchFields}
 }

@@ -14,7 +14,7 @@ import (
 //
 // The default PVCs are not appended if:
 // - any PVC has been defined by the user
-// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
+// - a Volume with the same .Name is found in podSpec.Volumes (e.g. emptyDir, hostPath, or a user-provided PVC)
 func AppendDefaultPVCs(
 	existing []corev1.PersistentVolumeClaim,
 	podSpec corev1.PodSpec,
@@ -25,18 +25,13 @@ func AppendDefaultPVCs(
 		return existing
 	}
 
-	// create a set of volume names that are not PVC-volumes
-	nonPVCvolumes := set.Make()
-
+	names := set.Make()
 	for _, volume := range podSpec.Volumes {
-		if volume.PersistentVolumeClaim == nil {
-			// this volume is not a PVC
-			nonPVCvolumes.Add(volume.Name)
-		}
+		names.Add(volume.Name)
 	}
 
 	for _, defaultPVC := range defaults {
-		if nonPVCvolumes.Has(defaultPVC.Name) {
+		if names.Has(defaultPVC.Name) {
 			continue
 		}
 		existing = append(existing, defaultPVC)

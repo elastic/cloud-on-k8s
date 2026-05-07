@@ -7,10 +7,15 @@ package shutdown
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -491,6 +496,66 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			}
 			if !reflect.DeepEqual(methodsCalled, tt.wantMethods) {
 				t.Errorf("ShutdownStatus() got = %v, want %v", methodsCalled, tt.wantMethods)
+			}
+		})
+	}
+}
+
+func TestNodeShutdown_ReconcileShutdowns_AllocationDelay(t *testing.T) {
+	delay := 10 * time.Minute
+
+	tests := []struct {
+		name            string
+		allocationDelay *time.Duration
+		wantDelay       bool
+	}{
+		{
+			name:            "with allocation delay",
+			allocationDelay: &delay,
+			wantDelay:       true,
+		},
+		{
+			name:            "without allocation delay",
+			allocationDelay: nil,
+			wantDelay:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedBody esclient.ShutdownRequest
+			i := 0
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
+				defer func() { i++ }()
+				if req.Method == "PUT" {
+					body, _ := io.ReadAll(req.Body)
+					_ = json.Unmarshal(body, &capturedBody)
+				}
+				fixtures := []string{noShutdownFixture, ackFixture, singleRestartShutdownFixture}
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(fixtures[i]))),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			})
+			ns := &NodeShutdown{
+				c:               client,
+				typ:             esclient.Restart,
+				reason:          "test-reason",
+				allocationDelay: tt.allocationDelay,
+				podToNodeID:     map[string]string{"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q"},
+				log:             log.Log.WithName("test"),
+			}
+
+			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"}, nil)
+			require.NoError(t, err)
+			assert.Equal(t, esclient.Restart, capturedBody.Type)
+			assert.Equal(t, "test-reason", capturedBody.Reason)
+			if tt.wantDelay {
+				require.NotNil(t, capturedBody.AllocationDelay)
+				assert.Equal(t, delay, time.Duration(*capturedBody.AllocationDelay))
+			} else {
+				assert.Nil(t, capturedBody.AllocationDelay)
 			}
 		})
 	}

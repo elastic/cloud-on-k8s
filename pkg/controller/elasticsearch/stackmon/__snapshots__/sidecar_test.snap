@@ -1182,3 +1182,143 @@ setup.template.settings:
  }
 }
 ---
+
+[TestFilebeatConfig/pre_9.4.0 - 1]
+filebeat.modules:
+  # https://www.elastic.co/guide/en/beats/filebeat/7.14/filebeat-module-elasticsearch.html
+  - module: elasticsearch
+    server:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_server.json
+      close_timeout: 2h
+      fields_under_root: true
+    gc:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/gc.log.[0-9]*
+        - /usr/share/elasticsearch/logs/gc.log
+        - /usr/share/elasticsearch/logs/gc.output.[0-9]*
+        - /usr/share/elasticsearch/logs/gc.output
+      close_timeout: 2h
+      fields_under_root: true
+    audit:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_audit.json
+      close_timeout: 2h
+      fields_under_root: true
+    slowlog:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_index_search_slowlog.json
+        - /usr/share/elasticsearch/logs/*_index_indexing_slowlog.json
+      close_timeout: 2h
+      fields_under_root: true
+    deprecation:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_deprecation.json
+      close_timeout: 2h
+      fields_under_root: true
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated and added here
+---
+
+[TestFilebeatConfig/post_9.4.0_with_querylog - 1]
+filebeat.modules:
+  # https://www.elastic.co/guide/en/beats/filebeat/7.14/filebeat-module-elasticsearch.html
+  - module: elasticsearch
+    server:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_server.json
+      close_timeout: 2h
+      fields_under_root: true
+    gc:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/gc.log.[0-9]*
+        - /usr/share/elasticsearch/logs/gc.log
+        - /usr/share/elasticsearch/logs/gc.output.[0-9]*
+        - /usr/share/elasticsearch/logs/gc.output
+      close_timeout: 2h
+      fields_under_root: true
+    audit:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_audit.json
+      close_timeout: 2h
+      fields_under_root: true
+    slowlog:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_index_search_slowlog.json
+        - /usr/share/elasticsearch/logs/*_index_indexing_slowlog.json
+      close_timeout: 2h
+      fields_under_root: true
+    deprecation:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_deprecation.json
+      close_timeout: 2h
+      fields_under_root: true
+    querylog:
+      enabled: true
+      var.paths:
+        - /usr/share/elasticsearch/logs/*_querylog.json
+      close_timeout: 2h
+      fields_under_root: true
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+
+# Elasticsearch output configuration is generated and added here
+---
+
+[TestMetricbeatConfig/with_client_certificate - 1]
+metricbeat.modules:
+  # https://www.elastic.co/guide/en/beats/metricbeat/7.14/metricbeat-module-elasticsearch.html
+  - module: elasticsearch
+    metricsets:
+      - ccr
+      - cluster_stats
+      - enrich
+      - index
+      - index_recovery
+      - index_summary
+      - ingest_pipeline
+      - ml_job
+      - node
+      - node_stats
+      - pending_tasks
+      - shard
+
+    period: 10s
+    xpack.enabled: true
+    hosts: ["https://localhost:9200"]
+    username: elastic
+    password: "secret"
+    ssl.enabled: true
+    # The ssl verification_mode is set to `certificate` in the config template to verify that the certificate is signed by a trusted authority,
+    # but does not perform any hostname verification. This is used when SSL is enabled with or without CA, to support self-signed certificate
+    # with a custom CA or custom certificates with or without a CA that most likely are not issued for `localhost`.
+    ssl.verification_mode: "certificate"
+    ssl.certificate_authorities: ["/mount/ca.crt"]
+    ssl.certificate: "/mnt/elastic-internal/es-monitoring-client-certs/tls.crt"
+    ssl.key: "/mnt/elastic-internal/es-monitoring-client-certs/tls.key"
+
+processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+setup.template.settings:
+  index.mapping.total_fields.limit: 12500
+
+# Elasticsearch output configuration is generated
+
+---

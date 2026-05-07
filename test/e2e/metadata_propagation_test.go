@@ -75,8 +75,8 @@ func TestMetadataPropagation(t *testing.T) {
 		WithNodeCount(1).
 		WithElasticsearchRefs(
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: es.Ref(),
-				ClusterName:    "es",
+				ElasticsearchSelector: v1.ElasticsearchSelector{ObjectSelector: es.Ref()},
+				ClusterName:           "es",
 			}).
 		WithLabel("my-label", "my-label-value").
 		WithAnnotation("eck.k8s.alpha.elastic.co/propagate-annotations", "*").
@@ -102,7 +102,7 @@ func TestMetadataPropagation(t *testing.T) {
 				Test: func(t *testing.T) {
 					t.Helper()
 
-					var children []child
+					children := make([]child, 0, len(builders))
 					for _, b := range builders {
 						expectedChildren, err := expectedChildren(b, c)
 						if err != nil {
@@ -111,7 +111,6 @@ func TestMetadataPropagation(t *testing.T) {
 						children = append(children, expectedChildren...)
 					}
 					for _, c := range children {
-						c := c
 						t.Run(c.identifier(), func(t *testing.T) {
 							t.Parallel()
 							have := c.metadata(t, k)

@@ -172,14 +172,14 @@ type apiResponse struct {
 }
 
 func (loader *prLoader) buildRequest(cursor *string) (*http.Request, error) {
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"q":     fmt.Sprintf("repo:%s is:pr is:closed label:v%s", loader.repoName, loader.version),
 		"after": cursor,
 	}
 
 	body := struct {
-		Query     string                 `json:"query"`
-		Variables map[string]interface{} `json:"variables"`
+		Query     string         `json:"query"`
+		Variables map[string]any `json:"variables"`
 	}{
 		Variables: variables,
 		Query:     queryBody,

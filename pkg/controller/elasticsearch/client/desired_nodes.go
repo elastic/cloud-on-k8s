@@ -35,11 +35,11 @@ type DesiredNodes struct {
 }
 
 type DesiredNode struct {
-	Settings        map[string]interface{} `json:"settings"`
-	ProcessorsRange ProcessorsRange        `json:"processors_range"`
-	Memory          string                 `json:"memory"`
-	Storage         string                 `json:"storage"`
-	NodeVersion     string                 `json:"node_version,omitempty"` // deprecated in 8.13+
+	Settings        map[string]any  `json:"settings"`
+	ProcessorsRange ProcessorsRange `json:"processors_range"`
+	Memory          string          `json:"memory"`
+	Storage         string          `json:"storage"`
+	NodeVersion     string          `json:"node_version,omitempty"` // deprecated in 8.13+
 }
 
 type ProcessorsRange struct {

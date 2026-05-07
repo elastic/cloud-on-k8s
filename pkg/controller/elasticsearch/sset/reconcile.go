@@ -49,7 +49,7 @@ func ReconcileStatefulSet(ctx context.Context, c k8s.Client, es esv1.Elasticsear
 			if expectations != nil {
 				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
 				// to prevent assumptions based on the wrong replica count
-				expectations.ExpectGeneration(reconciled)
+				expectations.ExpectGeneration(&reconciled)
 			}
 		},
 	})

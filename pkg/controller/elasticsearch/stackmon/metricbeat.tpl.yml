@@ -30,6 +30,10 @@ metricbeat.modules:
     {{- with .CAVolume }}
     ssl.certificate_authorities: ["{{ CAPath . }}"]
     {{- end }}
+    {{- with .ClientCertVolume }}
+    ssl.certificate: "{{ ClientCertPath . }}"
+    ssl.key: "{{ ClientKeyPath . }}"
+    {{- end }}
 
 processors:
   - add_cloud_metadata: {}

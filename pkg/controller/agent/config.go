@@ -83,8 +83,8 @@ func buildConfig(params Params) ([]byte, error) {
 	// the default one. We want to avoid config file replacement by agents which will not work
 	// with config files mounted read-only from a secret.
 	if params.Agent.Spec.FleetModeEnabled() {
-		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
-			"fleet": map[string]interface{}{
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"fleet": map[string]any{
 				"enabled": true,
 			}})); err != nil {
 			return nil, err
@@ -113,7 +113,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		}
 	}
 
-	outputs := map[string]interface{}{}
+	outputs := map[string]any{}
 	for i, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
@@ -128,7 +128,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			return settings.NewCanonicalConfig(), err
 		}
 
-		output := map[string]interface{}{
+		output := map[string]any{
 			"type":  "elasticsearch",
 			"hosts": []string{assocConf.GetURL()},
 		}
@@ -144,7 +144,12 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["password"] = credentials.Password
 		}
 		if assocConf.GetCACertProvided() {
-			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
+			output["ssl.certificate_authorities"] = []string{path.Join(CertificatesDir(assoc), CAFileName)}
+		}
+		if assocConf.ClientCertIsConfigured() {
+			clientCertDir := standaloneAgentClientCertificatesDir(assoc)
+			output["ssl.certificate"] = path.Join(clientCertDir, certificates.CertFileName)
+			output["ssl.key"] = path.Join(clientCertDir, certificates.KeyFileName)
 		}
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
@@ -157,7 +162,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 		outputs[outputName] = output
 	}
 
-	return settings.NewCanonicalConfigFrom(map[string]interface{}{
+	return settings.NewCanonicalConfigFrom(map[string]any{
 		"outputs": outputs,
 	})
 }
@@ -202,7 +207,7 @@ func extractPodConnectionSettings(
 
 	ca := ""
 	if assocConf.GetCACertProvided() {
-		ca = path.Join(certificatesDir(assoc), CAFileName)
+		ca = path.Join(CertificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{

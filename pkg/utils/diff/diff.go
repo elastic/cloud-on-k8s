@@ -17,7 +17,7 @@ type testifyAdapter struct {
 	errs []error
 }
 
-func (t *testifyAdapter) Errorf(format string, args ...interface{}) {
+func (t *testifyAdapter) Errorf(format string, args ...any) {
 	t.errs = append(t.errs, fmt.Errorf(format, args...))
 }
 
@@ -26,7 +26,7 @@ func (t *testifyAdapter) ErrOrNil() error {
 }
 
 // NewDiff returns the difference between two objects, suitable for debugging.
-func NewDiffAsError(expected, actual interface{}) error {
+func NewDiffAsError(expected, actual any) error {
 	adapter := &testifyAdapter{}
 	assert.Equal(adapter, expected, actual)
 	return adapter.ErrOrNil()

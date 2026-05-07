@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/azure"
+	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -35,7 +37,7 @@ type AKSDriverFactory struct {
 
 type AKSDriver struct {
 	plan        Plan
-	ctx         map[string]interface{}
+	ctx         map[string]any
 	vaultClient vault.Client
 }
 
@@ -60,7 +62,7 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 
 	return &AKSDriver{
 		plan: plan,
-		ctx: map[string]interface{}{
+		ctx: map[string]any{
 			"ResourceGroup":     plan.Aks.ResourceGroup,
 			"ClusterName":       plan.ClusterName,
 			"NodeCount":         plan.Aks.NodeCount,
@@ -85,12 +87,21 @@ func (d *AKSDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case DeleteAction:
+		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
+		// deletion fails, but the error must still be returned so the exit code is non-zero.
+		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
+		if bucketErr != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
+		}
 		if exists {
 			if err := d.delete(); err != nil {
-				return err
+				return errors.Join(err, bucketErr)
 			}
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
+		}
+		if bucketErr != nil {
+			return bucketErr
 		}
 	case CreateAction:
 		if exists {
@@ -107,6 +118,9 @@ func (d *AKSDriver) Execute() error {
 			return err
 		}
 		if err := createStorageClass(); err != nil {
+			return err
+		}
+		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
 			return err
 		}
 	default:
@@ -193,6 +207,23 @@ func (d *AKSDriver) delete() error {
 		Run()
 }
 
+func (d *AKSDriver) newBucketManager() (bucket.Manager, error) {
+	// Use VaultManager for pre-provisioned buckets
+	if d.plan.Bucket.FromVault {
+		return newVaultBucketManager(AKSDriverID, d.vaultClient)
+	}
+
+	// Use AzureManager for dynamic bucket creation
+	if err := bucket.ValidateShellArg(d.plan.Aks.ResourceGroup, "resource group"); err != nil {
+		return nil, err
+	}
+	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Aks.Location)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewAzureManager(cfg, d.plan.Aks.ResourceGroup), nil
+}
+
 func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	if err := d.auth(); err != nil {
 		return err
@@ -213,6 +244,10 @@ func (d *AKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 
 	for _, cluster := range clustersToDelete {
 		d.plan.ClusterName = cluster
+		d.ctx["ClusterName"] = cluster // newBucketManager->newBucketConfig resolves bucket name from ctx, not plan
+		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
+			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+		}
 		if d.plan.Aks.ResourceGroup == "" {
 			c, err := vault.NewClient()
 			if err != nil {

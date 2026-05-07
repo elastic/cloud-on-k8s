@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -64,9 +65,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if curEs.Annotations == nil {
 					curEs.Annotations = make(map[string]string)
 				}
-				for k, v := range b.Elasticsearch.Annotations {
-					curEs.Annotations[k] = v
-				}
+				maps.Copy(curEs.Annotations, b.Elasticsearch.Annotations)
 				// defensive copy as the spec struct contains nested objects like ucfg.Config that don't marshal/unmarshal
 				// without losing type information making later comparisons with deepEqual fail.
 				curEs.Spec = *b.Elasticsearch.Spec.DeepCopy()
@@ -74,6 +73,31 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				// hence the usage of `test.Eventually`
 				return k.Client.Update(context.Background(), &curEs)
 			}),
+		},
+	}
+}
+
+func (b Builder) RollingRestartTestSteps(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		test.Step{
+			Name: "Elasticsearch pods should have the restart trigger annotation",
+			Test: test.Eventually(func() error {
+				pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
+				if err != nil {
+					return err
+				}
+
+				for _, p := range pods {
+					if p.Annotations[esv1.RestartTriggerAnnotation] != b.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation] {
+						return errors.New("rolling restart incomplete")
+					}
+				}
+
+				return nil
+			}),
+			Skip: func() bool {
+				return !b.TriggersRollingRestart()
+			},
 		},
 	}
 }
@@ -142,6 +166,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	//nolint:thelper
 	steps = steps.WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.RollingRestartTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{

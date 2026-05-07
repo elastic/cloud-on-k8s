@@ -32,4 +32,4 @@ func (o *OwnerWatch[T]) EventHandler() handler.TypedEventHandler[T, reconcile.Re
 	return handler.TypedEnqueueRequestForOwner[T](o.Scheme, o.Mapper, o.OwnerType, opts...)
 }
 
-var _ HandlerRegistration[client.Object] = &OwnerWatch[client.Object]{}
+var _ HandlerRegistration[client.Object] = (*OwnerWatch[client.Object])(nil)

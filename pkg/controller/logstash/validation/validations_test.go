@@ -256,12 +256,12 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
-								ClusterName:    "test",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"}},
+								ClusterName:           "test",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "test2",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								ClusterName:           "test2",
 							},
 						},
 					},
@@ -276,8 +276,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
-								ClusterName:    "test",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"}},
+								ClusterName:           "test",
 							},
 						},
 					},
@@ -292,8 +292,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"},
-								ClusterName:    "test",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"}},
+								ClusterName:           "test",
 							},
 						},
 					},
@@ -308,8 +308,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"},
-								ClusterName:    "test",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"}},
+								ClusterName:           "test",
 							},
 						},
 					},
@@ -349,7 +349,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
 							},
 						},
 					},
@@ -364,12 +364,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "bla",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								ClusterName:           "bla",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "blub",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								ClusterName:           "blub",
 							},
 						},
 					},
@@ -384,12 +384,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								ClusterName:           "",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "default",
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								ClusterName:           "default",
 							},
 						},
 					},

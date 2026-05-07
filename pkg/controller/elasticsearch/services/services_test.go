@@ -66,7 +66,7 @@ func TestExternalServiceURL(t *testing.T) {
 func TestNewExternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1.HTTPConfig
+		httpConf commonv1.HTTPConfigWithClientOptions
 		wantSvc  func() corev1.Service
 	}{
 		{
@@ -75,10 +75,12 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "no TLS",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							Disabled: true,
+						},
 					},
 				},
 			},
@@ -86,12 +88,14 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "self-signed certificate",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-							{
-								DNS: "elasticsearch-test.local",
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+								{
+									DNS: "elasticsearch-test.local",
+								},
 							},
 						},
 					},
@@ -101,10 +105,12 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "user-provided certificate",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					Certificate: commonv1.SecretRef{
-						SecretName: "my-cert",
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						Certificate: commonv1.SecretRef{
+							SecretName: "my-cert",
+						},
 					},
 				},
 			},
@@ -124,12 +130,12 @@ func TestNewExternalService(t *testing.T) {
 func TestNewInternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1.HTTPConfig
+		httpConf commonv1.HTTPConfigWithClientOptions
 		wantSvc  func() corev1.Service
 	}{
 		{
 			name: "user supplied selector is not applied to internal service",
-			httpConf: commonv1.HTTPConfig{
+			httpConf: commonv1.HTTPConfigWithClientOptions{
 				Service: commonv1.ServiceTemplate{
 					Spec: corev1.ServiceSpec{
 						Selector: map[string]string{
@@ -219,7 +225,7 @@ func mkTransportService() corev1.Service {
 	}
 }
 
-func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
+func mkElasticsearch(httpConf commonv1.HTTPConfigWithClientOptions) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "elasticsearch-test",
@@ -495,7 +501,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		{
 			name: "cache failures are returned to the caller",
 			args: args{
-				es:     mkElasticsearch(commonv1.HTTPConfig{}),
+				es:     mkElasticsearch(commonv1.HTTPConfigWithClientOptions{}),
 				client: k8s.NewFailingClient(errors.New("boom")),
 			},
 			wantErr: true,
@@ -503,7 +509,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		{
 			name: "list pods from cache",
 			args: args{
-				es: mkElasticsearch(commonv1.HTTPConfig{}),
+				es: mkElasticsearch(commonv1.HTTPConfigWithClientOptions{}),
 				client: k8s.NewFakeClient(
 					ptr.To(mkPod("sset-0", true, true)),
 					ptr.To(mkPod("sset-1", true, false)),

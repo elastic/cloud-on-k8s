@@ -22,7 +22,7 @@ const (
 
 type DataStreamResult struct {
 	DataStreams []DataStream `json:"data_streams"`
-	Error       interface{}  `json:"error"`
+	Error       any          `json:"error"`
 }
 
 type DataStream struct {

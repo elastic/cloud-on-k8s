@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -56,7 +56,7 @@ var (
 			if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 				return "", err
 			}
-			serviceName := esRef.ServiceName
+			serviceName := esRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = services.ExternalServiceName(es.Name)
 			}
@@ -94,7 +94,7 @@ var (
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "kibana-user",
@@ -122,7 +122,9 @@ var (
 	sampleKibanaWithESRef = func() kbv1.Kibana {
 		sample := sampleKibanaNoEsRef()
 		kb := (&sample).DeepCopy()
-		kb.Spec = kbv1.KibanaSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace}}
+		kb.Spec = kbv1.KibanaSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: sampleES.Name, Namespace: sampleES.Namespace},
+		}}
 		return *kb
 	}
 	sampleAssociatedKibana = func(customSvc ...string) kbv1.Kibana {
@@ -161,6 +163,7 @@ var (
 			Name:      "kbns-kbname-kibana-user",
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                     "user",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -188,6 +191,7 @@ var (
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-es-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -215,6 +219,7 @@ var (
 			Name:      "kbname-kibana-user",
 			Labels: map[string]string{
 				"eck.k8s.elastic.co/credentials":                 "true",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -269,7 +274,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
-		recorder:        record.NewFakeRecorder(10),
+		recorder:        toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -278,6 +283,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 			},
 			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
+		referencedResourceKind: esv1.Kind,
 	}
 }
 
@@ -505,6 +511,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-ent-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                 "true",
 				"enterprisesearch.k8s.elastic.co/name":       "entname",
 				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
 				"kibanaassociation.k8s.elastic.co/name":      "kbname",
@@ -532,14 +539,14 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		ReferencedObjTemplate: func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			entRef := assoc.AssociationRef()
-			if !entRef.IsDefined() {
+			if !entRef.IsSet() {
 				return "", nil
 			}
 			ent := entv1.EnterpriseSearch{}
 			if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
 				return "", err
 			}
-			serviceName := entRef.ServiceName
+			serviceName := entRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = "entname-ent-http"
 			}
@@ -582,7 +589,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -748,7 +755,9 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 				"association.k8s.elastic.co/es-conf": "association-conf-data", // we don't care about the data here
 			},
 		},
-		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
+		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+			ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+		}},
 	}
 	tests := []struct {
 		name              string
@@ -780,14 +789,16 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 					Namespace: "ns",
 					Name:      "kb",
 				},
-				Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
+				Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+				}},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjects...)
-			r := &Reconciler{Client: c, recorder: record.NewFakeRecorder(10)}
+			r := &Reconciler{Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			es, status, err := r.getElasticsearch(context.Background(), tt.associated, tt.esRef)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantStatus, status)
@@ -807,7 +818,13 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				ElasticsearchRefs: []agentv1alpha1.Output{{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}}},
+				ElasticsearchRefs: []agentv1alpha1.Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+						},
+					},
+				},
 			},
 		}
 		associations := agent.GetAssociations()
@@ -828,7 +845,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		},
 		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
 			esRef := association.AssociationRef()
-			if !esRef.IsDefined() {
+			if !esRef.IsSet() {
 				return "", nil
 			}
 			es := esv1.Elasticsearch{}
@@ -851,7 +868,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},
 			UserSecretSuffix: "agent-user",
@@ -871,12 +888,16 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			Version: "7.7.0",
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
-					OutputName:     "default",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
+					},
+					OutputName: "default",
 				},
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es2", Namespace: "es2Namespace"},
-					OutputName:     "monitoring",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es2", Namespace: "es2Namespace"},
+					},
+					OutputName: "monitoring",
 				},
 			},
 		},
@@ -924,7 +945,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -1088,14 +1109,14 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		},
 		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
 			fleetServerRef := assoc.AssociationRef()
-			if !fleetServerRef.IsDefined() {
+			if !fleetServerRef.IsSet() {
 				return "", nil
 			}
 			fleetServer := agentv1alpha1.Agent{}
 			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 				return "", err
 			}
-			serviceName := fleetServerRef.ServiceName
+			serviceName := fleetServerRef.GetServiceName()
 			if serviceName == "" {
 				serviceName = agentNamer.Suffix(fleetServer.Name, "http")
 			}
@@ -1128,7 +1149,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, err
 			}
 			fleetServerRef := assoc.AssociationRef()
-			if !fleetServerRef.IsDefined() {
+			if !fleetServerRef.IsSet() {
 				return nil, nil
 			}
 			var fleetServer agentv1alpha1.Agent
@@ -1207,8 +1228,10 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			FleetServerEnabled: false,
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
-					OutputName:     "default",
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
+					},
+					OutputName: "default",
 				},
 			},
 		},
@@ -1289,7 +1312,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       record.NewFakeRecorder(10),
+		recorder:       toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{
 			OperatorInfo: about.OperatorInfo{
 				BuildInfo: about.BuildInfo{
@@ -1360,7 +1383,6 @@ func checkSecrets(t *testing.T, client k8s.Client, expected bool, withOwnerRefs 
 	t.Helper()
 	for _, expectedSecrets := range secrets {
 		for _, expectedSecret := range expectedSecrets {
-			expectedSecret := expectedSecret
 			var got corev1.Secret
 			err := client.Get(context.Background(), k8s.ExtractNamespacedName(&expectedSecret), &got)
 			if !expected {
@@ -1446,6 +1468,7 @@ func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, 
 				"agentassociation.k8s.elastic.co/name":           sourceName,
 				"agentassociation.k8s.elastic.co/namespace":      sourceNs,
 				"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      targetName,
 				"elasticsearch.k8s.elastic.co/cluster-namespace": targetNs,
 			},
@@ -1488,7 +1511,9 @@ func equalKeys(t *testing.T, a map[string][]byte, b map[string][]byte) {
 func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	// Kibana references ES with a custom secret, but neither the secret nor association conf exist yet
 	kb := sampleKibanaNoEsRef()
-	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret"}}
+	kb.Spec = kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
+		ObjectSelector: commonv1.ObjectSelector{SecretName: "sample-es-ref-secret"},
+	}}
 
 	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)

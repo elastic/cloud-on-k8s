@@ -7,6 +7,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -379,62 +380,80 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, NewStaticURLProvider("another-endpoint"), dummyUser, v7, dummyCACerts, nil, timeout, false),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, BasicAuth{Name: "user", Password: "another-password"}, v7, dummyCACerts, nil, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert()}, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert()}, nil, timeout, false),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert(), createCert()}, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, []*x509.Certificate{createCert(), createCert()}, nil, timeout, false),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, nil, timeout, false),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, nil, timeout, false),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, timeout, false),
-			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, timeout, false),
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v8, dummyCACerts, nil, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts, nil, timeout, false),
+			want: false,
+		},
+		{
+			name: "both have same client cert",
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, &tls.Certificate{Certificate: [][]byte{[]byte("cc")}}, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, &tls.Certificate{Certificate: [][]byte{[]byte("cc")}}, timeout, false),
+			want: true,
+		},
+		{
+			name: "different client certs",
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, &tls.Certificate{Certificate: [][]byte{[]byte("cc1")}}, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, &tls.Certificate{Certificate: [][]byte{[]byte("cc2")}}, timeout, false),
+			want: false,
+		},
+		{
+			name: "one has client cert one does not",
+			c1:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, &tls.Certificate{Certificate: [][]byte{[]byte("cc")}}, timeout, false),
+			c2:   NewElasticsearchClient(nil, dummyNamespaceName, dummyEndpoint, dummyUser, v7, dummyCACerts, nil, timeout, false),
 			want: false,
 		},
 	}
@@ -790,6 +809,7 @@ func Test_HasProperties(t *testing.T) {
 	defaultUser := BasicAuth{Name: "foo", Password: "bar"}
 	defaultURLProvider := NewStaticURLProvider("https://foo.bar")
 	defaultCaCerts := []*x509.Certificate{{Raw: []byte("foo")}}
+	defaultClientCert := &tls.Certificate{Certificate: [][]byte{[]byte("client-cert")}}
 	defaultEsClient := NewElasticsearchClient(
 		nil,
 		types.NamespacedName{Namespace: "ns", Name: "es"},
@@ -797,17 +817,30 @@ func Test_HasProperties(t *testing.T) {
 		defaultUser,
 		defaultVersion,
 		defaultCaCerts,
+		nil,
+		Timeout(context.Background(), esv1.Elasticsearch{}),
+		false,
+	)
+	esClientWithCert := NewElasticsearchClient(
+		nil,
+		types.NamespacedName{Namespace: "ns", Name: "es"},
+		defaultURLProvider,
+		defaultUser,
+		defaultVersion,
+		defaultCaCerts,
+		defaultClientCert,
 		Timeout(context.Background(), esv1.Elasticsearch{}),
 		false,
 	)
 	tests := []struct {
-		name     string
-		esClient Client
-		version  version.Version
-		user     BasicAuth
-		url      URLProvider
-		caCerts  []*x509.Certificate
-		want     bool
+		name       string
+		esClient   Client
+		version    version.Version
+		user       BasicAuth
+		url        URLProvider
+		caCerts    []*x509.Certificate
+		clientCert *tls.Certificate
+		want       bool
 	}{
 		{
 			name:     "A new client is created if the version does not match",
@@ -854,11 +887,76 @@ func Test_HasProperties(t *testing.T) {
 			caCerts:  defaultCaCerts,
 			want:     true,
 		},
+		{
+			name:       "A new client is created if clientCert is added",
+			esClient:   defaultEsClient,
+			version:    defaultVersion,
+			user:       defaultUser,
+			url:        defaultURLProvider,
+			caCerts:    defaultCaCerts,
+			clientCert: defaultClientCert,
+			want:       false,
+		},
+		{
+			name:       "Client with cert is reused when same cert is provided",
+			esClient:   esClientWithCert,
+			version:    defaultVersion,
+			user:       defaultUser,
+			url:        defaultURLProvider,
+			caCerts:    defaultCaCerts,
+			clientCert: defaultClientCert,
+			want:       true,
+		},
+		{
+			name:       "A new client is created if clientCert differs",
+			esClient:   esClientWithCert,
+			version:    defaultVersion,
+			user:       defaultUser,
+			url:        defaultURLProvider,
+			caCerts:    defaultCaCerts,
+			clientCert: &tls.Certificate{Certificate: [][]byte{[]byte("other-cert")}},
+			want:       false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := tt.esClient.HasProperties(tt.version, tt.user, tt.url, tt.caCerts)
+			actual := tt.esClient.HasProperties(tt.version, tt.user, tt.url, tt.caCerts, tt.clientCert)
 			assert.Equal(t, tt.want, actual)
+		})
+	}
+}
+
+func Test_clientCertsEqual(t *testing.T) {
+	certA := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a")}}
+	certACopy := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a")}}
+	certB := &tls.Certificate{Certificate: [][]byte{[]byte("cert-b")}}
+	empty := &tls.Certificate{}
+
+	chainAB := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a"), []byte("intermediate-b")}}
+	chainABCopy := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a"), []byte("intermediate-b")}}
+	chainAC := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a"), []byte("intermediate-c")}}
+	chainABC := &tls.Certificate{Certificate: [][]byte{[]byte("cert-a"), []byte("intermediate-b"), []byte("root-c")}}
+
+	tests := []struct {
+		name string
+		a, b *tls.Certificate
+		want bool
+	}{
+		{name: "both nil", a: nil, b: nil, want: true},
+		{name: "a nil b non-nil", a: nil, b: certA, want: false},
+		{name: "a non-nil b nil", a: certA, b: nil, want: false},
+		{name: "same leaf cert", a: certA, b: certACopy, want: true},
+		{name: "different leaf cert", a: certA, b: certB, want: false},
+		{name: "both empty chain", a: empty, b: empty, want: true},
+		{name: "one empty chain", a: certA, b: empty, want: false},
+		{name: "same chain with intermediate", a: chainAB, b: chainABCopy, want: true},
+		{name: "same leaf different intermediate", a: chainAB, b: chainAC, want: false},
+		{name: "same leaf one has intermediate", a: certA, b: chainAB, want: false},
+		{name: "different chain lengths", a: chainAB, b: chainABC, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, clientCertsEqual(tt.a, tt.b))
 		})
 	}
 }

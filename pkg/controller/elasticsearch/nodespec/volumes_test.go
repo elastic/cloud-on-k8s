@@ -90,8 +90,52 @@ func Test_BuildVolumes_DataVolumeMountPath(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{})
+			_, volumeMounts := buildVolumes("esname", version.MustParse("8.8.0"), tc.nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{}, false)
 			assert.True(t, contains(volumeMounts, "elasticsearch-data", "/usr/share/elasticsearch/data"))
+		})
+	}
+}
+
+func Test_BuildVolumes_ClientAuth(t *testing.T) {
+	nodeSpec := esv1.NodeSet{
+		VolumeClaimTemplates: esvolume.DefaultVolumeClaimTemplates,
+	}
+	clientAuthVolumes := []string{
+		esvolume.ClientCertificatesTrustBundleVolumeName,
+		esvolume.InternalClientCertVolumeName,
+	}
+
+	tests := []struct {
+		name                         string
+		clientAuthenticationRequired bool
+		expectClientAuthVolumes      bool
+	}{
+		{
+			name:                         "client auth required",
+			clientAuthenticationRequired: true,
+			expectClientAuthVolumes:      true,
+		},
+		{
+			name:                         "client auth not required",
+			clientAuthenticationRequired: false,
+			expectClientAuthVolumes:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			volumes, _ := buildVolumes("esname", version.MustParse("8.15.0"), nodeSpec, nil, volume.DownwardAPI{}, []volume.VolumeLike{}, tt.clientAuthenticationRequired)
+			var volumeNames []string
+			for _, v := range volumes {
+				volumeNames = append(volumeNames, v.Name)
+			}
+			for _, expected := range clientAuthVolumes {
+				if tt.expectClientAuthVolumes {
+					assert.Contains(t, volumeNames, expected)
+				} else {
+					assert.NotContains(t, volumeNames, expected)
+				}
+			}
 		})
 	}
 }

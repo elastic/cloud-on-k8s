@@ -9,16 +9,13 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -27,48 +24,45 @@ var (
 	// will always take precedence to update or remove these labels.
 	managedLabels = []string{reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerKindLabel}
 
-	// managedAnnotations are the annotations managed by the operator for the stack config policy related secrets, which means that the operator
-	// will always take precedence to update or remove these annotations.
-	managedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
+	// fileSettingsManagedAnnotations are the annotations managed by the operator for the file settings Secret.
+	fileSettingsManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, reconciler.SoftOwnerRefsAnnotation}
+
+	// esConfigManagedAnnotations are the annotations managed by the operator for the Elasticsearch config Secret.
+	esConfigManagedAnnotations = []string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
+
+	// kibanaConfigManagedAnnotations are the annotations managed by the operator for the Kibana config Secret.
+	kibanaConfigManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
 )
 
-// ReconcileEmptyFileSettingsSecret reconciles an empty File settings Secret for the given Elasticsearch only when there is no Secret.
-// Used by the Elasticsearch controller.
-func ReconcileEmptyFileSettingsSecret(
-	ctx context.Context,
-	c k8s.Client,
-	es esv1.Elasticsearch,
-	createOnly bool,
-) error {
-	var currentSecret corev1.Secret
-	err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &currentSecret)
-	// do nothing when Secret already exists and create only
-	if err == nil && createOnly {
-		return nil
-	}
-	if err != nil && !apierrors.IsNotFound(err) {
-		return err
-	}
-
-	// extract the metadata that should be propagated to children
-	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
-	// no secret, reconcile a new empty file settings
-	expectedSecret, _, err := NewSettingsSecretWithVersion(k8s.ExtractNamespacedName(&es), nil, nil, nil, meta)
-	if err != nil {
-		return err
-	}
-
-	return ReconcileSecret(ctx, c, expectedSecret, &es)
+// ReconcileESConfigSecret reconciles the Elasticsearch config Secret for the given owner.
+func ReconcileESConfigSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) error {
+	return reconcileSecret(ctx, c, expected, owner, esConfigManagedAnnotations)
 }
 
-// ReconcileSecret reconciles the given Secret.
+// ReconcileKibanaConfigSecret reconciles the Kibana config Secret for the given owner.
+func ReconcileKibanaConfigSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object) error {
+	return reconcileSecret(ctx, c, expected, owner, kibanaConfigManagedAnnotations)
+}
+
+// reconcileSecret reconciles the given Secret for Elasticsearch config and Kibana config secrets.
+// The file settings Secret is not reconciled here — it is managed by the Secret type in file_settings_secret.go.
 // This implementation is slightly different from reconciler.ReconcileSecret to allow resetting managed annotations.
-func ReconcileSecret(
+// The managedAnnotations parameter scopes which annotations are actively managed (and removed if absent from expected),
+// preventing cross-type annotation drift between different secret types.
+func reconcileSecret(
 	ctx context.Context,
 	c k8s.Client,
 	expected corev1.Secret,
 	owner client.Object,
+	managedAnnotations []string,
 ) error {
+	// don't mutate expected (no side effects), make a copy
+	expected = *expected.DeepCopy()
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,
@@ -77,30 +71,49 @@ func ReconcileSecret(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// Secrets must be updated in the following cases:
-			// * the expected labels/annotations are not a subset of the existing labels/annotations,
-			// * the managed labels/annotations have been removed/changed,
-			// * the data itself has changed.
-			return (!maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)) ||
-				(!maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)) ||
-				!reflect.DeepEqual(expected.Data, reconciled.Data)
+			// Compare expected against current state (reconciled holds the Get result).
+			// Owner refs and managed key cleanup are handled by ReconcileResource separately.
+			labelsChanged := !maps.IsSubset(expected.Labels, reconciled.Labels) || !maps.IsEqualSubset(expected.Labels, reconciled.Labels, managedLabels)
+			annotationsChanged := !maps.IsSubset(expected.Annotations, reconciled.Annotations) || !maps.IsEqualSubset(expected.Annotations, reconciled.Annotations, managedAnnotations)
+			dataChanged := !reflect.DeepEqual(expected.Data, reconciled.Data)
+			if labelsChanged || annotationsChanged || dataChanged {
+				ulog.FromContext(ctx).V(1).Info("Secret needs update",
+					"secret_namespace", expected.Namespace, "secret_name", expected.Name,
+					"labels_changed", labelsChanged, "annotations_changed", annotationsChanged, "data_changed", dataChanged,
+				)
+				return true
+			}
+			return false
 		},
 		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			// remove managed labels if they are no longer defined
-			for _, label := range managedLabels {
-				if _, ok := expected.Labels[label]; !ok {
-					delete(reconciled.Labels, label)
-				}
-			}
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-			// remove managed annotations if they are no longer defined
-			for _, annotation := range managedAnnotations {
-				if _, ok := expected.Annotations[annotation]; !ok {
-					delete(reconciled.Annotations, annotation)
-				}
-			}
-			reconciled.Data = expected.Data
+			applyExpectedSecret(reconciled, expected, managedAnnotations, false)
 		},
 	})
+}
+
+// applyExpectedSecret applies the expected state onto the reconciled Secret.
+// Labels and annotations from expected are merged into reconciled. Data is replaced wholesale.
+// When additiveOnly is false (SCP controller), managed labels and annotations that are
+// absent from expected are removed from reconciled. When additiveOnly is true
+// (ES controller), existing labels and annotations are never removed, only added to.
+// Owner references are not handled here — they are set separately via SetControllerReference.
+func applyExpectedSecret(reconciled *corev1.Secret, expected corev1.Secret, managedAnnotations []string, additiveOnly bool) {
+	reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+	reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+	reconciled.Data = expected.Data
+
+	if additiveOnly {
+		return
+	}
+	// Remove managed labels/annotations that are no longer defined in expected.
+	for _, label := range managedLabels {
+		if _, ok := expected.Labels[label]; !ok {
+			delete(reconciled.Labels, label)
+		}
+	}
+	for _, annotation := range managedAnnotations {
+		if _, ok := expected.Annotations[annotation]; !ok {
+			delete(reconciled.Annotations, annotation)
+		}
+	}
 }

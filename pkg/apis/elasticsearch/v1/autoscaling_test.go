@@ -126,31 +126,31 @@ func TestElasticsearch_GetAutoscaledNodeSets(t *testing.T) {
 						NodeSets: []NodeSet{
 							{
 								Name: "nodeset-hot-content-1",
-								Config: &commonv1.Config{Data: map[string]interface{}{
+								Config: &commonv1.Config{Data: map[string]any{
 									"node.roles": []string{"data_hot", "data_content"},
 								}},
 							},
 							{
 								Name: "nodeset-warm-content",
-								Config: &commonv1.Config{Data: map[string]interface{}{
+								Config: &commonv1.Config{Data: map[string]any{
 									"node.roles": []string{"data_warm", "data_content"},
 								}},
 							},
 							{
 								Name: "nodeset-hot-content-2",
-								Config: &commonv1.Config{Data: map[string]interface{}{
+								Config: &commonv1.Config{Data: map[string]any{
 									"node.roles": []string{"data_hot", "data_content"},
 								}},
 							},
 							{
 								Name: "nodeset-ml",
-								Config: &commonv1.Config{Data: map[string]interface{}{
+								Config: &commonv1.Config{Data: map[string]any{
 									"node.roles": []string{"ml"},
 								}},
 							},
 							{
 								Name: "masters",
-								Config: &commonv1.Config{Data: map[string]interface{}{
+								Config: &commonv1.Config{Data: map[string]any{
 									"node.roles": []string{"master"},
 								}},
 							},

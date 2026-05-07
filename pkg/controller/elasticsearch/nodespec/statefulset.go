@@ -83,6 +83,8 @@ func BuildStatefulSet(
 	setDefaultSecurityContext bool,
 	policyConfig PolicyConfig,
 	meta metadata.Metadata,
+	actualPodsRestartTriggerAnnotationValue string,
+	clientAuthRequired bool,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
@@ -98,7 +100,7 @@ func BuildStatefulSet(
 	)
 
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta)
+	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue, clientAuthRequired)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}

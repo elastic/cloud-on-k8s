@@ -13,8 +13,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -43,7 +44,7 @@ func ReconcileUsersAndRoles(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
@@ -90,7 +91,7 @@ func aggregateFileRealm(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 	generator commonpassword.RandomGenerator,
 	meta metadata.Metadata,
@@ -147,7 +148,7 @@ func aggregateRoles(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
-	recorder record.EventRecorder,
+	recorder toolsevents.EventRecorder,
 ) (RolesFileContent, error) {
 	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)
 	if err != nil {
@@ -189,6 +190,12 @@ func reconcileRolesFileRealmSecret(
 		},
 		Data: secretData,
 	}
+
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{

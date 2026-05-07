@@ -21,7 +21,7 @@ type ShardMigration struct {
 	s  esclient.ShardLister
 }
 
-var _ shutdown.Interface = &ShardMigration{}
+var _ shutdown.Interface = (*ShardMigration)(nil)
 
 // NewShardMigration creates a new ShardMigration struct that holds no other state than the arguments to this
 // constructor function.

@@ -7,6 +7,7 @@ package license
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	emaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
@@ -177,7 +179,8 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 			Namespace: nsn.Namespace,
 			Name:      nsn.Name,
 			Labels: map[string]string{
-				commonv1.TypeLabelName: Type,
+				commonv1.TypeLabelName:                     Type,
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 			},
 		},
 		Data: info.toMap(),
@@ -192,15 +195,13 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 		NeedsUpdate: func() bool {
 			// do not compare timestamp, as it will always change
 			expectedData, reconciledData := map[string]string{}, map[string]string{}
-			for k, v := range expected.Data {
-				expectedData[k] = v
-			}
-			for k, v := range reconciled.Data {
-				reconciledData[k] = v
-			}
+			maps.Copy(expectedData, expected.Data)
+			maps.Copy(reconciledData, reconciled.Data)
 			delete(expectedData, "timestamp")
 			delete(reconciledData, "timestamp")
-			return !reflect.DeepEqual(expectedData, reconciledData)
+			return !reflect.DeepEqual(expectedData, reconciledData) ||
+				!emaps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!emaps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(reconciled)

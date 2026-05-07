@@ -17,11 +17,25 @@
 #   DEPLOYER_CLIENT_VERSION
 #   DEPLOYER_KIND_NODE_IMAGE
 #   DEPLOYER_KIND_IP_FAMILY
+#   STATELESS - when "true", enables stateless bucket credentials from Vault
 
 set -eu
 
 WD="$(cd "$(dirname "$0")"; pwd)"
 ROOT="$WD/../../.."
+
+# Increase inotify max_user_instances for Kind/k3d clusters to prevent "too many open files"
+# errors from controller-runtime's fsnotify watchers. The default (128) is too low when
+# running multiple containers with file watchers.
+if [[ "${E2E_PROVIDER:-}" == "kind" || "${E2E_PROVIDER:-}" == "k3d" ]]; then
+    if command -v sysctl &> /dev/null; then
+        if ! out="$(sudo sysctl -w fs.inotify.max_user_instances=512 2>&1)"; then
+            echo "Warning: failed to set fs.inotify.max_user_instances=512: ${out}" >&2
+        fi
+    else
+        echo "Warning: sysctl not found, cannot increase inotify limits" >&2
+    fi
+fi
 
 w()  { echo "$@" >> "$ROOT/deployer-config.yml"; }
 
@@ -62,6 +76,12 @@ write_deployer_config() {
     if [[ "${DEPLOYER_K3D_NODE_IMAGE:-}" ]]; then
     w "  k3d:"
     w "    nodeImage: ${DEPLOYER_K3D_NODE_IMAGE}"
+    fi
+
+    # Stateless mode: configure bucket
+    if [[ "${STATELESS:-}" == "true" ]]; then
+    w "  bucket:"
+    w "    fromVault: true"
     fi
 }
 

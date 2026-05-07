@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -16,7 +17,7 @@ import (
 
 func TestExpectations_Satisfied(t *testing.T) {
 	client := k8s.NewFakeClient()
-	e := NewExpectations(client)
+	e := NewExpectations(client, &appsv1.StatefulSet{})
 
 	// initially satisfied
 	satisfied, reason, err := e.Satisfied()
@@ -40,7 +41,7 @@ func TestExpectations_Satisfied(t *testing.T) {
 	require.NoError(t, client.Create(context.Background(), &sset))
 	updatedSset := sset
 	updatedSset.Generation = 2
-	e.ExpectGeneration(updatedSset)
+	e.ExpectGeneration(&updatedSset)
 
 	// expectations should not be satisfied
 	satisfied, reason, err = e.Satisfied()

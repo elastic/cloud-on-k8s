@@ -7,19 +7,19 @@ package test
 import (
 	"testing"
 
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 )
 
 // ReadAtMostEvents attempts to read at most minEventCount from a FakeRecorder.
 // This functions assumes that all the events are available in recorder.
-func ReadAtMostEvents(t *testing.T, minEventCount int, recorder *record.FakeRecorder) []string {
+func ReadAtMostEvents(t *testing.T, minEventCount int, recorder *toolsevents.FakeRecorder) []string {
 	t.Helper()
 	if minEventCount == 0 {
 		return nil
 	}
 	gotEvents := make([]string, 0, minEventCount)
 	gotEventCount := 0
-	for i := 0; i < minEventCount; i++ {
+	for range minEventCount {
 		select {
 		case e := <-recorder.Events:
 			gotEvents = append(gotEvents, e)

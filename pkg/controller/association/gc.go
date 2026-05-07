@@ -127,7 +127,6 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection(ctx context.Context) error
 	}
 
 	for _, secret := range secrets {
-		secret := secret
 		if apiType, expectedParent, hasParent := ugc.getAssociationParent(secret); hasParent {
 			parents, ok := allParents[*apiType] // get all the parents of a given type
 			if !ok {

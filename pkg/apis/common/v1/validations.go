@@ -30,8 +30,8 @@ func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorLis
 		if err := d.Decode(dest.DeepCopyObject()); err != nil {
 			errString := err.Error()
 			unknownPrefix := "json: unknown field "
-			if strings.HasPrefix(errString, unknownPrefix) {
-				fld := strings.TrimPrefix(errString, unknownPrefix)
+			if after, exists := strings.CutPrefix(errString, unknownPrefix); exists {
+				fld := after
 				if len(fld) >= 2 {
 					fld = fld[1 : len(fld)-1] // removes quotes from fld
 				}
@@ -77,13 +77,15 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 }
 
 // CheckDeprecatedStackVersion checks that the given version is not deprecated.
+// Parse errors are silently ignored and return no warning; the caller is expected
+// to also run CheckSupportedStackVersion which will surface the parse error.
 func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 	v, err := ParseVersion(ver)
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
-	if v.GTE(version.DeprecatedVersions.Min) && v.LT(version.DeprecatedVersions.Max) {
+	if err := version.DeprecatedVersions.WithinRange(*v); err == nil {
 		return fmt.Sprintf("Version %s is EOL and support for it will be removed in a future release of the ECK operator", ver), nil
 	}
 
@@ -111,6 +113,26 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 
 // CheckAssociationRefs checks that the given association references are valid.
 func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckElasticsearchSelectorRefs checks that the given Elasticsearch selector references are valid.
+func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckLocalAssociationRefs checks that the given local association references are valid.
+func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) field.ErrorList {
 	for _, ref := range refs {
 		if err := ref.IsValid(); err != nil {
 			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}

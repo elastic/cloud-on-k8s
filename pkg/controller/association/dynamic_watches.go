@@ -43,6 +43,11 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
 }
 
+// userProvidedClientCertWatchName returns the name of the watch on user-provided client certificate secrets.
+func userProvidedClientCertWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-user-client-cert-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches for:
 // * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
@@ -74,7 +79,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
-			Namespace: ref.Namespace,
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -85,8 +90,8 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      ref.ServiceName,
-			Namespace: ref.Namespace,
+			Name:      ref.GetServiceName(),
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -95,10 +100,20 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
 		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
+			return UserKey(association, association.AssociationRef().GetNamespace(), r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err
 		}
+	}
+
+	// watch user-provided client certificate secrets
+	if err := ReconcileWatch(associated, filterWithUserProvidedClientCert(associations), r.watches.Secrets, userProvidedClientCertWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		return types.NamespacedName{
+			Name:      association.AssociationRef().GetClientCertificateSecretName(),
+			Namespace: association.GetNamespace(),
+		}
+	}); err != nil {
+		return err
 	}
 
 	if r.AdditionalSecrets != nil {
@@ -191,4 +206,6 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
 	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
 	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
+	// - User-provided client certificate secret
+	RemoveWatch(r.watches.Secrets, userProvidedClientCertWatchName(associated))
 }

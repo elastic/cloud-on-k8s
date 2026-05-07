@@ -80,7 +80,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 		WithNodeSet(esv1.NodeSet{
 			Name: "default",
 			Config: &commonv1.Config{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"path.data": "/mnt/data1,/mnt/data2",
 				},
 			},

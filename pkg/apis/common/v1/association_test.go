@@ -317,3 +317,61 @@ func TestAssociationConf_AuthIsConfigured(t *testing.T) {
 		})
 	}
 }
+
+func TestClientCertIsConfigured(t *testing.T) {
+	tests := []struct {
+		name      string
+		assocConf *AssociationConf
+		want      bool
+	}{
+		{
+			name:      "nil AssociationConf",
+			assocConf: nil,
+			want:      false,
+		},
+		{
+			name:      "empty ClientCertSecretName",
+			assocConf: &AssociationConf{},
+			want:      false,
+		},
+		{
+			name:      "ClientCertSecretName set",
+			assocConf: &AssociationConf{ClientCertSecretName: "my-client-cert"},
+			want:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.assocConf.ClientCertIsConfigured())
+		})
+	}
+}
+
+func TestGetClientCertSecretName(t *testing.T) {
+	tests := []struct {
+		name      string
+		assocConf *AssociationConf
+		want      string
+	}{
+		{
+			name:      "nil AssociationConf",
+			assocConf: nil,
+			want:      "",
+		},
+		{
+			name:      "empty ClientCertSecretName",
+			assocConf: &AssociationConf{},
+			want:      "",
+		},
+		{
+			name:      "ClientCertSecretName set",
+			assocConf: &AssociationConf{ClientCertSecretName: "my-client-cert"},
+			want:      "my-client-cert",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.assocConf.GetClientCertSecretName())
+		})
+	}
+}

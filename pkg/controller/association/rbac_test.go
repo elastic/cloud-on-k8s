@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -39,7 +39,7 @@ func (f *fakeUnbinder) Unbind(_ context.Context, _ commonv1.Association) error {
 }
 
 var (
-	fetchEvent = func(recorder *record.FakeRecorder) string {
+	fetchEvent = func(recorder *toolsevents.FakeRecorder) string {
 		select {
 		case event := <-recorder.Events:
 			return event
@@ -72,7 +72,7 @@ func TestCheckAndUnbind(t *testing.T) {
 		associated     commonv1.Association
 		object         runtime.Object
 		unbinder       fakeUnbinder
-		recorder       *record.FakeRecorder
+		recorder       *toolsevents.FakeRecorder
 	}
 	tests := []struct {
 		name                                             string
@@ -88,7 +88,7 @@ func TestCheckAndUnbind(t *testing.T) {
 					allowed: false,
 				},
 				unbinder: fakeUnbinder{},
-				recorder: record.NewFakeRecorder(10),
+				recorder: toolsevents.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: true,
 			wantEvent:              true,
@@ -103,7 +103,7 @@ func TestCheckAndUnbind(t *testing.T) {
 					allowed: true,
 				},
 				unbinder: fakeUnbinder{},
-				recorder: record.NewFakeRecorder(10),
+				recorder: toolsevents.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: false,
 			wantEvent:              false,

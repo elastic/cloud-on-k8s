@@ -54,7 +54,7 @@ func IsLogsDefined(resource HasMonitoring) bool {
 
 func AreEsRefsDefined(esRefs []commonv1.ObjectSelector) bool {
 	for _, ref := range esRefs {
-		if !ref.IsDefined() {
+		if !ref.IsSet() {
 			return false
 		}
 	}
@@ -64,7 +64,7 @@ func AreEsRefsDefined(esRefs []commonv1.ObjectSelector) bool {
 func GetMetricsAssociation(resource HasMonitoring) []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range resource.GetMonitoringMetricsRefs() {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, resource.MonitoringAssociation(ref))
 		}
 	}
@@ -74,7 +74,7 @@ func GetMetricsAssociation(resource HasMonitoring) []commonv1.Association {
 func GetLogsAssociation(resource HasMonitoring) []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range resource.GetMonitoringLogsRefs() {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, resource.MonitoringAssociation(ref))
 		}
 	}

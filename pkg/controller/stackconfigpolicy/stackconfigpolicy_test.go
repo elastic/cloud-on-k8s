@@ -53,7 +53,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: 1,
+						Weight: 10,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: "policy1-deprecated-secure-setting",
@@ -133,7 +133,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: 10,
+						Weight: 1,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: "policy2-deprecated-secure-setting",
@@ -341,7 +341,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: 1,
+						Weight: 10,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: "policy1-deprecated-secure-setting",
@@ -421,7 +421,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
 						},
-						Weight: 10,
+						Weight: 1,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: "policy2-deprecated-secure-setting",
@@ -768,7 +768,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
-				// Policy 1 with lower weight - should be merged first
+				// Policy 1 with lower weight - attempts to define the same secret as Policy 2, should conflict
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "test",
@@ -790,7 +790,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						},
 					},
 				},
-				// Policy 2 with higher weight - attempts to define the same secret, should conflict
+				// Policy 2 with higher weight - should be merged first
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "test",
@@ -827,7 +827,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
-				// Policy 1 with lower weight - should be merged first
+				// Policy 1 with lower weight - attempts to use the same mount path, should conflict
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "test",
@@ -849,7 +849,7 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						},
 					},
 				},
-				// Policy 2 with higher weight - attempts to use the same mount path, should conflict
+				// Policy 2 with higher weight - should be merged first
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "test",
@@ -1125,7 +1125,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			},
 		},
 		{
-			name: "merges Kibana configs with overwrites - lower weight wins",
+			name: "merges Kibana configs with overwrites - higher weight wins",
 			targetKibana: &kbv1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-kb",
@@ -1165,7 +1165,7 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "prod"},
 						},
-						Weight: 20,
+						Weight: 2,
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{Data: map[string]any{
 								"logging.root.level": "debug", // Override from policy with weight 10

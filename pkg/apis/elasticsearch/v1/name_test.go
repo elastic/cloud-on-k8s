@@ -79,3 +79,7 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestKeystorePasswordSecret(t *testing.T) {
+	require.Equal(t, "cluster-es-keystore-password", KeystorePasswordSecret("cluster"))
+}

@@ -41,7 +41,7 @@ func TestStackConfigPolicyKibana(t *testing.T) {
 	// set up a 1-node Kibana deployment
 	name := "test-kb-scp"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).WithLabel("label", "test-scp")
@@ -137,21 +137,21 @@ func TestStackConfigPolicyKibanaMultipleWeights(t *testing.T) {
 	// set up a 1-node Kibana deployment
 	name := "test-kb-scp-multi"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).WithLabel("app", "kibana")
 
 	kbPodListOpts := test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)
 
-	// Policy with weight 20 (lower priority)
+	// Policy with weight 10 (lower priority)
 	lowPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("low-priority-kb-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 20,
+			Weight: 10,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "kibana"},
 			},
@@ -171,14 +171,14 @@ func TestStackConfigPolicyKibanaMultipleWeights(t *testing.T) {
 		},
 	}
 
-	// Policy with weight 10 (higher priority) - should override lower priority settings
+	// Policy with weight 20 (higher priority) - should override lower priority settings
 	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("high-priority-kb-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 10,
+			Weight: 20,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "kibana"},
 			},
@@ -198,14 +198,14 @@ func TestStackConfigPolicyKibanaMultipleWeights(t *testing.T) {
 		},
 	}
 
-	// Policy with same weight 20 but different selector (should not conflict)
+	// Policy with same weight 10 but different selector (should not conflict)
 	nonConflictingPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("non-conflicting-kb-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 20,
+			Weight: 10,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch"}, // Different selector
 			},

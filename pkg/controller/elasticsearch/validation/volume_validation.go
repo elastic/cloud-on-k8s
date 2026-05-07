@@ -28,15 +28,19 @@ func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, ns := range proposed.Spec.NodeSets {
 		// do we have a claim at all and if so is it named correctly? OK
-		if len(ns.VolumeClaimTemplates) == 0 || hasDefaultClaim(ns.VolumeClaimTemplates) {
+		if len(ns.VolumeClaimTemplates) == 0 || hasDefaultClaim(ns.VolumeClaimTemplates, proposed.IsStateless()) {
 			continue
 		}
 		// we have claims but they are using custom names, are all of them mounted as a volume?
 		for _, m := range unmountedClaims(ns) {
+			msg := pvcNotMountedStatefulErrMsg
+			if proposed.IsStateless() {
+				msg = pvcNotMountedStatelessErrMsg
+			}
 			errs = append(errs, field.Invalid(
-				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				m.Name,
-				pvcNotMountedErrMsg,
+				msg,
 			))
 		}
 	}
@@ -57,9 +61,12 @@ func unmountedClaims(ns esv1.NodeSet) []corev1.PersistentVolumeClaim {
 	return templates
 }
 
-func hasDefaultClaim(templates []corev1.PersistentVolumeClaim) bool {
+func hasDefaultClaim(templates []corev1.PersistentVolumeClaim, isStateless bool) bool {
 	for _, t := range templates {
-		if t.Name == volume.ElasticsearchDataVolumeName {
+		if !isStateless && t.Name == volume.ElasticsearchDataVolumeName {
+			return true
+		}
+		if isStateless && t.Name == volume.ElasticsearchCacheVolumeName {
 			return true
 		}
 	}
@@ -97,22 +104,19 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	}
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
-		if currentNodeSet == nil {
-			// initial creation
-			continue
-		}
-
-		// Check that no modification was made to the claims, except on storage requests.
-		if !apiequality.Semantic.DeepEqual(
-			claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
-			claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
-		) {
-			errs = append(errs, field.Invalid(
-				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
-				proposedNodeSet.VolumeClaimTemplates,
-				volumevalidations.PvcImmutableErrMsg,
-			))
-			continue
+		if currentNodeSet != nil {
+			// Check that no modification was made to the claims, except on storage requests.
+			if !apiequality.Semantic.DeepEqual(
+				claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
+				claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
+			) {
+				errs = append(errs, field.Invalid(
+					field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
+					proposedNodeSet.VolumeClaimTemplates,
+					volumevalidations.PvcImmutableErrMsg,
+				))
+				continue
+			}
 		}
 
 		// Allow storage increase to go through if the storage class supports volume expansion.
@@ -135,9 +139,20 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
+		if currentNodeSet == nil {
+			// this means that there is a StatefulSet with matchingSsetName but no nodeSet with this name in the current Elasticsearch.
+			// This can happen by quick renames of nodeSets in the Elasticsearch resource.
+			errs = append(errs, field.Invalid(
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("name"),
+				proposedNodeSet.Name,
+				"cannot reuse nodeSet name while a StatefulSet with that name still exists from a previous configuration",
+			))
+			continue
+		}
+
 		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
-				field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"),
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				proposedNodeSet.VolumeClaimTemplates,
 				err.Error(),
 			))

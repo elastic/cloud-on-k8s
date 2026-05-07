@@ -24,7 +24,7 @@ import (
 func TestKillKibanaPod(t *testing.T) {
 	name := "test-kill-kb-pod"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
@@ -40,7 +40,7 @@ func TestKillKibanaPod(t *testing.T) {
 func TestKillKibanaDeployment(t *testing.T) {
 	name := "test-kill-kb-deploy"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)

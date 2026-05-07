@@ -6,12 +6,14 @@ package manager
 
 import (
 	"context"
+	"crypto/fips140"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -21,10 +23,13 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -43,15 +48,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -62,7 +64,6 @@ import (
 	associationctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
-	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
@@ -75,8 +76,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -86,12 +85,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/v3/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
-	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/license"
@@ -366,6 +363,11 @@ func Command() *cobra.Command {
 		"auto-detect",
 		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods and Kibana 7.10+ Pods. Possible values: true, false, auto-detect",
 	)
+	cmd.Flags().Bool(
+		operator.RestrictWatchedResources,
+		false,
+		"Restrict resource watching (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
+	)
 
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
@@ -446,9 +448,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 func startOperator(ctx context.Context) error {
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+	fipsLog()
 
 	// update GOMAXPROCS to container cpu limit if necessary
-	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
 		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
 		// so we need to do this translation
 		log.Info(fmt.Sprintf(s, i...))
@@ -602,8 +605,17 @@ func startOperator(ctx context.Context) error {
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 	}
 
-	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
+	byObject, err := buildByObject(viper.GetBool(operator.RestrictWatchedResources))
+	if err != nil {
+		log.Error(err, "Failed to build cache option ByObject")
+		return err
+	}
+
+	opts.Cache = cache.Options{
+		DefaultNamespaces: map[string]cache.Config{},
+		DefaultTransform:  cache.TransformStripManagedFields(),
+		ByObject:          byObject,
+	}
 	for _, ns := range managedNamespaces {
 		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
 	}
@@ -1031,108 +1043,61 @@ func garbageCollectAutoOpsResources(ctx context.Context, k8sClient k8s.Client, d
 	return nil
 }
 
-func setupWebhook(
-	ctx context.Context,
-	mgr manager.Manager,
-	params operator.Parameters,
-	webhookCertDir string,
-	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels,
-	managedNamespaces []string,
-	tracer *apm.Tracer,
-) {
-	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
-	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
-			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
+func fipsLog() {
+	if buildInfo, buildInfoOK := debug.ReadBuildInfo(); buildInfoOK {
+		for _, s := range buildInfo.Settings {
+			if s.Key != "GOEXPERIMENT" {
+				continue
+			}
+			if strings.Contains(s.Value, "boringcrypto") {
+				log.Info("operator runs in FIPS mode", "type", "boringcrypto")
+				return
+			}
+			break
 		}
 	}
 
-	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-	// setup webhooks for supported types
-	webhookObjects := []interface {
-		runtime.Object
-		admission.Validator
-		WebhookPath() string
-	}{
-		&agentv1alpha1.Agent{},
-		&apmv1.ApmServer{},
-		&apmv1beta1.ApmServer{},
-		&beatv1beta1.Beat{},
-		&entv1.EnterpriseSearch{},
-		&entv1beta1.EnterpriseSearch{},
-		&esv1beta1.Elasticsearch{},
-		&kbv1.Kibana{},
-		&kbv1beta1.Kibana{},
-		&emsv1alpha1.ElasticMapsServer{},
-		&eprv1alpha1.PackageRegistry{},
-		&policyv1alpha1.StackConfigPolicy{},
-		&autoopsv1alpha1.AutoOpsAgentPolicy{},
-	}
-	for _, obj := range webhookObjects {
-		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
-			Manager:          mgr,
-			WebhookPath:      obj.WebhookPath(),
-			ManagedNamespace: managedNamespaces,
-			Validator:        obj,
-			LicenseChecker:   checker,
-		})
+	if fips140.Enabled() {
+		// when go.mod bumps to go 1.26 and later fips140.Enforced() and fips140.Version()
+		// can also be added to log.
+		log.Info("operator runs in FIPS mode", "type", "native")
+		return
 	}
 
-	// Logstash, Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
-	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
-
-	// wait for the secret to be populated in the local filesystem before returning
-	interval := time.Second * 1
-	timeout := time.Second * 30
-	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
-	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	//nolint:staticcheck
-	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
-		_, err := os.Stat(keyPath)
-		// err could be that the file does not exist, but also that permission was denied or something else
-		if os.IsNotExist(err) {
-			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
-
-			return false, nil
-		} else if err != nil {
-			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)
-			return false, err
-		}
-		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
-		return true, nil
-	})
-	if err != nil {
-		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
-		os.Exit(1)
-	}
+	log.Info("operator runs without FIPS mode")
 }
 
-func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
-	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
-	defer tracing.EndContextTransaction(ctx)
-	log.Info("Automatic management of the webhook certificates enabled")
-	// Ensure that all the certificates needed by the webhook server are already created
-	webhookParams := webhook.Params{
-		Name:       viper.GetString(operator.WebhookNameFlag),
-		Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
-		SecretName: viper.GetString(operator.WebhookSecretFlag),
-		Rotation:   certRotation,
-	}
-
-	// retrieve the current webhook configuration interface
-	wh, err := webhookParams.NewAdmissionControllerInterface(ctx, clientset)
+func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObject, error) {
+	// cache filter for ECK owned resources (carrying the common.k8s.elastic.co/type label)
+	commonTypeExists, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	eckOwnedSelector := labels.NewSelector().Add(*commonTypeExists)
+
+	byObject := map[client.Object]cache.ByObject{
+		// Only resource types exclusively created by ECK (always carrying
+		// common.k8s.elastic.co/type) can be filtered here.
+		// The rest of the resources (such as Service, ConfigMap, and Secret)
+		// are excluded because ECK also watches user-provided instances of these types.
+		&corev1.Pod{}:                   {Label: eckOwnedSelector},
+		&policyv1.PodDisruptionBudget{}: {Label: eckOwnedSelector},
+		&appsv1.Deployment{}:            {Label: eckOwnedSelector},
+		&appsv1.StatefulSet{}:           {Label: eckOwnedSelector},
+		&appsv1.DaemonSet{}:             {Label: eckOwnedSelector},
 	}
 
-	// Force a first reconciliation to create the resources before the server is started
-	if err := webhookParams.ReconcileResources(ctx, clientset, wh); err != nil {
-		return err
+	if !restrictWatchedResources {
+		return byObject, nil
 	}
+	log.Info("watched resources restriction is enabled")
 
-	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+	watchedResourcesSelector := labels.SelectorFromSet(labels.Set{
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+	})
+	byObject[&corev1.Secret{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.Service{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: watchedResourcesSelector}
+
+	return byObject, nil
 }

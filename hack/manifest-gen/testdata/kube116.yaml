@@ -107,6 +107,10 @@ softMultiTenancy:
 # kubeAPIServerIP is required when softMultiTenancy is enabled.
 kubeAPIServerIP: null
 
+# kubeAPIServerPort is the port used by the Kubernetes API server.
+# Only used when softMultiTenancy is enabled. Defaults to 443.
+kubeAPIServerPort: 443
+
 telemetry:
   # disabled determines whether the operator periodically updates ECK telemetry data for Kibana to consume.
   disabled: false

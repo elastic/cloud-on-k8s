@@ -125,7 +125,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
 						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli"},
 					},
 				},
@@ -137,7 +137,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"}},
 					},
 				},
 			},
@@ -149,6 +149,33 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "named ref with clientCertificateSecretName: OK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ObjectSelector:              commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+							ClientCertificateSecretName: "my-client-cert",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "clientCertificateSecretName without name: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ClientCertificateSecretName: "my-client-cert",
+						},
 					},
 				},
 			},

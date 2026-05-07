@@ -33,7 +33,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.1.0-SNAPSHOT",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "autoops-secret",
 			},
@@ -47,10 +47,12 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
-			HTTP: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
+			HTTP: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							Disabled: true,
+						},
 					},
 				},
 			},
@@ -321,9 +323,6 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 								Privileged:             ptr.To(false),
 								ReadOnlyRootFilesystem: ptr.To(false),
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
 							},
 						},
 					},

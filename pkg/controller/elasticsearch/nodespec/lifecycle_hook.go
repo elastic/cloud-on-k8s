@@ -12,6 +12,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -169,10 +170,22 @@ else
   delayed_exit
 fi
 
+# setup client certificate authentication if certificates are available
+if [ -f "{{.InternalClientCertPath}}" ]; then
+  # client certificates are mounted by the operator for client authentication
+  CLIENT_CERT=("--cert" "{{.InternalClientCertPath}}" "--key" "{{.InternalClientKeyPath}}")
+elif [ -f "{{.HTTPCertPath}}" ]; then
+  # fallback for when a node transitions from client authentication disabled to enabled:
+  # use the internal HTTP certificates which should be signed by the CA trusted by Elasticsearch
+  CLIENT_CERT=("--cert" "{{.HTTPCertPath}}" "--key" "{{.HTTPKeyPath}}")
+else
+  CLIENT_CERT=()
+fi
+
 ES_URL="{{.ServiceURL}}"
 
 log "retrieving node ID"
-if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}"
+if ! retry "$retries_count" request -X GET "${ES_URL}/_cat/nodes?full_id=true&h=id,name" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}"
 then
   error_exit "failed to retrieve nodes"
 fi
@@ -183,7 +196,7 @@ then
 fi
 
 # check if there is an ongoing shutdown request
-if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}"
+if ! request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}"
 then
   error_exit "failed to retrieve shutdown status"
 fi
@@ -194,7 +207,7 @@ if grep -q -v '"nodes":\[\]' "$resp_body"; then
 fi
 
 log "initiating node shutdown"
-if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" -H 'Content-Type: application/json' -d"
+if ! retry "$retries_count" request -X PUT "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}" -H 'Content-Type: application/json' -d"
 {
   \"type\": \"${shutdown_type}\",
   \"reason\": \"pre-stop hook\"
@@ -206,7 +219,7 @@ fi
 while :
 do
   log "waiting for node shutdown to complete"
-  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" &&
+  if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}" &&
     grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
   then
     break
@@ -224,9 +237,13 @@ func RenderPreStopHookScript(svcURL string) (string, error) {
 		// edge case: protocol change (http/https) combined with external node shutdown might not work out well due to
 		// script propagation delays. But it is not a legitimate production use case as users are not expected to change
 		// protocol on production systems
-		"ServiceURL":       svcURL,
-		"LabelsFile":       filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
-		"VersionLabelName": label.VersionLabelName,
+		"ServiceURL":             svcURL,
+		"LabelsFile":             filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
+		"VersionLabelName":       label.VersionLabelName,
+		"InternalClientCertPath": filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName),
+		"InternalClientKeyPath":  filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName),
+		"HTTPCertPath":           filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		"HTTPKeyPath":            filepath.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 	var script bytes.Buffer
 	err := preStopHookScriptTemplate.Execute(&script, vars)

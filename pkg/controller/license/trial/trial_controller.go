@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 const (
@@ -37,18 +38,16 @@ const (
 	trialOnlyOnceMsg  = "trial can be started only once"
 )
 
-var (
-	userFriendlyMsgs = map[licensing.LicenseStatus]string{
-		licensing.LicenseStatusInvalid: "trial license signature invalid",
-		licensing.LicenseStatusExpired: "trial license expired",
-	}
-)
+var userFriendlyMsgs = map[licensing.LicenseStatus]string{
+	licensing.LicenseStatusInvalid: "trial license signature invalid",
+	licensing.LicenseStatusExpired: "trial license expired",
+}
 
 // ReconcileTrials reconciles Enterprise trial licenses.
 type ReconcileTrials struct {
 	k8s.Client
 	operator.Parameters
-	recorder record.EventRecorder
+	recorder toolsevents.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method.
 	iteration  uint64
 	trialState licensing.TrialState
@@ -105,10 +104,12 @@ func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Reque
 		// valid license, let's consider the trial started and complete the activation
 		return reconcile.Result{}, r.completeTrialActivation(ctx, request.NamespacedName)
 	case trialLicensePopulated && validLicense(licenseStatus) && r.trialState.IsTrialStarted():
-		// all good nothing to do
+		// all good nothing to do, but reconcile in case new labels or annotations are added.
+		_, err = reconciler.ReconcileSecret(ctx, r, secret, nil)
+		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, err
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
@@ -149,10 +150,14 @@ func (r *ReconcileTrials) reconcileTrialStatus(ctx context.Context, licenseName 
 	if err != nil {
 		return err
 	}
-	if reflect.DeepEqual(expected.Data, trialStatus.Data) {
+	if reflect.DeepEqual(expected.Data, trialStatus.Data) &&
+		maps.IsSubset(expected.Labels, trialStatus.Labels) &&
+		maps.IsSubset(expected.Annotations, trialStatus.Annotations) {
 		return nil
 	}
 	trialStatus.Data = expected.Data
+	trialStatus.Labels = maps.Merge(trialStatus.Labels, expected.Labels)
+	trialStatus.Annotations = maps.Merge(trialStatus.Annotations, expected.Annotations)
 	return r.Update(ctx, &trialStatus)
 }
 
@@ -229,7 +234,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 	return &ReconcileTrials{
 		Client:     mgr.GetClient(),
 		Parameters: params,
-		recorder:   mgr.GetEventRecorderFor(name),
+		recorder:   mgr.GetEventRecorder(name),
 	}
 }
 
@@ -274,4 +279,4 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(mgr, c)
 }
 
-var _ reconcile.Reconciler = &ReconcileTrials{}
+var _ reconcile.Reconciler = (*ReconcileTrials)(nil)

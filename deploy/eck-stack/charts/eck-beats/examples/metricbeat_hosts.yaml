@@ -1,6 +1,6 @@
 name: metricbeat
 type: metricbeat
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 elasticsearchRef:
   name: eck-elasticsearch
 kibanaRef:
@@ -111,6 +111,14 @@ clusterRole:
     - namespaces
     - events
     - pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - events.k8s.io
+    resources:
+    - events
     verbs:
     - get
     - list

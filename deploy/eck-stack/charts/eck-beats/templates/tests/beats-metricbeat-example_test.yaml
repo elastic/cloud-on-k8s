@@ -86,13 +86,26 @@ tests:
           - watch
       - equal:
           path: rules[1].apiGroups[0]
-          value: extensions
+          value: events.k8s.io
       - equal:
           path: rules[1].resources
           value:
-          - replicasets
+          - events
       - equal:
           path: rules[1].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[2].apiGroups[0]
+          value: extensions
+      - equal:
+          path: rules[2].resources
+          value:
+          - replicasets
+      - equal:
+          path: rules[2].verbs
           value:
           - get
           - list
@@ -122,7 +135,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
             clusterRole: label
-            helm.sh/chart:  eck-beats-0.18.0-SNAPSHOT
+            helm.sh/chart:  eck-beats-0.20.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
@@ -185,7 +198,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
             clusterRoleBinding: label
-            helm.sh/chart:  eck-beats-0.18.0-SNAPSHOT
+            helm.sh/chart:  eck-beats-0.20.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations
@@ -233,7 +246,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-beats
             serviceAccount: label
-            helm.sh/chart:  eck-beats-0.18.0-SNAPSHOT
+            helm.sh/chart:  eck-beats-0.20.0-SNAPSHOT
             test: label
       - equal:
           path: metadata.annotations

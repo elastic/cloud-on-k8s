@@ -43,7 +43,7 @@ var (
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
+func DefaultEnvVars(v version.Version, httpCfg commonv1.HTTPConfigWithClientOptions, headlessServiceName string) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
 		// needed in elasticsearch.yml
 		// We do not recommend overriding the default readiness probe on Elasticsearch 8.2.0 and later.

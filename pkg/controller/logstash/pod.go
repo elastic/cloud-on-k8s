@@ -59,6 +59,9 @@ var (
 
 	DefaultSecurityContext = corev1.PodSecurityContext{
 		FSGroup: ptr.To[int64](defaultFsGroup),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 )
 
@@ -109,7 +112,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		Annotations: annotations,
 	})
 	builder = builder.
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, spec.Resources).
 		WithLabels(podMetadata.Labels).
 		WithAnnotations(podMetadata.Annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, v)).

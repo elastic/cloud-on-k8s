@@ -105,9 +105,9 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerscheme.SetupScheme()
 			client := k8s.NewFakeClient(tt.resources...)
-			e := NewExpectedStatefulSetUpdates(client)
+			e := NewExpectedGenerations(client, &appsv1.StatefulSet{})
 			for i := range tt.expectGenerations {
-				e.ExpectGeneration(tt.expectGenerations[i])
+				e.ExpectGeneration(&tt.expectGenerations[i])
 				require.Contains(t, e.generations, k8s.ExtractNamespacedName(&tt.expectGenerations[i]))
 			}
 			pendingGenerations, err := e.PendingGenerations()

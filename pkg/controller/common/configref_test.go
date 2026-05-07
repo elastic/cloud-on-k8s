@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -24,7 +24,7 @@ import (
 type fakeDriver struct {
 	client   k8s.Client
 	watches  watches.DynamicWatches
-	recorder record.EventRecorder
+	recorder toolsevents.EventRecorder
 }
 
 func (f fakeDriver) K8sClient() k8s.Client {
@@ -35,7 +35,7 @@ func (f fakeDriver) DynamicWatches() watches.DynamicWatches {
 	return f.watches
 }
 
-func (f fakeDriver) Recorder() record.EventRecorder {
+func (f fakeDriver) Recorder() toolsevents.EventRecorder {
 	return f.recorder
 }
 
@@ -138,7 +138,7 @@ func TestParseConfigRef(t *testing.T) {
 			},
 			wantErr:     true,
 			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configRef secret ns/my-secret: missing key configFile.yml",
+			wantEvent:   "Warning Unexpected unable to retrieve configRef secret ns/my-secret: missing key configFile.yml",
 		},
 		{
 			name:      "invalid config the referenced secret: error out, watch the secret and emit an event",
@@ -158,7 +158,7 @@ func TestParseConfigRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := toolsevents.NewFakeRecorder(10)
 			w := watches.NewDynamicWatches()
 			for _, existingWatch := range tt.existingWatches {
 				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: existingWatch}))

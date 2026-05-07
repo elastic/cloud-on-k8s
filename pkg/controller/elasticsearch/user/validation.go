@@ -18,7 +18,7 @@ const minPasswordLength = 6
 // Validate implements a subset of the elasticsearch-users command's validations
 // see https://www.elastic.co/guide/en/elasticsearch/reference/current/users-command.html
 func (u user) Validate() error {
-	errlist := []error{
+	errlist := []error{ //nolint:prealloc
 		validUserOrRoleName(u.Name),
 		validPassword(u.Password),
 	}

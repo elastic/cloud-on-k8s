@@ -5,29 +5,26 @@
 package v1
 
 import (
-	"errors"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	// webhookPath is the HTTP path for the Kibana validating webhook.
-	webhookPath = "/validate-kibana-k8s-elastic-co-v1-kibana"
+	// WebhookPath is the HTTP path for the Kibana validating webhook.
+	WebhookPath = "/validate-kibana-k8s-elastic-co-v1-kibana"
 )
 
+// +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
+
 var (
-	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
-	validationLog = ulog.Log.WithName("kibana-v1-validation")
+	groupKind = schema.GroupKind{Group: GroupVersion.Group, Kind: Kind}
 
 	defaultChecks = []func(*Kibana) field.ErrorList{
 		checkNoUnknownFields,
@@ -35,7 +32,6 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
-		checkPackageRegistryRefSecret,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -43,44 +39,16 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
-
-var _ admission.Validator = &Kibana{}
-
-// ValidateCreate is called by the validating webhook to validate the create operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateCreate() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate create", "name", k.Name)
-	return k.validate(nil)
-}
-
-// ValidateDelete is called by the validating webhook to validate the delete operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateDelete() (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate delete", "name", k.Name)
-	return nil, nil
-}
-
-// ValidateUpdate is called by the validating webhook to validate the update operation.
-// Satisfies the webhook.Validator interface.
-func (k *Kibana) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	validationLog.V(1).Info("Validate update", "name", k.Name)
-	oldObj, ok := old.(*Kibana)
-	if !ok {
-		return nil, errors.New("cannot cast old object to Kibana type")
-	}
-
-	return k.validate(oldObj)
-}
-
-// WebhookPath returns the HTTP path used by the validating webhook.
-func (k *Kibana) WebhookPath() string {
-	return webhookPath
+// Validate validates a Kibana resource. old is nil on create.
+func Validate(k *Kibana, old *Kibana) (admission.Warnings, error) {
+	return k.validate(old)
 }
 
 func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
-	var errors field.ErrorList
-	var warnings admission.Warnings
+	var (
+		errors   field.ErrorList
+		warnings admission.Warnings
+	)
 
 	deprecatedWarnings, deprecatedErrors := checkIfVersionDeprecated(k)
 	if len(deprecatedErrors) > 0 {
@@ -88,6 +56,15 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 	}
 	if len(deprecatedWarnings) > 0 {
 		warnings = append(warnings, deprecatedWarnings)
+	}
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		KibanaContainerName,
+		k.Spec.Resources,
+		k.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
 	}
 
 	if old != nil {
@@ -140,7 +117,7 @@ func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 func checkMonitoring(k *Kibana) field.ErrorList {
 	errs := validations.Validate(k, k.Spec.Version, validations.MinStackVersion)
 	// Kibana must be associated to an Elasticsearch when monitoring metrics are enabled
-	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsDefined() {
+	if monitoring.IsMetricsDefined(k) && !k.Spec.ElasticsearchRef.IsSet() {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef,
 			validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg))
 	}
@@ -151,15 +128,8 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), k.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), k.GetMonitoringLogsRefs()...)
-	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef)
+	err3 := commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), k.Spec.ElasticsearchRef)
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
-	err5 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
+	err5 := commonv1.CheckLocalAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
 	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
-}
-
-func checkPackageRegistryRefSecret(k *Kibana) field.ErrorList {
-	if k.Spec.PackageRegistryRef.SecretName == "" {
-		return nil
-	}
-	return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("packageRegistryRef").Child("secretName"), "secretName is not supported")}
 }

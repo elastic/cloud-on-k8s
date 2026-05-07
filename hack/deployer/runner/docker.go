@@ -5,24 +5,15 @@
 package runner
 
 import (
-	"os"
-	"runtime"
+	"context"
+	"fmt"
+	"os/exec"
 )
 
-const defaultDockerSocket = "/var/run/docker.sock"
-
-func getDockerSocket() (string, error) {
-	_, err := os.Stat(defaultDockerSocket)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// If we are on macOS and the docker socket does not exist, fall back
-			if runtime.GOOS == "darwin" {
-				return "$HOME/.docker/run/docker.sock", nil
-			}
-		} else {
-			// Handle other errors
-			return "", err
-		}
+// checkDockerAvailable verifies that the Docker daemon is reachable.
+func checkDockerAvailable() error {
+	if err := exec.CommandContext(context.Background(), "docker", "info").Run(); err != nil {
+		return fmt.Errorf("docker not available (is the daemon running?): %w", err)
 	}
-	return defaultDockerSocket, nil
+	return nil
 }

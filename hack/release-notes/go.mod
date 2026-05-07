@@ -1,13 +1,13 @@
 module github.com/elastic/cloud-on-k8s/v3/hack/release-notes
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.25.5
+toolchain go1.26.2
 
 require (
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.48.0
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/net v0.53.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (

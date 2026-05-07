@@ -65,6 +65,16 @@ func EncodePEMCert(certBlocks ...[]byte) []byte {
 	return buf.Bytes()
 }
 
+// EncodePEMPKCS8PrivateKey encodes a private key in PKCS#8 DER format, wrapped in a PEM block.
+// PKCS#8 is widely supported by Java-based applications and other non-Go TLS implementations.
+func EncodePEMPKCS8PrivateKey(privateKey crypto.Signer) ([]byte, error) {
+	b, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: pkcs8PrivateKeyType, Bytes: b}), nil
+}
+
 // EncodePEMPrivateKey encodes the given private key in the PEM format
 func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
 	pemBlock, err := pemBlockForKey(privateKey)
@@ -74,7 +84,7 @@ func EncodePEMPrivateKey(privateKey crypto.Signer) ([]byte, error) {
 	return pem.EncodeToMemory(pemBlock), nil
 }
 
-func pemBlockForKey(privateKey interface{}) (*pem.Block, error) {
+func pemBlockForKey(privateKey any) (*pem.Block, error) {
 	switch k := privateKey.(type) {
 	case *rsa.PrivateKey:
 		return &pem.Block{Type: pkcs1PrivateKeyType, Bytes: x509.MarshalPKCS1PrivateKey(k)}, nil
@@ -103,7 +113,7 @@ func ParsePEMPrivateKey(pemData []byte) (crypto.Signer, error) {
 	}
 
 	switch {
-	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck
+	case x509.IsEncryptedPEMBlock(block): //nolint:staticcheck // ignore deprecation
 		// Private key is encrypted, do not attempt to parse it
 		return nil, ErrEncryptedPrivateKey
 	case block.Type == pkcs8PrivateKeyType:

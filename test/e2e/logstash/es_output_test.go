@@ -47,8 +47,8 @@ output {
 		}).
 		WithElasticsearchRefs(
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: es.Ref(),
-				ClusterName:    "production",
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: es.Ref()},
+				ClusterName:           "production",
 			},
 		)
 

@@ -10,9 +10,6 @@ linters:
         or more contributor license agreements. Licensed under the Elastic License 2.0;
         you may not use this file except in compliance with the Elastic License 2.0.
 
-    gosec:
-      excludes:
-        - G115
 
     nolintlint:
       require-specific: true
@@ -107,16 +104,20 @@ linters:
         text: SA1019
       - linters:
           - staticcheck
-        # added exclusion until https://github.com/elastic/cloud-on-k8s/issues/8442 is implemented
-        text: 'SA1019: .* is deprecated: Consider CustomValidator instead, this only restores the old ctrl-runtime interface for bwc.'
-      - linters:
-          - staticcheck
         # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed
         text: 'SA1019: .* is deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.'
       - linters:
+          - staticcheck
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: common.IsUnmanaged is deprecated: Migrate to IsOrchestrationPaused instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
+          - staticcheck
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: common.ManagedAnnotation is deprecated: Use PauseOrchestrationAnnotation instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
           - revive
-        # revive naming rules are not that happy with our packages/var names in commont/utils packages
-        path: '.*/(common|utils)/.*.go'
+        # revive naming rules are not that happy with our packages/var names in common/utils/shared packages
+        path: '.*/(common|utils|shared|test)/.*.go|pkg/controller/(maps|elasticsearch/driver|elasticsearch/user|elasticsearch/version).*.go|hack/deployer/exec/.*.go'
         text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
     paths:
       - third_party$
@@ -143,6 +144,7 @@ linters:
     - ineffassign
     - makezero
     - misspell
+    - modernize
     - nakedret
     - nestif
     - nilerr

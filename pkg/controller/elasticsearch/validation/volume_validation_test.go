@@ -46,6 +46,12 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	return *c
 }
 
+func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName string) corev1.PersistentVolumeClaim {
+	c := claim.DeepCopy()
+	c.Spec.StorageClassName = ptr.To[string](storageClassName)
+	return *c
+}
+
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
@@ -189,6 +195,30 @@ func Test_validPVCModification(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			// https://github.com/elastic/cloud-on-k8s/issues/6796
+			name: "reusing nodeSet name while StatefulSet still exists (quick rename back scenario): error",
+			args: args{
+				// Current state: nodeSet was renamed from "default" to "default-new" with different storageClass
+				current: es([]esv1.NodeSet{
+					{Name: "default-new", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{withStorageClass(sampleClaim, "invalid")}},
+				}),
+				// Proposed state: trying to rename back to "default" while old StatefulSet still exists
+				proposed: es([]esv1.NodeSet{
+					{Name: "default", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				// The old StatefulSet "cluster-es-default" still exists with the original storageClass
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-default"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim, // original storageClass "sample-sc"
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -285,6 +315,29 @@ func Test_validPVCNaming(t *testing.T) {
 			// this example has no valid data volume but if we want to allow data path customization there is no easy way to validate that
 			es:      esWithClaim("my-data", esWithSidecar),
 			wantErr: false,
+		},
+		{
+			name: "stateless: elasticsearch-cache claim name is OK",
+			es: func() esv1.Elasticsearch {
+				es := esWithClaim("elasticsearch-cache", esFixture())
+				es.Spec.Mode = esv1.ElasticsearchModeStateless
+				return es
+			}(),
+			wantErr: false,
+		},
+		{
+			name:    "stateful: elasticsearch-cache claim name not mounted is NOK",
+			es:      esWithClaim("elasticsearch-cache", esFixture()),
+			wantErr: true,
+		},
+		{
+			name: "stateless: elasticsearch-data claim name not mounted is NOK",
+			es: func() esv1.Elasticsearch {
+				es := esWithClaim("elasticsearch-data", esFixture())
+				es.Spec.Mode = esv1.ElasticsearchModeStateless
+				return es
+			}(),
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

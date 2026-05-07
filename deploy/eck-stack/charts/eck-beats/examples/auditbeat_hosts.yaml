@@ -1,5 +1,5 @@
 name: auditbeat
-version: 9.3.0-SNAPSHOT
+version: 9.4.0-SNAPSHOT
 type: auditbeat
 elasticsearchRef:
   name: eck-elasticsearch

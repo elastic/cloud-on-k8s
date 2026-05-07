@@ -23,7 +23,9 @@ import (
 )
 
 var (
-	esRef    = commonv1.ObjectSelector{Name: "sample", Namespace: "aerospace"}
+	esRef = commonv1.ElasticsearchSelector{
+		ObjectSelector: commonv1.ObjectSelector{Name: "sample", Namespace: "aerospace"},
+	}
 	sampleKb = kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "sample",

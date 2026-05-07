@@ -151,7 +151,15 @@ func (b Builder) WithESValidations(validations ...ValidationFunc) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.Beat.Spec.ElasticsearchRef = ref
+	b.Beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+		ObjectSelector:              ref,
+		ClientCertificateSecretName: b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName,
+	}
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 
@@ -348,9 +356,9 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 }
 
 func (b Builder) GetLogsCluster() *types.NamespacedName {
-	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+	if len(b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
-	return &metricsCluster
+	logsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
 }

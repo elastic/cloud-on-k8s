@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 var varFalse = false
@@ -1229,6 +1231,42 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 				Limits: map[corev1.ResourceName]resource.Quantity{},
 			},
 		},
+		{
+			name: "resource claims only: apply default requests/limits without dropping claims",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "my-claim"},
+								},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU: resource.MustParse("1"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "my-claim"},
+				},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU: resource.MustParse("1"),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1236,6 +1274,322 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 			if got := b.WithResources(tt.defaultResources).containerDefaulter.Container().Resources; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithResourcesAndOverrides(t *testing.T) {
+	containerName := "default-container"
+	cpuOverride := resource.MustParse("200m")
+	memoryOverride := resource.MustParse("6Gi")
+	defaultResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		},
+	}
+
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		overrides   commonv1.Resources
+		want        corev1.ResourceRequirements
+	}{
+		{
+			name: "limits-only pod template keeps requests nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "requests-only pod template keeps limits nil without overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "explicit empty maps are preserved",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits:   corev1.ResourceList{},
+								Requests: corev1.ResourceList{},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits:   corev1.ResourceList{},
+				Requests: corev1.ResourceList{},
+			},
+		},
+		{
+			name: "requests override initializes missing requests map only when needed",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU: &cpuOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: cpuOverride,
+				},
+			},
+		},
+		{
+			name: "no pod template resources and no overrides uses full defaults",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			want: defaultResources,
+		},
+		{
+			name: "no pod template resources and partial override skips defaults and leaves untouched side nil",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "shorthand limits only with empty pod template keeps requests nil for Guaranteed QoS",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Limits: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "shorthand requests only with empty pod template keeps limits nil",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    cpuOverride,
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+		{
+			name: "non-CPU/memory resource keys preserved when applying overrides",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:                     resource.MustParse("100m"),
+									corev1.ResourceMemory:                  resource.MustParse("512Mi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
+									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:                     resource.MustParse("500m"),
+									corev1.ResourceMemory:                  resource.MustParse("1Gi"),
+									corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
+									corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU:    &cpuOverride,
+					Memory: &memoryOverride,
+				},
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:                     cpuOverride,
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("5Gi"),
+					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:                     resource.MustParse("500m"),
+					corev1.ResourceMemory:                  memoryOverride,
+					corev1.ResourceEphemeralStorage:        resource.MustParse("10Gi"),
+					corev1.ResourceName("example.com/gpu"): resource.MustParse("2"),
+				},
+			},
+		},
+		{
+			name: "resource claims only in pod template: defaults merged in without dropping claims",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "gpu-claim", Request: "gpu"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "gpu-claim", Request: "gpu"},
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("500m"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		},
+		{
+			name: "resource claims only in pod template: shorthand applied without defaults and claims preserved",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Claims: []corev1.ResourceClaim{
+									{Name: "gpu-claim", Request: "gpu"},
+								},
+							},
+						},
+					},
+				},
+			},
+			overrides: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					CPU: &cpuOverride,
+				},
+				Limits: commonv1.ResourceAllocations{
+					Memory: &memoryOverride,
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Claims: []corev1.ResourceClaim{
+					{Name: "gpu-claim", Request: "gpu"},
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: cpuOverride,
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: memoryOverride,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.podTemplate, containerName)
+			got := b.WithResourcesAndOverrides(defaultResources, tt.overrides).MainContainer().Resources
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1405,6 +1759,437 @@ func TestPodTemplateBuilder_WithContainers(t *testing.T) {
 			tt.postWithContainers(b)
 			if got := b.PodTemplate; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithContainers() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithTopologySpreadConstraints(t *testing.T) {
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		constraints []corev1.TopologySpreadConstraint
+		want        []corev1.TopologySpreadConstraint
+	}{
+		{
+			name:        "adds constraint when key is missing",
+			podTemplate: corev1.PodTemplateSpec{},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+		},
+		{
+			name: "does not override existing constraint for same key",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+			},
+		},
+		{
+			name: "appends constraint for different key",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/hostname", MaxSkew: 2},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 1},
+				{TopologyKey: "topology.kubernetes.io/hostname", MaxSkew: 2},
+			},
+		},
+		{
+			name: "fills missing label selector from default constraint",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{TopologyKey: "topology.kubernetes.io/zone", MaxSkew: 9},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					MaxSkew:     9,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "preserves existing label selector when already set",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							TopologyKey: "topology.kubernetes.io/zone",
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"cluster": "user",
+								},
+							},
+						},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "default",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "user",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "fills explicitly empty label selector from default constraint",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							TopologyKey:   "topology.kubernetes.io/zone",
+							MaxSkew:       3,
+							LabelSelector: &metav1.LabelSelector{},
+						},
+					},
+				},
+			},
+			constraints: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+			want: []corev1.TopologySpreadConstraint{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					MaxSkew:     3,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"cluster": "es",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewPodTemplateBuilder(tt.podTemplate, "elasticsearch")
+			got := builder.WithTopologySpreadConstraints(tt.constraints...).PodTemplate.Spec.TopologySpreadConstraints
+			if !reflect.DeepEqual(tt.want, got) {
+				t.Errorf("PodTemplateBuilder.WithTopologySpreadConstraints() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithRequiredNodeAffinityMatchExpressions(t *testing.T) {
+	tests := []struct {
+		name         string
+		podTemplate  corev1.PodTemplateSpec
+		requirements []corev1.NodeSelectorRequirement
+		wantAffinity *corev1.Affinity
+	}{
+		{
+			name:        "creates required node affinity when absent",
+			podTemplate: corev1.PodTemplateSpec{},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds missing key requirement to each existing term",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}}}},
+									{MatchExpressions: []corev1.NodeSelectorRequirement{{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}}}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "nodepool", Operator: corev1.NodeSelectorOpIn, Values: []string{"hot"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "instance", Operator: corev1.NodeSelectorOpIn, Values: []string{"m6g"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "skips Exists when In for same key already guarantees label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a"}},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds Exists when DoesNotExist for same key does not guarantee label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds Exists when NotIn for same key does not guarantee label existence",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpNotIn, Values: []string{"a"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpNotIn, Values: []string{"a"}},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "adds non-Exists requirement when same key has incompatible operator",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "does not duplicate non-Exists requirement when requirement already exists",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+										{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpDoesNotExist},
+								{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpIn, Values: []string{"a", "b"}},
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "injects into user-provided empty Affinity",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{},
+				},
+			},
+			requirements: []corev1.NodeSelectorRequirement{
+				{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+			},
+			wantAffinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{Key: "topology.kubernetes.io/zone", Operator: corev1.NodeSelectorOpExists},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewPodTemplateBuilder(tt.podTemplate, "elasticsearch")
+			got := builder.WithRequiredNodeAffinityMatchExpressions(tt.requirements...).PodTemplate.Spec.Affinity
+			if !reflect.DeepEqual(tt.wantAffinity, got) {
+				t.Errorf("PodTemplateBuilder.WithRequiredNodeAffinityMatchExpressions() = %v, want %v", got, tt.wantAffinity)
 			}
 		})
 	}

@@ -21,7 +21,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -89,7 +88,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
-	scpEsConfig := commonv1.NewConfig(map[string]interface{}{"cluster.name": clusterNameFromConfig})
+	scpEsConfig := commonv1.NewConfig(map[string]any{"cluster.name": clusterNameFromConfig})
 	esConfigSpec.Config = &scpEsConfig
 
 	policy := policyv1alpha1.StackConfigPolicy{
@@ -186,14 +185,18 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Cluster name should be as set in the config",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					var apiResponse ClusterInfoResponse
 					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
 						return err
 					}
 
-					require.Equal(t, clusterNameFromConfig, apiResponse.ClusterName)
+					if apiResponse.ClusterName != clusterNameFromConfig {
+						return fmt.Errorf("expected cluster name %q, got %q", clusterNameFromConfig, apiResponse.ClusterName)
+					}
 					return nil
 				}),
 			},
@@ -343,9 +346,14 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 		t.SkipNow()
 	}
 
-	// StackConfigPolicy is supported for ES versions with file-based settings feature
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
-	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+	switch {
+	case stackVersion.LT(filesettings.FileBasedSettingsMinPreVersion):
+		// StackConfigPolicy is supported for ES versions with file-based settings feature
+		t.SkipNow()
+	case stackVersion.LT(version.From(8, 11, 0)):
+		// Before 8.11.0, ES has an issue with loading cluster-settings changes in file-settings
+		// of the same keys as in this test (https://github.com/elastic/elasticsearch/pull/99212)
 		t.SkipNow()
 	}
 
@@ -355,39 +363,11 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 
-	// Policy with weight 20 (lower priority) - sets cluster.name
+	// Policy with weight 10 (lower priority) - sets cluster.name
 	lowPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("low-priority-scp-%s", rand.String(4)),
-		},
-		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 20,
-			ResourceSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": "elasticsearch"},
-			},
-			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"cluster.name": "low-priority-cluster",
-					},
-				},
-				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
-							"recovery.max_bytes_per_sec": "50mb",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Policy with weight 10 (higher priority) - should override cluster.name and settings
-	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      fmt.Sprintf("high-priority-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight: 10,
@@ -396,16 +376,44 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"cluster": map[string]interface{}{
+					Data: map[string]any{
+						"cluster.name": "low-priority-cluster",
+					},
+				},
+				ClusterSettings: &commonv1.Config{
+					Data: map[string]any{
+						"indices": map[string]any{
+							"recovery.max_bytes_per_sec": "50mb",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Policy with weight 20 (higher priority) - should override cluster.name and settings
+	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("high-priority-scp-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			Weight: 20,
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch"},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				Config: &commonv1.Config{
+					Data: map[string]any{
+						"cluster": map[string]any{
 							"name": "high-priority-cluster",
 						},
 					},
 				},
 				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
-							"recovery": map[string]interface{}{
+					Data: map[string]any{
+						"indices": map[string]any{
+							"recovery": map[string]any{
 								"max_bytes_per_sec": "200mb",
 							},
 						},
@@ -415,20 +423,20 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 		},
 	}
 
-	// Policy with same weight 20 but different selector (should not conflict)
+	// Policy with same weight 10 but different selector (should not conflict)
 	nonConflictingPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("non-conflicting-scp-%s", rand.String(4)),
 		},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			Weight: 20,
+			Weight: 10,
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "kibana"}, // Different selector
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"cluster.name": "should-not-apply",
 					},
 				},
@@ -558,7 +566,7 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
-	var items map[string]interface{}
+	var items map[string]any
 	_, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -567,7 +575,7 @@ func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode i
 }
 
 func checkAPIResponse(esClient client.Client, url string, expectedStatusCode int, expectedResponse string) error {
-	var items map[string]interface{}
+	var items map[string]any
 	response, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -605,7 +613,7 @@ type SnapshotRepositorySettings struct {
 }
 
 // request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
-func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) ([]byte, int, error) {
+func request(esClient client.Client, method string, url string, body io.Reader, response any) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, body) //nolint:noctx
 	statusCode := 0
 	if err != nil {

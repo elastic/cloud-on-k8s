@@ -16,7 +16,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,9 +39,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateless"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -69,12 +72,12 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	client := mgr.GetClient()
 	return &ReconcileElasticsearch{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorder(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewClustersExpectations(client),
+		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 
 		Parameters: params,
 	}
@@ -136,13 +139,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
-var _ reconcile.Reconciler = &ReconcileElasticsearch{}
+var _ reconcile.Reconciler = (*ReconcileElasticsearch)(nil)
 
 // ReconcileElasticsearch reconciles an Elasticsearch object
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	licenseChecker license.Checker
 
 	esObservers *observer.Manager
@@ -200,7 +203,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		} else {
 			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
 			results.WithError(err)
-			k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+			k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionAnnotateResource, "Reconciliation error: %v", err)
 		}
 	}
 
@@ -218,7 +221,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 			return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, nil
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
@@ -256,9 +259,18 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
-	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	_, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
+	// Same validation as the webhook, run again here when the webhook is not configured.
+	admWarnings, err := validation.ValidateElasticsearch(ctx, r.Client, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
+
+	for _, w := range admWarnings {
+		log.Info(
+			"Elasticsearch manifest has warnings. Proceed at your own risk. "+w,
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, w)
+	}
 
 	if err != nil {
 		log.Error(
@@ -267,18 +279,14 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 		)
-		reconcileState.UpdateElasticsearchInvalidWithEvent(err.Error())
+		reconcileState.UpdateElasticsearchInvalidWithEvent(events.EventActionValidation, err.Error())
 		return results
 	}
 
-	err = validation.CheckForWarnings(es)
-	if err != nil {
-		log.Info(
-			"Elasticsearch manifest has warnings. Proceed at your own risk. "+err.Error(),
-			"namespace", es.Namespace,
-			"es_name", es.Name,
-		)
-		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+	// TODO(#9204): implement stateless driver and replace this guard with proper driver selection.
+	if es.IsStateless() {
+		log.Info("Stateless Elasticsearch detected, stateless driver not yet implemented")
+		return results
 	}
 
 	ver, err := commonversion.Parse(es.Spec.Version)
@@ -290,19 +298,26 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
+	driverParams := driver.Parameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
+		URLProvider:        services.NewElasticsearchURLProvider(es, r.Client),
 		Version:            ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
 		LicenseChecker:     r.licenseChecker,
-	}).Reconcile(ctx)
+	}
+
+	if es.IsStateless() {
+		return stateless.NewDriver(driverParams).Reconcile(ctx)
+	}
+
+	return stateful.NewDriver(driverParams).Reconcile(ctx)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
@@ -316,7 +331,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Event(&es, evt.EventType, evt.Reason, evt.Message)
+		k8s.EmitEvent(r.recorder, &es, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if cluster == nil {
 		return nil

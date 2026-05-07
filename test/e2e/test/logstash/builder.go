@@ -100,8 +100,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.Logstash.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.Logstash.Spec.Count = count
 	return b
 }
 
@@ -181,7 +181,27 @@ func (b Builder) WithTestStorageClass() Builder {
 }
 
 func (b Builder) WithElasticsearchRefs(refs ...logstashv1alpha1.ElasticsearchCluster) Builder {
+	// Preserve any ClientCertificateSecretName previously set via WithClientCertificateSecret,
+	// matching by ClusterName to be order-independent.
+	existing := b.Logstash.Spec.ElasticsearchRefs
+	for i := range refs {
+		if refs[i].ClientCertificateSecretName == "" {
+			for _, e := range existing {
+				if e.ClusterName == refs[i].ClusterName && e.ClientCertificateSecretName != "" {
+					refs[i].ClientCertificateSecretName = e.ClientCertificateSecretName
+					break
+				}
+			}
+		}
+	}
 	b.Logstash.Spec.ElasticsearchRefs = refs
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(index int, secretName string) Builder {
+	if index < len(b.Logstash.Spec.ElasticsearchRefs) {
+		b.Logstash.Spec.ElasticsearchRefs[index].ClientCertificateSecretName = secretName
+	}
 	return b
 }
 
@@ -199,7 +219,7 @@ func (b Builder) GetMetricsIndexPattern() string {
 	return ".monitoring-logstash-8-mb"
 }
 
-func (b Builder) WithConfig(config map[string]interface{}) Builder {
+func (b Builder) WithConfig(config map[string]any) Builder {
 	b.Logstash.Spec.Config = &commonv1.Config{
 		Data: config,
 	}
@@ -254,7 +274,7 @@ func (b Builder) Kind() string {
 	return logstashv1alpha1.Kind
 }
 
-func (b Builder) Spec() interface{} {
+func (b Builder) Spec() any {
 	return b.Logstash.Spec
 }
 

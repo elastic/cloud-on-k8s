@@ -5,7 +5,9 @@
 package settings
 
 import (
+	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,7 +52,7 @@ func NewCanonicalConfigFrom(data untypedDict) (*CanonicalConfig, error) {
 
 // MustCanonicalConfig creates a new config and panics on errors.
 // Use for testing only.
-func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
+func MustCanonicalConfig(cfg any) *CanonicalConfig {
 	config, err := ucfg.NewFrom(cfg, Options...)
 	if err != nil {
 		panic(err)
@@ -123,8 +125,21 @@ func (c *CanonicalConfig) String(key string) (string, error) {
 	return c.asUCfg().String(key, -1, Options...)
 }
 
+func (c *CanonicalConfig) UnpackChild(key string, cfg any) error {
+	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
+		panic("UnpackChild expects a struct pointer as argument")
+	}
+
+	childCfg, err := c.asUCfg().Child(key, -1, Options...)
+	if err != nil {
+		return err
+	}
+
+	return childCfg.Unpack(cfg, Options...)
+}
+
 // Unpack returns a typed config given a struct pointer.
-func (c *CanonicalConfig) Unpack(cfg interface{}) error {
+func (c *CanonicalConfig) Unpack(cfg any) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
 		panic("Unpack expects a struct pointer as argument")
 	}
@@ -144,6 +159,55 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 		}
 	}
 	return nil
+}
+
+// AppendString appends value to the given key, handling the case where the key
+// may currently hold a scalar string or an array. If the value is already present, this is a no-op.
+func (c *CanonicalConfig) AppendString(key, value string) error {
+	if c == nil {
+		return errors.New("config is nil")
+	}
+
+	var cfg map[string]any
+	if err := c.Unpack(&cfg); err != nil {
+		return err
+	}
+
+	existing, _ := getNestedValue(cfg, key)
+	values := make([]string, 0, 1)
+	switch v := existing.(type) {
+	case nil:
+		// key doesn't exist yet
+	case string:
+		if v == value {
+			return nil
+		}
+		// scalar string must be preserved since MergeWith would overwrite it
+		values = []string{v}
+	case []string:
+		if slices.Contains(v, value) {
+			return nil
+		}
+	case []any:
+		for i, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("%s[%d]: expected string, got %T", key, i, item)
+			}
+			if s == value {
+				return nil
+			}
+		}
+	default:
+		return fmt.Errorf("%s: expected string or []string, got %T", key, existing)
+	}
+
+	values = append(values, value)
+	toMerge, err := NewCanonicalConfigFrom(map[string]any{key: values})
+	if err != nil {
+		return err
+	}
+	return c.MergeWith(toMerge)
 }
 
 // HasKeys returns all keys in c that are also in keys
@@ -184,7 +248,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 	return yaml.Marshal(out)
 }
 
-type untypedDict = map[string]interface{}
+type untypedDict = map[string]any
 
 // Diff returns the flattened keys where c and c2 differ.
 func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
@@ -222,7 +286,7 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 }
 
 func removeIgnored(diff, toIgnore []string) []string {
-	var result []string //nolint:prealloc
+	var result []string
 	for _, d := range diff {
 		if canIgnore(d, toIgnore) {
 			continue
@@ -259,7 +323,7 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 				diff = append(diff, newKey)
 			}
 			diff = append(diff, diffMap(l, r, newKey)...)
-		case []interface{}:
+		case []any:
 			l, r, err := asUntypedSlice(v, v2)
 			if err != nil {
 				diff = append(diff, newKey)
@@ -274,7 +338,7 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 	return diff
 }
 
-func diffSlice(s, s2 []interface{}, key string) []string {
+func diffSlice(s, s2 []any, key string) []string {
 	// invariant: keys match
 	// invariant: s,s2 are json-style arrays/slices i.e no structs no pointers
 	if len(s) != len(s2) {
@@ -291,7 +355,7 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 				diff = append(diff, newKey)
 			}
 			diff = append(diff, diffMap(l, r, newKey)...)
-		case []interface{}:
+		case []any:
 			l, r, err := asUntypedSlice(v, v2)
 			if err != nil {
 				diff = append(diff, newKey)
@@ -306,7 +370,7 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 	return diff
 }
 
-func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
+func asUntypedDict(l, r any) (untypedDict, untypedDict, error) {
 	lhs, ok := l.(untypedDict)
 	rhs, ok2 := r.(untypedDict)
 	if !ok || !ok2 {
@@ -315,13 +379,31 @@ func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
 	return lhs, rhs, nil
 }
 
-func asUntypedSlice(l, r interface{}) ([]interface{}, []interface{}, error) {
-	lhs, ok := l.([]interface{})
-	rhs, ok2 := r.([]interface{})
+func asUntypedSlice(l, r any) ([]any, []any, error) {
+	lhs, ok := l.([]any)
+	rhs, ok2 := r.([]any)
 	if !ok || !ok2 {
 		return nil, nil, errors.Errorf("slice assertion failed for l: %t r: %t", ok, ok2)
 	}
 	return lhs, rhs, nil
+}
+
+// getNestedValue traverses a nested map structure using a dot-separated key path.
+func getNestedValue(cfg map[string]any, key string) (any, bool) {
+	parts := strings.Split(key, ".")
+	current := any(cfg)
+
+	for _, part := range parts {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[part]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
 }
 
 func (c *CanonicalConfig) asUCfg() *ucfg.Config {

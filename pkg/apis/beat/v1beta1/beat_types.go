@@ -39,7 +39,7 @@ type BeatSpec struct {
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
 	// It allows automatic setup of dashboards and visualizations.
@@ -70,6 +70,12 @@ type BeatSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the Beat container. When set, these
+	// values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for
+	// the primary Beat container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
 
 	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment`. If both are absent a default for the Type is used.
@@ -135,6 +141,9 @@ type BeatStatus struct {
 	// controller has not yet processed the changes contained in the Beats specification.
 	// +kubebuilder:validation:Optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the beat resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type BeatHealth string
@@ -181,11 +190,11 @@ type Beat struct {
 func (b *Beat) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if b.Spec.ElasticsearchRef.IsDefined() {
+		if b.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(b.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
-		if b.Spec.KibanaRef.IsDefined() {
+		if b.Spec.KibanaRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(b.Status.KibanaAssociationStatus)
 		}
 	case commonv1.BeatMonitoringAssociationType:
@@ -218,7 +227,7 @@ func (b *Beat) SetAssociationStatusMap(typ commonv1.AssociationType, status comm
 	}
 }
 
-var _ commonv1.Associated = &Beat{}
+var _ commonv1.Associated = (*Beat)(nil)
 
 func (b *Beat) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -227,18 +236,18 @@ func (b *Beat) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 func (b *Beat) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if b.Spec.ElasticsearchRef.IsDefined() {
+	if b.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &BeatESAssociation{
 			Beat: b,
 		})
 	}
-	if b.Spec.KibanaRef.IsDefined() {
+	if b.Spec.KibanaRef.IsSet() {
 		associations = append(associations, &BeatKibanaAssociation{
 			Beat: b,
 		})
 	}
 	for _, ref := range b.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &BeatMonitoringAssociation{
 				Beat: b,
 				ref:  ref.WithDefaultNamespace(b.Namespace),
@@ -246,7 +255,7 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range b.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &BeatMonitoringAssociation{
 				Beat: b,
 				ref:  ref.WithDefaultNamespace(b.Namespace),
@@ -272,7 +281,7 @@ func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }
 
-func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
+func (b *Beat) ElasticsearchRef() commonv1.ElasticsearchSelector {
 	return b.Spec.ElasticsearchRef
 }
 
@@ -285,7 +294,7 @@ type BeatESAssociation struct {
 	*Beat
 }
 
-var _ commonv1.Association = &BeatESAssociation{}
+var _ commonv1.Association = (*BeatESAssociation)(nil)
 
 func (b *BeatESAssociation) Associated() commonv1.Associated {
 	if b == nil {
@@ -301,7 +310,7 @@ func (b *BeatESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatESAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -329,7 +338,7 @@ type BeatKibanaAssociation struct {
 	*Beat
 }
 
-var _ commonv1.Association = &BeatKibanaAssociation{}
+var _ commonv1.Association = (*BeatKibanaAssociation)(nil)
 
 func (b *BeatKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
 	return commonv1.GetAndSetAssociationConf(b, b.kbAssocConf)
@@ -353,7 +362,7 @@ func (b *BeatKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
 }
 
@@ -373,7 +382,7 @@ func (b *Beat) SecureSettings() []commonv1.SecretSource {
 	return b.Spec.SecureSettings
 }
 
-var _ commonv1.Associated = &Beat{}
+var _ commonv1.Associated = (*Beat)(nil)
 
 // +kubebuilder:object:root=true
 
@@ -398,7 +407,7 @@ type BeatMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &BeatMonitoringAssociation{}
+var _ commonv1.Association = (*BeatMonitoringAssociation)(nil)
 
 func (beatmon *BeatMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -422,7 +431,7 @@ func (beatmon *BeatMonitoringAssociation) AssociationType() commonv1.Association
 	return commonv1.BeatMonitoringAssociationType
 }
 
-func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (beatmon *BeatMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return beatmon.ref
 }
 

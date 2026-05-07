@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -48,7 +48,7 @@ func Test_buildBeatConfig(t *testing.T) {
 	)
 
 	managedCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
-	userCfg := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
+	userCfg := &commonv1.Config{Data: map[string]any{"user": "true"}}
 	userCanonicalCfg := settings.MustCanonicalConfig(userCfg.Data)
 	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities:
    - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
@@ -85,6 +85,17 @@ func Test_buildBeatConfig(t *testing.T) {
 	assocConf, err := esAssocWithCA.AssociationConf()
 	require.NoError(t, err)
 	assocConf.CACertProvided = true
+
+	withAssocWithClientCert := *withAssocWithCA.DeepCopy()
+	esAssocWithClientCert := beatv1beta1.BeatESAssociation{Beat: &withAssocWithClientCert}
+	esAssocWithClientCert.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       "secret",
+		AuthSecretKey:        "elastic",
+		CACertProvided:       true,
+		CASecretName:         "secret2",
+		URL:                  "url",
+		ClientCertSecretName: "client-cert-secret",
+	})
 
 	withAssocWithCAWithConfig := *withAssocWithCA.DeepCopy()
 	withAssocWithCAWithConfig.Spec.Config = userCfg
@@ -181,6 +192,31 @@ func Test_buildBeatConfig(t *testing.T) {
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
 		{
+			name:   "association with ca and client cert",
+			client: clientWithSecret,
+			beat:   withAssocWithClientCert,
+			want: merge(outputYaml, outputCAYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
+			name:   "association with client cert only, no CA",
+			client: clientWithSecret,
+			beat: func() beatv1beta1.Beat {
+				b := *withAssoc.DeepCopy()
+				assoc := beatv1beta1.BeatESAssociation{Beat: &b}
+				assoc.SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "secret",
+					AuthSecretKey:        "elastic",
+					CACertProvided:       false,
+					URL:                  "url",
+					ClientCertSecretName: "client-cert-secret",
+				})
+				return b
+			}(),
+			want: merge(outputYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
 			name: "no association, user config, with metrics monitoring enabled",
 			beat: beatv1beta1.Beat{
 				ObjectMeta: metav1.ObjectMeta{
@@ -202,14 +238,14 @@ func Test_buildBeatConfig(t *testing.T) {
 					},
 				},
 			},
-			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]interface{}{
-				"http": map[string]interface{}{
+			want: merge(userCanonicalCfg, settings.MustCanonicalConfig(map[string]any{
+				"http": map[string]any{
 					"enabled": true,
 					"host":    "unix:///var/shared/filebeat-test-beat.sock",
 					"port":    nil,
 				},
 				"monitoring.enabled": false,
-				"logging": map[string]interface{}{
+				"logging": map[string]any{
 					"files": map[string]string{
 						"path": "/usr/share/filebeat/logs",
 					},
@@ -363,7 +399,7 @@ func Test_getUserConfig(t *testing.T) {
 		},
 		{
 			name:   "config populated",
-			config: &commonv1.Config{Data: map[string]interface{}{"config": "true"}},
+			config: &commonv1.Config{Data: map[string]any{"config": "true"}},
 			want:   settings.MustParseConfig([]byte(`config: "true"`)),
 		},
 		{
@@ -425,7 +461,7 @@ func Test_getUserConfig(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
 				Client:        tt.client,
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &toolsevents.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),
 				Beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{

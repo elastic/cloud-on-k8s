@@ -86,6 +86,12 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
 	// PodTemplate provides customisation options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -125,7 +131,7 @@ type LogstashService struct {
 
 // ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 type ElasticsearchCluster struct {
-	commonv1.ObjectSelector `json:",omitempty,inline"`
+	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
@@ -194,10 +200,10 @@ type LogstashList struct {
 	Items           []Logstash `json:"items"`
 }
 
-func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
-	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
+func (l *Logstash) ElasticsearchRefs() []commonv1.ElasticsearchSelector {
+	refs := make([]commonv1.ElasticsearchSelector, len(l.Spec.ElasticsearchRefs))
 	for i, r := range l.Spec.ElasticsearchRefs {
-		refs[i] = r.ObjectSelector
+		refs[i] = r.ElasticsearchSelector
 	}
 	return refs
 }
@@ -230,14 +236,14 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 		associations = append(associations, &LogstashESAssociation{
 			Logstash: l,
 			ElasticsearchCluster: ElasticsearchCluster{
-				ObjectSelector: ref.WithDefaultNamespace(l.Namespace),
-				ClusterName:    ref.ClusterName,
+				ElasticsearchSelector: ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace),
+				ClusterName:           ref.ClusterName,
 			},
 		})
 	}
 
 	for _, ref := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &LogstashMonitoringAssociation{
 				Logstash: l,
 				ref:      ref.WithDefaultNamespace(l.Namespace),
@@ -245,7 +251,7 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &LogstashMonitoringAssociation{
 				Logstash: l,
 				ref:      ref.WithDefaultNamespace(l.Namespace),
@@ -264,12 +270,12 @@ func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.A
 		}
 	case commonv1.LogstashMonitoringAssociationType:
 		for _, esRef := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return l.Status.MonitoringAssociationStatus
 			}
 		}
 		for _, esRef := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return l.Status.MonitoringAssociationStatus
 			}
 		}
@@ -294,10 +300,10 @@ func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status 
 type LogstashESAssociation struct {
 	// The associated Logstash
 	*Logstash
-	ElasticsearchCluster
+	ElasticsearchCluster ElasticsearchCluster
 }
 
-var _ commonv1.Association = &LogstashESAssociation{}
+var _ commonv1.Association = (*LogstashESAssociation)(nil)
 
 func (lses *LogstashESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -317,8 +323,8 @@ func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (lses *LogstashESAssociation) AssociationRef() commonv1.ObjectSelector {
-	return lses.ElasticsearchCluster.ObjectSelector
+func (lses *LogstashESAssociation) AssociationRef() commonv1.AssociationRef {
+	return lses.ElasticsearchCluster.ElasticsearchSelector
 }
 
 func (lses *LogstashESAssociation) AssociationConfAnnotationName() string {
@@ -353,7 +359,7 @@ type LogstashMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &LogstashMonitoringAssociation{}
+var _ commonv1.Association = (*LogstashMonitoringAssociation)(nil)
 
 func (lsmon *LogstashMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -378,7 +384,7 @@ func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.Associati
 	return commonv1.LogstashMonitoringAssociationType
 }
 
-func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return lsmon.ref
 }
 

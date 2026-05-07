@@ -7,13 +7,14 @@ package keystore
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
@@ -106,9 +107,7 @@ func reconcileSecureSettings(
 	aggregatedData := map[string][]byte{}
 
 	for _, s := range userSecrets {
-		for k, v := range s.Data {
-			aggregatedData[k] = v
-		}
+		maps.Copy(aggregatedData, s.Data)
 	}
 
 	// reconcile our managed secret with the user-provided secret content
@@ -134,7 +133,7 @@ func reconcileSecureSettings(
 	return &secret, nil
 }
 
-func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, userSecretSources []commonv1.NamespacedSecretSource) ([]corev1.Secret, error) {
+func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder toolsevents.EventRecorder, hasKeystore HasKeystore, userSecretSources []commonv1.NamespacedSecretSource) ([]corev1.Secret, error) {
 	userSecrets := make([]corev1.Secret, 0, len(userSecretSources))
 	for _, userSecretsRef := range userSecretSources {
 		// retrieve the secret referenced by the user in the same namespace
@@ -151,7 +150,7 @@ func retrieveUserSecrets(ctx context.Context, c k8s.Client, recorder record.Even
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.NamespacedSecretSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder toolsevents.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.NamespacedSecretSource) (*corev1.Secret, bool, error) {
 	secretNamespace := secretSrc.Namespace
 	secretName := secretSrc.SecretName
 	var userSecret corev1.Secret
@@ -159,7 +158,7 @@ func retrieveUserSecret(ctx context.Context, c k8s.Client, recorder record.Event
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		ulog.FromContext(ctx).Info(msg, "namespace", secretNamespace, "secret_name", secretName)
-		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("%s: %s/%s", msg, secretNamespace, secretName))
+		k8s.EmitEventf(recorder, hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, "%s: %s/%s", msg, secretNamespace, secretName)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err
@@ -208,4 +207,37 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
+}
+
+// BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
+// them in the structure expected by Elasticsearch file-based settings cluster_secrets:
+//
+//	{"string_secrets": {"s3.client.default.access_key": "..."}}
+//
+// Keystore keys are passed through as-is. Elasticsearch's SecureClusterStateSettings parses the
+// inner map via Settings.fromXContent, which accepts both flat dotted keys and nested objects.
+// Keeping the flat representation avoids ambiguity at intermediate paths and matches how keystore
+// keys are stored in the source Secrets.
+// This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
+func BuildSecureSettingsData(
+	ctx context.Context,
+	c k8s.Client,
+	recorder toolsevents.EventRecorder,
+	hasKeystore HasKeystore,
+	secretSources []commonv1.NamespacedSecretSource,
+) (map[string]any, error) {
+	userSecrets, err := retrieveUserSecrets(ctx, c, recorder, hasKeystore, secretSources)
+	if err != nil {
+		return nil, err
+	}
+
+	stringSecrets := map[string]any{}
+	for _, s := range userSecrets {
+		for k, v := range s.Data {
+			stringSecrets[k] = string(v)
+		}
+	}
+	return map[string]any{
+		"string_secrets": stringSecrets,
+	}, nil
 }

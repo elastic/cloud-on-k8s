@@ -63,7 +63,7 @@ func TestMarshalTelemetry(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
 		info    about.OperatorInfo
-		stats   map[string]interface{}
+		stats   map[string]any
 		license map[string]string
 		want    string
 	}{
@@ -88,8 +88,8 @@ func TestMarshalTelemetry(t *testing.T) {
 		{
 			name: "not empty",
 			info: testOperatorInfo,
-			stats: map[string]interface{}{
-				"apms": map[string]interface{}{
+			stats: map[string]any{
+				"apms": map[string]any{
 					"pod_count":      2,
 					"resource_count": 1,
 				},
@@ -242,7 +242,7 @@ func TestNewReporter(t *testing.T) {
 					Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
 				},
 				Pipelines: []commonv1.Config{
-					{Data: map[string]interface{}{"pipeline.id": "main"}},
+					{Data: map[string]any{"pipeline.id": "main"}},
 				},
 				Services: []logstashv1alpha1.LogstashService{
 					{
@@ -398,13 +398,13 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-					ClusterSettings: &commonv1.Config{Data: map[string]interface{}{
+					ClusterSettings: &commonv1.Config{Data: map[string]any{
 						"indices.recovery.max_bytes_per_sec": "100mb",
 					}},
-					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 						"repo1": "settings...",
 					}},
-					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 						"slm1": "settings...",
 						"slm2": "settings...",
 					}},
@@ -421,10 +421,10 @@ func TestNewReporter(t *testing.T) {
 			},
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-					SnapshotRepositories: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotRepositories: &commonv1.Config{Data: map[string]any{
 						"repo1": "settings...",
 					}},
-					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]interface{}{
+					SnapshotLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 						"slm1": "settings...",
 					}},
 				},

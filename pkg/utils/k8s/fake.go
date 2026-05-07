@@ -17,11 +17,18 @@ import (
 
 // NewFakeClient creates a new fake Kubernetes client.
 func NewFakeClient(initObjs ...client.Object) Client {
+	return NewFakeClientBuilder(initObjs...).Build()
+}
+
+// NewFakeClientBuilder creates a new fake client builder pre-configured with the provided
+// initial objects, their status subresources, and the client-go scheme. Use this when you need
+// to customize the fake client further before building (e.g., adding interceptors or additional
+// schemes). For simple cases, use NewFakeClient instead.
+func NewFakeClientBuilder(initObjs ...client.Object) *fake.ClientBuilder {
 	return fake.NewClientBuilder().
 		WithObjects(initObjs...).
 		WithStatusSubresource(initObjs...).
-		WithScheme(clientgoscheme.Scheme).
-		Build()
+		WithScheme(clientgoscheme.Scheme)
 }
 
 var (
@@ -34,6 +41,10 @@ type failingSubClient struct {
 }
 
 func (fc failingClient) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+	return fc.err
+}
+
+func (fc failingSubClient) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.SubResourceApplyOption) error {
 	return fc.err
 }
 

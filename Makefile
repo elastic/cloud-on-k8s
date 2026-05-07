@@ -31,14 +31,24 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+setup-envtest:
+ifeq ($(shell which setup-envtest 2>/dev/null),)
+	@(cd /tmp; GO111MODULE=on go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+endif
+
 ## -- Docker image
 
 REGISTRY            ?= docker.elastic.co
 
 export SNAPSHOT     ?= true
-export VERSION      ?= $(shell cat VERSION)
-export SHA1         ?= $(shell git rev-parse --short=8 --verify HEAD)
-export ARCH         ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+# `export` + `?=` + `shell` keeps the variables recursively expanded and thus a huge amount of shell invocations.
+# Splitting into ?= then := ensures the shell command runs at most once and the result is cached.
+VERSION             ?= $(shell cat VERSION)
+export VERSION      := $(VERSION)
+SHA1                ?= $(shell git rev-parse --short=8 --verify HEAD)
+export SHA1         := $(SHA1)
+ARCH                ?= $(shell uname -m | sed -e "s|x86_|amd|" -e "s|aarch|arm|")
+export ARCH         := $(ARCH)
 
 # for dev, suffix image name with current user name
 IMAGE_SUFFIX        ?= -$(subst _,,$(shell whoami))
@@ -82,11 +92,32 @@ dependencies: tidy
 tidy:
 	go mod tidy
 
-go-build: go-generate
+go-build-elastic-operator:
 	go build \
 		-mod readonly \
-		-ldflags "$(GO_LDFLAGS)" -tags="$(GO_TAGS)" -a \
-		 -o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+		-ldflags '$(GO_LDFLAGS) $(GO_LDFLAGS_EXTRA)' -tags='$(GO_TAGS)' -a \
+		-o elastic-operator github.com/elastic/cloud-on-k8s/v3/cmd
+
+go-build: go-generate
+go-build: export CGO_ENABLED=0
+go-build: go-build-elastic-operator
+
+# If GOFIPS140 or runtime.godebugDefault=fips140 value is changed,
+# the .buildkite/scripts/build/verify-fips-binary.sh should be adjusted accordingly.
+go-build-fips: go-generate
+go-build-fips: export CGO_ENABLED=0
+go-build-fips: export GOFIPS140=v1.0.0
+go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
+go-build-fips: go-build-elastic-operator
+go-build-fips:
+	./.buildkite/scripts/build/verify-fips-binary.sh native ./elastic-operator
+
+go-build-fips-boringcrypto: go-generate
+go-build-fips-boringcrypto: export CGO_ENABLED=1
+go-build-fips-boringcrypto: export GOEXPERIMENT=boringcrypto
+go-build-fips-boringcrypto: go-build-elastic-operator
+go-build-fips-boringcrypto:
+	./.buildkite/scripts/build/verify-fips-binary.sh boringcrypto ./elastic-operator
 
 reattach-pv:
 	# just check that reattach-pv still compiles
@@ -153,18 +184,22 @@ helm-test:
 	@hack/helm/test.sh
 
 integration: GO_TAGS += integration
-integration: clean
-	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
-		KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+integration: setup-envtest clean
+	@ kubebuilder_assets=$$(setup-envtest use -p path) ; \
+	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+		KUBEBUILDER_ASSETS=$$kubebuilder_assets ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
 			go test $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
 	done
 
 integration-xml: GO_TAGS += integration
-integration-xml: clean
-	@ for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
-	KUBEBUILDER_ASSETS=/usr/local/bin ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
-		gotestsum --junitfile integration-tests.xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) ; \
-	done
+integration-xml: setup-envtest clean
+	@ kubebuilder_assets=$$(setup-envtest use -p path) ; \
+	exit_code=0; \
+	for pkg in $$(grep 'go:build integration' -rl | grep _test.go | xargs -n1 dirname | uniq); do \
+	KUBEBUILDER_ASSETS=$$kubebuilder_assets ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) \
+		gotestsum --junitfile integration-tests-$$(basename $$pkg).xml -- $$(pwd)/$$pkg -tags='$(GO_TAGS)' -cover $(TEST_OPTS) || exit_code=$$? ; \
+	done; \
+	exit $$exit_code
 
 lint:
 	GOGC=40 golangci-lint run --verbose
@@ -357,18 +392,25 @@ switch-k3d:
 ##  --    Docker images    --  ##
 #################################
 
+docker-push-operator: DOCKER_BUILDX_ARGS=--push
+docker-push-operator: docker-build-operator
+
 # build amd64 image for dev purposes
 BUILD_PLATFORM ?= "linux/amd64"
-docker-push-operator:
+DOCKER_BUILD_TARGET ?= static
+MAKE_BUILD_RECIPE ?= go-build
+docker-build-operator:
 	docker buildx build . \
-	 	-f build/Dockerfile \
+		-f build/Dockerfile \
 		--progress=plain \
+		--target=$(DOCKER_BUILD_TARGET) \
+		--build-arg MAKE_BUILD_RECIPE='$(MAKE_BUILD_RECIPE)' \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		--build-arg VERSION='$(VERSION)' \
+		--build-arg LICENSE_PUBKEY='$(LICENSE_PUBKEY)' \
 		--platform $(BUILD_PLATFORM) \
-		--push \
-		-t $(OPERATOR_IMAGE)
+		$(DOCKER_BUILDX_ARGS) -t $(OPERATOR_IMAGE)
 
 drivah-generate-operator:
 	@ build/gen-drivah.toml.sh
@@ -421,13 +463,17 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.2.2
+E2E_STACK_VERSION          ?= 9.3.2
 # regexp to filter tests to run
 export TESTS_MATCH         ?= "^Test"
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 15m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
+# Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
+E2E_STATELESS              ?= $(or $(STATELESS),false)
+# Defaults to RESTRICT_WATCHED_RESOURCES env var set by the Buildkite pipeline.
+E2E_RESTRICT_WATCHED_RESOURCES ?= $(or $(RESTRICT_WATCHED_RESOURCES),false)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -457,7 +503,9 @@ e2e-run: go-generate
 		--monitoring-secrets=$(MONITORING_SECRETS) \
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--stateless=$(E2E_STATELESS) \
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
@@ -482,7 +530,8 @@ e2e-local: go-generate
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
 
 ##########################
 ##  --   Helpers    --  ##
@@ -501,7 +550,7 @@ check-local-changes:
 
 # Check if the predicate names in upgrade_predicates.go, are equal to the predicate names
 # defined in the user documentation in upgrade-predicates.md.
-check-predicates: CODE = pkg/controller/elasticsearch/driver/upgrade_predicates.go
+check-predicates: CODE = pkg/controller/elasticsearch/driver/stateful/upgrade_predicates.go
 check-predicates: DOC = docs/reference/upgrade-predicates.md
 check-predicates: PREDICATE_PATTERN = [a-z]*_[A-Za-z_]*
 check-predicates:

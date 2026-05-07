@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.2.2
+  version: 9.3.2
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -143,6 +143,13 @@ rules:
   - get
   - watch
   - list
+- apiGroups: ["events.k8s.io"]
+  resources:
+  - events
+  verbs:
+  - get
+  - watch
+  - list
 - nonResourceURLs:
   - /metrics
   verbs:
@@ -215,7 +222,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.2.2
+  version: 9.3.2
   nodeSets:
   - name: default
     count: 3
@@ -227,7 +234,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.2.2
+  version: 9.3.2
   count: 1
   elasticsearchRef:
     name: elasticsearch

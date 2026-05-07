@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 
@@ -26,7 +27,8 @@ import (
 )
 
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
-// init containers and readiness probe.
+// init containers and readiness probe. The scripts ConfigMap content feeds into the pod-template config
+// hash, so any change to the rendered scripts (including label ordering) will trigger a rolling restart.
 func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
@@ -58,6 +60,9 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(es),
 		},
 	}
+
+	scriptsConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	return reconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }
 

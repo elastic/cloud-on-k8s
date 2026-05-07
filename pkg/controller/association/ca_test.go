@@ -39,9 +39,11 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	kibanaFixture := kbv1.Kibana{
 		ObjectMeta: kibanaFixtureObjectMeta,
 		Spec: kbv1.KibanaSpec{
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name:      esFixture.Name,
-				Namespace: esFixture.Namespace,
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{
+					Name:      esFixture.Name,
+					Namespace: esFixture.Namespace,
+				},
 			},
 		},
 	}

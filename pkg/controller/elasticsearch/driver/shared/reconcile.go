@@ -1,0 +1,434 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
+// Package shared contains shared reconciliation logic for Elasticsearch drivers.
+package shared
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/cleanup"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+)
+
+// DefaultRequeue is the default requeue result for reconciliation.
+var DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
+
+// ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
+// clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
+func ReconcileSharedResources(
+	ctx context.Context,
+	d commondriver.Interface,
+	params driver.Parameters,
+	clientAuthenticationRequired bool,
+) (*ReconcileState, *reconciler.Results) {
+	results := reconciler.NewResult(ctx)
+	log := ulog.FromContext(ctx)
+	es := params.ES
+	client := params.Client
+	urlProvider := params.URLProvider
+
+	// Garbage collect secrets attached to this cluster that we don't need anymore.
+	if err := cleanup.DeleteOrphanedSecrets(ctx, client, es); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Extract the metadata that should be propagated to children.
+	meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
+
+	// Reconcile the scripts ConfigMap.
+	if err := configmap.ReconcileScriptsConfigMap(ctx, client, es, meta); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Reconcile transport service.
+	if _, err := common.ReconcileService(ctx, client, services.NewTransportService(es, meta), &es); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Reconcile external service.
+	externalService, err := common.ReconcileService(ctx, client, services.NewExternalService(es, meta), &es)
+	if err != nil {
+		if k8serrors.IsAlreadyExists(err) {
+			return nil, results.WithReconciliationState(DefaultRequeue.WithReason(fmt.Sprintf("Pending %s service recreation", services.ExternalServiceName(es.Name))))
+		}
+		return nil, results.WithError(err)
+	}
+
+	// Reconcile internal service.
+	internalService, err := common.ReconcileService(ctx, client, services.NewInternalService(es, meta), &es)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Remote Cluster Server (RCS2) Kubernetes Service reconciliation.
+	if es.Spec.RemoteClusterServer.Enabled {
+		// Remote Cluster Server is enabled, ensure that the related Kubernetes Service does exist.
+		if _, err := common.ReconcileService(ctx, client, services.NewRemoteClusterService(es, meta), &es); err != nil {
+			results.WithError(err)
+		}
+	} else {
+		// Ensure that remote cluster Service does not exist.
+		remoteClusterService := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: es.Namespace,
+				Name:      services.RemoteClusterServiceName(es.Name),
+			},
+		}
+		results.WithError(k8s.DeleteResourceIfExists(ctx, client, remoteClusterService))
+	}
+
+	// Get resources state
+	resourcesState, err := reconcile.NewResourcesStateFromAPI(client, es)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	WarnUnsupportedDistro(resourcesState.AllPods, params.ReconcileState.Recorder)
+
+	// Reconcile users and roles
+	controllerUser, err := user.ReconcileUsersAndRoles(
+		ctx,
+		client,
+		es,
+		params.DynamicWatches,
+		params.Recorder,
+		params.OperatorParameters.PasswordHasher,
+		params.OperatorParameters.PasswordGenerator,
+		meta)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Reconcile HTTP certificates
+	trustedHTTPCertificates, res := certificates.ReconcileHTTP(
+		ctx,
+		d,
+		es,
+		[]corev1.Service{*externalService, *internalService},
+		params.OperatorParameters.GlobalCA,
+		params.OperatorParameters.CACertRotation,
+		params.OperatorParameters.CertRotation,
+		meta,
+	)
+	results.WithResults(res)
+	if res != nil && res.HasError() {
+		return nil, results
+	}
+
+	// Reconcile operator client certificate and trust bundle of client certificates.
+	// Unlike the HTTP cert reconciliation above, a failure here does not prevent subsequent steps:
+	// the ES client is still created (without a client cert), esReachable becomes false if client auth
+	// is required, and subsequent steps should handle that gracefully with a requeue.
+	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
+		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
+	)
+	if clientCertResults.HasError() {
+		_, err := clientCertResults.Aggregate()
+		k8s.MaybeEmitErrorEventf(d.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+			"Operator client certificate and trust bundle reconciliation error: %v", err)
+	}
+	results.WithResults(clientCertResults)
+
+	// Start the ES observer
+	minVersion, err := version.MinInPods(resourcesState.CurrentPods, label.VersionLabelName)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+	if minVersion == nil {
+		minVersion = &params.Version
+	}
+
+	hasEndpoints := urlProvider.HasEndpoints()
+
+	observedState := params.Observers.ObservedStateResolver(
+		ctx,
+		es,
+		elasticsearchClientProvider(
+			ctx,
+			params,
+			controllerUser,
+			*minVersion,
+			trustedHTTPCertificates,
+			operatorClientCert,
+		),
+		hasEndpoints,
+	)
+
+	// Always update the Elasticsearch state bits with the latest observed state.
+	params.ReconcileState.
+		UpdateClusterHealth(observedState()).         // Elasticsearch cluster health
+		UpdateAvailableNodes(*resourcesState).        // Available nodes
+		UpdateMinRunningVersion(ctx, *resourcesState) // Min running version
+
+	// Reconcile transport certificates
+	res = certificates.ReconcileTransport(
+		ctx,
+		d,
+		es,
+		params.OperatorParameters.GlobalCA,
+		params.OperatorParameters.CACertRotation,
+		params.OperatorParameters.CertRotation,
+		meta,
+	)
+	results.WithResults(res)
+	if res != nil && res.HasError() {
+		return nil, results
+	}
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
+	results.WithResults(annotatePodsWithNodeLabels(ctx, client, es))
+
+	// Verify the operator supports existing pods
+	if err := VerifySupportsExistingPods(resourcesState.CurrentPods, params.SupportedVersions); err != nil {
+		if !es.IsConfiguredToAllowDowngrades() {
+			return nil, results.WithError(err)
+		}
+		log.Info("Allowing downgrade on user request", "warning", err.Error())
+	}
+
+	// Create ES client
+	esClient := newElasticsearchClient(
+		ctx,
+		params,
+		controllerUser,
+		*minVersion,
+		trustedHTTPCertificates,
+		operatorClientCert,
+	)
+
+	// use unknown health as a proxy for a cluster not responding to requests
+	hasKnownHealthState := observedState() != esv1.ElasticsearchUnknownHealth
+	esReachable := hasEndpoints && hasKnownHealthState
+	// report condition in Pod status
+	if esReachable {
+		params.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionTrue, esReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
+	} else {
+		params.ReconcileState.ReportCondition(esv1.ElasticsearchIsReachable, corev1.ConditionFalse, esReachableConditionMessage(internalService, hasEndpoints, hasKnownHealthState))
+	}
+
+	// License check
+	var currentLicense esclient.License
+	if esReachable {
+		currentLicense, err = license.CheckElasticsearchLicense(ctx, esClient)
+		var e *license.GetLicenseError
+		if errors.As(err, &e) {
+			if !e.SupportedDistribution {
+				msg := "Unsupported Elasticsearch distribution"
+				// unsupported distribution, let's update the phase to "invalid" and stop the reconciliation
+				params.ReconcileState.
+					UpdateWithPhase(esv1.ElasticsearchResourceInvalid).
+					AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
+				esClient.Close()
+				return nil, results.WithError(errors.Wrap(err, strings.ToLower(msg[0:1])+msg[1:]))
+			}
+			// update esReachable to bypass steps that requires ES up in order to not block reconciliation for long periods
+			esReachable = e.EsReachable
+		}
+		if err != nil {
+			msg := "Could not verify license, re-queuing"
+			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
+			results.WithReconciliationState(DefaultRequeue.WithReason(msg))
+		}
+	}
+
+	// Reconcile the Elasticsearch license (even if we assume the cluster might not respond to requests to cover the case of
+	// expired licenses where all health API responses are 403)
+	if hasEndpoints {
+		err = license.Reconcile(ctx, client, es, esClient, currentLicense)
+		if err != nil {
+			msg := "Could not reconcile cluster license, re-queuing"
+			// only log an event if Elasticsearch is in a state where success of this API call can be expected. The API call itself
+			// will be logged by the client
+			if hasKnownHealthState {
+				log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
+				params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionLicenseCheck, fmt.Sprintf("%s: %s", msg, err.Error()))
+			}
+			results.WithReconciliationState(DefaultRequeue.WithReason(msg))
+		}
+	}
+
+	// Reconcile remote clusters
+	if esReachable {
+		requeue, err := remotecluster.UpdateSettings(ctx, client, esClient, params.Recorder, params.LicenseChecker, es)
+		msg := "Could not update remote clusters in Elasticsearch settings, re-queuing"
+		if err != nil {
+			log.Info(msg, "err", err, "namespace", es.Namespace, "es_name", es.Name)
+			params.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionRemoteClusterConfiguration, msg)
+			results.WithError(err)
+		}
+		if requeue {
+			results.WithReconciliationState(DefaultRequeue.WithReason("Updating remote cluster settings, re-queuing"))
+		}
+	}
+
+	// Compute seed hosts based on current masters with a podIP
+	if err := settings.UpdateSeedHostsConfigMap(ctx, client, es, resourcesState.AllPods, meta); err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+
+	// Cluster UUID
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, client, &es, esClient, esReachable)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+	if requeue {
+		results = results.WithReconciliationState(DefaultRequeue.WithReason("Elasticsearch cluster UUID is not reconciled"))
+	}
+
+	// Stack monitoring
+	err = stackmon.ReconcileConfigSecrets(ctx, client, es, meta, clientAuthenticationRequired)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+
+	// Association check
+	areAssocsConfigured, err := association.AreConfiguredIfSet(ctx, es.GetAssociations(), params.Recorder)
+	if err != nil {
+		esClient.Close()
+		return nil, results.WithError(err)
+	}
+	if !areAssocsConfigured {
+		results.WithReconciliationState(DefaultRequeue.WithReason("Some associations are not reconciled"))
+	}
+
+	return &ReconcileState{
+		Meta:           meta,
+		ResourcesState: resourcesState,
+		ESClient:       esClient,
+		ESReachable:    esReachable,
+	}, results
+}
+
+// MaybeReconcileEmptyFileSettingsSecret reconciles an empty file-settings secret for this ES cluster
+// based on license status and StackConfigPolicy targeting. The first return value is true when the
+// caller should requeue reconciliation (because ownership of the Secret has been deferred to the
+// StackConfigPolicy controller); the second is any error encountered.
+// When enterprise features are disabled it always creates an empty file-settings secret.
+// When enterprise features are enabled and at least one StackConfigPolicy
+// targets this cluster it returns true to requeue (deferring to the SCP controller). If no StackConfigPolicy
+// targets this cluster it creates an empty file-settings secret.
+// See https://github.com/elastic/cloud-on-k8s/issues/8912.
+func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
+	esNsn := k8s.ExtractNamespacedName(es)
+	meta := metadata.Propagate(es, metadata.Metadata{Labels: label.NewLabels(esNsn)})
+	fs, err := filesettings.Load(ctx, c, esNsn, es.IsStateless(), meta)
+	if err != nil {
+		return false, err
+	}
+	if fs.Exists() {
+		if !fs.IsSettingsCorrupted() {
+			// Re-save the existing Secret so that any newly-managed labels or annotations
+			// introduced by the operator (e.g. the watched resources label) are propagated
+			// onto it. Save is a no-op when nothing has actually changed.
+			// Re-save only when the content of file is not corrupt to avoid overwriting with empty settings.
+			// Use WithAdditiveMetadata because the ES controller doesn't own all managed
+			// annotations (e.g. secure-settings-secrets is managed by the SCP controller).
+			return false, fs.Save(ctx, c, es, filesettings.WithAdditiveMetadata())
+		}
+
+		return false, nil
+	}
+
+	log := ulog.FromContext(ctx)
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !enabled {
+		// AlreadyExists is not an error: another controller (e.g. SCP) may have created
+		// the Secret concurrently. The goal here is only to ensure the Secret exists.
+		if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+			return false, err
+		}
+		return false, nil
+	}
+
+	// Get all StackConfigPolicies in the cluster
+	var policyList policyv1alpha1.StackConfigPolicyList
+	if err := c.List(ctx, &policyList); err != nil {
+		return false, err
+	}
+
+	// Check each policy to see if it targets this ES cluster
+	for _, policy := range policyList.Items {
+		// Check if this policy's namespace and label selector match this ES cluster
+		matches, err := stackconfigpolicy.DoesPolicyMatchObject(&policy, es, operatorNamespace)
+		if err != nil {
+			// Do not return an err here as this potentially can block ES reconciliation if any SCP in the cluster
+			// has an invalid label selector, even if it doesn't target the current elasticsearch cluster.
+			log.Error(err, "Failed to check if StackConfigPolicy matches object", "scp_name", policy.Name, "scp_namespace", policy.Namespace)
+			continue
+		} else if !matches {
+			continue
+		}
+
+		// Found a policy that targets this ES cluster but the file-settings secret does not exist.
+		// Let the SCP controller manage it, however, return requeue true to handle the following edge case:
+		// 1. SCP exists and targets ES cluster at creation time
+		// 2. ES controller "defers" to SCP controller (doesn't create secret)
+		// 3. SCP is deleted before it reconciles and creates the file-settings secret
+		// 4. Result: ES cluster left without any file-settings secret
+		return true, nil
+	}
+
+	// No policies target this cluster, so ES controller should create the empty secret.
+	// AlreadyExists is not an error: same race as above.
+	if err := fs.Save(ctx, c, es); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return false, err
+	}
+	return false, nil
+}
+
+// esReachableConditionMessage returns a message describing the Elasticsearch reachability condition.
+func esReachableConditionMessage(internalService *corev1.Service, isServiceReady bool, isRespondingToRequests bool) string {
+	switch {
+	case !isServiceReady:
+		return fmt.Sprintf("Service %s/%s has no endpoint", internalService.Namespace, internalService.Name)
+	case !isRespondingToRequests:
+		return fmt.Sprintf("Service %s/%s has endpoints but Elasticsearch is unavailable", internalService.Namespace, internalService.Name)
+	default:
+		return fmt.Sprintf("Service %s/%s has endpoints", internalService.Namespace, internalService.Name)
+	}
+}

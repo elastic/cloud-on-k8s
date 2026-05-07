@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
 	git_http "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -135,27 +134,11 @@ func (c *Client) createFork(orgRepo string) error {
 	return nil
 }
 
-func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *git.Remote) error {
-	err := repository.Fetch(&git.FetchOptions{
-		RemoteName: "fork",
-	})
-	if err != nil {
-		return fmt.Errorf("while fetching fork: %w", err)
-	}
-	w, err := repository.Worktree()
-	if err != nil {
-		return fmt.Errorf("while retrieving a working tree from the git filesystem: %w", err)
-	}
-	err = w.Checkout(&git.CheckoutOptions{Branch: "refs/remotes/fork/main", Create: false})
-	if err != nil {
-		return fmt.Errorf("while checking out (%s) branch (main): %w", orgRepo, err)
-	}
-	err = w.Pull(&git.PullOptions{RemoteName: "origin", ReferenceName: plumbing.NewBranchReferenceName("main")})
-	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return fmt.Errorf("while merging upstream changes from upstream/main into fork/main: %w", err)
-	}
+func (c *Client) syncFork(repository *git.Repository) error {
+	// We already have upstream main checked out (from the initial clone). Syncing the fork
+	// means making fork/main match upstream/main. Push our current main to the fork;
 	refSpec := "+refs/heads/main:refs/heads/main"
-	err = repository.Push(&git.PushOptions{
+	err := repository.Push(&git.PushOptions{
 		Auth: &git_http.BasicAuth{
 			Username: c.GitHubToken,
 		},
@@ -165,7 +148,7 @@ func (c *Client) syncFork(orgRepo string, repository *git.Repository, remote *gi
 		},
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return fmt.Errorf("while pushing merge of fork/main: %w", err)
+		return fmt.Errorf("while pushing main to fork: %w", err)
 	}
 	return nil
 }

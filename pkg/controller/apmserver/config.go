@@ -42,6 +42,10 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 	return fmt.Sprintf("config/%s-certs", associationType)
 }
 
+func clientCertificatesDir(associationType commonv1.AssociationType) string {
+	return fmt.Sprintf("config/%s-client-certs", associationType)
+}
+
 func apmServerSecretTokenKeyFor(v version.Version) string {
 	if v.GTE(version.MinFor(8, 0, 0)) {
 		return APMServerSecretToken
@@ -78,7 +82,7 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 }
 
 func newConfigFromSpec(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, version version.Version) (*settings.CanonicalConfig, error) {
-	cfg := settings.MustCanonicalConfig(map[string]interface{}{
+	cfg := settings.MustCanonicalConfig(map[string]any{
 		APMServerHost:                       fmt.Sprintf(":%d", DefaultHTTPPort),
 		apmServerSecretTokenKeyFor(version): "${SECRET_TOKEN}",
 	})
@@ -129,13 +133,17 @@ func newElasticsearchConfigFromSpec(ctx context.Context, c k8s.Client, esAssocia
 		return nil, err
 	}
 
-	tmpOutputCfg := map[string]interface{}{
+	tmpOutputCfg := map[string]any{
 		"output.elasticsearch.hosts":    []string{esAssocConf.GetURL()},
 		"output.elasticsearch.username": credentials.Username,
 		"output.elasticsearch.password": credentials.Password,
 	}
 	if esAssocConf.GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
+	}
+	if esAssocConf.ClientCertIsConfigured() {
+		tmpOutputCfg["output.elasticsearch.ssl.certificate"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.CertFileName)
+		tmpOutputCfg["output.elasticsearch.ssl.key"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.KeyFileName)
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
@@ -156,7 +164,7 @@ func newKibanaConfigFromSpec(ctx context.Context, c k8s.Client, kibanaAssociatio
 		return nil, err
 	}
 
-	tmpOutputCfg := map[string]interface{}{
+	tmpOutputCfg := map[string]any{
 		"apm-server.kibana.enabled":  true,
 		"apm-server.kibana.host":     kbAssocConf.GetURL(),
 		"apm-server.kibana.username": credentials.Username,
@@ -169,11 +177,11 @@ func newKibanaConfigFromSpec(ctx context.Context, c k8s.Client, kibanaAssociatio
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil
 }
 
-func tlsSettings(as *apmv1.ApmServer) map[string]interface{} {
+func tlsSettings(as *apmv1.ApmServer) map[string]any {
 	if !as.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		APMServerSSLEnabled:     true,
 		APMServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		APMServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),

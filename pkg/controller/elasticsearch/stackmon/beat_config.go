@@ -21,13 +21,13 @@ var (
 	//go:embed metricbeat.tpl.yml
 	metricbeatConfigTemplate string
 
-	// filebeatConfig is a static configuration for Filebeat to collect Elasticsearch logs
-	//go:embed filebeat.yml
-	filebeatConfig string
+	// filebeatConfigTemplate is a configuration template for Filebeat to collect Elasticsearch logs
+	//go:embed filebeat.tpl.yml
+	filebeatConfigTemplate string
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding beats configuration
-func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elas
 	}
 
 	if monitoring.IsMetricsDefined(&es) {
-		b, err := Metricbeat(ctx, client, es, meta)
+		b, err := Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
 		if err != nil {
 			return err
 		}

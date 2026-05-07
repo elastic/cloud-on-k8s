@@ -40,7 +40,7 @@ spec:
         # Operator
         - namespaceSelector:
             matchLabels:
-              name: "{{ $.Release.Namespace }}"
+              kubernetes.io/metadata.name: "{{ $.Release.Namespace }}"
           podSelector:
             matchLabels:
               {{- include "eck-operator.selectorLabels" $ | nindent 14 }}

@@ -27,7 +27,7 @@ func EmptyConfig() *Config {
 }
 
 // FromSpec creates a new pipeline from spec.
-func FromSpec(cfg interface{}) (*Config, error) {
+func FromSpec(cfg any) (*Config, error) {
 	config, err := ucfg.NewFrom(cfg, Options...)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func FromSpec(cfg interface{}) (*Config, error) {
 
 // MustFromSpec creates a new pipeline and panics on errors.
 // Use for testing only.
-func MustFromSpec(cfg interface{}) *Config {
+func MustFromSpec(cfg any) *Config {
 	config, err := FromSpec(cfg)
 	if err != nil {
 		panic(err)
@@ -72,7 +72,7 @@ func (c *Config) Render() ([]byte, error) {
 	if c == nil {
 		return []byte{}, nil
 	}
-	var out []interface{}
+	var out []any
 	if err := c.asUCfg().Unpack(&out); err != nil {
 		return []byte{}, err
 	}
@@ -100,8 +100,8 @@ func (c *Config) Diff(c2 *Config) (bool, error) {
 		return true, fmt.Errorf("empty rhs config %s", c.asUCfg().FlattenedKeys(Options...))
 	}
 
-	var s []map[string]interface{}
-	var s2 []map[string]interface{}
+	var s []map[string]any
+	var s2 []map[string]any
 	err := c.asUCfg().Unpack(&s, Options...)
 	if err != nil {
 		return true, err
@@ -115,7 +115,7 @@ func (c *Config) Diff(c2 *Config) (bool, error) {
 }
 
 // diffSlice returns true if the key/value or the sequence of two PipelinesConfig are different.
-func diffSlice(s1, s2 []map[string]interface{}) (bool, error) {
+func diffSlice(s1, s2 []map[string]any) (bool, error) {
 	if len(s1) != len(s2) {
 		return true, fmt.Errorf("array size doesn't match %d, %d", len(s1), len(s2))
 	}

@@ -22,7 +22,7 @@ type Command struct {
 	command      string
 	context      context.Context
 	logPrefix    string
-	params       map[string]interface{}
+	params       map[string]any
 	variablesSrc string
 	variables    []string
 	stream       bool
@@ -33,7 +33,7 @@ func NewCommand(command string) *Command {
 	return &Command{command: command, stream: true, stderr: true}
 }
 
-func (c *Command) AsTemplate(params map[string]interface{}) *Command {
+func (c *Command) AsTemplate(params map[string]any) *Command {
 	c.params = params
 	return c
 }
@@ -75,7 +75,7 @@ func (c *Command) Run() error {
 
 func (c *Command) RunWithRetries(numAttempts int, timeout time.Duration) error {
 	var err error
-	for i := 0; i < numAttempts; i++ {
+	for range numAttempts {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 		err = c.WithContext(ctx).Run()
 		cancelFunc()
@@ -99,10 +99,6 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 		}
 	}
 
-	if err != nil {
-		// provide additional context to callers otherwise it is really hard to figure out what went wrong
-		err = fmt.Errorf("%s with err: %w", out, err)
-	}
 	return false, err
 }
 
@@ -112,7 +108,7 @@ func (c *Command) OutputList() (list []string, err error) {
 		return nil, err
 	}
 
-	for _, item := range strings.Split(out, "\n") {
+	for item := range strings.SplitSeq(out, "\n") {
 		if item != "" {
 			list = append(list, item)
 		}
@@ -169,5 +165,11 @@ func (c *Command) output() (string, error) {
 	}
 
 	err := cmd.Run()
-	return b.String(), err
+	out := b.String()
+	// When not streaming, the CLI output is only captured in the buffer.
+	// Include it in the error so callers get meaningful messages instead of just "exit status N".
+	if err != nil && !c.stream {
+		err = fmt.Errorf("%w: %s", err, strings.TrimSpace(out))
+	}
+	return out, err
 }

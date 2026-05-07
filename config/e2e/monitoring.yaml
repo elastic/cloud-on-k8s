@@ -5,7 +5,7 @@ metadata:
   name: e2e-agent
   namespace: {{ .E2ENamespace }}
 spec:
-  version: 9.2.2
+  version: 9.3.2
   elasticsearchRefs:
     - secretName: eck-{{ .TestRun }}
   daemonSet:
@@ -81,9 +81,16 @@ spec:
   config:
     agent:
       monitoring:
-        enabled: true
         use_output: default
+        {{ if .OcpCluster }}
+        # disable agent self-monitoring for ocp https://github.com/elastic/elastic-agent/issues/7488
+        # to prevent e2e tests flakiness https://github.com/elastic/cloud-on-k8s/issues/9074
+        enabled: false
+        logs: false
+        {{ else }}
+        enabled: true
         logs: true
+        {{ end }}
         metrics: true
     providers.kubernetes:
       node: ${NODE_NAME}
@@ -396,6 +403,13 @@ rules:
       - nodes/metrics
       - nodes/proxy
       - nodes/stats
+      - events
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups: ["events.k8s.io"]
+    resources:
       - events
     verbs:
       - get

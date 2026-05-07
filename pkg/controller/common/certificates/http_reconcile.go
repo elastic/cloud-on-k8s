@@ -9,6 +9,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -82,7 +83,6 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		secret.Labels = make(map[string]string)
 	}
 
-	// TODO: reconcile annotations?
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
@@ -92,6 +92,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 			needsUpdate = true
 		}
 	}
+
+	if current, ok := secret.Labels[commonv1.RestrictWatchedResourcesLabelName]; !ok || current != commonv1.RestrictWatchedResourcesLabelValue {
+		secret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+		needsUpdate = true
+	}
+
 	// same for annotations
 	if secret.Annotations == nil {
 		secret.Annotations = make(map[string]string)
@@ -281,6 +287,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
+//   - leaf certificate's AKI does not match the current CA's SKI (AKI→SKI chain broken)
 func getHTTPCertificate(
 	ctx context.Context,
 	owner types.NamespacedName,
@@ -319,6 +326,16 @@ func getHTTPCertificate(
 	}
 
 	if certificate == nil {
+		return nil
+	}
+
+	if !CertIsSignedByCA(certificate, ca.Cert) {
+		log.Info("Certificate is not valid for current CA, should issue new certificate",
+			"namespace", secret.Namespace,
+			"secret_name", secret.Name,
+			"cert_aki", fmt.Sprintf("%x", certificate.AuthorityKeyId),
+			"ca_ski", fmt.Sprintf("%x", ca.Cert.SubjectKeyId),
+		)
 		return nil
 	}
 
@@ -375,7 +392,7 @@ func createValidatedHTTPCertificateTemplate(
 ) *ValidatedCertificateTemplate {
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
 	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
-	cnNameParts := []string{
+	cnNameParts := []string{ //nolint:prealloc
 		shortName,
 		owner.Namespace,
 	}

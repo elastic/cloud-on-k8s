@@ -40,10 +40,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	kibanaFixture := kbv1.Kibana{
 		ObjectMeta: kibanaFixtureObjectMeta,
 		Spec: kbv1.KibanaSpec{
-			ElasticsearchRef: commonv1.ObjectSelector{
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 				Name:      esFixture.Name,
 				Namespace: esFixture.Namespace,
-			},
+			}},
 		},
 	}
 	associationLabels := map[string]string{
@@ -93,9 +93,11 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			kibana: kbv1.Kibana{
 				ObjectMeta: kibanaFixtureObjectMeta,
 				Spec: kbv1.KibanaSpec{
-					ElasticsearchRef: commonv1.ObjectSelector{ // ElasticsearchRef without a namespace
-						Name: esFixture.Name,
-						// Namespace: esFixture.Namespace, No namespace on purpose
+					ElasticsearchRef: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{ // ElasticsearchRef without a namespace
+							Name: esFixture.Name,
+							// Namespace: esFixture.Namespace, No namespace on purpose
+						},
 					},
 				},
 			},
@@ -132,9 +134,11 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			kibana: kbv1.Kibana{
 				ObjectMeta: kibanaFixtureObjectMeta,
 				Spec: kbv1.KibanaSpec{
-					ElasticsearchRef: commonv1.ObjectSelector{
-						Name:      esFixture.Name,
-						Namespace: "ns2", // Kibana does not reference the default namespace anymore
+					ElasticsearchRef: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{
+							Name:      esFixture.Name,
+							Namespace: "ns2", // Kibana does not reference the default namespace anymore
+						},
 					},
 				},
 			},
@@ -308,7 +312,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.EsAssociation().AssociationRef().WithDefaultNamespace(tt.kibana.Namespace).NamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, info, tt.kibana.Spec.ElasticsearchRef.WithDefaultNamespace(tt.kibana.Namespace).NamespacedName(), tt.kibana.GetAssociations()); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

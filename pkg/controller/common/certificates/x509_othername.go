@@ -19,6 +19,9 @@ var (
 
 	// CommonNameObjectIdentifier is the OID for a CommonName field in x509
 	CommonNameObjectIdentifier = asn1.ObjectIdentifier{2, 5, 4, 3}
+
+	// OrganizationalUnitIdentifier is the OID for an OrganizationalUnit field in x509
+	OrganizationalUnitIdentifier = asn1.ObjectIdentifier{2, 5, 4, 11}
 )
 
 /*
@@ -93,7 +96,7 @@ func (n *UTF8StringValuedOtherName) ToOtherName() (*OtherName, error) {
 }
 
 // convertASN1 converts a struct to another through asn1 marshalling and unmarshalling
-func convertASN1(from, to interface{}) error {
+func convertASN1(from, to any) error {
 	data, err := asn1.Marshal(from)
 	if err != nil {
 		return err

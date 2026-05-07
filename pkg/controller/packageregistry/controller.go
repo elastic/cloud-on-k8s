@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -60,7 +60,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePackageRegistry {
 	return &ReconcilePackageRegistry{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -109,13 +109,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
-var _ reconcile.Reconciler = &ReconcilePackageRegistry{}
+var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
 
 // ReconcilePackageRegistry reconciles a PackageRegistry object
 type ReconcilePackageRegistry struct {
 	k8s.Client
 	operator.Parameters
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -129,11 +129,11 @@ func (r *ReconcilePackageRegistry) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-func (r *ReconcilePackageRegistry) Recorder() record.EventRecorder {
+func (r *ReconcilePackageRegistry) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcilePackageRegistry{}
+var _ driver.Interface = (*ReconcilePackageRegistry)(nil)
 
 // Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
 // in the PackageRegistry.Spec
@@ -211,7 +211,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &epr, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, status
 	}
 
@@ -257,10 +257,14 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := epr.ValidateCreate(); err != nil {
+	warnings, err := eprv1alpha1.Validate(&epr, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, &epr, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
@@ -305,7 +309,7 @@ func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret
 }
 
 func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata) (deployment.Params, error) {
-	podSpec, err := newPodSpec(epr, configHash, meta)
+	podSpec, err := newPodSpec(epr, configHash, meta, r.SetDefaultSecurityContext)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -333,7 +337,7 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 		return nil // nothing to do
 	}
 	if status.IsDegraded(epr.Status.DeploymentStatus) {
-		r.recorder.Event(&epr, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Package Registry health degraded")
+		k8s.EmitEvent(r.recorder, &epr, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Elastic Package Registry health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

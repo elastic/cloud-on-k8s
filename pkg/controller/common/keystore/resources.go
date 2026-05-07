@@ -6,6 +6,7 @@ package keystore
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
 
 // Resources holds all the resources needed to create a keystore in Kibana or in the APM server.
@@ -25,6 +27,12 @@ type Resources struct {
 	InitContainer corev1.Container
 	// hash of the secret data provided by the user
 	Hash string
+	// KeystorePasswordSecretName is the name of the Secret containing the
+	// operator-managed keystore password.
+	KeystorePasswordSecretName string
+	// KeystorePasswordSecretHash is the hash of the Secret containing the
+	// operator-managed keystore password.
+	KeystorePasswordSecretHash string
 }
 
 // HasKeystore interface represents an Elastic Stack application that offers a keystore which in ECK
@@ -67,12 +75,28 @@ func ReconcileResources(
 		return nil, err
 	}
 	if secretVolume == nil {
-		// nothing to do
-		return nil, nil
+		if initContainerParams.KeystorePasswordPath == "" {
+			// nothing to do
+			return nil, nil
+		}
+		// A password-protected keystore still requires an init container even
+		// when no secure settings are configured.
+		emptySecureSettingsVolume := volume.NewEmptyDirVolume(SecureSettingsVolumeName, SecureSettingsVolumeMountPath)
+		secureSettingsMount := emptySecureSettingsVolume.VolumeMount()
+		secureSettingsMount.ReadOnly = true
+		initContainer, err := initContainer(secureSettingsMount, initContainerParams)
+		if err != nil {
+			return nil, fmt.Errorf("while building keystore init container: %w", err)
+		}
+		return &Resources{
+			Volume:        emptySecureSettingsVolume.Volume(),
+			InitContainer: initContainer,
+			Hash:          "",
+		}, nil
 	}
 
 	// build an init container to create the keystore from the secure settings volume
-	initContainer, err := initContainer(*secretVolume, initContainerParams)
+	initContainer, err := initContainer(secretVolume.VolumeMount(), initContainerParams)
 	if err != nil {
 		return nil, err
 	}

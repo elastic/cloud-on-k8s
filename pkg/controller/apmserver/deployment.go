@@ -92,7 +92,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	params PodSpecParams,
 	meta metadata.Metadata,
 ) (deployment.Params, error) {
-	podSpec, err := newPodSpec(r.Client, as, params, meta)
+	podSpec, err := newPodSpec(r.Client, as, params, meta, r.SetDefaultSecurityContext)
 	if err != nil {
 		return deployment.Params{}, err
 	}

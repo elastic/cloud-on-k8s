@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -61,10 +61,10 @@ func trialStatusSecretSample(t *testing.T, state licensing.TrialState) *corev1.S
 }
 
 func trialLicenseBytes() []byte {
-	return []byte(fmt.Sprintf(
+	return fmt.Appendf(nil,
 		`{"license": {"uid": "x", "type": "enterprise_trial", "issue_date_in_millis": 1, "expiry_date_in_millis": %d, "issued_to": "x", "issuer": "Elastic k8s operator", "start_date_in_millis": 1, "cluster_licenses": null, "Version": 0}}`,
 		chrono.ToMillis(time.Now().Add(24*time.Hour)), // simulate a license still valid for 24 hours
-	))
+	)
 }
 
 func trialStateSample(t *testing.T) licensing.TrialState {
@@ -305,7 +305,7 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			r := &ReconcileTrials{
 				Client:     tt.fields.Client,
 				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   record.NewFakeRecorder(10),
+				recorder:   toolsevents.NewFakeRecorder(10),
 				trialState: tt.fields.trialState,
 			}
 			_, err := r.Reconcile(context.Background(), reconcile.Request{
@@ -434,7 +434,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 			r := &ReconcileTrials{
 				Client:     tt.fields.Client,
 				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   record.NewFakeRecorder(10),
+				recorder:   toolsevents.NewFakeRecorder(10),
 				trialState: tt.fields.trialState,
 			}
 			if err := r.reconcileTrialStatus(context.Background(), trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {

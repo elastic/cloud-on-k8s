@@ -61,17 +61,17 @@ func TestRolesFileContent_MergeWith(t *testing.T) {
 			name: "when r is nil",
 			r:    nil,
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+				other: RolesFileContent(map[string]any{"a": "c"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 		},
 		{
 			name: "when other is nil",
-			r:    RolesFileContent(map[string]interface{}{"a": "c"}),
+			r:    RolesFileContent(map[string]any{"a": "c"}),
 			args: args{
 				other: nil,
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 		},
 		{
 			name: "when both are nil",
@@ -79,57 +79,57 @@ func TestRolesFileContent_MergeWith(t *testing.T) {
 			args: args{
 				other: nil,
 			},
-			want: RolesFileContent(map[string]interface{}{}),
+			want: RolesFileContent(map[string]any{}),
 		},
 		{
 			name: "when r is empty",
-			r:    RolesFileContent(map[string]interface{}{}),
+			r:    RolesFileContent(map[string]any{}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+				other: RolesFileContent(map[string]any{"a": "c"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 		},
 		{
 			name: "when other is empty",
-			r:    RolesFileContent(map[string]interface{}{"a": "c"}),
+			r:    RolesFileContent(map[string]any{"a": "c"}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{}),
+				other: RolesFileContent(map[string]any{}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 		},
 		{
 			name: "when r has more items",
-			r:    RolesFileContent(map[string]interface{}{"a": "b", "d": "e"}),
+			r:    RolesFileContent(map[string]any{"a": "b", "d": "e"}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+				other: RolesFileContent(map[string]any{"a": "c"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+			want: RolesFileContent(map[string]any{"a": "c", "d": "e"}),
 		},
 		{
 			name: "when other has more items",
-			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			r:    RolesFileContent(map[string]any{"a": "b"}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+				other: RolesFileContent(map[string]any{"a": "c", "d": "e"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c", "d": "e"}),
+			want: RolesFileContent(map[string]any{"a": "c", "d": "e"}),
 		},
 		{
 			name: "does give priority to other",
-			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			r:    RolesFileContent(map[string]any{"a": "b"}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+				other: RolesFileContent(map[string]any{"a": "c"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 		},
 		{
 			name: "does not mutate in place",
-			r:    RolesFileContent(map[string]interface{}{"a": "b"}),
+			r:    RolesFileContent(map[string]any{"a": "b"}),
 			args: args{
-				other: RolesFileContent(map[string]interface{}{"a": "c"}),
+				other: RolesFileContent(map[string]any{"a": "c"}),
 			},
-			want: RolesFileContent(map[string]interface{}{"a": "c"}),
+			want: RolesFileContent(map[string]any{"a": "c"}),
 			assert: func(r, other, result RolesFileContent) {
-				require.Equal(t, r, RolesFileContent(map[string]interface{}{"a": "b"}))
+				require.Equal(t, r, RolesFileContent(map[string]any{"a": "b"}))
 			},
 		},
 	}

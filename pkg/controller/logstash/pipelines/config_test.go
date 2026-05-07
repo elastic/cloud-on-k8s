@@ -12,7 +12,7 @@ import (
 
 func TestPipelinesConfig_Render(t *testing.T) {
 	config := MustFromSpec(
-		[]map[string]interface{}{
+		[]map[string]any{
 			{
 				"pipeline.id":   "demo",
 				"config.string": "input { exec { command => \"uptime\" interval => 5 } } output { stdout{} }",
@@ -58,7 +58,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "simple input",
 			input: "- pipeline.id: demo\n  config.string: input { exec { command => \"${ENV}\" interval => 5 } }",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{
 						"pipeline.id":   "demo",
 						"config.string": "input { exec { command => \"${ENV}\" interval => 5 } }",
@@ -71,7 +71,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "number input",
 			input: "- pipeline.id: main\n  pipeline.workers: 4",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{
 						"pipeline.id":      "main",
 						"pipeline.workers": 4,
@@ -84,7 +84,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "boolean input",
 			input: "- pipeline.id: main\n  queue.drain: false",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{
 						"pipeline.id": "main",
 						"queue.drain": false,
@@ -97,7 +97,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "trim whitespaces between key and value",
 			input: "- pipeline.id :  demo \n  path.config :  /tmp/logstash/*.config ",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{
 						"pipeline.id": "demo",
 						"path.config": "/tmp/logstash/*.config",
@@ -115,7 +115,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "trim newlines",
 			input: "- pipeline.id: demo \n\n- pipeline.id: demo2 \n",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"pipeline.id": "demo"},
 					{"pipeline.id": "demo2"},
 				},
@@ -126,7 +126,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "ignore comments",
 			input: "- pipeline.id: demo \n#this is a comment\n  pipeline.workers: \"1\"\n",
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{
 						"pipeline.id":      "demo",
 						"pipeline.workers": "1",
@@ -139,7 +139,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "support quotes",
 			input: `- "pipeline.id": "quote"`,
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"pipeline.id": "quote"},
 				},
 			),
@@ -149,7 +149,7 @@ func TestParsePipelinesConfig(t *testing.T) {
 			name:  "support special characters",
 			input: `- config.string: "${node.ip}%.:=+è! /"`,
 			want: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"config.string": `${node.ip}%.:=+è! /`},
 				},
 			),
@@ -196,7 +196,7 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 			name: "lhs nil",
 			c:    nil,
 			c2: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 					{"b": "b"},
 				},
@@ -206,7 +206,7 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "rhs nil",
 			c: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 				},
 			),
@@ -216,12 +216,12 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "same multi key value",
 			c: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a", "b": "b", "c": 1, "d": true},
 				},
 			),
 			c2: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"c": 1, "b": "b", "a": "a", "d": true},
 				},
 			),
@@ -230,12 +230,12 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "different value",
 			c: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 				},
 			),
 			c2: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "b"},
 				},
 			),
@@ -244,12 +244,12 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "array size different",
 			c: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 				},
 			),
 			c2: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 					{"a": "a"},
 				},
@@ -259,13 +259,13 @@ func TestPipelinesConfig_Diff(t *testing.T) {
 		{
 			name: "respects list order",
 			c: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"a": "a"},
 					{"b": "b"},
 				},
 			),
 			c2: MustFromSpec(
-				[]map[string]interface{}{
+				[]map[string]any{
 					{"b": "b"},
 					{"a": "a"},
 				},

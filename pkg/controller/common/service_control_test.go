@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
@@ -39,6 +40,7 @@ func TestReconcileService(t *testing.T) {
 
 	wantSvc := mkService(owner)
 	wantSvc.Labels["lbl3"] = "lblval3"
+	wantSvc.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	wantSvc.Annotations["ann3"] = "annval3"
 
 	haveSvc, err := ReconcileService(context.Background(), client, expectedSvc, owner)
@@ -666,6 +668,30 @@ func Test_applyServerSideValues(t *testing.T) {
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:      corev1.ServiceTypeNodePort,
 				ClusterIP: "1.2.3.4",
+			}},
+		},
+		{
+			name: "Reconciled TrafficDistribution is used if the expected one is nil",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+			}},
+		},
+		{
+			name: "Expected TrafficDistribution is used if not nil",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
 			}},
 		},
 	}

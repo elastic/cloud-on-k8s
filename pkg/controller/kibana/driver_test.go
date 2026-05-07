@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -18,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -39,14 +40,15 @@ import (
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Requests: corev1.ResourceList{},
 }
 
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
 	getPods := func(kbName string, podCount int, version string) []client.Object {
-		var result []client.Object
-		for i := 0; i < podCount; i++ {
+		result := make([]client.Object, 0, podCount)
+		for i := range podCount {
 			result = append(result, &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					OwnerReferences: []metav1.OwnerReference{
@@ -186,7 +188,7 @@ func Test_getStrategyType(t *testing.T) {
 				client = k8s.NewFailingClient(errors.New("client error"))
 			}
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -349,9 +351,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
-				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
-					FSGroup: ptr.To[int64](1000),
-				}
+				p.PodTemplateSpec.Spec.SecurityContext = &defaultPodSecurityContext
 				return p
 			}(),
 			wantErr: false,
@@ -383,7 +383,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			client := k8s.NewFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
@@ -429,7 +429,7 @@ func TestMinSupportedVersion(t *testing.T) {
 			client := k8s.NewFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
-			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			_, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {
@@ -538,7 +538,7 @@ func expectedDeploymentParams() deployment.Params {
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Image:           "my-image",
 						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-						SecurityContext: nil,
+						SecurityContext: &defaultSecurityContext,
 						Env: []corev1.EnvVar{
 							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -688,9 +688,7 @@ func expectedDeploymentParams() deployment.Params {
 func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string) deployment.Params {
 	deploymentParams := expectedDeploymentParams()
 
-	for k, v := range policyAnnotations {
-		deploymentParams.PodTemplateSpec.Annotations[k] = v
-	}
+	maps.Copy(deploymentParams.PodTemplateSpec.Annotations, policyAnnotations)
 	return deploymentParams
 }
 
@@ -714,8 +712,8 @@ func kibanaFixture() *kbv1.Kibana {
 			Version: "7.17.0",
 			Image:   "my-image",
 			Count:   1,
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name: "es",
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es"},
 			},
 		},
 	}
@@ -943,7 +941,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -982,10 +980,10 @@ func TestDriver_buildVolumes(t *testing.T) {
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						ElasticsearchRef: commonv1.ObjectSelector{
-							Name: "test-es",
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: "test-es"},
 						},
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},

@@ -30,6 +30,10 @@ const (
 	ElasticsearchDataVolumeName = "elasticsearch-data"
 	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
 
+	// ElasticsearchCacheVolumeName is the volume name for stateless cache storage.
+	// Users can provide a volumeClaimTemplate with this name to customize the cache volume size.
+	ElasticsearchCacheVolumeName = "elasticsearch-cache"
+
 	ElasticsearchLogsVolumeName = "elasticsearch-logs"
 	ElasticsearchLogsMountPath  = "/usr/share/elasticsearch/logs"
 
@@ -48,4 +52,13 @@ const (
 
 	TempVolumeName      = "tmp-volume"
 	TempVolumeMountPath = "/tmp"
+
+	ClientCertificatesTrustBundleVolumeName = "elastic-internal-client-trust-bundle"
+	ClientCertificatesTrustBundleMountPath  = "/usr/share/elasticsearch/config/client-trust-bundle"
+
+	InternalClientCertVolumeName = "elastic-internal-client-cert"
+	InternalClientCertMountPath  = "/usr/share/elasticsearch/config/client-cert"
+
+	KeystorePasswordSecretVolumeName      = "elastic-internal-keystore-password"
+	KeystorePasswordSecretVolumeMountPath = "/mnt/elastic-internal/keystore-password" //nolint:gosec
 )

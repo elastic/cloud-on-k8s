@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -143,7 +143,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 						ObservedGeneration: 1,
 					},
 				}),
-				recorder: record.NewFakeRecorder(10),
+				recorder: toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcilePackageRegistry) {
 				// observedGeneration should have been updated
@@ -155,7 +155,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Happy path: first reconciliation",
 			reconciler: ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(&eprFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},

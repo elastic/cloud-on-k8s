@@ -10,17 +10,15 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
-
 	"github.com/google/go-cmp/cmp"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
-
 	"github.com/stretchr/testify/assert"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -29,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -164,7 +163,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						// ns1/es1 is expected to create an API key for ns1/es2
 						Name: "eck-ns1-es2-generated-alias-from-ns1-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es2",
@@ -185,6 +184,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns1",
@@ -318,7 +318,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "generated-id-from-fake-es-client-eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
 							Name: "eck-ns4-es4-generated-alias-from-ns4-es4-to-ns1-es1-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -330,7 +330,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es5-to-es1",
 							Name: "eck-ns5-es5-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es5",
@@ -342,7 +342,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1-old-alias",
 							Name: "eck-ns4-es4-to-ns1-es1-0-old-alias",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -373,7 +373,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					{
 						Name: "eck-ns2-es2-generated-alias-from-ns2-es2-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es2",
@@ -385,7 +385,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 					{
 						Name: "eck-ns3-es3-generated-alias-from-ns3-es3-to-ns1-es1-with-api-key",
 						CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es3",
@@ -406,6 +406,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es1",
 						},
 						Namespace: "ns1",
@@ -425,6 +426,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns2",
@@ -444,6 +446,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es3",
 						},
 						Namespace: "ns3",
@@ -461,6 +464,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es4",
 						},
 						Namespace: "ns4",
@@ -589,7 +593,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1",
 							Name: "eck-ns4-es4-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -601,7 +605,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es5-to-es1",
 							Name: "eck-ns5-es5-generated-ns1-es1-0-with-api-key",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "1384987056",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es5",
@@ -613,7 +617,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						{
 							ID:   "apikey-from-es4-to-es1-old-alias",
 							Name: "eck-ns4-es4-to-ns1-es1-0-old-alias",
-							Metadata: map[string]interface{}{
+							Metadata: map[string]any{
 								"elasticsearch.k8s.elastic.co/config-hash": "unexpected-hash",
 								"elasticsearch.k8s.elastic.co/managed-by":  "eck",
 								"elasticsearch.k8s.elastic.co/name":        "es4",
@@ -647,6 +651,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 						Labels: map[string]string{
 							"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 							"eck.k8s.elastic.co/credentials":            "true",
+							"eck.k8s.elastic.co/watched":                "true",
 							"elasticsearch.k8s.elastic.co/cluster-name": "es2",
 						},
 						Namespace: "ns2",
@@ -902,7 +907,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 				accessReviewer: tt.fields.accessReviewer,
 				watches:        w,
 				licenseChecker: tt.fields.licenseChecker,
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				esClientProvider: func(_ context.Context, _ k8s.Client, _ net.Dialer, _ esv1.Elasticsearch) (esclient.Client, error) {
 					return fakeESClient, nil
 				},

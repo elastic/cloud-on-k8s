@@ -5,9 +5,24 @@
   "labels": [
     ">renovate"
   ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
   "schedule": [
     "after 1am on monday"
   ],
+  "postUpgradeTasks": {
+    "commands": [
+      "make generate"
+    ],
+    "executionMode": "branch"
+  },
   "packageRules": [
     {
       "groupName": "k8s",
@@ -54,7 +69,6 @@
         "digest"
       ],
       "enabled": true,
-      "automerge": true,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -68,7 +82,6 @@
         "major"
       ],
       "enabled": true,
-      "automerge": false,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -83,7 +96,6 @@
         "pin"
       ],
       "enabled": true,
-      "automerge": true,
       "postUpdateOptions": [
         "gomodTidy"
       ],
@@ -126,7 +138,5 @@
       "groupName": "go"
     }
   ],
-  "automergeStrategy": "squash",
-  "automergeType": "branch",
   "separateMajorMinor": true
 }

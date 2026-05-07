@@ -59,7 +59,7 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 		Serverless: isServerless,
 		URL:        info.URL,
 		// points the auth secret to the custom secret
-		AuthSecretName: assocRef.SecretName,
+		AuthSecretName: assocRef.GetSecretName(),
 		CACertProvided: info.CaCert != "",
 	}
 
@@ -73,7 +73,7 @@ func (r *Reconciler) ExpectedConfigFromUnmanagedAssociation(association commonv1
 
 	// points the ca secret to the custom secret if needed
 	if expectedAssocConf.CACertProvided {
-		expectedAssocConf.CASecretName = assocRef.SecretName
+		expectedAssocConf.CASecretName = assocRef.GetSecretName()
 	}
 
 	return expectedAssocConf, err
@@ -90,7 +90,7 @@ type UnmanagedAssociationConnectionInfo struct {
 }
 
 type UnmanagedAssociation interface {
-	AssociationRef() commonv1.ObjectSelector
+	AssociationRef() commonv1.AssociationRef
 	SupportsAuthAPIKey() bool
 }
 
@@ -111,7 +111,7 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 
 	url, ok := secretRef.Data["url"]
 	if !ok {
-		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", assocRef.SecretName)
+		return nil, fmt.Errorf("url secret key doesn't exist in secret %s", assocRef.GetSecretName())
 	}
 	ref.URL = string(url)
 
@@ -124,13 +124,13 @@ func GetUnmanagedAssociationConnectionInfoFromSecret(c k8s.Client, association U
 
 	username, ok := secretRef.Data[authUsernameUnmanagedSecretKey]
 	if !ok {
-		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", assocRef.SecretName)
+		return nil, fmt.Errorf("username secret key doesn't exist in secret %s", assocRef.GetSecretName())
 	}
 	ref.Username = string(username)
 
 	password, ok := secretRef.Data[authPasswordUnmanagedSecretKey]
 	if !ok {
-		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", assocRef.SecretName)
+		return nil, fmt.Errorf("password secret key doesn't exist in secret %s", assocRef.GetSecretName())
 	}
 	ref.Password = string(password)
 
@@ -157,7 +157,7 @@ type VersionPattern interface {
 
 // Request performs an HTTP GET request to the unmanaged Elastic resource at the given path and returns a string extracted
 // from the returned result using the given json path.
-func (r UnmanagedAssociationConnectionInfo) Request(path string, out interface{}) error {
+func (r UnmanagedAssociationConnectionInfo) Request(path string, out any) error {
 	url := r.URL + path
 	req, err := http.NewRequest("GET", url, nil) //nolint:noctx
 	if err != nil {

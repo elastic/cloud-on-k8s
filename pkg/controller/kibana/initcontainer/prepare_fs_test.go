@@ -29,8 +29,7 @@ func TestNewInitContainer(t *testing.T) {
 	olderKibana := defaultKibana
 	olderKibana.Spec.Version = "7.8.0"
 	type args struct {
-		kb                        kbv1.Kibana
-		setDefaultSecurityContext bool
+		kb kbv1.Kibana
 	}
 	tests := []struct {
 		name    string
@@ -41,8 +40,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "newer Kibana without default security context includes plugins volume",
 			args: args{
-				kb:                        defaultKibana,
-				setDefaultSecurityContext: false,
+				kb: defaultKibana,
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -62,38 +60,6 @@ func TestNewInitContainer(t *testing.T) {
 					{
 						Name:      "kibana-plugins",
 						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
-					},
-				},
-				Resources: defaultResources,
-			},
-			wantErr: false,
-		},
-		{
-			name: "newer Kibana with default security context includes plugins volume",
-			args: args{
-				kb:                        defaultKibana,
-				setDefaultSecurityContext: true,
-			},
-			want: corev1.Container{
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Name:            "elastic-internal-init",
-				Env:             defaults.PodDownwardEnvVars(),
-				Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "elastic-internal-kibana-config-local",
-						MountPath: "/mnt/elastic-internal/kibana-config-local",
-						ReadOnly:  false,
-					},
-					{
-						Name:      "elastic-internal-kibana-config",
-						MountPath: "/mnt/elastic-internal/kibana-config",
-						ReadOnly:  true,
-					},
-					{
-						Name:      "kibana-plugins",
-						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
-						ReadOnly:  false,
 					},
 				},
 				Resources: defaultResources,
@@ -103,39 +69,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "older Kibana without default security context includes plugins volume",
 			args: args{
-				kb:                        olderKibana,
-				setDefaultSecurityContext: false,
-			},
-			want: corev1.Container{
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Name:            "elastic-internal-init",
-				Env:             defaults.PodDownwardEnvVars(),
-				Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "elastic-internal-kibana-config-local",
-						MountPath: "/mnt/elastic-internal/kibana-config-local",
-						ReadOnly:  false,
-					},
-					{
-						Name:      "elastic-internal-kibana-config",
-						MountPath: "/mnt/elastic-internal/kibana-config",
-						ReadOnly:  true,
-					},
-					{
-						Name:      "kibana-plugins",
-						MountPath: "/mnt/elastic-internal/kibana-plugins-local",
-					},
-				},
-				Resources: defaultResources,
-			},
-			wantErr: false,
-		},
-		{
-			name: "older Kibana with default security context does not include plugins volume",
-			args: args{
-				kb:                        olderKibana,
-				setDefaultSecurityContext: true,
+				kb: olderKibana,
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -165,7 +99,7 @@ func TestNewInitContainer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewInitContainer(tt.args.kb, tt.args.setDefaultSecurityContext)
+			got, err := NewInitContainer(tt.args.kb)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewInitContainer() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -112,9 +112,11 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 		WithElasticsearchRefs(
 			// associate logstash to the es ref stored in the stackVersions
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: commonv1.ObjectSelector{
-					Namespace: stackVersions.Elasticsearch.ref.Namespace,
-					Name:      stackVersions.Elasticsearch.ref.Name,
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{
+						Namespace: stackVersions.Elasticsearch.ref.Namespace,
+						Name:      stackVersions.Elasticsearch.ref.Name,
+					},
 				},
 				ClusterName: "es",
 			},

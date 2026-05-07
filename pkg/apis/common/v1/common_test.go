@@ -201,9 +201,9 @@ func TestObjectSelector_WithDefaultNamespace(t *testing.T) {
 }
 
 func TestObjectSelector_IsDefined(t *testing.T) {
-	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsDefined())
-	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsDefined())
-	assert.Equal(t, false, (&ObjectSelector{}).IsDefined())
+	assert.Equal(t, true, (&ObjectSelector{Name: "n"}).IsSet())
+	assert.Equal(t, true, (&ObjectSelector{SecretName: "s"}).IsSet())
+	assert.Equal(t, false, (&ObjectSelector{}).IsSet())
 }
 
 func TestObjectSelector_IsExternal(t *testing.T) {
@@ -307,6 +307,221 @@ func TestObjectSelector_IsValid(t *testing.T) {
 		{
 			name: "serviceName: KO",
 			objectSelector: ObjectSelector{
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.objectSelector.IsValid(); (got != nil) != tt.wantErr {
+				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestElasticsearchSelector_IsValid(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector ElasticsearchSelector
+		wantErr  bool
+	}{
+		{
+			name:     "empty: OK",
+			selector: ElasticsearchSelector{},
+			wantErr:  false,
+		},
+		{
+			name: "name only: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name, namespace and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: false,
+		},
+		{
+			name: "clientCertificateSecretName without name: KO",
+			selector: ElasticsearchSelector{
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: true,
+		},
+		{
+			name: "secretName and clientCertificateSecretName: KO (secretName and name conflict)",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{SecretName: "s", Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			wantErr: true,
+		},
+		{
+			name: "inherits ObjectSelector validation - secretName and name: KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{SecretName: "s", Name: "a"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "inherits ObjectSelector validation - secretName and serviceName: KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{SecretName: "s", ServiceName: "c"},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.selector.IsValid(); (got != nil) != tt.wantErr {
+				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestElasticsearchSelector_GetClientCertificateSecretName(t *testing.T) {
+	assert.Equal(t, "", ElasticsearchSelector{}.GetClientCertificateSecretName())
+	assert.Equal(t, "my-cert", ElasticsearchSelector{ClientCertificateSecretName: "my-cert"}.GetClientCertificateSecretName())
+}
+
+func TestElasticsearchSelector_WithDefaultNamespace(t *testing.T) {
+	tests := []struct {
+		name             string
+		selector         ElasticsearchSelector
+		defaultNamespace string
+		want             ElasticsearchSelector
+	}{
+		{
+			name: "keep non-empty namespace",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+			},
+		},
+		{
+			name: "default empty namespace, preserve clientCertificateSecretName",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a"},
+				ClientCertificateSecretName: "cc",
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "d"},
+				ClientCertificateSecretName: "cc",
+			},
+		},
+		{
+			name: "default empty namespace without clientCertificateSecretName",
+			selector: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a"},
+			},
+			defaultNamespace: "d",
+			want: ElasticsearchSelector{
+				ObjectSelector: ObjectSelector{Name: "a", Namespace: "d"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.selector.WithDefaultNamespace(tt.defaultNamespace)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestElasticsearchSelector_IsSet(t *testing.T) {
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsSet())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsSet())
+	assert.False(t, ElasticsearchSelector{}.IsSet())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}, ClientCertificateSecretName: "cc"}.IsSet())
+}
+
+func TestElasticsearchSelector_IsExternal(t *testing.T) {
+	assert.False(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsExternal())
+	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsExternal())
+}
+
+func TestLocalObjectSelector_IsValid(t *testing.T) {
+	tests := []struct {
+		name           string
+		objectSelector LocalObjectSelector
+		wantErr        bool
+	}{
+		{
+			name:           "empty object: OK",
+			objectSelector: LocalObjectSelector{},
+			wantErr:        false,
+		},
+		{
+			name: "name only: OK",
+			objectSelector: LocalObjectSelector{
+				Name: "a",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and namespace: OK",
+			objectSelector: LocalObjectSelector{
+				Name:      "a",
+				Namespace: "b",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name and serviceName: OK",
+			objectSelector: LocalObjectSelector{
+				Name:        "a",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "name, namespace and serviceName: OK",
+			objectSelector: LocalObjectSelector{
+				Name:        "a",
+				Namespace:   "b",
+				ServiceName: "c",
+			},
+			wantErr: false,
+		},
+		{
+			name: "serviceName without name: KO",
+			objectSelector: LocalObjectSelector{
+				ServiceName: "c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "namespace without name: KO",
+			objectSelector: LocalObjectSelector{
+				Namespace: "b",
+			},
+			wantErr: true,
+		},
+		{
+			name: "namespace and serviceName without name: KO",
+			objectSelector: LocalObjectSelector{
+				Namespace:   "b",
 				ServiceName: "c",
 			},
 			wantErr: true,

@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -497,7 +497,7 @@ func TestUpdateSettings(t *testing.T) {
 				context.Background(),
 				client,
 				tt.args.esClient,
-				record.NewFakeRecorder(100),
+				toolsevents.NewFakeRecorder(100),
 				tt.args.licenseChecker,
 				*tt.args.es,
 			)
