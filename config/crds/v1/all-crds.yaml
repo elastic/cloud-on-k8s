@@ -877,7 +877,8 @@ spec:
               spaceID:
                 description: |-
                   SpaceID is the ID of the Space where the Agent Policy is defined.
-                  When empty, the default Space is used. Only effective for Stack version 9.1.0+.
+                  When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+                pattern: ^[a-z0-9_-]+$
                 type: string
               statefulSet:
                 description: |-

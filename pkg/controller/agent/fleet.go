@@ -94,7 +94,7 @@ func newFleetAPI(
 ) fleetAPI {
 	spaceID := agent.Spec.SpaceID
 	spacePrefix := ""
-	nonDefaultSpace := spaceID != "" && !strings.EqualFold(spaceID, "default")
+	nonDefaultSpace := spaceID != "" && spaceID != "default"
 	kibanaVersion, err := version.Parse(settings.version)
 	switch {
 	case err != nil:

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func Test_newFleetAPI_spacePrefix(t *testing.T) {
 	}{
 		{name: "empty", spaceID: "", kibanaVersion: "9.1.0", want: ""},
 		{name: "default_lower", spaceID: "default", kibanaVersion: "9.1.0", want: ""},
-		{name: "default_mixed_case", spaceID: "Default", kibanaVersion: "9.1.0", want: ""},
+		{name: "default_mixed_case_not_coerced", spaceID: "Default", kibanaVersion: "9.1.0", want: "/s/Default"},
 		{name: "dev", spaceID: "dev", kibanaVersion: "9.1.0", want: "/s/dev"},
 		{name: "my-space", spaceID: "my-space", kibanaVersion: "9.1.0", want: "/s/my-space"},
 		{name: "path_escape", spaceID: "a b", kibanaVersion: "9.1.0", want: "/s/a%20b"},
@@ -358,11 +359,12 @@ func mockFleetResponses(rs map[request]response) *mockFleetAPI {
 }
 
 // mockFleetResponsesWithSpace sets fleetAPI.spacePrefix the same way as newFleetAPI for the given spaceID
-// so HTTP paths match Kibana space-scoped Fleet API URLs. Uses Kibana 9.1.0 to enable space support.
+// so HTTP paths match Kibana space-scoped Fleet API URLs.
 func mockFleetResponsesWithSpace(rs map[request]response, spaceID string) *mockFleetAPI {
-	agent := v1alpha1.Agent{Spec: v1alpha1.AgentSpec{SpaceID: spaceID}}
-	fakeRecorder := toolsevents.NewFakeRecorder(10)
-	spacePrefix := newFleetAPI(&net.Dialer{}, agent, connectionSettings{version: "9.1.0"}, ulog.Log, fakeRecorder).spacePrefix
+	spacePrefix := ""
+	if spaceID != "" && spaceID != "default" {
+		spacePrefix = "/s/" + url.PathEscape(spaceID)
+	}
 	callLog := map[request]int{}
 	fn := func(req *http.Request) *http.Response {
 		r := request{method: req.Method, path: req.URL.Path}
