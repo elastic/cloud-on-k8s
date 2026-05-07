@@ -7,7 +7,7 @@ applies_to:
     eck: ga
 ---
 
-# {{eck}} API Reference [k8s-api-reference]
+# {{eck}} API reference [k8s-api-reference]
 
 This section contains the API references for {{eck}}.
 
