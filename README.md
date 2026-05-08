@@ -8,25 +8,25 @@ Elastic Cloud on Kubernetes automates the deployment, provisioning, management, 
 
 Current features:
 
-*  Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats deployments
-*  TLS Certificates management
-*  Safe Elasticsearch cluster configuration & topology changes
-*  Persistent volumes usage
-*  Custom node configuration and attributes
-*  Secure settings keystore updates
+* Elasticsearch, Kibana, APM Server, Enterprise Search, and Beats deployments
+* TLS Certificates management
+* Safe Elasticsearch cluster configuration & topology changes
+* Persistent volumes usage
+* Custom node configuration and attributes
+* Secure settings keystore updates
 
 Supported versions:
 
-*  Kubernetes 1.31-1.35
-*  OpenShift 4.16-4.21
-*  Elasticsearch, Kibana, APM Server: 8+, 9+
-*  Enterprise Search: 8+
-*  Beats: 8+, 9+
-*  Elastic Agent: 8+, 9+ (Fleet, Standalone)
-*  Elastic Maps Server: 8+, 9+
-*  Logstash: 8.12+, 9+
-*  Elastic AutoOps Agent: 9.2.1+ (Enterprise), 9.2.4+ (Basic)
-*  Elastic Package Registry: 8+
+* Kubernetes 1.31-1.35
+* OpenShift 4.16-4.21
+* Elasticsearch, Kibana, APM Server: 8+, 9+
+* Enterprise Search: 8+
+* Beats: 8+, 9+
+* Elastic Agent: 8+, 9+ (Fleet, Standalone)
+* Elastic Maps Server: 8+, 9+
+* Logstash: 8.12+, 9+
+* Elastic AutoOps Agent: 9.2.1+ (Enterprise), 9.2.4+ (Basic)
+* Elastic Package Registry: 8+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html) to deploy your first cluster with ECK.
 

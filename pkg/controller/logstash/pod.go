@@ -112,7 +112,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		Annotations: annotations,
 	})
 	builder = builder.
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, spec.Resources).
 		WithLabels(podMetadata.Labels).
 		WithAnnotations(podMetadata.Annotations).
 		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, v)).

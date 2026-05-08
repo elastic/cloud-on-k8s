@@ -85,6 +85,7 @@ AgentSpec defines the desired state of the Agent
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Agent configuration.<br>Agent settings must be specified as yaml, under a single "agent.yml" entry. At most one of [`Config`, `ConfigRef`]<br>can be specified. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Agent.<br>Secrets data can be then referenced in the Agent config using the Secret's keys or as specified in `Entries` field of<br>each SecureSetting. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Agent container. When set, these<br>values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet<br>PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate. |
 | *`daemonSet`* __[DaemonSetSpec](#daemonsetspec)__ | DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.<br>Cannot be used along with `deployment` or `statefulSet`. |
 | *`deployment`* __[DeploymentSpec](#deploymentspec)__ | Deployment specifies the Agent should be deployed as a Deployment, and allows providing its spec.<br>Cannot be used along with `daemonSet` or `statefulSet`. |
 | *`statefulSet`* __[StatefulSetSpec](#statefulsetspec)__ | StatefulSet specifies the Agent should be deployed as a StatefulSet, and allows providing its spec.<br>Cannot be used along with `daemonSet` or `deployment`. |
@@ -93,6 +94,7 @@ AgentSpec defines the desired state of the Agent
 | *`mode`* __[AgentMode](#agentmode)__ | Mode specifies the runtime mode for the Agent. The configuration can be specified locally through<br>`config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with<br>version 8.13.0 Fleet-managed agents support advanced configuration via a local configuration file.<br>See https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet<br>Defaults to `standalone` mode. |
 | *`fleetServerEnabled`* __boolean__ | FleetServerEnabled determines whether this Agent will launch Fleet Server. Don't set unless `mode` is set to `fleet`. |
 | *`policyID`* __string__ | PolicyID determines into which Agent Policy this Agent will be enrolled.<br>This field will become mandatory in a future release, default policies are deprecated since 8.1.0. |
+| *`spaceID`* __string__ | SpaceID is the ID of the Space where the Agent Policy is defined.<br>When empty, the default Space is used. Only effective for Kibana version 9.1.0+. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set<br>unless `mode` is set to `fleet`. |
 | *`fleetServerRef`* __[FleetServerSelector](#fleetserverselector)__ | FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.<br>Don't set unless `mode` is set to `fleet`.<br>References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported. |
 
@@ -204,6 +206,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for the APM Server resource. |
 | *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.<br>It allows APM agent central configuration management in Kibana. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the APM Server container. When set, these<br>values override any CPU or memory resource settings specified in the PodTemplate for the primary APM Server<br>container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server. |
@@ -297,6 +300,7 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | *`namespaceSelector`* __[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#labelselector-v1-meta)__ | NamespaceSelector is a namespace selector for the resources to be configured.<br>Any Elasticsearch instances that belong to the selected namespaces will be configured to send data to AutoOps. |
 | *`autoOpsRef`* __[AutoOpsRef](#autoopsref)__ | AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect. |
 | *`image`* __string__ | Image is the AutoOps Agent Docker image to deploy. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the AutoOps Agent container.<br>When set, these values override any CPU or memory resource settings specified in the PodTemplate for<br>the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
@@ -419,6 +423,7 @@ BeatSpec defines the desired state of a Beat.
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Beat configuration.<br>Beat settings must be specified as yaml, under a single "beat.yml" entry. At most one of [`Config`, `ConfigRef`]<br>can be specified. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.<br>Secrets data can be then referenced in the Beat config using the Secret's keys or as specified in `Entries` field of<br>each SecureSetting. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Beat container. When set, these<br>values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for<br>the primary Beat container. To set resources on other containers, use the PodTemplate. |
 | *`daemonSet`* __[DaemonSetSpec](#daemonsetspec)__ | DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.<br>Cannot be used along with `deployment`. If both are absent a default for the Type is used. |
 | *`deployment`* __[DeploymentSpec](#deploymentspec)__ | Deployment specifies the Beat should be deployed as a Deployment, and allows providing its spec.<br>Cannot be used along with `daemonSet`. If both are absent a default for the Type is used. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship logs and metrics for this Beat.<br>Metricbeat and/or Filebeat sidecars are configured and send monitoring data to an<br>Elasticsearch monitoring cluster running in the same Kubernetes cluster. |
@@ -480,6 +485,51 @@ ClientOptions configures client certificate authentication for incoming connecti
 | Field | Description |
 | --- | --- |
 | *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
+
+
+### Condition  [#condition]
+
+Condition represents the ECK resource's condition.
+
+:::{admonition} Appears In:
+* [Conditions](#conditions)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`type`* __[ConditionType](#conditiontype)__ |  |
+| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
+| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
+| *`message`* __string__ |  |
+
+
+### ConditionType (string)  [#conditiontype]
+
+ConditionType defines the condition of a resource.
+
+:::{admonition} Appears In:
+* [Condition](#condition)
+
+:::
+
+
+
+### Conditions ([Condition](#condition))  [#conditions]
+
+
+
+:::{admonition} Appears In:
+* [ElasticsearchStatus](#elasticsearchstatus)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`type`* __[ConditionType](#conditiontype)__ |  |
+| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
+| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
+| *`message`* __string__ |  |
 
 
 ### Config  [#config]
@@ -748,6 +798,55 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 | *`spec`* __[PodDisruptionBudgetSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#poddisruptionbudgetspec-v1-policy)__ | Spec is the specification of the PDB. |
 
 
+### ResourceAllocations  [#resourceallocations]
+
+ResourceAllocations holds optional CPU and memory quantities that the
+shorthand Resources field applies to the main container's Requests or Limits.
+Using pointers lets callers distinguish "no override" (nil) from "override
+with a zero quantity" (non-nil pointing to a zero value).
+
+:::{admonition} Appears In:
+* [Resources](#resources)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`cpu`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | CPU overrides the main container's CPU request/limit when the parent Resources<br>is merged into a PodTemplate. A nil value means "do not override": any CPU<br>value already set on the main container in the PodTemplate is passed through<br>unchanged. Setting this field to nil does not unset a CPU value present in<br>the PodTemplate; to remove it, edit the PodTemplate's container resources.<br>A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity. |
+| *`memory`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | Memory overrides the main container's memory request/limit when the parent<br>Resources is merged into a PodTemplate. A nil value means "do not override":<br>any memory value already set on the main container in the PodTemplate is<br>passed through unchanged. Setting this field to nil does not unset a memory<br>value present in the PodTemplate; to remove it, edit the PodTemplate's<br>container resources.<br>A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity. |
+
+
+### Resources  [#resources]
+
+Resources is a shorthand for setting CPU and memory requests and limits on
+the main application container of a pod-owning CRD. It is a simplified
+alternative to the nested podTemplate.spec.containers[name=<main>].resources
+path: any non-nil CPU or memory value in Requests or Limits is written to the
+main container's resources at reconcile time, overriding any value already
+present in the PodTemplate for the same key. Non-CPU/memory resource keys
+(for example ephemeral-storage) and all other container fields set via
+PodTemplate are preserved as-is.
+
+:::{admonition} Appears In:
+* [AgentSpec](#agentspec)
+* [ApmServerSpec](#apmserverspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
+* [BeatSpec](#beatspec)
+* [EnterpriseSearchSpec](#enterprisesearchspec)
+* [KibanaSpec](#kibanaspec)
+* [LogstashSpec](#logstashspec)
+* [MapsSpec](#mapsspec)
+* [NodeSet](#nodeset)
+* [PackageRegistrySpec](#packageregistryspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`limits`* __[ResourceAllocations](#resourceallocations)__ | Limits is the shorthand for the main container's CPU and memory limits. |
+| *`requests`* __[ResourceAllocations](#resourceallocations)__ | Requests is the shorthand for the main container's CPU and memory requests. |
+
+
 ### SecretRef  [#secretref]
 
 SecretRef is a reference to a secret that exists in the same namespace.
@@ -884,52 +983,6 @@ TLSWithClientOptions extends TLSOptions with client authentication settings.
 
 Package v1alpha1 contains API schema definitions for common types used by all resources.
 
-
-
-### Condition  [#condition]
-
-Condition represents Elasticsearch resource's condition.
-**This API is in technical preview and may be changed or removed in a future release.**
-
-:::{admonition} Appears In:
-* [Conditions](#conditions)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`type`* __[ConditionType](#conditiontype)__ |  |
-| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
-| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
-| *`message`* __string__ |  |
-
-
-### ConditionType (string)  [#conditiontype]
-
-ConditionType defines the condition of an Elasticsearch resource.
-
-:::{admonition} Appears In:
-* [Condition](#condition)
-
-:::
-
-
-
-### Conditions ([Condition](#condition))  [#conditions]
-
-
-
-:::{admonition} Appears In:
-* [ElasticsearchStatus](#elasticsearchstatus)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`type`* __[ConditionType](#conditiontype)__ |  |
-| *`status`* __[ConditionStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#conditionstatus-v1-core)__ |  |
-| *`lastTransitionTime`* __[Time](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#time-v1-meta)__ |  |
-| *`message`* __string__ |  |
 
 
 
@@ -1283,7 +1336,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run<br>in parallel: this value specifies the lowest version currently running. |
 | *`health`* __[ElasticsearchHealth](#elasticsearchhealth)__ |  |
 | *`phase`* __[ElasticsearchOrchestrationPhase](#elasticsearchorchestrationphase)__ |  |
-| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
+| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster. |
 | *`inProgressOperations`* __[InProgressOperations](#inprogressoperations)__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
 
@@ -1380,6 +1433,7 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
+| *`resources`* __[Resources](#resources)__ | Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field. |
 | *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |
@@ -1808,6 +1862,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Enterprise Search configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Enterprise Search resource. |
 | *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Enterprise Search container. When set,<br>these values override any CPU or memory resource settings specified in the PodTemplate for the primary<br>Enterprise Search container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)<br>for the Enterprise Search pods. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
@@ -1904,6 +1959,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
 | *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Kibana container. When set, these<br>values override any CPU or memory resource settings specified in the PodTemplate for the primary Kibana<br>container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. |
@@ -2046,6 +2102,7 @@ LogstashSpec defines the desired state of Logstash
 | *`pipelinesRef`* __[ConfigSource](#configsource)__ | PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.<br>Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]<br>can be specified. |
 | *`services`* __[LogstashService](#logstashservice) array__ | Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the<br>rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to<br>be opened up for other services: Beats, TCP, UDP, etc, inputs. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Logstash.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these<br>values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash<br>container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options for the Logstash pods. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSet. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Logstash.<br>Secrets data can be then referenced in the Logstash config using the Secret's keys or as specified in `Entries` field of<br>each SecureSetting. |
@@ -2134,6 +2191,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`config`* __[Config](#config)__ | Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Maps Server. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Elastic Maps Server container. When set,<br>these values override any CPU or memory resource settings specified in the PodTemplate for the primary Elastic<br>Maps Server container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
@@ -2200,6 +2258,7 @@ PackageRegistrySpec holds the specification of an Elastic Package Registry insta
 | *`config`* __[Config](#config)__ | Config holds the PackageRegistry configuration. See: https://github.com/elastic/package-registry/blob/main/config.reference.yml |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Package Registry configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Package Registry. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Elastic Package Registry container.<br>When set, these values override any CPU or memory resource settings specified in the PodTemplate for the<br>primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 

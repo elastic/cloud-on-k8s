@@ -76,6 +76,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts1.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts2 := getSecret(secrets, "test-es-name-es-sset2-es-transport-certs")
 				assert.NotNil(t, transportCerts2)
@@ -86,6 +87,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts2.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts3 := getSecret(secrets, "test-es-name-es-sset3-es-transport-certs")
 				assert.NotNil(t, transportCerts3)
@@ -96,6 +98,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts3.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset3", transportCerts3.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts3.Labels["eck.k8s.elastic.co/watched"])
 			},
 		},
 		{
@@ -134,6 +137,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts1.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts2 := getSecret(secrets, "test-es-name-es-sset2-es-transport-certs")
 				assert.NotNil(t, transportCerts2)
@@ -144,6 +148,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts2.Labels["eck.k8s.elastic.co/watched"])
 			},
 		},
 		{
@@ -366,6 +371,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				label.ClusterNameLabelName:     testES.Name,
 				"common.k8s.elastic.co/type":   "elasticsearch",
 				label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
+				"eck.k8s.elastic.co/watched":   "true",
 			},
 		},
 		Data: make(map[string][]byte),

@@ -134,7 +134,7 @@ func BuildPodTemplateSpec(
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(es.Spec.Image, container.ImageRepository(container.ElasticsearchImage, ver)).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, nodeSet.Resources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe(ver)).

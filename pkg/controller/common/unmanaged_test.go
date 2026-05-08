@@ -13,16 +13,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type testcase struct {
-	name string
-
-	// annotationSequence is list of annotations that are simulated.
-	annotationSequence []map[string]string
-
-	// Expected (un)managed state.
-	expectedState []bool
-}
-
 func TestUnmanagedCondition(t *testing.T) {
 	var tests = []testcase{
 		{

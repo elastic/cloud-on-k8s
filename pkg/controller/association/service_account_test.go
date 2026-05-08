@@ -61,6 +61,7 @@ var (
 			UID:       types.UID("6f5cb31d-69c4-409d-8b8d-8eafafc6bbd7"),
 			Labels: map[string]string{
 				"eck.k8s.elastic.co/credentials":                 "true",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
 				"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
@@ -85,6 +86,7 @@ var (
 			ResourceVersion: "3443557",
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                     "service-account-token",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
 				"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",

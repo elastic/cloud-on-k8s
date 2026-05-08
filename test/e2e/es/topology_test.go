@@ -11,10 +11,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 // TestCoordinatingNodes tests a cluster with coordinating nodes.
@@ -32,24 +35,14 @@ func TestResourcesRequirements(t *testing.T) {
 		WithNodeSet(esv1.NodeSet{
 			Name:  "masterdata",
 			Count: int32(1),
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					SecurityContext: test.DefaultSecurityContext(),
-					Containers: []corev1.Container{
-						{
-							Name: esv1.ElasticsearchContainerName,
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
-									corev1.ResourceCPU:    resource.MustParse("1000m"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
-									corev1.ResourceCPU:    resource.MustParse("1600m"),
-								},
-							},
-						},
-					},
+			Resources: commonv1.Resources{
+				Requests: commonv1.ResourceAllocations{
+					Memory: ptr.To(resource.MustParse("4Gi")),
+					CPU:    ptr.To(resource.MustParse("1000m")),
+				},
+				Limits: commonv1.ResourceAllocations{
+					Memory: ptr.To(resource.MustParse("4Gi")),
+					CPU:    ptr.To(resource.MustParse("1600m")),
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

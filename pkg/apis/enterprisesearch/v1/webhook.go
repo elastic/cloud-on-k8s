@@ -55,6 +55,15 @@ func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) (admission.Warnings
 	if deprecationWarnings != "" {
 		warnings = append(warnings, deprecationWarnings)
 	}
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		EnterpriseSearchContainerName,
+		ent.Spec.Resources,
+		ent.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
+	}
 
 	if old != nil {
 		for _, uc := range updateChecks {

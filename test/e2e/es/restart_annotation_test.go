@@ -32,7 +32,11 @@ func TestRestartTriggerAnnotationCausesRollingRestart(t *testing.T) {
 	}
 
 	initial := elasticsearch.NewBuilder("test-restart-annotation").
-		WithESMasterDataNodes(3, resources)
+		WithESMasterDataNodes(3, resources).
+		// Tolerate mutation check failures: the cluster can briefly go RED during
+		// the mutation when a node shuts down before a newly created replica is
+		// initialized. See https://github.com/elastic/cloud-on-k8s/issues/8267#issuecomment-4286465455.
+		TolerateMutationChecksFailures()
 
 	triggerValue := time.Now().UTC().Format(time.RFC3339)
 	mutated := initial.DeepCopy().
