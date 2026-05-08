@@ -35,18 +35,25 @@ const defaultObservationTimeout = 10 * time.Second
 // OnObservation is a function that gets executed when a new state is observed
 type OnObservation func(cluster types.NamespacedName, previousHealth, newHealth esv1.ElasticsearchHealth)
 
+// consecutiveFailureThreshold is the number of consecutive health check failures required
+// before the observer downgrades the cluster health to unknown. This prevents transient
+// network issues (e.g., envoy sidecar returning 503 during pod termination) from immediately
+// resetting the cluster health and stalling rolling upgrades.
+const consecutiveFailureThreshold = 3
+
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	cluster       types.NamespacedName
-	esClient      esclient.Client
-	settings      Settings
-	creationTime  time.Time
-	stopChan      chan struct{}
-	stopOnce      sync.Once
-	onObservation OnObservation
-	lastHealth    esv1.ElasticsearchHealth
-	mutex         sync.RWMutex
+	cluster             types.NamespacedName
+	esClient            esclient.Client
+	settings            Settings
+	creationTime        time.Time
+	stopChan            chan struct{}
+	stopOnce            sync.Once
+	onObservation       OnObservation
+	lastHealth          esv1.ElasticsearchHealth
+	consecutiveFailures int
+	mutex               sync.RWMutex
 }
 
 // NewObserver creates and starts an Observer
@@ -107,11 +114,19 @@ func (o *Observer) LastHealth() esv1.ElasticsearchHealth {
 }
 
 // observe retrieves the current ES state, executes onObservation,
-// and stores the new state
+// and stores the new state. If the first health check attempt fails, it closes
+// idle connections and retries once with a fresh connection. This handles the case
+// where the HTTP client has a stale connection to a terminated pod (e.g., behind
+// an Istio/envoy sidecar that returns 503 for terminated endpoints).
 func (o *Observer) observe(ctx context.Context) {
 	defer tracing.Span(&ctx)()
-	ctx, cancelFunc := context.WithTimeout(ctx, nonNegativeTimeout(o.settings.ObservationInterval))
-	defer cancelFunc()
+	// Use half the observation interval as per-attempt timeout so the retry
+	// has fresh budget. The total time for both attempts stays within the
+	// observation interval.
+	attemptTimeout := nonNegativeTimeout(o.settings.ObservationInterval) / 2
+	if attemptTimeout < 1*time.Second {
+		attemptTimeout = 1 * time.Second
+	}
 
 	if o.settings.Tracer != nil && apm.TransactionFromContext(ctx) == nil {
 		tx := o.settings.Tracer.StartTransaction(name, string(tracing.PeriodicTxType))
@@ -122,7 +137,23 @@ func (o *Observer) observe(ctx context.Context) {
 	ctx = ulog.InitInContext(ctx, name)
 	ulog.FromContext(ctx).V(1).Info("Retrieving cluster health", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 
-	newHealth := retrieveHealth(ctx, o.cluster, o.esClient)
+	// First attempt
+	attemptCtx, cancel1 := context.WithTimeout(ctx, attemptTimeout)
+	newHealth := retrieveHealth(attemptCtx, o.cluster, o.esClient)
+	cancel1()
+
+	// If the first attempt failed, close idle connections to discard any stale
+	// TCP connections (e.g., to a terminated pod) and retry once. The URL provider
+	// selects a random pod, so the retry will likely reach a different endpoint.
+	if newHealth == esv1.ElasticsearchUnknownHealth {
+		ulog.FromContext(ctx).V(1).Info("Retrying cluster health after closing idle connections",
+			"es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
+		o.esClient.CloseIdleConnections()
+		attemptCtx2, cancel2 := context.WithTimeout(ctx, attemptTimeout)
+		newHealth = retrieveHealth(attemptCtx2, o.cluster, o.esClient)
+		cancel2()
+	}
+
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastHealth(), newHealth)
 	}
@@ -132,6 +163,24 @@ func (o *Observer) observe(ctx context.Context) {
 func (o *Observer) updateHealth(newHealth esv1.ElasticsearchHealth) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
+	if newHealth == esv1.ElasticsearchUnknownHealth {
+		o.consecutiveFailures++
+		// Keep the previous known health until we've seen enough consecutive failures.
+		// This prevents a single transient error (e.g., 503 from envoy during pod termination)
+		// from resetting health to unknown and stalling the rolling upgrade.
+		if o.consecutiveFailures < consecutiveFailureThreshold && o.lastHealth != esv1.ElasticsearchUnknownHealth {
+			log.V(1).Info("Ignoring transient health check failure",
+				"consecutiveFailures", o.consecutiveFailures,
+				"threshold", consecutiveFailureThreshold,
+				"keepingHealth", o.lastHealth,
+				"es_name", o.cluster.Name,
+				"namespace", o.cluster.Namespace,
+			)
+			return
+		}
+	} else {
+		o.consecutiveFailures = 0
+	}
 	o.lastHealth = newHealth
 }
 

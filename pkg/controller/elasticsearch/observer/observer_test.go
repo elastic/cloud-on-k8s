@@ -202,3 +202,149 @@ func Test_nonNegativeTimeout(t *testing.T) {
 		})
 	}
 }
+
+// fakeEsClientSequence creates a client that returns responses in order:
+// each call to GetClusterHealth returns the next response in the sequence.
+func fakeEsClientSequence(responses []bool) client.Client {
+	callCount := int32(0)
+	return client.NewMockClient(version.MustParse("7.17.0"),
+		func(req *http.Request) *http.Response {
+			idx := int(atomic.AddInt32(&callCount, 1)) - 1
+			if idx < len(responses) && responses[idx] {
+				// Return error response (503)
+				return &http.Response{
+					StatusCode: 503,
+					Body:       io.NopCloser(strings.NewReader("")),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+}
+
+func TestObserver_GracePeriod_SingleFailureKeepsPreviousHealth(t *testing.T) {
+	// After establishing green health, a single failure should NOT reset to unknown
+	esClient := fakeEsClient(false) // always succeeds
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		esClient:   esClient,
+		lastHealth: esv1.ElasticsearchGreenHealth, // previously known green
+	}
+
+	// Simulate a failure
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+
+	// Health should still be green (grace period: 1 failure < threshold of 3)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+	require.Equal(t, 1, observer.consecutiveFailures)
+}
+
+func TestObserver_GracePeriod_ThreeConsecutiveFailuresDowngrade(t *testing.T) {
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		lastHealth: esv1.ElasticsearchGreenHealth,
+	}
+
+	// First two failures: keep green
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+
+	// Third failure: downgrade to unknown
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, esv1.ElasticsearchUnknownHealth, observer.LastHealth())
+	require.Equal(t, 3, observer.consecutiveFailures)
+}
+
+func TestObserver_GracePeriod_SuccessResetsCounter(t *testing.T) {
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		lastHealth: esv1.ElasticsearchGreenHealth,
+	}
+
+	// Two failures
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, 2, observer.consecutiveFailures)
+
+	// Success resets counter
+	observer.updateHealth(esv1.ElasticsearchGreenHealth)
+	require.Equal(t, 0, observer.consecutiveFailures)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+
+	// Next single failure should be tolerated again
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+}
+
+func TestObserver_GracePeriod_UnknownToUnknown_NoGrace(t *testing.T) {
+	// If previous health is already unknown, don't apply grace period
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		lastHealth: esv1.ElasticsearchUnknownHealth, // already unknown (e.g., fresh observer)
+	}
+
+	// Even a single failure should keep unknown (no previous known health to preserve)
+	observer.updateHealth(esv1.ElasticsearchUnknownHealth)
+	require.Equal(t, esv1.ElasticsearchUnknownHealth, observer.LastHealth())
+}
+
+func TestObserver_Retry_SucceedsOnSecondAttempt(t *testing.T) {
+	// Client that fails on first call, succeeds on second (simulates retry hitting different pod)
+	// The observe() method retries once after CloseIdleConnections, so:
+	// call 1: 503 -> retry -> call 2: 200 -> health = green
+	esClient := fakeEsClientSequence([]bool{true, false})
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		esClient:   esClient,
+		lastHealth: esv1.ElasticsearchGreenHealth,
+		settings:   Settings{ObservationInterval: 10 * time.Second},
+	}
+
+	observer.observe(context.Background())
+
+	// Should be green because the retry succeeded
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+}
+
+func TestObserver_Retry_BothAttemptsFail(t *testing.T) {
+	// Client that fails on both calls
+	esClient := fakeEsClientSequence([]bool{true, true})
+	observer := Observer{
+		cluster:    types.NamespacedName{Namespace: "ns", Name: "es"},
+		esClient:   esClient,
+		lastHealth: esv1.ElasticsearchGreenHealth,
+		settings:   Settings{ObservationInterval: 10 * time.Second},
+	}
+
+	observer.observe(context.Background())
+
+	// Grace period keeps green (1 consecutive failure < 3)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+	require.Equal(t, 1, observer.consecutiveFailures)
+
+	// Second observation: both attempts fail again
+	esClient2 := fakeEsClientSequence([]bool{true, true})
+	observer.esClient = esClient2
+	observer.observe(context.Background())
+
+	// Still green (2 < 3)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, observer.LastHealth())
+	require.Equal(t, 2, observer.consecutiveFailures)
+
+	// Third observation: both attempts fail again
+	esClient3 := fakeEsClientSequence([]bool{true, true})
+	observer.esClient = esClient3
+	observer.observe(context.Background())
+
+	// Now unknown (3 >= 3)
+	require.Equal(t, esv1.ElasticsearchUnknownHealth, observer.LastHealth())
+	require.Equal(t, 3, observer.consecutiveFailures)
+}

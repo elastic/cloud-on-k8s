@@ -68,6 +68,10 @@ type Client interface {
 	SecurityClient
 	// Close idle connections in the underlying http client.
 	Close()
+	// CloseIdleConnections closes idle connections in the underlying HTTP transport
+	// without fully closing the client. This is useful to discard stale connections
+	// to terminated pods before retrying a health check.
+	CloseIdleConnections()
 	// Equal returns true if other can be considered as the same client.
 	Equal(other Client) bool
 	// GetClusterInfo get the cluster information at /

@@ -162,8 +162,9 @@ func TestManager_ObserveSync(t *testing.T) {
 			manager: NewManager(-1*time.Second, nil),
 			expectedHealth: []esv1.ElasticsearchHealth{
 				esv1.ElasticsearchGreenHealth,
-				// the flapping client returns an error on the second request
-				esv1.ElasticsearchUnknownHealth,
+					// the flapping client returns an error on the second request,
+					// but the grace period keeps the previous known health
+					esv1.ElasticsearchGreenHealth,
 			},
 		},
 		{
