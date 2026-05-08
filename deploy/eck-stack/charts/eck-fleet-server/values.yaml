@@ -18,7 +18,7 @@
 
 # Version of Elastic Fleet Server.
 #
-version: 9.4.0-SNAPSHOT
+version: 9.5.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Fleet Server.
 #
@@ -30,8 +30,8 @@ annotations: {}
 
 # Elastic Fleet Server Agent image to deploy.
 # Supports both tag and digest formats.
-# image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT
-# image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/beats/elastic-agent:9.5.0-SNAPSHOT
+# image: docker.elastic.co/beats/elastic-agent:9.5.0-SNAPSHOT@sha256:<digest>
 # image: docker.elastic.co/beats/elastic-agent@sha256:<digest>
 
 # ** Deprecation Notice **

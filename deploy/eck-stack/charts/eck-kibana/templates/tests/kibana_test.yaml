@@ -15,7 +15,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
       - equal:
           path: spec.count
           value: 1
@@ -84,7 +84,7 @@ tests:
           value: quickstart-eck-kibana
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
       - equal:
           path: spec.count
           value: 1
@@ -102,7 +102,7 @@ tests:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-        image: quay.io/elastic/kibana:9.4.0-SNAPSHOT
+        image: quay.io/elastic/kibana:9.5.0-SNAPSHOT
     release:
       name: quickstart
     asserts:
@@ -110,13 +110,13 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: quay.io/elastic/kibana:9.4.0-SNAPSHOT
+          value: quay.io/elastic/kibana:9.5.0-SNAPSHOT
   - it: values.image should work properly
     set:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-      image: quay.io/elastic/kibana:9.4.0-SNAPSHOT
+      image: quay.io/elastic/kibana:9.5.0-SNAPSHOT
     release:
       name: quickstart
     asserts:
@@ -124,14 +124,14 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: quay.io/elastic/kibana:9.4.0-SNAPSHOT
+          value: quay.io/elastic/kibana:9.5.0-SNAPSHOT
   - it: values.spec.image should take precedence over values.image
     set:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-        image: quay.io/elastic/kibana:9.4.0-SNAPSHOT
-      image: my.registry.com/elastic/kibana:9.4.0-SNAPSHOT
+        image: quay.io/elastic/kibana:9.5.0-SNAPSHOT
+      image: my.registry.com/elastic/kibana:9.5.0-SNAPSHOT
     release:
       name: quickstart
     asserts:
@@ -139,14 +139,14 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: quay.io/elastic/kibana:9.4.0-SNAPSHOT
+          value: quay.io/elastic/kibana:9.5.0-SNAPSHOT
   - it: values.spec.image null should fallback to values.image
     set:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
         image: null
-      image: my.registry.com/elastic/kibana:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/kibana:9.5.0-SNAPSHOT
     release:
       name: quickstart
     asserts:
@@ -154,13 +154,13 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/kibana:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/kibana:9.5.0-SNAPSHOT
   - it: values.image with digest should work properly
     set:
       spec:
         elasticsearchRef:
           name: eck-elasticsearch
-      image: my.registry.com/elastic/kibana:9.4.0-SNAPSHOT@sha256:abc123
+      image: my.registry.com/elastic/kibana:9.5.0-SNAPSHOT@sha256:abc123
     release:
       name: quickstart
     asserts:
@@ -168,7 +168,7 @@ tests:
           of: Kibana
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/kibana:9.4.0-SNAPSHOT@sha256:abc123
+          value: my.registry.com/elastic/kibana:9.5.0-SNAPSHOT@sha256:abc123
   - it: not setting elasticsearchRef should fail
     asserts:
       - failedTemplate:
