@@ -171,6 +171,7 @@ func (in *BeatSpec) DeepCopyInto(out *BeatSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
 	if in.DaemonSet != nil {
 		in, out := &in.DaemonSet, &out.DaemonSet
 		*out = new(DaemonSetSpec)
@@ -207,6 +208,13 @@ func (in *BeatStatus) DeepCopyInto(out *BeatStatus) {
 		*out = make(v1.AssociationStatusMap, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
+		}
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make(v1.Conditions, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }

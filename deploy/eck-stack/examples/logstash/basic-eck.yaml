@@ -10,15 +10,11 @@ eck-elasticsearch:
       # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
       #
       node.store.allow_mmap: false
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            limits:
-              memory: 2Gi
-            requests:
-              memory: 2Gi
+    resources:
+      limits:
+        memory: 2Gi
+      requests:
+        memory: 2Gi
 eck-kibana:
   enabled: true
   spec:

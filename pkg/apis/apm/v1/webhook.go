@@ -60,6 +60,15 @@ func (as *ApmServer) validate(old *ApmServer) (admission.Warnings, error) {
 	if deprecationWarnings != "" {
 		warnings = append(warnings, deprecationWarnings)
 	}
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		ApmServerContainerName,
+		as.Spec.Resources,
+		as.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
+	}
 
 	if old != nil {
 		for _, uc := range updateChecks {

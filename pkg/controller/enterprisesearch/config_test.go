@@ -687,6 +687,7 @@ func TestReconcileConfig(t *testing.T) {
 			assert.Equal(t, map[string]string{
 				"common.k8s.elastic.co/type":           "enterprise-search",
 				"eck.k8s.elastic.co/credentials":       "true",
+				"eck.k8s.elastic.co/watched":           "true",
 				"enterprisesearch.k8s.elastic.co/name": "sample",
 			}, got.Labels)
 

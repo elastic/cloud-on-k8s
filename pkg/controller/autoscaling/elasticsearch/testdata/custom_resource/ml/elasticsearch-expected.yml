@@ -29,17 +29,18 @@ spec:
         store.allow_mmap: false
     count: 1
     name: ml
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "2"
+        memory: "4Gi"
     podTemplate:
       spec:
         containers:
         - name: elasticsearch
-          resources:
-            limits:
-              memory: "4Gi"
-              cpu: "2"
-            requests:
-              cpu: "2"
-              memory: "4Gi"
+          resources: {}
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data

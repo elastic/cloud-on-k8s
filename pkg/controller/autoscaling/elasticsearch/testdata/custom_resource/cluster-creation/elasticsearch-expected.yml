@@ -22,17 +22,13 @@ spec:
         - ingest
     count: 3
     name: di
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            limits:
-              cpu: "2"
-              memory: 2Gi
-            requests:
-              cpu: "2"
-              memory: 2Gi
+    resources:
+      limits:
+        cpu: "2"
+        memory: 2Gi
+      requests:
+        cpu: "2"
+        memory: 2Gi
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -48,17 +44,13 @@ spec:
         - ml
     count: 1
     name: ml
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            limits:
-              cpu: "2"
-              memory: 2Gi
-            requests:
-              cpu: "2"
-              memory: 2Gi
+    resources:
+      limits:
+        cpu: "2"
+        memory: 2Gi
+      requests:
+        cpu: "2"
+        memory: 2Gi
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data

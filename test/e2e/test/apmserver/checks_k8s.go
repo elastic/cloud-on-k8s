@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -142,7 +144,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					Health:         "green",
 				},
 			}
-			if as.Status != expected {
+			if !cmp.Equal(as.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, as.Status)
 			}
 			return nil

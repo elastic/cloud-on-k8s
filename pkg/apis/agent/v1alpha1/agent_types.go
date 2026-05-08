@@ -20,6 +20,8 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
+	// AgentContainerName is the name of the main Elastic Agent container in the pod.
+	AgentContainerName = "agent"
 	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
@@ -60,6 +62,12 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the Agent container. When set, these
+	// values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet
+	// PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment` or `statefulSet`.
 	// +kubebuilder:validation:Optional
@@ -98,6 +106,12 @@ type AgentSpec struct {
 	// This field will become mandatory in a future release, default policies are deprecated since 8.1.0.
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
+
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^[a-z0-9_-]+$"
+	SpaceID string `json:"spaceID,omitempty"`
 
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
@@ -186,6 +200,9 @@ type AgentStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elastic
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the agent resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type AgentHealth string

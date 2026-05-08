@@ -72,7 +72,7 @@ func newPodSpec(ent entv1.EnterpriseSearch, configHash string) (corev1.PodTempla
 
 	builder := defaults.NewPodTemplateBuilder(ent.Spec.PodTemplate, entv1.EnterpriseSearchContainerName).
 		WithAnnotations(annotations).
-		WithResources(DefaultResources).
+		WithResourcesAndOverrides(DefaultResources, ent.Spec.Resources).
 		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, v)).
 		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(ReadinessProbe).

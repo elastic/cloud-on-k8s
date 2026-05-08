@@ -433,6 +433,20 @@ func (k *K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified
 		obj := k8s.DeepCopyObject(obj)
+
+		switch obj.(type) {
+		case *corev1.Secret, *corev1.Service, *corev1.ConfigMap:
+			// add watch labels in Services, Secrets and ConfigMaps
+			lbs := obj.GetLabels()
+			if lbs == nil {
+				lbs = make(map[string]string)
+			}
+			if _, exists := lbs[commonv1.RestrictWatchedResourcesLabelName]; !exists {
+				lbs[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+			}
+			obj.SetLabels(lbs)
+		}
+
 		// optimistic creation
 		err := k.Client.Create(context.Background(), obj)
 		if err != nil {

@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -55,6 +56,13 @@ func reconcileSecret(
 	owner client.Object,
 	managedAnnotations []string,
 ) error {
+	// don't mutate expected (no side effects), make a copy
+	expected = *expected.DeepCopy()
+	if expected.Labels == nil {
+		expected.Labels = make(map[string]string)
+	}
+	expected.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Context:    ctx,

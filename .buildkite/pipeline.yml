@@ -136,8 +136,8 @@ steps:
       set -euo pipefail
       .buildkite/scripts/build/set-images.sh
       cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
-      $$(echo ./pipeline-gen $$GITHUB_PR_COMMENT_VAR_ARGS) \
-        | buildkite-agent pipeline upload
+      read -ra args <<< "$$GITHUB_PR_COMMENT_VAR_ARGS"
+      ./pipeline-gen "$${args[@]}" | tee /dev/stderr | buildkite-agent pipeline upload
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a2cd6477
       memory: "2G"

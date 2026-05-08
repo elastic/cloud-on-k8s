@@ -28,17 +28,15 @@ const (
 	testNamespace = "ns1"
 )
 
-var (
-	es = &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "myes",
-			Namespace:  testNamespace,
-			UID:        uuid.NewUUID(),
-			Generation: 42,
-		},
-		Spec: esv1.ElasticsearchSpec{},
-	}
-)
+var es = &esv1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:       "myes",
+		Namespace:  testNamespace,
+		UID:        uuid.NewUUID(),
+		Generation: 42,
+	},
+	Spec: esv1.ElasticsearchSpec{},
+}
 
 func TestLoadAPIKeyStore(t *testing.T) {
 	type args struct {
@@ -138,6 +136,7 @@ func TestAPIKeyStore_Save(t *testing.T) {
 					Labels: map[string]string{
 						"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 						"eck.k8s.elastic.co/credentials":            "true",
+						"eck.k8s.elastic.co/watched":                "true",
 						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -242,6 +241,7 @@ func TestAPIKeyStore_Save(t *testing.T) {
 					Labels: map[string]string{
 						"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
 						"eck.k8s.elastic.co/credentials":            "true",
+						"eck.k8s.elastic.co/watched":                "true",
 						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
 					},
 					OwnerReferences: []metav1.OwnerReference{

@@ -25,12 +25,15 @@ import (
 const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
+	managedFalseDeprecationWarningMsg           = "eck.k8s.elastic.co/managed is deprecated, use eck.k8s.elastic.co/pause-orchestration instead"
 )
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
+	shorthandResourcesOverrideWarning,
 	validZoneAwarenessAffinityWarnings,
 	statelessNodeRolesWarning,
+	managedFalseDeprecationWarning,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
@@ -40,6 +43,46 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 		return nil
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, deprecationWarning)}
+}
+
+// shorthandResourcesOverrideWarning emits one warning per NodeSet where the
+// shorthand spec.nodeSets[i].resources CPU/memory values overlap with resources
+// already set on the Elasticsearch container in spec.nodeSets[i].podTemplate.
+// Shorthand values take precedence at reconciliation time, so overlap means the
+// PodTemplate values are silently shadowed; the warning prompts the user to
+// pick one source of truth.
+func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
+	var out field.ErrorList
+	for i := range es.Spec.NodeSets {
+		nodeSet := es.Spec.NodeSets[i]
+		warning := commonv1.PodTemplateResourcesOverrideWarning(
+			fmt.Sprintf("spec.nodeSets[%d].resources", i),
+			fmt.Sprintf("spec.nodeSets[%d].podTemplate", i),
+			esv1.ElasticsearchContainerName,
+			nodeSet.Resources,
+			nodeSet.PodTemplate,
+		)
+		if warning == "" {
+			continue
+		}
+		out = append(out, field.Invalid(
+			field.NewPath("spec").Child("nodeSets").Index(i).Child("resources"),
+			nodeSet.Resources,
+			warning,
+		))
+	}
+	return out
+}
+
+// managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
+func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
+	// Using common.ManagedAnnotation here creates an import cycle and fails go vet.
+	if value, exists := es.Annotations["eck.k8s.elastic.co/managed"]; exists {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("metadata").Child("annotations").Key("eck.k8s.elastic.co/managed"),
+			value, managedFalseDeprecationWarningMsg)}
+	}
+	return nil
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {

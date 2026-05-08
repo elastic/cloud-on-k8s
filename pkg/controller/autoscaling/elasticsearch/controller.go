@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/status"
@@ -264,19 +265,19 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	newStatus := esa.Status.DeepCopy()
 	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is unhealthy",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
@@ -285,7 +286,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	)
 	// Insert a new limited status if there is none.
 	if newStatus.Conditions.Index(v1alpha1.ElasticsearchAutoscalerLimited) < 0 {
-		newStatus.Conditions = newStatus.Conditions.MergeWith(v1alpha1.Condition{
+		newStatus.Conditions = newStatus.Conditions.MergeWith(commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
@@ -306,25 +307,25 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 	newStatus := esa.Status.DeepCopy()
 	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,

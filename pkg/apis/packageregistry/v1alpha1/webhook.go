@@ -55,6 +55,16 @@ func (m *PackageRegistry) validate() (admission.Warnings, error) {
 		warnings = append(warnings, deprecationWarning)
 	}
 
+	if resourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+		"spec.resources",
+		"spec.podTemplate",
+		EPRContainerName,
+		m.Spec.Resources,
+		m.Spec.PodTemplate,
+	); resourcesWarning != "" {
+		warnings = append(warnings, resourcesWarning)
+	}
+
 	if len(errors) > 0 {
 		return warnings, apierrors.NewInvalid(groupKind, m.Name, errors)
 	}

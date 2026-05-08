@@ -8,9 +8,17 @@
 
 set -euo pipefail
 
-ANN_KEY=${ANN_KEY:-"eck.k8s.elastic.co/managed"}
-ANN_VAL=${ANN_VAL:-"true"}
+
+ANN_KEY=${ANN_KEY:-"eck.k8s.elastic.co/pause-orchestration"}
+[ "$ANN_KEY" == "eck.k8s.elastic.co/pause-orchestration" ] && DEFAULT_ANN_VAL="false" || DEFAULT_ANN_VAL="true"
+ANN_VAL=${ANN_VAL:-$DEFAULT_ANN_VAL}
 PAUSE_SECS=${PAUSE_SECS:-"900"}
+
+if [ "${ANN_KEY}" == "eck.k8s.elastic.co/managed" ]; then
+        echo "WARNING: The '${ANN_KEY}' annotation is deprecated and will be removed in future versions."
+        echo "Please use the 'eck.k8s.elastic.co/pause-orchestration' annotation instead."
+fi
+echo "Running script with $ANN_KEY=$ANN_VAL"
 
 remove_all() {
     mapfile -t OBJECTS < <(kubectl get elastic --all-namespaces -o=jsonpath='{range .items[*]}{.kind}{"|"}{.metadata.name}{"|"}{.metadata.namespace}{"\n"}{end}')
@@ -35,7 +43,7 @@ add_all() {
 }
 
 list_all() {
-    TEMPLATE="{{ range .items }}{{ if index .metadata.annotations \"${ANN_KEY}\" }}{{ printf \"%s|%s|%s\\n\" .kind .metadata.name .metadata.namespace }}{{ end }}{{ end }}"
+    TEMPLATE="{{ range .items }}{{ if .metadata.annotations }}{{ if index .metadata.annotations \"${ANN_KEY}\" }}{{ printf \"%s|%s|%s\\n\" .kind .metadata.name .metadata.namespace }}{{ end }}{{ end }}{{ end }}"
     mapfile -t ANNOTATED < <(kubectl get elastic --all-namespaces -o=go-template="$TEMPLATE")
 
     printf "NAMESPACE\tTYPE\tNAME\n"

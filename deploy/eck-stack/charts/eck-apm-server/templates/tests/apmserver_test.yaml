@@ -16,7 +16,7 @@ tests:
           value: quickstart-eck-apm-server
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
   - it: name override should work properly
     set:
       nameOverride: override
@@ -84,7 +84,7 @@ tests:
           value: quickstart-eck-apm-server
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
       - equal:
           path: spec.count
           value: 1
@@ -98,20 +98,20 @@ tests:
     set:
       elasticsearchRef:
         name: eck-elasticsearch
-      image: my.registry.com/elastic/apm-server:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/apm-server:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/apm-server:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/apm-server:9.5.0-SNAPSHOT
   - it: should render image with digest properly
     set:
       elasticsearchRef:
         name: eck-elasticsearch
-      image: my.registry.com/elastic/apm-server:9.4.0-SNAPSHOT@sha256:abc123
+      image: my.registry.com/elastic/apm-server:9.5.0-SNAPSHOT@sha256:abc123
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/apm-server:9.4.0-SNAPSHOT@sha256:abc123
+          value: my.registry.com/elastic/apm-server:9.5.0-SNAPSHOT@sha256:abc123
   - it: should omit image when null
     set:
       elasticsearchRef:
