@@ -363,12 +363,11 @@ func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, li
 			// introduced by the operator (e.g. the watched resources label) are propagated
 			// onto it. Save is a no-op when nothing has actually changed.
 			// Re-save only when the content of file is not corrupt to avoid overwriting with empty settings.
-			//
-			// WithAdditiveMetadata: the StackConfigPolicy controller owns additional managed
-			// annotations on this Secret (e.g. secure-settings secret references). This Save
-			// path does not load those into fs.secureSettingsSources; without additive merging,
-			// applyExpectedSecret would strip them and break keystore reconciliation for SCP
-			// secure settings (see filesettings.WithAdditiveMetadata / ReconcileClusterSecrets).
+			// WithAdditiveMetadata merges operator updates with SCP-owned metadata: the StackConfigPolicy
+			// controller owns additional managed annotations on this Secret (e.g. secure-settings secret
+			// references). This Save path does not load those into fs.secureSettingsSources; without
+			// additive merging, applyExpectedSecret would strip them and break keystore reconciliation for
+			// SCP secure settings (see filesettings.WithAdditiveMetadata / ReconcileClusterSecrets).
 			return false, fs.Save(ctx, c, es, filesettings.WithAdditiveMetadata())
 		}
 

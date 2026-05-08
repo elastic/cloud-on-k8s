@@ -107,6 +107,12 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
 
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^[a-z0-9_-]+$"
+	SpaceID string `json:"spaceID,omitempty"`
+
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
 	// +kubebuilder:validation:Optional
@@ -194,6 +200,9 @@ type AgentStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elastic
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the agent resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type AgentHealth string

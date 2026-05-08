@@ -881,6 +881,12 @@ spec:
                   ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
                 type: string
+              spaceID:
+                description: |-
+                  SpaceID is the ID of the Space where the Agent Policy is defined.
+                  When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+                pattern: ^[a-z0-9_-]+$
+                type: string
               statefulSet:
                 description: |-
                   StatefulSet specifies the Agent should be deployed as a StatefulSet, and allows providing its spec.
@@ -1173,6 +1179,27 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the agent
+                  resource.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationsStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
@@ -1912,6 +1939,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -3391,6 +3438,27 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the beat
+                  resource.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationStatus:
                 description: AssociationStatus is the status of an association resource.
                 type: string
@@ -4078,6 +4146,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -4360,7 +4448,7 @@ spec:
                 description: Conditions holds the current service state of the autoscaling
                   controller.
                 items:
-                  description: Condition represents Elasticsearch resource's condition.
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -4370,8 +4458,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -6642,7 +6729,7 @@ spec:
                 description: Conditions holds the current service state of an Elasticsearch
                   cluster.
                 items:
-                  description: Condition represents Elasticsearch resource's condition.
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -6652,8 +6739,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -8430,6 +8516,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -9004,6 +9110,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -9845,6 +9971,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -12368,6 +12514,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.

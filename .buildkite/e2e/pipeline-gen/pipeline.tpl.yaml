@@ -82,7 +82,7 @@ steps:
       image: "family/core-ubuntu-2204"
       {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
       machineType: "{{ $.K8sInDockerMachineType }}"
-      diskSizeGb: 150
+      diskSizeGb: 200
       {{- end }}
       {{- else }}
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:a2cd6477
