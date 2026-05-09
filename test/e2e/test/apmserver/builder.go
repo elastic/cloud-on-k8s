@@ -73,6 +73,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithPodLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) ResourceName() string {
+	return b.ApmServer.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix

@@ -51,6 +51,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithPodLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) ResourceName() string {
+	return b.EMS.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.EMS.ObjectMeta.Name = b.EMS.ObjectMeta.Name + "-" + suffix

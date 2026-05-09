@@ -53,6 +53,10 @@ type Builder struct {
 	Suffix string
 }
 
+func (b Builder) ResourceName() string {
+	return b.Agent.Name
+}
+
 func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
 	if containerIdx < 0 {

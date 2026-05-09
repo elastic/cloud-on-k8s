@@ -75,6 +75,10 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) ResourceName() string {
+	return b.AutoOpsAgentPolicy.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.AutoOpsAgentPolicy.ObjectMeta.Name = b.AutoOpsAgentPolicy.ObjectMeta.Name + "-" + suffix

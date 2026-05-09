@@ -4,7 +4,9 @@
 
 package test
 
-import "testing"
+import (
+	"testing"
+)
 
 func shouldSkipTest(builders ...Builder) bool {
 	for _, b := range builders {

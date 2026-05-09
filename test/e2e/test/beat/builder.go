@@ -96,6 +96,10 @@ func newBuilder(name string, suffix string) Builder {
 
 type ValidationFunc func(client.Client) error
 
+func (b Builder) ResourceName() string {
+	return b.Beat.Name
+}
+
 func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
 	b.Beat.Spec.Type = typeStr

@@ -104,6 +104,10 @@ func newBuilder(name, randSuffix string) Builder {
 	return b
 }
 
+func (b Builder) ResourceName() string {
+	return b.EnterpriseSearch.Name
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.EnterpriseSearch.Name,
