@@ -7,8 +7,6 @@ package stateful
 import (
 	"context"
 
-	"k8s.io/utils/ptr"
-
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -120,9 +118,9 @@ func allNodesRunningServiceAccounts(
 		}
 		diff := allPods.Diff(credentials.Nodes())
 		if len(diff) == 0 {
-			return ptr.To[bool](true), nil
+			return new(true), nil
 		}
 	}
 	// Some nodes are running but did not show up in the security API.
-	return ptr.To[bool](false), nil
+	return new(false), nil
 }

@@ -21,7 +21,7 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 	// OpenShift sets the security context automatically
 	if Ctx().OcpCluster {
 		return &corev1.PodSecurityContext{
-			RunAsNonRoot: BoolPtr(true),
+			RunAsNonRoot: new(true),
 		}
 	}
 
@@ -33,7 +33,7 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 		defaultUserID = int64(1000)
 	}
 	return &corev1.PodSecurityContext{
-		RunAsNonRoot: BoolPtr(true),
+		RunAsNonRoot: new(true),
 		RunAsUser:    &defaultUserID,
 		FSGroup:      &defaultUserID,
 	}

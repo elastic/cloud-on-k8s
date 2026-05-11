@@ -479,7 +479,7 @@ func compareClaimedStorage(k8sClient *test.K8sClient, topologyElement esv1.NodeS
 		return err
 	}
 	if len(pods) != len(pvcs) {
-		return fmt.Errorf("expected PVC count %q, got %q", len(pods), len(pvcs))
+		return fmt.Errorf("expected PVC count %d, got %d", len(pods), len(pvcs))
 	}
 	for _, pvc := range pvcs {
 		actualStorage := pvc.Spec.Resources.Requests.Storage()

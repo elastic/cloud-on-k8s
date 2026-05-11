@@ -1,6 +1,5 @@
 toc:
   - file: index.md
-  - file: api-docs.md
   - folder: api-reference
     sort: desc
     exclude:

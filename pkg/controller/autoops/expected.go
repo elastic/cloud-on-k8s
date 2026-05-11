@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -107,20 +106,20 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
 		WithReadinessProbe(readinessProbe()).
 		WithContainersSecurityContext(corev1.SecurityContext{
-			AllowPrivilegeEscalation: ptr.To(false),
+			AllowPrivilegeEscalation: new(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged: ptr.To(false),
+			Privileged: new(false),
 			// Can't set this to true because of:
 			// failed to build pipelines:
 			// failed to create "metricbeatreceiver" receiver for data type "logs":
 			// error creating metricbeatreceiver: error loading meta data:
 			// failed to create Beat meta file: open data/meta.json.new: read-only file system
-			ReadOnlyRootFilesystem: ptr.To(false),
+			ReadOnlyRootFilesystem: new(false),
 			// Can't currently do this because of:
 			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
-			// RunAsNonRoot:           ptr.To(true),
+			// RunAsNonRoot:           new(true),
 		})
 
 	if r.params.SetDefaultSecurityContext {
@@ -238,7 +237,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 					},
 					Key:      apiKeySecretKey,
-					Optional: ptr.To(false),
+					Optional: new(false),
 				},
 			},
 		},
@@ -261,7 +260,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 						Name: policy.Spec.AutoOpsRef.SecretName,
 					},
 					Key:      "cloud-connected-mode-api-url",
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},

@@ -17,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -141,7 +140,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					Spec: agentv1alpha1.AgentSpec{
 						Version: "8.0.1",
 						Deployment: &agentv1alpha1.DeploymentSpec{
-							Replicas: ptr.To[int32](1),
+							Replicas: new(int32(1)),
 						},
 					},
 					Status: agentv1alpha1.AgentStatus{
@@ -194,7 +193,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 				Spec: agentv1alpha1.AgentSpec{
 					Version: "8.0.1",
 					Deployment: &agentv1alpha1.DeploymentSpec{
-						Replicas: ptr.To[int32](1),
+						Replicas: new(int32(1)),
 					},
 				},
 				Status: agentv1alpha1.AgentStatus{

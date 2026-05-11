@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -486,8 +485,8 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]any) Buil
 
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = esv1.ChangeBudget{
-		MaxSurge:       ptr.To[int32](maxSurge),
-		MaxUnavailable: ptr.To[int32](maxUnavailable),
+		MaxSurge:       new(maxSurge),
+		MaxUnavailable: new(maxUnavailable),
 	}
 	return b
 }

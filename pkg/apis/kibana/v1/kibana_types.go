@@ -17,7 +17,7 @@ import (
 
 const (
 	KibanaContainerName = "kibana"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Kibana"
 	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
@@ -58,10 +58,6 @@ type KibanaList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Kibana `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
 }
 
 // KibanaSpec holds the specification of a Kibana instance.

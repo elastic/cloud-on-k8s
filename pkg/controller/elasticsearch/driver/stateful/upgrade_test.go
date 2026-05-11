@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -628,7 +627,7 @@ func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
 			resourceVersion:              "42",
 			isAnnotationTriggeredRestart: false,
 			wantReason:                   "42",
-			wantDelay:                    ptr.To(10 * time.Minute),
+			wantDelay:                    new(10 * time.Minute),
 		},
 		{
 			name:                         "allocation delay set to negative",
@@ -655,7 +654,7 @@ func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
 			resourceVersion:              "42",
 			isAnnotationTriggeredRestart: true,
 			wantReason:                   "trigger-value",
-			wantDelay:                    ptr.To(5 * time.Minute),
+			wantDelay:                    new(5 * time.Minute),
 		},
 	}
 	for _, tt := range tests {

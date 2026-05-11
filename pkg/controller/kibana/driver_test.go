@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -520,8 +519,8 @@ func expectedDeploymentParams() deployment.Params {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "test-kb-scripts",
 								},
-								DefaultMode: ptr.To(int32(0755)),
-								Optional:    ptr.To(false),
+								DefaultMode: new(int32(0755)),
+								Optional:    new(false),
 							},
 						},
 					},

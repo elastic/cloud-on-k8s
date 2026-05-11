@@ -165,10 +165,10 @@ func DefaultCfg(ver version.Version) ElasticsearchSettings {
 	settings := ElasticsearchSettings{
 		// Values below only make sense if there is no "node.roles" in the configuration provided by the user
 		Node: &Node{
-			Master: ptr.To[bool](true),
-			Data:   ptr.To[bool](true),
-			Ingest: ptr.To[bool](true),
-			ML:     ptr.To[bool](true),
+			Master: new(true),
+			Data:   new(true),
+			Ingest: new(true),
+			ML:     new(true),
 		},
 	}
 
@@ -208,5 +208,5 @@ func configureTransformRole(cfg *ElasticsearchSettings, ver version.Version) {
 		cfg.Node = &Node{}
 	}
 
-	cfg.Node.Transform = ptr.To[bool](false)
+	cfg.Node.Transform = new(false)
 }

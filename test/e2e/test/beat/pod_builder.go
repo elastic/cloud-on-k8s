@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -49,7 +48,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 	pod := corev1.Pod{
 		ObjectMeta: meta,
 		Spec: corev1.PodSpec{
-			AutomountServiceAccountToken: ptr.To[bool](false),
+			AutomountServiceAccountToken: new(false),
 			Containers: []corev1.Container{
 				{
 					Name:  "ubuntu",
@@ -61,15 +60,14 @@ func newPodBuilder(name, suffix string) PodBuilder {
 					},
 				},
 			},
-			TerminationGracePeriodSeconds: ptr.To[int64](0),
+			TerminationGracePeriodSeconds: new(int64(0)),
 		},
 	}
 
 	if !test.Ctx().OcpCluster {
-		uid1001 := int64(1001)
 		pod.Spec.SecurityContext = &corev1.PodSecurityContext{
 			// Security policies forbid root user on secured clusters
-			RunAsUser: &uid1001,
+			RunAsUser: new(int64(1001)),
 		}
 	}
 

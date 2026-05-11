@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -109,7 +108,7 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	for i, s := range matchingActualSets2 {
 		diffActualSets2[i] = *s.DeepCopy()
 	}
-	diffActualSets2[1].Spec.Replicas = ptr.To[int32](99)
+	diffActualSets2[1].Spec.Replicas = new(int32(99))
 	diffActualSets2[1].Labels = hash.SetTemplateHashLabel(diffActualSets2[1].Labels, diffActualSets2[1].Spec)
 
 	tests := []struct {
@@ -559,13 +558,13 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 					},
 				},
 			},
@@ -573,13 +572,13 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 					},
 				},
 			},
@@ -591,13 +590,13 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](1)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 					},
 				},
 			},
@@ -605,13 +604,13 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(2))}),
 					},
 				},
 			},
@@ -623,7 +622,7 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 			},
@@ -631,7 +630,7 @@ func Test_hasSpecDiff(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)}),
+						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 					},
 				},
 			},
@@ -715,7 +714,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-1", "elasticsearch-sample-es-default-0"),
 			},
-			want: ptr.To[bool](true),
+			want: new(true),
 		},
 		{
 			name: "One node is not running with an expected token",
@@ -729,7 +728,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"),
 			},
-			want: ptr.To[bool](false),
+			want: new(false),
 		},
 		{
 			name: "More nodes running with tokens than expected",
@@ -743,7 +742,7 @@ func Test_allNodesRunningServiceAccounts(t *testing.T) {
 					withFileTokens("elastic/kibana", "default_kibana-sample_token1", []string{"elasticsearch-sample-es-default-0", "elasticsearch-sample-es-default-1"}),
 				allPods: set.Make("elasticsearch-sample-es-default-0"),
 			},
-			want: ptr.To[bool](true),
+			want: new(true),
 		},
 		{
 			name: "No expected tokens",

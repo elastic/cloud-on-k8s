@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -69,7 +68,7 @@ func Test_Driver_expectationSatisfied(t *testing.T) {
 
 	// we expect some sset replicas to exist
 	// but corresponding pod does not exist yet
-	statefulSet.Spec.Replicas = ptr.To[int32](1)
+	statefulSet.Spec.Replicas = new(int32(1))
 	require.NoError(t, client.Update(context.Background(), &statefulSet))
 	// expectations should not be satisfied: we miss a pod
 	satisfied, reason, err = d.expectationsSatisfied(ctx)
