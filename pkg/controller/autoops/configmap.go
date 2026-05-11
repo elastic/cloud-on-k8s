@@ -32,13 +32,8 @@ const (
 )
 
 // autoOpsESConfigTemplate contains the configuration template for the autoops agent
-const autoOpsESConfigTemplate = `receivers:
-  metricbeatreceiver:
-    metricbeat:
-      modules:
-        # Metrics
-        - module: autoops_es
-          hosts: ${env:AUTOOPS_ES_URL}
+const autoOpsESConfigTemplate = `
+{{- define "ssl" -}}
 {{- if .SSLEnabled}}
           ssl.verification_mode: certificate
           ssl.certificate_authorities: ["{{ .CACertPath }}"]
@@ -49,6 +44,15 @@ const autoOpsESConfigTemplate = `receivers:
 {{- else}}
           ssl.verification_mode: none
 {{- end}}
+{{- end -}}
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        # Metrics
+        - module: autoops_es
+          hosts: ${env:AUTOOPS_ES_URL}
+{{- template "ssl" . }}
           period: 10s
           metricsets:
             - cat_shards
@@ -60,16 +64,7 @@ const autoOpsESConfigTemplate = `receivers:
         # Templates
         - module: autoops_es
           hosts: ${env:AUTOOPS_ES_URL}
-{{- if .SSLEnabled}}
-          ssl.verification_mode: certificate
-          ssl.certificate_authorities: ["{{ .CACertPath }}"]
-{{- if .ClientCertPath}}
-          ssl.certificate: "{{ .ClientCertPath }}"
-          ssl.key: "{{ .ClientKeyPath }}"
-{{- end}}
-{{- else}}
-          ssl.verification_mode: none
-{{- end}}
+{{- template "ssl" . }}
           period: 24h
           metricsets:
             - cat_template
