@@ -53,7 +53,7 @@ const (
 	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
 	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
 
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )

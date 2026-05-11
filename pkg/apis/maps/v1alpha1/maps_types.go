@@ -15,7 +15,7 @@ import (
 
 const (
 	MapsContainerName = "maps"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ElasticMapsServer"
 )

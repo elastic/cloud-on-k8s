@@ -86,7 +86,8 @@ func (s *upscaleState) limitNodesCreation(
 	replicasToCreate = s.getMaxNodesToCreate(replicasToCreate)
 
 	if replicasToCreate > 0 {
-		nodespec.UpdateReplicas(&toApply, new(actualReplicas+replicasToCreate))
+		nodeSpecReplicas := actualReplicas + replicasToCreate
+		nodespec.UpdateReplicas(&toApply, new(nodeSpecReplicas))
 		s.recordNodesCreation(replicasToCreate)
 		s.loggerFor(toApply).Info(
 			"Creating nodes",
