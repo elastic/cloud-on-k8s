@@ -222,7 +222,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Volumes: expectedVolumes(policy, es),
+					Volumes:                      expectedVolumes(policy, es),
 					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{
 						{
@@ -381,7 +381,7 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: caSecretName,
-					Optional:   ptr.To(false),
+					Optional:   new(false),
 				},
 			},
 		})
@@ -393,7 +393,7 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: clientCertSecretName,
-					Optional:   ptr.To(false),
+					Optional:   new(false),
 				},
 			},
 		})
