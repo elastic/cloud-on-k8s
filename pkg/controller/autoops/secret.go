@@ -125,6 +125,11 @@ func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
 // The certificate is unique to this policy+ES pair and is labeled so the ES trust
 // bundle controller discovers it and includes it in the client CA trust bundle.
 // Returns a requeue duration for certificate rotation.
+//
+// Unlike reconcileAutoOpsESCASecret above, this does not gate on ES readiness: we want
+// the client cert to land as early as possible so the ES trust bundle controller picks
+// it up ASAP and autoops can eventually connect. Initial connection attempts may fail
+// while the trust bundle catches up (tracked in #9165).
 func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
