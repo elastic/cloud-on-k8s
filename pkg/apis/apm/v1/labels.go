@@ -8,10 +8,15 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
+const (
+	// Type represents the APM Server type
+	Type = "apm-server"
+)
+
 // GetIdentityLabels will return the common Elastic assigned labels for the APM Server.
 func (as *ApmServer) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:    "apm-server",
+		commonv1.TypeLabelName:    Type,
 		"apm.k8s.elastic.co/name": as.Name,
 	}
 }

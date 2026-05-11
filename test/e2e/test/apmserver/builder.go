@@ -119,6 +119,14 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.ApmServer.Annotations == nil {
+		b.ApmServer.Annotations = make(map[string]string)
+	}
+	b.ApmServer.Annotations[key] = value
+	return b
+}
+
 func (b Builder) DeepCopy() *Builder {
 	apm := b.ApmServer.DeepCopy()
 	builderCopy := Builder{
