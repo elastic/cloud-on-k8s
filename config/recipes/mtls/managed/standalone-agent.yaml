@@ -12,7 +12,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.3.2
+  version: 9.4.0
   http:
     tls:
       client:
@@ -28,7 +28,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.3.2
+  version: 9.4.0
   elasticsearchRefs:
     - outputName: default
       name: elasticsearch
