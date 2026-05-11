@@ -19,7 +19,7 @@ type LogstashHealth string
 
 const (
 	LogstashContainerName = "logstash"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
 
@@ -437,8 +437,4 @@ func (l *Logstash) APIServerService() LogstashService {
 // APIServerTLSOptions returns the user defined TLSOptions of API Service
 func (l *Logstash) APIServerTLSOptions() commonv1.TLSOptions {
 	return l.APIServerService().TLS
-}
-
-func init() {
-	SchemeBuilder.Register(&Logstash{}, &LogstashList{})
 }

@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -25,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
 func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
@@ -212,7 +210,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 			Annotations: annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: new(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					PolicyNameLabelKey: policy.GetName(),
@@ -224,8 +222,8 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Volumes:                      expectedVolumes(policy, es),
-					AutomountServiceAccountToken: ptr.To(false),
+					Volumes: expectedVolumes(policy, es),
+					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{
 						{
 							Name:  autoOpsAgentType,
@@ -292,7 +290,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											},
 											Key:      apiKeySecretKey,
-											Optional: ptr.To(false),
+											Optional: new(false),
 										},
 									},
 								},
@@ -315,18 +313,18 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 												Name: "autoops-secret",
 											},
 											Key:      "cloud-connected-mode-api-url",
-											Optional: ptr.To(true),
+											Optional: new(true),
 										},
 									},
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{
-								AllowPrivilegeEscalation: ptr.To(false),
+								AllowPrivilegeEscalation: new(false),
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
-								Privileged:             ptr.To(false),
-								ReadOnlyRootFilesystem: ptr.To(false),
+								Privileged:             new(false),
+								ReadOnlyRootFilesystem: new(false),
 							},
 						},
 					},
@@ -370,8 +368,8 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: autoopsv1alpha1.Config(policy.GetName(), es),
 					},
-					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
-					Optional:    ptr.To(false),
+					DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
+					Optional:    new(false),
 				},
 			},
 		},
@@ -497,7 +495,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 								Name: "policy-1-autoops-apikey-2334712842",
 							},
 							Key:      apiKeySecretKey,
-							Optional: ptr.To(false),
+							Optional: new(false),
 						},
 					},
 				},
@@ -520,7 +518,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 								Name: "autoops-secret",
 							},
 							Key:      "cloud-connected-mode-api-url",
-							Optional: ptr.To(true),
+							Optional: new(true),
 						},
 					},
 				},

@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -469,8 +468,8 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 			if *podSecurityContext.RunAsUser == 0 {
 				// Only update the container's SecurityContext if the Pod runs as root.
 				b = b.WithContainerSecurityContext(corev1.SecurityContext{
-					Privileged: ptr.To[bool](true),
-					RunAsUser:  ptr.To[int64](0),
+					Privileged: new(true),
+					RunAsUser:  new(int64(0)),
 				})
 			}
 		}

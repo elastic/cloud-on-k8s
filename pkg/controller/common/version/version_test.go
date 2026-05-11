@@ -59,10 +59,6 @@ func TestFromLabels(t *testing.T) {
 	}
 }
 
-func ptr(v Version) *Version {
-	return &v
-}
-
 func TestMinInPods(t *testing.T) {
 	type args struct {
 		pods      []corev1.Pod
@@ -85,7 +81,7 @@ func TestMinInPods(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.0")),
+			want:    new(semver.MustParse("7.7.0")),
 			wantErr: false,
 		},
 		{
@@ -97,7 +93,7 @@ func TestMinInPods(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.1")),
+			want:    new(semver.MustParse("7.7.1")),
 			wantErr: false,
 		},
 		{
@@ -171,7 +167,7 @@ func TestMinInStatefulSets(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.0")),
+			want:    new(semver.MustParse("7.7.0")),
 			wantErr: false,
 		},
 		{
@@ -183,7 +179,7 @@ func TestMinInStatefulSets(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.1")),
+			want:    new(semver.MustParse("7.7.1")),
 			wantErr: false,
 		},
 		{

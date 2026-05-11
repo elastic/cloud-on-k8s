@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -96,20 +95,16 @@ func (nr NodeResources) ToNodeSetResourcesWith(existing commonv1.Resources) comm
 	merged := *existing.DeepCopy()
 
 	if nr.HasRequest(corev1.ResourceCPU) {
-		request := nr.GetRequest(corev1.ResourceCPU)
-		merged.Requests.CPU = ptr.To(request)
+		merged.Requests.CPU = new(nr.GetRequest(corev1.ResourceCPU))
 	}
 	if nr.HasRequest(corev1.ResourceMemory) {
-		request := nr.GetRequest(corev1.ResourceMemory)
-		merged.Requests.Memory = ptr.To(request)
+		merged.Requests.Memory = new(nr.GetRequest(corev1.ResourceMemory))
 	}
 	if nr.HasLimit(corev1.ResourceCPU) {
-		limit := nr.GetLimit(corev1.ResourceCPU)
-		merged.Limits.CPU = ptr.To(limit)
+		merged.Limits.CPU = new(nr.GetLimit(corev1.ResourceCPU))
 	}
 	if nr.HasLimit(corev1.ResourceMemory) {
-		limit := nr.GetLimit(corev1.ResourceMemory)
-		merged.Limits.Memory = ptr.To(limit)
+		merged.Limits.Memory = new(nr.GetLimit(corev1.ResourceMemory))
 	}
 
 	return merged

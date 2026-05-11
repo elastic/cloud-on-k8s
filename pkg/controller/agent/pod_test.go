@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -1028,7 +1027,7 @@ fi
 									{
 										Name: "agent",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
+											RunAsUser: new(int64(0)),
 										},
 									},
 								},
@@ -1084,7 +1083,7 @@ fi
 									{
 										Name: "agent",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
+											RunAsUser: new(int64(0)),
 										},
 									},
 								},

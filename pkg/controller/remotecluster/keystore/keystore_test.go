@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -145,8 +144,8 @@ func TestAPIKeyStore_Save(t *testing.T) {
 							Kind:               "Elasticsearch",
 							Name:               "myes",
 							UID:                es.UID,
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},
@@ -181,8 +180,8 @@ func TestAPIKeyStore_Save(t *testing.T) {
 							Kind:               "Elasticsearch",
 							Name:               "myes",
 							UID:                es.UID,
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},
@@ -219,8 +218,8 @@ func TestAPIKeyStore_Save(t *testing.T) {
 							Kind:               "Elasticsearch",
 							Name:               "myes",
 							UID:                es.UID,
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},
@@ -250,8 +249,8 @@ func TestAPIKeyStore_Save(t *testing.T) {
 							Kind:               "Elasticsearch",
 							Name:               "myes",
 							UID:                es.UID,
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},

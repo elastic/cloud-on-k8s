@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -511,8 +510,8 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 			args: args{
 				es: mkElasticsearch(commonv1.HTTPConfigWithClientOptions{}),
 				client: k8s.NewFakeClient(
-					ptr.To(mkPod("sset-0", true, true)),
-					ptr.To(mkPod("sset-1", true, false)),
+					new(mkPod("sset-0", true, true)),
+					new(mkPod("sset-1", true, false)),
 					&corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "test",

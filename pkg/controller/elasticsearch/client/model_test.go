@@ -272,7 +272,7 @@ func TestDuration_ShutdownRequest(t *testing.T) {
 			request: ShutdownRequest{
 				Type:            Restart,
 				Reason:          "rolling upgrade",
-				AllocationDelay: ptr(Duration(20 * time.Minute)),
+				AllocationDelay: new(Duration(20 * time.Minute)),
 			},
 			expectedJSON: `{"type":"restart","reason":"rolling upgrade","allocation_delay":"20m"}`,
 		},
@@ -597,5 +597,3 @@ func TestParseTimeValue(t *testing.T) {
 		})
 	}
 }
-
-func ptr[T any](t T) *T { return &t }

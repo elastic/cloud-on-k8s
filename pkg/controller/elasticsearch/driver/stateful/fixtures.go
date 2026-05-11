@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -136,7 +135,7 @@ func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations ma
 			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
 				ChangeBudget: esv1.ChangeBudget{
-					MaxUnavailable: ptr.To[int32](int32(maxUnavailable)), //nolint:gosec // G115: maxUnavailable is a small test value, cannot realistically overflow int32
+					MaxUnavailable: new(int32(maxUnavailable)), //nolint:gosec // G115: maxUnavailable is a small test value, cannot realistically overflow int32
 				},
 			},
 		},

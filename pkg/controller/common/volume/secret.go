@@ -6,7 +6,6 @@ package volume
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 )
 
 // SecretVolume captures a subset of data of the k8s secret volume/mount type.
@@ -35,7 +34,7 @@ func NewSecretVolume(secretName, name, mountPath, subPath string, defaultMode in
 		mountPath:   mountPath,
 		secretName:  secretName,
 		subPath:     subPath,
-		defaultMode: ptr.To[int32](defaultMode),
+		defaultMode: new(defaultMode),
 	}
 }
 
