@@ -1,6 +1,6 @@
 # ---------------------------------------------
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:v1.26.2-r0@sha256:d5f8015e670e6839064da156991f912c60028b927ae55b5fc13fc9d03266ff0e AS builder
+FROM docker.elastic.co/wolfi/go:v1.26.3-r1@sha256:dea16bac6c06a0c029e3640241039e0d29ac57226052cea5c202271e756bb2c8 AS builder
 
 ARG VERSION
 ARG SHA1
@@ -94,7 +94,7 @@ CMD ["manager"]
 
 # ---------------------------------------------
 # ubi - Image that uses ubi-micro as base
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1773894938 AS ubi
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1778461406 AS ubi
 
 ARG VERSION
 
