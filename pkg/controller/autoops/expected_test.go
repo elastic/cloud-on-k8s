@@ -16,11 +16,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -77,9 +79,10 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		es      esv1.Elasticsearch
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name             string
+		args             args
+		clientCertSecret *corev1.Secret
+		wantErr          bool
 	}{
 		{
 			name: "default deployment params",
@@ -91,6 +94,16 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 		{
 			name: "deployment with client auth mounts client cert volume",
+			clientCertSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esFixture),
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("test-client-cert"),
+					certificates.KeyFileName:  []byte("test-client-key"),
+				},
+			},
 			args: args{
 				autoops: autoopsFixture,
 				es:      esWithTLSFixtureAndClientAuthenticationEnabled,
@@ -120,6 +133,9 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if annotation.HasClientAuthenticationRequired(&tt.args.es) {
+				require.NotNil(t, tt.clientCertSecret, "client certificate secret should be defined")
+			}
 			// We need a ConfigMap to calculate the config hash for the deployment.
 			// This does not need to be within the k8s cluster itself, we simply
 			// use it to build the config hash.
@@ -160,9 +176,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					apiKeySecretKey: []byte("test-es-api-key"),
 				},
 			}
+			objects := []client.Object{configMap, autoopsSecret, esAPIKeySecret}
+			if tt.clientCertSecret != nil {
+				objects = append(objects, tt.clientCertSecret)
+			}
 
-			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
-			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, client, tt.args.autoops)
+			client := k8s.NewFakeClient(objects...)
+			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, tt.clientCertSecret, client, tt.args.autoops)
 			require.NoError(t, err)
 			r := &AgentPolicyReconciler{
 				Client: client,
@@ -183,6 +203,11 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
 				// Hash ES API key secret value
 				_, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
+				// Mirror buildConfigHash: hash client cert/key when the secret was supplied.
+				if tt.clientCertSecret != nil {
+					_, _ = expectedConfigHash.Write(tt.clientCertSecret.Data[certificates.CertFileName])
+					_, _ = expectedConfigHash.Write(tt.clientCertSecret.Data[certificates.KeyFileName])
+				}
 				expectedHashStr := fmt.Sprint(expectedConfigHash.Sum32())
 				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
 				if !cmp.Equal(got, want) {

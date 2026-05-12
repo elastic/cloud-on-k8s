@@ -21,6 +21,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
@@ -177,7 +178,14 @@ func readinessProbe() corev1.Probe {
 
 // buildConfigHash builds a hash of the ConfigMap data and secret values
 // to trigger pod restart on config changes
-func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecret corev1.Secret, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy) (string, error) {
+func buildConfigHash(
+	ctx context.Context,
+	configMap corev1.ConfigMap,
+	apiKeySecret corev1.Secret,
+	clientCertSecret *corev1.Secret,
+	c k8s.Client,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+) (string, error) {
 	configHash := fnv.New32a()
 
 	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
@@ -206,6 +214,17 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 	// This should resolve itself on the next reconciliation after the API key is created.
 	if apiKeyData, ok := apiKeySecret.Data[apiKeySecretKey]; ok {
 		_, _ = configHash.Write(apiKeyData)
+	}
+
+	// If client certificate secret is set it folds it into the hash so cert rotation
+	// rolls the deployment.
+	if clientCertSecret != nil && len(clientCertSecret.Data) > 0 {
+		if data, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
+		if data, ok := clientCertSecret.Data[certificates.KeyFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil

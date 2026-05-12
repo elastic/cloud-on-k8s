@@ -134,7 +134,7 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	es esv1.Elasticsearch,
-) *reconciler.Results {
+) (*corev1.Secret, *reconciler.Results) {
 	ulog.FromContext(ctx).V(1).Info("Reconciling AutoOps ES client cert secret",
 		"es_namespace", es.Namespace, "es_name", es.Name)
 
@@ -170,18 +170,18 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	results := reconciler.NewResult(ctx)
 	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, labels)
 	if err != nil {
-		return results.WithError(err)
+		return nil, results.WithError(err)
 	}
 
 	// Schedule requeue for certificate rotation.
 	primaryCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
 	if err != nil {
-		return results.WithError(err)
+		return nil, results.WithError(err)
 	}
 	results.WithReconciliationState(
 		reconciler.RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore)).ReconciliationComplete(),
 	)
-	return results
+	return &clientCertSecret.Secret, results
 }
 
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.

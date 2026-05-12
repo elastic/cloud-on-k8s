@@ -164,8 +164,10 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			}
 		}
 
+		var clientCertSecret *corev1.Secret
 		if annotation.HasClientAuthenticationRequired(&es) {
-			certResults := r.reconcileAutoOpsESClientCertSecret(ctx, policy, es)
+			var certResults *reconciler.Results
+			clientCertSecret, certResults = r.reconcileAutoOpsESClientCertSecret(ctx, policy, es)
 			results.WithResults(certResults)
 			if certResults.HasError() {
 				_, certErr := certResults.Aggregate()
@@ -198,7 +200,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
+		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, clientCertSecret, r.Client, policy)
 		if err != nil {
 			log.Error(err, "while building config hash")
 			state.ResourceError(es, "Failed to prepare AutoOps agent deployment", err)
