@@ -36,8 +36,12 @@ func TestWithTemplateHash(t *testing.T) {
 	// original object should be kept unmodified
 	require.Empty(t, d.Labels)
 
-	// label should stay the same if no spec change
+	// label should be consistent
 	withSameHash := WithTemplateHash(d)
+	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
+
+	// label should be the same if no spec changed
+	withSameHash = WithTemplateHash(withSameHash)
 	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
 
 	// label should be different if the spec changed
