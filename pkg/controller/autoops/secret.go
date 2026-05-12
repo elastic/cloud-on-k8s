@@ -114,6 +114,7 @@ func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
 	es esv1.Elasticsearch,
 ) error {
 	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretName)
 	return k8s.DeleteSecretIfExists(ctx, r.Client, types.NamespacedName{
 		Namespace: policy.GetNamespace(),
 		Name:      secretName,
@@ -170,6 +171,14 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	results := reconciler.NewResult(ctx)
 	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, labels)
 	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Register a dynamic watch on the client cert secret so the controller is
+	// re-triggered if it is deleted out from under us (the cert is otherwise
+	// only re-issued via rotation requeue, which fires once per cert validity).
+	watcher := k8s.ExtractNamespacedName(&policy)
+	if err := watches.WatchUserProvidedSecrets(watcher, r.dynamicWatches, secretName, []string{secretName}); err != nil {
 		return nil, results.WithError(err)
 	}
 
