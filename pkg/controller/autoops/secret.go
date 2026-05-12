@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,7 +18,6 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -153,8 +153,34 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 		Annotations: policy.GetAnnotations(),
 	})
 
-	policyName := policy.GetName()
-	_, results := association.ReconcileManagedClientCert(ctx, r, policyName, policyName, &policy, meta, secretName, labels)
+	certRotation := certificates.RotationParams{
+		Validity:     certificates.DefaultCertValidity,
+		RotateBefore: certificates.DefaultRotateBefore,
+	}
+	certReconciler := certificates.Reconciler{
+		K8sClient:    r.Client,
+		Owner:        &policy,
+		Metadata:     meta,
+		CertRotation: certRotation,
+	}
+
+	commonName := policy.GetName()
+	orgUnit := policy.GetName()
+
+	results := reconciler.NewResult(ctx)
+	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, labels)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Schedule requeue for certificate rotation.
+	primaryCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
+	if err != nil {
+		return results.WithError(err)
+	}
+	results.WithReconciliationState(
+		reconciler.RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore)).ReconciliationComplete(),
+	)
 	return results
 }
 

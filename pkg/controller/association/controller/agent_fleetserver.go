@@ -221,9 +221,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	secretName := clientCertSecretName(associated, ref, "agent-es")
 
-	associatedName := associated.GetName()
-	_, certResults := association.ReconcileManagedClientCert(ctx, c, associatedName, associatedName, associated,
-		assocMeta, secretName, extraLabels)
+	_, certResults := association.ReconcileManagedClientCert(ctx, c, assoc, assocMeta, secretName, extraLabels)
 	results.WithResults(certResults)
 	if results.HasError() {
 		return nil, results
