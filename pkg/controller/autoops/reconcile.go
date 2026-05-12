@@ -20,6 +20,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -163,6 +164,26 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			}
 		}
 
+		var clientCertSecret *corev1.Secret
+		if annotation.HasClientAuthenticationRequired(&es) {
+			var certResults *reconciler.Results
+			clientCertSecret, certResults = r.reconcileAutoOpsESClientCertSecret(ctx, policy, es)
+			results.WithResults(certResults)
+			if certResults.HasError() {
+				_, certErr := certResults.Aggregate()
+				log.Error(certErr, "while reconciling AutoOps ES client cert secret")
+				state.ResourceError(es, "Failed to reconcile AutoOps ES client cert secret", certErr)
+				continue
+			}
+		} else {
+			// Clean up client cert secret if client authentication is no longer required.
+			if err := r.deleteAutoOpsESClientCertSecret(ctx, policy, es); err != nil {
+				log.Error(err, "while cleaning up AutoOps ES client cert secret")
+				results.WithError(err)
+				// continue reconciling other resources, this is not fatal
+			}
+		}
+
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES API key")
@@ -179,7 +200,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
+		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, clientCertSecret, r.Client, policy)
 		if err != nil {
 			log.Error(err, "while building config hash")
 			state.ResourceError(es, "Failed to prepare AutoOps agent deployment", err)

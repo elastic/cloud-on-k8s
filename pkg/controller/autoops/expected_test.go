@@ -16,11 +16,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -57,20 +61,52 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		},
 	}
 
+	esWithTLSFixtureAndClientAuthenticationEnabled := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-cluster",
+			Namespace: "default",
+			Annotations: map[string]string{
+				annotation.ClientAuthenticationRequiredAnnotation: "true",
+			},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "9.1.0",
+		},
+	}
+
 	type args struct {
 		autoops autoopsv1alpha1.AutoOpsAgentPolicy
 		es      esv1.Elasticsearch
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name             string
+		args             args
+		clientCertSecret *corev1.Secret
+		wantErr          bool
 	}{
 		{
 			name: "default deployment params",
 			args: args{
 				autoops: autoopsFixture,
 				es:      esFixture,
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment with client auth mounts client cert volume",
+			clientCertSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esFixture),
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("test-client-cert"),
+					certificates.KeyFileName:  []byte("test-client-key"),
+				},
+			},
+			args: args{
+				autoops: autoopsFixture,
+				es:      esWithTLSFixtureAndClientAuthenticationEnabled,
 			},
 			wantErr: false,
 		},
@@ -97,6 +133,9 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if annotation.HasClientAuthenticationRequired(&tt.args.es) {
+				require.NotNil(t, tt.clientCertSecret, "client certificate secret should be defined")
+			}
 			// We need a ConfigMap to calculate the config hash for the deployment.
 			// This does not need to be within the k8s cluster itself, we simply
 			// use it to build the config hash.
@@ -137,9 +176,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					apiKeySecretKey: []byte("test-es-api-key"),
 				},
 			}
+			objects := []client.Object{configMap, autoopsSecret, esAPIKeySecret}
+			if tt.clientCertSecret != nil {
+				objects = append(objects, tt.clientCertSecret)
+			}
 
-			client := k8s.NewFakeClient(configMap, autoopsSecret, esAPIKeySecret)
-			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, client, tt.args.autoops)
+			client := k8s.NewFakeClient(objects...)
+			configHash, err := buildConfigHash(context.Background(), *configMap, *esAPIKeySecret, tt.clientCertSecret, client, tt.args.autoops)
 			require.NoError(t, err)
 			r := &AgentPolicyReconciler{
 				Client: client,
@@ -160,6 +203,11 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
 				// Hash ES API key secret value
 				_, _ = expectedConfigHash.Write([]byte("test-es-api-key"))
+				// Mirror buildConfigHash: hash client cert/key when the secret was supplied.
+				if tt.clientCertSecret != nil {
+					_, _ = expectedConfigHash.Write(tt.clientCertSecret.Data[certificates.CertFileName])
+					_, _ = expectedConfigHash.Write(tt.clientCertSecret.Data[certificates.KeyFileName])
+				}
 				expectedHashStr := fmt.Sprint(expectedConfigHash.Sum32())
 				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
 				if !cmp.Equal(got, want) {
@@ -199,20 +247,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-volume",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: autoopsv1alpha1.Config(policy.GetName(), es),
-									},
-									DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
-									Optional:    new(false),
-								},
-							},
-						},
-					},
+					Volumes:                      expectedVolumes(policy, es),
 					AutomountServiceAccountToken: new(false),
 					Containers: []corev1.Container{
 						{
@@ -230,13 +265,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config-volume",
-									MountPath: "/mnt/config",
-									ReadOnly:  true,
-								},
-							},
+							VolumeMounts: expectedVolumeMounts(es),
 							ReadinessProbe: &corev1.Probe{
 								FailureThreshold:    3,
 								InitialDelaySeconds: 5,
@@ -265,7 +294,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 								{
 									Name:  "AUTOOPS_ES_URL",
-									Value: "http://es-cluster-es-internal-http.default.svc:9200",
+									Value: services.InternalServiceURL(es),
 								},
 								{
 									Name: "AUTOOPS_OTEL_URL",
@@ -328,6 +357,73 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 			},
 		},
 	}
+}
+
+func expectedVolumeMounts(es esv1.Elasticsearch) []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "config-volume",
+			MountPath: "/mnt/config",
+			ReadOnly:  true,
+		},
+	}
+	if es.Spec.HTTP.TLS.Enabled() {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
+			ReadOnly:  true,
+		})
+	}
+	if annotation.HasClientAuthenticationRequired(&es) {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
+			ReadOnly:  true,
+		})
+	}
+	return mounts
+}
+
+func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: autoopsv1alpha1.Config(policy.GetName(), es),
+					},
+					DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
+					Optional:    new(false),
+				},
+			},
+		},
+	}
+	if es.Spec.HTTP.TLS.Enabled() {
+		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
+		volumes = append(volumes, corev1.Volume{
+			Name: fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: caSecretName,
+					Optional:   new(false),
+				},
+			},
+		})
+	}
+	if annotation.HasClientAuthenticationRequired(&es) {
+		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+		volumes = append(volumes, corev1.Volume{
+			Name: fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientCertSecretName,
+					Optional:   new(false),
+				},
+			},
+		})
+	}
+	return volumes
 }
 
 func Test_readinessProbe(t *testing.T) {
