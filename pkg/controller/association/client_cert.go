@@ -12,6 +12,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -81,15 +82,19 @@ func (r *Reconciler) reconcileClientCertificate(
 		return secretName, results
 	}
 
-	return ReconcileManagedClientCert(ctx, r.Client, association, assocMeta, secretName, extraLabels)
+	associated := association.Associated()
+	associatedName := associated.GetName()
+	return ReconcileManagedClientCert(ctx, r.Client, associatedName, associatedName, associated, assocMeta, secretName, extraLabels)
 }
 
 // ReconcileManagedClientCert creates or updates a self-signed client certificate.
 func ReconcileManagedClientCert(
 	ctx context.Context,
 	c k8s.Client,
-	association commonv1.Association,
-	assocMeta metadata.Metadata,
+	commonName string,
+	orgUnit string,
+	owner client.Object,
+	meta metadata.Metadata,
 	secretName string,
 	extraLabels map[string]string,
 ) (string, *reconciler.Results) {
@@ -97,16 +102,13 @@ func ReconcileManagedClientCert(
 
 	certReconciler := certificates.Reconciler{
 		K8sClient: c,
-		Owner:     association.Associated(),
-		Metadata:  assocMeta,
+		Owner:     owner,
+		Metadata:  meta,
 		CertRotation: certificates.RotationParams{
 			Validity:     certificates.DefaultCertValidity,
 			RotateBefore: certificates.DefaultRotateBefore,
 		},
 	}
-
-	commonName := association.Associated().GetName()
-	orgUnit := association.Associated().GetName()
 
 	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, extraLabels)
 	if err != nil {
