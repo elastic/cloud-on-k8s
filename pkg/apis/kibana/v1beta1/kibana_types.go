@@ -27,7 +27,7 @@ type KibanaSpec struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+	// Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 

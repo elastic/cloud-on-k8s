@@ -77,7 +77,7 @@ elasticsearchRef: {}
 # packageRegistryRef:
 
 # The Kibana configuration (kibana.yml)
-# ref: https://www.elastic.co/guide/en/kibana/current/settings.html
+# ref: https://www.elastic.co/docs/reference/kibana/configuration-reference
 #
 config: null
 
@@ -125,7 +125,7 @@ monitoring: {}
 # Kibana is also set, as it is required when exposing Kibana behind a load balancer/ingress.
 # Also of note are `server.basePath`, and `server.rewriteBasePath` settings in the Kibana configuration.
 #
-# ref: https://www.elastic.co/guide/en/kibana/current/settings.html
+# ref: https://www.elastic.co/docs/reference/kibana/configuration-reference
 #
 # Each Cloud Service Provider has different requirements for setting up Ingress. Some links to common documentation are:
 # - AWS: https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html

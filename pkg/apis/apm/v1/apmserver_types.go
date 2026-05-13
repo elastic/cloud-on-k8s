@@ -32,7 +32,7 @@ type ApmServerSpec struct {
 	// Count of APM Server instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 

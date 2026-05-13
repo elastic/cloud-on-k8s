@@ -85,7 +85,7 @@ type KibanaSpec struct {
 	// Kibana provides the default Enterprise Search UI starting version 7.14.
 	EnterpriseSearchRef commonv1.ObjectSelector `json:"enterpriseSearchRef,omitempty"`
 
-	// Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+	// Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
@@ -115,7 +115,7 @@ type KibanaSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-	// See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+	// See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional

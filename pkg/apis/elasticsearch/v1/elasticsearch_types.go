@@ -188,7 +188,7 @@ type ElasticsearchSpec struct {
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+	// See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
@@ -272,7 +272,7 @@ type RemoteCluster struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key
 	// +kubebuilder:validation:Optional
 	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
@@ -314,7 +314,7 @@ type RoleSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry.
 	// The secret value must match the expected file-based specification as described in
-	// https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file.
+	// https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file.
 	//
 	// Example:
 	// ---
@@ -344,10 +344,10 @@ type FileRealmSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple users and their roles mapping can be specified in a Kubernetes secret.
 	// The secret should contain 2 entries:
-	// - users: contain all users and the hash of their password (https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms)
+	// - users: contain all users and the hash of their password (https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms)
 	// - users_roles: contain the role to users mapping
 	// The format of those 2 entries must correspond to the expected file realm format, as specified in Elasticsearch
-	// documentation: https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration.
+	// documentation: https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration.
 	//
 	// Example:
 	// ---
