@@ -435,7 +435,7 @@ func TestApplyPasswordProtectedKeystoreScript(t *testing.T) {
 			name: "sets custom script when password path is configured",
 			parameters: keystore.InitContainerParameters{
 				KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
-				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`,
+				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "${add_args[@]}"`,
 				SecureSettingsVolumeMountPath: "/mnt/elastic-internal/secure-settings",
 				KeystoreVolumePath:            "/usr/share/elasticsearch/config",
 				KeystorePasswordPath:          PasswordFile,
@@ -446,7 +446,7 @@ func TestApplyPasswordProtectedKeystoreScript(t *testing.T) {
 			name: "does not set custom script without password path",
 			parameters: keystore.InitContainerParameters{
 				KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
-				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`,
+				KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "${add_args[@]}"`,
 				SecureSettingsVolumeMountPath: "/mnt/elastic-internal/secure-settings",
 				KeystoreVolumePath:            "/usr/share/elasticsearch/config",
 			},
@@ -468,7 +468,9 @@ func TestApplyPasswordProtectedKeystoreScript(t *testing.T) {
 			require.Contains(t, rendered, "set -eu")
 			require.Contains(t, rendered, `KEYSTORE_PASSWORD=$(cat "/mnt/elastic-internal/keystore-password/keystore-password")`)
 			require.Contains(t, rendered, `printf "%s\n%s\n" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore create -p`)
-			require.Contains(t, rendered, `echo -n "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`)
+			// secure settings are added in a single batched invocation to amortize JVM startup
+			require.Contains(t, rendered, `add_args+=("$(basename "$filename")" "$filename")`)
+			require.Contains(t, rendered, `echo -n "$KEYSTORE_PASSWORD" | /usr/share/elasticsearch/bin/elasticsearch-keystore add-file "${add_args[@]}"`)
 			require.Contains(t, rendered, "unset KEYSTORE_PASSWORD")
 			require.NotContains(t, rendered, "set -x")
 		})
