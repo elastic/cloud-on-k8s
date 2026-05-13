@@ -230,7 +230,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 
 	expectedDp := deployment.New(deployParams)
 	if common.IsOrchestrationPaused(&epr) {
-		return results.WithError(common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &epr, &expectedDp, &status.Conditions)), status
+		return results.WithError(common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &epr, &expectedDp)), status
 	}
 
 	common.MaybeResetPausedCondition(&status.Conditions)

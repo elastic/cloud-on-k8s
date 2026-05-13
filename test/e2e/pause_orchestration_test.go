@@ -30,10 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
-var (
-	initialVersion = "8.12.0"
-)
-
 func TestPauseOrchestration(t *testing.T) {
 	namespace := test.Ctx().ManagedNamespace(0)
 
@@ -43,48 +39,67 @@ func TestPauseOrchestration(t *testing.T) {
 		// Create with pause orchestration disabled (default)
 		steps := test.StepList{}
 		for _, b := range initial {
-			steps = steps.WithStep(verifyPauseOrchestrationDisabled(t, k, namespace, b, initialVersion, false))
+			if !b.SkipTest() {
+				steps = steps.WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, b, false))
+			}
 		}
 
 		// Phase 1: enable pause-orchestration annotation
 		for _, b := range phase1 {
-			steps = steps.
-				WithSteps(b.MutationTestSteps(k)).
-				WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			if !b.SkipTest() {
+				steps = steps.
+					WithSteps(b.UpgradeTestSteps(k)). // TODO switch back to Mutation?
+					// WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
+					// WithSteps(enabledBuilder.MutationTestSteps(k)).
+					WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			}
 		}
 
-		// Phase 2: update stack version
-		for _, b := range phase2 {
-			steps = steps.WithSteps(b.UpgradeTestSteps(k)).
-				WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, true))
+		// Phase 2: update topology of each application
+		for i, b := range phase2 {
+			if !b.SkipTest() {
+				steps = steps.WithSteps(b.UpgradeTestSteps(k)).
+					WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, true)).
+					// This checks that the topology still matches the previous builder's topology expectation, and
+					// assumes each phase's builders were added in the same order.
+					WithSteps(test.CheckTestSteps(phase1[i], k))
+			}
 		}
 
 		// Phase 3: disable pause-orchestration
 		for _, b := range phase3 {
-			steps = steps.WithSteps(b.UpgradeTestSteps(k)).
-				WithSteps(test.CheckTestSteps(b, k)).
-				WithStep(verifyPauseOrchestrationDisabled(t, k, namespace, b, test.LatestReleasedVersion8x, true))
+			if !b.SkipTest() {
+				steps = steps.WithSteps(b.UpgradeTestSteps(k)).
+					WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, b, true)).
+					WithSteps(test.CheckTestSteps(b, k)) // Check topology after disabling the annotation
+			}
 		}
 
 		// Phase 4: re-enable pause-orchestration
 		for _, b := range phase4 {
-			steps = steps.WithSteps(b.MutationTestSteps(k)).
-				WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			if !b.SkipTest() {
+				steps = steps.WithSteps(b.MutationTestSteps(k)).
+					WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			}
 		}
 
 		// Phase 5: delete pod
 		for _, b := range phase4 { // There are no phase5 builders because we're just deleting a pod; re-use phase4 builders
-			steps = steps.WithStep(deletePod(t, k, namespace, b)).
-				WithSteps(test.CheckTestSteps(b, k)).
-				WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			if !b.SkipTest() {
+				steps = steps.WithStep(deletePod(t, k, namespace, b)).
+					WithSteps(test.CheckTestSteps(b, k)).
+					WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
+			}
 		}
 
 		// Phase 6: re-disable pause-orchestration
 		for _, b := range phase6 {
-			steps = steps.
-				WithSteps(b.UpgradeTestSteps(k)).
-				WithSteps(test.CheckTestSteps(b, k)).
-				WithStep(verifyPauseOrchestrationDisabled(t, k, namespace, b, test.LatestReleasedVersion8x, true))
+			if !b.SkipTest() {
+				steps = steps.
+					WithSteps(b.UpgradeTestSteps(k)).
+					WithSteps(test.CheckTestSteps(b, k)).
+					WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, b, true))
+			}
 		}
 		return steps
 	}
@@ -96,7 +111,7 @@ func verifyPauseOrchestrationEnabled(t *testing.T, k *test.K8sClient, namespace 
 	t.Helper()
 	name := builder.ResourceName()
 	typ := typeForBuilder(t, name)
-	verb := "not "
+	verb := "not"
 	if specChangesMade {
 		verb = "have been"
 	}
@@ -202,27 +217,29 @@ func verifyDeploymentOrchestrationPaused(t *testing.T, obj k8sclient.Object, spe
 	return nil
 }
 
-func verifyPauseOrchestrationDisabled(t *testing.T, k *test.K8sClient, namespace string, builder test.Builder, expectedVersion string, previouslyPaused bool) test.Step {
+func verifyPauseOrchestrationDisabled(t *testing.T, k *test.K8sClient, namespace string, builder test.Builder, previouslyPaused bool) test.StepList {
 	t.Helper()
 	name := builder.ResourceName()
 	typ := typeForBuilder(t, name)
-	return test.Step{
-		Name: fmt.Sprintf("Verify pause-orchestration annotation is set to false for %s/%s", namespace, name),
-		Test: test.Eventually(func() error {
-			obj := objectForType(t, typ)
-			if err := k.Client.Get(context.Background(), types.NamespacedName{
-				Namespace: namespace,
-				Name:      name,
-			}, obj); err != nil {
-				return err
-			}
+	return test.StepList{
+		{
+			Name: fmt.Sprintf("Verify pause-orchestration annotation is set to false for %s/%s", namespace, name),
+			Test: test.Eventually(func() error {
+				obj := objectForType(t, typ)
+				if err := k.Client.Get(context.Background(), types.NamespacedName{
+					Namespace: namespace,
+					Name:      name,
+				}, obj); err != nil {
+					return err
+				}
 
-			return verifyStackComponentUnpaused(t, typ, obj, previouslyPaused, expectedVersion)
-		}),
+				return verifyStackComponentUnpaused(t, typ, obj, previouslyPaused)
+			}),
+		},
 	}
 }
 
-func verifyStackComponentUnpaused(t *testing.T, typ string, obj k8sclient.Object, previouslyPaused bool, expectedVersion string) error {
+func verifyStackComponentUnpaused(t *testing.T, typ string, obj k8sclient.Object, previouslyPaused bool) error {
 	t.Helper()
 	if common.IsOrchestrationPaused(obj) {
 		return fmt.Errorf("annotation %s should be set to false", common.PauseOrchestrationAnnotation)
@@ -230,20 +247,16 @@ func verifyStackComponentUnpaused(t *testing.T, typ string, obj k8sclient.Object
 
 	switch typ {
 	case label.Type:
-		return verifyElasticsearchOrchestrationUnpaused(t, obj, previouslyPaused, expectedVersion)
+		return verifyElasticsearchOrchestrationUnpaused(t, obj, previouslyPaused)
 	default:
-		return verifyDeploymentOrchestrationUnpaused(t, obj, previouslyPaused, expectedVersion)
+		return verifyDeploymentOrchestrationUnpaused(t, obj, previouslyPaused)
 	}
 }
 
-func verifyElasticsearchOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool, expectedVersion string) error {
+func verifyElasticsearchOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool) error {
 	t.Helper()
 	es, ok := obj.(*esv1.Elasticsearch)
 	require.Truef(t, ok, "expected Elasticsearch resource but got %T", obj)
-
-	if es.Spec.Version != expectedVersion {
-		return fmt.Errorf("expected Elasticsearch version %s but got %s", expectedVersion, es.Spec.Version)
-	}
 
 	if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 		return fmt.Errorf("elasticsearch phase should be %s", esv1.ElasticsearchReadyPhase)
@@ -260,32 +273,25 @@ func verifyElasticsearchOrchestrationUnpaused(t *testing.T, obj k8sclient.Object
 	return nil
 }
 
-func verifyDeploymentOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool, expectedVersion string) error {
+func verifyDeploymentOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool) error {
 	t.Helper()
 	var status commonv1.DeploymentStatus
-	var version string
 	switch obj.(type) {
 	case *kbv1.Kibana:
 		kb, ok := obj.(*kbv1.Kibana)
 		require.Truef(t, ok, "expected Kibana resource but got %T", obj)
 		status = kb.Status.DeploymentStatus
-		version = kb.Spec.Version
 	case *apmv1.ApmServer:
 		apm, ok := obj.(*apmv1.ApmServer)
 		require.Truef(t, ok, "expected APM Server resource but got %T", obj)
 		status = apm.Status.DeploymentStatus
-		version = apm.Spec.Version
 	default:
 		return fmt.Errorf("unexpected Deployment type %T", obj)
 	}
 
-	if version != expectedVersion {
-		return fmt.Errorf("expected Elasticsearch version %s but got %s", expectedVersion, version)
-	}
-
 	orchestrationPausedIndex := status.Conditions.Index(commonv1.OrchestrationPaused)
 	if !previouslyPaused && orchestrationPausedIndex >= 0 {
-		return fmt.Errorf("%s condition should not exist on %s resource", commonv1.OrchestrationPaused, commonv1.OrchestrationPaused)
+		return fmt.Errorf("%s condition should not exist on the %s resource", commonv1.OrchestrationPaused, commonv1.OrchestrationPaused)
 	}
 
 	if orchestrationPausedIndex >= 0 && status.Conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
@@ -298,7 +304,7 @@ func deletePod(t *testing.T, k *test.K8sClient, namespace string, builder test.B
 	t.Helper()
 	name := builder.ResourceName()
 	return test.Step{
-		Name: "A new pod becomes ready when a pod is deleted",
+		Name: fmt.Sprintf("A new pod becomes ready when a pod is deleted for %s/%s", namespace, builder.ResourceName()),
 		Test: test.Eventually(func() error {
 			typ := typeForBuilder(t, name)
 			pods, err := k.GetPods(listOptionsForType(t, namespace, typ)...)
@@ -364,14 +370,12 @@ func pauseOrchestrationBuilders(t *testing.T) (
 	// Elasticsearch
 	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithVersion(initialVersion).
 		WithRestrictedSecurityContext()
 	// TODO fill in the stateless apps
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
 	// Kibana
 	kbInitial := kibana.NewBuilder(testName(kblabel.Type)).
 		WithNodeCount(1).
-		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext().
 		WithAPMIntegration()
@@ -379,7 +383,6 @@ func pauseOrchestrationBuilders(t *testing.T) (
 	// APM
 	apmInitial := apmserver.NewBuilder(testName(apmv1.Type)).
 		WithNodeCount(1).
-		WithVersion(initialVersion).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef).
 		WithRestrictedSecurityContext()
@@ -395,11 +398,11 @@ func pauseOrchestrationBuilders(t *testing.T) (
 	apmEnabled := apmInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&apmInitial)
 	phase1 = append(phase1, esEnabled, kbEnabled, apmEnabled)
 
-	// Phase 2: update stack version
+	// Phase 2: update topology of each application - add 1 to each
 	phase2 = make([]test.Builder, 0)
-	esUpdated := esEnabled.WithVersion(test.LatestReleasedVersion8x)
-	kbUpdated := kbEnabled.WithVersion(test.LatestReleasedVersion8x)
-	apmUpdated := apmEnabled.WithVersion(test.LatestReleasedVersion8x)
+	esUpdated := esEnabled.DeepCopy().WithESCoordinatingNodes(1, elasticsearch.DefaultResources).WithMutatedFrom(&esEnabled)
+	kbUpdated := kbEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&kbEnabled)
+	apmUpdated := apmEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&apmEnabled)
 	phase2 = append(phase2, esUpdated, kbUpdated, apmUpdated)
 
 	// Phase 3: transition back to disabled

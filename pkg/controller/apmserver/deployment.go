@@ -74,10 +74,13 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	deploy := deployment.New(params)
 	if common.IsOrchestrationPaused(as) {
-		return state, common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, as, &deploy, &as.Status.Conditions)
+		// common.SetPausedConditionAndEmitEvent updates the v1.Conditions on the parent object, which in this case is
+		// held in state.ApmServer.
+		return state, common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, state.ApmServer, &deploy)
 	}
 
-	common.MaybeResetPausedCondition(&as.Status.Conditions)
+	common.MaybeResetPausedCondition(&state.ApmServer.Status.Conditions)
+
 	result, err := deployment.Reconcile(ctx, r.K8sClient(), deploy, as)
 	if err != nil {
 		return state, err

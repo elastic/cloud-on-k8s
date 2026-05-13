@@ -33,7 +33,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	}
 	deploy := deployment.New(deployParams)
 	if common.IsOrchestrationPaused(&ent) {
-		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ent, &deploy, &ent.Status.Conditions)
+		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ent, &deploy)
 		if err != nil {
 			return appsv1.Deployment{}, err
 		}

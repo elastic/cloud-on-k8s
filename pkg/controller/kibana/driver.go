@@ -198,7 +198,7 @@ func (d *driver) Reconcile(
 
 	expectedDp := deployment.New(deploymentParams)
 	if common.IsOrchestrationPaused(kb) {
-		return results.WithError(common.SetPausedConditionAndEmitEvent(ctx, d.client, d.recorder, kb, &expectedDp, &kb.Status.Conditions))
+		return results.WithError(common.SetPausedConditionAndEmitEvent(ctx, d.client, d.recorder, kb, &expectedDp))
 	}
 
 	common.MaybeResetPausedCondition(&kb.Status.Conditions)

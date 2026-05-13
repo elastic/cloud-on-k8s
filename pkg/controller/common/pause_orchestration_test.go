@@ -7,6 +7,7 @@ package common
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/daemonset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -97,16 +102,30 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 	makeDeployment := func(replicas *int32) *appsv1.Deployment {
 		d := &appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
-			Spec:       appsv1.DeploymentSpec{Replicas: replicas},
+			Spec: appsv1.DeploymentSpec{
+				// Replicas: replicas,
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Image: fmt.Sprintf("foo-%d", replicas),
+							},
+						},
+					},
+				},
+			},
 		}
-		d.Labels = hash.SetTemplateHashLabel(d.Labels, *d)
+		d.Labels = hash.SetTemplateHashLabel(d.Labels, d.Spec)
 		return d
 	}
-	owner := &corev1.ConfigMap{ObjectMeta: v1.ObjectMeta{Name: "owner", Namespace: namespace}}
+
+	// TODO extend this test for other CRs and resource types
+	baseKibana := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: "9.3.1"}}
 
 	tests := []struct {
 		name             string
 		existingObjs     []client.Object
+		parentObject     ObjectWithConditions
 		expectedVehicle  *appsv1.Deployment
 		clientErr        error
 		wantConditionMsg string
@@ -116,6 +135,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		{
 			name:             "resource does not exist — pending changes",
 			existingObjs:     nil,
+			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
@@ -123,6 +143,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		{
 			name:             "resource exists with matching spec — no pending changes",
 			existingObjs:     []client.Object{makeDeployment(&one)},
+			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
 			wantConditionMsg: PausedNoChangesMessage,
 			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
@@ -130,6 +151,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		{
 			name:             "resource exists with different spec — pending changes",
 			existingObjs:     []client.Object{makeDeployment(&one)},
+			parentObject:     &kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: "9.3.1"}},
 			expectedVehicle:  makeDeployment(&two),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
@@ -151,18 +173,21 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 				c = k8s.NewFakeClient(tt.existingObjs...)
 			}
 			recorder := toolsevents.NewFakeRecorder(10)
-			conditions := commonv1.Conditions{}
 
-			err := SetPausedConditionAndEmitEvent(context.Background(), c, recorder, owner, tt.expectedVehicle, &conditions)
+			err := SetPausedConditionAndEmitEvent(context.Background(), c, recorder, tt.parentObject, tt.expectedVehicle)
 
 			if tt.wantError {
 				assert.Error(t, err)
-				assert.Empty(t, conditions, "no condition should be set on error")
+				assert.Empty(t, tt.parentObject, "no condition should be set on error")
 				return
 			}
 
 			require.NoError(t, err)
 
+			// TODO consider adding a get function on the ObjectWithConditions interface
+			parent, ok := tt.parentObject.(*kbv1.Kibana)
+			require.True(t, ok)
+			conditions := parent.Status.Conditions
 			idx := conditions.Index(commonv1.OrchestrationPaused)
 			require.GreaterOrEqual(t, idx, 0, "OrchestrationPaused condition should be present")
 			assert.Equal(t, corev1.ConditionTrue, conditions[idx].Status)
@@ -175,6 +200,167 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 				t.Error("expected a warning event to be emitted but none was")
 			}
 		})
+	}
+}
+
+func Test_hasPendingChanges(t *testing.T) {
+	originalDeployment := appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: fmt.Sprintf("foo-%d", 1),
+						},
+					},
+				},
+			},
+		},
+	}
+	originalDeployment = deployment.WithTemplateHash(originalDeployment)
+
+	originalDaemonSet := appsv1.DaemonSet{
+		Spec: appsv1.DaemonSetSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: fmt.Sprintf("foo-%d", 1),
+						},
+					},
+				},
+			},
+		},
+	}
+	originalDaemonSet = daemonset.WithTemplateHash(originalDaemonSet)
+
+	originalStatefulSet := appsv1.StatefulSet{
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: fmt.Sprintf("foo-%d", 1),
+						},
+					},
+				},
+			},
+		},
+	}
+	originalStatefulSet = statefulset.WithTemplateHash(originalStatefulSet)
+
+	tests := []struct {
+		name             string
+		existing         client.Object
+		expectedObject   client.Object
+		expectHasChanged bool
+		expectedError    error
+	}{
+		{
+			name: "deployment exists and has different hash label returns true",
+			existing: func() *appsv1.Deployment {
+				existing := originalDeployment.DeepCopy()
+				*existing = deployment.WithTemplateHash(*existing)
+				return existing
+			}(),
+			expectedObject: func() *appsv1.Deployment {
+				updated := originalDeployment.DeepCopy()
+				updated.Spec.Template.Labels["kibana.k8s.elastic.co/version"] = "9.4.0"
+				*updated = deployment.WithTemplateHash(*updated)
+				return updated
+			}(),
+			expectHasChanged: true,
+		},
+		{
+			name:             "deployment exists and has the same hash label returns false",
+			existing:         originalDeployment.DeepCopy(),
+			expectedObject:   originalDeployment.DeepCopy(),
+			expectHasChanged: false,
+		},
+		{
+			name:             "deployment does not exist yet returns true",
+			existing:         nil,
+			expectedObject:   originalDeployment.DeepCopy(),
+			expectHasChanged: true,
+		},
+		{
+			name: "daemonset exists and has different hash label returns true",
+			existing: func() *appsv1.DaemonSet {
+				existing := originalDaemonSet.DeepCopy()
+				*existing = daemonset.WithTemplateHash(*existing)
+				return existing
+			}(),
+			expectedObject: func() *appsv1.DaemonSet {
+				updated := originalDaemonSet.DeepCopy()
+				updated.Spec.Template.Labels["kibana.k8s.elastic.co/version"] = "9.4.0"
+				*updated = daemonset.WithTemplateHash(*updated)
+				return updated
+			}(),
+			expectHasChanged: true,
+		},
+		{
+			name:             "daemonset exists and has the same hash label returns false",
+			existing:         originalDaemonSet.DeepCopy(),
+			expectedObject:   originalDaemonSet.DeepCopy(),
+			expectHasChanged: false,
+		},
+		{
+			name:             "daemonset does not exist yet returns true",
+			existing:         nil,
+			expectedObject:   originalDaemonSet.DeepCopy(),
+			expectHasChanged: true,
+		},
+		{
+			name: "statefulset exists and has different hash label returns true",
+			existing: func() *appsv1.StatefulSet {
+				existing := originalStatefulSet.DeepCopy()
+				*existing = statefulset.WithTemplateHash(*existing)
+				return existing
+			}(),
+			expectedObject: func() *appsv1.StatefulSet {
+				updated := originalStatefulSet.DeepCopy()
+				updated.Spec.Template.Labels["kibana.k8s.elastic.co/version"] = "9.4.0"
+				*updated = statefulset.WithTemplateHash(*updated)
+				return updated
+			}(),
+			expectHasChanged: true,
+		},
+		{
+			name:             "statefulset exists and has the same hash label returns false",
+			existing:         originalStatefulSet.DeepCopy(),
+			expectedObject:   originalStatefulSet.DeepCopy(),
+			expectHasChanged: false,
+		},
+		{
+			name:             "statefulset does not exist yet returns true",
+			existing:         nil,
+			expectedObject:   originalStatefulSet.DeepCopy(),
+			expectHasChanged: true,
+		},
+	}
+
+	for _, tt := range tests {
+		var c k8s.Client
+		switch {
+		case tt.expectedError != nil:
+			c = k8s.NewFailingClient(tt.expectedError)
+		case tt.existing != nil:
+			c = k8s.NewFakeClient(tt.existing)
+		default:
+			c = k8s.NewFakeClient()
+		}
+
+		hasChanged, _ := hasPendingChanges(context.Background(), c, tt.expectedObject)
+		assert.Equal(t, tt.expectHasChanged, hasChanged)
 	}
 }
 
