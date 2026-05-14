@@ -201,7 +201,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`version`* __string__ | Version of the APM Server. |
 | *`image`* __string__ | Image is the APM Server Docker image to deploy. |
 | *`count`* __integer__ | Count of APM Server instances to deploy. |
-| *`config`* __[Config](#config)__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html |
+| *`config`* __[Config](#config)__ | Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for the APM Server resource. |
 | *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`kibanaRef`* __[ObjectSelector](#objectselector)__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.<br>It allows APM agent central configuration management in Kibana. |
@@ -251,7 +251,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`version`* __string__ | Version of the APM Server. |
 | *`image`* __string__ | Image is the APM Server Docker image to deploy. |
 | *`count`* __integer__ | Count of APM Server instances to deploy. |
-| *`config`* __[Config](#config)__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html |
+| *`config`* __[Config](#config)__ | Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for the APM Server resource. |
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods. |
@@ -1296,7 +1296,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
 | *`remoteClusters`* __[RemoteCluster](#remotecluster) array__ | RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster. |
 | *`volumeClaimDeletePolicy`* __[VolumeClaimDeletePolicy](#volumeclaimdeletepolicy)__ | VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.<br>Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion. |
-| *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.<br>See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
+| *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.<br>See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets. |
 
 
@@ -1431,7 +1431,7 @@ RemoteCluster declares a remote Elasticsearch cluster connection.
 | --- | --- |
 | *`name`* __string__ | Name is the name of the remote cluster as it is set in the Elasticsearch settings.<br>The name is expected to be unique for each remote clusters. |
 | *`elasticsearchRef`* __[LocalObjectSelector](#localobjectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster. |
-| *`apiKey`* __[RemoteClusterAPIKey](#remoteclusterapikey)__ | APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html |
+| *`apiKey`* __[RemoteClusterAPIKey](#remoteclusterapikey)__ | APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key |
 
 
 ### RemoteClusterAPIKey  [#remoteclusterapikey]
@@ -1450,7 +1450,7 @@ RemoteClusterAPIKey defines a remote cluster API Key.
 
 ### RemoteClusterAccess  [#remoteclusteraccess]
 
-RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key
 
 :::{admonition} Appears In:
 * [RemoteClusterAPIKey](#remoteclusterapikey)
@@ -1936,14 +1936,14 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
 | *`packageRegistryRef`* __[LocalObjectSelector](#localobjectselector)__ | PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster. |
 | *`enterpriseSearchRef`* __[ObjectSelector](#objectselector)__ | EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.<br>Kibana provides the default Enterprise Search UI starting version 7.14. |
-| *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
+| *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |
 | *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Kibana container. When set, these<br>values override any CPU or memory resource settings specified in the PodTemplate for the primary Kibana<br>container. To set resources on other containers, use the PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
-| *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana.<br>See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
+| *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana.<br>See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
 
 
 
@@ -1986,7 +1986,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`image`* __string__ | Image is the Kibana Docker image to deploy. |
 | *`count`* __integer__ | Count of Kibana instances to deploy. |
 | *`elasticsearchRef`* __[ObjectSelector](#objectselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
-| *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html |
+| *`config`* __[Config](#config)__ | Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Kibana. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. |
@@ -2167,7 +2167,7 @@ MapsSpec holds the specification of an Elastic Maps Server instance.
 | *`image`* __string__ | Image is the Elastic Maps Server Docker image to deploy. |
 | *`count`* __integer__ | Count of Elastic Maps Server instances to deploy. |
 | *`elasticsearchRef`* __[ElasticsearchSelector](#elasticsearchselector)__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster. |
-| *`config`* __[Config](#config)__ | Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration |
+| *`config`* __[Config](#config)__ | Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Elastic Maps Server configuration.<br>Configuration settings are merged and have precedence over settings specified in `config`. |
 | *`http`* __[HTTPConfig](#httpconfig)__ | HTTP holds the HTTP layer configuration for Elastic Maps Server. |
 | *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Elastic Maps Server container. When set,<br>these values override any CPU or memory resource settings specified in the PodTemplate for the primary Elastic<br>Maps Server container. To set resources on other containers, use the PodTemplate. |

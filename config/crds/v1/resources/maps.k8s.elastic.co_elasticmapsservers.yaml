@@ -62,7 +62,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the ElasticMapsServer configuration. See:
-                  https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
+                  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:

@@ -1286,7 +1286,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -2030,7 +2030,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -3527,7 +3527,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the ElasticMapsServer configuration. See:
-                  https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
+                  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:
@@ -5042,7 +5042,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-                  See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -6072,7 +6072,7 @@ spec:
                   properties:
                     apiKey:
                       description: 'APIKey can be used to enable remote cluster access
-                        using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
+                        using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key'
                       properties:
                         access:
                           description: Access is the name of the API Key. It is automatically
@@ -9155,7 +9155,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -9654,7 +9654,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-                  See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -10016,7 +10016,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
