@@ -22,8 +22,7 @@ import (
 // RegisterWebhook registers the Agent validating webhook with license-aware validation.
 func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string) {
 	inner := &webhookValidator{licenseChecker: checker}
-	// Pass nil for licenseChecker: the inner validator performs license enforcement itself.
-	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](nil, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner)
 	wh := admission.WithValidator[*agentv1alpha1.Agent](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(agentv1alpha1.WebhookPath, wh)
 	ulog.Log.Info("Registering Agent validating webhook", "path", agentv1alpha1.WebhookPath)
@@ -66,6 +65,9 @@ func validClientAuthentication(ctx context.Context, a *agentv1alpha1.Agent, chec
 	}
 	enabled, err := checker.EnterpriseFeaturesEnabled(ctx)
 	if err != nil {
+		// Fail-open: admit the resource on license check errors to avoid blocking writes during transient
+		// license-checker outages. The controller fails-closed on the same error (returns it, reconcile errors out)
+		// to avoid silently disabling security. This asymmetry is deliberate.
 		ulog.FromContext(ctx).Error(err, "while checking enterprise features during client authentication validation")
 		return nil
 	}

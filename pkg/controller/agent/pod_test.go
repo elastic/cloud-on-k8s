@@ -1934,7 +1934,7 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 	}
 }
 
-func Test_standaloneAgentClientCertificatesDir(t *testing.T) {
+func Test_associationClientCertificatesDir(t *testing.T) {
 	assoc := (&agentv1alpha1.Agent{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "agent-ns",
@@ -1953,7 +1953,7 @@ func Test_standaloneAgentClientCertificatesDir(t *testing.T) {
 		},
 	}).GetAssociations()[0]
 
-	got := standaloneAgentClientCertificatesDir(assoc)
+	got := associationClientCertificatesDir(assoc)
 	require.Equal(t, "/mnt/elastic-internal/elasticsearch-association/es-ns/elasticsearch/client-certs", got)
 }
 

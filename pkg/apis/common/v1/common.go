@@ -345,6 +345,8 @@ type FleetServerSelector struct {
 	// This field is only relevant when the referenced Fleet Server has client authentication enabled.
 	// If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
 	// client certificate.
+	// This field can only be used when referencing a Fleet Server managed by ECK (via name); it cannot be
+	// combined with secretName.
 	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
 }
 

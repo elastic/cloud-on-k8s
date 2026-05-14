@@ -87,6 +87,8 @@ type AgentSpec struct {
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+	// Set tls.client.authentication to true to require connecting Elastic Agents to present a client
+	// certificate (requires an Enterprise license).
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 

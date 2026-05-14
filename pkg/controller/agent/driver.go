@@ -155,10 +155,10 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, clientAuthWarning)
 		}
 		clientCertResults := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
-		if clientCertResults.HasError() {
-			return results.WithResults(clientCertResults), params.Status
+		results = results.WithResults(clientCertResults)
+		if results.HasError() {
+			return results, params.Status
 		}
-		results.WithResults(clientCertResults)
 	}
 
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
@@ -246,27 +246,27 @@ func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Servi
 //   - the user has set FLEET_SERVER_CLIENT_AUTH=required in the pod template (regardless of spec)
 //
 // A warning is returned when spec.http.tls.client.authentication is true but ineffective because
-// TLS is disabled or the user has set FLEET_SERVER_CLIENT_AUTH to a non-required value or set via ValueFrom.
+// the user has set FLEET_SERVER_CLIENT_AUTH to a non-required value or set via ValueFrom.
 func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
+	specEnabled := params.Agent.Spec.HTTP.TLS.Client.Authentication
+
 	if params.LicenseChecker == nil {
 		return false, "", nil
 	}
-	enabled, err := params.LicenseChecker.EnterpriseFeaturesEnabled(params.Context)
+	enterpriseEnabled, err := params.LicenseChecker.EnterpriseFeaturesEnabled(params.Context)
 	if err != nil {
 		return false, "", err
 	}
-	if !enabled {
+	if !enterpriseEnabled {
+		if specEnabled && !annotation.HasClientAuthenticationRequired(&params.Agent) {
+			return false, "spec.http.tls.client.authentication is ineffective because an Enterprise license is not enabled", nil
+		}
 		return false, "", nil
 	}
 
-	specEnabled := params.Agent.Spec.HTTP.TLS.Client.Authentication
-	tlsEnabled := params.Agent.Spec.HTTP.TLS.Enabled()
-
-	// Client auth is meaningless without TLS.
-	if !tlsEnabled {
-		if specEnabled {
-			return false, "spec.http.tls.client.authentication is ineffective because TLS is disabled on the Fleet Server HTTP interface", nil
-		}
+	// Client auth is meaningless without TLS. Validation already rejects spec.http.tls.client.authentication=true
+	// when TLS is disabled, so we only need to handle the case where neither is set.
+	if !params.Agent.Spec.HTTP.TLS.Enabled() {
 		return false, "", nil
 	}
 
@@ -287,7 +287,7 @@ func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
 					"set via valueFrom and the operator cannot determine the actual value", nil
 			}
 			// The env var is set to required: client auth is required regardless of the spec value.
-			if env.Value == "required" {
+			if env.Value == FleetServerClientAuthRequired {
 				return true, "", nil
 			}
 			// The env var is set to a non-required value: warn only if the spec says true.

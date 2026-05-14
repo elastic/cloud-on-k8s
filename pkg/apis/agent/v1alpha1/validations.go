@@ -303,10 +303,7 @@ func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
 func checkAssociations(a *Agent) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), a.ElasticsearchRefs()...)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
-	var err3 field.ErrorList
-	if err := a.Spec.FleetServerRef.IsValid(); err != nil {
-		err3 = field.ErrorList{field.Forbidden(field.NewPath("spec").Child("fleetServerRef"), fmt.Sprintf("Invalid association reference: %s", err))}
-	}
+	err3 := commonv1.CheckFleetServerSelectorRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
 	return append(append(err1, err2...), err3...)
 }
 

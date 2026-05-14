@@ -99,7 +99,8 @@ const (
 	FleetServerServiceToken          = "FLEET_SERVER_SERVICE_TOKEN" //nolint:gosec
 
 	// FleetServerClientAuth configures Fleet Server to require client certificates from connecting agents.
-	FleetServerClientAuth = "FLEET_SERVER_CLIENT_AUTH"
+	FleetServerClientAuth         = "FLEET_SERVER_CLIENT_AUTH"
+	FleetServerClientAuthRequired = "required"
 
 	// FleetManagedAgentClientCertDir is the stable mount path for client certificates inside
 	// fleet-managed Agent pods. Also used by the Kibana controller when injecting ssl paths into fleet outputs.
@@ -509,7 +510,7 @@ func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.V
 			vols = append(vols, volume.NewSecretVolumeWithMountPath(
 				assocConf.GetClientCertSecretName(),
 				fmt.Sprintf("%s-client-certs-%d", assoc.AssociationType(), i),
-				standaloneAgentClientCertificatesDir(assoc),
+				associationClientCertificatesDir(assoc),
 			))
 		}
 	}
@@ -553,7 +554,7 @@ func CertificatesDir(association commonv1.Association) string {
 	)
 }
 
-func standaloneAgentClientCertificatesDir(association commonv1.Association) string {
+func associationClientCertificatesDir(association commonv1.Association) string {
 	ref := association.AssociationRef()
 	return fmt.Sprintf(
 		"/mnt/elastic-internal/%s-association/%s/%s/client-certs",
@@ -659,7 +660,7 @@ func getFleetSetupFleetEnvVars(client k8s.Client, fleetToken EnrollmentAPIKey, f
 			}
 
 			if assocConf.ClientCertIsConfigured() {
-				clientCertDir := standaloneAgentClientCertificatesDir(assoc)
+				clientCertDir := associationClientCertificatesDir(assoc)
 				fleetCfg[ElasticAgentCert] = path.Join(clientCertDir, certificates.CertFileName)
 				fleetCfg[ElasticAgentCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
 			}
@@ -735,7 +736,7 @@ func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent,
 		if err != nil {
 			return err
 		}
-		clientCertDir := standaloneAgentClientCertificatesDir(esAssoc)
+		clientCertDir := associationClientCertificatesDir(esAssoc)
 		fleetServerCfg[FleetServerESCert] = path.Join(clientCertDir, certificates.CertFileName)
 		fleetServerCfg[FleetServerESCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
 	}

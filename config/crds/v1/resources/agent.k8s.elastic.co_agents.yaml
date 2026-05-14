@@ -17395,6 +17395,8 @@ spec:
                       This field is only relevant when the referenced Fleet Server has client authentication enabled.
                       If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
                       client certificate.
+                      This field can only be used when referencing a Fleet Server managed by ECK (via name); it cannot be
+                      combined with secretName.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -17424,8 +17426,10 @@ spec:
                     type: string
                 type: object
               http:
-                description: HTTP holds the HTTP layer configuration for the Agent
-                  in Fleet mode with Fleet Server enabled.
+                description: |-
+                  HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+                  Set tls.client.authentication to true to require connecting Elastic Agents to present a client
+                  certificate (requires an Enterprise license).
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
