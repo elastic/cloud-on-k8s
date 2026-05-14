@@ -21,13 +21,19 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	emslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	eprlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
+	ems "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/maps"
 )
 
 func TestPauseOrchestration(t *testing.T) {
@@ -191,6 +197,14 @@ func verifyDeploymentOrchestrationPaused(t *testing.T, obj k8sclient.Object, spe
 		apm, ok := obj.(*apmv1.ApmServer)
 		require.Truef(t, ok, "expected APM Server resource but got %T", obj)
 		status = apm.Status.DeploymentStatus
+	case *eprv1alpha1.PackageRegistry:
+		e, ok := obj.(*eprv1alpha1.PackageRegistry)
+		require.Truef(t, ok, "expected Package Registry resource but got %T", obj)
+		status = e.Status.DeploymentStatus
+	case *emsv1alpha1.ElasticMapsServer:
+		e, ok := obj.(*emsv1alpha1.ElasticMapsServer)
+		require.Truef(t, ok, "expected Elastic Maps Server resource but got %T", obj)
+		status = e.Status.DeploymentStatus
 	default:
 		return fmt.Errorf("unexpected Deployment type %T", obj)
 	}
@@ -285,6 +299,10 @@ func verifyDeploymentOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, p
 		apm, ok := obj.(*apmv1.ApmServer)
 		require.Truef(t, ok, "expected APM Server resource but got %T", obj)
 		status = apm.Status.DeploymentStatus
+	case *eprv1alpha1.PackageRegistry:
+		e, ok := obj.(*eprv1alpha1.PackageRegistry)
+		require.Truef(t, ok, "expected Package Registry resource but got %T", obj)
+		status = e.Status.DeploymentStatus
 	default:
 		return fmt.Errorf("unexpected Deployment type %T", obj)
 	}
@@ -340,6 +358,10 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 		return &kbv1.Kibana{}
 	case apmv1.Type:
 		return &apmv1.ApmServer{}
+	case eprlabel.Type:
+		return &eprv1alpha1.PackageRegistry{}
+	case emslabels.Type:
+		return &emsv1alpha1.ElasticMapsServer{}
 	default:
 		t.Fatalf("unknown type: %s", typ)
 	}
@@ -348,7 +370,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmv1.Type} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmv1.Type, eprlabel.Type} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}
@@ -373,10 +395,15 @@ func pauseOrchestrationBuilders(t *testing.T) (
 		WithRestrictedSecurityContext()
 	// TODO fill in the stateless apps
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
+	// EPR
+	eprInitial := epr.NewBuilder(testName(eprlabel.Type)).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
 	// Kibana
 	kbInitial := kibana.NewBuilder(testName(kblabel.Type)).
 		WithNodeCount(1).
 		WithElasticsearchRef(esRef).
+		WithPackageRegistryRef(eprInitial.Ref()).
 		WithRestrictedSecurityContext().
 		WithAPMIntegration()
 	kbRef := commonv1.ObjectSelector{Namespace: kbInitial.Kibana.Namespace, Name: kbInitial.Kibana.Name}
@@ -386,47 +413,72 @@ func pauseOrchestrationBuilders(t *testing.T) (
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef).
 		WithRestrictedSecurityContext()
-	// EnterpriseSearch
+	// EnterpriseSearch - unsupported in 9.x
+	// entInitial := enterprisesearch.NewBuilder(testName(entv1.Type)).
+	// 	WithElasticsearchRef(esRef).
+	// 	WithNodeCount(1).
+	// 	WithRestrictedSecurityContext()
+	// EMS
+	emsInitial := ems.NewBuilder(testName(emslabels.Type)).
+		WithNodeCount(1).
+		WithElasticsearchRef(esRef).
+		WithRestrictedSecurityContext()
+	// TODO implement non-Deployment paths of the following 2
 	// Beats
 	// Agent
-	initial = append(initial, esInitial, kbInitial, apmInitial)
+	initial = append(initial, esInitial, eprInitial, kbInitial, apmInitial, emsInitial)
 
 	// Phase 1: transition to pause-orchestration: true
 	phase1 = make([]test.Builder, 0)
 	esEnabled := esInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&esInitial)
+	eprEnabled := eprInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&eprInitial)
 	kbEnabled := kbInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&kbInitial)
 	apmEnabled := apmInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&apmInitial)
-	phase1 = append(phase1, esEnabled, kbEnabled, apmEnabled)
+	// entEnabled := entInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&entInitial)
+	emsEnabled := emsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&emsInitial)
+	phase1 = append(phase1, esEnabled, eprEnabled, kbEnabled, apmEnabled, emsEnabled)
 
 	// Phase 2: update topology of each application - add 1 to each
 	phase2 = make([]test.Builder, 0)
 	esUpdated := esEnabled.DeepCopy().WithESCoordinatingNodes(1, elasticsearch.DefaultResources).WithMutatedFrom(&esEnabled)
+	eprUpdated := eprEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&eprEnabled)
 	kbUpdated := kbEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&kbEnabled)
 	apmUpdated := apmEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&apmEnabled)
-	phase2 = append(phase2, esUpdated, kbUpdated, apmUpdated)
+	// entUpdated := entEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&entEnabled)
+	emsUpdated := emsEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&emsEnabled)
+	phase2 = append(phase2, esUpdated, eprUpdated, kbUpdated, apmUpdated, emsUpdated)
 
 	// Phase 3: transition back to disabled
 	phase3 = make([]test.Builder, 0)
 	esDisabled := esUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&esUpdated)
+	eprDisabled := eprUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&eprUpdated)
 	kbDisabled := kbUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&kbUpdated)
 	apmDisabled := apmUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&apmUpdated)
-	phase3 = append(phase3, esDisabled, kbDisabled, apmDisabled)
+	// entDisabled := entUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&entUpdated)
+	emsDisabled := emsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&emsUpdated)
+	phase3 = append(phase3, esDisabled, eprDisabled, kbDisabled, apmDisabled, emsDisabled)
 
 	// Phase 4: transition back to enabled again
 	phase4 = make([]test.Builder, 0)
 	esReenabled := esDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&esDisabled)
+	eprReenabled := eprDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&eprDisabled)
 	kbReenabled := kbDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&kbDisabled)
 	apmReenabled := apmDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&apmDisabled)
-	phase4 = append(phase4, esReenabled, kbReenabled, apmReenabled)
+	// entReenabled := entDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&entDisabled)
+	emsReenabled := emsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&emsDisabled)
+	phase4 = append(phase4, esReenabled, eprReenabled, kbReenabled, apmReenabled, emsReenabled)
 
 	// Phase 5: pod deletion (no builders)
 
 	// Phase 6: re-disable the annotation
 	phase6 = make([]test.Builder, 0)
 	esRedisabled := esReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&esReenabled)
+	eprRedisabled := eprReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&eprReenabled)
 	kbRedisabled := kbReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&kbReenabled)
 	apmRedisabled := apmReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&apmReenabled)
-	phase6 = append(phase6, esRedisabled, kbRedisabled, apmRedisabled)
+	// entRedisabled := entReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&entReenabled)
+	emsRedisabled := emsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&emsReenabled)
+	phase6 = append(phase6, esRedisabled, eprRedisabled, kbRedisabled, apmRedisabled, emsRedisabled)
 
 	return initial, phase1, phase2, phase3, phase4, phase6
 }

@@ -63,6 +63,17 @@ func (b Builder) ResourceName() string {
 	return b.EPR.Name
 }
 
+func (b Builder) DeepCopy() *Builder {
+	epr := b.EPR.DeepCopy()
+	builderCopy := Builder{
+		EPR: *epr,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.EPR.ObjectMeta.Name = b.EPR.ObjectMeta.Name + "-" + suffix
