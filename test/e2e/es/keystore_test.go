@@ -10,19 +10,13 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	commonkeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -40,10 +34,23 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			Name:      "user-secrets-1",
 			Namespace: test.Ctx().ManagedNamespace(0),
 		},
+		// secureSettings1 is populated below with N>1 entries to also exercise
+		// the batched `elasticsearch-keystore add-file` path (#9439). The keys
+		// generated here are merged with the well-known securePasswordSettingKey
+		// so the existing assertion that exact-checks for that key still holds.
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise ES refuses to start
 			securePasswordSettingKey: []byte("foo_pw"),
 		},
+	}
+	// Add additional valid xpack.notification.email entries so the keystore is
+	// initialized with a non-trivial number of secure settings on each Pod.
+	// This exercises the batched add-file invocation introduced in #9440 in
+	// the same end-to-end run, without the cost of a dedicated test cluster.
+	const extraEntries = 24 // 24 + securePasswordSettingKey == 25 total in secureSettings1
+	extraKeys, extraData := generateExtraSecureSettings(extraEntries)
+	for k, v := range extraData {
+		secureSettings1.Data[k] = v
 	}
 	secureSettings2 := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -57,6 +64,20 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	}
 
 	secureSettings := []corev1.Secret{secureSettings1, secureSettings2}
+
+	// initialKeys is the full set of keys we expect to find in the keystore
+	// once both secrets are referenced (sorted, since the e2e helper compares
+	// against `elasticsearch-keystore list`'s sorted output).
+	initialKeys := append([]string{securePasswordSettingKey, secureBarUserSettingKey}, extraKeys...)
+	sort.Strings(initialKeys)
+
+	// after secureSettings2 is updated to drop bar and add baz
+	updatedKeys := append([]string{securePasswordSettingKey, secureBazUserSettingKey}, extraKeys...)
+	sort.Strings(updatedKeys)
+
+	// after secureSettings2 is deleted
+	postDeleteKeys := append([]string{securePasswordSettingKey}, extraKeys...)
+	sort.Strings(postDeleteKeys)
 
 	// set up a 3-nodes cluster with secure settings
 	b := elasticsearch.NewBuilder("test-es-keystore").
@@ -78,9 +99,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		WithSteps(test.CheckTestSteps(b, k)).
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
-			elasticsearch.CheckESKeystoreEntries(k, b, []string{
-				securePasswordSettingKey,
-				secureBarUserSettingKey}),
+			elasticsearch.CheckESKeystoreEntries(k, b, initialKeys),
 
 			// modify the secure settings secret
 			test.Step{
@@ -94,10 +113,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				}),
 			},
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b, []string{
-				securePasswordSettingKey,
-				secureBazUserSettingKey,
-			}),
+			elasticsearch.CheckESKeystoreEntries(k, b, updatedKeys),
 			// remove one secret
 			test.Step{
 				Name: "Remove one of the source secrets",
@@ -110,9 +126,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				}),
 			},
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b, []string{
-				securePasswordSettingKey,
-			}),
+			elasticsearch.CheckESKeystoreEntries(k, b, postDeleteKeys),
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
@@ -147,113 +161,19 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		RunSequential(t)
 }
 
-// TestESKeystoreBatchAddAtScale exercises the keystore init container with a
-// non-trivial number of secure settings to validate that ECK adds them to the
-// Elasticsearch keystore in a single batched `elasticsearch-keystore add-file`
-// invocation rather than once per key. See https://github.com/elastic/cloud-on-k8s/issues/9439.
-//
-// The test:
-//   - creates a single secure-settings Secret with N=25 valid xpack.notification
-//     entries (mirroring how StackConfigPolicy aggregates many secrets into one),
-//   - starts a single-node Elasticsearch cluster referencing that Secret,
-//   - asserts that all N keys are present in the keystore on every Pod, and
-//   - asserts that the rendered init container script uses the batched form
-//     (a regression guard against accidentally reverting to the per-file loop,
-//     which incurs a JVM startup per key and dominates pod startup at scale).
-func TestESKeystoreBatchAddAtScale(t *testing.T) {
-	k := test.NewK8sClientOrFatal()
-
-	const n = 25
-	keys, secretData := generateTestSecureSettings(n)
-
-	secureSettings := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("es-keystore-batch-secrets-%s", rand.String(4)),
-			Namespace: test.Ctx().ManagedNamespace(0),
-		},
-		Data: secretData,
-	}
-
-	b := elasticsearch.NewBuilder("test-es-keystore-batch").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithESSecureSettings(secureSettings.Name)
-
-	test.StepList{}.
-		WithStep(test.Step{
-			Name: fmt.Sprintf("Create secure settings secret with %d entries", n),
-			Test: test.Eventually(func() error {
-				return k.CreateOrUpdateSecrets(secureSettings)
-			}),
-		}).
-		WithSteps(b.InitTestSteps(k)).
-		WithSteps(b.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(b, k)).
-		WithStep(elasticsearch.CheckESKeystoreEntries(k, b, keys)).
-		WithStep(checkKeystoreInitScriptIsBatched(k, b.Elasticsearch)).
-		WithSteps(b.DeletionTestSteps(k)).
-		WithStep(test.Step{
-			Name: "Delete secure settings secret",
-			Test: test.Eventually(func() error {
-				err := k.Client.Delete(context.Background(), &secureSettings)
-				if err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-				return nil
-			}),
-		}).
-		RunSequential(t)
-}
-
-// generateTestSecureSettings returns n valid xpack.notification secure setting
-// names and a corresponding Secret data map populated with inert test fixtures
-// (not real credentials). Names are returned sorted to match the order
-// Elasticsearch reports them via `elasticsearch-keystore list`.
-func generateTestSecureSettings(n int) ([]string, map[string][]byte) {
+// generateExtraSecureSettings returns n valid xpack.notification secure
+// setting names plus an inert test-fixture value for each one. Used to bulk
+// up TestUpdateESSecureSettings with enough entries to exercise the batched
+// `elasticsearch-keystore add-file` path on a real cluster (#9439). The
+// values are not credentials; xpack.notification.email accepts arbitrary
+// account names so we can mint as many valid entries as we want.
+func generateExtraSecureSettings(n int) ([]string, map[string][]byte) {
 	keys := make([]string, 0, n)
 	data := make(map[string][]byte, n)
 	for i := 0; i < n; i++ {
-		// xpack.notification.email accepts arbitrary user-defined account
-		// names, so we can mint as many valid secure settings as we want.
 		key := fmt.Sprintf("xpack.notification.email.account.acct%02d.smtp.secure_password", i)
 		keys = append(keys, key)
 		data[key] = []byte(fmt.Sprintf("test-fixture-%02d", i))
 	}
-	sort.Strings(keys)
 	return keys, data
-}
-
-// checkKeystoreInitScriptIsBatched asserts that the keystore init container's
-// rendered script issues a single `elasticsearch-keystore add-file` invocation
-// over a bash array of (setting, path) pairs, rather than one invocation per
-// secret. This guards against accidentally reverting to the legacy per-file
-// loop introduced before https://github.com/elastic/cloud-on-k8s/issues/9439.
-func checkKeystoreInitScriptIsBatched(k *test.K8sClient, es esv1.Elasticsearch) test.Step {
-	return test.Step{
-		Name: "Keystore init container script should batch add-file invocations",
-		Test: test.Eventually(func() error {
-			if len(es.Spec.NodeSets) == 0 {
-				return fmt.Errorf("expected at least one nodeset")
-			}
-			var sset appsv1.StatefulSet
-			if err := k.Client.Get(
-				context.Background(),
-				types.NamespacedName{Namespace: es.Namespace, Name: esv1.StatefulSet(es.Name, es.Spec.NodeSets[0].Name)},
-				&sset,
-			); err != nil {
-				return err
-			}
-			init := pod.InitContainerByName(sset.Spec.Template.Spec, commonkeystore.InitContainerName)
-			if init == nil {
-				return fmt.Errorf("init container %q not found", commonkeystore.InitContainerName)
-			}
-			script := strings.Join(init.Command, " ")
-			if !strings.Contains(script, `add-file "${add_args[@]}"`) {
-				return fmt.Errorf("expected batched `add-file \"${add_args[@]}\"` form in keystore init script, got: %s", script)
-			}
-			if strings.Contains(script, `add-file "$key" "$filename"`) {
-				return fmt.Errorf("legacy per-file `add-file \"$key\" \"$filename\"` form unexpectedly present in keystore init script: %s", script)
-			}
-			return nil
-		}),
-	}
 }

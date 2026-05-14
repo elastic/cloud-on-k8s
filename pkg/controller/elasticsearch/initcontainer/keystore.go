@@ -21,7 +21,8 @@ const (
 // settings one at a time would incur the JVM startup cost for every entry,
 // which can dominate pod startup when many secure settings are referenced
 // (for example via StackConfigPolicy). Variadic add-file is supported by
-// Elasticsearch since 7.7 (elastic/elasticsearch#54240).
+// Elasticsearch since 7.7 (elastic/elasticsearch#54240), which is below the
+// minimum Elasticsearch version ECK supports once #9041 lands.
 const keystoreScript = `#!/usr/bin/env bash
 
 set -eux
