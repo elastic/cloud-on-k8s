@@ -8,14 +8,10 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
-const (
-	Type = "enterprise-search"
-)
-
 // GetIdentityLabels will return the common Elastic assigned labels for EnterpriseSearch.
 func (es *EnterpriseSearch) GetIdentityLabels() map[string]string {
 	return map[string]string{
-		commonv1.TypeLabelName:                 Type,
+		commonv1.TypeLabelName:                 "enterprise-search",
 		"enterprisesearch.k8s.elastic.co/name": es.Name,
 	}
 }

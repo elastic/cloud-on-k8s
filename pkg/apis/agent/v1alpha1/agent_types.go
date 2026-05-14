@@ -375,7 +375,6 @@ func (a *Agent) MergeConditions(conditions ...commonv1.Condition) {
 	if a.Status.Conditions == nil {
 		a.Status.Conditions = make([]commonv1.Condition, 0)
 	}
-
 	a.Status.Conditions = a.Status.Conditions.MergeWith(conditions...)
 }
 

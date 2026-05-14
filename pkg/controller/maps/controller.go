@@ -266,7 +266,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ems, configHash, meta)
+	deploy, err := r.reconcileDeployment(ctx, &ems, configHash, meta)
 	if err != nil {
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
@@ -352,28 +352,36 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 
 func (r *ReconcileMapsServer) reconcileDeployment(
 	ctx context.Context,
-	ems emsv1alpha1.ElasticMapsServer,
+	ems *emsv1alpha1.ElasticMapsServer,
 	configHash string,
 	meta metadata.Metadata,
 ) (appsv1.Deployment, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deployParams, err := r.deploymentParams(ems, configHash, meta)
+	deployParams, err := r.deploymentParams(*ems, configHash, meta)
 	if err != nil {
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	if common.IsOrchestrationPaused(&ems) {
-		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ems, &deploy)
+	if common.IsOrchestrationPaused(ems) {
+		// The status is built later based on the reconciled deployment. When the pause-orchestration
+		// annotation is enabled, we return the existing deployment to avoid later setting the status health to "red"
+		// in the call to the common.DeploymentStatus function.
+		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, ems, &deploy)
 		if err != nil {
 			return appsv1.Deployment{}, err
 		}
-		return deploy, nil
+		var existing = appsv1.Deployment{}
+		if err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
+			return appsv1.Deployment{}, err
+		}
+
+		return existing, nil
 	}
 
 	common.MaybeResetPausedCondition(&ems.Status.Conditions)
-	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ems)
+	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ems)
 }
 
 func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (deployment.Params, error) {

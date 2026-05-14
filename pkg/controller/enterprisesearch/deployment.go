@@ -15,33 +15,42 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
-	ent entv1.EnterpriseSearch,
+	ent *entv1.EnterpriseSearch,
 	configHash string,
 	meta metadata.Metadata,
 ) (appsv1.Deployment, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deployParams, err := r.deploymentParams(ent, configHash, meta)
+	deployParams, err := r.deploymentParams(*ent, configHash, meta)
 	if err != nil {
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	if common.IsOrchestrationPaused(&ent) {
-		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, &ent, &deploy)
+	if common.IsOrchestrationPaused(ent) {
+		// The status is built later based on the reconciled deployment. When the pause-orchestration
+		// annotation is enabled, we return the existing deployment to avoid later setting the status health to "red"
+		// in the call to the common.DeploymentStatus function.
+		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, ent, &deploy)
 		if err != nil {
 			return appsv1.Deployment{}, err
 		}
-		return deploy, nil
+		var existing = appsv1.Deployment{}
+		if err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
+			return appsv1.Deployment{}, err
+		}
+
+		return existing, nil
 	}
 
 	common.MaybeResetPausedCondition(&ent.Status.Conditions)
-	return deployment.Reconcile(ctx, r.K8sClient(), deploy, &ent)
+	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ent)
 }
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string, meta metadata.Metadata) (deployment.Params, error) {
