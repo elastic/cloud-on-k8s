@@ -88,6 +88,6 @@ func Reconcile(
 // WithTemplateHash returns a new DaemonSet with a hash of its template to ease comparisons.
 func WithTemplateHash(d appsv1.DaemonSet) appsv1.DaemonSet {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
 }

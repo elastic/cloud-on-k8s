@@ -240,19 +240,19 @@ func cleanupOrphanedConfigMaps(
 	return nil
 }
 
-// cleanupOrphanedSecrets removes secrets (CA, client cert, and API key) for ES clusters that no longer match the selector.
-func cleanupOrphanedSecrets(
+// cleanupOrphanedSecrets removes secrets (CA, client cert, and API key) for ES clusters that no longer
+// match the selector. The dynamic watch registered for each managed secret is also removed; otherwise
+// it would linger until policy deletion, by which time the secret is gone and onDelete's
+// label-driven enumeration can't find it.
+func (r *AgentPolicyReconciler) cleanupOrphanedSecrets(
 	ctx context.Context,
 	log logr.Logger,
-	c k8s.Client,
-	esClientProvider commonesclient.Provider,
-	dialer net.Dialer,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	matchLabels client.MatchingLabels,
 	matchingESset sets.Set[types.NamespacedName],
 ) error {
 	var secrets corev1.SecretList
-	if err := c.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
+	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
 		return err
 	}
 
@@ -266,16 +266,20 @@ func cleanupOrphanedSecrets(
 		if secretType, exists := secret.Labels[policySecretTypeLabelKey]; exists && secretType == "api-key" {
 			// Try to get the ES cluster to clean up API key
 			var es esv1.Elasticsearch
-			if err := c.Get(ctx, esNN, &es); err == nil {
+			if err := r.Client.Get(ctx, esNN, &es); err == nil {
 				// ES cluster exists, try to clean up API key
-				if err := cleanupAutoOpsESAPIKey(ctx, c, esClientProvider, dialer, policy.Namespace, policy.Name, es); err != nil {
+				if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy.Namespace, policy.Name, es); err != nil {
 					log.Error(err, "while cleaning up API key for ES cluster, continuing with secret deletion", "es_namespace", esNN.Namespace, "es_name", esNN.Name)
 				}
 			}
 		}
 
+		// Remove the dynamic watch keyed by secret name (registered in
+		// reconcileAutoOpsESCASecret / reconcileAutoOpsESClientCertSecret).
+		r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
+
 		log.Info("Deleting orphaned Secret", "secret", secret.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
-		if err := c.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.Client.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}

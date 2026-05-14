@@ -267,8 +267,8 @@ func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 		return fmt.Errorf("while cleaning up configmaps: %w", err)
 	}
 
-	// Cleanup both CA secrets and API Key.
-	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esSet); err != nil {
+	// Cleanup CA, client cert, and API key secrets.
+	if err := r.cleanupOrphanedSecrets(ctx, log, policy, matchLabels, esSet); err != nil {
 		return fmt.Errorf("while cleaning up secrets: %w", err)
 	}
 
