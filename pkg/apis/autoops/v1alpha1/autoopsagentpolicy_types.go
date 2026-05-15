@@ -74,7 +74,7 @@ type AutoOpsAgentPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

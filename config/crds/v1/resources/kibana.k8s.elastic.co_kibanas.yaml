@@ -667,7 +667,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:
@@ -9863,7 +9863,7 @@ spec:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:

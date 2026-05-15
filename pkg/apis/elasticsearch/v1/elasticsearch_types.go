@@ -399,7 +399,7 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	ZoneAwareness *ZoneAwareness `json:"zoneAwareness,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

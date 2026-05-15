@@ -646,7 +646,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       properties:
@@ -11608,7 +11608,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       properties:

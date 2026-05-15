@@ -245,7 +245,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options for the Logstash
+                description: PodTemplate provides customization options for the Logstash
                   pods.
                 properties:
                   metadata:

@@ -557,7 +557,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 properties:
@@ -9747,7 +9747,7 @@ spec:
                 description: Image is the APM Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 properties:

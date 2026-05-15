@@ -34,7 +34,7 @@ type ApmServerSpec struct {
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

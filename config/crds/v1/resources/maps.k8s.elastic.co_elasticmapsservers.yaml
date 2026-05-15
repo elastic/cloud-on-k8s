@@ -537,7 +537,7 @@ spec:
                 description: Image is the Elastic Maps Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 properties:

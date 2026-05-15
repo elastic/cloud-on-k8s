@@ -121,7 +121,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Agent pods
                 properties:
                   metadata:

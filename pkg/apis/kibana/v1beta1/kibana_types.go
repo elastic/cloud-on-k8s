@@ -34,7 +34,7 @@ type KibanaSpec struct {
 	// HTTP holds the HTTP layer configuration for Kibana.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

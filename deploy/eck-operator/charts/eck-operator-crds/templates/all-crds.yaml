@@ -1798,7 +1798,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
@@ -2485,7 +2485,7 @@ spec:
                 description: Image is the APM Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
@@ -2695,7 +2695,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Agent pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -4037,7 +4037,7 @@ spec:
                 description: Image is the Elastic Maps Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 type: object
@@ -5204,7 +5204,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
@@ -7381,7 +7381,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
@@ -8409,7 +8409,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -9079,7 +9079,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -9826,7 +9826,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -10519,7 +10519,7 @@ spec:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -10842,7 +10842,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options for the Logstash
+                description: PodTemplate provides customization options for the Logstash
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -12412,7 +12412,7 @@ spec:
                   deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Package
                   Registry pods
                 type: object
