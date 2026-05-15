@@ -286,6 +286,11 @@ func (k *Kibana) MergeConditions(conditions ...commonv1.Condition) {
 	k.Status.Conditions = k.Status.Conditions.MergeWith(conditions...)
 }
 
+// Conditions returns this Kibana's KibanaStatus Conditions.
+func (k *Kibana) Conditions() commonv1.Conditions {
+	return k.Status.Conditions
+}
+
 // -- association with Elasticsearch
 
 func (k *Kibana) EsAssociation() *KibanaEsAssociation {

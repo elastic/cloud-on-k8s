@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -63,9 +64,7 @@ func TestPauseOrchestration(t *testing.T) {
 		for _, b := range phase1 {
 			if !b.SkipTest() {
 				steps = steps.
-					WithSteps(b.UpgradeTestSteps(k)). // TODO switch back to Mutation?
-					// WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(initialBuilder, k)).
-					// WithSteps(enabledBuilder.MutationTestSteps(k)).
+					WithSteps(b.UpgradeTestSteps(k)).
 					WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, b, false))
 			}
 		}
@@ -404,7 +403,6 @@ func pauseOrchestrationBuilders(t *testing.T) (
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	esWithLicense := test.LicenseTestBuilder(esInitial)
-	// TODO fill in the stateless apps
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
 	// EPR
 	eprInitial := epr.NewBuilder(testName(eprlabel.Type)).
@@ -457,9 +455,14 @@ func pauseOrchestrationBuilders(t *testing.T) (
 		phase1 = append(phase1, entEnabled)
 	}
 
-	// Phase 2: update topology of each application - add 1 to each
+	// Phase 2: update topology of each application
 	phase2 = make([]test.Builder, 0)
-	esUpdated := esEnabled.DeepCopy().WithESCoordinatingNodes(1, elasticsearch.DefaultResources).WithMutatedFrom(&esEnabled)
+	esUpdated := esEnabled.DeepCopy().WithESMasterNodes(1, corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		}}).
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithMutatedFrom(&esEnabled)
 	eprUpdated := eprEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&eprEnabled)
 	kbUpdated := kbEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&kbEnabled)
 	apmUpdated := apmEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&apmEnabled)

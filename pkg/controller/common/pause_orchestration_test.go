@@ -15,9 +15,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	beatv1b1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/daemonset"
@@ -103,16 +106,27 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		d := &appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
 			Spec: appsv1.DeploymentSpec{
-				// Replicas: replicas,
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Image: fmt.Sprintf("foo-%d", replicas),
-							},
-						},
-					},
-				},
+				Replicas: replicas,
+			},
+		}
+		d.Labels = hash.SetTemplateHashLabel(d.Labels, d.Spec)
+		return d
+	}
+	makeDaemonSet := func(updateStrategy appsv1.DaemonSetUpdateStrategy) *appsv1.DaemonSet {
+		d := &appsv1.DaemonSet{
+			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			Spec: appsv1.DaemonSetSpec{
+				UpdateStrategy: updateStrategy,
+			},
+		}
+		d.Labels = hash.SetTemplateHashLabel(d.Labels, d.Spec)
+		return d
+	}
+	makeStatefulSet := func(replicas *int32) *appsv1.StatefulSet {
+		d := &appsv1.StatefulSet{
+			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: replicas,
 			},
 		}
 		d.Labels = hash.SetTemplateHashLabel(d.Labels, d.Spec)
@@ -120,20 +134,48 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 	}
 
 	// TODO extend this test for other CRs and resource types
-	baseKibana := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: "9.3.1"}}
+	baseKibana := kbv1.Kibana{
+		Spec: kbv1.KibanaSpec{
+			Version: "9.3.1",
+		},
+	}
+	baseAgent := agentv1alpha1.Agent{
+		Spec: agentv1alpha1.AgentSpec{
+			Version: "9.3.1",
+			StatefulSet: &agentv1alpha1.StatefulSetSpec{
+				Replicas: &one,
+			},
+		}}
+	sameUpdateStrategy := appsv1.DaemonSetUpdateStrategy{
+		Type: appsv1.RollingUpdateDaemonSetStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDaemonSet{
+			MaxUnavailable: new(intstr.FromInt32(1)),
+		},
+	}
+	differentUpdateStrategy := appsv1.DaemonSetUpdateStrategy{
+		Type: appsv1.OnDeleteDaemonSetStrategyType,
+	}
+	baseBeat := beatv1b1.Beat{
+		Spec: beatv1b1.BeatSpec{
+			Version: "9.3.1",
+			DaemonSet: &beatv1b1.DaemonSetSpec{
+				UpdateStrategy: sameUpdateStrategy,
+			},
+		},
+	}
 
 	tests := []struct {
 		name             string
 		existingObjs     []client.Object
 		parentObject     ObjectWithConditions
-		expectedVehicle  *appsv1.Deployment
+		expectedVehicle  client.Object
 		clientErr        error
 		wantConditionMsg string
 		wantEvent        string
 		wantError        bool
 	}{
 		{
-			name:             "resource does not exist — pending changes",
+			name:             "deployment does not exist — pending changes",
 			existingObjs:     nil,
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
@@ -141,7 +183,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
-			name:             "resource exists with matching spec — no pending changes",
+			name:             "deployment exists with matching spec — no pending changes",
 			existingObjs:     []client.Object{makeDeployment(&one)},
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
@@ -149,10 +191,58 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
 		},
 		{
-			name:             "resource exists with different spec — pending changes",
+			name:             "deployment exists with different spec — pending changes",
 			existingObjs:     []client.Object{makeDeployment(&one)},
-			parentObject:     &kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: "9.3.1"}},
+			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&two),
+			wantConditionMsg: PausedWithPendingChangesMessage,
+			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
+		},
+		{
+			name:             "statefulset does not exist — pending changes",
+			existingObjs:     nil,
+			parentObject:     baseAgent.DeepCopy(),
+			expectedVehicle:  makeStatefulSet(&one),
+			wantConditionMsg: PausedWithPendingChangesMessage,
+			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
+		},
+		{
+			name:             "statefulset exists with matching spec — no pending changes",
+			existingObjs:     []client.Object{makeStatefulSet(&one)},
+			parentObject:     baseAgent.DeepCopy(),
+			expectedVehicle:  makeStatefulSet(&one),
+			wantConditionMsg: PausedNoChangesMessage,
+			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
+		},
+		{
+			name:             "statefulset exists with different spec — pending changes",
+			existingObjs:     []client.Object{makeStatefulSet(&one)},
+			parentObject:     baseAgent.DeepCopy(),
+			expectedVehicle:  makeStatefulSet(&two),
+			wantConditionMsg: PausedWithPendingChangesMessage,
+			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
+		},
+		{
+			name:             "daemonset does not exist — pending changes",
+			existingObjs:     nil,
+			parentObject:     baseBeat.DeepCopy(),
+			expectedVehicle:  makeDaemonSet(sameUpdateStrategy),
+			wantConditionMsg: PausedWithPendingChangesMessage,
+			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
+		},
+		{
+			name:             "daemonset exists with matching spec — no pending changes",
+			existingObjs:     []client.Object{makeDaemonSet(sameUpdateStrategy)},
+			parentObject:     baseBeat.DeepCopy(),
+			expectedVehicle:  makeDaemonSet(sameUpdateStrategy),
+			wantConditionMsg: PausedNoChangesMessage,
+			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
+		},
+		{
+			name:             "daemonset exists with different spec — pending changes",
+			existingObjs:     []client.Object{makeDeployment(&one)},
+			parentObject:     baseBeat.DeepCopy(),
+			expectedVehicle:  makeDaemonSet(differentUpdateStrategy),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
@@ -184,10 +274,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// TODO consider adding a get function on the ObjectWithConditions interface
-			parent, ok := tt.parentObject.(*kbv1.Kibana)
-			require.True(t, ok)
-			conditions := parent.Status.Conditions
+			conditions := tt.parentObject.Conditions()
 			idx := conditions.Index(commonv1.OrchestrationPaused)
 			require.GreaterOrEqual(t, idx, 0, "OrchestrationPaused condition should be present")
 			assert.Equal(t, corev1.ConditionTrue, conditions[idx].Status)

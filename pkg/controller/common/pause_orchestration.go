@@ -85,7 +85,6 @@ func SetPausedConditionAndEmitEvent(
 // MaybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not
 // already exist.
 func MaybeResetPausedCondition(conditions *commonv1.Conditions) {
-	// TODO consider adding getter on ObjectWithConditions and passing the object
 	if conditions == nil {
 		return
 	}
@@ -131,6 +130,7 @@ func hasPendingChanges(ctx context.Context, c k8s.Client, expected client.Object
 type ObjectWithConditions interface {
 	client.Object
 	MergeConditions(conditions ...commonv1.Condition)
+	Conditions() commonv1.Conditions
 }
 
 // These type-checks are defined here to avoid an import cycle between the API packages and this package, but also

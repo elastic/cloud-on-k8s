@@ -298,6 +298,11 @@ func (b *Beat) MergeConditions(conditions ...commonv1.Condition) {
 	b.Status.Conditions = b.Status.Conditions.MergeWith(conditions...)
 }
 
+// Conditions returns this Beat's BeatStatus Conditions.
+func (b *Beat) Conditions() commonv1.Conditions {
+	return b.Status.Conditions
+}
+
 type BeatESAssociation struct {
 	*Beat
 }

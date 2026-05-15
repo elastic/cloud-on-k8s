@@ -175,6 +175,11 @@ func (m *ElasticMapsServer) MergeConditions(conditions ...commonv1.Condition) {
 	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
 }
 
+// Conditions returns this ElasticMapsServer's MapsStatus Conditions.
+func (m *ElasticMapsServer) Conditions() commonv1.Conditions {
+	return m.Status.Conditions
+}
+
 // +kubebuilder:object:root=true
 
 // ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.
