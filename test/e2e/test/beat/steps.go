@@ -7,6 +7,7 @@ package beat
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -123,8 +124,9 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				beat.Status.ObservedGeneration = 0
 
 				expected := beatv1beta1.BeatStatus{
-					Version: b.Beat.Spec.Version,
-					Health:  "green",
+					Version:    b.Beat.Spec.Version,
+					Health:     "green",
+					Conditions: beat.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				}
 				if b.Beat.Spec.Deployment != nil {
 					expectedReplicas := pointer.Int32OrDefault(b.Beat.Spec.Deployment.Replicas, int32(1))
@@ -198,6 +200,11 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Beat), &beat); err != nil {
 					return err
 				}
+				// merge annotations
+				if beat.Annotations == nil {
+					beat.Annotations = make(map[string]string)
+				}
+				maps.Copy(beat.Annotations, b.Beat.Annotations)
 				beat.Spec = b.Beat.Spec
 				return k.Client.Update(context.Background(), &beat)
 			}),

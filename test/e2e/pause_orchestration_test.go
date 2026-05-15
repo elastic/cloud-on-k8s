@@ -18,22 +18,32 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	beatv1b1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
+	agentlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	apmlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
+	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	entlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/enterprisesearch"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	emslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	eprlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
+	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
+	beattests "github.com/elastic/cloud-on-k8s/v3/test/e2e/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
@@ -41,7 +51,30 @@ import (
 	ems "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/maps"
 )
 
-func TestPauseOrchestration(t *testing.T) {
+// All PauseOrchestration tests include Elasticsearch and Kibana
+
+func TestPauseOrchestration_APM(t *testing.T) {
+	testSequenceForTypes(t, apmlabel.Type)
+}
+
+func TestPauseOrchestration_PackageRegistryAndMaps(t *testing.T) {
+	testSequenceForTypes(t, eprlabel.Type, emslabels.Type)
+}
+
+func TestPauseOrchestration_EnterpriseSearch(t *testing.T) {
+	testSequenceForTypes(t, entlabel.Type)
+}
+
+func TestPauseOrchestration_Agent(t *testing.T) {
+	testSequenceForTypes(t, agentlabel.TypeLabelValue)
+}
+
+func TestPauseOrchestration_Beat(t *testing.T) {
+	testSequenceForTypes(t, beatcommon.TypeLabelValue)
+}
+
+func testSequenceForTypes(t *testing.T, typ ...string) {
+	t.Helper()
 	// only execute this test if we have a test license to work with
 	if test.Ctx().TestLicense == "" {
 		t.SkipNow()
@@ -49,9 +82,16 @@ func TestPauseOrchestration(t *testing.T) {
 
 	namespace := test.Ctx().ManagedNamespace(0)
 
-	initial, phase1, phase2, phase3, phase4, phase6 := pauseOrchestrationBuilders(t)
+	initial, phase1, phase2, phase3, phase4, phase6 := pauseOrchestrationBuilders(t, typ...)
 
-	pauseOrchestrationSteps := func(k *test.K8sClient) test.StepList {
+	pauseOrchestrationSteps := createTestStepsForBuilders(t, namespace, initial, phase1, phase2, phase3, phase4, phase6)
+
+	test.Sequence(nil, pauseOrchestrationSteps, initial...).RunSequential(t)
+}
+
+func createTestStepsForBuilders(t *testing.T, namespace string, initial, phase1, phase2, phase3, phase4, phase6 []test.Builder) func(k *test.K8sClient) test.StepList {
+	t.Helper()
+	return func(k *test.K8sClient) test.StepList {
 		// Create with pause orchestration disabled (default)
 		steps := test.StepList{}
 		for _, b := range initial {
@@ -117,8 +157,6 @@ func TestPauseOrchestration(t *testing.T) {
 		}
 		return steps
 	}
-
-	test.Sequence(nil, pauseOrchestrationSteps, initial...).RunSequential(t)
 }
 
 func verifyPauseOrchestrationEnabled(t *testing.T, k *test.K8sClient, namespace string, builder test.Builder, specChangesMade bool) test.Step {
@@ -155,7 +193,7 @@ func verifyStackComponentPaused(t *testing.T, typ string, obj k8sclient.Object, 
 	case label.Type:
 		return verifyElasticsearchOrchestrationPaused(t, obj, specChangesExpected)
 	default:
-		return verifyDeploymentOrchestrationPaused(t, obj, specChangesExpected)
+		return verifyApplicationOrchestrationPaused(t, obj, specChangesExpected)
 	}
 }
 
@@ -193,18 +231,15 @@ func verifyElasticsearchOrchestrationPaused(t *testing.T, obj k8sclient.Object, 
 	return nil
 }
 
-func verifyDeploymentOrchestrationPaused(t *testing.T, obj k8sclient.Object, specChangesMade bool) error {
+func verifyApplicationOrchestrationPaused(t *testing.T, obj k8sclient.Object, specChangesMade bool) error {
 	t.Helper()
-	status, err := deploymentStatus(t, obj)
-	if err != nil {
-		return err
-	}
-	orchestrationPausedIndex := status.Conditions.Index(commonv1.OrchestrationPaused)
+	conditions := conditionsForObject(t, obj)
+	orchestrationPausedIndex := conditions.Index(commonv1.OrchestrationPaused)
 	if orchestrationPausedIndex < 0 {
 		return fmt.Errorf("%s condition does not exist on %s resource", commonv1.OrchestrationPaused, obj.GetName())
 	}
 
-	orchestrationCondition := status.Conditions[orchestrationPausedIndex]
+	orchestrationCondition := conditions[orchestrationPausedIndex]
 	if orchestrationCondition.Status == corev1.ConditionFalse {
 		return fmt.Errorf("condition %s should be true on %s", commonv1.OrchestrationPaused, obj.GetName())
 	}
@@ -253,7 +288,7 @@ func verifyStackComponentUnpaused(t *testing.T, typ string, obj k8sclient.Object
 	case label.Type:
 		return verifyElasticsearchOrchestrationUnpaused(t, obj, previouslyPaused)
 	default:
-		return verifyDeploymentOrchestrationUnpaused(t, obj, previouslyPaused)
+		return verifyApplicationOrchestrationUnpaused(t, obj, previouslyPaused)
 	}
 }
 
@@ -277,18 +312,15 @@ func verifyElasticsearchOrchestrationUnpaused(t *testing.T, obj k8sclient.Object
 	return nil
 }
 
-func verifyDeploymentOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool) error {
+func verifyApplicationOrchestrationUnpaused(t *testing.T, obj k8sclient.Object, previouslyPaused bool) error {
 	t.Helper()
-	status, err := deploymentStatus(t, obj)
-	if err != nil {
-		return err
-	}
-	orchestrationPausedIndex := status.Conditions.Index(commonv1.OrchestrationPaused)
+	conditions := conditionsForObject(t, obj)
+	orchestrationPausedIndex := conditions.Index(commonv1.OrchestrationPaused)
 	if !previouslyPaused && orchestrationPausedIndex >= 0 {
 		return fmt.Errorf("%s condition should not exist on the %s resource", commonv1.OrchestrationPaused, commonv1.OrchestrationPaused)
 	}
 
-	if orchestrationPausedIndex >= 0 && status.Conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
+	if orchestrationPausedIndex >= 0 && conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
 		return fmt.Errorf("condition %s should be false", commonv1.OrchestrationPaused)
 	}
 	return nil
@@ -316,34 +348,11 @@ func deletePod(t *testing.T, k *test.K8sClient, namespace string, builder test.B
 	}
 }
 
-func deploymentStatus(t *testing.T, obj k8sclient.Object) (commonv1.DeploymentStatus, error) {
+func conditionsForObject(t *testing.T, obj k8sclient.Object) commonv1.Conditions {
 	t.Helper()
-	var status commonv1.DeploymentStatus
-	switch obj.(type) {
-	case *kbv1.Kibana:
-		kb, ok := obj.(*kbv1.Kibana)
-		require.Truef(t, ok, "expected Kibana resource but got %T", obj)
-		status = kb.Status.DeploymentStatus
-	case *apmv1.ApmServer:
-		apm, ok := obj.(*apmv1.ApmServer)
-		require.Truef(t, ok, "expected ApmServer resource but got %T", obj)
-		status = apm.Status.DeploymentStatus
-	case *eprv1alpha1.PackageRegistry:
-		e, ok := obj.(*eprv1alpha1.PackageRegistry)
-		require.Truef(t, ok, "expected PackageRegistry resource but got %T", obj)
-		status = e.Status.DeploymentStatus
-	case *emsv1alpha1.ElasticMapsServer:
-		e, ok := obj.(*emsv1alpha1.ElasticMapsServer)
-		require.Truef(t, ok, "expected ElasticMapsServer resource but got %T", obj)
-		status = e.Status.DeploymentStatus
-	case *entv1.EnterpriseSearch:
-		ent, ok := obj.(*entv1.EnterpriseSearch)
-		require.Truef(t, ok, "expected EnterpriseSearch resource but got %T", obj)
-		status = ent.Status.DeploymentStatus
-	default:
-		return commonv1.DeploymentStatus{}, fmt.Errorf("unexpected Deployment type %T", obj)
-	}
-	return status, nil
+	objectWithConditions, ok := obj.(common.ObjectWithConditions)
+	require.Truef(t, ok, "%T does not implement the ObjectWithConditions interface", obj)
+	return objectWithConditions.Conditions()
 }
 
 func listOptionsForType(t *testing.T, namespace string, typ string) []k8sclient.ListOption {
@@ -370,6 +379,10 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 		return &emsv1alpha1.ElasticMapsServer{}
 	case entlabel.Type:
 		return &entv1.EnterpriseSearch{}
+	case agentlabel.TypeLabelValue:
+		return &agentv1alpha1.Agent{}
+	case beatcommon.TypeLabelValue:
+		return &beatv1b1.Beat{}
 	default:
 		t.Fatalf("unknown type: %s", typ)
 	}
@@ -378,7 +391,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}
@@ -387,7 +400,29 @@ func typeForBuilder(t *testing.T, fullName string) string {
 	return ""
 }
 
-func pauseOrchestrationBuilders(t *testing.T) (
+type phaseBuilder struct {
+	testTypes map[string]struct{}
+	phase     []test.Builder
+}
+
+func newPhaseBuilder(testTypes map[string]struct{}) *phaseBuilder {
+	return &phaseBuilder{
+		testTypes: testTypes,
+		phase:     make([]test.Builder, 0),
+	}
+}
+
+func (p *phaseBuilder) AddBuilder(testBuilder test.Builder) {
+	p.phase = append(p.phase, testBuilder)
+}
+
+func (p *phaseBuilder) MaybeAddBuilder(typ string, subject test.Builder) {
+	if _, ok := p.testTypes[typ]; ok {
+		p.phase = append(p.phase, subject)
+	}
+}
+
+func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	initial []test.Builder,
 	phase1 []test.Builder,
 	phase2 []test.Builder,
@@ -396,123 +431,223 @@ func pauseOrchestrationBuilders(t *testing.T) (
 	phase6 []test.Builder) {
 	t.Helper()
 
+	testTypes := make(map[string]struct{})
+	for _, typ := range optionalTypes {
+		testTypes[typ] = struct{}{}
+	}
+
 	// Start with pause-orchestration disabled (default)
-	initial = make([]test.Builder, 0)
-	// Elasticsearch
+	initialBuilder := newPhaseBuilder(testTypes)
+	// Elasticsearch - ALWAYS created
 	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
 	esWithLicense := test.LicenseTestBuilder(esInitial)
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
+	initialBuilder.AddBuilder(esWithLicense)
+
 	// EPR
 	eprInitial := epr.NewBuilder(testName(eprlabel.Type)).
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
-	// Kibana
+	initialBuilder.MaybeAddBuilder(eprlabel.Type, eprInitial)
+
+	// Kibana - ALWAYS added
 	kbInitial := kibana.NewBuilder(testName(kblabel.Type)).
 		WithNodeCount(1).
 		WithElasticsearchRef(esRef).
-		WithPackageRegistryRef(eprInitial.Ref()).
-		WithRestrictedSecurityContext().
-		WithAPMIntegration()
+		WithRestrictedSecurityContext()
+	if _, testEPR := testTypes[eprlabel.Type]; testEPR {
+		kbInitial.WithPackageRegistryRef(eprInitial.Ref())
+	}
+	if _, testAPM := testTypes[apmlabel.Type]; testAPM {
+		kbInitial.WithAPMIntegration()
+	}
 	kbRef := commonv1.ObjectSelector{Namespace: kbInitial.Kibana.Namespace, Name: kbInitial.Kibana.Name}
+	initialBuilder.AddBuilder(kbInitial)
+
 	// APM
 	apmInitial := apmserver.NewBuilder(testName(apmlabel.Type)).
 		WithNodeCount(1).
 		WithElasticsearchRef(esRef).
 		WithKibanaRef(kbRef).
 		WithRestrictedSecurityContext()
+	initialBuilder.MaybeAddBuilder(apmlabel.Type, apmInitial)
+
 	// EMS
 	emsInitial := ems.NewBuilder(testName(emslabels.Type)).
 		WithNodeCount(1).
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
+	initialBuilder.MaybeAddBuilder(emslabels.Type, emsInitial)
+
+	// Beats
+	beatInitial := beat.NewBuilder(testName(beatcommon.TypeLabelValue)).
+		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithType(filebeat.Type).
+		WithElasticsearchRef(esRef).
+		WithKibanaRef(kbRef)
+	fileBeatConfig := beattests.E2EFilebeatConfig
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// Stack versions 8.0.X to 8.9.X do not support fingerprint identity type
+	// Versions 7.17.X and 8.10.X and above support fingerprint identity type
+	if !beattests.SupportsFingerprintIdentity(stackVersion) {
+		fileBeatConfig = beattests.E2EFilebeatConfigPRE810
+	}
+	beatInitial = beat.ApplyYamls(t, beatInitial, fileBeatConfig, beattests.E2EFilebeatPodTemplate)
+	initialBuilder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatInitial)
+
+	// Agent
+	agentInitial := agent.NewBuilder(testName(agentlabel.TypeLabelValue)).
+		WithElasticsearchRefs(agent.ToOutput(esRef, "default")).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"))
+	agentInitial = agent.ApplyYamls(t, agentInitial, e2e_agent.E2EAgentSystemIntegrationConfig, e2e_agent.E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
+	initialBuilder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentInitial)
+
 	// EnterpriseSearch - unsupported in 9+
 	entInitial := enterprisesearch.NewBuilder(testName(entlabel.Type)).
 		WithElasticsearchRef(esRef).
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
-	// TODO implement non-Deployment paths of the following 2
-	// Beats
-	// Agent
-	initial = append(initial, esWithLicense, eprInitial, kbInitial, apmInitial, emsInitial)
-
 	entSearchEnabled := !entInitial.SkipTest()
 	if entSearchEnabled {
-		initial = append(initial, entInitial)
+		initialBuilder.MaybeAddBuilder(entlabel.Type, entInitial)
 	}
+	initial = initialBuilder.phase
 
 	// Phase 1: transition to pause-orchestration: true
-	phase1 = make([]test.Builder, 0)
+	phase1Builder := newPhaseBuilder(testTypes)
 	esEnabled := esInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&esInitial)
+	phase1Builder.AddBuilder(esEnabled)
 	eprEnabled := eprInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&eprInitial)
+	phase1Builder.MaybeAddBuilder(eprlabel.Type, eprEnabled)
 	kbEnabled := kbInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&kbInitial)
+	phase1Builder.AddBuilder(kbEnabled)
 	apmEnabled := apmInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&apmInitial)
+	phase1Builder.MaybeAddBuilder(apmlabel.Type, apmEnabled)
 	emsEnabled := emsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&emsInitial)
+	phase1Builder.MaybeAddBuilder(emslabels.Type, emsEnabled)
+	beatEnabled := beatInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&beatInitial)
+	phase1Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatEnabled)
+	agentEnabled := agentInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&agentInitial)
+	phase1Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentEnabled)
 	entEnabled := entInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&entInitial)
-	phase1 = append(phase1, esEnabled, eprEnabled, kbEnabled, apmEnabled, emsEnabled)
 	if entSearchEnabled {
-		phase1 = append(phase1, entEnabled)
+		phase1Builder.MaybeAddBuilder(entlabel.Type, entEnabled)
 	}
+	phase1 = phase1Builder.phase
 
 	// Phase 2: update topology of each application
-	phase2 = make([]test.Builder, 0)
+	phase2Builder := newPhaseBuilder(testTypes)
 	esUpdated := esEnabled.DeepCopy().WithESMasterNodes(1, corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("1Gi"),
 		}}).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithMutatedFrom(&esEnabled)
+	phase2Builder.AddBuilder(esUpdated)
 	eprUpdated := eprEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&eprEnabled)
+	phase2Builder.MaybeAddBuilder(eprlabel.Type, eprUpdated)
 	kbUpdated := kbEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&kbEnabled)
+	phase2Builder.AddBuilder(kbUpdated)
 	apmUpdated := apmEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&apmEnabled)
+	phase2Builder.MaybeAddBuilder(apmlabel.Type, apmUpdated)
 	emsUpdated := emsEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&emsEnabled)
+	phase2Builder.MaybeAddBuilder(emslabels.Type, emsUpdated)
+	// TODO how to perform spec change for beat and agent?
+	beatUpdated := beatEnabled.DeepCopy().WithMutatedFrom(&beatEnabled)
+	phase2Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatUpdated)
+	agentUpdated := agentEnabled.DeepCopy().WithMutatedFrom(&agentEnabled)
+	phase2Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentUpdated)
 	entUpdated := entEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&entEnabled)
-	phase2 = append(phase2, esUpdated, eprUpdated, kbUpdated, apmUpdated, emsUpdated)
 	if entSearchEnabled {
-		phase2 = append(phase2, entUpdated)
+		phase2Builder.MaybeAddBuilder(entlabel.Type, entUpdated)
 	}
+	phase2 = phase2Builder.phase
 
 	// Phase 3: transition back to disabled
-	phase3 = make([]test.Builder, 0)
+	phase3Builder := newPhaseBuilder(testTypes)
 	esDisabled := esUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&esUpdated)
+	phase3Builder.AddBuilder(esDisabled)
 	eprDisabled := eprUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&eprUpdated)
+	phase3Builder.MaybeAddBuilder(eprlabel.Type, eprDisabled)
 	kbDisabled := kbUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&kbUpdated)
+	phase3Builder.AddBuilder(kbDisabled)
 	apmDisabled := apmUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&apmUpdated)
+	phase3Builder.MaybeAddBuilder(apmlabel.Type, apmDisabled)
 	emsDisabled := emsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&emsUpdated)
+	phase3Builder.MaybeAddBuilder(emslabels.Type, emsDisabled)
+	beatDisabled := beatUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&beatUpdated)
+	phase3Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatDisabled)
+	agentDisabled := agentUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&agentUpdated)
+	phase3Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentDisabled)
 	entDisabled := entUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&entUpdated)
-	phase3 = append(phase3, esDisabled, eprDisabled, kbDisabled, apmDisabled, emsDisabled)
 	if entSearchEnabled {
-		phase3 = append(phase3, entDisabled)
+		phase3Builder.MaybeAddBuilder(entlabel.Type, entDisabled)
 	}
+	phase3 = phase3Builder.phase
 
 	// Phase 4: transition back to enabled again
-	phase4 = make([]test.Builder, 0)
+	phase4Builder := newPhaseBuilder(testTypes)
 	esReenabled := esDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&esDisabled)
+	phase4Builder.AddBuilder(esReenabled)
 	eprReenabled := eprDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&eprDisabled)
+	phase4Builder.MaybeAddBuilder(eprlabel.Type, eprReenabled)
 	kbReenabled := kbDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&kbDisabled)
+	phase4Builder.AddBuilder(kbReenabled)
 	apmReenabled := apmDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&apmDisabled)
+	phase4Builder.MaybeAddBuilder(apmlabel.Type, apmReenabled)
 	emsReenabled := emsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&emsDisabled)
+	phase4Builder.MaybeAddBuilder(emslabels.Type, emsReenabled)
+	beatReenabled := beatDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&beatDisabled)
+	phase4Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatReenabled)
+	agentReenabled := agentDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&agentDisabled)
+	phase4Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentReenabled)
 	entReenabled := entDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&entDisabled)
-	phase4 = append(phase4, esReenabled, eprReenabled, kbReenabled, apmReenabled, emsReenabled)
 	if entSearchEnabled {
-		phase4 = append(phase4, entReenabled)
+		phase4Builder.MaybeAddBuilder(entlabel.Type, entReenabled)
 	}
+	phase4 = phase4Builder.phase
 
 	// Phase 5: pod deletion (no builders)
 
 	// Phase 6: re-disable the annotation
-	phase6 = make([]test.Builder, 0)
+	phase6Builder := newPhaseBuilder(testTypes)
 	esRedisabled := esReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&esReenabled)
+	phase6Builder.AddBuilder(esRedisabled)
 	eprRedisabled := eprReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&eprReenabled)
+	phase6Builder.MaybeAddBuilder(eprlabel.Type, eprRedisabled)
 	kbRedisabled := kbReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&kbReenabled)
+	phase6Builder.AddBuilder(kbRedisabled)
 	apmRedisabled := apmReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&apmReenabled)
+	phase6Builder.MaybeAddBuilder(apmlabel.Type, apmRedisabled)
 	emsRedisabled := emsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&emsReenabled)
+	phase6Builder.MaybeAddBuilder(emslabels.Type, emsRedisabled)
+	beatRedisabled := beatReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&beatReenabled)
+	phase6Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatRedisabled)
+	agentRedisabled := agentReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&agentReenabled)
+	phase6Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentRedisabled)
 	entRedisabled := entReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&entReenabled)
-	phase6 = append(phase6, esRedisabled, eprRedisabled, kbRedisabled, apmRedisabled, emsRedisabled)
 	if entSearchEnabled {
-		phase6 = append(phase6, entRedisabled)
+		phase6Builder.MaybeAddBuilder(entlabel.Type, entRedisabled)
 	}
+	phase6 = phase6Builder.phase
+
+	require.Truef(t,
+		len(initial) == len(phase1) &&
+			len(phase1) == len(phase2) &&
+			len(phase2) == len(phase3) &&
+			len(phase3) == len(phase4) &&
+			len(phase4) == len(phase6),
+		"All phases should have the same number of builders, but they have...\n"+
+			"Initial: %d\n"+
+			"Phase 1: %d\n"+
+			"Phase 2: %d\n"+
+			"Phase 3: %d\n"+
+			"Phase 4: %d\n"+
+			"Phase 6: %d", len(initial), len(phase1), len(phase2), len(phase3), len(phase4), len(phase6))
 
 	return initial, phase1, phase2, phase3, phase4, phase6
 }

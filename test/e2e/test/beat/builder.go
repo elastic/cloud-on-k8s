@@ -96,6 +96,17 @@ func newBuilder(name string, suffix string) Builder {
 
 type ValidationFunc func(client.Client) error
 
+func (b Builder) DeepCopy() *Builder {
+	bCopy := b.Beat.DeepCopy()
+	builderCopy := Builder{
+		Beat: *bCopy,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) ResourceName() string {
 	return b.Beat.Name
 }
@@ -206,6 +217,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.Beat.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Beat.Annotations == nil {
+		b.Beat.Annotations = make(map[string]string)
+	}
+	b.Beat.Annotations[key] = value
 	return b
 }
 

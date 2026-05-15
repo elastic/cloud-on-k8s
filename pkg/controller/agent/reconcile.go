@@ -118,6 +118,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	if common.IsOrchestrationPaused(&params.Agent) {
 		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
 			&params.Agent, expectedVehicle)
+		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
 		return results.WithError(err), params.Status
 	}
 	common.MaybeResetPausedCondition(&params.Status.Conditions)

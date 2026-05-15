@@ -137,6 +137,17 @@ func NewBuilder(name string) Builder {
 	return builder
 }
 
+func (b Builder) DeepCopy() *Builder {
+	a := b.Agent.DeepCopy()
+	builderCopy := Builder{
+		Agent: *a,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.
 func (b Builder) MoreResourcesForIssue4730() Builder {
 	if b.Agent.Spec.FleetModeEnabled() {
