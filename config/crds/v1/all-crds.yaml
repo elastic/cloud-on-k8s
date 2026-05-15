@@ -12646,6 +12646,12 @@ spec:
                       (/_security/role_mapping)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  securityRoles:
+                    description: |-
+                      SecurityRoles holds the Role definitions (/_security/role).
+                      Roles defined here are merged into the roles.yml file mounted into Elasticsearch pods.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   snapshotLifecyclePolicies:
                     description: SnapshotLifecyclePolicies holds the Snapshot Lifecycle
                       Policies settings (/_slm/policy)

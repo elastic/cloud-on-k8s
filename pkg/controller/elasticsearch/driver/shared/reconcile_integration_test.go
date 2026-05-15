@@ -369,7 +369,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 
-			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false)
+			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false, nodespec.PolicyConfig{})
 			if tt.expectedState != nil {
 				require.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)

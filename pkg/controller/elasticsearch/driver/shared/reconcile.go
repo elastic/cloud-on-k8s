@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -52,11 +53,13 @@ var DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{Re
 
 // ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
 // clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
+// policyConfig holds StackConfigPolicy-derived configuration for the Elasticsearch cluster.
 func ReconcileSharedResources(
 	ctx context.Context,
 	d commondriver.Interface,
 	params driver.Parameters,
 	clientAuthenticationRequired bool,
+	policyConfig nodespec.PolicyConfig,
 ) (*ReconcileState, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
@@ -131,6 +134,8 @@ func ReconcileSharedResources(
 		params.Recorder,
 		params.OperatorParameters.PasswordHasher,
 		params.OperatorParameters.PasswordGenerator,
+		policyConfig.Roles,
+		policyConfig.RolesHash,
 		meta)
 	if err != nil {
 		return nil, results.WithError(err)

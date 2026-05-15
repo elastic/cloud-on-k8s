@@ -27,6 +27,11 @@ type PolicyConfig struct {
 	ElasticsearchConfig *common.CanonicalConfig
 	PolicyAnnotations   map[string]string
 	AdditionalVolumes   []volume.VolumeLike
+	// Roles holds Elasticsearch role definitions provided through the StackConfigPolicy.
+	// The key is the role name, the value is the role spec.
+	Roles map[string]any
+	// RolesHash is the hash of the SCP-provided roles, used to track when ES has applied them.
+	RolesHash string
 }
 
 // GetPolicyConfig parses the StackConfigPolicy secret and returns a PolicyConfig.
@@ -68,6 +73,16 @@ func GetPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		secretVolumeFromStackConfigPolicy := volume.NewSecretVolumeWithMountPath(secretName, secretName, secretMount.MountPath)
 		policyConfig.AdditionalVolumes = append(policyConfig.AdditionalVolumes, secretVolumeFromStackConfigPolicy)
+	}
+
+	// Parse SCP-provided role definitions and propagate the roles hash annotation.
+	policyConfig.RolesHash = stackConfigPolicyConfigSecret.Annotations[commonannotation.ElasticsearchRolesHashAnnotation]
+	if rolesData := stackConfigPolicyConfigSecret.Data[esv1.StackConfigRolesKey]; len(rolesData) > 0 {
+		var roles map[string]any
+		if err := json.Unmarshal(rolesData, &roles); err != nil {
+			return policyConfig, err
+		}
+		policyConfig.Roles = roles
 	}
 
 	return policyConfig, nil

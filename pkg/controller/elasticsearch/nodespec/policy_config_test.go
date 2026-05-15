@@ -67,6 +67,52 @@ func TestGetPolicyConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "policy config secret with security roles",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "test-ns",
+				},
+			},
+			configSecret: mkConfigSecretWithRoles(esv1.StackConfigElasticsearchConfigSecretName("test-es"), "test-ns"),
+			want: PolicyConfig{
+				ElasticsearchConfig: canonicalConfig,
+				PolicyAnnotations: map[string]string{
+					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "testhash",
+				},
+				AdditionalVolumes: []volume.VolumeLike{
+					volume.NewSecretVolumeWithMountPath(esv1.StackConfigAdditionalSecretName("test-es", "test1"), esv1.StackConfigAdditionalSecretName("test-es", "test1"), "/usr/test"),
+				},
+				Roles: map[string]any{
+					"my_role": map[string]any{
+						"cluster": []any{"monitor"},
+					},
+				},
+				RolesHash: "rolesHashValue",
+			},
+		},
+		{
+			name: "policy config secret with empty roles annotation (roles just removed from policy)",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-es",
+					Namespace: "test-ns",
+				},
+			},
+			configSecret: mkConfigSecretWithEmptyRolesAnnotation(esv1.StackConfigElasticsearchConfigSecretName("test-es"), "test-ns"),
+			want: PolicyConfig{
+				ElasticsearchConfig: canonicalConfig,
+				PolicyAnnotations: map[string]string{
+					"policy.k8s.elastic.co/elasticsearch-config-mounts-hash": "testhash",
+				},
+				AdditionalVolumes: []volume.VolumeLike{
+					volume.NewSecretVolumeWithMountPath(esv1.StackConfigAdditionalSecretName("test-es", "test1"), esv1.StackConfigAdditionalSecretName("test-es", "test1"), "/usr/test"),
+				},
+				Roles:     nil,
+				RolesHash: "",
+			},
+		},
+		{
 			name: "invalid config",
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -110,6 +156,21 @@ func mkConfigSecret(name string, namespace string) corev1.Secret {
 		Data: map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),
 			stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)},
 	}
+}
+
+func mkConfigSecretWithRoles(name string, namespace string) corev1.Secret {
+	secret := mkConfigSecret(name, namespace)
+	secret.Annotations[commonannotation.ElasticsearchRolesHashAnnotation] = "rolesHashValue"
+	secret.Data[esv1.StackConfigRolesKey] = []byte(`{"my_role":{"cluster":["monitor"]}}`)
+	return secret
+}
+
+func mkConfigSecretWithEmptyRolesAnnotation(name string, namespace string) corev1.Secret {
+	secret := mkConfigSecret(name, namespace)
+	// Annotation present but empty, no roles data: simulates the transition state where
+	// SCP roles were just removed from the policy.
+	secret.Annotations[commonannotation.ElasticsearchRolesHashAnnotation] = ""
+	return secret
 }
 
 func mkInvalidConfigSecret(name string, namespace string) corev1.Secret {

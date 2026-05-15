@@ -6,6 +6,7 @@ package user
 
 import (
 	"context"
+	"maps"
 	"reflect"
 
 	"go.elastic.co/apm/v2"
@@ -17,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -26,7 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	utilsmaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
@@ -47,13 +49,15 @@ func ReconcileUsersAndRoles(
 	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 	generator commonpassword.RandomGenerator,
+	policyRoles map[string]any,
+	policyRolesHash string,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
-	roles, err := aggregateRoles(ctx, c, es, watched, recorder)
+	roles, err := aggregateRoles(ctx, c, es, watched, recorder, policyRoles)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -69,7 +73,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens, meta); err != nil {
+	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens, policyRolesHash, meta); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -149,13 +153,16 @@ func aggregateRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder toolsevents.EventRecorder,
+	policyRoles map[string]any,
 ) (RolesFileContent, error) {
 	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)
 	if err != nil {
 		return RolesFileContent{}, err
 	}
-	// merge all roles together, the last one having precedence
-	return PredefinedRoles.MergeWith(userProvided), nil
+	// Merge order (last wins): PredefinedRoles < userProvided < policyRoles.
+	// This matches the existing spec.auth.roles convention where user-provided roles
+	// can override predefined ones; SCP roles take precedence over user-provided.
+	return PredefinedRoles.MergeWith(userProvided).MergeWith(policyRoles), nil
 }
 
 // RolesFileRealmSecretKey returns a reference to the K8s secret holding the roles and file realm data.
@@ -171,6 +178,7 @@ func reconcileRolesFileRealmSecret(
 	roles RolesFileContent,
 	fileRealm filerealm.Realm,
 	saTokens ServiceAccountTokens,
+	policyRolesHash string,
 	meta metadata.Metadata,
 ) error {
 	secretData := fileRealm.FileBytes()
@@ -181,12 +189,19 @@ func reconcileRolesFileRealmSecret(
 	secretData[RolesFile] = rolesBytes
 	secretData[ServiceTokensFileName] = saTokens.ToBytes()
 
+	annotations := make(map[string]string, len(meta.Annotations)+1)
+	maps.Copy(annotations, meta.Annotations)
+	// Always set the roles hash annotation: a non-empty hash when SCP defines roles, an empty
+	// string otherwise. This ensures that when SCP roles are removed the merge-based reconcile
+	// overwrites the previous hash, leaving no stale value behind.
+	annotations[commonannotation.ElasticsearchRolesHashAnnotation] = policyRolesHash
+
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   RolesFileRealmSecretKey(es).Namespace,
 			Name:        RolesFileRealmSecretKey(es).Name,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
+			Labels:      maps.Clone(meta.Labels),
+			Annotations: annotations,
 		},
 		Data: secretData,
 	}
@@ -208,14 +223,14 @@ func reconcileRolesFileRealmSecret(
 			// update if secret content is different
 			return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
 				// or expected labels are not there
-				!maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!utilsmaps.IsSubset(expected.Labels, reconciled.Labels) ||
 				// or expected annotations are not there
-				!maps.IsSubset(expected.Annotations, reconciled.Annotations)
+				!utilsmaps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
 			reconciled.Data = expected.Data
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			reconciled.Labels = utilsmaps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = utilsmaps.Merge(reconciled.Annotations, expected.Annotations)
 		},
 	})
 }

@@ -2283,6 +2283,7 @@ Package v1alpha1 contains API schema definitions for managing StackConfigPolicy 
 | *`snapshotRepositories`* __[Config](#config)__ | SnapshotRepositories holds the Snapshot Repositories settings (/_snapshot) |
 | *`snapshotLifecyclePolicies`* __[Config](#config)__ | SnapshotLifecyclePolicies holds the Snapshot Lifecycle Policies settings (/_slm/policy) |
 | *`securityRoleMappings`* __[Config](#config)__ | SecurityRoleMappings holds the Role Mappings settings (/_security/role_mapping) |
+| *`securityRoles`* __[Config](#config)__ | SecurityRoles holds the Role definitions (/_security/role).<br>Roles defined here are merged into the roles.yml file mounted into Elasticsearch pods. |
 | *`indexLifecyclePolicies`* __[Config](#config)__ | IndexLifecyclePolicies holds the Index Lifecycle policies settings (/_ilm/policy) |
 | *`ingestPipelines`* __[Config](#config)__ | IngestPipelines holds the Ingest Pipelines settings (/_ingest/pipeline) |
 | *`indexTemplates`* __[IndexTemplates](#indextemplates)__ | IndexTemplates holds the Index and Component Templates settings |
