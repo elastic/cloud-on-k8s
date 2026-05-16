@@ -76,7 +76,11 @@ func ReconcileOrRetrieveCA(
 	// 2. Assuming from here on the user wants to use custom certs and has configured a secret with them.
 
 	// Try to parse the provided secret to get to the CA and to report any validation errors to the user.
-	ca, err := certificates.ParseCustomCASecret(*customCASecret)
+	var certKeyOverride, keyKeyOverride string
+	if ks := es.Spec.Transport.TLS.CASecretKeys; ks != nil {
+		certKeyOverride, keyKeyOverride = ks.CACertKey, ks.CAKeyKey
+	}
+	ca, err := certificates.ParseCustomCASecretWithKeys(*customCASecret, certKeyOverride, keyKeyOverride)
 	if err != nil {
 		// Surface validation/parsing errors to the user via an event otherwise they might be hard to spot
 		// validation at admission would also be an alternative but seems quite costly and secret contents might change

@@ -19,6 +19,26 @@ import (
 // It does not check that the public key matches the private key.
 // Legacy tls.* keys are still supported while the expected default keys are ca.crt and ca.key.
 func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
+	return ParseCustomCASecretWithKeys(s, "", "")
+}
+
+// ParseCustomCASecretWithKeys behaves like ParseCustomCASecret but lets the caller specify which
+// Secret data keys hold the CA certificate and private key. When both overrides are empty, the
+// legacy tls.* vs modern ca.* auto-detection runs unchanged. When either override is non-empty,
+// only the named keys are read and the "both exist" conflict check is bypassed — required for
+// consuming Secrets produced by cert-manager (which always emits tls.crt, tls.key, and ca.crt).
+func ParseCustomCASecretWithKeys(s corev1.Secret, certKeyOverride, keyKeyOverride string) (*CA, error) {
+	if certKeyOverride != "" || keyKeyOverride != "" {
+		crtFileName := certKeyOverride
+		if crtFileName == "" {
+			crtFileName = CAFileName
+		}
+		keyFileName := keyKeyOverride
+		if keyFileName == "" {
+			keyFileName = CAKeyFileName
+		}
+		return parseCAFromSecret(s, keyFileName, crtFileName)
+	}
 	keyFileName := CAKeyFileName
 	crtFileName := CAFileName
 	// For backwards compatibility we support both tls.* and the newer ca.* keys in the secret

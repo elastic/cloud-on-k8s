@@ -137,6 +137,99 @@ func TestParseCustomCASecret(t *testing.T) {
 	}
 }
 
+func TestParseCustomCASecretWithKeys(t *testing.T) {
+	ca := loadFileBytes("ca.crt")
+	key := loadFileBytes("tls.key")
+
+	tests := []struct {
+		name            string
+		s               corev1.Secret
+		certKeyOverride string
+		keyKeyOverride  string
+		wantErr         bool
+	}{
+		{
+			name: "Empty overrides → identical to ParseCustomCASecret (ca.* path)",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"ca.crt": ca,
+					"ca.key": key,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Both overrides set → reads tls.* even when ca.crt also present (cert-manager shape)",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"tls.crt": ca,
+					"tls.key": key,
+					"ca.crt":  ca, // cert-manager emits this as the issuing CA bundle
+				},
+			},
+			certKeyOverride: "tls.crt",
+			keyKeyOverride:  "tls.key",
+			wantErr:         false,
+		},
+		{
+			name: "Only cert override set → key falls back to ca.key default",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"tls.crt": ca,
+					"ca.key":  key,
+				},
+			},
+			certKeyOverride: "tls.crt",
+			wantErr:         false,
+		},
+		{
+			name: "Only key override set → cert falls back to ca.crt default",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"ca.crt":  ca,
+					"tls.key": key,
+				},
+			},
+			keyKeyOverride: "tls.key",
+			wantErr:        false,
+		},
+		{
+			name: "Override pointing at missing key returns error",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"ca.crt": ca,
+					"ca.key": key,
+				},
+			},
+			certKeyOverride: "does-not-exist.crt",
+			keyKeyOverride:  "does-not-exist.key",
+			wantErr:         true,
+		},
+		{
+			name: "Override skips the both-exist conflict check",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					"tls.crt": ca,
+					"tls.key": key,
+					"ca.crt":  ca,
+					"ca.key":  key,
+				},
+			},
+			certKeyOverride: "tls.crt",
+			keyKeyOverride:  "tls.key",
+			wantErr:         false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseCustomCASecretWithKeys(tt.s, tt.certKeyOverride, tt.keyKeyOverride)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseCustomCASecretWithKeys() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateCustomCA(t *testing.T) {
 	tests := []struct {
 		name    string
