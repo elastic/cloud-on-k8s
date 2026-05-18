@@ -19,7 +19,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.20.0 | Apache-2.0 |
 | [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.62.1 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
-| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.6.4 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.7.0 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.41.7 | Apache-2.0 |
@@ -57,14 +57,14 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.51.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20251219203646-944ab1f22d93 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.278.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.279.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.36.0 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.36.0 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.36.0 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.36.1 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.36.1 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.36.1 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.140.0 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20260319190234-28399d86e0b5 | Apache-2.0 |
-| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.24.0 | Apache-2.0 |
+| [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.24.1 | Apache-2.0 |
 | [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.21.0 | Apache-2.0 |
 
 
@@ -81,11 +81,11 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v0.9.0 | Apache-2.0 |
 | [cloud.google.com/go/monitoring](https://cloud.google.com/go/monitoring) | v1.24.3 | Apache-2.0 |
 | [cloud.google.com/go/trace](https://cloud.google.com/go/trace) | v1.11.7 | Apache-2.0 |
-| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.20.0 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.21.1 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/azidentity](https://github.com/Azure/azure-sdk-for-go) | v1.13.1 | MIT |
-| [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.11.2 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.12.0 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage](https://github.com/Azure/azure-sdk-for-go) | v1.8.1 | MIT |
-| [github.com/AzureAD/microsoft-authentication-library-for-go](https://github.com/AzureAD/microsoft-authentication-library-for-go) | v1.6.0 | MIT |
+| [github.com/AzureAD/microsoft-authentication-library-for-go](https://github.com/AzureAD/microsoft-authentication-library-for-go) | v1.7.2 | MIT |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v1.31.0 | Apache-2.0 |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.55.0 | Apache-2.0 |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.55.0 | Apache-2.0 |
@@ -150,7 +150,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/go-task/slim-sprig/v3](https://github.com/go-task/slim-sprig) | v3.0.0 | MIT |
 | [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) | v2.4.0 | MIT |
 | [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.18.0 | MIT |
-| [github.com/golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) | v5.3.0 | MIT |
+| [github.com/golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) | v5.3.1 | MIT |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
 | [github.com/google/cel-go](https://github.com/google/cel-go) | v0.26.0 | Apache-2.0 |
 | [github.com/google/gnostic-models](https://github.com/google/gnostic-models) | v0.7.1 | Apache-2.0 |
@@ -240,7 +240,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.4 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.4 | MIT |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.35.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.53.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.54.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.20.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.44.0 | BSD-3-Clause |
@@ -270,7 +270,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/component-base](https://github.com/kubernetes/component-base) | v0.36.0 | Apache-2.0 |
 | [k8s.io/gengo/v2](https://github.com/kubernetes/gengo) | v2.0.0-20250922181213-ec3ebc5fd46b | Apache-2.0 |
 | [k8s.io/kube-openapi](https://github.com/kubernetes/kube-openapi) | v0.0.0-20260427204847-8949caaa1199 | Apache-2.0 |
-| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.36.0 | Apache-2.0 |
+| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.36.1 | Apache-2.0 |
 | [sigs.k8s.io/apiserver-network-proxy/konnectivity-client](https://sigs.k8s.io/apiserver-network-proxy/konnectivity-client) | v0.34.0 | Apache-2.0 |
 | [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20250730193827-2d320260d730 | Apache-2.0 |
 | [sigs.k8s.io/randfill](https://sigs.k8s.io/randfill) | v1.0.0 | Apache-2.0 |

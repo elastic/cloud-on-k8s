@@ -472,11 +472,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
-Version : v1.6.4
-Time    : 2026-01-13T05:26:14Z
+Version : v1.7.0
+Time    : 2026-05-14T17:02:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.6.4/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.7.0/LICENSE.txt:
 
     MIT License
 
@@ -5223,11 +5223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/api
-Version : v0.278.0
-Time    : 2026-05-05T19:10:26Z
+Version : v0.279.0
+Time    : 2026-05-12T21:28:43Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.278.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.279.0/LICENSE:
 
 Copyright (c) 2011 Google Inc. All rights reserved.
 
@@ -5320,11 +5320,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.36.0
-Time    : 2026-04-22T18:26:39Z
+Version : v0.36.1
+Time    : 2026-05-12T18:08:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.36.1/LICENSE:
 
 
                                  Apache License
@@ -5532,11 +5532,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.36.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.36.0
-Time    : 2026-04-22T18:20:11Z
+Version : v0.36.1
+Time    : 2026-05-12T17:54:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.36.1/LICENSE:
 
 
                                  Apache License
@@ -5744,11 +5744,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.36.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.36.0
-Time    : 2026-04-22T18:35:58Z
+Version : v0.36.1
+Time    : 2026-05-12T18:29:22Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.36.1/LICENSE:
 
 
                                  Apache License
@@ -6369,11 +6369,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20260319190234
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.24.0
-Time    : 2026-04-30T12:25:24Z
+Version : v0.24.1
+Time    : 2026-05-11T18:05:52Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.24.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.24.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8705,11 +8705,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/trace@v1.11.7/
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/azcore
-Version : v1.20.0
-Time    : 2025-11-06T17:38:09Z
+Version : v1.21.1
+Time    : 2026-04-16T22:03:54Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.20.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.21.1/LICENSE.txt:
 
 MIT License
 
@@ -8767,11 +8767,11 @@ SOFTWARE
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/internal
-Version : v1.11.2
-Time    : 2025-07-29T15:53:06Z
+Version : v1.12.0
+Time    : 2026-04-01T16:23:48Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/internal@v1.11.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/internal@v1.12.0/LICENSE.txt:
 
 MIT License
 
@@ -8828,11 +8828,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/AzureAD/microsoft-authentication-library-for-go
-Version : v1.6.0
-Time    : 2025-11-05T15:05:01Z
+Version : v1.7.2
+Time    : 2026-05-11T16:20:31Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure!a!d/microsoft-authentication-library-for-go@v1.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!azure!a!d/microsoft-authentication-library-for-go@v1.7.2/LICENSE:
 
     MIT License
 
@@ -18585,11 +18585,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/golang-jwt/jwt/v5
-Version : v5.3.0
-Time    : 2025-07-30T13:04:00Z
+Version : v5.3.1
+Time    : 2026-01-28T19:58:13Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/golang-jwt/jwt/v5@v5.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/golang-jwt/jwt/v5@v5.3.1/LICENSE:
 
 Copyright (c) 2012 Dave Grijalva
 Copyright (c) 2021 golang-jwt maintainers
@@ -30730,11 +30730,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.53.0
-Time    : 2026-04-09T19:17:33Z
+Version : v0.54.0
+Time    : 2026-05-08T20:02:48Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.53.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.54.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -33950,11 +33950,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-2026042
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/streaming
-Version : v0.36.0
+Version : v0.36.1
 Time    : 2026-04-14T13:53:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/streaming@v0.36.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/streaming@v0.36.1/LICENSE:
 
 
                                  Apache License
