@@ -186,6 +186,12 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 			nodeShutdown.OnlyNodesInCluster,
 			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
 		))
+
+		for _, pod := range actualPods {
+			if !k8s.IsPodReady(pod) {
+				return results.WithRequeue(reconciler.DefaultRequeue)
+			}
+		}
 	}
 
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
