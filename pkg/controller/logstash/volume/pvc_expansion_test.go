@@ -15,7 +15,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -30,14 +29,14 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = ptr.To[bool](true)
+	sc.AllowVolumeExpansion = new(true)
 	return &sc
 }
 
@@ -51,7 +50,7 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             ptr.To[int32](3),
+			Replicas:             new(int32(3)),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}

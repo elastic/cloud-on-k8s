@@ -16,7 +16,7 @@ import (
 
 const (
 	EnterpriseSearchContainerName = "enterprise-search"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "EnterpriseSearch"
 )
@@ -206,8 +206,4 @@ type EnterpriseSearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EnterpriseSearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&EnterpriseSearch{}, &EnterpriseSearchList{})
 }

@@ -8,11 +8,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -20,32 +23,12 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 	scheme.SetupScheme()
-
-	// Helper to create a secret with policy labels
-	createSecret := func(name, namespace, policyName, policyNamespace, esName, esNamespace, secretType string) *corev1.Secret {
-		labels := map[string]string{
-			PolicyNameLabelKey:                  policyName,
-			policyNamespaceLabelKey:             policyNamespace,
-			commonapikey.MetadataKeyESName:      esName,
-			commonapikey.MetadataKeyESNamespace: esNamespace,
-			commonv1.TypeLabelName:              autoOpsAgentType,
-		}
-		if secretType != "" {
-			labels[policySecretTypeLabelKey] = secretType
-		}
-		return &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    labels,
-			},
-		}
-	}
 
 	// Helper to create a configmap with policy labels
 	createConfigMap := func(name, namespace, policyName, policyNamespace, esName, esNamespace string) *corev1.ConfigMap {
@@ -119,7 +102,7 @@ func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 			objects: []client.Object{
 				createPolicy("policy-1", "ns-1"),
 				createES("es-1", "ns-1"),
-				createSecret("secret-1", "ns-1", "policy-1", "ns-1", "es-1", "ns-1", apiKeySecretType),
+				newPolicySecret("secret-1", "ns-1", "policy-1", "ns-1", "es-1", "ns-1", apiKeySecretType),
 				createConfigMap("configmap-1", "ns-1", "policy-1", "ns-1", "es-1", "ns-1"),
 				createDeployment("deployment-1", "ns-1", "policy-1", "ns-1", "es-1", "ns-1"),
 			},
@@ -132,7 +115,7 @@ func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 			objects: []client.Object{
 				// No policy exists, but resources reference it
 				createES("es-1", "ns-1"),
-				createSecret("secret-1", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
+				newPolicySecret("secret-1", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
 				// ConfigMaps and Deployments have owner references, so Kubernetes GC handles them.
 				// We still create them here to verify the GC doesn't error on their presence.
 				createConfigMap("configmap-1", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1"),
@@ -148,11 +131,11 @@ func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 				createPolicy("existing-policy", "ns-1"),
 				createES("es-1", "ns-1"),
 				// Resources for existing policy
-				createSecret("secret-existing", "ns-1", "existing-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
+				newPolicySecret("secret-existing", "ns-1", "existing-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
 				createConfigMap("configmap-existing", "ns-1", "existing-policy", "ns-1", "es-1", "ns-1"),
 				createDeployment("deployment-existing", "ns-1", "existing-policy", "ns-1", "es-1", "ns-1"),
 				// Orphaned resources for deleted policy
-				createSecret("secret-orphaned", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
+				newPolicySecret("secret-orphaned", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
 				createConfigMap("configmap-orphaned", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1"),
 				createDeployment("deployment-orphaned", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1"),
 			},
@@ -164,8 +147,8 @@ func TestGarbageCollector_DoGarbageCollection(t *testing.T) {
 			name: "cleanup CA secrets as well as API key secrets",
 			objects: []client.Object{
 				createES("es-1", "ns-1"),
-				createSecret("api-key-secret", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
-				createSecret("ca-secret", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", caSecretType),
+				newPolicySecret("api-key-secret", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", apiKeySecretType),
+				newPolicySecret("ca-secret", "ns-1", "deleted-policy", "ns-1", "es-1", "ns-1", caSecretType),
 			},
 			wantSecrets:     0,
 			wantConfigMaps:  0,
@@ -308,5 +291,76 @@ func TestESFromLabels(t *testing.T) {
 			got := esFromLabels(tt.labels)
 			require.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestAgentPolicyReconciler_cleanupOrphanedSecrets_removesWatchHandlers(t *testing.T) {
+	scheme.SetupScheme()
+
+	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "ns-1"},
+	}
+
+	// Two secrets simulating CA + client cert for an ES that is no longer selected.
+	orphanedCASecret := newPolicySecret("policy-1-autoops-ca-orphaned", "ns-1", "policy-1", "ns-1", "es-orphaned", "ns-2", caSecretType)
+	orphanedClientCertSecret := newPolicySecret("policy-1-autoops-cc-orphaned", "ns-1", "policy-1", "ns-1", "es-orphaned", "ns-2", clientCertSecretType)
+
+	// A secret for an ES that is still selected — its watch must be preserved.
+	keepSecret := newPolicySecret("policy-1-autoops-ca-keep", "ns-1", "policy-1", "ns-1", "es-keep", "ns-3", caSecretType)
+
+	k8sClient := k8s.NewFakeClient(orphanedCASecret, orphanedClientCertSecret, keepSecret)
+	dynWatches := watches.NewDynamicWatches()
+
+	// Pre-register dynamic watches for all three secrets to mirror what
+	// reconcileAutoOpsESCASecret / reconcileAutoOpsESClientCertSecret would have done.
+	watcher := k8s.ExtractNamespacedName(&policy)
+	preRegistered := []string{orphanedCASecret.Name, orphanedClientCertSecret.Name, keepSecret.Name}
+	for _, name := range preRegistered {
+		require.NoError(t, watches.WatchUserProvidedSecrets(watcher, dynWatches, name, []string{name}))
+	}
+	require.ElementsMatch(t, preRegistered, dynWatches.Secrets.Registrations())
+
+	r := &AgentPolicyReconciler{
+		Client:         k8sClient,
+		dynamicWatches: dynWatches,
+	}
+
+	matchLabels := client.MatchingLabels{PolicyNameLabelKey: "policy-1"}
+	matchingESSet := sets.New(types.NamespacedName{Name: "es-keep", Namespace: "ns-3"})
+
+	require.NoError(t, r.cleanupOrphanedSecrets(context.Background(), logr.Discard(), policy, matchLabels, matchingESSet))
+
+	// Orphaned secrets are deleted, keep secret is preserved.
+	deleted := []string{orphanedCASecret.Name, orphanedClientCertSecret.Name}
+	for _, secretName := range deleted {
+		var got corev1.Secret
+		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns-1", Name: secretName}, &got)
+		require.True(t, apierrors.IsNotFound(err), "secret %s should be deleted", secretName)
+	}
+	var keep corev1.Secret
+	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns-1", Name: keepSecret.Name}, &keep))
+
+	// Watch handlers for the orphaned secrets are removed; the keep one remains.
+	require.ElementsMatch(t, []string{keepSecret.Name}, dynWatches.Secrets.Registrations())
+}
+
+// newPolicySecret builds a minimal Secret carrying the labels cleanupOrphanedSecrets matches on.
+func newPolicySecret(name, namespace, policyName, policyNamespace, esName, esNamespace, secretType string) *corev1.Secret {
+	labels := map[string]string{
+		PolicyNameLabelKey:                  policyName,
+		policyNamespaceLabelKey:             policyNamespace,
+		commonapikey.MetadataKeyESName:      esName,
+		commonapikey.MetadataKeyESNamespace: esNamespace,
+		commonv1.TypeLabelName:              autoOpsAgentType,
+	}
+	if secretType != "" {
+		labels[policySecretTypeLabelKey] = secretType
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    labels,
+		},
 	}
 }

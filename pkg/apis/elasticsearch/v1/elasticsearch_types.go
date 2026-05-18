@@ -12,7 +12,6 @@ import (
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -54,7 +53,7 @@ const (
 	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
 	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
 
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
@@ -101,10 +100,6 @@ type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Elasticsearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }
 
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
@@ -511,7 +506,7 @@ type ChangeBudget struct {
 // most cases.
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       nil,
-	MaxUnavailable: ptr.To[int32](1),
+	MaxUnavailable: new(int32(1)),
 }
 
 func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {

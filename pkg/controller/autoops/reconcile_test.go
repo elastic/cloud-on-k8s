@@ -28,6 +28,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
@@ -797,6 +798,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		name                     string
 		updatedResourceSelector  metav1.LabelSelector
 		updatedNamespaceSelector metav1.LabelSelector
+		extraInitialSecrets      []client.Object
 		expectedDeployments      int
 		expectedConfigMaps       int
 		expectedSecrets          int
@@ -808,6 +810,41 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			updatedResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch", "env": "prod"},
 			},
+			expectedDeployments: 1,
+			expectedConfigMaps:  1,
+			expectedSecrets:     1,
+			shouldExist:         []esv1.Elasticsearch{es3},
+			shouldNotExist:      []esv1.Elasticsearch{es1, es2},
+		},
+		{
+			name: "selector change should also cleanup client cert secrets for ES with client auth",
+			updatedResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch", "env": "prod"},
+			},
+			extraInitialSecrets: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "orphaned-client-cert",
+						Namespace: ns1.Name,
+						Labels: map[string]string{
+							PolicyNameLabelKey:                      "policy-1",
+							policySecretTypeLabelKey:                clientCertSecretType,
+							reconciler.SoftOwnerNameLabel:           es1.Name,
+							reconciler.SoftOwnerNamespaceLabel:      es1.Namespace,
+							reconciler.SoftOwnerKindLabel:           esv1.Kind,
+							commonlabels.ClientCertificateLabelName: "true",
+							commonapikey.MetadataKeyESName:          es1.Name,
+							commonapikey.MetadataKeyESNamespace:     es1.Namespace,
+						},
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert"),
+						"tls.key": []byte("test-key"),
+					},
+				},
+			},
+			// es3 remains, es1 and es2 are cleaned up.
+			// es1 had client auth so its client cert secret is also cleaned up.
 			expectedDeployments: 1,
 			expectedConfigMaps:  1,
 			expectedSecrets:     1,
@@ -851,7 +888,10 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.NewFakeClient(initialObjects...)
+			objs := make([]client.Object, 0, len(initialObjects)+len(tt.extraInitialSecrets))
+			objs = append(objs, initialObjects...)
+			objs = append(objs, tt.extraInitialSecrets...)
+			k8sClient := k8s.NewFakeClient(objs...)
 			esClientProvider := newFakeESClientProvider().Provider
 			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
@@ -885,7 +925,8 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 			var secrets corev1.SecretList
 			require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
-			require.Len(t, secrets.Items, 3, "Expected 3 secrets for es-1, es-2, and es-3")
+			expectedInitialSecrets := 3 + len(tt.extraInitialSecrets)
+			require.Lenf(t, secrets.Items, expectedInitialSecrets, "Expected %d secrets for es-1, es-2, and es-3", expectedInitialSecrets)
 
 			// Update selector and re-reconcile
 			updatedPolicy := initialPolicy.DeepCopy()

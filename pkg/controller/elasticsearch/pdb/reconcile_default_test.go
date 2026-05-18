@@ -40,7 +40,7 @@ func defaultPDB() *policyv1.PodDisruptionBudget {
 			Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable: intStrPtr(intstr.FromInt(3)),
+			MinAvailable: new(intstr.FromInt(3)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					label.ClusterNameLabelName: "cluster",
@@ -103,7 +103,7 @@ func TestReconcile(t *testing.T) {
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(5)),
+					MinAvailable: new(intstr.FromInt(5)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -177,10 +177,6 @@ func withOwnerRef(pdb *policyv1.PodDisruptionBudget, es esv1.Elasticsearch) *pol
 	return pdb
 }
 
-func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
-	return &intStr
-}
-
 func Test_expectedPDB(t *testing.T) {
 	type args struct {
 		es      esv1.Elasticsearch
@@ -218,7 +214,7 @@ func Test_expectedPDB(t *testing.T) {
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MinAvailable: new(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -252,7 +248,7 @@ func Test_expectedPDB(t *testing.T) {
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MinAvailable: new(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -269,7 +265,7 @@ func Test_expectedPDB(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec: esv1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
-							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
+							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: new(intstr.FromInt(42))}},
 					},
 				},
 				builder: NewBuilder("cluster").
@@ -284,7 +280,7 @@ func Test_expectedPDB(t *testing.T) {
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(42)),
+					MinAvailable: new(intstr.FromInt(42)),
 				},
 			},
 		},

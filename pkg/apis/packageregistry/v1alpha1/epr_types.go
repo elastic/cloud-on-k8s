@@ -14,7 +14,7 @@ import (
 
 const (
 	EPRContainerName = "package-registry"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "PackageRegistry"
 )
@@ -107,8 +107,4 @@ type PackageRegistryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PackageRegistry `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&PackageRegistry{}, &PackageRegistryList{})
 }

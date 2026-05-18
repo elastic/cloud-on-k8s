@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
       - equal:
           path: spec.kibanaRef.name
           value: eck-kibana
@@ -94,7 +94,7 @@ tests:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.4.0-SNAPSHOT
+            version: 9.5.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -142,7 +142,7 @@ tests:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.4.0-SNAPSHOT
+            version: 9.5.0-SNAPSHOT
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -160,47 +160,47 @@ tests:
     set:
       spec:
         deployment: {}
-        image: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+        image: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
   - it: values.image should render properly
     set:
       deployment: {}
-      image: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
   - it: values.spec.image should take precedence over values.image
     set:
       spec:
         deployment: {}
-        image: quay.io/elastic/fleet-server:9.4.0-SNAPSHOT
-      image: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+        image: quay.io/elastic/fleet-server:9.5.0-SNAPSHOT
+      image: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: quay.io/elastic/fleet-server:9.4.0-SNAPSHOT
+          value: quay.io/elastic/fleet-server:9.5.0-SNAPSHOT
   - it: values.spec.image null should fallback to values.image
     set:
       spec:
         deployment: {}
         image: null
-      image: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT
   - it: values.image with digest should render properly
     set:
       deployment: {}
-      image: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT@sha256:abc123
+      image: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT@sha256:abc123
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0-SNAPSHOT@sha256:abc123
+          value: my.registry.com/elastic/fleet-server:9.5.0-SNAPSHOT@sha256:abc123
   - it: values.image null should omit spec.image
     set:
       deployment: {}

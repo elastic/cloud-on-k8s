@@ -95,11 +95,6 @@ func UntilSuccess(f func() error, timeout time.Duration) func(*testing.T) {
 	}
 }
 
-// BoolPtr returns a pointer to a bool/
-func BoolPtr(b bool) *bool {
-	return &b
-}
-
 // AnnotatePodWithBuilderHash annotates pod with a hash to facilitate detection of newly created pods
 func AnnotatePodWithBuilderHash(k *K8sClient, pod corev1.Pod, hash string) error {
 	if pod.Annotations == nil {

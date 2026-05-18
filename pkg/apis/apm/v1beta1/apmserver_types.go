@@ -97,10 +97,6 @@ type ApmServerList struct {
 	Items           []ApmServer `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
-}
-
 // IsMarkedForDeletion returns true if the APM is going to be deleted
 func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()

@@ -7,7 +7,6 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
 )
@@ -112,7 +111,7 @@ type ChangeBudget struct {
 // most cases.
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       nil,
-	MaxUnavailable: ptr.To[int32](1),
+	MaxUnavailable: new(int32(1)),
 }
 
 func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {
@@ -232,8 +231,4 @@ type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Elasticsearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }

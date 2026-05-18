@@ -6,7 +6,6 @@ package securitycontext
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
@@ -25,9 +24,9 @@ var (
 
 func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.SecurityContext {
 	sc := corev1.SecurityContext{
-		Privileged:               ptr.To[bool](false),
-		ReadOnlyRootFilesystem:   ptr.To[bool](enableReadOnlyRootFilesystem),
-		AllowPrivilegeEscalation: ptr.To[bool](false),
+		Privileged:               new(false),
+		ReadOnlyRootFilesystem:   new(enableReadOnlyRootFilesystem),
+		AllowPrivilegeEscalation: new(false),
 	}
 	if ver.LT(DropCapabilitiesMinStackVersion) {
 		return sc
@@ -38,7 +37,7 @@ func For(ver version.Version, enableReadOnlyRootFilesystem bool) corev1.Security
 	if ver.LT(RunAsNonRootMinStackVersion) {
 		return sc
 	}
-	sc.RunAsNonRoot = ptr.To[bool](true)
+	sc.RunAsNonRoot = new(true)
 	return sc
 }
 
@@ -47,13 +46,13 @@ func DefaultBeatSecurityContext(ver version.Version) *corev1.SecurityContext {
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},
-		Privileged:               ptr.To[bool](false),
-		ReadOnlyRootFilesystem:   ptr.To[bool](true),
-		AllowPrivilegeEscalation: ptr.To[bool](false),
+		Privileged:               new(false),
+		ReadOnlyRootFilesystem:   new(true),
+		AllowPrivilegeEscalation: new(false),
 	}
 	if ver.LT(RunAsNonRootMinStackVersion) {
 		return sc
 	}
-	sc.RunAsNonRoot = ptr.To[bool](true)
+	sc.RunAsNonRoot = new(true)
 	return sc
 }

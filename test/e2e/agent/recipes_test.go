@@ -23,11 +23,18 @@ import (
 )
 
 func TestSystemIntegrationRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		return builder.
+		builder = builder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
+		// so metrics-elastic_agent.metricbeat-default is no longer populated.
+		// See https://github.com/elastic/elastic-agent/pull/13411.
+		if v.LT(version.MinFor(9, 5, 0)) {
+			builder = builder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+		}
+		return builder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed
@@ -45,11 +52,18 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 }
 
 func TestKubernetesIntegrationRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		return builder.
+		builder = builder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
+		// so metrics-elastic_agent.metricbeat-default is no longer populated.
+		// See https://github.com/elastic/elastic-agent/pull/13411.
+		if v.LT(version.MinFor(9, 5, 0)) {
+			builder = builder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"))
+		}
+		return builder.
 			// TODO API server should generate event in time but on kind we see repeatedly no metrics being reported in time
 			// see https://github.com/elastic/cloud-on-k8s/issues/4092
 			// WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "kubernetes.apiserver", "k8s")).
@@ -66,11 +80,18 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 }
 
 func TestMultiOutputRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		return builder.
+		builder = builder.
 			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
-			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
-			WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring").
+			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring")
+		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
+		// so metrics-elastic_agent.metricbeat-default is no longer populated.
+		// See https://github.com/elastic/elastic-agent/pull/13411.
+		if v.LT(version.MinFor(9, 5, 0)) {
+			builder = builder.WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "elastic_agent.metricbeat", "default"), "monitoring")
+		}
+		return builder.
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 			// to be reinstated once https://github.com/elastic/beats/issues/30590 is addressed

@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -607,7 +606,7 @@ func (esb esBuilder) toExpectedResources() nodespec.ResourcesList {
 					Namespace: "default",
 				},
 				Spec: v1.StatefulSetSpec{
-					Replicas: ptr.To[int32](fns.count),
+					Replicas: new(fns.count),
 					Template: fns.toPodTemplateSpec(),
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{

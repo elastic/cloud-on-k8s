@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
 	// AgentContainerName is the name of the main Elastic Agent container in the pod.
@@ -106,6 +106,12 @@ type AgentSpec struct {
 	// This field will become mandatory in a future release, default policies are deprecated since 8.1.0.
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
+
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^[a-z0-9_-]+$"
+	SpaceID string `json:"spaceID,omitempty"`
 
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
@@ -535,8 +541,4 @@ type AgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Agent `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Agent{}, &AgentList{})
 }
