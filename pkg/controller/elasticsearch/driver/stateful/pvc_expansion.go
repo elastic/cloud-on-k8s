@@ -18,7 +18,7 @@ func recreateStatefulSets(ctx context.Context, k8sclient k8s.Client, es esv1.Ela
 	return volume.RecreateStatefulSets(ctx, k8sclient, &es)
 }
 
-func handleVolumeExpansion(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet,
+func reconcilePVCsForStatefulSet(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, expectedSset appsv1.StatefulSet,
 	actualSset appsv1.StatefulSet, validateStorageClass bool) (bool, error) {
-	return volume.HandleVolumeExpansion(ctx, k8sClient, &es, expectedSset, actualSset, validateStorageClass)
+	return volume.ReconcilePVCsForStatefulSet(ctx, k8sClient, &es, expectedSset, actualSset, validateStorageClass)
 }

@@ -122,7 +122,7 @@ func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 //     volume expansion; decreases are rejected unless the matching StatefulSet still has
 //     the "old" storage size (revert scenario).
 //   - metadata.labels: free-form user labels can be added, modified, or removed (additive-only
-//     propagation to existing PVCs is performed by HandleVolumeExpansion). Reserved ECK label
+//     propagation to existing PVCs is performed by ReconcilePVCsForStatefulSet). Reserved ECK label
 //     keys (see checkPVCReservedLabels) are rejected by a separate validation.
 //
 // Any other change to a VolumeClaimTemplate field is forbidden.

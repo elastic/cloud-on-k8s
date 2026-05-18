@@ -188,7 +188,7 @@ func Test_syncPVCLabels(t *testing.T) {
 	}
 }
 
-func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
+func TestReconcilePVCsForStatefulSet_Elasticsearch(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
@@ -335,9 +335,9 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 			// Scale-up eventual-consistency: ReconcileStatefulSet preserves the existing
 			// (immutable) VolumeClaimTemplates, so the StatefulSet controller will create
 			// a new PVC from the stale (label-less) template on a replica increase. The
-			// next reconcile pass through HandleVolumeExpansion must label the new PVC
+			// next reconcile pass through ReconcilePVCsForStatefulSet must label the new PVC
 			// alongside the pre-existing ones.
-			name: "scale-up: HandleVolumeExpansion labels PVCs created from a stale template",
+			name: "scale-up: ReconcilePVCsForStatefulSet labels PVCs created from a stale template",
 			args: args{
 				expectedSset: func() appsv1.StatefulSet {
 					labeled := *sset.DeepCopy()
@@ -401,10 +401,10 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 			}
 
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es,
+			recreate, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("reconcilePVCsForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.wantRecreate, recreate)
 
@@ -445,12 +445,12 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 	}
 }
 
-// Test_handleVolumeExpansion_scaleUpSequence simulates the time-ordered scale-up scenario
+// TestReconcilePVCsForStatefulSet_scaleUpSequence simulates the time-ordered scale-up scenario
 // flagged in PR review: the first reconcile labels existing PVCs, the StatefulSet
 // controller then creates a new PVC from the still-stale (immutable) VCT, and the next
 // reconcile pass picks up that new PVC and labels it. This locks in the eventual
 // consistency contract documented on ReconcileStatefulSet's UpdateReconciled.
-func Test_handleVolumeExpansion_scaleUpSequence(t *testing.T) {
+func TestReconcilePVCsForStatefulSet_scaleUpSequence(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
@@ -484,11 +484,11 @@ func Test_handleVolumeExpansion_scaleUpSequence(t *testing.T) {
 
 	// === Pass 1 ===
 	// User adds a label to the VCT. ReconcileStatefulSet preserves the existing VCT in
-	// the apiserver but HandleVolumeExpansion still labels the existing PVCs.
+	// the apiserver but ReconcilePVCsForStatefulSet still labels the existing PVCs.
 	expectedSset := *initialSset.DeepCopy()
 	expectedSset.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
 
-	recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, expectedSset, initialSset, true)
+	recreate, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es, expectedSset, initialSset, true)
 	require.NoError(t, err)
 	require.False(t, recreate)
 
@@ -508,9 +508,9 @@ func Test_handleVolumeExpansion_scaleUpSequence(t *testing.T) {
 
 	// === Pass 2 ===
 	// On the next reconcile pass, expectedSset reflects the new replica count and the
-	// labeled VCT; HandleVolumeExpansion must label the freshly-created PVC.
+	// labeled VCT; ReconcilePVCsForStatefulSet must label the freshly-created PVC.
 	expectedSset.Spec.Replicas = ptr.To[int32](4)
-	recreate, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, expectedSset, scaledSset, true)
+	recreate, err = ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es, expectedSset, scaledSset, true)
 	require.NoError(t, err)
 	require.False(t, recreate)
 
@@ -523,12 +523,12 @@ func Test_handleVolumeExpansion_scaleUpSequence(t *testing.T) {
 	}
 }
 
-// Test_handleVolumeExpansion_labelRemovalAndRename locks in the additive-only contract
+// TestReconcilePVCsForStatefulSet_labelRemovalAndRename locks in the additive-only contract
 // documented on syncPVCLabels: removing a label from the VCT does not remove it from
 // existing PVCs, and renaming a label adds the new key without removing the old one.
 // This guards against silent product behavior changes if the additive-only design ever
 // shifts to full sync.
-func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
+func TestReconcilePVCsForStatefulSet_labelRemovalAndRename(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
@@ -555,15 +555,15 @@ func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
 	// === Pass 1: add label "team=search" ===
 	step1 := *initialSset.DeepCopy()
 	step1.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
-	_, err := HandleVolumeExpansion(context.Background(), k8sClient, &es, step1, initialSset, true)
+	_, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es, step1, initialSset, true)
 	require.NoError(t, err)
 
 	// === Pass 2: remove "team" entirely ===
 	// actualSset is now step1 (the VCT was previously updated logically; in reality the
-	// apiserver VCT stays stale because of immutability, but HandleVolumeExpansion
+	// apiserver VCT stays stale because of immutability, but ReconcilePVCsForStatefulSet
 	// compares storage only, so what we pass as actual does not matter for labels).
 	step2 := *initialSset.DeepCopy() // VCT has no labels
-	_, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, step2, step1, true)
+	_, err = ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es, step2, step1, true)
 	require.NoError(t, err)
 
 	// PVCs should retain "team=search" — additive-only, removal does not propagate.
@@ -577,7 +577,7 @@ func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
 	// === Pass 3: rename to "squad=search" (different key entirely) ===
 	step3 := *initialSset.DeepCopy()
 	step3.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"squad": "search"})
-	_, err = HandleVolumeExpansion(context.Background(), k8sClient, &es, step3, step2, true)
+	_, err = ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &es, step3, step2, true)
 	require.NoError(t, err)
 
 	// PVCs should now carry BOTH the stale "team" key and the new "squad" key — the
@@ -590,11 +590,11 @@ func Test_handleVolumeExpansion_labelRemovalAndRename(t *testing.T) {
 	}
 }
 
-// Test_handleVolumeExpansionLogstash_scaleUpSequence is the Logstash mirror of
-// Test_handleVolumeExpansion_scaleUpSequence: simulates the time-ordered scale-up
+// TestReconcilePVCsForStatefulSetLogstash_scaleUpSequence is the Logstash mirror of
+// TestReconcilePVCsForStatefulSet_scaleUpSequence: simulates the time-ordered scale-up
 // scenario where the StatefulSet controller creates a new PVC from the still-stale
 // (immutable) VCT after a label change, and the next reconcile pass labels it.
-func Test_handleVolumeExpansionLogstash_scaleUpSequence(t *testing.T) {
+func TestReconcilePVCsForStatefulSetLogstash_scaleUpSequence(t *testing.T) {
 	ls := logstashv1alpha1.Logstash{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
 		TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind},
@@ -630,7 +630,7 @@ func Test_handleVolumeExpansionLogstash_scaleUpSequence(t *testing.T) {
 	expectedSset := *initialSset.DeepCopy()
 	expectedSset.Spec.VolumeClaimTemplates[0] = withLabels(sampleClaim, map[string]string{"team": "search"})
 
-	recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls, expectedSset, initialSset, true)
+	recreate, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &ls, expectedSset, initialSset, true)
 	require.NoError(t, err)
 	require.False(t, recreate)
 
@@ -648,7 +648,7 @@ func Test_handleVolumeExpansionLogstash_scaleUpSequence(t *testing.T) {
 
 	// === Pass 2 ===
 	expectedSset.Spec.Replicas = ptr.To[int32](4)
-	recreate, err = HandleVolumeExpansion(context.Background(), k8sClient, &ls, expectedSset, scaledSset, true)
+	recreate, err = ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &ls, expectedSset, scaledSset, true)
 	require.NoError(t, err)
 	require.False(t, recreate)
 
@@ -661,7 +661,7 @@ func Test_handleVolumeExpansionLogstash_scaleUpSequence(t *testing.T) {
 	}
 }
 
-func Test_handleVolumeExpansionLogstash(t *testing.T) {
+func TestReconcilePVCsForStatefulSetLogstash(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
@@ -837,10 +837,10 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
 				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls,
+			recreate, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, &ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("reconcilePVCsForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.wantRecreate, recreate)
 

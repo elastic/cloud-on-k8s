@@ -27,14 +27,19 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-// HandleVolumeExpansion works around the immutability of VolumeClaimTemplates in StatefulSets by:
-// 1. updating storage requests in PVCs whose storage class supports volume expansion
-// 2. scheduling the StatefulSet for recreation with the new storage spec
-// It returns a boolean indicating whether the StatefulSet needs to be recreated.
-// Note that some storage drivers also require Pods to be deleted/recreated for the filesystem to be resized
-// (as opposed to a hot resize while the Pod is running). This is left to the responsibility of the user.
-// This should be handled differently once supported by the StatefulSet controller: https://github.com/kubernetes/kubernetes/issues/68737.
-func HandleVolumeExpansion(
+// ReconcilePVCsForStatefulSet reconciles existing PVCs against the expected and actual StatefulSet
+// volume claim templates. It:
+//  1. validates that storage changes are allowed (no forbidden decreases, expansion only when supported),
+//  2. updates PVC storage requests where expansion applies,
+//  3. propagates labels from the expected templates onto PVCs (StatefulSet VCT metadata is often
+//     immutable on update, so label intent is applied here rather than via a StatefulSet patch),
+//  4. returns whether the StatefulSet should be recreated to pick up storage template changes
+//     that cannot be expressed on existing PVCs alone (see needsRecreate / annotateForRecreation).
+//
+// Some storage drivers require Pods to be deleted/recreated for the filesystem to resize; that
+// remains the user's responsibility. Ideally the StatefulSet controller would handle this:
+// https://github.com/kubernetes/kubernetes/issues/68737
+func ReconcilePVCsForStatefulSet(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	owner client.Object,

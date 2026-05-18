@@ -117,7 +117,7 @@ func BuildStatefulSet(
 	// keys (validPVCReservedLabelsOnCreate) but operators running with --enable-webhook=false
 	// or CRs that otherwise bypass admission would let reserved keys propagate from the VCT
 	// onto freshly provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs
-	// at creation time, before HandleVolumeExpansion's syncPVCLabels can run). This
+	// at creation time, before ReconcilePVCsForStatefulSet's syncPVCLabels can run). This
 	// reconciler-side guard prevents this behavior.
 	claims = volumevalidations.StripReservedLabelKeys(claims)
 

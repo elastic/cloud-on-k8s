@@ -27,7 +27,7 @@ import (
 
 // TestReconcile_PreservesExistingVCTs ensures that Logstash's Reconcile does not
 // attempt to mutate the immutable VolumeClaimTemplates field of an existing
-// StatefulSet. VCT label/metadata changes are handled by HandleVolumeExpansion
+// StatefulSet. VCT label/metadata changes are handled by ReconcilePVCsForStatefulSet
 // (which updates PVCs directly), and storage resizes are handled by the
 // recreate-annotation path. Any label-only diff on VCTs that reaches the
 // apiserver would trigger a "Forbidden: updates to statefulset spec for fields

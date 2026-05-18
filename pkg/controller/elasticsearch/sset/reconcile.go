@@ -21,12 +21,12 @@ import (
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
 //
 // VolumeClaimTemplates are immutable on an existing StatefulSet, with the sole
-// exception of storage size updates handled separately by HandleVolumeExpansion
+// exception of storage size updates handled separately by ReconcilePVCsForStatefulSet
 // via the recreate-annotation path. To avoid a spurious "forbidden" error from
 // the Kubernetes apiserver on otherwise-valid updates (e.g. a user adding
 // labels to spec.volumeClaimTemplates), in-place updates preserve the existing
 // StatefulSet's VolumeClaimTemplates. VCT label changes are propagated to
-// existing PVCs directly by HandleVolumeExpansion.
+// existing PVCs directly by ReconcilePVCsForStatefulSet.
 func ReconcileStatefulSet(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	podTemplateValidator := statefulset.NewPodTemplateValidator(ctx, c, &es, expected)
 	var reconciled appsv1.StatefulSet
@@ -52,10 +52,10 @@ func ReconcileStatefulSet(ctx context.Context, c k8s.Client, es esv1.Elasticsear
 			// preserve the existing VolumeClaimTemplates: they are immutable on an existing
 			// StatefulSet, and the recreate-annotation path handles storage resizes separately.
 			// Any label changes on volumeClaimTemplates are propagated to existing PVCs by
-			// HandleVolumeExpansion instead of the StatefulSet update path. Note that on a
+			// ReconcilePVCsForStatefulSet instead of the StatefulSet update path. Note that on a
 			// scale-up the StatefulSet controller will create new PVCs from this stale VCT,
 			// so they are briefly unlabeled until the next reconcile pass labels them via
-			// HandleVolumeExpansion (eventual consistency).
+			// ReconcilePVCsForStatefulSet (eventual consistency).
 			existingVCTs := reconciled.Spec.VolumeClaimTemplates
 			reconciled.Spec = expected.Spec
 			reconciled.Spec.VolumeClaimTemplates = existingVCTs
