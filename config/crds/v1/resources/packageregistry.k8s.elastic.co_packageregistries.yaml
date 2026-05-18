@@ -499,7 +499,7 @@ spec:
                   deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Package
                   Registry pods
                 properties:

@@ -1306,7 +1306,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -1804,7 +1804,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
@@ -2050,7 +2050,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -2491,7 +2491,7 @@ spec:
                 description: Image is the APM Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
@@ -2701,7 +2701,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Agent pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -3568,7 +3568,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the ElasticMapsServer configuration. See:
-                  https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
+                  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:
@@ -4043,7 +4043,7 @@ spec:
                 description: Image is the Elastic Maps Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 type: object
@@ -5097,7 +5097,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-                  See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -5210,7 +5210,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
@@ -6127,7 +6127,7 @@ spec:
                   properties:
                     apiKey:
                       description: 'APIKey can be used to enable remote cluster access
-                        using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
+                        using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key'
                       properties:
                         access:
                           description: Access is the name of the API Key. It is automatically
@@ -7387,7 +7387,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
@@ -8415,7 +8415,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -9085,7 +9085,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -9224,7 +9224,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -9723,7 +9723,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-                  See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -9832,7 +9832,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -10085,7 +10085,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -10525,7 +10525,7 @@ spec:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -10848,7 +10848,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options for the Logstash
+                description: PodTemplate provides customization options for the Logstash
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -12418,7 +12418,7 @@ spec:
                   deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Package
                   Registry pods
                 type: object
