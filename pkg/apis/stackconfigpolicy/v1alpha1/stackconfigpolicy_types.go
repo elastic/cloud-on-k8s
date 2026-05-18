@@ -16,16 +16,12 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "StackConfigPolicy"
 
 	unknownVersion = 0
 )
-
-func init() {
-	SchemeBuilder.Register(&StackConfigPolicy{}, &StackConfigPolicyList{})
-}
 
 // +kubebuilder:object:root=true
 

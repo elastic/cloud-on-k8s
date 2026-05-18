@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -302,8 +301,8 @@ func getElasticsearchContainer(containers []corev1.Container) *corev1.Container 
 }
 
 func getClaimedStorage(claim corev1.PersistentVolumeClaim) *int64 {
-	if storage, exists := claim.Spec.Resources.Requests[corev1.ResourceStorage]; exists {
-		return ptr.To[int64](storage.Value())
+	if storage, exists := claim.Spec.Resources.Requests[corev1.ResourceStorage]; exists { //nolint:staticcheck //value of storage is used
+		return new(storage.Value())
 	}
 	return nil
 }

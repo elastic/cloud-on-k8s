@@ -16,7 +16,7 @@ import (
 
 const (
 	EnterpriseSearchContainerName = "enterprise-search"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "EnterpriseSearch"
 )
@@ -56,7 +56,7 @@ type EnterpriseSearchSpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
 	// for the Enterprise Search pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -206,8 +206,4 @@ type EnterpriseSearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EnterpriseSearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&EnterpriseSearch{}, &EnterpriseSearchList{})
 }

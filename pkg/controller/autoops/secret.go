@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -27,8 +29,9 @@ import (
 )
 
 const (
-	apiKeySecretType = "api-key"
-	caSecretType     = "ca"
+	apiKeySecretType     = "api-key"
+	caSecretType         = "ca"
+	clientCertSecretType = "client-cert"
 )
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
@@ -101,6 +104,93 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 		secretName,
 		[]string{secretName},
 	)
+}
+
+// deleteAutoOpsESClientCertSecret deletes the client certificate secret for a specific ES cluster
+// when client authentication is no longer required.
+func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	es esv1.Elasticsearch,
+) error {
+	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretName)
+	return k8s.DeleteSecretIfExists(ctx, r.Client, types.NamespacedName{
+		Namespace: policy.GetNamespace(),
+		Name:      secretName,
+	})
+}
+
+// reconcileAutoOpsESClientCertSecret reconciles a self-signed client certificate
+// for a specific Elasticsearch cluster that requires client authentication.
+// The certificate is unique to this policy+ES pair and is labeled so the ES trust
+// bundle controller discovers it and includes it in the client CA trust bundle.
+// Returns a requeue duration for certificate rotation.
+//
+// Unlike reconcileAutoOpsESCASecret above, this does not gate on ES readiness: we want
+// the client cert to land as early as possible so the ES trust bundle controller picks
+// it up ASAP and autoops can eventually connect. Initial connection attempts may fail
+// while the trust bundle catches up (tracked in #9165).
+func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	es esv1.Elasticsearch,
+) (*corev1.Secret, *reconciler.Results) {
+	ulog.FromContext(ctx).V(1).Info("Reconciling AutoOps ES client cert secret",
+		"es_namespace", es.Namespace, "es_name", es.Name)
+
+	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+
+	// Build labels for the secret: policy resource labels + soft-owner labels for trust bundle discovery.
+	labels := resourceLabelsFor(policy, es)
+	labels[policySecretTypeLabelKey] = clientCertSecretType
+	labels[reconciler.SoftOwnerNameLabel] = es.Name
+	labels[reconciler.SoftOwnerNamespaceLabel] = es.Namespace
+	labels[reconciler.SoftOwnerKindLabel] = esv1.Kind
+	labels[commonlabels.ClientCertificateLabelName] = "true"
+
+	meta := metadata.Propagate(&policy, metadata.Metadata{
+		Labels:      maps.Merge(policy.GetLabels(), labels),
+		Annotations: policy.GetAnnotations(),
+	})
+
+	certRotation := certificates.RotationParams{
+		Validity:     certificates.DefaultCertValidity,
+		RotateBefore: certificates.DefaultRotateBefore,
+	}
+	certReconciler := certificates.Reconciler{
+		K8sClient:    r.Client,
+		Owner:        &policy,
+		Metadata:     meta,
+		CertRotation: certRotation,
+	}
+
+	commonName := policy.GetName()
+	orgUnit := policy.GetName()
+
+	results := reconciler.NewResult(ctx)
+	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, labels)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Register a dynamic watch on the client cert secret so the controller is
+	// re-triggered if it is deleted out from under us (the cert is otherwise
+	// only re-issued via rotation requeue, which fires once per cert validity).
+	watcher := k8s.ExtractNamespacedName(&policy)
+	if err := watches.WatchUserProvidedSecrets(watcher, r.dynamicWatches, secretName, []string{secretName}); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Schedule requeue for certificate rotation.
+	primaryCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+	results.WithReconciliationState(
+		reconciler.RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore)).ReconciliationComplete(),
+	)
+	return &clientCertSecret.Secret, results
 }
 
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.

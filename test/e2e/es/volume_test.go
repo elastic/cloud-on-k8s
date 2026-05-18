@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -120,7 +119,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 								corev1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
-						StorageClassName: ptr.To[string](test.DefaultStorageClass),
+						StorageClassName: new(test.DefaultStorageClass),
 					},
 				},
 				{
@@ -136,7 +135,7 @@ func TestVolumeMultiDataPath(t *testing.T) {
 								corev1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
-						StorageClassName: ptr.To[string](test.DefaultStorageClass),
+						StorageClassName: new(test.DefaultStorageClass),
 					},
 				},
 			},
@@ -226,7 +225,7 @@ func getResizeableStorageClass(k8sClient k8s.Client) (string, error) {
 func patchStorageClasses(es *esv1.Elasticsearch, storageClassName string) {
 	for nodeSetIndex := range es.Spec.NodeSets {
 		for claimIndex := range es.Spec.NodeSets[nodeSetIndex].VolumeClaimTemplates {
-			es.Spec.NodeSets[nodeSetIndex].VolumeClaimTemplates[claimIndex].Spec.StorageClassName = ptr.To[string](storageClassName)
+			es.Spec.NodeSets[nodeSetIndex].VolumeClaimTemplates[claimIndex].Spec.StorageClassName = new(string(storageClassName))
 		}
 	}
 }

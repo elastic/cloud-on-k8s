@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,8 +48,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},
@@ -100,8 +99,8 @@ func TestReconcileServices(t *testing.T) {
 							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 							Kind:               "Logstash",
 							Name:               "logstash",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 				},
@@ -152,8 +151,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
+								Controller:         new(true),
+								BlockOwnerDeletion: new(true),
 							},
 						},
 					},
@@ -209,8 +208,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
+								Controller:         new(true),
+								BlockOwnerDeletion: new(true),
 							},
 						},
 					},
@@ -263,8 +262,8 @@ func TestReconcileServices(t *testing.T) {
 								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 								Kind:               "Logstash",
 								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
+								Controller:         new(true),
+								BlockOwnerDeletion: new(true),
 							},
 						},
 					},
@@ -321,8 +320,8 @@ func DefaultAPIService() corev1.Service {
 					APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
 					Kind:               "Logstash",
 					Name:               "logstash",
-					Controller:         ptr.To(true),
-					BlockOwnerDeletion: ptr.To(true),
+					Controller:         new(true),
+					BlockOwnerDeletion: new(true),
 				},
 			},
 		},

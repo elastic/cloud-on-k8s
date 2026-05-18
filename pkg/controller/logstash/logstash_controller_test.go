@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -46,7 +45,7 @@ var (
 	}
 	resizableStorageClass = storagev1.StorageClass{
 		ObjectMeta:           metav1.ObjectMeta{Name: "resizable"},
-		AllowVolumeExpansion: ptr.To(true),
+		AllowVolumeExpansion: new(true),
 	}
 )
 
@@ -188,7 +187,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
@@ -300,7 +299,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
@@ -429,7 +428,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1.5Gi"),
@@ -547,7 +546,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 									Namespace: "test",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
-									StorageClassName: ptr.To[string](sampleStorageClass.Name),
+									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
 										Requests: corev1.ResourceList{
 											corev1.ResourceStorage: resource.MustParse("1.5Gi"),

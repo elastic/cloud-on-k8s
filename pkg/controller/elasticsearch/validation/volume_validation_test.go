@@ -14,7 +14,6 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -27,14 +26,14 @@ var (
 	sampleClaim = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
@@ -48,7 +47,7 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 
 func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName string) corev1.PersistentVolumeClaim {
 	c := claim.DeepCopy()
-	c.Spec.StorageClassName = ptr.To[string](storageClassName)
+	c.Spec.StorageClassName = new(storageClassName)
 	return *c
 }
 

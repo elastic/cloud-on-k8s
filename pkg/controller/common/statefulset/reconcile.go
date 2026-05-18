@@ -107,7 +107,7 @@ func Reconcile(
 // WithTemplateHash returns a new StatefulSet with a hash of its template to ease comparisons.
 func WithTemplateHash(d appsv1.StatefulSet) appsv1.StatefulSet {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
 }
 

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {
@@ -134,7 +133,7 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: ptr.To[int32](-1),
+			fromSpec: new(int32(-1)),
 			want:     nil,
 		},
 		{
@@ -149,13 +148,13 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: ptr.To[int32](0),
-			want:     ptr.To[int32](0),
+			fromSpec: new(int32(0)),
+			want:     new(int32(0)),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: ptr.To[int32](1),
-			want:     ptr.To[int32](1),
+			fromSpec: new(int32(1)),
+			want:     new(int32(1)),
 		},
 	}
 
@@ -177,7 +176,7 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: ptr.To[int32](-1),
+			fromSpec: new(int32(-1)),
 			want:     nil,
 		},
 		{
@@ -188,17 +187,17 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 		{
 			name:     "nil in spec results in default, currently 1",
 			fromSpec: nil,
-			want:     ptr.To[int32](1),
+			want:     new(int32(1)),
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: ptr.To[int32](0),
-			want:     ptr.To[int32](0),
+			fromSpec: new(int32(0)),
+			want:     new(int32(0)),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: ptr.To[int32](1),
-			want:     ptr.To[int32](1),
+			fromSpec: new(int32(1)),
+			want:     new(int32(1)),
 		},
 	}
 

@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -76,11 +75,11 @@ func TestLogstashResources(t *testing.T) {
 					Version: "8.17.0",
 					Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
-							CPU:    ptr.To(resource.MustParse("1")),
-							Memory: ptr.To(resource.MustParse("2Gi")),
+							CPU:    new(resource.MustParse("1")),
+							Memory: new(resource.MustParse("2Gi")),
 						},
 						Limits: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("2Gi")),
+							Memory: new(resource.MustParse("2Gi")),
 						},
 					},
 				}
@@ -119,10 +118,10 @@ func TestLogstashResources(t *testing.T) {
 					},
 					Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("4Gi")),
+							Memory: new(resource.MustParse("4Gi")),
 						},
 						Limits: commonv1.ResourceAllocations{
-							Memory: ptr.To(resource.MustParse("4Gi")),
+							Memory: new(resource.MustParse("4Gi")),
 						},
 					},
 				}

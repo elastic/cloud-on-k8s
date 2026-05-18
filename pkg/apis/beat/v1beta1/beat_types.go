@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Beat"
 )
@@ -391,10 +391,6 @@ type BeatList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Beat `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Beat{}, &BeatList{})
 }
 
 // -- association with monitoring Elasticsearch clusters
