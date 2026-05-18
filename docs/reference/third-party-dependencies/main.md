@@ -17,7 +17,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | Name | Version | Licence |
 | --- | --- | --- |
 | [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.20.0 | Apache-2.0 |
-| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.62.1 | Apache-2.0 |
+| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.62.2 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.7.0 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
@@ -34,7 +34,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
 | [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.7.0 | BSD-3-Clause |
-| [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.21.5 | Apache-2.0 |
+| [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.21.6 | Apache-2.0 |
 | [github.com/google/uuid](https://github.com/google/uuid) | v1.6.0 | BSD-3-Clause |
 | [github.com/googlecloudplatform/compute-class-api](https://github.com/googlecloudplatform/compute-class-api) | v0.0.0-20251208134148-ae2e7936c1f8 | Apache-2.0 |
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
@@ -109,8 +109,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/cenkalti/backoff/v5](https://github.com/cenkalti/backoff) | v5.0.3 | MIT |
 | [github.com/cespare/xxhash/v2](https://github.com/cespare/xxhash) | v2.3.0 | MIT |
 | [github.com/cncf/xds/go](https://github.com/cncf/xds) | v0.0.0-20251210132809-ee656c7534f5 | Apache-2.0 |
-| [github.com/containerd/stargz-snapshotter/estargz](https://github.com/containerd/stargz-snapshotter) | v0.18.2 | Apache-2.0 |
-| [github.com/docker/cli](https://github.com/docker/cli) | v29.4.0+incompatible | Apache-2.0 |
+| [github.com/docker/cli](https://github.com/docker/cli) | v29.4.3+incompatible | Apache-2.0 |
 | [github.com/docker/docker-credential-helpers](https://github.com/docker/docker-credential-helpers) | v0.9.3 | MIT |
 | [github.com/elastic/go-sysinfo](https://github.com/elastic/go-sysinfo) | v1.15.2 | Apache-2.0 |
 | [github.com/elastic/go-windows](https://github.com/elastic/go-windows) | v1.0.2 | Apache-2.0 |
@@ -174,7 +173,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/huandu/xstrings](https://github.com/huandu/xstrings) | v1.5.0 | MIT |
 | [github.com/inconshreveable/mousetrap](https://github.com/inconshreveable/mousetrap) | v1.1.0 | Apache-2.0 |
 | [github.com/json-iterator/go](https://github.com/json-iterator/go) | v1.1.12 | MIT |
-| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.18.5 | Apache-2.0 |
+| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.18.6 | Apache-2.0 |
 | [github.com/kr/pretty](https://github.com/kr/pretty) | v0.3.1 | MIT |
 | [github.com/kr/text](https://github.com/kr/text) | v0.2.0 | MIT |
 | [github.com/kylelemons/godebug](https://github.com/kylelemons/godebug) | v1.1.0 | Apache-2.0 |
@@ -219,7 +218,6 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/tidwall/match](https://github.com/tidwall/match) | v1.1.1 | MIT |
 | [github.com/tidwall/pretty](https://github.com/tidwall/pretty) | v1.2.1 | MIT |
 | [github.com/tidwall/sjson](https://github.com/tidwall/sjson) | v1.2.5 | MIT |
-| [github.com/vbatts/tar-split](https://github.com/vbatts/tar-split) | v0.12.2 | BSD-3-Clause |
 | [github.com/x448/float16](https://github.com/x448/float16) | v0.8.4 | MIT |
 | [go.elastic.co/fastjson](https://go.elastic.co/fastjson) | v1.5.1 | MIT |
 | [go.opentelemetry.io/auto/sdk](https://go.opentelemetry.io/auto/sdk) | v1.2.1 | Apache-2.0 |
@@ -239,7 +237,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/multierr](https://go.uber.org/multierr) | v1.11.0 | MIT |
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.4 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.4 | MIT |
-| [golang.org/x/mod](https://golang.org/x/mod) | v0.35.0 | BSD-3-Clause |
+| [golang.org/x/mod](https://golang.org/x/mod) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/net](https://golang.org/x/net) | v0.54.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.20.0 | BSD-3-Clause |
@@ -247,7 +245,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/term](https://golang.org/x/term) | v0.43.0 | BSD-3-Clause |
 | [golang.org/x/text](https://golang.org/x/text) | v0.37.0 | BSD-3-Clause |
 | [golang.org/x/time](https://golang.org/x/time) | v0.15.0 | BSD-3-Clause |
-| [golang.org/x/tools](https://golang.org/x/tools) | v0.44.0 | BSD-3-Clause |
+| [golang.org/x/tools](https://golang.org/x/tools) | v0.45.0 | BSD-3-Clause |
 | [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |
 | [golang.org/x/tools/go/packages/packagestest](https://golang.org/x/tools/go/packages/packagestest) | v0.1.1-deprecated | BSD-3-Clause |
 | [gomodules.xyz/jsonpatch/v2](https://gomodules.xyz/jsonpatch/v2) | v2.4.0 | Apache-2.0 |
