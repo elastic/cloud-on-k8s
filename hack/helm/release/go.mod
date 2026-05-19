@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.3
 
 require (
-	cloud.google.com/go/storage v1.62.1
+	cloud.google.com/go/storage v1.62.2
 	github.com/elastic/cloud-on-k8s/v3 v3.4.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
