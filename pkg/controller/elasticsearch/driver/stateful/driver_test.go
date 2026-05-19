@@ -239,17 +239,17 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 
 type fakeESShutdownClient struct {
 	esclient.Client
-	restartedNodeIDs []string
-	removedNodeIDs   []string
-	deletedNodeIDs   map[string]struct{}
+	restartedNodeIDs       []string
+	terminatedNodeIDs      []string
+	shutdownDeletedNodeIDs map[string]struct{}
 }
 
 func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
-	nodes := make(map[string]esclient.Node, len(f.restartedNodeIDs)+len(f.removedNodeIDs))
+	nodes := make(map[string]esclient.Node, len(f.restartedNodeIDs)+len(f.terminatedNodeIDs))
 	for _, id := range f.restartedNodeIDs {
 		nodes[id] = esclient.Node{Name: id}
 	}
-	for _, id := range f.removedNodeIDs {
+	for _, id := range f.terminatedNodeIDs {
 		nodes[id] = esclient.Node{Name: id}
 	}
 	return esclient.Nodes{
@@ -258,11 +258,11 @@ func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, erro
 }
 
 func (f *fakeESShutdownClient) GetShutdown(_ context.Context, _ *string) (esclient.ShutdownResponse, error) {
-	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.removedNodeIDs))
+	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.terminatedNodeIDs))
 	for _, nodeID := range f.restartedNodeIDs {
 		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart), Status: esclient.ShutdownComplete})
 	}
-	for _, nodeID := range f.removedNodeIDs {
+	for _, nodeID := range f.terminatedNodeIDs {
 		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Remove)})
 	}
 
@@ -272,10 +272,10 @@ func (f *fakeESShutdownClient) GetShutdown(_ context.Context, _ *string) (esclie
 }
 
 func (f *fakeESShutdownClient) DeleteShutdown(_ context.Context, nodeID string) error {
-	if f.deletedNodeIDs == nil {
-		f.deletedNodeIDs = map[string]struct{}{}
+	if f.shutdownDeletedNodeIDs == nil {
+		f.shutdownDeletedNodeIDs = map[string]struct{}{}
 	}
-	f.deletedNodeIDs[nodeID] = struct{}{}
+	f.shutdownDeletedNodeIDs[nodeID] = struct{}{}
 	return nil
 }
 
@@ -332,7 +332,7 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 		resolvedConfig       nodespec.ResolvedConfig
 		failK8sClient        bool
 		restartedNodeIDs     []string
-		removedNodeIDs       []string
+		terminatedNodeIDs    []string
 		wantErr              bool
 		wantRequeue          bool
 		wantCondStatus       corev1.ConditionStatus
@@ -360,10 +360,10 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			},
 		},
 		{
-			name:                 "restarted pods are cleared from shutdown API and removed pods are not",
+			name:                 "restarted pods that have joined are cleared from shutdown API and terminated pods are not",
 			resolvedConfig:       resolvedConfig,
 			restartedNodeIDs:     []string{"node-to-restart"},
-			removedNodeIDs:       []string{"node-to-remove"},
+			terminatedNodeIDs:    []string{"node-to-terminated"},
 			wantClearedShutdowns: []string{"node-to-restart"},
 			wantCondStatus:       corev1.ConditionTrue,
 			wantCondMsgSubstr:    "spec changes are pending and will be applied on resume",
@@ -374,6 +374,23 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 					Action:    events.EventActionPendingOrchestrationChanges,
 				},
 			},
+		},
+		{
+			name:                 "restarted pods that have not yet joined trigger a requeue",
+			resolvedConfig:       resolvedConfig,
+			restartedNodeIDs:     nil,
+			terminatedNodeIDs:    []string{"node-to-terminated"},
+			wantClearedShutdowns: nil,
+			wantCondStatus:       corev1.ConditionTrue,
+			wantCondMsgSubstr:    "spec changes are pending and will be applied on resume",
+			wantEvents: []events.Event{
+				{
+					EventType: corev1.EventTypeWarning,
+					Reason:    events.EventReasonPaused,
+					Action:    events.EventActionPendingOrchestrationChanges,
+				},
+			},
+			wantRequeue: true,
 		},
 		{
 			name: "BuildExpectedResources fails: error is propagated, condition not set",
@@ -401,8 +418,8 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			}
 
 			shutdownClient := &fakeESShutdownClient{
-				restartedNodeIDs: tt.restartedNodeIDs,
-				removedNodeIDs:   tt.removedNodeIDs,
+				restartedNodeIDs:  tt.restartedNodeIDs,
+				terminatedNodeIDs: tt.terminatedNodeIDs,
 			}
 			sharedState.ESClient = shutdownClient
 
@@ -454,9 +471,9 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			}
 
 			// Check cleared shutdowns
-			assert.Lenf(t, shutdownClient.deletedNodeIDs, len(tt.wantClearedShutdowns), "Expected %d nodes to be shutdown but got %d", len(tt.wantClearedShutdowns), len(shutdownClient.deletedNodeIDs))
+			assert.Lenf(t, shutdownClient.shutdownDeletedNodeIDs, len(tt.wantClearedShutdowns), "Expected %d nodes to be shutdown but got %d", len(tt.wantClearedShutdowns), len(shutdownClient.shutdownDeletedNodeIDs))
 			for _, want := range tt.wantClearedShutdowns {
-				_, cleared := shutdownClient.deletedNodeIDs[want]
+				_, cleared := shutdownClient.shutdownDeletedNodeIDs[want]
 				assert.Truef(t, cleared, "%s was not cleared as expected", want)
 			}
 		})

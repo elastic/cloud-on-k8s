@@ -187,8 +187,14 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
 		))
 
+		terminatingNodeMap := make(map[string]bool)
+		for _, nodeName := range terminatingNodes {
+			terminatingNodeMap[nodeName] = true
+		}
+
+		// Only requeue if it's not a terminating node
 		for _, pod := range actualPods {
-			if !k8s.IsPodReady(pod) {
+			if !terminatingNodeMap[pod.Name] && !k8s.IsPodReady(pod) {
 				return results.WithRequeue(reconciler.DefaultRequeue)
 			}
 		}

@@ -556,10 +556,27 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	phase2Builder.MaybeAddBuilder(apmlabel.Type, apmUpdated)
 	emsUpdated := emsEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&emsEnabled)
 	phase2Builder.MaybeAddBuilder(emslabels.Type, emsUpdated)
-	// TODO how to perform spec change for beat and agent?
-	beatUpdated := beatEnabled.DeepCopy().WithMutatedFrom(&beatEnabled)
+	beatUpdated := beatEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("550Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("550Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+	}).WithMutatedFrom(&beatEnabled)
 	phase2Builder.MaybeAddBuilder(beatcommon.TypeLabelValue, beatUpdated)
-	agentUpdated := agentEnabled.DeepCopy().WithMutatedFrom(&agentEnabled)
+	agentUpdated := agentEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("800Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("800Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+		},
+	}).WithMutatedFrom(&agentEnabled)
 	phase2Builder.MaybeAddBuilder(agentlabel.TypeLabelValue, agentUpdated)
 	entUpdated := entEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&entEnabled)
 	if entSearchEnabled {

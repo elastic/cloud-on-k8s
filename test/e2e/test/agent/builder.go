@@ -142,6 +142,14 @@ func (b Builder) DeepCopy() *Builder {
 	builderCopy := Builder{
 		Agent: *a,
 	}
+	switch {
+	case a.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.DaemonSet.PodTemplate
+	case a.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.Deployment.PodTemplate
+	case a.Spec.StatefulSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.StatefulSet.PodTemplate
+	}
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}

@@ -101,10 +101,31 @@ func (b Builder) DeepCopy() *Builder {
 	builderCopy := Builder{
 		Beat: *bCopy,
 	}
+	switch {
+	case bCopy.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.DaemonSet.PodTemplate
+	case bCopy.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.Deployment.PodTemplate
+	}
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
 	return &builderCopy
+}
+
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	containerName := b.Beat.Spec.Type
+	for i := range b.PodTemplate.Spec.Containers {
+		if b.PodTemplate.Spec.Containers[i].Name == containerName {
+			b.PodTemplate.Spec.Containers[i].Resources = resources
+			return b
+		}
+	}
+	b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{
+		Name:      containerName,
+		Resources: resources,
+	})
+	return b
 }
 
 func (b Builder) ResourceName() string {
