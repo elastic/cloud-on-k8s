@@ -6,6 +6,7 @@ exclude:
 cross_links:
   - apm-agent-go
   - docs-content
+  - elasticsearch
   - kibana
 toc:
   - toc: reference

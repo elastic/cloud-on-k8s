@@ -1,15 +1,14 @@
 {
-  "_description": "Canonical mappings from legacy elastic.co/guide URLs to elastic.co/docs equivalents, as used in pkg/apis/**/*.go doc comments that flow through to the published API reference (docs/reference/api-reference/main.md) and CRD descriptions. Established by https://github.com/elastic/cloud-on-k8s/pull/9441. When you update a link in API source comments, prefer reusing or extending these targets so the published reference stays consistent.",
+  "_description": "elastic.co/docs URLs to docs-builder cross-repo links.",
   "mappings": {
-    "https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html": "https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure",
-    "https://www.elastic.co/guide/en/kibana/current/settings.html": "https://www.elastic.co/docs/reference/kibana/configuration-reference",
-    "https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html": "https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring",
-    "https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration": "https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html": "https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html": "https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file": "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms": "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration": "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration",
-    "https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port": "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings#tcp-readiness-port"
+    "https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure": "docs-content://solutions/observability/apm/apm-server/configure.md",
+    "https://www.elastic.co/docs/reference/kibana/configuration-reference": "kibana://reference/configuration-reference.md",
+    "https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring": "docs-content://deploy-manage/monitor/stack-monitoring.md",
+    "https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration": "docs-content://explore-analyze/visualize/maps/maps-connect-to-ems.md#elastic-maps-server-configuration",
+    "https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key": "{{es-apis}}operation/operation-security-create-cross-cluster-api-key",
+    "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file": "docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles.md#roles-management-file",
+    "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms": "elasticsearch://reference/elasticsearch/configuration-reference/security-settings.md#password-hashing-algorithms",
+    "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration": "docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/file-based.md#file-realm-configuration",
+    "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings#tcp-readiness-port": "elasticsearch://reference/elasticsearch/configuration-reference/networking-settings.md#tcp-readiness-port"
   }
 }
