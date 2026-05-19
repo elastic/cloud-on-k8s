@@ -201,7 +201,7 @@ func (d *driver) Reconcile(
 		return results.WithError(common.SetPausedConditionAndEmitEvent(ctx, d.client, d.recorder, kb, &expectedDp))
 	}
 
-	common.MaybeResetPausedCondition(&kb.Status.Conditions)
+	common.MaybeResetPausedCondition(d.recorder, kb)
 
 	reconciledDp, err := deployment.Reconcile(ctx, d.client, expectedDp, kb)
 	if err != nil {

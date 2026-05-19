@@ -12,6 +12,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -127,6 +128,8 @@ func (d *Driver) maybeResetPausedCondition() {
 	orchestrationPausedIndex := d.ES.Status.Conditions.Index(commonv1.OrchestrationPaused)
 	if orchestrationPausedIndex >= 0 {
 		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, common.PausedOrchestrationResumed)
+		d.ReconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonResumed,
+			events.EventActionOrchestrationResumed, common.PausedOrchestrationResumed)
 	}
 }
 
@@ -186,17 +189,12 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 			nodeShutdown.OnlyNodesInCluster,
 			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
 		))
+	}
 
-		terminatingNodeMap := make(map[string]bool)
-		for _, nodeName := range terminatingNodes {
-			terminatingNodeMap[nodeName] = true
-		}
-
-		// Only requeue if it's not a terminating node
-		for _, pod := range actualPods {
-			if !terminatingNodeMap[pod.Name] && !k8s.IsPodReady(pod) {
-				return results.WithRequeue(reconciler.DefaultRequeue)
-			}
+	for _, set := range actualSets {
+		if !ssetIsSteady(set) {
+			d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, common.PausedWaitingMessage)
+			return results.WithRequeue(reconciler.DefaultRequeue)
 		}
 	}
 
@@ -214,6 +212,12 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 	}
 	d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, message)
 	return results
+}
+
+func ssetIsSteady(s appsv1.StatefulSet) bool {
+	return s.Status.ObservedGeneration == s.Generation &&
+		s.Status.CurrentRevision == s.Status.UpdateRevision &&
+		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 0)
 }
 
 func (d *Driver) hasPendingSpecChanges(

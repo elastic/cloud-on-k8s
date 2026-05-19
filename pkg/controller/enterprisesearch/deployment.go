@@ -49,7 +49,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 		return existing, nil
 	}
 
-	common.MaybeResetPausedCondition(&ent.Status.Conditions)
+	common.MaybeResetPausedCondition(r.recorder, ent)
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ent)
 }
 

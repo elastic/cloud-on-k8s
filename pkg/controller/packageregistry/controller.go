@@ -235,7 +235,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 		return results.WithError(err), status
 	}
 
-	common.MaybeResetPausedCondition(&epr.Status.Conditions)
+	common.MaybeResetPausedCondition(r.recorder, &epr)
 	reconciledDp, err := deployment.Reconcile(ctx, r.K8sClient(), expectedDp, &epr)
 	if err != nil {
 		return results.WithError(err), status

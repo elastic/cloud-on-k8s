@@ -79,7 +79,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, state.ApmServer, &deploy)
 	}
 
-	common.MaybeResetPausedCondition(&state.ApmServer.Status.Conditions)
+	common.MaybeResetPausedCondition(r.recorder, state.ApmServer)
 
 	result, err := deployment.Reconcile(ctx, r.K8sClient(), deploy, as)
 	if err != nil {

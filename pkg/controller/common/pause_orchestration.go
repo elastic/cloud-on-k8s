@@ -6,6 +6,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -39,10 +40,17 @@ const (
 	// PausedNoChangesMessage is the message displayed in the OrchestrationPaused condition when the
 	// PauseOrchestrationAnnotation is enabled but no spec changes have been made.
 	PausedNoChangesMessage = "Orchestration paused via annotation; no pending spec changes detected"
+	// PausedWaitingMessage is the message displayed in the OrchestrationPaused condition when the
+	// PauseOrchestrationAnnotation is enabled but the resource pods have not stabilized.
+	PausedWaitingMessage = "Orchestration paused via annotation; waiting for pods to stabilize"
 	// PausedOrchestrationResumed is the message displayed in the OrchestrationPaused condition when the
 	// PauseOrchestrationAnnotation annotation has been disabled after previously being enabled. If the
 	// PauseOrchestrationAnnotation has never been set, the OrchestrationPaused condition should not exist at all.
 	PausedOrchestrationResumed = "Orchestration has resumed normally"
+)
+
+var (
+	invalidParametersError = errors.New("cannot set OrchestrationPaused condition on nil parameters")
 )
 
 // IsOrchestrationPaused returns true if the PauseOrchestrationAnnotation exists and is set to true on the given resource
@@ -61,6 +69,9 @@ func SetPausedConditionAndEmitEvent(
 	parent ObjectWithConditions,
 	expected client.Object,
 ) error {
+	if parent == nil || expected == nil {
+		return invalidParametersError
+	}
 	hasPending, err := hasPendingChanges(ctx, client, expected)
 	if err != nil {
 		return err
@@ -68,6 +79,8 @@ func SetPausedConditionAndEmitEvent(
 	msg := PausedNoChangesMessage
 	if hasPending {
 		msg = PausedWithPendingChangesMessage
+		k8s.EmitEvent(recorder, parent, corev1.EventTypeWarning,
+			events.EventReasonPaused, events.EventActionReconciliation, msg)
 	}
 
 	parent.MergeConditions(commonv1.Condition{
@@ -77,26 +90,27 @@ func SetPausedConditionAndEmitEvent(
 		Message:            msg,
 	})
 
-	k8s.EmitEvent(recorder, parent, corev1.EventTypeWarning,
-		events.EventReasonPaused, events.EventActionReconciliation, msg)
 	return nil
 }
 
 // MaybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not
 // already exist.
-func MaybeResetPausedCondition(conditions *commonv1.Conditions) {
-	if conditions == nil {
-		return
-	}
+func MaybeResetPausedCondition(
+	recorder toolsevents.EventRecorder,
+	parent ObjectWithConditions,
+) {
+	conditions := parent.Conditions()
 
 	orchestrationPausedIndex := conditions.Index(commonv1.OrchestrationPaused)
-	if orchestrationPausedIndex >= 0 {
-		*conditions = conditions.MergeWith(commonv1.Condition{
+	if orchestrationPausedIndex >= 0 && conditions[orchestrationPausedIndex].Status == corev1.ConditionTrue {
+		parent.MergeConditions(commonv1.Condition{
 			Type:               commonv1.OrchestrationPaused,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: metav1.Now(),
 			Message:            PausedOrchestrationResumed,
 		})
+		k8s.EmitEvent(recorder, parent, corev1.EventTypeNormal,
+			events.EventReasonResumed, events.EventActionOrchestrationResumed, PausedOrchestrationResumed)
 	}
 }
 

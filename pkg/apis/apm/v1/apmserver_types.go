@@ -209,9 +209,6 @@ func (as *ApmServer) GetObservedGeneration() int64 {
 
 // MergeConditions provides a nil-safe way to merge the ApmServerStatus's Conditions with the new Condition(s).
 func (as *ApmServer) MergeConditions(conditions ...commonv1.Condition) {
-	if as.Status.Conditions == nil {
-		as.Status.Conditions = make([]commonv1.Condition, 0)
-	}
 	as.Status.Conditions = as.Status.Conditions.MergeWith(conditions...)
 }
 

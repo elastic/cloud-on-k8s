@@ -133,7 +133,6 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		return d
 	}
 
-	// TODO extend this test for other CRs and resource types
 	baseKibana := kbv1.Kibana{
 		Spec: kbv1.KibanaSpec{
 			Version: "9.3.1",
@@ -188,7 +187,6 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
 			wantConditionMsg: PausedNoChangesMessage,
-			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
 		},
 		{
 			name:             "deployment exists with different spec — pending changes",
@@ -212,7 +210,6 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			parentObject:     baseAgent.DeepCopy(),
 			expectedVehicle:  makeStatefulSet(&one),
 			wantConditionMsg: PausedNoChangesMessage,
-			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
 		},
 		{
 			name:             "statefulset exists with different spec — pending changes",
@@ -236,7 +233,6 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			parentObject:     baseBeat.DeepCopy(),
 			expectedVehicle:  makeDaemonSet(sameUpdateStrategy),
 			wantConditionMsg: PausedNoChangesMessage,
-			wantEvent:        "Warning Paused " + PausedNoChangesMessage,
 		},
 		{
 			name:             "daemonset exists with different spec — pending changes",
@@ -248,6 +244,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 		},
 		{
 			name:            "client error — returns error, no condition set",
+			parentObject:    baseKibana.DeepCopy(),
 			clientErr:       errors.New("connection refused"),
 			expectedVehicle: makeDeployment(&one),
 			wantError:       true,
@@ -268,7 +265,7 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 
 			if tt.wantError {
 				assert.Error(t, err)
-				assert.Empty(t, tt.parentObject, "no condition should be set on error")
+				assert.Empty(t, tt.parentObject.Conditions(), "no condition should be set on error")
 				return
 			}
 
@@ -284,7 +281,8 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 			case event := <-recorder.Events:
 				assert.Equal(t, tt.wantEvent, event)
 			default:
-				t.Error("expected a warning event to be emitted but none was")
+				require.Empty(t, tt.wantEvent, "event should be written to events channel when tt.wantEvent is non-empty")
+				assert.Empty(t, recorder.Events, "received unexpected event")
 			}
 		})
 	}
@@ -454,48 +452,51 @@ func Test_hasPendingChanges(t *testing.T) {
 func TestMaybeResetPausedCondition(t *testing.T) {
 	tests := []struct {
 		name                string
-		initialConditions   commonv1.Conditions
+		parent              ObjectWithConditions
 		wantConditionExists bool
 		wantStatus          corev1.ConditionStatus
 		wantMessage         string
+		wantEvent           string
 	}{
 		{
 			name:                "empty conditions — no-op, condition not added",
-			initialConditions:   commonv1.Conditions{},
+			parent:              &mockWithConditions{conditions: commonv1.Conditions{}},
 			wantConditionExists: false,
 		},
 		{
 			name: "OrchestrationPaused=True — resets to False",
-			initialConditions: commonv1.Conditions{
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
 				{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionTrue, Message: "Orchestration is paused"},
-			},
+			}},
 			wantConditionExists: true,
 			wantStatus:          corev1.ConditionFalse,
 			wantMessage:         PausedOrchestrationResumed,
+			wantEvent:           "Normal Resumed Orchestration has resumed normally",
 		},
 		{
 			name: "OrchestrationPaused=False already — idempotent, stays False",
-			initialConditions: commonv1.Conditions{
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
 				{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionFalse, Message: PausedOrchestrationResumed},
-			},
+			}},
 			wantConditionExists: true,
 			wantStatus:          corev1.ConditionFalse,
 			wantMessage:         PausedOrchestrationResumed,
 		},
 		{
 			name: "unrelated condition present — OrchestrationPaused not added",
-			initialConditions: commonv1.Conditions{
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
 				{Type: "SomeOtherCondition", Status: corev1.ConditionTrue},
-			},
+			}},
 			wantConditionExists: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conditions := tt.initialConditions.DeepCopy()
-			MaybeResetPausedCondition(&conditions)
+			recorder := toolsevents.NewFakeRecorder(1)
+			MaybeResetPausedCondition(recorder, tt.parent)
 
+			conditions := tt.parent.Conditions()
 			idx := conditions.Index(commonv1.OrchestrationPaused)
 			if !tt.wantConditionExists {
 				assert.Equal(t, -1, idx, "OrchestrationPaused condition should not be present")
@@ -504,6 +505,27 @@ func TestMaybeResetPausedCondition(t *testing.T) {
 			require.GreaterOrEqual(t, idx, 0, "OrchestrationPaused condition should be present")
 			assert.Equal(t, tt.wantStatus, conditions[idx].Status)
 			assert.Equal(t, tt.wantMessage, conditions[idx].Message)
+
+			select {
+			case event := <-recorder.Events:
+				assert.Equal(t, tt.wantEvent, event)
+			default:
+				require.Empty(t, tt.wantEvent, "event should be written to events channel when tt.wantEvent is non-empty")
+				assert.Empty(t, recorder.Events, "received unexpected event")
+			}
 		})
 	}
+}
+
+type mockWithConditions struct {
+	client.Object
+	conditions commonv1.Conditions
+}
+
+func (m *mockWithConditions) MergeConditions(cs ...commonv1.Condition) {
+	m.conditions = m.conditions.MergeWith(cs...)
+}
+
+func (m *mockWithConditions) Conditions() commonv1.Conditions {
+	return m.conditions
 }

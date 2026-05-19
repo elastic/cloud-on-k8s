@@ -181,9 +181,6 @@ func (ent *EnterpriseSearch) GetObservedGeneration() int64 {
 
 // MergeConditions provides a nil-safe way to merge the EnterpriseSearchStatus's Conditions with the new Condition(s).
 func (ent *EnterpriseSearch) MergeConditions(conditions ...commonv1.Condition) {
-	if ent.Status.Conditions == nil {
-		ent.Status.Conditions = make([]commonv1.Condition, 0)
-	}
 	ent.Status.Conditions = ent.Status.Conditions.MergeWith(conditions...)
 }
 

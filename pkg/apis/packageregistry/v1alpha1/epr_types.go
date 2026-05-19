@@ -102,9 +102,6 @@ func (m *PackageRegistry) GetObservedGeneration() int64 {
 
 // MergeConditions provides a nil-safe way to merge the PackageRegistryStatus's Conditions with the new Condition(s).
 func (m *PackageRegistry) MergeConditions(conditions ...commonv1.Condition) {
-	if m.Status.Conditions == nil {
-		m.Status.Conditions = make([]commonv1.Condition, 0)
-	}
 	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
 }
 

@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -202,6 +203,7 @@ func TestReconcileAgent_Reconcile(t *testing.T) {
 					AvailableNodes:     1,
 					ObservedGeneration: 2,
 					Health:             agentv1alpha1.AgentGreenHealth,
+					Conditions:         make(commonv1.Conditions, 0),
 				},
 			},
 			wantErr: false,

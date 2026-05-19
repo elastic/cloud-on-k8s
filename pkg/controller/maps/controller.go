@@ -380,7 +380,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 		return existing, nil
 	}
 
-	common.MaybeResetPausedCondition(&ems.Status.Conditions)
+	common.MaybeResetPausedCondition(r.recorder, ems)
 	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ems)
 }
 

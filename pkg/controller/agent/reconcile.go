@@ -121,7 +121,8 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
 		return results.WithError(err), params.Status
 	}
-	common.MaybeResetPausedCondition(&params.Status.Conditions)
+	common.MaybeResetPausedCondition(params.Recorder(), &params.Agent)
+	params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
 
 	ready, desired, err := reconciliationFunc(rp, expectedVehicle)
 	if err != nil {
