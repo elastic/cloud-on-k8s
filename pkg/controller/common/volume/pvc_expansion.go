@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata/reserved"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -133,7 +134,7 @@ func updatePVCs(
 //   - keys absent from expected are NOT removed (PVCs may carry operator-managed labels
 //     and/or labels set out of band by the user that we must not delete),
 //   - removing labels from the CR does not remove them from existing PVCs,
-//   - keys reserved by ECK (see volumevalidations.IsReservedLabelKey) are skipped to keep
+//   - keys reserved by ECK (see reserved.IsReservedLabelKey) are skipped to keep
 //     PVC GC and owner-ref reconciliation correct even if a reserved key somehow appears
 //     in the VolumeClaimTemplate (e.g. a CR was created bypassing the webhook).
 //
@@ -144,7 +145,7 @@ func syncPVCLabels(pvc *corev1.PersistentVolumeClaim, expected map[string]string
 	}
 	mutated := false
 	for k, v := range expected {
-		if volumevalidations.IsReservedLabelKey(k) {
+		if reserved.IsReservedLabelKey(k) {
 			continue
 		}
 		if current, ok := pvc.Labels[k]; ok && current == v {

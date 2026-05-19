@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -16,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata/reserved"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -27,26 +27,12 @@ const (
 	// an ECK-reserved label key on a volumeClaimTemplate.
 	ReservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 
-	// eckReservedLabelsRootSubdomain is the shortest DNS subdomain (`k8s.elastic.co`)
-	// reserved for ECK-managed label keys; longer subdomains ending in
-	// `.<eckReservedLabelsRootSubdomain>` (e.g. elasticsearch.k8s.elastic.co,
-	// common.k8s.elastic.co, association.k8s.elastic.co) are reserved too.
-	eckReservedLabelsRootSubdomain = "k8s.elastic.co"
 )
 
 // IsReservedLabelKey reports whether key is owned by ECK and must not be set
-// or modified by users via VolumeClaimTemplate labels. ECK-reserved keys use a
-// label subdomain that equals k8s.elastic.co or ends with .k8s.elastic.co
-// (e.g. elasticsearch.k8s.elastic.co/cluster-name, common.k8s.elastic.co/type,
-// association.k8s.elastic.co/...). Overwriting them
-// on a PVC would break PVC GC and owner-ref reconciliation, which select on
-// ClusterNameLabelName / StatefulSetNameLabelName.
+// or modified by users via VolumeClaimTemplate labels. See metadata/reserved.
 func IsReservedLabelKey(key string) bool {
-	domain, _, ok := strings.Cut(key, "/")
-	if !ok {
-		return false
-	}
-	return domain == eckReservedLabelsRootSubdomain || strings.HasSuffix(domain, "."+eckReservedLabelsRootSubdomain)
+	return reserved.IsReservedLabelKey(key)
 }
 
 // StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys

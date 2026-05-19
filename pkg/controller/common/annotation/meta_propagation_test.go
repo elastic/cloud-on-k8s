@@ -65,6 +65,34 @@ func TestGetMetadataToPropagate(t *testing.T) {
 			},
 		},
 		{
+			name: "propagate all labels excludes ECK reserved keys",
+			objMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{PropagateLabelsAnnotation: "*"},
+				Labels: map[string]string{
+					"wibble": "wobble",
+					"elasticsearch.k8s.elastic.co/cluster-name": "quickstart",
+					"eck.k8s.alpha.elastic.co/propagate-labels": "*",
+				},
+			},
+			want: MetadataToPropagate{
+				Labels: map[string]string{"wibble": "wobble"},
+			},
+		},
+		{
+			name: "propagate all annotations excludes ECK reserved keys",
+			objMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					PropagateAnnotationsAnnotation:              "*",
+					"foo":                                       "bar",
+					"eck.k8s.alpha.elastic.co/propagate-labels": "*",
+					"elasticsearch.k8s.elastic.co/cluster-name": "quickstart",
+				},
+			},
+			want: MetadataToPropagate{
+				Annotations: map[string]string{"foo": "bar"},
+			},
+		},
+		{
 			name: "propagate some labels",
 			objMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{PropagateLabelsAnnotation: "wibble, wubble"},
