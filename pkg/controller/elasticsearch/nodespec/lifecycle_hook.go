@@ -202,7 +202,17 @@ then
 fi
 
 if grep -q -v '"nodes":\[\]' "$resp_body"; then
-  log "shutdown managed by ECK operator"
+  log "shutdown managed by ECK operator, waiting for completion"
+  while :
+  do
+    log "waiting for operator-managed node shutdown to complete"
+    if request -X GET "${ES_URL}/_nodes/${NODE_ID}/shutdown" "${BASIC_AUTH[@]}" "${CLIENT_CERT[@]}" &&
+      grep -q -v 'IN_PROGRESS\|STALLED' "$resp_body"
+    then
+      break
+    fi
+    sleep 10
+  done
   delayed_exit
 fi
 
