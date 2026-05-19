@@ -45,15 +45,6 @@ func (c *baseClient) Close() {
 	}
 }
 
-// CloseIdleConnections closes idle connections in the underlying HTTP transport
-// without fully closing the client. Useful for discarding stale connections to
-// terminated pods before retrying a request.
-func (c *baseClient) CloseIdleConnections() {
-	if c.HTTP != nil {
-		c.HTTP.CloseIdleConnections()
-	}
-}
-
 func (c *baseClient) equal(c2 *baseClient) bool {
 	// handle nil case
 	if c2 == nil {
