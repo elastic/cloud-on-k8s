@@ -1,5 +1,5 @@
 {
-  "_description": "elastic.co/docs URLs to docs-builder cross-repo links.",
+  "_description": "mapping elastic.co/docs URLs to docs-builder cross-repo links to allow validation",
   "mappings": {
     "https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure": {
       "link": "docs-content://solutions/observability/apm/apm-server/configure.md",

@@ -37,19 +37,44 @@ build_docs() {
     # Remove dots from the version string for compatibility with the doc web site.
     local outFile="${version//./_}.md"
 
+    local SCRATCH_TEMPLATES="${SCRATCH_DIR}/templates"
+    local OUT_PATH="${DOCS_DIR}/reference/api-reference/${outFile}"
+
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
         mkdir -p "$BIN_DIR"
         GOBIN=$BIN_DIR go install "${REFDOCS_REPO}@${REFDOCS_VER}"
+
+        echo "Staging templates and injecting URL mapping"
+        mkdir -p "${SCRATCH_TEMPLATES}"
+        cp -R "${SCRIPT_DIR}/templates/." "${SCRATCH_TEMPLATES}/"
+        MAPPING_PATH="${SCRIPT_DIR}/url-mapping.json" \
+        TEMPLATES_DIR="${SCRATCH_TEMPLATES}" \
+        python3 - <<'PYEOF'
+import json, os, pathlib
+m = json.load(open(os.environ["MAPPING_PATH"]))
+q = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
+pipe = "".join(' | replace "%s" "[%s](%s)"' % (q(u), q(e["text"]), q(e["link"])) for u, e in m["mappings"].items())
+for fname, expr, tail in [("type_members.tpl", "$field.Doc", ' | replace "\\n" "<br>"'), ("type.tpl", "$type.Doc", ""), ("gv_details.tpl", "$gv.Doc", "")]:
+    p = pathlib.Path(os.environ["TEMPLATES_DIR"]) / fname
+    src, old = p.read_text(), "{{ "+expr+tail+" }}"
+    if old not in src: raise SystemExit(f"pattern not found in {fname}: {old!r}")
+    p.write_text(src.replace(old, "{{ "+expr+pipe+tail+" }}"))
+PYEOF
 
         echo "Generating API reference documentation for version: ${version}, output file: ${outFile}"
         "${BIN_DIR}"/crd-ref-docs --source-path="${REPO_ROOT}"/pkg/apis \
             --config="${SCRIPT_DIR}"/config.yaml \
             --renderer=markdown \
             --template-value=eckVersion="${version}" \
-            --templates-dir="${SCRIPT_DIR}"/templates \
-            --output-path="${DOCS_DIR}"/reference/api-reference/"${outFile}"
+            --templates-dir="${SCRATCH_TEMPLATES}" \
+            --output-path="${OUT_PATH}"
     )
+
+    if grep -nE 'https://www\.elastic\.co/docs/' "${OUT_PATH}" >/dev/null; then
+        echo "WARNING: unmapped elastic.co/docs URL(s) in ${OUT_PATH} (add to url-mapping.json):" >&2
+        grep -nE 'https://www\.elastic\.co/docs/' "${OUT_PATH}" >&2
+    fi
 }
 
 trap cleanup EXIT
