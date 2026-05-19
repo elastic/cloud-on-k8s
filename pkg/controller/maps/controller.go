@@ -373,8 +373,10 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 			return appsv1.Deployment{}, err
 		}
 		var existing = appsv1.Deployment{}
-		if err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
-			return appsv1.Deployment{}, err
+		if err = r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return appsv1.Deployment{}, err
+			}
 		}
 
 		return existing, nil

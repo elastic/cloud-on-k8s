@@ -50,7 +50,7 @@ const (
 )
 
 var (
-	invalidParametersError = errors.New("cannot set OrchestrationPaused condition on nil parameters")
+	errInvalidParameters = errors.New("cannot set OrchestrationPaused condition on nil parameters")
 )
 
 // IsOrchestrationPaused returns true if the PauseOrchestrationAnnotation exists and is set to true on the given resource
@@ -70,7 +70,7 @@ func SetPausedConditionAndEmitEvent(
 	expected client.Object,
 ) error {
 	if parent == nil || expected == nil {
-		return invalidParametersError
+		return errInvalidParameters
 	}
 	hasPending, err := hasPendingChanges(ctx, client, expected)
 	if err != nil {

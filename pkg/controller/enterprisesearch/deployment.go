@@ -9,6 +9,7 @@ import (
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -42,8 +43,10 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 			return appsv1.Deployment{}, err
 		}
 		var existing = appsv1.Deployment{}
-		if err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
-			return appsv1.Deployment{}, err
+		if err = r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
+			if !errors.IsNotFound(err) {
+				return appsv1.Deployment{}, err
+			}
 		}
 
 		return existing, nil
