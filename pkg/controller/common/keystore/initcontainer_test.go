@@ -5,19 +5,10 @@
 package keystore
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-func renderKeystoreScript(t *testing.T, params InitContainerParameters) string {
-	t.Helper()
-	var tplBuffer bytes.Buffer
-	err := getScriptTemplate(params.CustomScript).Execute(&tplBuffer, params)
-	require.NoError(t, err)
-	return tplBuffer.String()
-}
 
 func TestDefaultScriptByteIdentity(t *testing.T) {
 	params := InitContainerParameters{
@@ -54,5 +45,7 @@ touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `
 
-	require.Equal(t, expected, renderKeystoreScript(t, params))
+	got, err := RenderInitScript(params)
+	require.NoError(t, err)
+	require.Equal(t, expected, got)
 }
