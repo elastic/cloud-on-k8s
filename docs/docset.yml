@@ -14,3 +14,4 @@ toc:
 subs:
   eck:   "Elastic Cloud on Kubernetes"
   es:   "Elasticsearch"
+  es-apis: "https://www.elastic.co/docs/api/doc/elasticsearch/"
