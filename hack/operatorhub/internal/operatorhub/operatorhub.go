@@ -376,6 +376,7 @@ type RenderParams struct {
 	NewVersion                   string
 	ShortVersion                 string
 	PrevVersion                  string
+	SkipRange                    string
 	StackVersion                 string
 	OperatorRepo                 string
 	OperatorRBAC                 string
@@ -449,10 +450,17 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		tag = "@" + imageDigest
 	}
 
+	// olm.skipRange uses OLM's semver range syntax: lower bound inclusive, upper bound exclusive.
+	var skipRange string
+	if conf.MinSkipVersion != "" {
+		skipRange = fmt.Sprintf(">=%s <%s", conf.MinSkipVersion, conf.NewVersion)
+	}
+
 	return &RenderParams{
 		NewVersion:                   conf.NewVersion,
 		ShortVersion:                 strings.Join(versionParts[:2], "."),
 		PrevVersion:                  conf.PrevVersion,
+		SkipRange:                    skipRange,
 		StackVersion:                 conf.StackVersion,
 		OperatorRepo:                 conf.Packages[packageIndex].OperatorRepo,
 		AdditionalArgs:               additionalArgs,
@@ -543,7 +551,7 @@ func renderAnnotationsFile(params *RenderParams, templatesDir, outDir string) er
 func renderTemplate(params *RenderParams, templatePath, outPath string) error {
 	// ensure NewVersion is never prefixed with 'v' when rendering template
 	// as we use the 'v' prefix in the `name:` field, but the `version:` field
-	// cannnot have the 'v' prefix, as the certified operator automation
+	// cannot have the 'v' prefix, as the certified operator automation
 	// refused to accept this field with a 'v' prefix.
 	params.NewVersion = strings.TrimPrefix(params.NewVersion, "v")
 
