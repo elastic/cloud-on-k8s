@@ -11,6 +11,9 @@ metadata:
     repository: https://github.com/elastic/cloud-on-k8s
     support: elastic.co
     operators.openshift.io/valid-subscription: "Elastic Basic license"
+    {{- if .SkipRange }}
+    olm.skipRange: '{{ .SkipRange }}'
+    {{- end }}
     features.operators.openshift.io/disconnected: "false"
     features.operators.openshift.io/fips-compliant: "false"
     features.operators.openshift.io/proxy-aware: "false"

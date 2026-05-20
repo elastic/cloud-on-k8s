@@ -376,6 +376,7 @@ type RenderParams struct {
 	NewVersion                   string
 	ShortVersion                 string
 	PrevVersion                  string
+	SkipRange                    string
 	StackVersion                 string
 	OperatorRepo                 string
 	OperatorRBAC                 string
@@ -449,10 +450,17 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		tag = "@" + imageDigest
 	}
 
+	// olm.skipRange uses OLM's semver range syntax: lower bound inclusive, upper bound exclusive.
+	var skipRange string
+	if conf.MinSkipVersion != "" {
+		skipRange = fmt.Sprintf(">=%s <%s", conf.MinSkipVersion, conf.NewVersion)
+	}
+
 	return &RenderParams{
 		NewVersion:                   conf.NewVersion,
 		ShortVersion:                 strings.Join(versionParts[:2], "."),
 		PrevVersion:                  conf.PrevVersion,
+		SkipRange:                    skipRange,
 		StackVersion:                 conf.StackVersion,
 		OperatorRepo:                 conf.Packages[packageIndex].OperatorRepo,
 		AdditionalArgs:               additionalArgs,
