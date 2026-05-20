@@ -78,10 +78,14 @@ var (
 
 // Config is the configuration that matches the config.yaml
 type Config struct {
-	NewVersion   string `json:"newVersion"`
-	PrevVersion  string `json:"prevVersion"`
-	StackVersion string `json:"stackVersion"`
-	CRDs         []struct {
+	NewVersion     string `json:"newVersion"`
+	PrevVersion    string `json:"prevVersion"`
+	// MinSkipVersion is the oldest installed version that may upgrade directly to NewVersion via
+	// the olm.skipRange annotation, bypassing intermediate bundles. Only advance this when CRD
+	// schema compatibility from that version has been validated.
+	MinSkipVersion string `json:"minSkipVersion"`
+	StackVersion   string `json:"stackVersion"`
+	CRDs           []struct {
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 		Description string `json:"description"`
