@@ -119,6 +119,9 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
 			&params.Agent, expectedVehicle)
 		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
+		if !resourceIsSteady(params.Agent) {
+			return results.WithError(err).WithRequeue(reconciler.DefaultRequeue), params.Status
+		}
 		return results.WithError(err), params.Status
 	}
 	common.MaybeResetPausedCondition(params.Recorder(), &params.Agent)
@@ -235,6 +238,12 @@ func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (int32, int3
 		return 0, 0, err
 	}
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+}
+
+// resourceIsSteady returns whether the underlying Agent resource is in its ready state.
+func resourceIsSteady(agent agentv1alpha1.Agent) bool {
+	return agent.Status.ObservedGeneration == agent.Generation &&
+		agent.Status.ExpectedNodes == agent.Status.AvailableNodes
 }
 
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.

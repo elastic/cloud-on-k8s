@@ -78,6 +78,9 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
 			&params.Beat, expectedVehicle)
 		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Beat.Status.Conditions...)
+		if !resourceIsSteady(params.Beat) {
+			return results.WithError(err).WithRequeue(reconciler.DefaultRequeue), params.Status
+		}
 		return results.WithError(err), params.Status
 	}
 	common.MaybeResetPausedCondition(params.Recorder(), &params.Beat)
@@ -104,6 +107,12 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	}
 
 	return results.WithError(err), params.Status
+}
+
+// resourceIsSteady returns whether the underlying Beat resource is in its ready state.
+func resourceIsSteady(beat beatv1beta1.Beat) bool {
+	return beat.Status.ObservedGeneration == beat.Generation &&
+		beat.Status.ExpectedNodes == beat.Status.AvailableNodes
 }
 
 type ReconciliationParams struct {
