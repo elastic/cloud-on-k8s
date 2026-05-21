@@ -53,6 +53,14 @@ const (
 	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
 	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
 
+	// FileBasedSecureSettingsAnnotation enables delivery of spec.secureSettings via cluster_secrets in
+	// file-based settings (ES ≥ 9.5 only) instead of the keystore init container. This is an opt-in feature
+	// because some settings (e.g. OIDC client_secret, SAML key passphrase, Watcher encryption_key) must be
+	// present in the keystore at startup and cannot be delivered via the reload path.
+	// Set this annotation to "true" only when all your secure settings are reloadable (S3/Azure/GCS
+	// credentials, remote-cluster API keys, etc.).
+	FileBasedSecureSettingsAnnotation = "eck.k8s.elastic.co/file-based-secure-settings"
+
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
@@ -91,6 +99,12 @@ func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.D
 	}
 
 	return nil, nil
+}
+
+// HasFileBasedSecureSettingsAnnotation returns true when the Elasticsearch object carries
+// the FileBasedSecureSettingsAnnotation set to "true".
+func HasFileBasedSecureSettingsAnnotation(es Elasticsearch) bool {
+	return es.Annotations[FileBasedSecureSettingsAnnotation] == "true"
 }
 
 // +kubebuilder:object:root=true

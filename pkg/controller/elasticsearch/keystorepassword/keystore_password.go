@@ -26,6 +26,7 @@ import (
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -157,8 +158,8 @@ func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName str
 
 // MaybeGarbageCollectKeystorePasswordSecret deletes the managed keystore
 // password secret when managed keystore passwords are not applicable for this
-// resource (version < 9.4.0, FIPS disabled, or user-provided password
-// override).
+// resource (version < 9.4.0, FIPS disabled, user-provided password override,
+// or file-based secure settings active).
 func MaybeGarbageCollectKeystorePasswordSecret(
 	ctx context.Context,
 	c k8s.Client,
@@ -166,6 +167,11 @@ func MaybeGarbageCollectKeystorePasswordSecret(
 	esVersion commonversion.Version,
 	policyElasticsearchConfig *commonsettings.CanonicalConfig,
 ) error {
+	// When file-based secure settings are active (opt-in annotation + ES >= 9.5), the keystore
+	// init container is not used; GC any existing password secret and skip further checks.
+	if esv1.HasFileBasedSecureSettingsAnnotation(es) && esVersion.GTE(esversion.FileBasedSecureSettingsMinVersion) {
+		return DeleteKeystorePasswordSecret(ctx, c, es)
+	}
 	shouldManage, err := esettings.ShouldManageGeneratedKeystorePassword(
 		ctx,
 		c,

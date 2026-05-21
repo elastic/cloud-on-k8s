@@ -6,8 +6,10 @@ package keystore
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"maps"
+	"unicode/utf8"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -203,6 +205,16 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 	return namer.Suffix(hasKeystore.GetName(), secureSettingsSecretSuffix)
 }
 
+// DeleteSecureSettingsSecret deletes the operator-managed aggregated secure settings Secret
+// for the given owner if it exists. This is used when upgrading to ES >= 9.5 where secure
+// settings are delivered via file-based settings instead of the keystore init container.
+func DeleteSecureSettingsSecret(ctx context.Context, c k8s.Client, namer name.Namer, owner HasKeystore) error {
+	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: owner.GetNamespace(),
+		Name:      namer.Suffix(owner.GetName(), secureSettingsSecretSuffix),
+	})
+}
+
 // SecureSettingsWatchName returns the watch name according to the deployment name.
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
@@ -212,13 +224,12 @@ func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 // BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
 // them in the structure expected by Elasticsearch file-based settings cluster_secrets:
 //
-//	{"string_secrets": {"s3.client.default.access_key": "..."}}
+//	{"string_secrets": {"s3.client.default.access_key": "..."}, "file_secrets": {"keystore": "<base64>"}}
 //
-// Keystore keys are passed through as-is. Elasticsearch's SecureClusterStateSettings parses the
-// inner map via Settings.fromXContent, which accepts both flat dotted keys and nested objects.
-// Keeping the flat representation avoids ambiguity at intermediate paths and matches how keystore
-// keys are stored in the source Secrets.
-// This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
+// Valid UTF-8 values are placed in string_secrets; non-UTF-8 (binary) values are base64-encoded and
+// placed in file_secrets so that Elasticsearch's SecureClusterStateSettings parser can decode them
+// back to the original bytes via Base64.getDecoder().decode().
+// Keystore keys are passed through as-is.
 func BuildSecureSettingsData(
 	ctx context.Context,
 	c k8s.Client,
@@ -232,12 +243,19 @@ func BuildSecureSettingsData(
 	}
 
 	stringSecrets := map[string]any{}
+	fileSecrets := map[string]any{}
 	for _, s := range userSecrets {
 		for k, v := range s.Data {
-			stringSecrets[k] = string(v)
+			if utf8.Valid(v) {
+				stringSecrets[k] = string(v)
+			} else {
+				fileSecrets[k] = base64.StdEncoding.EncodeToString(v)
+			}
 		}
 	}
-	return map[string]any{
-		"string_secrets": stringSecrets,
-	}, nil
+	result := map[string]any{"string_secrets": stringSecrets}
+	if len(fileSecrets) > 0 {
+		result["file_secrets"] = fileSecrets
+	}
+	return result, nil
 }

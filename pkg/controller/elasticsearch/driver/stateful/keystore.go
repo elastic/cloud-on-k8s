@@ -15,11 +15,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
 	remotekeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -95,4 +98,22 @@ func reconcileManagedKeystorePasswordSecret(
 		return nil, nil
 	}
 	return keystorepassword.ReconcileKeystorePasswordSecret(ctx, client, es, passwordGenerator, meta)
+}
+
+// reconcileSecureSettings routes secure-settings reconciliation based on the ES version and
+// opt-in annotation. For ES >= 9.5 with the file-based annotation, settings are delivered
+// via cluster_secrets in the file-based settings JSON (no init container, hot-reload capable).
+// For all other cases the standard keystore init container path is used.
+func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata) (*keystore.Resources, error) {
+	if !d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) || !esv1.HasFileBasedSecureSettingsAnnotation(d.ES) {
+		return d.reconcileKeystore(ctx, meta)
+	}
+	clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
+	if err != nil {
+		return nil, err
+	}
+	if err := filesettings.ReconcileClusterSecrets(ctx, d.Client, d.ES, clusterSecrets); err != nil {
+		return nil, err
+	}
+	return nil, keystore.DeleteSecureSettingsSecret(ctx, d.Client, esv1.ESNamer, &d.ES)
 }

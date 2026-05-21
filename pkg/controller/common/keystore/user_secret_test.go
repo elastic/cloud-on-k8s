@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -511,5 +512,67 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 			"s3.client.default.access_key": "AKIA",
 			"gcs.credentials":              "creds",
 		}}, got)
+	})
+
+	t.Run("binary values go into file_secrets as base64", func(t *testing.T) {
+		binaryValue := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE} // non-UTF-8 bytes
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data:       map[string][]byte{"keystore.jks": binaryValue},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"string_secrets": map[string]any{},
+			"file_secrets":   map[string]any{"keystore.jks": "AAEC//4="},
+		}, got)
+	})
+
+	t.Run("mixed string and binary values split across string_secrets and file_secrets", func(t *testing.T) {
+		binaryValue := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data: map[string][]byte{
+				"s3.client.default.access_key": []byte("AKIA"),
+				"keystore.jks":                 binaryValue,
+			},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"string_secrets": map[string]any{"s3.client.default.access_key": "AKIA"},
+			"file_secrets":   map[string]any{"keystore.jks": "AAEC//4="},
+		}, got)
+	})
+}
+
+func TestDeleteSecureSettingsSecret(t *testing.T) {
+	namer := name.NewNamer("es")
+	kb := &kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "mykb"}}
+
+	t.Run("no-op when secret does not exist", func(t *testing.T) {
+		client := k8s.NewFakeClient()
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+	})
+
+	t.Run("deletes the secret when it exists", func(t *testing.T) {
+		secretName := namer.Suffix(kb.Name, secureSettingsSecretSuffix)
+		existing := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: kb.Namespace, Name: secretName},
+			Data:       map[string][]byte{"key": []byte("value")},
+		}
+		client := k8s.NewFakeClient(existing)
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+
+		var stored corev1.Secret
+		err = client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: secretName}, &stored)
+		require.Error(t, err)
+		assert.True(t, apierrors.IsNotFound(err))
 	})
 }
