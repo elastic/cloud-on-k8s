@@ -24,7 +24,7 @@ type ApmServerSpec struct {
 	// Count of APM Server instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
@@ -34,7 +34,7 @@ type ApmServerSpec struct {
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
