@@ -101,12 +101,6 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	return results.WithError(err), params.Status
 }
 
-// resourceIsSteady returns whether the underlying Beat resource is in its ready state.
-func resourceIsSteady(beat beatv1beta1.Beat) bool {
-	return beat.Status.ObservedGeneration == beat.Generation &&
-		beat.Status.ExpectedNodes == beat.Status.AvailableNodes
-}
-
 type ReconciliationParams struct {
 	ctx         context.Context
 	client      k8s.Client
