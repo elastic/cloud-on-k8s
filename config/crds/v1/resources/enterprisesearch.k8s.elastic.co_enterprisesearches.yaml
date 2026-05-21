@@ -537,7 +537,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 properties:
                   metadata:
@@ -9709,7 +9709,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 properties:
                   metadata:

@@ -59,7 +59,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -558,7 +558,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-                  See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -667,7 +667,7 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:
@@ -9422,7 +9422,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -9862,7 +9862,7 @@ spec:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 properties:
                   metadata:

@@ -67,7 +67,7 @@ type NodeSet struct {
 	// +kubebuilder:validation:Minimum=1
 	Count int32 `json:"count"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 

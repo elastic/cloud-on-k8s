@@ -62,7 +62,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the ElasticMapsServer configuration. See:
-                  https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
+                  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:
@@ -537,7 +537,7 @@ spec:
                 description: Image is the Elastic Maps Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 properties:
