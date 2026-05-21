@@ -229,7 +229,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}
 
 	expectedDp := deployment.New(deployParams)
-	reconciledDp, err := deployment.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, expectedDp, &epr)
+	reconciledDp, err := common.ReconcileDeployment(ctx, r.K8sClient(), r.recorder, expectedDp, &epr)
 	if err != nil {
 		return results.WithError(err), status
 	}

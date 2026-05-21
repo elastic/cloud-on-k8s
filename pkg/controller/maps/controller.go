@@ -364,7 +364,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	return deployment.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, ems)
+	return common.ReconcileDeployment(ctx, r.K8sClient(), r.recorder, deploy, ems)
 }
 
 func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (deployment.Params, error) {

@@ -9,12 +9,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -54,34 +51,6 @@ func New(params Params) appsv1.Deployment {
 		},
 	}
 	return WithTemplateHash(d)
-}
-
-// ReconcilePauseAware reconciles the given deployment for the specified owner, taking into account
-// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
-func ReconcilePauseAware(
-	ctx context.Context,
-	k8sClient k8s.Client,
-	recorder toolsevents.EventRecorder,
-	expected appsv1.Deployment,
-	owner common.ObjectWithConditions,
-) (appsv1.Deployment, error) {
-	if common.IsOrchestrationPaused(owner) {
-		var actual appsv1.Deployment
-		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
-			if errors.IsNotFound(err) {
-				return appsv1.Deployment{}, nil
-			}
-			return appsv1.Deployment{}, err
-		}
-
-		common.NewSetPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
-
-		return actual, nil
-	}
-
-	common.MaybeResetPausedCondition(recorder, owner)
-
-	return Reconcile(ctx, k8sClient, expected, owner)
 }
 
 // Reconcile creates or updates the given deployment for the specified owner.

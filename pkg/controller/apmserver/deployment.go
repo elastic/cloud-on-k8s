@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -72,7 +73,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := deployment.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, state.ApmServer)
+	result, err := common.ReconcileDeployment(ctx, r.K8sClient(), r.recorder, deploy, state.ApmServer)
 	if err != nil {
 		return state, err
 	}

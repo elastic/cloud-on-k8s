@@ -5,8 +5,6 @@
 package common
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -27,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 type testcase struct {
@@ -92,7 +89,7 @@ func TestIsOrchestrationPaused(t *testing.T) {
 	}
 }
 
-func TestSetPausedConditionAndEmitEvent(t *testing.T) {
+func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	const (
 		resourceName = "test-resource"
 		namespace    = "default"
@@ -165,111 +162,88 @@ func TestSetPausedConditionAndEmitEvent(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		existingObjs     []client.Object
 		parentObject     ObjectWithConditions
 		expectedVehicle  client.Object
-		clientErr        error
+		actual           client.Object
 		wantConditionMsg string
 		wantEvent        string
-		wantError        bool
 	}{
 		{
 			name:             "deployment does not exist — pending changes",
-			existingObjs:     nil,
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
+			actual:           nil,
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
 			name:             "deployment exists with matching spec — no pending changes",
-			existingObjs:     []client.Object{makeDeployment(&one)},
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&one),
+			actual:           makeDeployment(&one),
 			wantConditionMsg: PausedNoChangesMessage,
 		},
 		{
 			name:             "deployment exists with different spec — pending changes",
-			existingObjs:     []client.Object{makeDeployment(&one)},
 			parentObject:     baseKibana.DeepCopy(),
 			expectedVehicle:  makeDeployment(&two),
+			actual:           makeDeployment(&one),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
 			name:             "statefulset does not exist — pending changes",
-			existingObjs:     nil,
 			parentObject:     baseAgent.DeepCopy(),
 			expectedVehicle:  makeStatefulSet(&one),
+			actual:           nil,
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
 			name:             "statefulset exists with matching spec — no pending changes",
-			existingObjs:     []client.Object{makeStatefulSet(&one)},
 			parentObject:     baseAgent.DeepCopy(),
 			expectedVehicle:  makeStatefulSet(&one),
+			actual:           makeStatefulSet(&one),
 			wantConditionMsg: PausedNoChangesMessage,
 		},
 		{
 			name:             "statefulset exists with different spec — pending changes",
-			existingObjs:     []client.Object{makeStatefulSet(&one)},
 			parentObject:     baseAgent.DeepCopy(),
 			expectedVehicle:  makeStatefulSet(&two),
+			actual:           makeStatefulSet(&one),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
 			name:             "daemonset does not exist — pending changes",
-			existingObjs:     nil,
 			parentObject:     baseBeat.DeepCopy(),
 			expectedVehicle:  makeDaemonSet(sameUpdateStrategy),
+			actual:           nil,
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
 		},
 		{
 			name:             "daemonset exists with matching spec — no pending changes",
-			existingObjs:     []client.Object{makeDaemonSet(sameUpdateStrategy)},
 			parentObject:     baseBeat.DeepCopy(),
 			expectedVehicle:  makeDaemonSet(sameUpdateStrategy),
+			actual:           makeDaemonSet(sameUpdateStrategy),
 			wantConditionMsg: PausedNoChangesMessage,
 		},
 		{
 			name:             "daemonset exists with different spec — pending changes",
-			existingObjs:     []client.Object{makeDeployment(&one)},
 			parentObject:     baseBeat.DeepCopy(),
 			expectedVehicle:  makeDaemonSet(differentUpdateStrategy),
+			actual:           makeDaemonSet(sameUpdateStrategy),
 			wantConditionMsg: PausedWithPendingChangesMessage,
 			wantEvent:        "Warning Paused " + PausedWithPendingChangesMessage,
-		},
-		{
-			name:            "client error — returns error, no condition set",
-			parentObject:    baseKibana.DeepCopy(),
-			clientErr:       errors.New("connection refused"),
-			expectedVehicle: makeDeployment(&one),
-			wantError:       true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var c k8s.Client
-			if tt.clientErr != nil {
-				c = k8s.NewFailingClient(tt.clientErr)
-			} else {
-				c = k8s.NewFakeClient(tt.existingObjs...)
-			}
 			recorder := toolsevents.NewFakeRecorder(10)
 
-			err := SetPausedConditionAndEmitEvent(context.Background(), c, recorder, tt.parentObject, tt.expectedVehicle)
-
-			if tt.wantError {
-				assert.Error(t, err)
-				assert.Empty(t, tt.parentObject.Conditions(), "no condition should be set on error")
-				return
-			}
-
-			require.NoError(t, err)
+			setPausedConditionAndEmitEvent(recorder, tt.parentObject, tt.expectedVehicle, tt.actual)
 
 			conditions := tt.parentObject.Conditions()
 			idx := conditions.Index(commonv1.OrchestrationPaused)
@@ -348,7 +322,6 @@ func Test_hasPendingChanges(t *testing.T) {
 		existing         client.Object
 		expectedObject   client.Object
 		expectHasChanged bool
-		expectedError    error
 	}{
 		{
 			name: "deployment exists and has different hash label returns true",
@@ -434,22 +407,12 @@ func Test_hasPendingChanges(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		var c k8s.Client
-		switch {
-		case tt.expectedError != nil:
-			c = k8s.NewFailingClient(tt.expectedError)
-		case tt.existing != nil:
-			c = k8s.NewFakeClient(tt.existing)
-		default:
-			c = k8s.NewFakeClient()
-		}
-
-		hasChanged, _ := hasPendingChanges(context.Background(), c, tt.expectedObject)
+		hasChanged := hasPendingChanges(tt.expectedObject, tt.existing)
 		assert.Equal(t, tt.expectHasChanged, hasChanged)
 	}
 }
 
-func TestMaybeResetPausedCondition(t *testing.T) {
+func Test_maybeResetPausedCondition(t *testing.T) {
 	tests := []struct {
 		name                string
 		parent              ObjectWithConditions
@@ -494,7 +457,7 @@ func TestMaybeResetPausedCondition(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := toolsevents.NewFakeRecorder(1)
-			MaybeResetPausedCondition(recorder, tt.parent)
+			maybeResetPausedCondition(recorder, tt.parent)
 
 			conditions := tt.parent.Conditions()
 			idx := conditions.Index(commonv1.OrchestrationPaused)

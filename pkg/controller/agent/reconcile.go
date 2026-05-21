@@ -50,7 +50,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 
 	var toDelete []client.Object
 	var expectedVehicle client.Object
-	var reconciliationFunc func(params ReconciliationParams, object client.Object) (int32, int32, error)
+	var reconciliationFunc func(params ReconciliationParams, object client.Object) (agentv1alpha1.AgentStatus, int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
 		ds, err := buildExpectedDaemonSet(rp)
@@ -117,7 +117,8 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		)
 	}
 
-	ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	status, ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	params.Status.Conditions = params.Status.Conditions.MergeWith(status.Conditions...)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -134,7 +135,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		}
 	}
 
-	var status agentv1alpha1.AgentStatus
 	if status, err = calculateStatus(&params, ready, desired); err != nil {
 		err = errors.Wrap(err, "while calculating status")
 	}
@@ -159,16 +159,16 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 	return deployment.WithTemplateHash(d), nil
 }
 
-func reconcileDeployment(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+func reconcileDeployment(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.Deployment)
 	if !ok {
-		return 0, 0, fmt.Errorf("%T is not a Deployment", obj)
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a Deployment", obj)
 	}
-	reconciled, err := deployment.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
+	reconciled, err := common.ReconcileDeployment(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
 	if err != nil {
-		return 0, 0, err
+		return rp.agent.Status, 0, 0, err
 	}
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return rp.agent.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
 }
 
 func buildExpectedStatefulSet(rp ReconciliationParams) (v1.StatefulSet, error) {
@@ -190,16 +190,16 @@ func buildExpectedStatefulSet(rp ReconciliationParams) (v1.StatefulSet, error) {
 	return statefulset.WithTemplateHash(s), nil
 }
 
-func reconcileStatefulSet(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+func reconcileStatefulSet(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.StatefulSet)
 	if !ok {
-		return 0, 0, fmt.Errorf("%T is not a StatefulSet", obj)
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a StatefulSet", obj)
 	}
-	reconciled, err := statefulset.Reconcile(rp.ctx, rp.client, *expected, rp.agent)
+	reconciled, err := common.ReconcileStatefulSet(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
 	if err != nil {
-		return 0, 0, err
+		return rp.agent.Status, 0, 0, err
 	}
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return rp.agent.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
 }
 
 func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
@@ -218,16 +218,16 @@ func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	return daemonset.WithTemplateHash(ds), nil
 }
 
-func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.DaemonSet)
 	if !ok {
-		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, *expected, rp.agent)
+	reconciled, err := common.ReconcileDaemonSet(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
 	if err != nil {
-		return 0, 0, err
+		return rp.agent.Status, 0, 0, err
 	}
-	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+	return rp.agent.Status, reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.

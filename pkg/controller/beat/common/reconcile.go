@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"reflect"
 
+	toolsevents "k8s.io/client-go/tools/events"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	pkgerrors "github.com/pkg/errors"
@@ -40,11 +42,12 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		beat:        params.Beat,
 		podTemplate: podTemplate,
 		meta:        meta,
+		recorder:    params.Recorder(),
 	}
 
 	var toDelete client.Object
 	var expectedVehicle client.Object
-	var reconciliationFunc func(params ReconciliationParams, obj client.Object) (int32, int32, error)
+	var reconciliationFunc func(params ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
 		ds, err := buildExpectedDaemonSet(rp)
@@ -74,19 +77,8 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		}
 	}
 
-	if common.IsOrchestrationPaused(&params.Beat) {
-		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
-			&params.Beat, expectedVehicle)
-		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Beat.Status.Conditions...)
-		if !resourceIsSteady(params.Beat) {
-			return results.WithError(err).WithRequeue(reconciler.DefaultRequeue), params.Status
-		}
-		return results.WithError(err), params.Status
-	}
-	common.MaybeResetPausedCondition(params.Recorder(), &params.Beat)
-	params.Status.Conditions = params.Status.Conditions.MergeWith(params.Beat.Status.Conditions...)
-
-	ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	status, ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	params.Status.Conditions = params.Status.Conditions.MergeWith(status.Conditions...)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -121,6 +113,7 @@ type ReconciliationParams struct {
 	beat        beatv1beta1.Beat
 	podTemplate corev1.PodTemplateSpec
 	meta        metadata.Metadata
+	recorder    toolsevents.EventRecorder
 }
 
 func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
@@ -140,16 +133,16 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 	return deployment.WithTemplateHash(d), nil
 }
 
-func reconcileDeployment(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+func reconcileDeployment(rp ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.Deployment)
 	if !ok {
-		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, *expected, &rp.beat)
+	reconciled, err := common.ReconcileDeployment(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat)
 	if err != nil {
-		return 0, 0, err
+		return rp.beat.Status, 0, 0, err
 	}
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return rp.beat.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
 }
 
 func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
@@ -168,16 +161,16 @@ func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	return daemonset.WithTemplateHash(ds), nil
 }
 
-func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (int32, int32, error) {
+func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.DaemonSet)
 	if !ok {
-		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, *expected, &rp.beat)
+	reconciled, err := common.ReconcileDaemonSet(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat)
 	if err != nil {
-		return 0, 0, err
+		return rp.beat.Status, 0, 0, err
 	}
-	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+	return rp.beat.Status, reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
 // newStatus will calculate a new status from the state of the pods within the k8s cluster

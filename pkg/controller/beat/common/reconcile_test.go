@@ -101,7 +101,7 @@ func Test_reconcileDaemonSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			expected, err := buildExpectedDaemonSet(tt.args)
 			require.NoError(t, err)
-			_, _, err = reconcileDaemonSet(tt.args, &expected)
+			_, _, _, err = reconcileDaemonSet(tt.args, &expected)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileDaemonSet() error = %v, wantErr %v", err, tt.wantErr)
 				return

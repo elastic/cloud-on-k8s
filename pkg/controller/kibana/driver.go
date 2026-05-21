@@ -197,7 +197,7 @@ func (d *driver) Reconcile(
 	}
 
 	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := deployment.ReconcilePauseAware(ctx, d.client, d.recorder, expectedDp, kb)
+	reconciledDp, err := common.ReconcileDeployment(ctx, d.client, d.recorder, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}

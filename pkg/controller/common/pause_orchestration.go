@@ -6,10 +6,8 @@ package common
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,8 +22,11 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	maps "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/daemonset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -49,20 +50,16 @@ const (
 	PausedOrchestrationResumed = "Orchestration has resumed normally"
 )
 
-var (
-	errInvalidParameters = errors.New("cannot set OrchestrationPaused condition on nil parameters")
-)
-
 // IsOrchestrationPaused returns true if the PauseOrchestrationAnnotation exists and is set to true on the given resource
 // when non-critical orchestration steps should be skipped.
 func IsOrchestrationPaused(object metav1.Object) bool {
 	return object.GetAnnotations()[PauseOrchestrationAnnotation] == "true"
 }
 
-// SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
-// is the ECK object, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
+// setPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
+// is the ECK CR, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
 // is the underlying kubernetes resource that is created as a result of the ECK object's Spec.
-func NewSetPausedConditionAndEmitEvent(
+func setPausedConditionAndEmitEvent(
 	recorder toolsevents.EventRecorder,
 	parent ObjectWithConditions,
 	expected client.Object,
@@ -84,54 +81,93 @@ func NewSetPausedConditionAndEmitEvent(
 	})
 }
 
-// SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
-// is the ECK object, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
-// is the underlying kubernetes resource that is created as a result of the ECK object's Spec.
-func SetPausedConditionAndEmitEvent(
+// ReconcileDeployment reconciles the given Deployment for the specified owner, taking into account
+// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
+func ReconcileDeployment(
 	ctx context.Context,
-	c k8s.Client,
+	k8sClient k8s.Client,
 	recorder toolsevents.EventRecorder,
-	parent ObjectWithConditions,
-	expected client.Object,
-) error {
-	if parent == nil || expected == nil {
-		return errInvalidParameters
-	}
-
-	actual, ok := reflect.New(reflect.TypeOf(expected).Elem()).Interface().(client.Object)
-	if !ok {
-		// This would obviously have been caught at compile time and would therefore never happen, but golangci-lint
-		// requires checking that the cast was successful
-		return fmt.Errorf("%T does not implement the client.Object interface", expected)
-	}
-	if err := c.Get(ctx, k8s.ExtractNamespacedName(expected), actual); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
+	expected appsv1.Deployment,
+	owner ObjectWithConditions,
+) (appsv1.Deployment, error) {
+	if IsOrchestrationPaused(owner) {
+		var actual appsv1.Deployment
+		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
+			if apierrors.IsNotFound(err) {
+				return appsv1.Deployment{}, nil
+			}
+			return appsv1.Deployment{}, err
 		}
-		return err
+
+		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
+
+		return actual, nil
 	}
 
-	hasPending := hasPendingChanges(expected, actual)
-	msg := PausedNoChangesMessage
-	if hasPending {
-		msg = PausedWithPendingChangesMessage
-		k8s.EmitEvent(recorder, parent, corev1.EventTypeWarning,
-			events.EventReasonPaused, events.EventActionReconciliation, msg)
-	}
+	maybeResetPausedCondition(recorder, owner)
 
-	parent.MergeConditions(commonv1.Condition{
-		Type:               commonv1.OrchestrationPaused,
-		Status:             corev1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		Message:            msg,
-	})
-
-	return nil
+	return deployment.Reconcile(ctx, k8sClient, expected, owner)
 }
 
-// MaybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not
+// ReconcileDaemonSet reconciles the given DaemonSet for the specified owner, taking into account
+// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
+func ReconcileDaemonSet(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	recorder toolsevents.EventRecorder,
+	expected appsv1.DaemonSet,
+	owner ObjectWithConditions,
+) (appsv1.DaemonSet, error) {
+	if IsOrchestrationPaused(owner) {
+		var actual appsv1.DaemonSet
+		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
+			if apierrors.IsNotFound(err) {
+				return appsv1.DaemonSet{}, nil
+			}
+			return appsv1.DaemonSet{}, err
+		}
+
+		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
+
+		return actual, nil
+	}
+
+	maybeResetPausedCondition(recorder, owner)
+
+	return daemonset.Reconcile(ctx, k8sClient, expected, owner)
+}
+
+// ReconcileStatefulSet reconciles the given StatefulSet for the specified owner, taking into account
+// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
+func ReconcileStatefulSet(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	recorder toolsevents.EventRecorder,
+	expected appsv1.StatefulSet,
+	owner ObjectWithConditions,
+) (appsv1.StatefulSet, error) {
+	if IsOrchestrationPaused(owner) {
+		var actual appsv1.StatefulSet
+		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
+			if apierrors.IsNotFound(err) {
+				return appsv1.StatefulSet{}, nil
+			}
+			return appsv1.StatefulSet{}, err
+		}
+
+		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
+
+		return actual, nil
+	}
+
+	maybeResetPausedCondition(recorder, owner)
+
+	return statefulset.Reconcile(ctx, k8sClient, expected, owner)
+}
+
+// maybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not
 // already exist.
-func MaybeResetPausedCondition(
+func maybeResetPausedCondition(
 	recorder toolsevents.EventRecorder,
 	parent ObjectWithConditions,
 ) {
@@ -154,15 +190,23 @@ func MaybeResetPausedCondition(
 // an update to the existing resource. This is predicated on the common.k8s.elastic.co/template-hash label being set on
 // the expected client.Object.
 func hasPendingChanges(expected client.Object, actual client.Object) bool {
+	if actual == nil && expected != nil {
+		return true
+	}
+
+	if actual == nil || expected == nil {
+		return false
+	}
+
 	return hash.GetTemplateHashLabel(actual.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels())
 }
 
 // ObjectWithConditions provides an interfacing wrapping a client.Object with an additional MergeCondition function to
-// allow SetPausedConditionAndEmitEvent to be agnostic of the underlying resource type. This is defined here because:
+// allow setPausedConditionAndEmitEvent to be agnostic of the underlying resource type. This is defined here because:
 //  1. controller-gen does not allow the interface type to be defined in the API source, preventing this from being
 //     defined alongside the commonv1.Conditions
 //  2. it is only required by the pause-orchestration implementation
-//  3. it enables the re-use of the SetPausedConditionAndEmitEvent function between Deployment, DaemonSet, and
+//  3. it enables the re-use of the setPausedConditionAndEmitEvent function between Deployment, DaemonSet, and
 //     StatefulSet resource types.
 type ObjectWithConditions interface {
 	client.Object
