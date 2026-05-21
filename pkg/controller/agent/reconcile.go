@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -42,8 +43,9 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		ctx:         params.Context,
 		meta:        params.Meta,
 		client:      params.Client,
-		agent:       params.Agent,
+		agent:       &params.Agent,
 		podTemplate: podTemplate,
+		recorder:    params.Recorder(),
 	}
 
 	var toDelete []client.Object
@@ -115,18 +117,6 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		)
 	}
 
-	if common.IsOrchestrationPaused(&params.Agent) {
-		err := common.SetPausedConditionAndEmitEvent(params.Context, params.Client, params.EventRecorder,
-			&params.Agent, expectedVehicle)
-		params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
-		if !resourceIsSteady(params.Agent) {
-			return results.WithError(err).WithRequeue(reconciler.DefaultRequeue), params.Status
-		}
-		return results.WithError(err), params.Status
-	}
-	common.MaybeResetPausedCondition(params.Recorder(), &params.Agent)
-	params.Status.Conditions = params.Status.Conditions.MergeWith(params.Agent.Status.Conditions...)
-
 	ready, desired, err := reconciliationFunc(rp, expectedVehicle)
 	if err != nil {
 		return results.WithError(err), params.Status
@@ -163,7 +153,7 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})
-	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(rp.agent, &d, scheme.Scheme); err != nil {
 		return v1.Deployment{}, err
 	}
 	return deployment.WithTemplateHash(d), nil
@@ -174,7 +164,7 @@ func reconcileDeployment(rp ReconciliationParams, obj client.Object) (int32, int
 	if !ok {
 		return 0, 0, fmt.Errorf("%T is not a Deployment", obj)
 	}
-	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, *expected, &rp.agent)
+	reconciled, err := deployment.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -194,7 +184,7 @@ func buildExpectedStatefulSet(rp ReconciliationParams) (v1.StatefulSet, error) {
 		PodManagementPolicy:  rp.agent.Spec.StatefulSet.PodManagementPolicy,
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 	})
-	if err := controllerutil.SetControllerReference(&rp.agent, &s, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(rp.agent, &s, scheme.Scheme); err != nil {
 		return v1.StatefulSet{}, err
 	}
 	return statefulset.WithTemplateHash(s), nil
@@ -205,7 +195,7 @@ func reconcileStatefulSet(rp ReconciliationParams, obj client.Object) (int32, in
 	if !ok {
 		return 0, 0, fmt.Errorf("%T is not a StatefulSet", obj)
 	}
-	reconciled, err := statefulset.Reconcile(rp.ctx, rp.client, *expected, &rp.agent)
+	reconciled, err := statefulset.Reconcile(rp.ctx, rp.client, *expected, rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -216,13 +206,13 @@ func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	ds := daemonset.New(daemonset.Params{
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.agent.Name),
-		Owner:                &rp.agent,
+		Owner:                rp.agent,
 		Metadata:             rp.meta,
 		Selectors:            rp.agent.GetIdentityLabels(),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
-	if err := controllerutil.SetControllerReference(&rp.agent, &ds, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(rp.agent, &ds, scheme.Scheme); err != nil {
 		return v1.DaemonSet{}, err
 	}
 	return daemonset.WithTemplateHash(ds), nil
@@ -233,17 +223,11 @@ func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (int32, int3
 	if !ok {
 		return 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, *expected, &rp.agent)
+	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, *expected, rp.agent)
 	if err != nil {
 		return 0, 0, err
 	}
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
-}
-
-// resourceIsSteady returns whether the underlying Agent resource is in its ready state.
-func resourceIsSteady(agent agentv1alpha1.Agent) bool {
-	return agent.Status.ObservedGeneration == agent.Generation &&
-		agent.Status.ExpectedNodes == agent.Status.AvailableNodes
 }
 
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.
@@ -251,8 +235,9 @@ type ReconciliationParams struct {
 	ctx         context.Context
 	meta        metadata.Metadata
 	client      k8s.Client
-	agent       agentv1alpha1.Agent
+	agent       *agentv1alpha1.Agent
 	podTemplate corev1.PodTemplateSpec
+	recorder    toolsevents.EventRecorder
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster

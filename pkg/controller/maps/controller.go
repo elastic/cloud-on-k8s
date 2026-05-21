@@ -364,26 +364,7 @@ func (r *ReconcileMapsServer) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	if common.IsOrchestrationPaused(ems) {
-		// The status is built later based on the reconciled deployment. When the pause-orchestration
-		// annotation is enabled, we return the existing deployment to avoid later setting the status health to "red"
-		// in the call to the common.DeploymentStatus function.
-		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, ems, &deploy)
-		if err != nil {
-			return appsv1.Deployment{}, err
-		}
-		var existing = appsv1.Deployment{}
-		if err = r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
-			if !apierrors.IsNotFound(err) {
-				return appsv1.Deployment{}, err
-			}
-		}
-
-		return existing, nil
-	}
-
-	common.MaybeResetPausedCondition(r.recorder, ems)
-	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ems)
+	return deployment.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, ems)
 }
 
 func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata) (deployment.Params, error) {

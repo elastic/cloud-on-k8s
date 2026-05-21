@@ -9,14 +9,11 @@ import (
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -34,26 +31,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	if common.IsOrchestrationPaused(ent) {
-		// The status is built later based on the reconciled deployment. When the pause-orchestration
-		// annotation is enabled, we return the existing deployment to avoid later setting the status health to "red"
-		// in the call to the common.DeploymentStatus function.
-		err = common.SetPausedConditionAndEmitEvent(ctx, r.K8sClient(), r.recorder, ent, &deploy)
-		if err != nil {
-			return appsv1.Deployment{}, err
-		}
-		var existing = appsv1.Deployment{}
-		if err = r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploy), &existing); err != nil {
-			if !errors.IsNotFound(err) {
-				return appsv1.Deployment{}, err
-			}
-		}
-
-		return existing, nil
-	}
-
-	common.MaybeResetPausedCondition(r.recorder, ent)
-	return deployment.Reconcile(ctx, r.K8sClient(), deploy, ent)
+	return deployment.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, ent)
 }
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string, meta metadata.Metadata) (deployment.Params, error) {

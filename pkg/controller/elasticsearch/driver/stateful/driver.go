@@ -154,7 +154,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 ) *reconciler.Results {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
-	results := &reconciler.Results{}
+	results := reconciler.NewResult(ctx)
 	done, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)

@@ -62,9 +62,34 @@ func IsOrchestrationPaused(object metav1.Object) bool {
 // SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
 // is the ECK object, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
 // is the underlying kubernetes resource that is created as a result of the ECK object's Spec.
+func NewSetPausedConditionAndEmitEvent(
+	recorder toolsevents.EventRecorder,
+	parent ObjectWithConditions,
+	expected client.Object,
+	actual client.Object,
+) {
+	hasPending := hasPendingChanges(expected, actual)
+	msg := PausedNoChangesMessage
+	if hasPending {
+		msg = PausedWithPendingChangesMessage
+		k8s.EmitEvent(recorder, parent, corev1.EventTypeWarning,
+			events.EventReasonPaused, events.EventActionReconciliation, msg)
+	}
+
+	parent.MergeConditions(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Message:            msg,
+	})
+}
+
+// SetPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
+// is the ECK object, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
+// is the underlying kubernetes resource that is created as a result of the ECK object's Spec.
 func SetPausedConditionAndEmitEvent(
 	ctx context.Context,
-	client k8s.Client,
+	c k8s.Client,
 	recorder toolsevents.EventRecorder,
 	parent ObjectWithConditions,
 	expected client.Object,
@@ -72,10 +97,21 @@ func SetPausedConditionAndEmitEvent(
 	if parent == nil || expected == nil {
 		return errInvalidParameters
 	}
-	hasPending, err := hasPendingChanges(ctx, client, expected)
-	if err != nil {
+
+	actual, ok := reflect.New(reflect.TypeOf(expected).Elem()).Interface().(client.Object)
+	if !ok {
+		// This would obviously have been caught at compile time and would therefore never happen, but golangci-lint
+		// requires checking that the cast was successful
+		return fmt.Errorf("%T does not implement the client.Object interface", expected)
+	}
+	if err := c.Get(ctx, k8s.ExtractNamespacedName(expected), actual); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
+
+	hasPending := hasPendingChanges(expected, actual)
 	msg := PausedNoChangesMessage
 	if hasPending {
 		msg = PausedWithPendingChangesMessage
@@ -117,21 +153,8 @@ func MaybeResetPausedCondition(
 // hasPendingChanges returns true if the given expected client.Object (Deployment, StatefulSet, or DaemonSet) would result in
 // an update to the existing resource. This is predicated on the common.k8s.elastic.co/template-hash label being set on
 // the expected client.Object.
-func hasPendingChanges(ctx context.Context, c k8s.Client, expected client.Object) (bool, error) {
-	existing, ok := reflect.New(reflect.TypeOf(expected).Elem()).Interface().(client.Object)
-	if !ok {
-		// This would obviously have been caught at compile time and would therefore never happen, but golangci-lint
-		// requires checking that the cast was successful
-		return false, fmt.Errorf("%T does not implement the client.Object interface", expected)
-	}
-	if err := c.Get(ctx, k8s.ExtractNamespacedName(expected), existing); err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, err
-	}
-
-	return hash.GetTemplateHashLabel(existing.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels()), nil
+func hasPendingChanges(expected client.Object, actual client.Object) bool {
+	return hash.GetTemplateHashLabel(actual.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels())
 }
 
 // ObjectWithConditions provides an interfacing wrapping a client.Object with an additional MergeCondition function to
