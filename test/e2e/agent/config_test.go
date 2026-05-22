@@ -33,11 +33,12 @@ func TestSystemIntegrationConfig(t *testing.T) {
 
 	testPodBuilder := beat.NewPodBuilder(name)
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
@@ -48,6 +49,13 @@ func TestSystemIntegrationConfig(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
+	// In 9.5.0+ filebeat inputs run as OTel receivers and the ES exporter in OTel collector
+	// v0.152.0+ treats 401 Unauthorized as a permanent error. During agent startup there is
+	// a ~60s window where ES has not yet reloaded the file realm after the credential secret
+	// is synced by kubelet. See https://github.com/elastic/cloud-on-k8s/issues/9406.
+	if v.LT(version.MinFor(9, 5, 0)) {
+		agentBuilder = agentBuilder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"))
+	}
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
@@ -71,13 +79,14 @@ func TestAgentConfigRef(t *testing.T) {
 		},
 	}
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
 	agentBuilder := agent.NewBuilder(name).
 		WithConfigRef(secretName).
 		WithObjects(secret).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
@@ -88,6 +97,13 @@ func TestAgentConfigRef(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
+	// In 9.5.0+ filebeat inputs run as OTel receivers and the ES exporter in OTel collector
+	// v0.152.0+ treats 401 Unauthorized as a permanent error. During agent startup there is
+	// a ~60s window where ES has not yet reloaded the file realm after the credential secret
+	// is synced by kubelet. See https://github.com/elastic/cloud-on-k8s/issues/9406.
+	if v.LT(version.MinFor(9, 5, 0)) {
+		agentBuilder = agentBuilder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"))
+	}
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
@@ -103,6 +119,8 @@ func TestMultipleOutputConfig(t *testing.T) {
 	esBuilder2 := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(
 			agent.ToOutput(esBuilder1.Ref(), "default"),
@@ -110,7 +128,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 		).
 		WithOpenShiftRoles(test.UseSCCRole).
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
-		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default"), "default").
@@ -121,6 +138,13 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.process_summary", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.socket_summary", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"), "default")
+	// In 9.5.0+ filebeat inputs run as OTel receivers and the ES exporter in OTel collector
+	// v0.152.0+ treats 401 Unauthorized as a permanent error. During agent startup there is
+	// a ~60s window where ES has not yet reloaded the file realm after the credential secret
+	// is synced by kubelet. See https://github.com/elastic/cloud-on-k8s/issues/9406.
+	if v.LT(version.MinFor(9, 5, 0)) {
+		agentBuilder = agentBuilder.WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring")
+	}
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentMultipleOutputConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
