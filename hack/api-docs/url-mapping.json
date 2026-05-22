@@ -1,0 +1,45 @@
+{
+  "_description": "mapping elastic.co/docs URLs to docs-builder cross-repo links to allow validation",
+  "mappings": {
+    "https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure": {
+      "link": "docs-content://solutions/observability/apm/apm-server/configure.md",
+      "text": "Configure APM Server"
+    },
+    "https://www.elastic.co/docs/reference/kibana/configuration-reference": {
+      "link": "kibana://reference/configuration-reference.md",
+      "text": "Kibana configuration reference"
+    },
+    "https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring": {
+      "link": "docs-content://deploy-manage/monitor/stack-monitoring.md",
+      "text": "Stack monitoring"
+    },
+    "https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration": {
+      "link": "docs-content://explore-analyze/visualize/maps/maps-connect-to-ems.md#elastic-maps-server-configuration",
+      "text": "Connect to Elastic Maps Service"
+    },
+    "https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key": {
+      "link": "{{es-apis}}operation/operation-security-create-cross-cluster-api-key",
+      "text": "Create cross-cluster API key"
+    },
+    "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file": {
+      "link": "docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles.md#roles-management-file",
+      "text": "File-based role management"
+    },
+    "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms": {
+      "link": "elasticsearch://reference/elasticsearch/configuration-reference/security-settings.md#password-hashing-algorithms",
+      "text": "Password hashing algorithms"
+    },
+    "https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration": {
+      "link": "docs-content://deploy-manage/users-roles/cluster-or-deployment-auth/file-based.md#file-realm-configuration",
+      "text": "Configure a file realm"
+    },
+    "https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings#tcp-readiness-port": {
+      "link": "elasticsearch://reference/elasticsearch/configuration-reference/networking-settings.md#tcp-readiness-port",
+      "text": "TCP readiness port"
+    },
+    "https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet": {
+      "link": "docs-content://reference/fleet/advanced-kubernetes-managed-by-fleet.md",
+      "text": "Advanced Elastic Agent configuration managed by Fleet"
+    }
+  }
+}

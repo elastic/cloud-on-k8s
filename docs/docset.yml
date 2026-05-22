@@ -6,6 +6,7 @@ exclude:
 cross_links:
   - apm-agent-go
   - docs-content
+  - elasticsearch
   - kibana
 toc:
   - toc: reference
@@ -13,3 +14,4 @@ toc:
 subs:
   eck:   "Elastic Cloud on Kubernetes"
   es:   "Elasticsearch"
+  es-apis: "https://www.elastic.co/docs/api/doc/elasticsearch/"
