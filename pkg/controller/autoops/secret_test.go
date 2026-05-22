@@ -5,7 +5,6 @@
 package autoops
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,6 +35,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 	tests := []struct {
 		name           string
 		publicSecret   *corev1.Secret
+		esModifier     func(*esv1.Elasticsearch)
 		wantSkip       bool
 		wantCACertData []byte
 	}{
@@ -74,7 +74,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 			name: "public secret has neither ca.crt nor tls.crt: skipped",
 			publicSecret: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
-				Data:        map[string][]byte{},
+				Data:       map[string][]byte{},
 			},
 			wantSkip: true,
 		},
@@ -82,6 +82,19 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 			name:         "public secret not found: skipped",
 			publicSecret: nil,
 			wantSkip:     true,
+		},
+		{
+			name: "ES not ready: skipped",
+			publicSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
+				Data: map[string][]byte{
+					certificates.CAFileName: []byte("ca-cert"),
+				},
+			},
+			esModifier: func(e *esv1.Elasticsearch) {
+				e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase
+			},
+			wantSkip: true,
 		},
 	}
 
@@ -98,11 +111,15 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			err := r.reconcileAutoOpsESCASecret(context.Background(), policy, *es)
+			testES := *es
+			if tt.esModifier != nil {
+				tt.esModifier(&testES)
+			}
+			err := r.reconcileAutoOpsESCASecret(t.Context(), policy, testES)
 			require.NoError(t, err)
 
 			var caSecret corev1.Secret
-			getErr := k8sClient.Get(context.Background(), types.NamespacedName{Name: caSecretName, Namespace: "ns-1"}, &caSecret)
+			getErr := k8sClient.Get(t.Context(), types.NamespacedName{Name: caSecretName, Namespace: "ns-1"}, &caSecret)
 
 			if tt.wantSkip {
 				assert.True(t, apierrors.IsNotFound(getErr), "expected AutoOps CA secret to not be created")
@@ -114,34 +131,4 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 				"AutoOps CA secret should contain the expected CA certificate")
 		})
 	}
-}
-
-func TestReconcileAutoOpsESCASecret_ESNotReady(t *testing.T) {
-	scheme.SetupScheme()
-
-	policy := newAutoOpsAgentPolicy()
-	es := newElasticsearch(func(e *esv1.Elasticsearch) {
-		e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase
-	})
-
-	publicSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "es-1-es-http-certs-public", Namespace: "ns-1"},
-		Data: map[string][]byte{
-			certificates.CAFileName: []byte("ca-cert"),
-		},
-	}
-	k8sClient := k8s.NewFakeClient(publicSecret)
-
-	r := &AgentPolicyReconciler{
-		Client:         k8sClient,
-		dynamicWatches: watches.NewDynamicWatches(),
-	}
-
-	err := r.reconcileAutoOpsESCASecret(context.Background(), policy, *es)
-	require.NoError(t, err)
-
-	caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), *es)
-	var caSecret corev1.Secret
-	getErr := k8sClient.Get(context.Background(), types.NamespacedName{Name: caSecretName, Namespace: "ns-1"}, &caSecret)
-	assert.True(t, apierrors.IsNotFound(getErr), "CA secret should not be created when ES is not ready")
 }
