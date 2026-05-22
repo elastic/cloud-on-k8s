@@ -62,10 +62,16 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 		return fmt.Errorf("while retrieving http-certs-public secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
-	caCert, ok := sourceSecret.Data[certificates.CertFileName]
+	// Prefer ca.crt over tls.crt: the CA does not change during leaf rotation, so using it
+	// avoids a brief verification failure while the agent secret catches up. Fall back to
+	// tls.crt for the self-signed case where ECK embeds the CA at the end of the cert chain.
+	caCert, ok := sourceSecret.Data[certificates.CAFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping")
-		return nil
+		caCert, ok = sourceSecret.Data[certificates.CertFileName]
+		if !ok || len(caCert) == 0 {
+			log.V(1).Info("neither ca.crt nor tls.crt found in http-certs-public secret, skipping")
+			return nil
+		}
 	}
 
 	secretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
