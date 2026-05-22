@@ -309,7 +309,7 @@ func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
 // client-authentication-required annotation for Fleet Server.
 // When client authentication is being disabled (annotation present but no longer required),
 // the annotation and related secrets are cleaned up.
-// The trust bundle includes the fleet HTTP CA so that the internal agent can verify the
+// The trust bundle includes the fleet HTTP cert so that the internal agent can verify the
 // fleet-server's server certificate (FLEET_CA points to the trust bundle).
 func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, fleetCerts *certificates.CertificatesSecret, configHash io.Writer) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
@@ -342,7 +342,7 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 		return results.WithError(err)
 	}
 
-	// Include the fleet HTTP CA in the trust bundle so the internal agent can verify the
+	// Include the fleet HTTP cert in the trust bundle so the internal agent can verify the
 	// fleet-server's server certificate when FLEET_CA points to the trust bundle.
 	extraCerts := []*certificates.CertificatesSecret{operatorClientCertSecret}
 	if fleetCerts != nil {
