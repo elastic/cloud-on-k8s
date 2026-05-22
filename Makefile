@@ -489,7 +489,7 @@ e2e-run: go-generate
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--e2e-tags='$(E2E_TAGS)' \
-		--test-regex=$(TESTS_MATCH) \
+		--test-regex='$(TESTS_MATCH)' \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
