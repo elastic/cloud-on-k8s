@@ -340,7 +340,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithKibanaRef(tweakServiceRef(b.Agent.Spec.KibanaRef, suffix)).
-				WithFleetServerRef(tweakServiceRef(b.Agent.Spec.FleetServerRef, suffix))
+				WithFleetServerRef(tweakServiceRef(b.Agent.Spec.FleetServerRef.ObjectSelector, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
