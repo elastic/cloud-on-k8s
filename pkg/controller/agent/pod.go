@@ -694,7 +694,7 @@ func getFleetSetupFleetServerEnvVars(ctx context.Context, client k8s.Client, cli
 			// Server.TLS.CAs for client cert verification. Point it to the trust bundle so
 			// fleet-server can verify connecting agents' client certificates.
 			fleetServerCfg[FleetCA] = path.Join(FleetServerClientTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
-			fleetServerCfg[FleetServerClientAuth] = "required"
+			fleetServerCfg[FleetServerClientAuth] = FleetServerClientAuthRequired
 			// Fleet Server's internal agent also needs a client certificate to connect to its own listener.
 			fleetServerCfg[ElasticAgentCert] = path.Join(FleetServerInternalClientCertMountPath, certificates.CertFileName)
 			fleetServerCfg[ElasticAgentCertKey] = path.Join(FleetServerInternalClientCertMountPath, certificates.KeyFileName)
