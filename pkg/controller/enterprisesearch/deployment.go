@@ -32,7 +32,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 		return appsv1.Deployment{}, err
 	}
 	deploy := deployment.New(deployParams)
-	return common.ReconcileDeployment(ctx, r.K8sClient(), r.recorder, deploy, ent)
+	return common.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, ent, deployment.Reconcile)
 }
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch, configHash string, meta metadata.Metadata) (deployment.Params, error) {

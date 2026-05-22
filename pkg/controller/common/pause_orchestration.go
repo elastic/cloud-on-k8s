@@ -7,7 +7,6 @@ package common
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,11 +21,8 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	maps "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/daemonset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -56,9 +52,10 @@ func IsOrchestrationPaused(object metav1.Object) bool {
 	return object.GetAnnotations()[PauseOrchestrationAnnotation] == "true"
 }
 
-// setPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True and emits an event. The parent
-// is the ECK CR, such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object
-// is the underlying kubernetes resource that is created as a result of the ECK object's Spec.
+// setPausedConditionAndEmitEvent adds the OrchestrationPaused condition with a value of True on the parent, and emits a
+// Warning event when spec changes are pending (no event is emitted on the no-changes path). The parent is the ECK CR,
+// such as v1.Kibana, to be updated with the appropriate v1.Conditions, while the expected client.Object is the
+// underlying kubernetes resource that is created as a result of the ECK object's Spec.
 func setPausedConditionAndEmitEvent(
 	recorder toolsevents.EventRecorder,
 	parent ObjectWithConditions,
@@ -81,88 +78,43 @@ func setPausedConditionAndEmitEvent(
 	})
 }
 
-// ReconcileDeployment reconciles the given Deployment for the specified owner, taking into account
-// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
-func ReconcileDeployment(
+// ReconcilePauseAware wraps the given reconcileFn with pause-orchestration handling: when paused, it fetches the
+// existing resource, sets the OrchestrationPaused condition (with a Warning event if spec changes are pending), and
+// returns the live object without applying any spec change. When not paused, it clears any stale OrchestrationPaused
+// condition and delegates to reconcileFn.
+//
+// PT exists so the function can take the address of T values and pass them to client.Object-typed APIs (Get,
+// setPausedConditionAndEmitEvent). It is constrained to be a pointer to T that also implements client.Object.
+func ReconcilePauseAware[T any, PT interface {
+	*T
+	client.Object
+}](
 	ctx context.Context,
-	k8sClient k8s.Client,
+	c k8s.Client,
 	recorder toolsevents.EventRecorder,
-	expected appsv1.Deployment,
+	expected T,
 	owner ObjectWithConditions,
-) (appsv1.Deployment, error) {
+	reconcileFn func(context.Context, k8s.Client, T, client.Object) (T, error),
+) (T, error) {
 	if IsOrchestrationPaused(owner) {
-		var actual appsv1.Deployment
-		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
-			if apierrors.IsNotFound(err) {
-				return appsv1.Deployment{}, nil
-			}
-			return appsv1.Deployment{}, err
+		var actual T
+		var actualForDiff client.Object // nil when the resource doesn't exist yet — treated as "pending changes" by hasPendingChanges
+		err := c.Get(ctx, k8s.ExtractNamespacedName(PT(&expected)), PT(&actual))
+		switch {
+		case err == nil:
+			actualForDiff = PT(&actual)
+		case apierrors.IsNotFound(err):
+			// first-reconcile-while-paused: leave actualForDiff nil so the condition is still reported with PendingChanges
+		default:
+			return *new(T), err
 		}
-
-		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
-
+		setPausedConditionAndEmitEvent(recorder, owner, PT(&expected), actualForDiff)
 		return actual, nil
 	}
 
 	maybeResetPausedCondition(recorder, owner)
 
-	return deployment.Reconcile(ctx, k8sClient, expected, owner)
-}
-
-// ReconcileDaemonSet reconciles the given DaemonSet for the specified owner, taking into account
-// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
-func ReconcileDaemonSet(
-	ctx context.Context,
-	k8sClient k8s.Client,
-	recorder toolsevents.EventRecorder,
-	expected appsv1.DaemonSet,
-	owner ObjectWithConditions,
-) (appsv1.DaemonSet, error) {
-	if IsOrchestrationPaused(owner) {
-		var actual appsv1.DaemonSet
-		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
-			if apierrors.IsNotFound(err) {
-				return appsv1.DaemonSet{}, nil
-			}
-			return appsv1.DaemonSet{}, err
-		}
-
-		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
-
-		return actual, nil
-	}
-
-	maybeResetPausedCondition(recorder, owner)
-
-	return daemonset.Reconcile(ctx, k8sClient, expected, owner)
-}
-
-// ReconcileStatefulSet reconciles the given StatefulSet for the specified owner, taking into account
-// whether orchestration has been paused by the eck.k8s.elastic.co/pause-orchestration annotation.
-func ReconcileStatefulSet(
-	ctx context.Context,
-	k8sClient k8s.Client,
-	recorder toolsevents.EventRecorder,
-	expected appsv1.StatefulSet,
-	owner ObjectWithConditions,
-) (appsv1.StatefulSet, error) {
-	if IsOrchestrationPaused(owner) {
-		var actual appsv1.StatefulSet
-		if err := k8sClient.Get(ctx, k8s.ExtractNamespacedName(&expected), &actual); err != nil {
-			if apierrors.IsNotFound(err) {
-				return appsv1.StatefulSet{}, nil
-			}
-			return appsv1.StatefulSet{}, err
-		}
-
-		setPausedConditionAndEmitEvent(recorder, owner, &expected, &actual)
-
-		return actual, nil
-	}
-
-	maybeResetPausedCondition(recorder, owner)
-
-	return statefulset.Reconcile(ctx, k8sClient, expected, owner)
+	return reconcileFn(ctx, c, expected, owner)
 }
 
 // maybeResetPausedCondition updates the OrchestrationPaused condition to False if it exists, or is a no-op if it does not

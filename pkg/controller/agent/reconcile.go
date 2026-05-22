@@ -123,15 +123,17 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		return results.WithError(err), params.Status
 	}
 
-	for _, obj := range toDelete {
-		// clean up the other ones
-		if err := params.Client.Get(params.Context, types.NamespacedName{
-			Namespace: params.Agent.Namespace,
-			Name:      name,
-		}, obj); err == nil {
-			results.WithError(params.Client.Delete(params.Context, obj))
-		} else if !apierrors.IsNotFound(err) {
-			results.WithError(err)
+	if !common.IsOrchestrationPaused(rp.agent) {
+		for _, obj := range toDelete {
+			// clean up the other ones
+			if err := params.Client.Get(params.Context, types.NamespacedName{
+				Namespace: params.Agent.Namespace,
+				Name:      name,
+			}, obj); err == nil {
+				results.WithError(params.Client.Delete(params.Context, obj))
+			} else if !apierrors.IsNotFound(err) {
+				results.WithError(err)
+			}
 		}
 	}
 
@@ -164,7 +166,7 @@ func reconcileDeployment(rp ReconciliationParams, obj client.Object) (agentv1alp
 	if !ok {
 		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a Deployment", obj)
 	}
-	reconciled, err := common.ReconcileDeployment(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, deployment.Reconcile)
 	if err != nil {
 		return rp.agent.Status, 0, 0, err
 	}
@@ -195,7 +197,7 @@ func reconcileStatefulSet(rp ReconciliationParams, obj client.Object) (agentv1al
 	if !ok {
 		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a StatefulSet", obj)
 	}
-	reconciled, err := common.ReconcileStatefulSet(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, statefulset.Reconcile)
 	if err != nil {
 		return rp.agent.Status, 0, 0, err
 	}
@@ -223,7 +225,7 @@ func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (agentv1alph
 	if !ok {
 		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := common.ReconcileDaemonSet(rp.ctx, rp.client, rp.recorder, *expected, rp.agent)
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, daemonset.Reconcile)
 	if err != nil {
 		return rp.agent.Status, 0, 0, err
 	}

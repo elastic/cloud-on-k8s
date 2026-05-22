@@ -73,7 +73,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := common.ReconcileDeployment(ctx, r.K8sClient(), r.recorder, deploy, state.ApmServer)
+	result, err := common.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, state.ApmServer, deployment.Reconcile)
 	if err != nil {
 		return state, err
 	}

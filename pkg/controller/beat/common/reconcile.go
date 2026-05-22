@@ -83,14 +83,16 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		return results.WithError(err), params.Status
 	}
 
-	// clean up the other one
-	if err := params.Client.Get(params.Context, types.NamespacedName{
-		Namespace: params.Beat.Namespace,
-		Name:      name,
-	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(params.Context, toDelete))
-	} else if !apierrors.IsNotFound(err) {
-		results.WithError(err)
+	if !common.IsOrchestrationPaused(&rp.beat) {
+		// clean up the other one
+		if err := params.Client.Get(params.Context, types.NamespacedName{
+			Namespace: params.Beat.Namespace,
+			Name:      name,
+		}, toDelete); err == nil {
+			results.WithError(params.Client.Delete(params.Context, toDelete))
+		} else if !apierrors.IsNotFound(err) {
+			results.WithError(err)
+		}
 	}
 
 	params.Status, err = newStatus(params, ready, desired)
@@ -130,9 +132,9 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 func reconcileDeployment(rp ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error) {
 	expected, ok := obj.(*v1.Deployment)
 	if !ok {
-		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a Deployment", obj)
 	}
-	reconciled, err := common.ReconcileDeployment(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat)
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat, deployment.Reconcile)
 	if err != nil {
 		return rp.beat.Status, 0, 0, err
 	}
@@ -160,7 +162,7 @@ func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (beatv1beta1
 	if !ok {
 		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
 	}
-	reconciled, err := common.ReconcileDaemonSet(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat)
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat, daemonset.Reconcile)
 	if err != nil {
 		return rp.beat.Status, 0, 0, err
 	}
