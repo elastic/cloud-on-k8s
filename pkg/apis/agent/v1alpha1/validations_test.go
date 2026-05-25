@@ -594,7 +594,7 @@ func Test_checkFleetServerOrFleetServerRef(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: true,
-					FleetServerRef:     commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
 				},
 			},
 			wantErr: true,
@@ -618,7 +618,7 @@ func Test_checkHTTPConfigOnlyForFleetServer(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: true,
-					HTTP:               commonv1.HTTPConfig{},
+					HTTP:               commonv1.HTTPConfigWithClientOptions{},
 				},
 			},
 			wantErr: false,
@@ -628,11 +628,13 @@ func Test_checkHTTPConfigOnlyForFleetServer(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: false,
-					HTTP: commonv1.HTTPConfig{TLS: commonv1.TLSOptions{
-						Certificate: commonv1.SecretRef{
-							SecretName: "name",
-						},
-					}},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{TLSOptions: commonv1.TLSOptions{
+							Certificate: commonv1.SecretRef{
+								SecretName: "name",
+							},
+						}},
+					},
 				},
 			},
 			wantErr: true,
@@ -665,7 +667,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
 				},
 			},
 			wantErr: true,
@@ -685,7 +687,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
 					KibanaRef:      commonv1.ObjectSelector{Name: "name"},
 				},
 			},
@@ -765,7 +767,7 @@ func Test_checkAssociations(t *testing.T) {
 							},
 						},
 						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ble"}},
 					},
 				},
 			},
@@ -804,7 +806,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Agent{
 					Spec: AgentSpec{
-						FleetServerRef: commonv1.ObjectSelector{ServiceName: "ble"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"}},
 					},
 				},
 			},
@@ -815,6 +817,80 @@ func Test_checkAssociations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkAssociations(tt.args.b)
 			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkClientAuthentication(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		a       *Agent
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name: "authentication false: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server disabled: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: false,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "client certificate authentication is only supported when Fleet Server is enabled",
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS disabled: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+							},
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "client certificate authentication requires TLS to be enabled",
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled (default): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkClientAuthentication(tt.a)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+			if tt.wantMsg != "" {
+				assert.Contains(t, got[0].Detail, tt.wantMsg)
+			}
 		})
 	}
 }

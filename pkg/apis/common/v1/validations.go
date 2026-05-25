@@ -141,6 +141,16 @@ func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) fi
 	return nil
 }
 
+// CheckFleetServerSelectorRefs checks that the given Fleet Server selector references are valid.
+func CheckFleetServerSelectorRefs(path *field.Path, refs ...FleetServerSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
 func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	v, err := version.Parse(ver)
 	if err != nil {

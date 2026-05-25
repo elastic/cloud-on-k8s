@@ -147,7 +147,7 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 			output["ssl.certificate_authorities"] = []string{path.Join(CertificatesDir(assoc), CAFileName)}
 		}
 		if assocConf.ClientCertIsConfigured() {
-			clientCertDir := standaloneAgentClientCertificatesDir(assoc)
+			clientCertDir := associationClientCertificatesDir(assoc)
 			output["ssl.certificate"] = path.Join(clientCertDir, certificates.CertFileName)
 			output["ssl.key"] = path.Join(clientCertDir, certificates.KeyFileName)
 		}
