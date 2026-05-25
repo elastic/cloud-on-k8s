@@ -227,8 +227,8 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 
 	// Check that the roles hash annotation on the roles-and-file-realm secret matches what we expect.
 	// - When SCP defines roles: the secret must carry the matching hash (ES controller has applied them).
-	// - When SCP has no roles: the secret must NOT carry the annotation (any stale value from a
-	//   previous reconciliation has been cleaned up by the ES controller).
+	// - When SCP has no roles: the annotation must be absent or empty. The ES controller always writes
+	//   an empty value when there are no SCP roles, overwriting any stale hash from a prior reconciliation.
 	expectedRolesHash := ""
 	if esConfigPolicy.SecurityRoles != nil && len(esConfigPolicy.SecurityRoles.Data) > 0 {
 		expectedRolesHash = hash.HashObject(esConfigPolicy.SecurityRoles)
