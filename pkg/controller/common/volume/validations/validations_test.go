@@ -204,7 +204,7 @@ func Test_ensureClaimSupportsExpansion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := EnsureClaimSupportsExpansion(context.Background(), tt.k8sClient, tt.claim, tt.validateStoragClass); (err != nil) != tt.wantErr {
+			if err := ensureClaimSupportsExpansion(context.Background(), tt.k8sClient, tt.claim, tt.validateStoragClass); (err != nil) != tt.wantErr {
 				t.Errorf("ensureClaimSupportsExpansion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -552,18 +552,18 @@ func TestValidateReservedLabelsOnUpdate(t *testing.T) {
 	}
 }
 
-func TestClaimMatchingName(t *testing.T) {
+func Test_claimMatchingName(t *testing.T) {
 	claims := []corev1.PersistentVolumeClaim{
 		{ObjectMeta: metav1.ObjectMeta{Name: "a"}},
 		{ObjectMeta: metav1.ObjectMeta{Name: "b"}},
 	}
-	if ClaimMatchingName(claims, "a") == nil {
+	if claimMatchingName(claims, "a") == nil {
 		t.Fatal("expected claim a")
 	}
-	if ClaimMatchingName(claims, "missing") != nil {
+	if claimMatchingName(claims, "missing") != nil {
 		t.Fatal("expected nil for missing")
 	}
-	if ClaimMatchingName(nil, "a") != nil {
+	if claimMatchingName(nil, "a") != nil {
 		t.Fatal("nil slice should yield nil")
 	}
 }

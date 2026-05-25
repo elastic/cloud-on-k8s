@@ -23,17 +23,10 @@ import (
 const (
 	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
 
-	// ReservedPVCLabelKeyErrMsgFmt is the admission error message when a user sets or changes
+	// reservedPVCLabelKeyErrMsgFmt is the admission error message when a user sets or changes
 	// an ECK-reserved label key on a volumeClaimTemplate.
-	ReservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
-
+	reservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 )
-
-// IsReservedLabelKey reports whether key is owned by ECK and must not be set
-// or modified by users via VolumeClaimTemplate labels. See metadata/reserved.
-func IsReservedLabelKey(key string) bool {
-	return reserved.IsReservedLabelKey(key)
-}
 
 // StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys
 // removed from each claim's metadata.labels. This is the reconciler-side complement to
@@ -52,7 +45,7 @@ func StripReservedLabelKeys(claims []corev1.PersistentVolumeClaim) []corev1.Pers
 	for _, claim := range claims {
 		c := *claim.DeepCopy()
 		for k := range c.ObjectMeta.Labels {
-			if IsReservedLabelKey(k) {
+			if reserved.IsReservedLabelKey(k) {
 				delete(c.ObjectMeta.Labels, k)
 			}
 		}
@@ -66,10 +59,11 @@ func StripReservedLabelKeys(claims []corev1.PersistentVolumeClaim) []corev1.Pers
 	return out
 }
 
+// anyClaimCarriesReservedKey reports whether any claim carries an ECK-reserved label key.
 func anyClaimCarriesReservedKey(claims []corev1.PersistentVolumeClaim) bool {
 	for _, claim := range claims {
 		for k := range claim.ObjectMeta.Labels {
-			if IsReservedLabelKey(k) {
+			if reserved.IsReservedLabelKey(k) {
 				return true
 			}
 		}
@@ -105,14 +99,10 @@ func ValidateReservedLabelsOnCreate(proposed []corev1.PersistentVolumeClaim, tem
 	var errs field.ErrorList
 	for j, claim := range proposed {
 		for key := range claim.ObjectMeta.Labels {
-			if !IsReservedLabelKey(key) {
+			if !reserved.IsReservedLabelKey(key) {
 				continue
 			}
-			errs = append(errs, field.Invalid(
-				templatesPath.Index(j).Child("metadata", "labels").Key(key),
-				key,
-				fmt.Sprintf(ReservedPVCLabelKeyErrMsgFmt, key),
-			))
+			errs = append(errs, invalidReservedLabel(templatesPath.Index(j).Child("metadata", "labels").Key(key), key))
 		}
 	}
 	return errs
@@ -125,9 +115,9 @@ func ValidateReservedLabelsOnCreate(proposed []corev1.PersistentVolumeClaim, tem
 func ValidateReservedLabelsOnUpdate(current, proposed []corev1.PersistentVolumeClaim, templatesPath *field.Path) field.ErrorList {
 	var errs field.ErrorList
 	for j, proposedClaim := range proposed {
-		currentClaim := ClaimMatchingName(current, proposedClaim.Name)
+		currentClaim := claimMatchingName(current, proposedClaim.Name)
 		for key, value := range proposedClaim.ObjectMeta.Labels {
-			if !IsReservedLabelKey(key) {
+			if !reserved.IsReservedLabelKey(key) {
 				continue
 			}
 			if currentClaim != nil {
@@ -135,14 +125,15 @@ func ValidateReservedLabelsOnUpdate(current, proposed []corev1.PersistentVolumeC
 					continue
 				}
 			}
-			errs = append(errs, field.Invalid(
-				templatesPath.Index(j).Child("metadata", "labels").Key(key),
-				key,
-				fmt.Sprintf(ReservedPVCLabelKeyErrMsgFmt, key),
-			))
+			errs = append(errs, invalidReservedLabel(templatesPath.Index(j).Child("metadata", "labels").Key(key), key))
 		}
 	}
 	return errs
+}
+
+// invalidReservedLabel builds a field.Invalid error for a reserved volumeClaimTemplate label key.
+func invalidReservedLabel(path *field.Path, key string) *field.Error {
+	return field.Invalid(path, key, fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key))
 }
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
@@ -157,7 +148,7 @@ func ValidateClaimsStorageUpdate(
 	validateStorageClass bool,
 ) error {
 	for _, updatedClaim := range updated {
-		initialClaim := ClaimMatchingName(initial, updatedClaim.Name)
+		initialClaim := claimMatchingName(initial, updatedClaim.Name)
 		if initialClaim == nil {
 			// updated declares a claim that does not exist in initial: adding new claims is forbidden.
 			return errors.New(PvcImmutableErrMsg)
@@ -166,7 +157,7 @@ func ValidateClaimsStorageUpdate(
 		switch {
 		case cmp.Increase:
 			// storage increase requested: ensure the storage class allows volume expansion
-			if err := EnsureClaimSupportsExpansion(ctx, k8sClient, updatedClaim, validateStorageClass); err != nil {
+			if err := ensureClaimSupportsExpansion(ctx, k8sClient, updatedClaim, validateStorageClass); err != nil {
 				return err
 			}
 		case cmp.Decrease:
@@ -177,8 +168,8 @@ func ValidateClaimsStorageUpdate(
 	return nil
 }
 
-// ClaimMatchingName returns the claim with the given name in claims, or nil if not found.
-func ClaimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
+// claimMatchingName returns the claim with the given name in claims, or nil if not found.
+func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
 	for i, claim := range claims {
 		if claim.Name == name {
 			return &claims[i]
@@ -187,9 +178,9 @@ func ClaimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *core
 	return nil
 }
 
-// EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
+// ensureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion, and returns an error if it doesn't.
-func EnsureClaimSupportsExpansion(ctx context.Context, k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
+func ensureClaimSupportsExpansion(ctx context.Context, k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
 	if !validateStorageClass {
 		ulog.FromContext(ctx).V(1).Info("Skipping storage class validation")
 		return nil
@@ -234,14 +225,8 @@ func getDefaultStorageClass(k8sClient k8s.Client) (storagev1.StorageClass, error
 
 // isDefaultStorageClass inspects the given storage class and returns true if it is annotated as the default one.
 func isDefaultStorageClass(sc storagev1.StorageClass) bool {
-	if len(sc.Annotations) == 0 {
-		return false
-	}
-	if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
-		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true" {
-		return true
-	}
-	return false
+	return sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
+		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true"
 }
 
 // allowsVolumeExpansion returns true if the given storage class allows volume expansion.

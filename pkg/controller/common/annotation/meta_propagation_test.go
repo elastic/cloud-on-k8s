@@ -82,8 +82,8 @@ func TestGetMetadataToPropagate(t *testing.T) {
 			name: "propagate all annotations excludes ECK reserved keys",
 			objMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
-					PropagateAnnotationsAnnotation:              "*",
-					"foo":                                       "bar",
+					PropagateAnnotationsAnnotation: "*",
+					"foo":                          "bar",
 					"eck.k8s.alpha.elastic.co/propagate-labels": "*",
 					"elasticsearch.k8s.elastic.co/cluster-name": "quickstart",
 				},

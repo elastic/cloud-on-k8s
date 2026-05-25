@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -335,13 +334,13 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 func Test_checkPVCchanges(t *testing.T) {
 	storageClass := storagev1.StorageClass{
 		ObjectMeta:           metav1.ObjectMeta{Name: "sample-sc"},
-		AllowVolumeExpansion: ptr.To[bool](true),
+		AllowVolumeExpansion: new(true),
 	}
 	claim := func(name, size string, labels map[string]string) corev1.PersistentVolumeClaim {
 		c := corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: ptr.To[string](storageClass.Name),
+				StorageClassName: new(storageClass.Name),
 				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)},
 				},
@@ -414,7 +413,7 @@ func Test_checkPVCchanges(t *testing.T) {
 			current: ls(claim("data", "1Gi", nil)),
 			proposed: func() *lsv1alpha1.Logstash {
 				c := claim("data", "1Gi", nil)
-				c.Spec.StorageClassName = ptr.To[string]("other-sc")
+				c.Spec.StorageClassName = new("other-sc")
 				return ls(c)
 			}(),
 			k8sClient: k8s.NewFakeClient(&storageClass, liveSset(claim("data", "1Gi", nil))),
