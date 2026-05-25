@@ -110,7 +110,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -128,7 +128,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -161,7 +161,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -199,7 +199,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -363,7 +363,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -382,7 +382,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -417,7 +417,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -460,7 +460,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -505,7 +505,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -539,7 +539,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
 					Version:        "8.0.0",
-					FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 				},
 			},
 			fleetServer: &agentv1alpha1.Agent{
@@ -621,7 +621,7 @@ func TestFleetManagedAgentTransitiveESRef_ResultsNotNil(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "8.0.0",
-			FleetServerRef: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"},
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
 		},
 	}
 	fleetServer := &agentv1alpha1.Agent{
