@@ -17,9 +17,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	remotekeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -76,7 +76,7 @@ func reconcileManagedKeystorePasswordSecret(
 	passwordGenerator password.RandomGenerator,
 	meta metadata.Metadata,
 ) (*corev1.Secret, error) {
-	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
+	policyConfig, err := stackconfig.GetPolicyConfig(ctx, client, es)
 	if err != nil {
 		return nil, err
 	}

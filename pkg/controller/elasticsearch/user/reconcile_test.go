@@ -36,7 +36,7 @@ func init() {
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.NewFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(t.Context(), c, sampleEsWithAuth, initDynamicWatches(), toolsevents.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), nil, "", metadata.Metadata{})
+	controllerUser, err := ReconcileUsersAndRoles(t.Context(), c, sampleEsWithAuth, initDynamicWatches(), toolsevents.NewFakeRecorder(10), testPasswordHasher, fixtures.MustTestRandomGenerator(16), PolicyRoles{}, metadata.Metadata{})
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -222,7 +222,7 @@ func Test_aggregateRoles(t *testing.T) {
 		name         string
 		es           esv1.Elasticsearch
 		makeClient   func() k8s.Client
-		policyRoles  map[string]any
+		policyRoles  RolesFileContent
 		wantLen      int
 		wantContains []string
 		check        func(t *testing.T, roles RolesFileContent)

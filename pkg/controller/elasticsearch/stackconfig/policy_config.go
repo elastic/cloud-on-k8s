@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package nodespec
+package stackconfig
 
 import (
 	"context"
@@ -87,4 +87,9 @@ func GetPolicyConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 	}
 
 	return policyConfig, nil
+}
+
+// UserRoles returns the SCP-derived role definitions and their hash.
+func (c PolicyConfig) UserRoles() user.PolicyRoles {
+	return user.PolicyRoles{Roles: c.Roles, Hash: c.RolesHash}
 }

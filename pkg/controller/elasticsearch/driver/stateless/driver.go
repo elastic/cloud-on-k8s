@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	remotekeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -39,7 +39,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Reconcile resources which are common to all drivers.
 	// clientAuthenticationRequired is always false for stateless: mTLS is rejected by validation.
 	// TODO(#9204): wire up StackConfigPolicy support for stateless ES (currently passing empty PolicyConfig{}
-	sharedState, results := shared.ReconcileSharedResources(ctx, d, d.Parameters, false, nodespec.PolicyConfig{})
+	sharedState, results := shared.ReconcileSharedResources(ctx, d, d.Parameters, false, stackconfig.PolicyConfig{})
 	if results.HasError() {
 		return results
 	}

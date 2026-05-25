@@ -36,11 +36,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
@@ -59,7 +59,7 @@ func ReconcileSharedResources(
 	d commondriver.Interface,
 	params driver.Parameters,
 	clientAuthenticationRequired bool,
-	policyConfig nodespec.PolicyConfig,
+	policyConfig stackconfig.PolicyConfig,
 ) (*ReconcileState, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 	log := ulog.FromContext(ctx)
@@ -134,8 +134,7 @@ func ReconcileSharedResources(
 		params.Recorder,
 		params.OperatorParameters.PasswordHasher,
 		params.OperatorParameters.PasswordGenerator,
-		policyConfig.Roles,
-		policyConfig.RolesHash,
+		policyConfig.UserRoles(),
 		meta)
 	if err != nil {
 		return nil, results.WithError(err)

@@ -49,15 +49,14 @@ func ReconcileUsersAndRoles(
 	recorder toolsevents.EventRecorder,
 	passwordHasher cryptutil.PasswordHasher,
 	generator commonpassword.RandomGenerator,
-	policyRoles map[string]any,
-	policyRolesHash string,
+	policyRoles PolicyRoles,
 	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
-	roles, err := aggregateRoles(ctx, c, es, watched, recorder, policyRoles)
+	roles, err := aggregateRoles(ctx, c, es, watched, recorder, policyRoles.Roles)
 	if err != nil {
 		return esclient.BasicAuth{}, err
 	}
@@ -73,7 +72,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens, policyRolesHash, meta); err != nil {
+	if err := reconcileRolesFileRealmSecret(ctx, c, es, roles, fileRealm, saTokens, policyRoles.Hash, meta); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -153,7 +152,7 @@ func aggregateRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder toolsevents.EventRecorder,
-	policyRoles map[string]any,
+	policyRoles RolesFileContent,
 ) (RolesFileContent, error) {
 	userProvided, err := reconcileUserProvidedRoles(ctx, c, es, watched, recorder)
 	if err != nil {
