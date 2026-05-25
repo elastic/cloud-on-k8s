@@ -577,6 +577,9 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 	}
 
 	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// SecurityRoles is delivered via roles.yml (not the file-based settings API), but the SCP
+	// controller itself rejects ES clusters older than FileBasedSettingsMinPreVersion, so this
+	// is still the correct gate.
 	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		t.SkipNow()
 	}
