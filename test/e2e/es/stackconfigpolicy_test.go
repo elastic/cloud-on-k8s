@@ -695,30 +695,15 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivBody := strings.NewReader(`{
+					hasPrivResp, err := hasPrivilegesAs(context.Background(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [
 							{"names": ["logs-test"], "privileges": ["read"]},
 							{"names": ["secret-index"], "privileges": ["write"]}
 						]
 					}`)
-					req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", hasPrivBody)
 					if err != nil {
 						return err
-					}
-					req.Header.Set("es-security-runas-user", fileRealmUser)
-					resp, err := esClient.Request(context.Background(), req)
-					if err != nil {
-						return err
-					}
-					defer resp.Body.Close()
-					respBytes, err := io.ReadAll(resp.Body)
-					if err != nil {
-						return err
-					}
-					var hasPrivResp HasPrivilegesResponse
-					if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
-						return fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
 					}
 					if !hasPrivResp.Cluster["monitor"] {
 						return fmt.Errorf("expected cluster:monitor=true, got false")
@@ -784,27 +769,12 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivBody := strings.NewReader(`{
+					hasPrivResp, err := hasPrivilegesAs(context.Background(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [{"names": ["logs-test"], "privileges": ["read"]}]
 					}`)
-					req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", hasPrivBody)
 					if err != nil {
 						return err
-					}
-					req.Header.Set("es-security-runas-user", fileRealmUser)
-					resp, err := esClient.Request(context.Background(), req)
-					if err != nil {
-						return err
-					}
-					defer resp.Body.Close()
-					respBytes, err := io.ReadAll(resp.Body)
-					if err != nil {
-						return err
-					}
-					var hasPrivResp HasPrivilegesResponse
-					if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
-						return fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
 					}
 					if hasPrivResp.Cluster["monitor"] {
 						return fmt.Errorf("expected cluster:monitor=false after role removal, got true")
@@ -833,6 +803,28 @@ type HasPrivilegesResponse struct {
 	HasAllRequested bool                       `json:"has_all_requested"`
 	Cluster         map[string]bool            `json:"cluster"`
 	Index           map[string]map[string]bool `json:"index"`
+}
+
+func hasPrivilegesAs(ctx context.Context, esClient client.Client, runAsUser string, body string) (HasPrivilegesResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", strings.NewReader(body))
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	req.Header.Set("es-security-runas-user", runAsUser)
+	resp, err := esClient.Request(ctx, req)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	var hasPrivResp HasPrivilegesResponse
+	if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
+		return HasPrivilegesResponse{}, fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
+	}
+	return hasPrivResp, nil
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
