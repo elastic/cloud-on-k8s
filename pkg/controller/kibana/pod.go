@@ -105,7 +105,7 @@ func readinessProbe(useTLS bool, basePath string) corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(network.HTTPPort),
-				Path:   fmt.Sprintf("%s/login", basePath),
+				Path:   fmt.Sprintf("%s/api/status", basePath),
 				Scheme: scheme,
 			},
 		},
