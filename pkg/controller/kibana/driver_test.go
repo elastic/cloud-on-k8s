@@ -670,7 +670,7 @@ func expectedDeploymentParams() deployment.Params {
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Port:   intstr.FromInt(5601),
-								Path:   "/login",
+								Path:   "/api/status",
 								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
