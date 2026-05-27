@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
@@ -30,6 +31,7 @@ type ResourceValidator[T runtime.Object] struct {
 	validator         admission.Validator[T]
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
+	namespaceMatcher  *nsmatch.MatchNotifier
 }
 
 // NewResourceValidator wraps an admission.Validator[T] with namespace
@@ -60,6 +62,14 @@ func NewResourceFuncValidator[T runtime.Object](
 	validate ValidateFunc[T],
 ) *ResourceValidator[T] {
 	return NewResourceValidator(licenseChecker, managedNamespaces, &funcValidator[T]{validate: validate})
+}
+
+// WithNamespaceMatcher attaches a NamespaceMatcher so that dynamic-mode
+// installs can filter validation by the operator's current selector instead
+// of the static managedNamespaces list.
+func (v *ResourceValidator[T]) WithNamespaceMatcher(m *nsmatch.MatchNotifier) *ResourceValidator[T] {
+	v.namespaceMatcher = m
+	return v
 }
 
 func (v *ResourceValidator[T]) ValidateCreate(ctx context.Context, obj T) (admission.Warnings, error) {
@@ -93,7 +103,12 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 	ns, _ := accessor.Namespace(obj)
 	name, _ := accessor.Name(obj)
 
-	if v.managedNamespaces.Count() > 0 && !v.managedNamespaces.Has(ns) {
+	if v.namespaceMatcher.SelectorEnabled() {
+		if !v.namespaceMatcher.Matches(ctx, ns) {
+			whlog.V(1).Info("Skip resource validation: namespace does not match selector", "name", name, "namespace", ns)
+			return true, nil
+		}
+	} else if v.managedNamespaces.Count() > 0 && !v.managedNamespaces.Has(ns) {
 		whlog.V(1).Info("Skip resource validation", "name", name, "namespace", ns)
 		return true, nil
 	}
@@ -114,8 +129,8 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 
 // RegisterResourceWebhook creates a ResourceValidator wrapping a ValidateFunc
 // and registers it as a validating webhook at the specified path.
-func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, validate ValidateFunc[T], resourceName string) {
-	v := NewResourceFuncValidator(checker, managedNamespaces, validate)
+func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, matcher *nsmatch.MatchNotifier, validate ValidateFunc[T], resourceName string) {
+	v := NewResourceFuncValidator(checker, managedNamespaces, validate).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[T](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(path, wh)
 	ulog.Log.Info("Registering validating webhook", "resource", resourceName, "path", path)

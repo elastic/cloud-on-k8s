@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
@@ -44,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -69,6 +71,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -86,6 +89,7 @@ import (
 	licensetrial "github.com/elastic/cloud-on-k8s/v3/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/namespace"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
@@ -593,7 +597,29 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to parse managed namespaces flag")
 		return err
 	}
+
+	// Parse the optional namespace label selector. This field is config-file
+	// only (a metav1.LabelSelector object); it has no CLI flag. When set,
+	// the operator runs in dynamic mode: the cache is cluster-wide and a
+	// Matcher consulted by a predicate on every controller's watches
+	// evaluates the selector against Namespace labels per event.
+	parsedNsSelector, err := parseNSSelector(log)
+	if err != nil {
+		return err
+	}
+	dynamicNSSelector := parsedNsSelector != nil
+
+	// Validate that dynamic ns selector cannot co-exist with the fixed list of managed namespaces.
+	if dynamicNSSelector && len(managedNamespaces) > 0 {
+		log.Error(errors.New("namespaces and namespaceSelector are mutually exclusive"), "Invalid configuration")
+		return errors.New("namespaces and namespaceSelector are mutually exclusive")
+	}
+
 	switch {
+	case dynamicNSSelector:
+		log.Info("Operator configured to manage namespaces dynamically via selector",
+			"selector", parsedNsSelector.String(),
+			"operator_namespace", operatorNamespace)
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
@@ -616,8 +642,10 @@ func startOperator(ctx context.Context) error {
 		DefaultTransform:  cache.TransformStripManagedFields(),
 		ByObject:          byObject,
 	}
-	for _, ns := range managedNamespaces {
-		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	if !dynamicNSSelector {
+		for _, ns := range managedNamespaces {
+			opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+		}
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -730,6 +758,8 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	nsMatchNotifier := nsmatch.NewMatchNotifier(mgr.GetCache(), parsedNsSelector, operatorNamespace)
+
 	params := operator.Parameters{
 		Dialer:                           dialer,
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
@@ -752,6 +782,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		NamespaceMatchNotifier:    nsMatchNotifier,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -940,6 +971,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "PackageRegistry", registerFunc: packageregistry.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
+		{name: "Namespace", registerFunc: namespace.Add},
 	}
 
 	for _, c := range controllers {
@@ -1100,4 +1132,27 @@ func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObj
 	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: watchedResourcesSelector}
 
 	return byObject, nil
+}
+
+func parseNSSelector(log logr.Logger) (labels.Selector, error) {
+	if !viper.IsSet(operator.NamespaceSelectorFlag) {
+		return nil, nil
+	}
+	raw := viper.Get(operator.NamespaceSelectorFlag)
+	yamlBytes, err := yaml.Marshal(raw)
+	if err != nil {
+		log.Error(err, "Failed to serialize namespace-selector for parsing")
+		return nil, err
+	}
+	var ls metav1.LabelSelector
+	if err := yaml.Unmarshal(yamlBytes, &ls); err != nil {
+		log.Error(err, "Failed to parse namespace-selector")
+		return nil, err
+	}
+	sel, err := metav1.LabelSelectorAsSelector(&ls)
+	if err != nil {
+		log.Error(err, "Invalid namespace-selector")
+		return nil, err
+	}
+	return sel, nil
 }

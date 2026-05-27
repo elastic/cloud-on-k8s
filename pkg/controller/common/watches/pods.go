@@ -14,13 +14,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 )
 
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
-func WatchPods(mgr manager.Manager, c controller.Controller, objNameLabel string) error {
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Pod](objToReconcileRequest[*corev1.Pod](objNameLabel))))
+func WatchPods(mgr manager.Manager, c controller.Controller, m *nsmatch.MatchNotifier, objNameLabel string) error {
+	return c.Watch(NamespacedKind(m, mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Pod](objToReconcileRequest[*corev1.Pod](objNameLabel))))
 }
 
 // objToReconcileRequest returns a function to enqueue reconcile requests for the resource name set at objNameLabel.
