@@ -159,14 +159,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
 	// reconciliation loop as we don't want to prevent other updates from being applied.
-	statefulSetResults.WithResults(nodelabels.AnnotatePods(
-		params.Context,
-		params.Client,
-		params.Logstash.Namespace,
-		map[string]string{labels.NameLabelName: params.Logstash.Name},
-		params.Logstash.DownwardNodeLabels(),
-		params.Logstash.Name,
-	))
+	statefulSetResults.WithResults(nodelabels.AnnotatePods(params.Context, params.Client, &params.Logstash))
 
 	return statefulSetResults, status
 }

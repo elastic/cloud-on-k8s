@@ -215,14 +215,7 @@ func (d *driver) Reconcile(
 
 	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
 	// reconciliation loop as we don't want to prevent other updates from being applied.
-	results.WithResults(nodelabels.AnnotatePods(
-		ctx,
-		d.K8sClient(),
-		kb.Namespace,
-		map[string]string{kblabel.KibanaNameLabelName: kb.Name},
-		kb.DownwardNodeLabels(),
-		kb.Name,
-	))
+	results.WithResults(nodelabels.AnnotatePods(ctx, d.K8sClient(), kb))
 
 	return results
 }

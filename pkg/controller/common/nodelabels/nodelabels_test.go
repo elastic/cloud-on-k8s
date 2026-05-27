@@ -16,6 +16,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+// fakeTarget is a test implementation of AnnotationTarget.
+type fakeTarget struct {
+	*corev1.Pod // embeds metav1.Object via ObjectMeta
+	labels      []string
+	selector    map[string]string
+}
+
+func (f *fakeTarget) DownwardNodeLabels() []string         { return f.labels }
+func (f *fakeTarget) GetIdentityLabels() map[string]string { return f.selector }
+
 func TestAnnotatePods(t *testing.T) {
 	const namespace = "ns"
 	podSelector := map[string]string{"app": "sample"}
@@ -108,7 +118,12 @@ func TestAnnotatePods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.objects...)
-			results := AnnotatePods(context.Background(), c, namespace, podSelector, tt.expectedLabels, "sample")
+			target := &fakeTarget{
+				Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sample"}},
+				labels: tt.expectedLabels,
+				selector: podSelector,
+			}
+			results := AnnotatePods(context.Background(), c, target)
 			_, err := results.Aggregate()
 			if tt.wantErrMsg != "" {
 				assert.ErrorContains(t, err, tt.wantErrMsg)

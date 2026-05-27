@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -25,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -223,6 +225,12 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	// Run create validations only as update validations require old object which we don't have here.
 	warnings, err := agentv1alpha1.Validate(&agent, nil)
 	if err != nil {
+		logconf.FromContext(ctx).Error(err, "Validation failed")
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		return tracing.CaptureError(ctx, err)
+	}
+	if errs := commonnodelabels.ValidateAnnotation(agent.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
+		err := apierrors.NewInvalid(schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind}, agent.Name, errs)
 		logconf.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)

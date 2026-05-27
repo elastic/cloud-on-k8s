@@ -17,6 +17,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -36,6 +37,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -283,6 +285,10 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(commonnodelabels.AnnotatePods(ctx, r.K8sClient(), as))
+
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
@@ -296,6 +302,12 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 
 	warnings, err := apmv1.Validate(as, nil)
 	if err != nil {
+		log.Error(err, "Validation failed")
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+	if errs := commonnodelabels.ValidateAnnotation(as.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
+		err := apierrors.NewInvalid(schema.GroupKind{Group: apmv1.GroupVersion.Group, Kind: apmv1.Kind}, as.Name, errs)
 		log.Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)

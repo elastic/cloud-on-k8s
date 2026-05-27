@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -160,6 +161,20 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 		return corev1.PodTemplateSpec{}, err
 	}
 	builder = withHTTPCertsVolume(builder, *as)
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the APM Server container does not start while those annotations are missing from
+	// the downward-API annotations file.
+	if as.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(as.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder = builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit)
+	}
 
 	if setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{

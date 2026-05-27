@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -128,6 +129,20 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 
 	// Add HTTP certificates volume if TLS is enabled
 	builder = withHTTPCertsVolume(builder, epr)
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the Package Registry container does not start while those annotations are missing
+	// from the downward-API annotations file.
+	if epr.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(epr.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder = builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit)
+	}
 
 	return builder.PodTemplate, nil
 }

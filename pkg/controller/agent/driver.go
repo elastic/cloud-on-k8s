@@ -179,14 +179,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 
 	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
 	// reconciliation loop as we don't want to prevent other updates from being applied.
-	results.WithResults(nodelabels.AnnotatePods(
-		params.Context,
-		params.Client,
-		params.Agent.Namespace,
-		map[string]string{NameLabelName: params.Agent.Name},
-		params.Agent.DownwardNodeLabels(),
-		params.Agent.Name,
-	))
+	results.WithResults(nodelabels.AnnotatePods(params.Context, params.Client, &params.Agent))
 
 	return results, status
 }

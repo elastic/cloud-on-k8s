@@ -116,6 +116,12 @@ func buildConfigHash(c k8s.Client, as *apmv1.ApmServer, params PodSpecParams) (s
 	// - in the APMServer configuration file content
 	_, _ = configHash.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
 
+	// Changes to the downward-node-labels annotation must roll the APM Server Pods so the new annotations
+	// are re-applied on scheduling.
+	if as.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(as.Annotations[apmv1.DownwardNodeLabelsAnnotation]))
+	}
+
 	// - in the APMServer keystore
 	if params.keystoreResources != nil {
 		_, _ = configHash.Write([]byte(params.keystoreResources.Hash))

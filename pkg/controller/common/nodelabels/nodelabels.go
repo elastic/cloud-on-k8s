@@ -16,6 +16,7 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -29,29 +30,36 @@ import (
 // DownwardNodeLabelsAnnotation is re-exported for convenience.
 const DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 
-// AnnotatePods copies the expected node labels as annotations on all Pods in the given namespace
-// matching the given labelSelector. Missing node labels are reported as errors but do not stop the
-// reconciliation of other Pods.
-func AnnotatePods(
-	ctx context.Context,
-	c k8s.Client,
-	namespace string,
-	podLabelSelector map[string]string,
-	expectedLabels []string,
-	resourceName string,
-) *reconciler.Results {
+// AnnotationTarget is implemented by ECK custom resources whose managed Pods should have
+// Kubernetes node labels copied to their annotations via AnnotatePods. Any ECK CR that already
+// implements metav1.Object and GetIdentityLabels satisfies this interface once it exposes a
+// DownwardNodeLabels accessor.
+type AnnotationTarget interface {
+	metav1.Object
+	// DownwardNodeLabels returns the node labels expected to be copied as annotations on the
+	// Pods managed by the resource. An empty result disables node-label propagation.
+	DownwardNodeLabels() []string
+	// GetIdentityLabels returns the label set identifying Pods managed by the resource.
+	GetIdentityLabels() map[string]string
+}
+
+// AnnotatePods copies the expected node labels as annotations on all Pods managed by the given
+// target. Missing node labels are reported as errors but do not stop the reconciliation of
+// other Pods. The call is a no-op when the target has no downward node labels configured.
+func AnnotatePods(ctx context.Context, c k8s.Client, t AnnotationTarget) *reconciler.Results {
 	span, ctx := apm.StartSpan(ctx, "annotate_pods_with_node_labels", tracing.SpanTypeApp)
 	defer span.End()
 	results := reconciler.NewResult(ctx)
+	expectedLabels := t.DownwardNodeLabels()
 	if len(expectedLabels) == 0 {
 		return results
 	}
-	pods, err := k8s.PodsMatchingLabels(c, namespace, podLabelSelector)
+	pods, err := k8s.PodsMatchingLabels(c, t.GetNamespace(), t.GetIdentityLabels())
 	if err != nil {
 		return results.WithError(err)
 	}
 	for _, pod := range pods {
-		results.WithError(annotatePod(ctx, c, pod, expectedLabels, resourceName))
+		results.WithError(annotatePod(ctx, c, pod, expectedLabels, t.GetName()))
 	}
 	return results
 }

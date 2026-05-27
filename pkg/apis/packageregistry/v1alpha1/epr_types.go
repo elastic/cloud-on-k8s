@@ -10,6 +10,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
@@ -17,6 +18,9 @@ const (
 	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "PackageRegistry"
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the Elastic Package Registry Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // Namer is a Namer that is configured with the defaults for resources related to a Package Registry resource.
@@ -93,6 +97,17 @@ type PackageRegistry struct {
 // IsMarkedForDeletion returns true if the Elastic Package Registry instance is going to be deleted
 func (m *PackageRegistry) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the Elastic Package Registry Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (m *PackageRegistry) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(m.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Elastic Package Registry Pods.
+func (m *PackageRegistry) HasDownwardNodeLabels() bool {
+	return len(m.DownwardNodeLabels()) > 0
 }
 
 // GetObservedGeneration will return the observedGeneration from the Elastic Package Registry status.
