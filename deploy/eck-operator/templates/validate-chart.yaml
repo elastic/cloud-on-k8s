@@ -27,3 +27,13 @@
   {{- fail "Leader election must be enabled with more than one replica" -}}
   {{- end -}}
 {{- end -}}
+
+{{- if not (empty .Values.namespaceSelector) -}}
+  {{- if not (empty .Values.managedNamespaces) -}}
+  {{- fail "namespaceSelector and managedNamespaces are mutually exclusive" -}}
+  {{- end -}}
+
+  {{- if not .Values.createClusterScopedResources -}}
+  {{- fail "namespaceSelector requires createClusterScopedResources to be true" -}}
+  {{- end -}}
+{{- end -}}

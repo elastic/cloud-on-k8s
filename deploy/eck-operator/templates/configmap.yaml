@@ -71,6 +71,10 @@ data:
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
     {{- end }}
+    {{- with .Values.namespaceSelector }}
+    namespace-selector:
+      {{- . | toYaml | nindent 6 }}
+    {{- end }}
     operator-namespace: {{ .Release.Namespace }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}
     elasticsearch-observation-interval: {{ .Values.config.elasticsearchObservationInterval }}
