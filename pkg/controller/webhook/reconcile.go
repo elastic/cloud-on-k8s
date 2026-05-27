@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -65,6 +66,11 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 			certificates.CertFileName: newCertificates.serverCert,
 			certificates.KeyFileName:  newCertificates.serverKey,
 		}
+		if webhookServerSecret.Labels == nil {
+			webhookServerSecret.Labels = make(map[string]string)
+		}
+		webhookServerSecret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
 		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
 			return err
 		}

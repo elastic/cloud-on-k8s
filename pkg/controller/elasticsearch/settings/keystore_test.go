@@ -356,7 +356,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							EnvFrom: []corev1.EnvFromSource{
 								{ConfigMapRef: &corev1.ConfigMapEnvSource{
 									LocalObjectReference: corev1.LocalObjectReference{Name: "does-not-exist"},
-									Optional:             boolPtr(true),
+									Optional:             new(true),
 								}},
 							},
 						},
@@ -713,8 +713,4 @@ func TestGetStackConfigPolicyElasticsearchConfig(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func boolPtr(v bool) *bool {
-	return &v
 }

@@ -15,12 +15,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
@@ -93,6 +94,18 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		volumeMounts = append(volumeMounts, caVolume.VolumeMount())
 	}
 
+	if annotation.HasClientAuthenticationRequired(&es) {
+		// Add client certificate volume for this ES instance when client authentication is required
+		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+		clientCertVolume := volume.NewSecretVolumeWithMountPath(
+			clientCertSecretName,
+			fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
+		)
+		volumes = append(volumes, clientCertVolume.Volume())
+		volumeMounts = append(volumeMounts, clientCertVolume.VolumeMount())
+	}
+
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
 	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoopsv1alpha1.AutoOpsAgentContainerName).
@@ -107,20 +120,20 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
 		WithReadinessProbe(readinessProbe()).
 		WithContainersSecurityContext(corev1.SecurityContext{
-			AllowPrivilegeEscalation: ptr.To(false),
+			AllowPrivilegeEscalation: new(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged: ptr.To(false),
+			Privileged: new(false),
 			// Can't set this to true because of:
 			// failed to build pipelines:
 			// failed to create "metricbeatreceiver" receiver for data type "logs":
 			// error creating metricbeatreceiver: error loading meta data:
 			// failed to create Beat meta file: open data/meta.json.new: read-only file system
-			ReadOnlyRootFilesystem: ptr.To(false),
+			ReadOnlyRootFilesystem: new(false),
 			// Can't currently do this because of:
 			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
-			// RunAsNonRoot:           ptr.To(true),
+			// RunAsNonRoot:           new(true),
 		})
 
 	if r.params.SetDefaultSecurityContext {
@@ -165,7 +178,14 @@ func readinessProbe() corev1.Probe {
 
 // buildConfigHash builds a hash of the ConfigMap data and secret values
 // to trigger pod restart on config changes
-func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecret corev1.Secret, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy) (string, error) {
+func buildConfigHash(
+	ctx context.Context,
+	configMap corev1.ConfigMap,
+	apiKeySecret corev1.Secret,
+	clientCertSecret *corev1.Secret,
+	c k8s.Client,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+) (string, error) {
 	configHash := fnv.New32a()
 
 	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
@@ -194,6 +214,17 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 	// This should resolve itself on the next reconciliation after the API key is created.
 	if apiKeyData, ok := apiKeySecret.Data[apiKeySecretKey]; ok {
 		_, _ = configHash.Write(apiKeyData)
+	}
+
+	// If client certificate secret is set it folds it into the hash so cert rotation
+	// rolls the deployment.
+	if clientCertSecret != nil && len(clientCertSecret.Data) > 0 {
+		if data, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
+		if data, ok := clientCertSecret.Data[certificates.KeyFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
 	}
 
 	return fmt.Sprint(configHash.Sum32()), nil
@@ -238,7 +269,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 					},
 					Key:      apiKeySecretKey,
-					Optional: ptr.To(false),
+					Optional: new(false),
 				},
 			},
 		},
@@ -261,7 +292,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 						Name: policy.Spec.AutoOpsRef.SecretName,
 					},
 					Key:      "cloud-connected-mode-api-url",
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},

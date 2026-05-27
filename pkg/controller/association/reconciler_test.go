@@ -163,6 +163,7 @@ var (
 			Name:      "kbns-kbname-kibana-user",
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                     "user",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -190,6 +191,7 @@ var (
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-es-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -217,6 +219,7 @@ var (
 			Name:      "kbname-kibana-user",
 			Labels: map[string]string{
 				"eck.k8s.elastic.co/credentials":                 "true",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
 				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
 				"kibanaassociation.k8s.elastic.co/name":          "kbname",
@@ -508,6 +511,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-ent-ca",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/watched":                 "true",
 				"enterprisesearch.k8s.elastic.co/name":       "entname",
 				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
 				"kibanaassociation.k8s.elastic.co/name":      "kbname",
@@ -1082,7 +1086,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 	generateAnnotationName := func(namespace, name string) string {
 		agent := agentv1alpha1.Agent{
 			Spec: agentv1alpha1.AgentSpec{
-				FleetServerRef: commonv1.ObjectSelector{Name: name, Namespace: namespace},
+				FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace}},
 			},
 		}
 		associations := agent.GetAssociations()
@@ -1186,7 +1190,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			KibanaRef:      commonv1.ObjectSelector{Name: "kb", Namespace: "default"},
-			FleetServerRef: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"},
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"}},
 		},
 	}
 	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
@@ -1464,6 +1468,7 @@ func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, 
 				"agentassociation.k8s.elastic.co/name":           sourceName,
 				"agentassociation.k8s.elastic.co/namespace":      sourceNs,
 				"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+				"eck.k8s.elastic.co/watched":                     "true",
 				"elasticsearch.k8s.elastic.co/cluster-name":      targetName,
 				"elasticsearch.k8s.elastic.co/cluster-namespace": targetNs,
 			},

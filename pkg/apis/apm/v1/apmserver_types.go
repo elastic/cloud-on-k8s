@@ -17,7 +17,7 @@ import (
 
 const (
 	ApmServerContainerName = "apm-server"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ApmServer"
 	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
@@ -36,7 +36,7 @@ type ApmServerSpec struct {
 	// Count of APM Server instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
@@ -56,7 +56,7 @@ type ApmServerSpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -125,10 +125,6 @@ type ApmServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ApmServer `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
 }
 
 // IsMarkedForDeletion returns true if the APM is going to be deleted

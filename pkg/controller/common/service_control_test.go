@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
@@ -39,6 +39,7 @@ func TestReconcileService(t *testing.T) {
 
 	wantSvc := mkService(owner)
 	wantSvc.Labels["lbl3"] = "lblval3"
+	wantSvc.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	wantSvc.Annotations["ann3"] = "annval3"
 
 	haveSvc, err := ReconcileService(context.Background(), client, expectedSvc, owner)
@@ -252,11 +253,11 @@ func Test_needsRecreate(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("my-customer/lb"),
+					LoadBalancerClass: new("my-customer/lb"),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("my-customer/lb"),
+					LoadBalancerClass: new("my-customer/lb"),
 				}},
 			},
 			want: false,
@@ -266,11 +267,11 @@ func Test_needsRecreate(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("my-customer/lb"),
+					LoadBalancerClass: new("my-customer/lb"),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("something/else"),
+					LoadBalancerClass: new("something/else"),
 				}},
 			},
 			want: true,
@@ -284,7 +285,7 @@ func Test_needsRecreate(t *testing.T) {
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("something/else"),
+					LoadBalancerClass: new("something/else"),
 				}},
 			},
 			want: false,
@@ -562,13 +563,13 @@ func Test_applyServerSideValues(t *testing.T) {
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
 					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
-					AllocateLoadBalancerNodePorts: ptr.To(true),
+					AllocateLoadBalancerNodePorts: new(true),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
 				ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
-				AllocateLoadBalancerNodePorts: ptr.To(true),
+				AllocateLoadBalancerNodePorts: new(true),
 			}},
 		},
 		{
@@ -577,18 +578,18 @@ func Test_applyServerSideValues(t *testing.T) {
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyLocal),
 					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
-					AllocateLoadBalancerNodePorts: ptr.To(false),
+					AllocateLoadBalancerNodePorts: new(false),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyCluster),
 					ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyCluster,
-					AllocateLoadBalancerNodePorts: ptr.To(true),
+					AllocateLoadBalancerNodePorts: new(true),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				InternalTrafficPolicy:         pointer(corev1.ServiceInternalTrafficPolicyLocal),
 				ExternalTrafficPolicy:         corev1.ServiceExternalTrafficPolicyLocal,
-				AllocateLoadBalancerNodePorts: ptr.To(false),
+				AllocateLoadBalancerNodePorts: new(false),
 			}},
 		},
 		{
@@ -599,12 +600,12 @@ func Test_applyServerSideValues(t *testing.T) {
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+					LoadBalancerClass: new("service.k8s.aws/nlb"),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:              corev1.ServiceTypeLoadBalancer,
-				LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+				LoadBalancerClass: new("service.k8s.aws/nlb"),
 			}},
 		},
 		{
@@ -612,13 +613,13 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("explicit.lb/class"),
+					LoadBalancerClass: new("explicit.lb/class"),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
 				Type:              corev1.ServiceTypeLoadBalancer,
-				LoadBalancerClass: ptr.To("explicit.lb/class"),
+				LoadBalancerClass: new("explicit.lb/class"),
 			}},
 		},
 		{
@@ -630,7 +631,7 @@ func Test_applyServerSideValues(t *testing.T) {
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
 					Type:              corev1.ServiceTypeLoadBalancer,
-					LoadBalancerClass: ptr.To("service.k8s.aws/nlb"),
+					LoadBalancerClass: new("service.k8s.aws/nlb"),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
@@ -673,23 +674,23 @@ func Test_applyServerSideValues(t *testing.T) {
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+					TrafficDistribution: new(corev1.ServiceTrafficDistributionPreferClose),
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				TrafficDistribution: new(corev1.ServiceTrafficDistributionPreferClose),
 			}},
 		},
 		{
 			name: "Expected TrafficDistribution is used if not nil",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+					TrafficDistribution: new(corev1.ServiceTrafficDistributionPreferClose),
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				TrafficDistribution: ptr.To(corev1.ServiceTrafficDistributionPreferClose),
+				TrafficDistribution: new(corev1.ServiceTrafficDistributionPreferClose),
 			}},
 		},
 	}

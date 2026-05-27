@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Beat"
 	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
@@ -145,6 +145,9 @@ type BeatStatus struct {
 	// controller has not yet processed the changes contained in the Beats specification.
 	// +kubebuilder:validation:Optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the beat resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type BeatHealth string
@@ -403,10 +406,6 @@ type BeatList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Beat `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Beat{}, &BeatList{})
 }
 
 // -- association with monitoring Elasticsearch clusters

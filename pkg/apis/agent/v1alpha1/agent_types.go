@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
 	// AgentContainerName is the name of the main Elastic Agent container in the pod.
@@ -91,8 +91,10 @@ type AgentSpec struct {
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+	// Set tls.client.authentication to true to require connecting Elastic Agents to present a client
+	// certificate (requires an Enterprise license).
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
 	// Mode specifies the runtime mode for the Agent. The configuration can be specified locally through
 	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with
@@ -111,16 +113,22 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
 
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^[a-z0-9_-]+$"
+	SpaceID string `json:"spaceID,omitempty"`
+
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
 	// +kubebuilder:validation:Optional
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
-	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+	// FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.
 	// Don't set unless `mode` is set to `fleet`.
-	// References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
+	// References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported.
 	// +kubebuilder:validation:Optional
-	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
+	FleetServerRef commonv1.FleetServerSelector `json:"fleetServerRef,omitempty"`
 }
 
 type Output struct {
@@ -198,6 +206,9 @@ type AgentStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elastic
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the agent resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type AgentHealth string
@@ -547,8 +558,4 @@ type AgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Agent `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Agent{}, &AgentList{})
 }

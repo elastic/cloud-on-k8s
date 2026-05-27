@@ -16,12 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/status"
@@ -227,7 +227,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 
 	// Update the new status
 	newStatus := statusBuilder.Build()
-	esa.Status.ObservedGeneration = ptr.To[int64](esa.Generation)
+	esa.Status.ObservedGeneration = new(esa.Generation)
 	esa.Status.Conditions = esa.Status.Conditions.MergeWith(newStatus.Conditions...)
 	esa.Status.AutoscalingPolicyStatuses = newStatus.AutoscalingPolicyStatuses
 	updateStatus, err := r.updateStatus(ctx, log, esa)
@@ -262,21 +262,21 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
+	newStatus.ObservedGeneration = new(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is unhealthy",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
@@ -285,7 +285,7 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsUnhealthy(
 	)
 	// Insert a new limited status if there is none.
 	if newStatus.Conditions.Index(v1alpha1.ElasticsearchAutoscalerLimited) < 0 {
-		newStatus.Conditions = newStatus.Conditions.MergeWith(v1alpha1.Condition{
+		newStatus.Conditions = newStatus.Conditions.MergeWith(commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
@@ -304,27 +304,27 @@ func (r *ReconcileElasticsearchAutoscaler) reportAsInactive(
 ) (reconcile.Result, error) {
 	now := metav1.Now()
 	newStatus := esa.Status.DeepCopy()
-	newStatus.ObservedGeneration = ptr.To[int64](esa.Generation)
+	newStatus.ObservedGeneration = new(esa.Generation)
 	newStatus.Conditions = newStatus.Conditions.MergeWith(
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerActive,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            message,
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerHealthy,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerOnline,
 			Status:             corev1.ConditionFalse,
 			LastTransitionTime: now,
 			Message:            "Autoscaler is inactive",
 		},
-		v1alpha1.Condition{
+		commonv1.Condition{
 			Type:               v1alpha1.ElasticsearchAutoscalerLimited,
 			Status:             corev1.ConditionUnknown,
 			LastTransitionTime: now,

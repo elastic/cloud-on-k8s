@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -75,12 +74,12 @@ func TestKibanaResources(t *testing.T) {
 				Version: "8.17.0",
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("500m")),
-						Memory: ptr.To(resource.MustParse("1Gi")),
+						CPU:    new(resource.MustParse("500m")),
+						Memory: new(resource.MustParse("1Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("1")),
-						Memory: ptr.To(resource.MustParse("1Gi")),
+						CPU:    new(resource.MustParse("1")),
+						Memory: new(resource.MustParse("1Gi")),
 					},
 				},
 			}),
@@ -117,10 +116,10 @@ func TestKibanaResources(t *testing.T) {
 				},
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("2Gi")),
+						Memory: new(resource.MustParse("2Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("2Gi")),
+						Memory: new(resource.MustParse("2Gi")),
 					},
 				},
 			}),

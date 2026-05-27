@@ -17,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -108,13 +107,13 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 						},
 						Ports: []discoveryv1.EndpointPort{
 							{
-								Port: ptr.To(int32(9200)),
+								Port: new(int32(9200)),
 							},
 						},
 						Endpoints: []discoveryv1.Endpoint{
 							{
 								Conditions: discoveryv1.EndpointConditions{
-									Ready: ptr.To(true),
+									Ready: new(true),
 								},
 								TargetRef: &corev1.ObjectReference{
 									Kind:      "Pod",

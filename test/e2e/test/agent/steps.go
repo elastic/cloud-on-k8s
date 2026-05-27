@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
@@ -138,13 +139,35 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
+			Name: "Agent Elasticsearch associations should be established",
+			Test: test.Eventually(func() error {
+				var agent agentv1alpha1.Agent
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
+					return err
+				}
+				expected := len(b.Agent.Spec.ElasticsearchRefs)
+				got := len(agent.Status.ElasticsearchAssociationsStatus)
+				if expected != got {
+					return fmt.Errorf("expected %d ES association(s) in status, got %d", expected, got)
+				}
+				for ref, s := range agent.Status.ElasticsearchAssociationsStatus {
+					if s != commonv1.AssociationEstablished {
+						return fmt.Errorf("ES association %s is %q, expected %q", ref, s, commonv1.AssociationEstablished)
+					}
+				}
+				return nil
+			}),
+			Skip: func() bool {
+				return len(b.Agent.Spec.ElasticsearchRefs) == 0
+			},
+		},
+		{
 			Name: "Agent status should be updated",
 			Test: test.Eventually(func() error {
 				var agent agentv1alpha1.Agent
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
 					return err
 				}
-				// don't check association statuses that may vary across tests
 				agent.Status.ElasticsearchAssociationsStatus = nil
 				agent.Status.KibanaAssociationStatus = ""
 				agent.Status.FleetServerAssociationStatus = ""

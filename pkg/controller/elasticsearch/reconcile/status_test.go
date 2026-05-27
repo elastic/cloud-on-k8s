@@ -11,9 +11,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/ptr"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -62,7 +61,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 				return s
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
-				Conditions: commonv1alpha1.Conditions{
+				Conditions: commonv1.Conditions{
 					{
 						Type:    "ElasticsearchIsReachable",
 						Status:  "False",
@@ -86,7 +85,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 							{
 								Name:           "removed-1",
 								ShutdownStatus: "STALLED",
-								Explanation:    ptr.To[string]("stalled for a reason"),
+								Explanation:    new("stalled for a reason"),
 							},
 							{
 								Name:           "removed-2",
@@ -99,7 +98,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 								Explanation:    nil,
 							},
 						},
-						Stalled: ptr.To[bool](true),
+						Stalled: new(true),
 					},
 					UpgradeOperation: esv1.UpgradeOperation{
 						LastUpdatedTime: metav1.Time{},
@@ -107,27 +106,27 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 							{
 								Name:      "to-upgrade-0",
 								Status:    "PENDING",
-								Message:   ptr.To[string]("Cannot restart node because of failed predicate"),
-								Predicate: ptr.To[string]("a-predicate-result"),
+								Message:   new("Cannot restart node because of failed predicate"),
+								Predicate: new("a-predicate-result"),
 							},
 							{
 								Name:    "to-upgrade-1",
 								Status:  "PENDING",
-								Message: ptr.To[string]("An upgrade Message for to-upgrade-1"),
+								Message: new("An upgrade Message for to-upgrade-1"),
 							},
 							{
 								Name:    "to-upgrade-2",
 								Status:  "DELETED",
-								Message: ptr.To[string]("delete message"),
+								Message: new("delete message"),
 							},
 						},
 					},
 					UpscaleOperation: esv1.UpscaleOperation{
 						LastUpdatedTime: metav1.Time{},
 						Nodes: []esv1.NewNode{
-							{Name: "new-0", Status: "PENDING", Message: ptr.To[string]("node 1 to 3 are delayed")},
-							{Name: "new-1", Status: "PENDING", Message: ptr.To[string]("node 1 to 3 are delayed")},
-							{Name: "new-2", Status: "PENDING", Message: ptr.To[string]("node 1 to 3 are delayed")},
+							{Name: "new-0", Status: "PENDING", Message: new("node 1 to 3 are delayed")},
+							{Name: "new-1", Status: "PENDING", Message: new("node 1 to 3 are delayed")},
+							{Name: "new-2", Status: "PENDING", Message: new("node 1 to 3 are delayed")},
 							{Name: "new-3", Status: "PENDING"},
 						},
 					},
@@ -156,7 +155,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: commonv1alpha1.Conditions{
+					Conditions: commonv1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -170,10 +169,10 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 								{
 									Name:           "removed-1",
 									ShutdownStatus: "STALLED",
-									Explanation:    ptr.To[string]("stalled for a reason"),
+									Explanation:    new("stalled for a reason"),
 								},
 							},
-							Stalled: ptr.To[bool](true),
+							Stalled: new(true),
 						},
 						UpgradeOperation: esv1.UpgradeOperation{
 							LastUpdatedTime: metav1.Time{},
@@ -181,16 +180,16 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 								{
 									Name:      "to-upgrade-0",
 									Status:    "PENDING",
-									Message:   ptr.To[string]("Cannot restart node because of failed predicate"),
-									Predicate: ptr.To[string]("a-predicate-result"),
+									Message:   new("Cannot restart node because of failed predicate"),
+									Predicate: new("a-predicate-result"),
 								},
 							},
 						},
 						UpscaleOperation: esv1.UpscaleOperation{
 							LastUpdatedTime: metav1.Time{},
 							Nodes: []esv1.NewNode{
-								{Name: "new-1", Status: "PENDING", Message: ptr.To[string]("node 1 to 3 are delayed")},
-								{Name: "new-2", Status: "PENDING", Message: ptr.To[string]("node 1 to 3 are delayed")},
+								{Name: "new-1", Status: "PENDING", Message: new("node 1 to 3 are delayed")},
+								{Name: "new-2", Status: "PENDING", Message: new("node 1 to 3 are delayed")},
 								{Name: "new-3", Status: "PENDING"},
 							},
 						},
@@ -199,7 +198,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: commonv1alpha1.Conditions{
+				Conditions: commonv1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "False",
@@ -239,12 +238,12 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 							{
 								Name:    "to-upgrade-1",
 								Status:  "PENDING",
-								Message: ptr.To[string]("An upgrade Message for to-upgrade-1"),
+								Message: new("An upgrade Message for to-upgrade-1"),
 							},
 							{
 								Name:    "to-upgrade-2",
 								Status:  "DELETED",
-								Message: ptr.To[string]("delete message"),
+								Message: new("delete message"),
 							},
 						},
 					},
@@ -279,7 +278,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: commonv1alpha1.Conditions{
+					Conditions: commonv1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -301,7 +300,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: commonv1alpha1.Conditions{
+				Conditions: commonv1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "True",
@@ -331,7 +330,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: commonv1alpha1.Conditions{
+					Conditions: commonv1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "True",
@@ -353,7 +352,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: commonv1alpha1.Conditions{
+				Conditions: commonv1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "True",
@@ -383,7 +382,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			args: args{
 				otherStatus: esv1.ElasticsearchStatus{
 					Phase: esv1.ElasticsearchResourceInvalid,
-					Conditions: commonv1alpha1.Conditions{
+					Conditions: commonv1.Conditions{
 						{
 							Type:    "ReconciliationComplete",
 							Status:  "False",
@@ -398,10 +397,10 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 							LastUpdatedTime: metav1.Now(),
 							Nodes: []esv1.UpgradedNode{
 								{
-									Message:   ptr.To[string]("Cannot restart node because of failed predicate"),
+									Message:   new("Cannot restart node because of failed predicate"),
 									Name:      "node-1",
 									Status:    "PENDING",
-									Predicate: ptr.To[string]("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
+									Predicate: new("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
 								},
 							},
 						},
@@ -413,7 +412,7 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 			},
 			wantElasticsearchStatus: esv1.ElasticsearchStatus{
 				Phase: esv1.ElasticsearchResourceInvalid,
-				Conditions: commonv1alpha1.Conditions{
+				Conditions: commonv1.Conditions{
 					{
 						Type:    "ReconciliationComplete",
 						Status:  "False",
@@ -427,10 +426,10 @@ func TestStatusReporter_MergeStatusReportingWith(t *testing.T) {
 					UpgradeOperation: esv1.UpgradeOperation{
 						Nodes: []esv1.UpgradedNode{
 							{
-								Message:   ptr.To[string]("Cannot restart node because of failed predicate"),
+								Message:   new("Cannot restart node because of failed predicate"),
 								Name:      "node-1",
 								Status:    "PENDING",
-								Predicate: ptr.To[string]("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
+								Predicate: new("if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"),
 							},
 						},
 					},

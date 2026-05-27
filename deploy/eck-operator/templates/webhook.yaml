@@ -515,6 +515,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
+    {{- include "eck-operator.watchedLabel" . | nindent 4 }}
 spec:
   ports:
     - name: https
@@ -531,5 +532,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
+    {{- include "eck-operator.watchedLabel" . | nindent 4 }}
 {{- end }}
 {{- end -}}

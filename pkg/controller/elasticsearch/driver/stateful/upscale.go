@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -178,7 +177,7 @@ func maybeUpscaleMasterResources(ctx upscaleCtx, actualStatefulSets es_sset.Stat
 		targetReplicas := sset.GetReplicas(res.StatefulSet)
 
 		if actualReplicas < targetReplicas {
-			nodespec.UpdateReplicas(&actualSset, ptr.To(targetReplicas))
+			nodespec.UpdateReplicas(&actualSset, new(targetReplicas))
 			reconciled, err := es_sset.ReconcileStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, actualSset, ctx.expectations)
 			if err != nil {
 				return results, fmt.Errorf("while reconciling master StatefulSet %s: %w", stsName, err)

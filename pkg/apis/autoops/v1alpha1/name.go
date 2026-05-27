@@ -18,10 +18,11 @@ var (
 )
 
 const (
-	deploymentSuffix   = "deploy"
-	configSuffix       = "config"
-	caSecretSuffix     = "ca"
-	apiKeySecretSuffix = "apikey"
+	deploymentSuffix       = "deploy"
+	configSuffix           = "config"
+	caSecretSuffix         = "ca"
+	clientCertSecretSuffix = "cc"
+	apiKeySecretSuffix     = "apikey"
 )
 
 // Deployment returns the name of the deployment for the given policy and ES instance.
@@ -40,6 +41,12 @@ func Config(policyName string, es esv1.Elasticsearch) string {
 func CASecret(policyName string, es esv1.Elasticsearch) string {
 	hash := hash.HashObject(es.GetNamespace() + es.GetName())
 	return AutoOpsNamer.Suffix(policyName, caSecretSuffix, hash)
+}
+
+// ClientCertSecret returns the name of the Secret which holds the client certificate for the given policy and ES instance.
+func ClientCertSecret(policyName string, es esv1.Elasticsearch) string {
+	hash := hash.HashObject(es.GetNamespace() + es.GetName())
+	return AutoOpsNamer.Suffix(policyName, clientCertSecretSuffix, hash)
 }
 
 // APIKeySecret returns the name of the Secret which holds the Elasticsearch API key for the given policy and ES instance.

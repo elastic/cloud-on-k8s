@@ -463,15 +463,17 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.3.2
+E2E_STACK_VERSION          ?= 9.4.0
 # regexp to filter tests to run
-export TESTS_MATCH         ?= "^Test"
+export TESTS_MATCH         ?= ^Test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 15m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 # Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
 E2E_STATELESS              ?= $(or $(STATELESS),false)
+# Defaults to RESTRICT_WATCHED_RESOURCES env var set by the Buildkite pipeline.
+E2E_RESTRICT_WATCHED_RESOURCES ?= $(or $(RESTRICT_WATCHED_RESOURCES),false)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -487,7 +489,7 @@ e2e-run: go-generate
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--e2e-tags='$(E2E_TAGS)' \
-		--test-regex=$(TESTS_MATCH) \
+		--test-regex='$(TESTS_MATCH)' \
 		--test-license=$(TEST_LICENSE) \
 		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(E2E_STACK_VERSION) \
@@ -502,7 +504,8 @@ e2e-run: go-generate
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
-		--stateless=$(E2E_STATELESS)
+		--stateless=$(E2E_STATELESS) \
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
@@ -527,7 +530,8 @@ e2e-local: go-generate
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
-		--test-env-tags=$(E2E_TEST_ENV_TAGS)
+		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
 
 ##########################
 ##  --   Helpers    --  ##

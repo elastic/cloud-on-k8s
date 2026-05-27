@@ -15,6 +15,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 )
 
 var defaultConfigNoSSL = []byte(`
@@ -179,6 +180,93 @@ service:
       encoding: json
 `)
 
+var defaultConfigWithSSLAndClientCert = []byte(`
+exporters:
+  otlphttp:
+    endpoint: ${env:AUTOOPS_OTEL_URL}
+    headers:
+      Authorization: AutoOpsToken ${env:AUTOOPS_TOKEN}
+    sending_queue:
+      batch:
+        flush_timeout: 11s
+        min_size: 1048576
+        max_size: 4194304
+        sizer: bytes
+      block_on_overflow: true
+      enabled: true
+      queue_size: 52428800
+      sizer: bytes
+extensions:
+  healthcheckv2:
+    component_health:
+      include_permanent_errors: true
+      include_recoverable_errors: true
+      recovery_duration: 5m
+    http:
+      config:
+        enabled: true
+        path: /health/config
+      endpoint: 0.0.0.0:13133
+      status:
+        enabled: true
+        path: /health/status
+    use_v2: true
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - hosts: ${env:AUTOOPS_ES_URL}
+          metricsets:
+            - cat_shards
+            - cluster_health
+            - cluster_settings
+            - license
+            - node_stats
+            - tasks_management
+          module: autoops_es
+          period: 10s
+          ssl:
+            certificate: /mnt/elastic-internal/es-client-cert/default-test-es/tls.crt
+            certificate_authorities:
+              - /mnt/elastic-internal/es-ca/default-test-es/ca.crt
+            key: /mnt/elastic-internal/es-client-cert/default-test-es/tls.key
+            verification_mode: certificate
+        - hosts: ${env:AUTOOPS_ES_URL}
+          metricsets:
+            - cat_template
+            - component_template
+            - index_template
+          module: autoops_es
+          period: 24h
+          ssl:
+            certificate: /mnt/elastic-internal/es-client-cert/default-test-es/tls.crt
+            certificate_authorities:
+              - /mnt/elastic-internal/es-ca/default-test-es/ca.crt
+            key: /mnt/elastic-internal/es-client-cert/default-test-es/tls.key
+            verification_mode: certificate
+    output:
+      otelconsumer: null
+    processors:
+      - add_fields:
+          fields:
+            token: ${env:AUTOOPS_TOKEN}
+          target: autoops_es
+    telemetry_types:
+      - logs
+service:
+  extensions:
+    - healthcheckv2
+  pipelines:
+    logs:
+      exporters:
+        - otlphttp
+      receivers:
+        - metricbeatreceiver
+  telemetry:
+    logs:
+      encoding: json
+`)
+
 func mkPolicy() autoopsv1alpha1.AutoOpsAgentPolicy {
 	return autoopsv1alpha1.AutoOpsAgentPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,6 +327,34 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 			want: defaultConfigWithSSL,
 		},
 		{
+			name: "default config with SSL and client cert",
+			args: args{
+				policy: mkPolicy,
+				es: func() esv1.Elasticsearch {
+					es := mkES(true)
+					es.Annotations = map[string]string{
+						annotation.ClientAuthenticationRequiredAnnotation: "true",
+					}
+					return es
+				},
+			},
+			want: defaultConfigWithSSLAndClientCert,
+		},
+		{
+			name: "client auth annotation with SSL disabled does not render client cert paths",
+			args: args{
+				policy: mkPolicy,
+				es: func() esv1.Elasticsearch {
+					es := mkES(false)
+					es.Annotations = map[string]string{
+						annotation.ClientAuthenticationRequiredAnnotation: "true",
+					}
+					return es
+				},
+			},
+			want: defaultConfigNoSSL,
+		},
+		{
 			name: "with metadata labels and annotations",
 			args: args{
 				policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
@@ -269,37 +385,42 @@ func Test_buildAutoOpsESConfigMap(t *testing.T) {
 				t.Errorf("buildAutoOpsESConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				policy := tt.args.policy()
-				es := tt.args.es()
-				// Validate ConfigMap structure
-				expectedName := autoopsv1alpha1.Config(policy.GetName(), es)
-				if got.Name != expectedName {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap name = %v, want %v", got.Name, expectedName)
-				}
-				if got.Namespace != policy.GetNamespace() {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap namespace = %v, want %v", got.Namespace, policy.GetNamespace())
-				}
-				configYAML, exists := got.Data[autoOpsESConfigFileName]
-				if !exists {
-					t.Errorf("buildAutoOpsESConfigMap() ConfigMap missing key %v", autoOpsESConfigFileName)
-					return
-				}
+			if tt.wantErr {
+				return
+			}
 
-				// Parse both configs for comparison
-				var gotCfg map[string]any
-				gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
-				require.NoError(t, err)
-				require.NoError(t, gotParsed.Unpack(&gotCfg))
+			if l := got.Labels[commonv1.RestrictWatchedResourcesLabelName]; l != commonv1.RestrictWatchedResourcesLabelValue {
+				t.Errorf("expected to have the watch label and it does not. Value = %s", l)
+			}
+			policy := tt.args.policy()
+			es := tt.args.es()
+			// Validate ConfigMap structure
+			expectedName := autoopsv1alpha1.Config(policy.GetName(), es)
+			if got.Name != expectedName {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap name = %v, want %v", got.Name, expectedName)
+			}
+			if got.Namespace != policy.GetNamespace() {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap namespace = %v, want %v", got.Namespace, policy.GetNamespace())
+			}
+			configYAML, exists := got.Data[autoOpsESConfigFileName]
+			if !exists {
+				t.Errorf("buildAutoOpsESConfigMap() ConfigMap missing key %v", autoOpsESConfigFileName)
+				return
+			}
 
-				var wantCfg map[string]any
-				wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
-				require.NoError(t, err)
-				require.NoError(t, wantParsed.Unpack(&wantCfg))
+			// Parse both configs for comparison
+			var gotCfg map[string]any
+			gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
+			require.NoError(t, err)
+			require.NoError(t, gotParsed.Unpack(&gotCfg))
 
-				if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
-					t.Errorf("buildAutoOpsESConfigMap() config mismatch: %v", diff)
-				}
+			var wantCfg map[string]any
+			wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
+			require.NoError(t, err)
+			require.NoError(t, wantParsed.Unpack(&wantCfg))
+
+			if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
+				t.Errorf("buildAutoOpsESConfigMap() config mismatch: %v", diff)
 			}
 		})
 	}

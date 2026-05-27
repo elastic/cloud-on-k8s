@@ -16,7 +16,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -189,7 +188,7 @@ output:
 			Volumes: []corev1.Volume{
 				{
 					Name:         "beat-metricbeat-config",
-					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: ptr.To[bool](false)}},
+					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: new(false)}},
 				},
 				{
 					Name:         "metricbeat-data",

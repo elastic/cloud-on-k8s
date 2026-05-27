@@ -20,7 +20,7 @@ type LogstashHealth string
 
 const (
 	LogstashContainerName = "logstash"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
 
@@ -97,7 +97,7 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options for the Logstash pods.
+	// PodTemplate provides customization options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -453,8 +453,4 @@ func (l *Logstash) APIServerService() LogstashService {
 // APIServerTLSOptions returns the user defined TLSOptions of API Service
 func (l *Logstash) APIServerTLSOptions() commonv1.TLSOptions {
 	return l.APIServerService().TLS
-}
-
-func init() {
-	SchemeBuilder.Register(&Logstash{}, &LogstashList{})
 }

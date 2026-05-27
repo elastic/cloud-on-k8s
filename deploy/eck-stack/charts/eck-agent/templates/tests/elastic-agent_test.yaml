@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-agent
       - equal:
           path: spec.version
-          value: 9.4.0-SNAPSHOT
+          value: 9.5.0-SNAPSHOT
       - notExists:
           path: spec.config
       - equal:
@@ -101,7 +101,7 @@ tests:
       - equal:
           path: spec
           value:
-            version: 9.4.0-SNAPSHOT
+            version: 9.5.0-SNAPSHOT
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -170,7 +170,7 @@ tests:
       - equal:
           path: spec
           value:
-            version: 9.4.0-SNAPSHOT
+            version: 9.5.0-SNAPSHOT
             daemonSet: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -200,47 +200,47 @@ tests:
     set:
       spec:
         daemonSet: {}
-        image: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+        image: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
   - it: values.image should render properly
     set:
       daemonSet: {}
-      image: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
   - it: values.spec.image should take precedence over values.image
     set:
       spec:
         daemonSet: {}
-        image: quay.io/elastic/agent:9.4.0-SNAPSHOT
-      image: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+        image: quay.io/elastic/agent:9.5.0-SNAPSHOT
+      image: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: quay.io/elastic/agent:9.4.0-SNAPSHOT
+          value: quay.io/elastic/agent:9.5.0-SNAPSHOT
   - it: values.spec.image null should fallback to values.image
     set:
       spec:
         daemonSet: {}
         image: null
-      image: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+      image: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/agent:9.4.0-SNAPSHOT
+          value: my.registry.com/elastic/agent:9.5.0-SNAPSHOT
   - it: values.image with digest should render properly
     set:
       daemonSet: {}
-      image: my.registry.com/elastic/agent:9.4.0-SNAPSHOT@sha256:abc123
+      image: my.registry.com/elastic/agent:9.5.0-SNAPSHOT@sha256:abc123
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/agent:9.4.0-SNAPSHOT@sha256:abc123
+          value: my.registry.com/elastic/agent:9.5.0-SNAPSHOT@sha256:abc123
   - it: values.image null should omit spec.image
     set:
       daemonSet: {}

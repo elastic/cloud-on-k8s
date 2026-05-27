@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -81,11 +80,11 @@ func TestBeatResources(t *testing.T) {
 				DaemonSet: &beatv1beta1.DaemonSetSpec{},
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("100m")),
-						Memory: ptr.To(resource.MustParse("256Mi")),
+						CPU:    new(resource.MustParse("100m")),
+						Memory: new(resource.MustParse("256Mi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("256Mi")),
+						Memory: new(resource.MustParse("256Mi")),
 					},
 				},
 			}),
@@ -123,10 +122,10 @@ func TestBeatResources(t *testing.T) {
 				},
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("512Mi")),
+						Memory: new(resource.MustParse("512Mi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("512Mi")),
+						Memory: new(resource.MustParse("512Mi")),
 					},
 				},
 			}),

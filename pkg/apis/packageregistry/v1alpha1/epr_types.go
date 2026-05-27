@@ -15,7 +15,7 @@ import (
 
 const (
 	EPRContainerName = "package-registry"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "PackageRegistry"
 	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
@@ -55,7 +55,7 @@ type PackageRegistrySpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -122,8 +122,4 @@ type PackageRegistryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PackageRegistry `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&PackageRegistry{}, &PackageRegistryList{})
 }

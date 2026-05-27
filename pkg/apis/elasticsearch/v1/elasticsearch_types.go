@@ -12,7 +12,6 @@ import (
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -54,7 +53,7 @@ const (
 	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
 	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
 
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
@@ -101,10 +100,6 @@ type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Elasticsearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }
 
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
@@ -188,7 +183,7 @@ type ElasticsearchSpec struct {
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+	// See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
@@ -272,7 +267,7 @@ type RemoteCluster struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key
 	// +kubebuilder:validation:Optional
 	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
@@ -314,7 +309,7 @@ type RoleSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry.
 	// The secret value must match the expected file-based specification as described in
-	// https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file.
+	// https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file.
 	//
 	// Example:
 	// ---
@@ -344,10 +339,10 @@ type FileRealmSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple users and their roles mapping can be specified in a Kubernetes secret.
 	// The secret should contain 2 entries:
-	// - users: contain all users and the hash of their password (https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms)
+	// - users: contain all users and the hash of their password (https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms)
 	// - users_roles: contain the role to users mapping
 	// The format of those 2 entries must correspond to the expected file realm format, as specified in Elasticsearch
-	// documentation: https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration.
+	// documentation: https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration.
 	//
 	// Example:
 	// ---
@@ -399,7 +394,7 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	ZoneAwareness *ZoneAwareness `json:"zoneAwareness,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -511,7 +506,7 @@ type ChangeBudget struct {
 // most cases.
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       nil,
-	MaxUnavailable: ptr.To[int32](1),
+	MaxUnavailable: new(int32(1)),
 }
 
 func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {

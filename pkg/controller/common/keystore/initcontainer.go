@@ -117,3 +117,15 @@ func getScriptTemplate(customScript string) *template.Template {
 
 	return template.Must(template.New("").Parse(customScript))
 }
+
+// RenderInitScript renders the keystore init container's bash script for the
+// given parameters using the same template path the production init container
+// uses. Exposed so callers (in particular tests) can assert on the exact
+// rendered script without having to re-parse the template themselves.
+func RenderInitScript(parameters InitContainerParameters) (string, error) {
+	var buf bytes.Buffer
+	if err := getScriptTemplate(parameters.CustomScript).Execute(&buf, parameters); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}

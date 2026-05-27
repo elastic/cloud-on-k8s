@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -96,12 +95,12 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerMinimal),
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("1500m")),
-						Memory: ptr.To(resource.MustParse("4Gi")),
+						CPU:    new(resource.MustParse("1500m")),
+						Memory: new(resource.MustParse("4Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("2")),
-						Memory: ptr.To(resource.MustParse("4Gi")),
+						CPU:    new(resource.MustParse("2")),
+						Memory: new(resource.MustParse("4Gi")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -137,12 +136,12 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerWithPodResources),
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("2")),
-						Memory: ptr.To(resource.MustParse("8Gi")),
+						CPU:    new(resource.MustParse("2")),
+						Memory: new(resource.MustParse("8Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("2")),
-						Memory: ptr.To(resource.MustParse("8Gi")),
+						CPU:    new(resource.MustParse("2")),
+						Memory: new(resource.MustParse("8Gi")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -192,7 +191,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				}),
 				Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
-						CPU: ptr.To(resource.MustParse("1500m")),
+						CPU: new(resource.MustParse("1500m")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -216,10 +215,10 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerMinimal),
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU: ptr.To(resource.MustParse("250m")),
+						CPU: new(resource.MustParse("250m")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU: ptr.To(resource.MustParse("1")),
+						CPU: new(resource.MustParse("1")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -243,7 +242,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerMinimal),
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("4Gi")),
+						Memory: new(resource.MustParse("4Gi")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -265,8 +264,8 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerMinimal),
 				Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("1")),
-						Memory: ptr.To(resource.MustParse("3Gi")),
+						CPU:    new(resource.MustParse("1")),
+						Memory: new(resource.MustParse("3Gi")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -287,10 +286,10 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				PodTemplate: basePodTemplate(esContainerMinimal),
 				Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("6Gi")),
+						Memory: new(resource.MustParse("6Gi")),
 					},
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("6Gi")),
+						Memory: new(resource.MustParse("6Gi")),
 					},
 				},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -362,10 +361,10 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 		},
 		Resources: commonv1.Resources{
 			Requests: commonv1.ResourceAllocations{
-				CPU: ptr.To(resource.MustParse("1")),
+				CPU: new(resource.MustParse("1")),
 			},
 			Limits: commonv1.ResourceAllocations{
-				CPU: ptr.To(resource.MustParse("2")),
+				CPU: new(resource.MustParse("2")),
 			},
 		},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -407,12 +406,12 @@ func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T)
 		},
 		Resources: commonv1.Resources{
 			Requests: commonv1.ResourceAllocations{
-				CPU:    ptr.To(resource.MustParse("1")),
-				Memory: ptr.To(resource.MustParse("4Gi")),
+				CPU:    new(resource.MustParse("1")),
+				Memory: new(resource.MustParse("4Gi")),
 			},
 			Limits: commonv1.ResourceAllocations{
-				CPU:    ptr.To(resource.MustParse("2")),
-				Memory: ptr.To(resource.MustParse("4Gi")),
+				CPU:    new(resource.MustParse("2")),
+				Memory: new(resource.MustParse("4Gi")),
 			},
 		},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
@@ -459,10 +458,10 @@ func TestNodeSetResources_BuildStatefulSet_nil_existing_statefulsets(t *testing.
 		},
 		Resources: commonv1.Resources{
 			Limits: commonv1.ResourceAllocations{
-				Memory: ptr.To(resource.MustParse("3Gi")),
+				Memory: new(resource.MustParse("3Gi")),
 			},
 			Requests: commonv1.ResourceAllocations{
-				Memory: ptr.To(resource.MustParse("3Gi")),
+				Memory: new(resource.MustParse("3Gi")),
 			},
 		},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},

@@ -90,6 +90,6 @@ func Reconcile(
 // WithTemplateHash returns a new deployment with a hash of its template to ease comparisons.
 func WithTemplateHash(d appsv1.Deployment) appsv1.Deployment {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
 }

@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -56,12 +55,12 @@ func TestPackageRegistryResources(t *testing.T) {
 				Version: "8.15.0",
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("250m")),
-						Memory: ptr.To(resource.MustParse("512Mi")),
+						CPU:    new(resource.MustParse("250m")),
+						Memory: new(resource.MustParse("512Mi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						CPU:    ptr.To(resource.MustParse("500m")),
-						Memory: ptr.To(resource.MustParse("2Gi")),
+						CPU:    new(resource.MustParse("500m")),
+						Memory: new(resource.MustParse("2Gi")),
 					},
 				},
 			}),
@@ -98,10 +97,10 @@ func TestPackageRegistryResources(t *testing.T) {
 				},
 				Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("2Gi")),
+						Memory: new(resource.MustParse("2Gi")),
 					},
 					Limits: commonv1.ResourceAllocations{
-						Memory: ptr.To(resource.MustParse("2Gi")),
+						Memory: new(resource.MustParse("2Gi")),
 					},
 				},
 			}),

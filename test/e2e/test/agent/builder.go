@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -229,8 +228,13 @@ func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
 		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
 		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default"))
+	// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
+	// so beat/metrics-monitoring is not created and metrics-elastic_agent.metricbeat-default
+	// is no longer populated. See https://github.com/elastic/elastic-agent/pull/13411.
+	if v.LT(version.MinFor(9, 5, 0)) {
+		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+	}
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
 	if v.LT(version.MinFor(8, 12, 0)) {
 		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
@@ -409,6 +413,11 @@ func (b Builder) WithFleetServer() Builder {
 	return b
 }
 
+func (b Builder) WithClientAuthenticationRequired() Builder {
+	b.Agent.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
 func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	b.Agent.Spec.KibanaRef = ref
 
@@ -416,7 +425,26 @@ func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 }
 
 func (b Builder) WithFleetServerRef(ref commonv1.ObjectSelector) Builder {
-	b.Agent.Spec.FleetServerRef = ref
+	b.Agent.Spec.FleetServerRef.ObjectSelector = ref
+
+	return b
+}
+
+func (b Builder) WithFleetServerRefWithClientCert(ref commonv1.ObjectSelector, clientCertSecretName string) Builder {
+	b.Agent.Spec.FleetServerRef.ObjectSelector = ref
+	b.Agent.Spec.FleetServerRef.ClientCertificateSecretName = clientCertSecretName
+
+	return b
+}
+
+func (b Builder) WithPolicyID(policyID string) Builder {
+	b.Agent.Spec.PolicyID = policyID
+
+	return b
+}
+
+func (b Builder) WithSpaceID(spaceID string) Builder {
+	b.Agent.Spec.SpaceID = spaceID
 
 	return b
 }
@@ -452,8 +480,8 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 			if *podSecurityContext.RunAsUser == 0 {
 				// Only update the container's SecurityContext if the Pod runs as root.
 				b = b.WithContainerSecurityContext(corev1.SecurityContext{
-					Privileged: ptr.To[bool](true),
-					RunAsUser:  ptr.To[int64](0),
+					Privileged: new(true),
+					RunAsUser:  new(int64(0)),
 				})
 			}
 		}

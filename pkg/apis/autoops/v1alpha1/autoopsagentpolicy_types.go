@@ -12,16 +12,12 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "AutoOpsAgentPolicy"
 	// AutoOpsAgentContainerName is the name of the main AutoOps Agent container in the pod.
 	AutoOpsAgentContainerName = "autoops-agent"
 )
-
-func init() {
-	SchemeBuilder.Register(&AutoOpsAgentPolicy{}, &AutoOpsAgentPolicyList{})
-}
 
 // +kubebuilder:object:root=true
 
@@ -74,7 +70,7 @@ type AutoOpsAgentPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
