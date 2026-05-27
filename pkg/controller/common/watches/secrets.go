@@ -13,9 +13,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 )
 
@@ -65,9 +65,9 @@ func WatchUserProvidedNamespacedSecrets(
 }
 
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
-func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, ownerKind string) error {
+func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, m *nsmatch.MatchNotifier, ownerKind string) error {
 	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner(ownerKind))),
+		NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner(ownerKind))),
 	)
 }
 

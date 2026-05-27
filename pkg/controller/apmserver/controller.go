@@ -19,11 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -105,14 +105,15 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmServer) error {
+	m := r.NamespaceMatchNotifier
 	// Watch for changes to ApmServer
-	err := c.Watch(source.Kind(mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
+	err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -121,12 +122,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, ApmServerNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, ApmServerNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -134,18 +135,23 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, apmv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, apmv1.Kind); err != nil {
 		return err
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+		return &apmv1.ApmServerList{}
+	})
 }
 
 var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
@@ -181,6 +187,10 @@ var _ driver.Interface = (*ReconcileApmServer)(nil)
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+		r.onNamespaceFlipOff(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "as_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -307,11 +317,13 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	return nil
 }
 
-func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on secure settings
+func (r *ReconcileApmServer) onNamespaceFlipOff(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	// Clean up watches set on custom http tls certificates
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+}
+
+func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.onNamespaceFlipOff(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, apmv1.Kind)
 }
 

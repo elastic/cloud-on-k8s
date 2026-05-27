@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -28,14 +27,16 @@ import (
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteClusters) error {
+	m := r.NamespaceMatchNotifier
 	// Watch for changes to RemoteCluster
-	if err := c.Watch(source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Emit changes to remote clusters to update API keys.
 	if err := c.Watch(
-		source.Kind(
+		watches.NamespacedKind(
+			m,
 			mgr.GetCache(),
 			&esv1.Elasticsearch{},
 			handler.TypedEnqueueRequestsFromMapFunc[*esv1.Elasticsearch, reconcile.Request](
@@ -56,14 +57,14 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 	//  * Remote certificate authorities managed by this controller.
 	//  * API keys
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{},
+		watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{},
 			handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret, reconcile.Request](newRequestsFromMatchedLabels()),
 		)); err != nil {
 		return err
 	}
 
 	// Dynamically watches the certificate authorities involved in a cluster relationship
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.watches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.watches.Secrets)); err != nil {
 		return err
 	}
 

@@ -86,27 +86,28 @@ func setupWebhook(
 	}
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
+	matcher := params.NamespaceMatchNotifier
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
-	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate, "Enterprise Search")
-	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate, "Enterprise Search")
-	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate, "Elasticsearch")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate, "Elastic Maps Server")
-	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
-	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, matcher, apmv1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, matcher, apmv1beta1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, matcher, beatv1beta1.Validate, "Beat")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, matcher, entv1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, matcher, entv1beta1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, matcher, esv1beta1.Validate, "Elasticsearch")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, matcher, kbv1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, matcher, kbv1beta1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, matcher, emsv1alpha1.Validate, "Elastic Maps Server")
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, matcher, eprv1alpha1.Validate, "Package Registry")
+	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, matcher, policyv1alpha1.Validate, "Stack Config Policy")
 
 	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
 	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
 	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
-	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
-	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
-	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
-	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces)
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces, matcher)
+	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces, matcher)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces, matcher)
+	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
