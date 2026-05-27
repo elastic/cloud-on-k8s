@@ -12,6 +12,7 @@ import (
 
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -21,8 +22,8 @@ var log = ulog.Log.WithName("stackconfigpolicy-validation")
 // RegisterWebhook registers the StackConfigPolicy validating webhook with the manager.
 // operatorNamespace is forwarded to Validate so the namespace-scoping rule is enforced at
 // admission time.
-func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, operatorNamespace string) {
-	v := commonwebhook.NewResourceValidator[*policyv1alpha1.StackConfigPolicy](licenseChecker, managedNamespaces, &webhookValidator{operatorNamespace: operatorNamespace})
+func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, operatorNamespace string, m *nsmatch.MatchNotifier) {
+	v := commonwebhook.NewResourceValidator[*policyv1alpha1.StackConfigPolicy](licenseChecker, managedNamespaces, &webhookValidator{operatorNamespace: operatorNamespace}).WithNamespaceMatcher(m)
 	wh := admission.WithValidator[*policyv1alpha1.StackConfigPolicy](mgr.GetScheme(), v)
 	log.Info("Registering StackConfigPolicy validating webhook", "path", policyv1alpha1.WebhookPath)
 	mgr.GetWebhookServer().Register(policyv1alpha1.WebhookPath, wh)

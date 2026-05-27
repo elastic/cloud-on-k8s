@@ -164,6 +164,10 @@ type Reconciler struct {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+		r.onNamespaceFlipOff(types.NamespacedName{Namespace: request.Namespace, Name: request.Name})
+		return reconcile.Result{}, nil
+	}
 	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -600,9 +604,12 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
-	// remove watches
+func (r *Reconciler) onNamespaceFlipOff(associated types.NamespacedName) {
 	r.removeWatches(associated)
+}
+
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
+	r.onNamespaceFlipOff(associated)
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {

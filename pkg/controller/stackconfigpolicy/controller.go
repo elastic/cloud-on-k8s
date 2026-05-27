@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -56,11 +55,9 @@ const (
 	controllerName = "stackconfigpolicy-controller"
 )
 
-var (
-	// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
-	// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
-	defaultRequeue = 30 * time.Second
-)
+// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
+// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
+var defaultRequeue = 30 * time.Second
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -87,33 +84,40 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
+	m := r.params.NamespaceMatchNotifier
 	// watch for changes to StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced ConfigMaps
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
+		return err
+	}
+
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatchNotifier, func() client.ObjectList {
+		return &policyv1alpha1.StackConfigPolicyList{}
+	})
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
@@ -178,6 +182,10 @@ type ReconcileStackConfigPolicy struct {
 // Reconcile reads that state of the cluster for a StackConfigPolicy object and makes changes based on the state read and what is
 // in the StackConfigPolicy.Spec.
 func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.params.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+		r.onNamespaceFlipOff(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -590,13 +598,16 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	return common.UpdateStatus(ctx, r.Client, &scp)
 }
 
-func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	defer tracing.Span(&ctx)()
-	// Remove dynamic watches on secrets
+func (r *ReconcileStackConfigPolicy) onNamespaceFlipOff(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Remove dynamic watches on variablesFrom sources
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(variableSourcesWatcherName(obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(variableSourcesWatcherName(obj))
+}
+
+func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	defer tracing.Span(&ctx)()
+	r.onNamespaceFlipOff(obj)
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }
