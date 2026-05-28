@@ -548,6 +548,24 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 			"file_secrets":   map[string]any{"keystore.jks": "AAEC//4="},
 		}, got)
 	})
+
+	t.Run("ASCII-range binary with control characters goes into file_secrets", func(t *testing.T) {
+		// Valid UTF-8 but contains \x03\x04 (control chars) — a ZIP local-file header.
+		// utf8.Valid alone would pass this; looksLikeText correctly rejects it.
+		zipHeader := []byte{'P', 'K', 0x03, 0x04}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
+			Data:       map[string][]byte{"keystore.p12": zipHeader},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"string_secrets": map[string]any{},
+			"file_secrets":   map[string]any{"keystore.p12": "UEsDBA=="},
+		}, got)
+	})
 }
 
 func TestDeleteSecureSettingsSecret(t *testing.T) {

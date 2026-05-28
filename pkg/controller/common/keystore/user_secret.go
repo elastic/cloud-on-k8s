@@ -246,7 +246,7 @@ func BuildSecureSettingsData(
 	fileSecrets := map[string]any{}
 	for _, s := range userSecrets {
 		for k, v := range s.Data {
-			if utf8.Valid(v) {
+			if looksLikeText(v) {
 				stringSecrets[k] = string(v)
 			} else {
 				fileSecrets[k] = base64.StdEncoding.EncodeToString(v)
@@ -258,4 +258,21 @@ func BuildSecureSettingsData(
 		result["file_secrets"] = fileSecrets
 	}
 	return result, nil
+}
+
+// looksLikeText returns true when v is safe to treat as a UTF-8 string secret.
+// utf8.Valid alone is insufficient: short binary blobs (e.g. a ZIP header) can be
+// entirely ASCII and therefore valid UTF-8, yet they are not text. Rejecting NUL and
+// non-printable control characters (< 0x20, excluding \t \n \r) closes that gap and
+// covers all realistic binary formats that would slip through utf8.Valid.
+func looksLikeText(v []byte) bool {
+	if !utf8.Valid(v) {
+		return false
+	}
+	for _, r := range string(v) {
+		if r == 0 || (r < 0x20 && r != '\t' && r != '\n' && r != '\r') {
+			return false
+		}
+	}
+	return true
 }
