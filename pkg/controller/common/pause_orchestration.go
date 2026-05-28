@@ -15,6 +15,7 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -62,7 +63,7 @@ func setPausedConditionAndEmitEvent(
 	expected client.Object,
 	actual client.Object,
 ) {
-	hasPending := hasPendingChanges(expected, actual)
+	hasPending := HasPendingChanges(expected, actual)
 	msg := PausedNoChangesMessage
 	if hasPending {
 		msg = PausedWithPendingChangesMessage
@@ -98,7 +99,7 @@ func ReconcilePauseAware[T any, PT interface {
 ) (T, error) {
 	if IsOrchestrationPaused(owner) {
 		var actual T
-		var actualForDiff client.Object // nil when the resource doesn't exist yet — treated as "pending changes" by hasPendingChanges
+		var actualForDiff client.Object // nil when the resource doesn't exist yet — treated as "pending changes" by HasPendingChanges
 		err := c.Get(ctx, k8s.ExtractNamespacedName(PT(&expected)), PT(&actual))
 		switch {
 		case err == nil:
@@ -138,10 +139,10 @@ func maybeResetPausedCondition(
 	}
 }
 
-// hasPendingChanges returns true if the given expected client.Object (Deployment, StatefulSet, or DaemonSet) would result in
+// HasPendingChanges returns true if the given expected client.Object (Deployment, StatefulSet, or DaemonSet) would result in
 // an update to the existing resource. This is predicated on the common.k8s.elastic.co/template-hash label being set on
 // the expected client.Object.
-func hasPendingChanges(expected client.Object, actual client.Object) bool {
+func HasPendingChanges(expected client.Object, actual client.Object) bool {
 	if actual == nil && expected != nil {
 		return true
 	}
@@ -176,3 +177,4 @@ var _ ObjectWithConditions = (*eprv1alpha1.PackageRegistry)(nil)
 var _ ObjectWithConditions = (*maps.ElasticMapsServer)(nil)
 var _ ObjectWithConditions = (*agentv1alpha1.Agent)(nil)
 var _ ObjectWithConditions = (*entv1.EnterpriseSearch)(nil)
+var _ ObjectWithConditions = (*autoopsv1alpha1.AutoOpsAgentPolicy)(nil)
