@@ -160,12 +160,6 @@ func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	return &v, nil
 }
 
-// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
-// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
-// health monitoring). Defined here (rather than in pkg/controller/common) so the validating webhook can reference
-// it without introducing an import cycle.
-const PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
-
 // CheckPauseOrchestrationAnnotation ensures that the PauseOrchestrationAnnotation annotation is absent or set to
 // exactly 'true' or exactly 'false'.
 func CheckPauseOrchestrationAnnotation(meta metav1.ObjectMeta) field.ErrorList {
