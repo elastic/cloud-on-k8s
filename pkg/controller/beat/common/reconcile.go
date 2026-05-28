@@ -6,7 +6,10 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+
+	toolsevents "k8s.io/client-go/tools/events"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -33,11 +36,25 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	results := reconciler.NewResult(params.Context)
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
+	rp := ReconciliationParams{
+		ctx:         params.Context,
+		client:      params.Client,
+		beat:        params.Beat,
+		podTemplate: podTemplate,
+		meta:        meta,
+		recorder:    params.Recorder(),
+	}
 
 	var toDelete client.Object
-	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
+	var expectedVehicle client.Object
+	var reconciliationFunc func(params ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
+		ds, err := buildExpectedDaemonSet(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &ds
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = &v1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -46,6 +63,11 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 			},
 		}
 	case spec.Deployment != nil:
+		d, err := buildExpectedDeployment(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &d
 		reconciliationFunc = reconcileDeployment
 		toDelete = &v1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
@@ -55,25 +77,22 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		}
 	}
 
-	ready, desired, err := reconciliationFunc(ReconciliationParams{
-		ctx:         params.Context,
-		client:      params.Client,
-		beat:        params.Beat,
-		podTemplate: podTemplate,
-		meta:        meta,
-	})
+	status, ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	params.Status.Conditions = params.Status.Conditions.MergeWith(status.Conditions...)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	// clean up the other one
-	if err := params.Client.Get(params.Context, types.NamespacedName{
-		Namespace: params.Beat.Namespace,
-		Name:      name,
-	}, toDelete); err == nil {
-		results.WithError(params.Client.Delete(params.Context, toDelete))
-	} else if !apierrors.IsNotFound(err) {
-		results.WithError(err)
+	if !common.IsOrchestrationPaused(&rp.beat) {
+		// clean up the other one
+		if err := params.Client.Get(params.Context, types.NamespacedName{
+			Namespace: params.Beat.Namespace,
+			Name:      name,
+		}, toDelete); err == nil {
+			results.WithError(params.Client.Delete(params.Context, toDelete))
+		} else if !apierrors.IsNotFound(err) {
+			results.WithError(err)
+		}
 	}
 
 	params.Status, err = newStatus(params, ready, desired)
@@ -90,9 +109,10 @@ type ReconciliationParams struct {
 	beat        beatv1beta1.Beat
 	podTemplate corev1.PodTemplateSpec
 	meta        metadata.Metadata
+	recorder    toolsevents.EventRecorder
 }
 
-func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
+func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:            rp.beat.Namespace,
@@ -104,18 +124,24 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Strategy:             rp.beat.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
-		return 0, 0, err
+		return v1.Deployment{}, err
 	}
-
-	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.beat)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return deployment.WithTemplateHash(d), nil
 }
 
-func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
+func reconcileDeployment(rp ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error) {
+	expected, ok := obj.(*v1.Deployment)
+	if !ok {
+		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a Deployment", obj)
+	}
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat, deployment.Reconcile)
+	if err != nil {
+		return rp.beat.Status, 0, 0, err
+	}
+	return rp.beat.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+}
+
+func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	ds := daemonset.New(daemonset.Params{
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.beat.Name, rp.beat.Spec.Type),
@@ -125,17 +151,22 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 		Selectors:            rp.beat.GetIdentityLabels(),
 		Strategy:             rp.beat.Spec.DaemonSet.UpdateStrategy,
 	})
-
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
-		return 0, 0, err
+		return v1.DaemonSet{}, err
 	}
+	return daemonset.WithTemplateHash(ds), nil
+}
 
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, ds, &rp.beat)
+func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (beatv1beta1.BeatStatus, int32, int32, error) {
+	expected, ok := obj.(*v1.DaemonSet)
+	if !ok {
+		return rp.beat.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+	}
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, &rp.beat, daemonset.Reconcile)
 	if err != nil {
-		return 0, 0, err
+		return rp.beat.Status, 0, 0, err
 	}
-
-	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+	return rp.beat.Status, reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
 // newStatus will calculate a new status from the state of the pods within the k8s cluster

@@ -7,6 +7,7 @@ package epr
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -102,6 +103,11 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EPR), &epr); err != nil {
 					return err
 				}
+				// merge annotations
+				if epr.Annotations == nil {
+					epr.Annotations = make(map[string]string)
+				}
+				maps.Copy(epr.Annotations, b.EPR.Annotations)
 				epr.Spec = b.EPR.Spec
 				return k.Client.Update(context.Background(), &epr)
 			}),

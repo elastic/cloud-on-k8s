@@ -53,6 +53,10 @@ type Builder struct {
 	Suffix string
 }
 
+func (b Builder) ResourceName() string {
+	return b.Agent.Name
+}
+
 func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
 	if containerIdx < 0 {
@@ -131,6 +135,25 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
 	return builder
+}
+
+func (b Builder) DeepCopy() *Builder {
+	a := b.Agent.DeepCopy()
+	builderCopy := Builder{
+		Agent: *a,
+	}
+	switch {
+	case a.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.DaemonSet.PodTemplate
+	case a.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.Deployment.PodTemplate
+	case a.Spec.StatefulSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.StatefulSet.PodTemplate
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
 }
 
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.

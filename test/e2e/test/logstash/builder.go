@@ -59,6 +59,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithTestStorageClass()
 }
 
+func (b Builder) ResourceName() string {
+	return b.Logstash.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.Logstash.ObjectMeta.Name = b.Logstash.ObjectMeta.Name + "-" + suffix

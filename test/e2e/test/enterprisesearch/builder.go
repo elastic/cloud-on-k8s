@@ -104,6 +104,10 @@ func newBuilder(name, randSuffix string) Builder {
 	return b
 }
 
+func (b Builder) ResourceName() string {
+	return b.EnterpriseSearch.Name
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.EnterpriseSearch.Name,
@@ -189,6 +193,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.EnterpriseSearch.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.EnterpriseSearch.Annotations == nil {
+		b.EnterpriseSearch.Annotations = make(map[string]string)
+	}
+	b.EnterpriseSearch.Annotations[key] = value
 	return b
 }
 

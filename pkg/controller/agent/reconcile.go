@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	v1 "k8s.io/api/apps/v1"
@@ -14,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -37,11 +39,25 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 
 	spec := params.Agent.Spec
 	name := Name(params.Agent.Name)
+	rp := ReconciliationParams{
+		ctx:         params.Context,
+		meta:        params.Meta,
+		client:      params.Client,
+		agent:       &params.Agent,
+		podTemplate: podTemplate,
+		recorder:    params.Recorder(),
+	}
 
 	var toDelete []client.Object
-	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
+	var expectedVehicle client.Object
+	var reconciliationFunc func(params ReconciliationParams, object client.Object) (agentv1alpha1.AgentStatus, int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
+		ds, err := buildExpectedDaemonSet(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &ds
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = append(toDelete,
 			&v1.Deployment{
@@ -58,6 +74,11 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 			},
 		)
 	case spec.Deployment != nil:
+		d, err := buildExpectedDeployment(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &d
 		reconciliationFunc = reconcileDeployment
 		toDelete = append(toDelete,
 			&v1.DaemonSet{
@@ -74,6 +95,11 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 			},
 		)
 	case spec.StatefulSet != nil:
+		sts, err := buildExpectedStatefulSet(rp)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		expectedVehicle = &sts
 		reconciliationFunc = reconcileStatefulSet
 		toDelete = append(toDelete,
 			&v1.DaemonSet{
@@ -91,30 +117,26 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		)
 	}
 
-	ready, desired, err := reconciliationFunc(ReconciliationParams{
-		ctx:         params.Context,
-		meta:        params.Meta,
-		client:      params.Client,
-		agent:       params.Agent,
-		podTemplate: podTemplate,
-	})
+	status, ready, desired, err := reconciliationFunc(rp, expectedVehicle)
+	params.Status.Conditions = params.Status.Conditions.MergeWith(status.Conditions...)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	for _, obj := range toDelete {
-		// clean up the other ones
-		if err := params.Client.Get(params.Context, types.NamespacedName{
-			Namespace: params.Agent.Namespace,
-			Name:      name,
-		}, obj); err == nil {
-			results.WithError(params.Client.Delete(params.Context, obj))
-		} else if !apierrors.IsNotFound(err) {
-			results.WithError(err)
+	if !common.IsOrchestrationPaused(rp.agent) {
+		for _, obj := range toDelete {
+			// clean up the other ones
+			if err := params.Client.Get(params.Context, types.NamespacedName{
+				Namespace: params.Agent.Namespace,
+				Name:      name,
+			}, obj); err == nil {
+				results.WithError(params.Client.Delete(params.Context, obj))
+			} else if !apierrors.IsNotFound(err) {
+				results.WithError(err)
+			}
 		}
 	}
 
-	var status agentv1alpha1.AgentStatus
 	if status, err = calculateStatus(&params, ready, desired); err != nil {
 		err = errors.Wrap(err, "while calculating status")
 	}
@@ -122,7 +144,7 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 	return results.WithError(err), status
 }
 
-func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
+func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 	d := deployment.New(deployment.Params{
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
@@ -133,20 +155,26 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})
-	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
-		return 0, 0, err
+	if err := controllerutil.SetControllerReference(rp.agent, &d, scheme.Scheme); err != nil {
+		return v1.Deployment{}, err
 	}
-
-	reconciled, err := deployment.Reconcile(rp.ctx, rp.client, d, &rp.agent)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return deployment.WithTemplateHash(d), nil
 }
 
-func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
-	d := statefulset.New(statefulset.Params{
+func reconcileDeployment(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
+	expected, ok := obj.(*v1.Deployment)
+	if !ok {
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a Deployment", obj)
+	}
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, deployment.Reconcile)
+	if err != nil {
+		return rp.agent.Status, 0, 0, err
+	}
+	return rp.agent.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+}
+
+func buildExpectedStatefulSet(rp ReconciliationParams) (v1.StatefulSet, error) {
+	s := statefulset.New(statefulset.Params{
 		Name:                 Name(rp.agent.Name),
 		Namespace:            rp.agent.Namespace,
 		ServiceName:          rp.agent.Spec.StatefulSet.ServiceName,
@@ -158,39 +186,50 @@ func reconcileStatefulSet(rp ReconciliationParams) (int32, int32, error) {
 		PodManagementPolicy:  rp.agent.Spec.StatefulSet.PodManagementPolicy,
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 	})
-	if err := controllerutil.SetControllerReference(&rp.agent, &d, scheme.Scheme); err != nil {
-		return 0, 0, err
+	if err := controllerutil.SetControllerReference(rp.agent, &s, scheme.Scheme); err != nil {
+		return v1.StatefulSet{}, err
 	}
-
-	reconciled, err := statefulset.Reconcile(rp.ctx, rp.client, d, &rp.agent)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+	return statefulset.WithTemplateHash(s), nil
 }
 
-func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
+func reconcileStatefulSet(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
+	expected, ok := obj.(*v1.StatefulSet)
+	if !ok {
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a StatefulSet", obj)
+	}
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, statefulset.Reconcile)
+	if err != nil {
+		return rp.agent.Status, 0, 0, err
+	}
+	return rp.agent.Status, reconciled.Status.ReadyReplicas, reconciled.Status.Replicas, nil
+}
+
+func buildExpectedDaemonSet(rp ReconciliationParams) (v1.DaemonSet, error) {
 	ds := daemonset.New(daemonset.Params{
 		PodTemplate:          rp.podTemplate,
 		Name:                 Name(rp.agent.Name),
-		Owner:                &rp.agent,
+		Owner:                rp.agent,
 		Metadata:             rp.meta,
 		Selectors:            rp.agent.GetIdentityLabels(),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.DaemonSet.UpdateStrategy,
 	})
-
-	if err := controllerutil.SetControllerReference(&rp.agent, &ds, scheme.Scheme); err != nil {
-		return 0, 0, err
+	if err := controllerutil.SetControllerReference(rp.agent, &ds, scheme.Scheme); err != nil {
+		return v1.DaemonSet{}, err
 	}
+	return daemonset.WithTemplateHash(ds), nil
+}
 
-	reconciled, err := daemonset.Reconcile(rp.ctx, rp.client, ds, &rp.agent)
+func reconcileDaemonSet(rp ReconciliationParams, obj client.Object) (agentv1alpha1.AgentStatus, int32, int32, error) {
+	expected, ok := obj.(*v1.DaemonSet)
+	if !ok {
+		return rp.agent.Status, 0, 0, fmt.Errorf("%T is not a DaemonSet", obj)
+	}
+	reconciled, err := common.ReconcilePauseAware(rp.ctx, rp.client, rp.recorder, *expected, rp.agent, daemonset.Reconcile)
 	if err != nil {
-		return 0, 0, err
+		return rp.agent.Status, 0, 0, err
 	}
-
-	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+	return rp.agent.Status, reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
 }
 
 // ReconciliationParams are the parameters used during an Elastic Agent's reconciliation.
@@ -198,8 +237,9 @@ type ReconciliationParams struct {
 	ctx         context.Context
 	meta        metadata.Metadata
 	client      k8s.Client
-	agent       agentv1alpha1.Agent
+	agent       *agentv1alpha1.Agent
 	podTemplate corev1.PodTemplateSpec
+	recorder    toolsevents.EventRecorder
 }
 
 // calculateStatus will calculate a new status from the state of the pods within the k8s cluster

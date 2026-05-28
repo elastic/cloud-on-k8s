@@ -207,6 +207,16 @@ func (as *ApmServer) GetObservedGeneration() int64 {
 	return as.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the ApmServerStatus's Conditions with the new Condition(s).
+func (as *ApmServer) MergeConditions(conditions ...commonv1.Condition) {
+	as.Status.Conditions = as.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this ApmServer's ApmServerStatus Conditions.
+func (as *ApmServer) Conditions() commonv1.Conditions {
+	return as.Status.Conditions
+}
+
 // ApmEsAssociation helps to manage the APMServer / Elasticsearch association
 type ApmEsAssociation struct {
 	*ApmServer
