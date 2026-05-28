@@ -51,6 +51,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -369,7 +370,7 @@ func TestReconcileSharedResources(t *testing.T) {
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 
-			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false)
+			s, results := ReconcileSharedResources(context.Background(), testDriver, tt.params, false, stackconfig.PolicyConfig{})
 			if tt.expectedState != nil {
 				require.NotNil(t, s, "Expected non-nil state")
 				assert.EqualValues(t, tt.expectedState.ESReachable, s.ESReachable)

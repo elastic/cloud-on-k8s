@@ -78,6 +78,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 									"enabled": true,
 								},
 							}},
+							SecurityRoles: &commonv1.Config{Data: map[string]any{
+								"policy1_role": map[string]any{
+									"cluster": []any{"monitor"},
+									"indices": []any{
+										map[string]any{
+											"names":      []any{".monitoring-*"},
+											"privileges": []any{"read"},
+										},
+									},
+								},
+							}},
 							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 								"policy1": map[string]any{
 									"phases": map[string]any{
@@ -158,6 +169,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 									"enabled": true,
 								},
 							}},
+							SecurityRoles: &commonv1.Config{Data: map[string]any{
+								"policy2_role": map[string]any{
+									"cluster": []any{"manage"},
+									"indices": []any{
+										map[string]any{
+											"names":      []any{"logs-*"},
+											"privileges": []any{"write", "create_index"},
+										},
+									},
+								},
+							}},
 							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 								"policy2": map[string]any{
 									"phases": map[string]any{
@@ -233,6 +255,26 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 							},
 							"policy2": map[string]any{
 								"enabled": true,
+							},
+						}},
+						SecurityRoles: &commonv1.Config{Data: map[string]any{
+							"policy1_role": map[string]any{
+								"cluster": []any{"monitor"},
+								"indices": []any{
+									map[string]any{
+										"names":      []any{".monitoring-*"},
+										"privileges": []any{"read"},
+									},
+								},
+							},
+							"policy2_role": map[string]any{
+								"cluster": []any{"manage"},
+								"indices": []any{
+									map[string]any{
+										"names":      []any{"logs-*"},
+										"privileges": []any{"write", "create_index"},
+									},
+								},
 							},
 						}},
 						IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
@@ -366,6 +408,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 									"enabled": true,
 								},
 							}},
+							SecurityRoles: &commonv1.Config{Data: map[string]any{
+								"custom_role": map[string]any{
+									"cluster": []any{"monitor"},
+									"indices": []any{
+										map[string]any{
+											"names":      []any{"metrics-*"},
+											"privileges": []any{"read"},
+										},
+									},
+								},
+							}},
 							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 								"policy": map[string]any{
 									"phases": map[string]any{
@@ -446,6 +499,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 									"enabled": false,
 								},
 							}},
+							SecurityRoles: &commonv1.Config{Data: map[string]any{
+								"custom_role": map[string]any{
+									"cluster": []any{"manage_security"},
+									"indices": []any{
+										map[string]any{
+											"names":      []any{"*"},
+											"privileges": []any{"all"},
+										},
+									},
+								},
+							}},
 							IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{
 								"policy": map[string]any{
 									"phases": map[string]any{
@@ -513,6 +577,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 						SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
 							"policy": map[string]any{
 								"enabled": true,
+							},
+						}},
+						SecurityRoles: &commonv1.Config{Data: map[string]any{
+							"custom_role": map[string]any{
+								"cluster": []any{"monitor"},
+								"indices": []any{
+									map[string]any{
+										"names":      []any{"metrics-*"},
+										"privileges": []any{"read"},
+									},
+								},
 							},
 						}},
 						IndexLifecyclePolicies: &commonv1.Config{Data: map[string]any{

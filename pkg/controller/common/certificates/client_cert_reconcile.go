@@ -115,7 +115,7 @@ func (r Reconciler) ReconcileClientCertificate(
 // 2. Any association client certificates (discovered via soft-owner labels)
 //
 // The trust bundle secret contains concatenated PEM-encoded certificates for client certificate validation.
-func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, extraCertificates ...*CertificatesSecret) error {
+func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, extraCertificates ...*CertificatesSecret) ([]byte, error) {
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 	secretName := ClientCertTrustBundleSecretName(r.Namer, ownerNSN.Name)
 
@@ -128,7 +128,7 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 	// Discover association client certificate secrets with matching soft-owner labels
 	associationSecrets, err := discoverClientCertSecrets(ctx, r.K8sClient, ownerNSN.Name, ownerNSN.Namespace, ownerKind)
 	if err != nil {
-		return fmt.Errorf("failed to discover client certificate secrets: %w", err)
+		return nil, fmt.Errorf("failed to discover client certificate secrets: %w", err)
 	}
 	allSecrets = append(allSecrets, associationSecrets...)
 
@@ -148,7 +148,7 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 	expected.Annotations = maps.Clone(r.Metadata.Annotations)
 
 	_, err = reconciler.ReconcileSecret(ctx, r.K8sClient, expected, r.Owner)
-	return err
+	return bundleData, err
 }
 
 // discoverClientCertSecrets lists all secrets across namespaces that are labeled as client certificates

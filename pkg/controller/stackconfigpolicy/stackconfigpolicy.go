@@ -144,6 +144,7 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 		{&dst.SnapshotRepositories, src.SnapshotRepositories, mergeConfig},
 		{&dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies, mergeConfig},
 		{&dst.SecurityRoleMappings, src.SecurityRoleMappings, mergeConfig},
+		{&dst.SecurityRoles, src.SecurityRoles, mergeConfig},
 		{&dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies, mergeConfig},
 		{&dst.IngestPipelines, src.IngestPipelines, mergeConfig},
 		{&dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates, mergeConfig},

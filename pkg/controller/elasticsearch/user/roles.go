@@ -359,6 +359,13 @@ func BeatKibanaRoleName(version, beatType string) string {
 // We care about the role names here, but consider the roles spec as a yaml blob we don't need to access.
 type RolesFileContent map[string]any
 
+// PolicyRoles bundles the two SCP-derived role fields that always travel together:
+// the role definitions and the hash used to track when ES has applied them.
+type PolicyRoles struct {
+	Roles RolesFileContent
+	Hash  string
+}
+
 // parseRolesFileContent returns a RolesFileContent from the given data.
 // Since rolesFileContent already corresponds to a deserialized yaml representation of the roles files,
 // we just unmarshal from the yaml data.

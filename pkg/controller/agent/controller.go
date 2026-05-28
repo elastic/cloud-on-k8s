@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -57,6 +58,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
+		licenseChecker: commonlicense.NewLicenseChecker(client, params.OperatorNamespace),
 	}
 }
 
@@ -120,6 +122,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 		return err
 	}
 
+	// Watch soft-owned secrets (e.g. client certificate secrets for Fleet Server mTLS)
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, agentv1alpha1.Kind); err != nil {
+		return err
+	}
+
 	// Watch dynamically referenced Secrets
 	return c.Watch(
 		source.Kind(mgr.GetCache(), &corev1.Secret{},
@@ -135,6 +142,7 @@ type ReconcileAgent struct {
 	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
+	licenseChecker commonlicense.Checker
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -214,6 +222,7 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 		AgentVersion:   agentVersion,
 		Status:         status,
 		OperatorParams: r.Parameters,
+		LicenseChecker: r.licenseChecker,
 	})
 }
 

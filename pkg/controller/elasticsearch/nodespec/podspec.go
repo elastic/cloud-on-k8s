@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/securitycontext"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackmon"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -62,7 +63,7 @@ func BuildPodTemplateSpec(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	setDefaultSecurityContext bool,
-	policyConfig PolicyConfig,
+	policyConfig stackconfig.PolicyConfig,
 	meta metadata.Metadata,
 	actualPodsRestartTriggerAnnotationValue string,
 	clientAuthenticationRequired bool,
