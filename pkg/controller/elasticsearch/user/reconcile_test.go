@@ -128,6 +128,19 @@ func Test_reconcileRolesFileRealmSecret(t *testing.T) {
 			},
 		},
 		{
+			name:               "metadata.Labels is not mutated by RestrictWatchedResources label injection",
+			roles:              policyRoles,
+			realm:              filerealm.New(),
+			policyRolesHash:    "abc123hash",
+			inputMeta:          metadata.Metadata{Labels: map[string]string{"existing": "value"}},
+			wantAnnotationHash: "abc123hash",
+			check: func(t *testing.T, inputMeta metadata.Metadata) {
+				t.Helper()
+				_, hasRestrict := inputMeta.Labels[commonv1.RestrictWatchedResourcesLabelName]
+				require.False(t, hasRestrict, "inputMeta.Labels must not be mutated")
+			},
+		},
+		{
 			name:               "clearing policyRolesHash empties the annotation",
 			roles:              policyRoles,
 			realm:              filerealm.New(),
