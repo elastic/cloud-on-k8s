@@ -239,8 +239,8 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 
 type fakeESShutdownClient struct {
 	esclient.Client
-	restartedNodeIDs       []string
-	terminatedNodeIDs      []string
+	restartedNodeIDs  []string
+	terminatedNodeIDs []string
 	// notYetJoinedRestartNodeIDs have a completed Restart shutdown record but are NOT yet members of the
 	// cluster — they model nodes that finished their restart shutdown but haven't rejoined yet. They are
 	// returned by GetShutdown but excluded from GetNodes, so OnlyNodesInCluster filters them out.
