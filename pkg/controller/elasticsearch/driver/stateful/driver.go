@@ -68,7 +68,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// Reconcile resources which are common to all drivers.
-	sharedState, sharedResults := shared.ReconcileSharedResources(ctx, d, d.Parameters, resolvedConfig.ClientAuthenticationRequired)
+	sharedState, sharedResults := shared.ReconcileSharedResources(ctx, d, d.Parameters, resolvedConfig.ClientAuthenticationRequired, resolvedConfig.PolicyConfig)
 	if sharedResults.HasError() {
 		return results.WithResults(sharedResults)
 	}

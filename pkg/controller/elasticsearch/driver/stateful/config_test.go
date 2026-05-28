@@ -16,7 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonsettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 )
 
 func Test_detectClientAuthenticationRequired(t *testing.T) {
@@ -42,8 +42,8 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 		}
 	}
 
-	policyWithOverride := func(val string) nodespec.PolicyConfig {
-		return nodespec.PolicyConfig{
+	policyWithOverride := func(val string) stackconfig.PolicyConfig {
+		return stackconfig.PolicyConfig{
 			ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
 				esv1.XPackSecurityHttpSslClientAuthentication: val,
 			}),
@@ -53,7 +53,7 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 	tests := []struct {
 		name                      string
 		es                        esv1.Elasticsearch
-		policyConfig              nodespec.PolicyConfig
+		policyConfig              stackconfig.PolicyConfig
 		enterpriseFeaturesEnabled bool
 		wantRequired              bool
 		wantWarningContains       string
@@ -106,7 +106,7 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 		{
 			name: "enterprise enabled: warning when policy disables SSL",
 			es:   newES(true, nil),
-			policyConfig: nodespec.PolicyConfig{
+			policyConfig: stackconfig.PolicyConfig{
 				ElasticsearchConfig: commonsettings.MustCanonicalConfig(map[string]any{
 					esv1.XPackSecurityHttpSslEnabled: "false",
 				}),

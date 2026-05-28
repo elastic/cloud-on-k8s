@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -81,7 +82,7 @@ func BuildStatefulSet(
 	keystoreResources *keystore.Resources,
 	existingStatefulSets es_sset.StatefulSetList,
 	setDefaultSecurityContext bool,
-	policyConfig PolicyConfig,
+	policyConfig stackconfig.PolicyConfig,
 	meta metadata.Metadata,
 	actualPodsRestartTriggerAnnotationValue string,
 	clientAuthRequired bool,

@@ -28,7 +28,7 @@ var (
 	fileSettingsManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.SettingsHashAnnotationName, reconciler.SoftOwnerRefsAnnotation}
 
 	// esConfigManagedAnnotations are the annotations managed by the operator for the Elasticsearch config Secret.
-	esConfigManagedAnnotations = []string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
+	esConfigManagedAnnotations = []string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation, commonannotation.ElasticsearchRolesHashAnnotation, reconciler.SoftOwnerRefsAnnotation}
 
 	// kibanaConfigManagedAnnotations are the annotations managed by the operator for the Kibana config Secret.
 	kibanaConfigManagedAnnotations = []string{commonannotation.SecureSettingsSecretsAnnotationName, commonannotation.KibanaConfigHashAnnotation, reconciler.SoftOwnerRefsAnnotation}

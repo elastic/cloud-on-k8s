@@ -519,6 +519,7 @@ type stackConfigPolicyStats struct {
 		SnapshotRepositoriesCount      int `json:"snapshot_repositories_count"`
 		SnapshotLifecyclePoliciesCount int `json:"snapshot_lifecycle_policies_count"`
 		RoleMappingsCount              int `json:"role_mappings_count"`
+		RolesCount                     int `json:"roles_count"`
 		IndexLifecyclePoliciesCount    int `json:"index_lifecycle_policies_count"`
 		IngestPipelinesCount           int `json:"ingest_pipelines_count"`
 		ComponentTemplatesCount        int `json:"component_templates_count"`
@@ -548,6 +549,9 @@ func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 			}
 			if scp.Spec.Elasticsearch.SecurityRoleMappings != nil {
 				stats.Settings.RoleMappingsCount += len(scp.Spec.Elasticsearch.SecurityRoleMappings.Data)
+			}
+			if scp.Spec.Elasticsearch.SecurityRoles != nil {
+				stats.Settings.RolesCount += len(scp.Spec.Elasticsearch.SecurityRoles.Data)
 			}
 			if scp.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
 				stats.Settings.IndexLifecyclePoliciesCount += len(scp.Spec.Elasticsearch.IndexLifecyclePolicies.Data)
