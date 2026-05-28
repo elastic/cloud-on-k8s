@@ -405,3 +405,46 @@ func Test_checkESRefsNamed(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ls      *lsv1alpha1.Logstash
+		wantErr bool
+	}{
+		{
+			name: "pause-orchestration false",
+			ls: &lsv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "pause-orchestration true",
+			ls: &lsv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "pause-orchestration invalid",
+			ls: &lsv1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			errList := checkPauseOrchestrationAnnotation(tc.ls)
+			assert.Equal(t, tc.wantErr, len(errList) > 0)
+		})
+	}
+}

@@ -35,6 +35,7 @@ var (
 		checkSingleESRefInFleetMode,
 		checkAssociations,
 		checkClientAuthentication,
+		checkPauseOrchestrationAnnotation,
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -330,4 +331,8 @@ func checkClientAuthentication(a *Agent) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkPauseOrchestrationAnnotation(a *Agent) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(a.ObjectMeta)
 }

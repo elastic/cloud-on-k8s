@@ -323,6 +323,39 @@ func TestWebhook(t *testing.T) {
 				[]string{`Version 7.10.0 is EOL and support for it will be removed in a future release of the ECK operator`},
 			),
 		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(entv1.Validate)
@@ -333,8 +366,9 @@ func TestWebhook(t *testing.T) {
 func mkEnterpriseSearch(uid string) *entv1.EnterpriseSearch {
 	return &entv1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
+			Name:        "webhook-test",
+			UID:         types.UID(uid),
+			Annotations: make(map[string]string),
 		},
 		Spec: entv1.EnterpriseSearchSpec{
 			Version: "7.17.0",

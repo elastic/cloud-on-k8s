@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
@@ -175,6 +176,39 @@ func TestWebhook(t *testing.T) {
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
 			),
 		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEPR(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEPR(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEPR(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(eprv1alpha1.Validate)
@@ -185,8 +219,9 @@ func TestWebhook(t *testing.T) {
 func mkEPR(uid string) *eprv1alpha1.PackageRegistry {
 	return &eprv1alpha1.PackageRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
+			Name:        "webhook-test",
+			UID:         types.UID(uid),
+			Annotations: make(map[string]string),
 		},
 		Spec: eprv1alpha1.PackageRegistrySpec{
 			Version: "8.15.0",

@@ -27,6 +27,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		checkPauseOrchestrationAnnotation,
 	}
 
 	updateChecks = []func(old, curr *EnterpriseSearch) field.ErrorList{
@@ -114,4 +115,8 @@ func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
 
 func checkAssociation(ent *EnterpriseSearch) field.ErrorList {
 	return commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), ent.Spec.ElasticsearchRef)
+}
+
+func checkPauseOrchestrationAnnotation(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(ent.ObjectMeta)
 }

@@ -42,6 +42,7 @@ var validations = []validation{
 	hasMaster,
 	supportedVersion,
 	validSanIP,
+	checkPauseOrchestrationAnnotation,
 }
 
 type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
@@ -223,4 +224,8 @@ func getNode(name string, es *Elasticsearch) *NodeSet {
 		}
 	}
 	return nil
+}
+
+func checkPauseOrchestrationAnnotation(es *Elasticsearch) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(es.ObjectMeta)
 }

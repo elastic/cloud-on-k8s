@@ -32,6 +32,7 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
+		checkPauseOrchestrationAnnotation,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -132,4 +133,8 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
 	err5 := commonv1.CheckLocalAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
 	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
+}
+
+func checkPauseOrchestrationAnnotation(k *Kibana) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(k.ObjectMeta)
 }

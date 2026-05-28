@@ -26,6 +26,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkPauseOrchestrationAnnotation,
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{
@@ -99,4 +100,8 @@ func checkNoDowngrade(prev, curr *Kibana) field.ErrorList {
 		return nil
 	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkPauseOrchestrationAnnotation(k *Kibana) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(k.ObjectMeta)
 }

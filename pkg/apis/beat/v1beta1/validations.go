@@ -26,6 +26,7 @@ var (
 		checkSpec,
 		checkAssociations,
 		checkMonitoring,
+		checkPauseOrchestrationAnnotation,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -126,4 +127,8 @@ func checkAssociations(b *Beat) field.ErrorList {
 
 func checkMonitoring(b *Beat) field.ErrorList {
 	return validations.Validate(b, b.Spec.Version, validations.MinStackVersion)
+}
+
+func checkPauseOrchestrationAnnotation(b *Beat) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(b.ObjectMeta)
 }

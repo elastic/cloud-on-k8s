@@ -27,6 +27,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		checkPauseOrchestrationAnnotation,
 	}
 )
 
@@ -92,4 +93,8 @@ func checkIfVersionDeprecated(ems *ElasticMapsServer) (string, field.ErrorList) 
 
 func checkAssociation(ems *ElasticMapsServer) field.ErrorList {
 	return commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), ems.Spec.ElasticsearchRef)
+}
+
+func checkPauseOrchestrationAnnotation(ems *ElasticMapsServer) field.ErrorList {
+	return commonv1.CheckPauseOrchestrationAnnotation(ems.ObjectMeta)
 }
