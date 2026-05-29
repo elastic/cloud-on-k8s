@@ -1,4 +1,11 @@
+{{- if kindIs "slice" .Values.extraObjects }}
 {{- range .Values.extraObjects }}
 ---
 {{ tpl . $ }}
+{{- end }}
+{{- else if kindIs "map" .Values.extraObjects }}
+{{- range $key, $val := .Values.extraObjects }}
+---
+{{ tpl $val $ }}
+{{- end }}
 {{- end }}
