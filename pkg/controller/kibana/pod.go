@@ -80,6 +80,9 @@ var (
 	DefaultAnnotations = map[string]string{
 		annotation.FilebeatModuleAnnotation: "kibana",
 	}
+
+	// StatusReadinessProbeSupportedVersion is the version from which Kibana exposes an unauthenticated /api/status endpoint suitable for readiness probes.
+	StatusReadinessProbeSupportedVersion = version.From(8, 16, 0)
 )
 
 // basePathConfig is used to get the base path from the Kibana configuration.
@@ -90,8 +93,15 @@ type basePathConfig struct {
 	}
 }
 
+func readinessProbePath(basePath string, v version.Version) string {
+	if v.GTE(StatusReadinessProbeSupportedVersion) {
+		return fmt.Sprintf("%s/api/status", basePath)
+	}
+	return fmt.Sprintf("%s/login", basePath)
+}
+
 // readinessProbe is the readiness probe for the Kibana container
-func readinessProbe(useTLS bool, basePath string) corev1.Probe {
+func readinessProbe(useTLS bool, basePath string, v version.Version) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if useTLS {
 		scheme = corev1.URISchemeHTTPS
@@ -105,7 +115,7 @@ func readinessProbe(useTLS bool, basePath string) corev1.Probe {
 		ProbeHandler: corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(network.HTTPPort),
-				Path:   fmt.Sprintf("%s/api/status", basePath),
+				Path:   readinessProbePath(basePath, v),
 				Scheme: scheme,
 			},
 		},
@@ -141,7 +151,7 @@ func NewPodTemplateSpec(
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
-		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath)).
+		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath, v)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports)
