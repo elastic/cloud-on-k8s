@@ -504,9 +504,10 @@ func (b Builder) RuntimeObjects() []k8sclient.Object {
 	return append(b.AdditionalObjects, &b.Agent)
 }
 
-// withOCPSecurityContext returns a deep copy of the builder with the OCP-required privileged
+// withOCPSecurityContext returns a copy of the builder with the OCP-required privileged
 // container security context applied when the pod runs as root on an OCP cluster.
-// The original builder is never modified.
+// Only b.Agent is deep-copied to break the shared *DaemonSetSpec pointer; all other
+// builder fields (including AdditionalObjects) are preserved via the value receiver copy.
 func (b Builder) withOCPSecurityContext() Builder {
 	if !test.Ctx().OcpCluster {
 		return b
@@ -515,8 +516,16 @@ func (b Builder) withOCPSecurityContext() Builder {
 	if podSecurityContext == nil || podSecurityContext.RunAsUser == nil || *podSecurityContext.RunAsUser != 0 {
 		return b
 	}
-	bCopy := *b.DeepCopy()
-	return bCopy.WithContainerSecurityContext(corev1.SecurityContext{
+	b.Agent = *b.Agent.DeepCopy()
+	switch {
+	case b.Agent.Spec.DaemonSet != nil:
+		b.PodTemplate = &b.Agent.Spec.DaemonSet.PodTemplate
+	case b.Agent.Spec.Deployment != nil:
+		b.PodTemplate = &b.Agent.Spec.Deployment.PodTemplate
+	case b.Agent.Spec.StatefulSet != nil:
+		b.PodTemplate = &b.Agent.Spec.StatefulSet.PodTemplate
+	}
+	return b.WithContainerSecurityContext(corev1.SecurityContext{
 		Privileged: new(true),
 		RunAsUser:  new(int64(0)),
 	})
