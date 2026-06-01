@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -78,6 +79,14 @@ func PodReconciliationDone(ctx context.Context, c k8s.Client, statefulSet appsv1
 		return false, reason.String(), nil
 	}
 	return true, "", nil
+}
+
+// IsSteady reports whether the StatefulSet has converged: observed generation matches the metadata
+// generation, current and update revisions are identical, and all expected replicas are ready.
+func IsSteady(s appsv1.StatefulSet) bool {
+	return s.Status.ObservedGeneration == s.Generation &&
+		s.Status.CurrentRevision == s.Status.UpdateRevision &&
+		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 0)
 }
 
 func PendingPodsForStatefulSet(c k8s.Client, statefulSet appsv1.StatefulSet, labelName string) ([]string, []string, error) {

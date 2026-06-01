@@ -521,6 +521,7 @@ ConditionType defines the condition of a resource.
 
 :::{admonition} Appears In:
 * [ElasticsearchStatus](#elasticsearchstatus)
+* [LogstashStatus](#logstashstatus)
 
 :::
 
@@ -2128,6 +2129,7 @@ LogstashStatus defines the observed state of Logstash
 | *`health`* __[LogstashHealth](#logstashhealth)__ |  |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Logstash instance.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Logstash<br>controller has not yet processed the changes contained in the Logstash specification. |
 | *`selector`* __string__ |  |
+| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of the Logstash. |
 
 
 
