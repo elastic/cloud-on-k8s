@@ -511,7 +511,7 @@ func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOptio
 	ns := k8sclient.InNamespace(agentNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName: agent.TypeLabelValue,
-		agent.NameLabelName:    agent.Name(agentName),
+		agent.NameLabelName:    agentName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
