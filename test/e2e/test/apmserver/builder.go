@@ -73,6 +73,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithPodLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) ResourceName() string {
+	return b.ApmServer.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
@@ -112,6 +116,14 @@ func (b Builder) WithClientCertificateSecret(secretName string) Builder {
 
 func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	b.ApmServer.Spec.KibanaRef = ref
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.ApmServer.Annotations == nil {
+		b.ApmServer.Annotations = make(map[string]string)
+	}
+	b.ApmServer.Annotations[key] = value
 	return b
 }
 

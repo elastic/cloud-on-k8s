@@ -142,6 +142,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.ApmServer.Spec.Count,
 					Version:        b.ApmServer.Spec.Version,
 					Health:         "green",
+					Conditions:     as.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 			}
 			if !cmp.Equal(as.Status, expected) {

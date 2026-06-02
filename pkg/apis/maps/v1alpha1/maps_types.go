@@ -167,6 +167,16 @@ func (m *ElasticMapsServer) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the MapsStatus's Conditions with the new Condition(s).
+func (m *ElasticMapsServer) MergeConditions(conditions ...commonv1.Condition) {
+	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this ElasticMapsServer's MapsStatus Conditions.
+func (m *ElasticMapsServer) Conditions() commonv1.Conditions {
+	return m.Status.Conditions
+}
+
 // +kubebuilder:object:root=true
 
 // ElasticMapsServer represents an Elastic Map Server resource in a Kubernetes cluster.

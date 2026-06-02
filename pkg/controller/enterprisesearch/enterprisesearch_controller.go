@@ -253,7 +253,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ent, configHash, meta)
+	deploy, err := r.reconcileDeployment(ctx, &ent, configHash, meta)
 	if err != nil {
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}

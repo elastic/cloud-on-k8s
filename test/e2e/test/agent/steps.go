@@ -7,6 +7,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -174,8 +175,9 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				agent.Status.ObservedGeneration = 0
 
 				expected := agentv1alpha1.AgentStatus{
-					Version: b.Agent.Spec.Version,
-					Health:  "green",
+					Version:    b.Agent.Spec.Version,
+					Health:     "green",
+					Conditions: agent.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				}
 
 				switch {
@@ -267,6 +269,11 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
 					return err
 				}
+				// merge annotations
+				if agent.Annotations == nil {
+					agent.Annotations = make(map[string]string)
+				}
+				maps.Copy(agent.Annotations, b.Agent.Annotations)
 				agent.Spec = b.Agent.Spec
 				if err := k.Client.Update(context.Background(), &agent); err != nil {
 					return err

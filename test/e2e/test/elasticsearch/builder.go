@@ -59,6 +59,10 @@ type Builder struct {
 	mutationToleratedChecksFailureCount int
 }
 
+func (b Builder) ResourceName() string {
+	return b.Elasticsearch.Name
+}
+
 func (b Builder) DeepCopy() *Builder {
 	es := b.Elasticsearch.DeepCopy()
 	builderCopy := Builder{

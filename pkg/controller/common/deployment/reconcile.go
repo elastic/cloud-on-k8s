@@ -33,7 +33,7 @@ type Params struct {
 
 // New creates a Deployment from the given params.
 func New(params Params) appsv1.Deployment {
-	return appsv1.Deployment{
+	d := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        params.Name,
 			Namespace:   params.Namespace,
@@ -50,6 +50,7 @@ func New(params Params) appsv1.Deployment {
 			Strategy: params.Strategy,
 		},
 	}
+	return WithTemplateHash(d)
 }
 
 // Reconcile creates or updates the given deployment for the specified owner.
