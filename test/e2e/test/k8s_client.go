@@ -578,6 +578,8 @@ func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool)
 	return corev1.Pod{}, false
 }
 
+// OnAllPods runs f on every pod in parallel and returns an error if any invocation fails.
+// All pods are exercised regardless of individual failures; the last error seen is returned.
 func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 	// map phase: execute a function on all pods in parallel
 	fResults := make(chan error, len(pods))
@@ -595,6 +597,35 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 		}
 	}
 	return err
+}
+
+// OnAnyPod runs f on every pod in parallel and returns nil if at least one invocation succeeds.
+// If every invocation fails, the last error seen is returned.
+func OnAnyPod(pods []corev1.Pod, f func(corev1.Pod) error) error {
+	// map phase: execute a function on all pods in parallel
+	fResults := make(chan error, len(pods))
+	for _, p := range pods {
+		go func(pod corev1.Pod) {
+			fResults <- f(pod)
+		}(p)
+	}
+	// reduce phase: aggregate errors (simply return the last one seen)
+	var err error
+	allErrored := true
+	for range pods {
+		podErr := <-fResults
+		if podErr != nil {
+			err = podErr
+		} else {
+			allErrored = false
+		}
+	}
+
+	if allErrored {
+		return err
+	}
+
+	return nil
 }
 
 // GetFirstNodeExternalIP gets the external IP address of the first k8s node in the current k8s cluster.
