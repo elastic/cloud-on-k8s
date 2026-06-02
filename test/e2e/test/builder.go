@@ -9,6 +9,8 @@ package test
 const BuilderHashAnnotation = "k8s.elastic.co/e2e-builder-hash"
 
 type Builder interface {
+	// ResourceName returns the name of the underlying resource this Builder is building.
+	ResourceName() string
 	// InitTestSteps includes pre-requisite tests (eg. is k8s accessible) and cleanup from previous tests.
 	InitTestSteps(k *K8sClient) StepList
 	// CreationTestSteps returns all test steps to create a resource. (The resource is not deleted at the end.)
@@ -38,6 +40,10 @@ type WrappedBuilder struct {
 	PreMutationSteps  func(k *K8sClient) StepList
 	PostMutationSteps func(k *K8sClient) StepList
 	PreDeletionSteps  func(k *K8sClient) StepList
+}
+
+func (w WrappedBuilder) ResourceName() string {
+	return w.BuildingThis.ResourceName()
 }
 
 func (w WrappedBuilder) InitTestSteps(k *K8sClient) StepList {

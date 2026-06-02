@@ -79,6 +79,10 @@ func newPodBuilder(name, suffix string) PodBuilder {
 		WithLabel(run.TestNameLabel, name)
 }
 
+func (pb PodBuilder) ResourceName() string {
+	return pb.Pod.Name
+}
+
 func (pb PodBuilder) WithSuffix(suffix string) PodBuilder {
 	if suffix != "" {
 		pb.Pod.ObjectMeta.Name = pb.Pod.ObjectMeta.Name + "-" + suffix

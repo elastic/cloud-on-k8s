@@ -278,6 +278,16 @@ func (k *Kibana) GetObservedGeneration() int64 {
 	return k.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the KibanaStatus's Conditions with the new Condition(s).
+func (k *Kibana) MergeConditions(conditions ...commonv1.Condition) {
+	k.Status.Conditions = k.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this Kibana's KibanaStatus Conditions.
+func (k *Kibana) Conditions() commonv1.Conditions {
+	return k.Status.Conditions
+}
+
 // -- association with Elasticsearch
 
 func (k *Kibana) EsAssociation() *KibanaEsAssociation {

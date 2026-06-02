@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -320,7 +321,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 
 			template, err := BuildPodTemplateSpec(
 				context.Background(), client, es, nodeSet, cfg,
-				nil, false, PolicyConfig{}, metadata.Metadata{}, "", false,
+				nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 			)
 			require.NoError(t, err)
 
@@ -385,7 +386,7 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 
 	_, err = BuildPodTemplateSpec(
 		context.Background(), client, es, nodeSet, cfg,
-		nil, false, PolicyConfig{}, metadata.Metadata{}, "", false,
+		nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 	)
 	require.NoError(t, err)
 
@@ -432,7 +433,7 @@ func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T)
 
 	sts, err := BuildStatefulSet(
 		context.Background(), client, es, ns, cfg,
-		nil, nil, false, PolicyConfig{}, metadata.Metadata{}, "", false,
+		nil, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 	)
 	require.NoError(t, err)
 
@@ -483,7 +484,7 @@ func TestNodeSetResources_BuildStatefulSet_nil_existing_statefulsets(t *testing.
 	var existing es_sset.StatefulSetList
 	sts, err := BuildStatefulSet(
 		context.Background(), client, es, ns, cfg,
-		nil, existing, false, PolicyConfig{}, metadata.Metadata{}, "", false,
+		nil, existing, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 	)
 	require.NoError(t, err)
 

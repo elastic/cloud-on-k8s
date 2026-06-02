@@ -12,6 +12,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -68,7 +69,7 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// Reconcile resources which are common to all drivers.
-	sharedState, sharedResults := shared.ReconcileSharedResources(ctx, d, d.Parameters, resolvedConfig.ClientAuthenticationRequired)
+	sharedState, sharedResults := shared.ReconcileSharedResources(ctx, d, d.Parameters, resolvedConfig.ClientAuthenticationRequired, resolvedConfig.PolicyConfig)
 	if sharedResults.HasError() {
 		return results.WithResults(sharedResults)
 	}
@@ -126,7 +127,9 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 func (d *Driver) maybeResetPausedCondition() {
 	orchestrationPausedIndex := d.ES.Status.Conditions.Index(commonv1.OrchestrationPaused)
 	if orchestrationPausedIndex >= 0 {
-		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, "Orchestration has resumed normally")
+		d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionFalse, common.PausedOrchestrationResumed)
+		d.ReconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonResumed,
+			events.EventActionOrchestrationResumed, common.PausedOrchestrationResumed)
 	}
 }
 
@@ -151,7 +154,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 ) *reconciler.Results {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
-	results := &reconciler.Results{}
+	results := reconciler.NewResult(ctx)
 	done, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)
@@ -188,20 +191,33 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		))
 	}
 
+	for _, set := range actualSets {
+		if !ssetIsSteady(set) {
+			d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, common.PausedWaitingMessage)
+			return results.WithRequeue(reconciler.DefaultRequeue)
+		}
+	}
+
 	hasPendingChanges, err := d.hasPendingSpecChanges(ctx, actualSets, state, resolvedConfig, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	message := "Orchestration paused via annotation; no pending spec changes detected"
+	message := common.PausedNoChangesMessage
 	if hasPendingChanges {
-		message = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
+		message = common.PausedWithPendingChangesMessage
 		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
 		results.WithRequeue(5 * time.Minute)
 	}
 	d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, message)
 	return results
+}
+
+func ssetIsSteady(s appsv1.StatefulSet) bool {
+	return s.Status.ObservedGeneration == s.Generation &&
+		s.Status.CurrentRevision == s.Status.UpdateRevision &&
+		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 0)
 }
 
 func (d *Driver) hasPendingSpecChanges(

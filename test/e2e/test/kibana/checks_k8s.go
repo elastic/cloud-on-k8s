@@ -167,8 +167,10 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.Kibana.Spec.Count,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
+					Conditions:     kb.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 			}
+
 			if !cmp.Equal(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
 				return fmt.Errorf("expected status %+v but got %+v", expected.DeploymentStatus, kb.Status.DeploymentStatus)
 			}

@@ -179,6 +179,16 @@ func (ent *EnterpriseSearch) GetObservedGeneration() int64 {
 	return ent.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the EnterpriseSearchStatus's Conditions with the new Condition(s).
+func (ent *EnterpriseSearch) MergeConditions(conditions ...commonv1.Condition) {
+	ent.Status.Conditions = ent.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this EnterpriseSearch's EnterpriseSearchStatus Conditions.
+func (ent *EnterpriseSearch) Conditions() commonv1.Conditions {
+	return ent.Status.Conditions
+}
+
 // +kubebuilder:object:root=true
 
 // EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.

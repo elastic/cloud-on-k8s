@@ -22,14 +22,18 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
@@ -563,6 +567,267 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 	}
 
 	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
+}
+
+// TestStackConfigPolicySecurityRoles tests that roles defined through StackConfigPolicy securityRoles
+// are correctly merged into the roles.yml file and loaded by Elasticsearch.
+func TestStackConfigPolicySecurityRoles(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// SecurityRoles is delivered via roles.yml (not the file-based settings API), but the SCP
+	// controller itself rejects ES clusters older than FileBasedSettingsMinPreVersion, so this
+	// is still the correct gate.
+	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		t.SkipNow()
+	}
+
+	namespace := test.Ctx().ManagedNamespace(0)
+
+	// fileRealmSecret defines scp_e2e_user in the file realm assigned to scp_e2e_role.
+	// The role definition itself comes from the SCP — the file realm provides the credentials.
+	// bcrypt hash below corresponds to password "testpass123!" (cost 10). //nolint:gosec
+	const fileRealmUser = "scp_e2e_user"
+	fileRealmSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "scp-e2e-file-realm",
+		},
+		StringData: map[string]string{
+			filerealm.UsersFile:      fileRealmUser + ":$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+			filerealm.UsersRolesFile: "scp_e2e_role:" + fileRealmUser,
+		},
+	}
+
+	es := elasticsearch.NewBuilder("test-es-scp-roles").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithLabel("label", "test-scp-roles")
+	es.Elasticsearch.Spec.Auth = esv1.Auth{
+		FileRealm: []esv1.FileRealmSource{
+			{SecretRef: commonv1.SecretRef{SecretName: fileRealmSecret.Name}},
+		},
+	}
+
+	policy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("test-scp-roles-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"label": "test-scp-roles"},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecurityRoles: &commonv1.Config{Data: map[string]interface{}{
+					"scp_e2e_role": map[string]interface{}{
+						"cluster": []interface{}{"monitor"},
+						"indices": []interface{}{
+							map[string]interface{}{
+								"names":      []interface{}{"logs-*"},
+								"privileges": []interface{}{"read", "view_index_metadata"},
+							},
+						},
+					},
+				}},
+			},
+		},
+	}
+
+	esWithLicense := test.LicenseTestBuilder(es)
+
+	// initialPodUIDs captures the ES pod UIDs before SCP changes so we can later
+	// verify that role updates do NOT trigger a pod restart.
+	initialPodUIDs := map[string]types.UID{}
+
+	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.WithStep(test.Step{
+			Name: "Create file realm secret",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(fileRealmSecret)
+			}),
+		})
+	})
+
+	steps := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			test.Step{
+				Name: "Capture initial pod UIDs",
+				Test: test.Eventually(func() error {
+					pods, err := k.GetPods(test.ESPodListOptions(es.Elasticsearch.Namespace, es.Elasticsearch.Name)...)
+					if err != nil {
+						return err
+					}
+					if len(pods) == 0 {
+						return fmt.Errorf("no Elasticsearch pods found yet")
+					}
+					for _, p := range pods {
+						initialPodUIDs[p.Name] = p.UID
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Create a StackConfigPolicy with securityRoles",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&policy)
+				}),
+			},
+			test.Step{
+				Name: "SCP role should be present in the roles-and-file-realm secret",
+				Test: test.Eventually(func() error {
+					var secret corev1.Secret
+					if err := k.Client.Get(context.Background(), types.NamespacedName{
+						Namespace: es.Elasticsearch.Namespace,
+						Name:      esv1.RolesAndFileRealmSecret(es.Elasticsearch.Name),
+					}, &secret); err != nil {
+						return err
+					}
+					rolesYml := string(secret.Data["roles.yml"])
+					if !strings.Contains(rolesYml, "scp_e2e_role") {
+						return fmt.Errorf("roles.yml does not contain scp_e2e_role, got: %s", rolesYml)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "SCP role should grant expected privileges to the file realm user",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+					hasPrivResp, err := hasPrivilegesAs(context.Background(), esClient, fileRealmUser, `{
+						"cluster": ["monitor"],
+						"index": [
+							{"names": ["logs-test"], "privileges": ["read"]},
+							{"names": ["secret-index"], "privileges": ["write"]}
+						]
+					}`)
+					if err != nil {
+						return err
+					}
+					if !hasPrivResp.Cluster["monitor"] {
+						return fmt.Errorf("expected cluster:monitor=true, got false")
+					}
+					logsPriv, ok := hasPrivResp.Index["logs-test"]
+					if !ok || !logsPriv["read"] {
+						return fmt.Errorf("expected logs-test:read=true, got %v", hasPrivResp.Index)
+					}
+					if hasPrivResp.Index["secret-index"]["write"] {
+						return fmt.Errorf("expected secret-index:write=false, got true")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Verify pods have not been restarted",
+				Test: test.Eventually(func() error {
+					pods, err := k.GetPods(test.ESPodListOptions(es.Elasticsearch.Namespace, es.Elasticsearch.Name)...)
+					if err != nil {
+						return err
+					}
+					if len(pods) != len(initialPodUIDs) {
+						return fmt.Errorf("expected %d pods, got %d", len(initialPodUIDs), len(pods))
+					}
+					for _, p := range pods {
+						initial, ok := initialPodUIDs[p.Name]
+						if !ok {
+							return fmt.Errorf("pod %s was not present before SCP was applied (likely restarted)", p.Name)
+						}
+						if p.UID != initial {
+							return fmt.Errorf("pod %s was restarted: UID changed from %s to %s", p.Name, initial, p.UID)
+						}
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Delete the StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(context.Background(), &policy)
+				}),
+			},
+			test.Step{
+				Name: "SCP role should be removed from roles.yml after policy deletion",
+				Test: test.Eventually(func() error {
+					var secret corev1.Secret
+					if err := k.Client.Get(context.Background(), types.NamespacedName{
+						Namespace: es.Elasticsearch.Namespace,
+						Name:      esv1.RolesAndFileRealmSecret(es.Elasticsearch.Name),
+					}, &secret); err != nil {
+						return err
+					}
+					if strings.Contains(string(secret.Data["roles.yml"]), "scp_e2e_role") {
+						return fmt.Errorf("roles.yml still contains scp_e2e_role after policy deletion")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "File realm user should lose privileges once the SCP role is removed",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+					hasPrivResp, err := hasPrivilegesAs(context.Background(), esClient, fileRealmUser, `{
+						"cluster": ["monitor"],
+						"index": [{"names": ["logs-test"], "privileges": ["read"]}]
+					}`)
+					if err != nil {
+						return err
+					}
+					if hasPrivResp.Cluster["monitor"] {
+						return fmt.Errorf("expected cluster:monitor=false after role removal, got true")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Delete file realm secret",
+				Test: test.Eventually(func() error {
+					err := k.Client.Delete(context.Background(), &fileRealmSecret)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
+			},
+		}
+	}
+
+	test.Sequence(before, steps, esWithLicense).RunSequential(t)
+}
+
+type HasPrivilegesResponse struct {
+	Username        string                     `json:"username"`
+	HasAllRequested bool                       `json:"has_all_requested"`
+	Cluster         map[string]bool            `json:"cluster"`
+	Index           map[string]map[string]bool `json:"index"`
+}
+
+func hasPrivilegesAs(ctx context.Context, esClient client.Client, runAsUser string, body string) (HasPrivilegesResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", strings.NewReader(body))
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	req.Header.Set("es-security-runas-user", runAsUser)
+	resp, err := esClient.Request(ctx, req)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	var hasPrivResp HasPrivilegesResponse
+	if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
+		return HasPrivilegesResponse{}, fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
+	}
+	return hasPrivResp, nil
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {

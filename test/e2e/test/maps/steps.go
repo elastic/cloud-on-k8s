@@ -7,6 +7,7 @@ package maps
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,7 +15,7 @@ import (
 
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	controllermaps "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -85,7 +86,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		checks.CheckDeployment(b, k, maps.Deployment(b.EMS.Name)),
+		checks.CheckDeployment(b, k, controllermaps.Deployment(b.EMS.Name)),
 		checks.CheckPods(b, k),
 		checks.CheckServices(b, k),
 		checks.CheckServicesEndpoints(b, k),
@@ -103,6 +104,13 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EMS), &ems); err != nil {
 					return err
 				}
+
+				// merge annotations
+				if ems.Annotations == nil {
+					ems.Annotations = make(map[string]string)
+				}
+				maps.Copy(ems.Annotations, b.EMS.Annotations)
+
 				ems.Spec = b.EMS.Spec
 				return k.Client.Update(context.Background(), &ems)
 			}),
@@ -156,7 +164,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Test: test.Eventually(func() error {
 				namespace := b.EMS.Namespace
 				return k.CheckSecretsRemoved([]types.NamespacedName{
-					{Namespace: namespace, Name: certificates.PublicCertsSecretName(maps.EMSNamer, b.EMS.Name)},
+					{Namespace: namespace, Name: certificates.PublicCertsSecretName(controllermaps.EMSNamer, b.EMS.Name)},
 				})
 			}),
 		},

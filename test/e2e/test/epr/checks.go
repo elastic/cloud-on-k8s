@@ -94,6 +94,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EPR.Spec.Count,
 					Version:        b.EPR.Spec.Version,
 					Health:         "green",
+					Conditions:     epr.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 			}
 			if !cmp.Equal(epr.Status.DeploymentStatus, expected.DeploymentStatus) {

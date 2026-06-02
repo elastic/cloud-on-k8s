@@ -119,6 +119,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EMS.Spec.Count,
 					Version:        b.EMS.Spec.Version,
 					Health:         "green",
+					Conditions:     ems.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 				AssociationStatus: "",
 			}

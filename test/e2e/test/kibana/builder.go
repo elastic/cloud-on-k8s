@@ -59,6 +59,10 @@ func NewBuilderWithoutSuffix(name string) Builder {
 	return newBuilder(name, "")
 }
 
+func (b Builder) ResourceName() string {
+	return b.Kibana.Name
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Kibana.Name,

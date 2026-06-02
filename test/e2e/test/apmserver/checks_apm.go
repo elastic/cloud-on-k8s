@@ -380,7 +380,7 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 					return err
 				}
 
-				uri := "/api/apm/settings/agent-configuration"
+				uri := "/api/apm/settings/agent-configuration?overwrite=true"
 
 				// URI is slightly different before 7.7.0, we need to add "/new" at the end
 				if !apmVersion.GTE(version.MustParse("7.7.0")) {

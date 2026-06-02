@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -64,7 +65,7 @@ type ResolvedConfig struct {
 	ClientAuthenticationRequired bool
 
 	// PolicyConfig contains StackConfigPolicy settings.
-	PolicyConfig PolicyConfig
+	PolicyConfig stackconfig.PolicyConfig
 
 	// ClientAuthenticationOverrideWarning is set when spec.http.tls.client.authentication is enabled
 	// but StackConfigPolicy overrides xpack.security.http.ssl.client_authentication to a non-required value.

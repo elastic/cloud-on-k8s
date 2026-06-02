@@ -125,6 +125,7 @@ const expectedTelemetryTemplate = `eck:
         index_lifecycle_policies_count: 0
         ingest_pipelines_count: 0
         role_mappings_count: 0
+        roles_count: 0
         snapshot_lifecycle_policies_count: 0
         snapshot_repositories_count: 0
 `
