@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"reflect"
@@ -20,6 +21,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
@@ -317,6 +319,45 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Agent pods should be eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)...)
+			}),
+		},
+	}
+}
+
+// CheckFleetServerConnected returns a step that verifies at least one agent pod reports
+// FleetState == 2 (connected) by running elastic-agent status --output=json inside each container.
+func (b Builder) CheckFleetServerConnected(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		{
+			Name: "At least one Agent pod should be connected to Fleet Server",
+			Test: test.Eventually(func() error {
+				pods, err := k.GetPods(test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)...)
+				if err != nil {
+					return err
+				}
+				// One successful connection is enough: if any pod reached Fleet Server the
+				// path is verified. Checking all pods would require every replica to
+				// reconnect before the step passes, increasing test time unnecessarily.
+				return test.OnAnyPod(pods, func(p corev1.Pod) error {
+					stdout, stderr, err := k.ExecInContainer(
+						k8s.ExtractNamespacedName(&p),
+						agentcontroller.ContainerName,
+						[]string{"elastic-agent", "status", "--output=json"},
+					)
+					if err != nil {
+						return fmt.Errorf("err:%w,stdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+					}
+					var agentStatus struct {
+						FleetState int `json:"FleetState"`
+					}
+					if err := json.Unmarshal([]byte(stdout), &agentStatus); err != nil {
+						return err
+					}
+					if agentStatus.FleetState != 2 {
+						return fmt.Errorf("agent not connected to fleet-server, state: %d", agentStatus.FleetState)
+					}
+					return nil
+				})
 			}),
 		},
 	}

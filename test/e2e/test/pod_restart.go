@@ -72,7 +72,7 @@ func (c *PodRestartChecker) WaitForRestart(k *K8sClient) StepList {
 					return err
 				}
 				for _, pod := range pods.Items {
-					if _, ok := c.prevUIDs[pod.UID]; !ok {
+					if _, ok := c.prevUIDs[pod.UID]; ok {
 						return fmt.Errorf("%s pod %s (uid=%s) has not been restarted yet", c.name, pod.Name, pod.UID)
 					}
 				}
