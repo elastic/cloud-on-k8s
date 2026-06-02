@@ -68,5 +68,5 @@ spec:
             # Override the readiness probe as GCLB reuses it for its own healthchecks
             httpGet:
               scheme: HTTPS
-              path: "/login"
+              path: "/api/status"
               port: 5601
