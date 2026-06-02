@@ -76,3 +76,5 @@ Chart.lock
 # build
 build/dev*
 build/eck*
+
+.DS_Store
