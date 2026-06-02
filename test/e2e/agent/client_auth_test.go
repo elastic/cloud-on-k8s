@@ -279,6 +279,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerClientAuthNotSupported(t)
 
 	name := "test-fs-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -364,6 +365,7 @@ func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerClientAuthNotSupported(t)
 
 	name := "test-fs-mtls-auto"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -511,4 +513,17 @@ func fleetConfigWithOutputsForKibanaAndPolicies(
 	}
 
 	return cfg
+}
+
+// skipIfFleetServerClientAuthNotSupported skips the test if the current stack version does not
+// support Fleet Server client certificate authentication (requires 9.3.6+, 9.4.3+, or 9.5.0+).
+func skipIfFleetServerClientAuthNotSupported(t *testing.T) {
+	t.Helper()
+	v, err := version.Parse(test.Ctx().ElasticStackVersion)
+	if err != nil {
+		t.Fatalf("failed to parse stack version %q: %v", test.Ctx().ElasticStackVersion, err)
+	}
+	if !agentv1alpha1.FleetServerClientAuthSupported(v) {
+		t.Skipf("skipping Fleet Server client authentication test: requires 9.3.6+, 9.4.3+, or 9.5.0+, got %s", v)
+	}
 }
