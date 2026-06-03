@@ -7,7 +7,6 @@ package stateful
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -16,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
@@ -105,20 +105,19 @@ func reconcileManagedKeystorePasswordSecret(
 // via cluster_secrets in the file-based settings JSON (no init container, hot-reload capable).
 // For all other cases the standard keystore init container path is used.
 func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata) (*keystore.Resources, error) {
-	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) {
-		if d.ES.HasFileBasedSecureSettingsAnnotation() {
-			clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
-			if err != nil {
-				return nil, err
-			}
-			if err := filesettings.ReconcileClusterSecrets(ctx, d.Client, d.ES, clusterSecrets); err != nil {
-				return nil, err
-			}
-			return nil, keystore.DeleteSecureSettingsSecret(ctx, d.Client, esv1.ESNamer, &d.ES)
+	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) && d.ES.HasFileBasedSecureSettingsAnnotation() {
+		clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
+		if err != nil {
+			return nil, err
 		}
-
-		// Keystore path. Clear any stale cluster_secrets — covers annotation flip-off and version
-		// downgrade.
+		if err := filesettings.ReconcileClusterSecrets(ctx, d.Client, d.ES, clusterSecrets); err != nil {
+			return nil, err
+		}
+		return nil, keystore.DeleteSecureSettingsSecret(ctx, d.Client, esv1.ESNamer, &d.ES)
+	}
+	// Keystore path
+	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) {
+		// Clear any stale cluster_secrets
 		if err := filesettings.ReconcileClusterSecrets(ctx, d.Client, d.ES, nil); err != nil {
 			return nil, err
 		}

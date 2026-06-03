@@ -513,7 +513,6 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 			"gcs.credentials":              "creds",
 		}}, got)
 	})
-
 }
 
 func TestDeleteSecureSettingsSecret(t *testing.T) {
