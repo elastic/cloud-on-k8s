@@ -59,6 +59,8 @@ const (
 	// present in the keystore at startup and cannot be delivered via the reload path.
 	// Set this annotation to "true" only when all your secure settings are reloadable (S3/Azure/GCS
 	// credentials, remote-cluster API keys, etc.).
+	// This annotation applies to stateful Elasticsearch only: stateless/Serverless clusters always deliver
+	// secure settings via cluster_secrets, regardless of this annotation.
 	FileBasedSecureSettingsAnnotation = "eck.k8s.elastic.co/file-based-secure-settings"
 
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
