@@ -274,7 +274,9 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 					agent.Annotations = make(map[string]string)
 				}
 				maps.Copy(agent.Annotations, b.Agent.Annotations)
-				agent.Spec = b.Agent.Spec
+				// Apply the same OCP-specific security context that RuntimeObjects() applies on
+				// creation so the spec stays consistent and no spurious pending changes are detected.
+				agent.Spec = b.withOCPSecurityContext().Agent.Spec
 				if err := k.Client.Update(context.Background(), &agent); err != nil {
 					return err
 				}

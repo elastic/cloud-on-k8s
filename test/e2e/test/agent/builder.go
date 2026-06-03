@@ -497,19 +497,38 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 func (b Builder) RuntimeObjects() []k8sclient.Object {
 	// OpenShift does not only require running as root, the privileged field must also be
 	// set to true in order to write in a hostPath volume.
-	if test.Ctx().OcpCluster {
-		podSecurityContext := b.getPodSecurityContext()
-		if podSecurityContext != nil && podSecurityContext.RunAsUser != nil {
-			if *podSecurityContext.RunAsUser == 0 {
-				// Only update the container's SecurityContext if the Pod runs as root.
-				b = b.WithContainerSecurityContext(corev1.SecurityContext{
-					Privileged: new(true),
-					RunAsUser:  new(int64(0)),
-				})
-			}
-		}
-	}
+	// Deep-copy before applying OCP modifications so the original builder is not mutated
+	// through the shared DaemonSetSpec pointer — phase builders (created via DeepCopy before
+	// RuntimeObjects runs) would otherwise miss the modification in UpgradeTestSteps.
+	b = b.withOCPSecurityContext()
 	return append(b.AdditionalObjects, &b.Agent)
+}
+
+// withOCPSecurityContext returns a copy of the builder with the OCP-required privileged
+// container security context applied when the pod runs as root on an OCP cluster.
+// Only b.Agent is deep-copied to break the shared *DaemonSetSpec pointer; all other
+// builder fields (including AdditionalObjects) are preserved via the value receiver copy.
+func (b Builder) withOCPSecurityContext() Builder {
+	if !test.Ctx().OcpCluster {
+		return b
+	}
+	podSecurityContext := b.getPodSecurityContext()
+	if podSecurityContext == nil || podSecurityContext.RunAsUser == nil || *podSecurityContext.RunAsUser != 0 {
+		return b
+	}
+	b.Agent = *b.Agent.DeepCopy()
+	switch {
+	case b.Agent.Spec.DaemonSet != nil:
+		b.PodTemplate = &b.Agent.Spec.DaemonSet.PodTemplate
+	case b.Agent.Spec.Deployment != nil:
+		b.PodTemplate = &b.Agent.Spec.Deployment.PodTemplate
+	case b.Agent.Spec.StatefulSet != nil:
+		b.PodTemplate = &b.Agent.Spec.StatefulSet.PodTemplate
+	}
+	return b.WithContainerSecurityContext(corev1.SecurityContext{
+		Privileged: new(true),
+		RunAsUser:  new(int64(0)),
+	})
 }
 
 func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
