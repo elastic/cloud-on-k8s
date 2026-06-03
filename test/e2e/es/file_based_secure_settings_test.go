@@ -82,6 +82,10 @@ func TestFileBasedSecureSettings(t *testing.T) {
 			checkFileSettingsVersionAdvancedStep(ctx, k, b, &versionBeforeUpdate),
 			checkUpdatedClusterSecretsStep(ctx, k, b),
 			checkPodsNotRestartedStep(k, b, podUIDs),
+			removeFileBasedAnnotationStep(ctx, k, b),
+			checkKeystoreInitContainerPresentStep(ctx, k, b),
+			checkSecureSettingsSecretExistsStep(ctx, k, b),
+			checkClusterSecretsClearedStep(ctx, k, b),
 			deleteSourceSecretStep(ctx, k, &secureSettingsSecret),
 		}).
 		WithSteps(b.DeletionTestSteps(k)).
@@ -142,6 +146,11 @@ func TestFileBasedSecureSettingsFIPS(t *testing.T) {
 			checkFileSettingsVersionAdvancedStep(ctx, k, b, &versionBeforeUpdate),
 			checkUpdatedClusterSecretsStep(ctx, k, b),
 			checkPodsNotRestartedStep(k, b, podUIDs),
+			removeFileBasedAnnotationStep(ctx, k, b),
+			checkKeystoreInitContainerPresentStep(ctx, k, b),
+			checkSecureSettingsSecretExistsStep(ctx, k, b),
+			checkClusterSecretsClearedStep(ctx, k, b),
+			checkFIPSKeystoreSecretCreatedStep(k, b.Elasticsearch),
 			deleteSourceSecretStep(ctx, k, &secureSettingsSecret),
 		}).
 		WithSteps(b.DeletionTestSteps(k)).
@@ -360,6 +369,104 @@ func deleteSourceSecretStep(ctx context.Context, k *test.K8sClient, secret *core
 			err := k.Client.Delete(ctx, secret)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return err
+			}
+			return nil
+		}),
+	}
+}
+
+func removeFileBasedAnnotationStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder) test.Step {
+	return test.Step{
+		Name: "Remove file-based secure settings annotation to flip back to keystore path",
+		Test: test.Eventually(func() error {
+			var es esv1.Elasticsearch
+			if err := k.Client.Get(ctx, types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: b.Elasticsearch.Name}, &es); err != nil {
+				return err
+			}
+			delete(es.Annotations, esv1.FileBasedSecureSettingsAnnotation)
+			return k.Client.Update(ctx, &es)
+		}),
+	}
+}
+
+func checkKeystoreInitContainerPresentStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder) test.Step {
+	return test.Step{
+		Name: "Pod template must contain the keystore init container after annotation removal",
+		Test: test.Eventually(func() error {
+			var sset appsv1.StatefulSet
+			if err := k.Client.Get(ctx,
+				types.NamespacedName{
+					Namespace: b.Elasticsearch.Namespace,
+					Name:      esv1.StatefulSet(b.Elasticsearch.Name, b.Elasticsearch.Spec.NodeSets[0].Name),
+				},
+				&sset,
+			); err != nil {
+				return err
+			}
+			if c := pod.InitContainerByName(sset.Spec.Template.Spec, keystore.InitContainerName); c == nil {
+				return fmt.Errorf("keystore init container %q must be present after annotation removal", keystore.InitContainerName)
+			}
+			return nil
+		}),
+	}
+}
+
+func checkSecureSettingsSecretExistsStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder) test.Step {
+	return test.Step{
+		Name: "Operator-managed secure-settings Secret must be recreated after annotation removal",
+		Test: test.Eventually(func() error {
+			var secret corev1.Secret
+			return k.Client.Get(ctx,
+				types.NamespacedName{
+					Namespace: b.Elasticsearch.Namespace,
+					Name:      esv1.ESNamer.Suffix(b.Elasticsearch.Name, "secure-settings"),
+				},
+				&secret,
+			)
+		}),
+	}
+}
+
+func checkClusterSecretsClearedStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder) test.Step {
+	return test.Step{
+		Name: "cluster_secrets must be cleared from file-settings Secret and ES must have applied the updated settings without errors",
+		Test: test.Eventually(func() error {
+			// 1. Check the K8s Secret has empty cluster_secrets.
+			var secret corev1.Secret
+			if err := k.Client.Get(ctx,
+				types.NamespacedName{Namespace: b.Elasticsearch.Namespace, Name: esv1.FileSettingsSecretName(b.Elasticsearch.Name)},
+				&secret,
+			); err != nil {
+				return err
+			}
+			raw, ok := secret.Data["settings.json"]
+			if !ok {
+				return nil
+			}
+			var parsed fileSettingsJSON
+			if err := json.Unmarshal(raw, &parsed); err != nil {
+				return fmt.Errorf("parsing settings.json: %w", err)
+			}
+			if len(parsed.State.ClusterSecrets.StringSecrets) > 0 {
+				return fmt.Errorf("cluster_secrets.string_secrets still contains %d keys after annotation removal", len(parsed.State.ClusterSecrets.StringSecrets))
+			}
+			// 2. Verify via ES client that the current file settings version was applied without errors.
+			// This is faster than polling the CRD status and confirms ES is up and has processed the cleared settings.
+			esClient, err := elasticsearch.NewElasticsearchClient(b.Elasticsearch, k)
+			if err != nil {
+				return err
+			}
+			defer esClient.Close()
+			state, err := esClient.GetClusterState(ctx)
+			if err != nil {
+				return err
+			}
+			fs := state.Metadata.ReservedState.FileSettings
+			if fs.Version < 0 {
+				return fmt.Errorf("file settings not yet applied: version=%d", fs.Version)
+			}
+			if fs.Errors != nil {
+				return fmt.Errorf("file settings applied with errors: %+v", fs.Errors)
 			}
 			return nil
 		}),
