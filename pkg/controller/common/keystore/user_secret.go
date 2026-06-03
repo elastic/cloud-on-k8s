@@ -6,10 +6,8 @@ package keystore
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"maps"
-	"unicode/utf8"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -224,11 +222,11 @@ func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 // BuildSecureSettingsData retrieves all secrets referenced by the given secret sources and returns
 // them in the structure expected by Elasticsearch file-based settings cluster_secrets:
 //
-//	{"string_secrets": {"s3.client.default.access_key": "..."}, "file_secrets": {"keystore": "<base64>"}}
+//	{"string_secrets": {"s3.client.default.access_key": "..."}}
 //
-// Valid UTF-8 values are placed in string_secrets; non-UTF-8 (binary) values are base64-encoded and
-// placed in file_secrets so that Elasticsearch's SecureClusterStateSettings parser can decode them
-// back to the original bytes via Base64.getDecoder().decode().
+// All values are placed in string_secrets. ES's SecureClusterStateSettings merges string_secrets
+// and file_secrets into a single internal map, so both getString() and getFile() resolve keys from
+// either bucket — placement does not affect which API the plugin uses to retrieve the value.
 // Keystore keys are passed through as-is.
 func BuildSecureSettingsData(
 	ctx context.Context,
@@ -243,36 +241,10 @@ func BuildSecureSettingsData(
 	}
 
 	stringSecrets := map[string]any{}
-	fileSecrets := map[string]any{}
 	for _, s := range userSecrets {
 		for k, v := range s.Data {
-			if looksLikeText(v) {
-				stringSecrets[k] = string(v)
-			} else {
-				fileSecrets[k] = base64.StdEncoding.EncodeToString(v)
-			}
+			stringSecrets[k] = string(v)
 		}
 	}
-	result := map[string]any{"string_secrets": stringSecrets}
-	if len(fileSecrets) > 0 {
-		result["file_secrets"] = fileSecrets
-	}
-	return result, nil
-}
-
-// looksLikeText returns true when v is safe to treat as a UTF-8 string secret.
-// utf8.Valid alone is insufficient: short binary blobs (e.g. a ZIP header) can be
-// entirely ASCII and therefore valid UTF-8, yet they are not text. Rejecting NUL and
-// non-printable control characters (< 0x20, excluding \t \n \r) closes that gap and
-// covers all realistic binary formats that would slip through utf8.Valid.
-func looksLikeText(v []byte) bool {
-	if !utf8.Valid(v) {
-		return false
-	}
-	for _, r := range string(v) {
-		if r == 0 || (r < 0x20 && r != '\t' && r != '\n' && r != '\r') {
-			return false
-		}
-	}
-	return true
+	return map[string]any{"string_secrets": stringSecrets}, nil
 }

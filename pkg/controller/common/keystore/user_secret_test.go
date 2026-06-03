@@ -514,58 +514,6 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 		}}, got)
 	})
 
-	t.Run("binary values go into file_secrets as base64", func(t *testing.T) {
-		binaryValue := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE} // non-UTF-8 bytes
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
-			Data:       map[string][]byte{"keystore.jks": binaryValue},
-		}
-		client := k8s.NewFakeClient(kb, secret)
-		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
-		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]any{
-			"string_secrets": map[string]any{},
-			"file_secrets":   map[string]any{"keystore.jks": "AAEC//4="},
-		}, got)
-	})
-
-	t.Run("mixed string and binary values split across string_secrets and file_secrets", func(t *testing.T) {
-		binaryValue := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE}
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
-			Data: map[string][]byte{
-				"s3.client.default.access_key": []byte("AKIA"),
-				"keystore.jks":                 binaryValue,
-			},
-		}
-		client := k8s.NewFakeClient(kb, secret)
-		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
-		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]any{
-			"string_secrets": map[string]any{"s3.client.default.access_key": "AKIA"},
-			"file_secrets":   map[string]any{"keystore.jks": "AAEC//4="},
-		}, got)
-	})
-
-	t.Run("ASCII-range binary with control characters goes into file_secrets", func(t *testing.T) {
-		// Valid UTF-8 but contains \x03\x04 (control chars) — a ZIP local-file header.
-		// utf8.Valid alone would pass this; looksLikeText correctly rejects it.
-		zipHeader := []byte{'P', 'K', 0x03, 0x04}
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "s1", Namespace: "ns"},
-			Data:       map[string][]byte{"keystore.p12": zipHeader},
-		}
-		client := k8s.NewFakeClient(kb, secret)
-		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
-		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
-		require.NoError(t, err)
-		assert.Equal(t, map[string]any{
-			"string_secrets": map[string]any{},
-			"file_secrets":   map[string]any{"keystore.p12": "UEsDBA=="},
-		}, got)
-	})
 }
 
 func TestDeleteSecureSettingsSecret(t *testing.T) {
