@@ -105,7 +105,10 @@ func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.D
 
 // HasFileBasedSecureSettingsAnnotation returns true when the Elasticsearch object carries
 // the FileBasedSecureSettingsAnnotation set to "true".
-func HasFileBasedSecureSettingsAnnotation(es Elasticsearch) bool {
+func (es *Elasticsearch) HasFileBasedSecureSettingsAnnotation() bool {
+	if es == nil {
+		return false
+	}
 	return es.Annotations[FileBasedSecureSettingsAnnotation] == "true"
 }
 

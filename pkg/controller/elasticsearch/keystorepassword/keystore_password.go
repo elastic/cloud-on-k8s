@@ -169,7 +169,7 @@ func MaybeGarbageCollectKeystorePasswordSecret(
 ) error {
 	// When file-based secure settings are active (opt-in annotation + ES >= 9.5), the keystore
 	// init container is not used; GC any existing password secret and skip further checks.
-	if esv1.HasFileBasedSecureSettingsAnnotation(es) && esVersion.GTE(esversion.FileBasedSecureSettingsMinVersion) {
+	if es.HasFileBasedSecureSettingsAnnotation() && esVersion.GTE(esversion.FileBasedSecureSettingsMinVersion) {
 		return DeleteKeystorePasswordSecret(ctx, c, es)
 	}
 	shouldManage, err := esettings.ShouldManageGeneratedKeystorePassword(

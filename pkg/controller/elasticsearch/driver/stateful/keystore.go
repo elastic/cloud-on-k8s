@@ -105,7 +105,7 @@ func reconcileManagedKeystorePasswordSecret(
 // via cluster_secrets in the file-based settings JSON (no init container, hot-reload capable).
 // For all other cases the standard keystore init container path is used.
 func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata) (*keystore.Resources, error) {
-	if !d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) || !esv1.HasFileBasedSecureSettingsAnnotation(d.ES) {
+	if !d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) || !d.ES.HasFileBasedSecureSettingsAnnotation() {
 		return d.reconcileKeystore(ctx, meta)
 	}
 	clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
