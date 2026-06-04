@@ -60,6 +60,8 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
 
+	// actualStatefulSet is preemptively fetched as it is needed whether orchestration is paused or not, and needs to
+	// maintain the appropriate scope to be available where needed. This removes duplicate code.
 	actualStatefulSet, err := retrieveActualStatefulSet(params.Client, params.Logstash)
 	notFound := apierrors.IsNotFound(err)
 	if err != nil && !notFound {

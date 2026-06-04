@@ -167,8 +167,8 @@ type LogstashStatus struct {
 
 	Selector string `json:"selector"`
 
-	// +optional
 	// Conditions holds the current service state of the Logstash.
+	// +optional
 	Conditions commonv1.Conditions `json:"conditions,omitempty"`
 }
 
