@@ -37,7 +37,7 @@ spec:
             # The path must contain the path prefix used to serve the application from the load balancer
             httpGet:
               scheme: HTTPS
-              path: "/kibana/login"
+              path: "/kibana/api/status"
               port: 5601
 ---
 apiVersion: networking.k8s.io/v1
