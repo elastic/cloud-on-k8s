@@ -97,3 +97,9 @@ tests:
       - hasDocuments:
           count: 2
 
+  - it: should fail with descriptive error when extraObjects is not a list or map
+    set:
+      extraObjects: "invalid"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraObjects must be a list or map, got: string"

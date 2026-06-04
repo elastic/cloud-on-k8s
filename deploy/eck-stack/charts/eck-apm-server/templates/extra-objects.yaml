@@ -1,3 +1,4 @@
+{{- if .Values.extraObjects }}
 {{- if kindIs "slice" .Values.extraObjects }}
 {{- range .Values.extraObjects }}
 ---
@@ -7,5 +8,8 @@
 {{- range $key, $val := .Values.extraObjects }}
 ---
 {{ tpl $val $ }}
+{{- end }}
+{{- else }}
+{{- fail (printf "extraObjects must be a list or map, got: %s" (kindOf .Values.extraObjects)) }}
 {{- end }}
 {{- end }}
