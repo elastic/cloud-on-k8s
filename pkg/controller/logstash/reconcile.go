@@ -126,8 +126,6 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 	if status, err = calculateStatus(&params, reconciled); err != nil {
 		results.WithError(errors.Wrap(err, "while calculating status"))
 	}
-	// Preserve conditions written above; calculateStatus does not know about them.
-	status.Conditions = params.Status.Conditions
 	return results, status
 }
 
