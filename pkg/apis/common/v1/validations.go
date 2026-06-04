@@ -162,8 +162,8 @@ func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 
 // CheckPauseOrchestrationAnnotation ensures that the PauseOrchestrationAnnotation annotation is absent or set to
 // exactly 'true' or exactly 'false'.
-func CheckPauseOrchestrationAnnotation(meta metav1.ObjectMeta) field.ErrorList {
-	if annValue, ok := meta.Annotations[PauseOrchestrationAnnotation]; ok {
+func CheckPauseOrchestrationAnnotation(obj metav1.Object) field.ErrorList {
+	if annValue, ok := obj.GetAnnotations()[PauseOrchestrationAnnotation]; ok {
 		if annValue != "true" && annValue != "false" {
 			return field.ErrorList{
 				field.Invalid(
@@ -175,4 +175,9 @@ func CheckPauseOrchestrationAnnotation(meta metav1.ObjectMeta) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+// PauseOrchestrationAnnotationCheck returns a validation function for use in per-resource validation lists.
+func PauseOrchestrationAnnotationCheck[PT metav1.Object]() func(PT) field.ErrorList {
+	return func(obj PT) field.ErrorList { return CheckPauseOrchestrationAnnotation(obj) }
 }

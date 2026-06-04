@@ -26,7 +26,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
-		checkPauseOrchestrationAnnotation,
+		commonv1.PauseOrchestrationAnnotationCheck[*PackageRegistry](),
 	}
 )
 
@@ -86,8 +86,4 @@ func checkSupportedVersion(epr *PackageRegistry) field.ErrorList {
 
 func checkIfVersionDeprecated(epr *PackageRegistry) (string, field.ErrorList) {
 	return commonv1.CheckDeprecatedStackVersion(epr.Spec.Version)
-}
-
-func checkPauseOrchestrationAnnotation(epr *PackageRegistry) field.ErrorList {
-	return commonv1.CheckPauseOrchestrationAnnotation(epr.ObjectMeta)
 }

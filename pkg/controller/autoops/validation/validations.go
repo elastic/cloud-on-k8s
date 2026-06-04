@@ -29,7 +29,7 @@ func validations(ctx context.Context, checker license.Checker) []validation {
 		},
 		checkConfigSecretName,
 		checkResourceSelector,
-		checkPauseOrchestrationAnnotation,
+		commonv1.PauseOrchestrationAnnotationCheck[*autoopsv1alpha1.AutoOpsAgentPolicy](),
 	}
 }
 
@@ -71,8 +71,4 @@ func checkResourceSelector(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.Err
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
 	}
 	return nil
-}
-
-func checkPauseOrchestrationAnnotation(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList {
-	return commonv1.CheckPauseOrchestrationAnnotation(policy.ObjectMeta)
 }

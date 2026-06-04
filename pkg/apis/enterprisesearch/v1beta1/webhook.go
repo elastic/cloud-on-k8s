@@ -26,7 +26,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
-		checkPauseOrchestrationAnnotation,
+		commonv1.PauseOrchestrationAnnotationCheck[*EnterpriseSearch](),
 	}
 
 	updateChecks = []func(old, curr *EnterpriseSearch) field.ErrorList{
@@ -101,8 +101,4 @@ func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
 		return nil
 	}
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
-}
-
-func checkPauseOrchestrationAnnotation(ent *EnterpriseSearch) field.ErrorList {
-	return commonv1.CheckPauseOrchestrationAnnotation(ent.ObjectMeta)
 }

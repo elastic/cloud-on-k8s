@@ -443,7 +443,7 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			errList := checkPauseOrchestrationAnnotation(tc.ls)
+			errList := commonv1.CheckPauseOrchestrationAnnotation(tc.ls)
 			assert.Equal(t, tc.wantErr, len(errList) > 0)
 		})
 	}

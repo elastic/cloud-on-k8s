@@ -48,7 +48,7 @@ func validations() []validation {
 		checkESRefsNamed,
 		checkAssociations,
 		checkSinglePipelineSource,
-		checkPauseOrchestrationAnnotation,
+		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
 	}
 }
 
@@ -163,8 +163,4 @@ func check(ls *lsv1alpha1.Logstash, validations []validation) field.ErrorList {
 		}
 	}
 	return errs
-}
-
-func checkPauseOrchestrationAnnotation(ls *lsv1alpha1.Logstash) field.ErrorList {
-	return commonv1.CheckPauseOrchestrationAnnotation(ls.ObjectMeta)
 }
