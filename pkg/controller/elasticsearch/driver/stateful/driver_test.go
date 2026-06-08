@@ -239,9 +239,13 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 
 type fakeESShutdownClient struct {
 	esclient.Client
-	restartedNodeIDs       []string
-	terminatedNodeIDs      []string
-	shutdownDeletedNodeIDs map[string]struct{}
+	restartedNodeIDs  []string
+	terminatedNodeIDs []string
+	// notYetJoinedRestartNodeIDs have a completed Restart shutdown record but are NOT yet members of the
+	// cluster — they model nodes that finished their restart shutdown but haven't rejoined yet. They are
+	// returned by GetShutdown but excluded from GetNodes, so OnlyNodesInCluster filters them out.
+	notYetJoinedRestartNodeIDs []string
+	shutdownDeletedNodeIDs     map[string]struct{}
 }
 
 func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
@@ -258,8 +262,11 @@ func (f *fakeESShutdownClient) GetNodes(_ context.Context) (esclient.Nodes, erro
 }
 
 func (f *fakeESShutdownClient) GetShutdown(_ context.Context, _ *string) (esclient.ShutdownResponse, error) {
-	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.terminatedNodeIDs))
+	shutdownNodes := make([]esclient.NodeShutdown, 0, len(f.restartedNodeIDs)+len(f.terminatedNodeIDs)+len(f.notYetJoinedRestartNodeIDs))
 	for _, nodeID := range f.restartedNodeIDs {
+		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart), Status: esclient.ShutdownComplete})
+	}
+	for _, nodeID := range f.notYetJoinedRestartNodeIDs {
 		shutdownNodes = append(shutdownNodes, esclient.NodeShutdown{NodeID: nodeID, Type: string(esclient.Restart), Status: esclient.ShutdownComplete})
 	}
 	for _, nodeID := range f.terminatedNodeIDs {
@@ -327,18 +334,19 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 	matchingStatefulSets := expectedResources.StatefulSets()
 
 	tests := []struct {
-		name                 string
-		k8sObjects           []crclient.Object // pre-existing StatefulSets beyond scriptsConfigMap
-		resolvedConfig       nodespec.ResolvedConfig
-		failK8sClient        bool
-		restartedNodeIDs     []string
-		terminatedNodeIDs    []string
-		wantErr              bool
-		wantRequeue          bool
-		wantCondStatus       corev1.ConditionStatus
-		wantCondMsgSubstr    string
-		wantEvents           []events.Event
-		wantClearedShutdowns []string
+		name                       string
+		k8sObjects                 []crclient.Object // pre-existing StatefulSets beyond scriptsConfigMap
+		resolvedConfig             nodespec.ResolvedConfig
+		failK8sClient              bool
+		restartedNodeIDs           []string
+		terminatedNodeIDs          []string
+		notYetJoinedRestartNodeIDs []string
+		wantErr                    bool
+		wantRequeue                bool
+		wantCondStatus             corev1.ConditionStatus
+		wantCondMsgSubstr          string
+		wantEvents                 []events.Event
+		wantClearedShutdowns       []string
 	}{
 		{
 			name:           "actual StatefulSets match expected: no pending changes",
@@ -376,13 +384,14 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			},
 		},
 		{
-			name:                 "restarted pods that have not yet joined trigger a requeue",
-			resolvedConfig:       resolvedConfig,
-			restartedNodeIDs:     nil,
-			terminatedNodeIDs:    []string{"node-to-terminated"},
-			wantClearedShutdowns: nil,
-			wantCondStatus:       corev1.ConditionTrue,
-			wantCondMsgSubstr:    "spec changes are pending and will be applied on resume",
+			// Verifies OnlyNodesInCluster gating: a completed Restart shutdown record whose node
+			// has not yet rejoined the cluster must NOT be cleared.
+			name:                       "restart shutdowns for nodes that have not yet rejoined are preserved",
+			resolvedConfig:             resolvedConfig,
+			notYetJoinedRestartNodeIDs: []string{"node-still-rejoining"},
+			wantClearedShutdowns:       nil,
+			wantCondStatus:             corev1.ConditionTrue,
+			wantCondMsgSubstr:          "spec changes are pending and will be applied on resume",
 			wantEvents: []events.Event{
 				{
 					EventType: corev1.EventTypeWarning,
@@ -418,8 +427,9 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 			}
 
 			shutdownClient := &fakeESShutdownClient{
-				restartedNodeIDs:  tt.restartedNodeIDs,
-				terminatedNodeIDs: tt.terminatedNodeIDs,
+				restartedNodeIDs:           tt.restartedNodeIDs,
+				terminatedNodeIDs:          tt.terminatedNodeIDs,
+				notYetJoinedRestartNodeIDs: tt.notYetJoinedRestartNodeIDs,
 			}
 			sharedState.ESClient = shutdownClient
 
