@@ -53,8 +53,8 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 		}
 	}
 
-	for _, b := range builders {
-		steps = steps.WithSteps(b.DeletionTestSteps(k))
+	for idx := len(builders) - 1; idx >= 0; idx-- {
+		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
 	}
 
 	steps.RunSequential(t)

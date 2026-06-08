@@ -50,8 +50,8 @@ func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	// Trigger something
 	steps = steps.WithSteps(f(k))
 
-	for _, b := range builders {
-		steps = steps.WithSteps(b.DeletionTestSteps(k))
+	for idx := len(builders) - 1; idx >= 0; idx-- {
+		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
 	}
 
 	return steps
@@ -80,8 +80,8 @@ func BeforeAfterSequence(before StepsFunc, after StepsFunc, builders ...Builder)
 	for _, b := range builders {
 		steps = steps.WithSteps(CheckTestSteps(b, k))
 	}
-	for _, b := range builders {
-		steps = steps.WithSteps(b.DeletionTestSteps(k))
+	for idx := len(builders) - 1; idx >= 0; idx-- {
+		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
 	}
 
 	if after != nil {
