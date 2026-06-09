@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
@@ -219,6 +220,36 @@ func TestValidate(t *testing.T) {
 			policy: func() *autoopsv1alpha1.AutoOpsAgentPolicy {
 				p := newPolicy("9.2.4")
 				p.Spec.ResourceSelector = metav1.LabelSelector{}
+				return p
+			}(),
+			enterpriseEnabled: false,
+			wantErr:           true,
+		},
+		{
+			name: "pause-orchestration false",
+			policy: func() *autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := newPolicy("9.2.4")
+				p.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "false"}
+				return p
+			}(),
+			enterpriseEnabled: false,
+			wantErr:           false,
+		},
+		{
+			name: "pause-orchestration true",
+			policy: func() *autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := newPolicy("9.2.4")
+				p.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+				return p
+			}(),
+			enterpriseEnabled: false,
+			wantErr:           false,
+		},
+		{
+			name: "pause-orchestration invalid",
+			policy: func() *autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := newPolicy("9.2.4")
+				p.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "True"}
 				return p
 			}(),
 			enterpriseEnabled: false,

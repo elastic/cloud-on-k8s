@@ -223,6 +223,39 @@ func TestWebhook(t *testing.T) {
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(emsv1alpha1.Validate)
@@ -233,8 +266,9 @@ func TestWebhook(t *testing.T) {
 func mkMaps(uid string) *emsv1alpha1.ElasticMapsServer {
 	return &emsv1alpha1.ElasticMapsServer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
+			Name:        "webhook-test",
+			UID:         types.UID(uid),
+			Annotations: make(map[string]string),
 		},
 		Spec: emsv1alpha1.MapsSpec{
 			Version: "7.17.0",

@@ -32,6 +32,7 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
+		commonv1.PauseOrchestrationAnnotationCheck[*Kibana](),
 	}
 
 	updateChecks = []func(old, curr *Kibana) field.ErrorList{

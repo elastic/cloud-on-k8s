@@ -311,6 +311,39 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkApmServer(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkApmServer(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkApmServer(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(apmv1.Validate)
@@ -321,8 +354,9 @@ func TestWebhook(t *testing.T) {
 func mkApmServer(uid string) *apmv1.ApmServer {
 	return &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
+			Name:        "webhook-test",
+			UID:         types.UID(uid),
+			Annotations: make(map[string]string),
 		},
 		Spec: apmv1.ApmServerSpec{
 			Version: "7.17.0",
