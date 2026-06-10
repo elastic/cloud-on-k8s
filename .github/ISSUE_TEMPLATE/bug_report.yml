@@ -1,6 +1,6 @@
 name: Bug report
 description: Report a problem with ECK
-labels: ["bug"]
+labels: [">bug"]
 body:
   - type: markdown
     attributes:
@@ -47,8 +47,12 @@ body:
         - AKS
         - OpenShift
         - Rancher
-        - PKS
-        - kubeadm (on-premise)
+        - TKGI (formerly PKS)
+        - k3s
+        - RKE2
+        - microk8s
+        - kubeadm (on-premises)
+        - Self-managed (other)
         - Other
     validations:
       required: true
@@ -60,6 +64,8 @@ body:
       render: shell
       placeholder: |
         $ kubectl version
+    validations:
+      required: true
 
   - type: textarea
     id: resource-definition
