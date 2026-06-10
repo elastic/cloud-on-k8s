@@ -46,7 +46,7 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 	return *c
 }
 
-func Test_handleVolumeExpansion(t *testing.T) {
+func TestReconcilePVCsForStatefulSet(t *testing.T) {
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
 		Spec: appsv1.StatefulSetSpec{
@@ -173,10 +173,10 @@ func Test_handleVolumeExpansion(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
 				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
-			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, ls,
+			recreate, err := ReconcilePVCsForStatefulSet(context.Background(), k8sClient, ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("handleVolumeExpansion() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ReconcilePVCsForStatefulSet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.wantRecreate, recreate)
 

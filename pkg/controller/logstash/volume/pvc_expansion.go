@@ -18,8 +18,8 @@ func RecreateStatefulSets(ctx context.Context, k8sclient k8s.Client, ls logstash
 	return commonvolume.RecreateStatefulSets(ctx, k8sclient, &ls)
 }
 
-func HandleVolumeExpansion(ctx context.Context, k8sClient k8s.Client, ls logstashv1alpha1.Logstash,
+func ReconcilePVCsForStatefulSet(ctx context.Context, k8sClient k8s.Client, ls logstashv1alpha1.Logstash,
 	expectedSset appsv1.StatefulSet, actualSset appsv1.StatefulSet,
 	validateStorageClass bool) (bool, error) {
-	return commonvolume.HandleVolumeExpansion(ctx, k8sClient, &ls, expectedSset, actualSset, validateStorageClass)
+	return commonvolume.ReconcilePVCsForStatefulSet(ctx, k8sClient, &ls, expectedSset, actualSset, validateStorageClass)
 }

@@ -445,6 +445,86 @@ func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T)
 	requireQuantityEqual(t, res.Limits, corev1.ResourceMemory, "4Gi")
 }
 
+// TestBuildStatefulSet_StripsReservedVCTLabels exercises the defense-in-depth path that
+// guards against reserved (`*.k8s.elastic.co/...`) VCT label keys leaking onto PVCs when
+// the validating webhook is disabled. Even if a CR is admitted with such labels, the
+// reconciler must strip them before the StatefulSet is built so the StatefulSet
+// controller never copies them onto freshly provisioned PVCs.
+func TestBuildStatefulSet_StripsReservedVCTLabels(t *testing.T) {
+	nodeSet := esv1.NodeSet{
+		Name:  "nodeset-1",
+		Count: 1,
+		Config: &commonv1.Config{
+			Data: map[string]any{"node.roles": []string{"master", "data"}},
+		},
+		PodTemplate: corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name: esv1.ElasticsearchContainerName,
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "elasticsearch-data", MountPath: "/usr/share/elasticsearch/data"},
+					},
+				}},
+			},
+		},
+		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "elasticsearch-data",
+				Labels: map[string]string{
+					// reserved keys: must be stripped before reaching the StatefulSet spec
+					"elasticsearch.k8s.elastic.co/cluster-name": "evil",
+					"common.k8s.elastic.co/type":                "evil",
+					"k8s.elastic.co/foo":                        "bar",
+					// non-reserved keys: must be preserved
+					"team":                          "search",
+					"velero.io/exclude-from-backup": "true",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+	}
+	es := testElasticsearchForNodeSet(nodeSet)
+	client := k8s.NewFakeClient(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
+	})
+
+	ns := es.Spec.NodeSets[0]
+	ver, err := version.Parse(es.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(
+		es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
+		*ns.Config, nil, false, false, false, false,
+	)
+	require.NoError(t, err)
+
+	sts, err := BuildStatefulSet(
+		context.Background(), client, es, ns, cfg,
+		nil, nil, false, PolicyConfig{}, metadata.Metadata{}, "", false,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, sts.Spec.VolumeClaimTemplates, 1)
+	gotLabels := sts.Spec.VolumeClaimTemplates[0].ObjectMeta.Labels
+	for _, reserved := range []string{
+		"elasticsearch.k8s.elastic.co/cluster-name",
+		"common.k8s.elastic.co/type",
+		"k8s.elastic.co/foo",
+	} {
+		_, present := gotLabels[reserved]
+		require.False(t, present, "reserved key %q must be stripped from the produced StatefulSet's VCT labels", reserved)
+	}
+	require.Equal(t, "search", gotLabels["team"], "non-reserved key 'team' must be preserved")
+	require.Equal(t, "true", gotLabels["velero.io/exclude-from-backup"], "non-reserved key 'velero.io/exclude-from-backup' must be preserved")
+
+	// The user's CR must not be mutated by the reconciler-side strip helper.
+	require.Contains(t, es.Spec.NodeSets[0].VolumeClaimTemplates[0].ObjectMeta.Labels, "common.k8s.elastic.co/type",
+		"reconciler-side strip must not mutate the input Elasticsearch resource's VCT labels")
+}
+
 func TestNodeSetResources_BuildStatefulSet_nil_existing_statefulsets(t *testing.T) {
 	nodeSet := esv1.NodeSet{
 		Name:  "nodeset-1",

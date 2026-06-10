@@ -6,11 +6,11 @@ package annotation
 
 import (
 	"maps"
-	"regexp"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata/reserved"
 )
 
 const (
@@ -19,8 +19,6 @@ const (
 	// PropagateLabelsAnnotation is the annotation used to indicate which labels should be propagated to child objects.
 	PropagateLabelsAnnotation = "eck.k8s.alpha.elastic.co/propagate-labels"
 )
-
-var eckAnnotationsRegex = regexp.MustCompile(`.*\.k8s\.(.*\.)*elastic\.co/.*`)
 
 // MetadataToPropagate holds the annotations and labels that should be propagated to children.
 type MetadataToPropagate struct {
@@ -32,7 +30,7 @@ type MetadataToPropagate struct {
 // The annotations and labels to propagate are determined by the values of the eck.k8s.elastic.co/propagate-(annotations|labels) annotations.
 // Users are expected to provide a comma separated list of annotations or labels they wish to have propagated. The special value of "*" signals
 // that all existing annotations/labels should be propagated.
-// When propagating annotations, any ECK annotations and the kubectl last applied configuration annotation are ignored.
+// ECK-owned keys (see metadata/reserved) and kubectl's last-applied-configuration annotation are never propagated.
 func GetMetadataToPropagate(obj metav1.Object) MetadataToPropagate {
 	md := MetadataToPropagate{}
 
@@ -41,20 +39,37 @@ func GetMetadataToPropagate(obj metav1.Object) MetadataToPropagate {
 	}
 
 	if annotationsToPropagate, ok := obj.GetAnnotations()[PropagateAnnotationsAnnotation]; ok {
-		md.Annotations = parseList(annotationsToPropagate, removeExcludedAnnotations(obj.GetAnnotations()))
+		md.Annotations = parseList(annotationsToPropagate, filterPropagatableAnnotations(obj.GetAnnotations()))
 	}
 
 	if labelsToPropagate, ok := obj.GetAnnotations()[PropagateLabelsAnnotation]; ok {
-		md.Labels = parseList(labelsToPropagate, obj.GetLabels())
+		md.Labels = parseList(labelsToPropagate, filterPropagatableLabels(obj.GetLabels()))
 	}
 
 	return md
 }
 
-func removeExcludedAnnotations(annotations map[string]string) map[string]string {
+func filterPropagatableAnnotations(annotations map[string]string) map[string]string {
+	if len(annotations) == 0 {
+		return nil
+	}
 	m := make(map[string]string, len(annotations))
 	for k, v := range annotations {
-		if k == corev1.LastAppliedConfigAnnotation || eckAnnotationsRegex.MatchString(k) {
+		if reserved.IsReservedAnnotationKey(k) {
+			continue
+		}
+		m[k] = v
+	}
+	return m
+}
+
+func filterPropagatableLabels(labels map[string]string) map[string]string {
+	if len(labels) == 0 {
+		return nil
+	}
+	m := make(map[string]string, len(labels))
+	for k, v := range labels {
+		if reserved.IsReservedLabelKey(k) {
 			continue
 		}
 		m[k] = v
