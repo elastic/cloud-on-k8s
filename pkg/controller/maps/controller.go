@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -35,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -276,6 +278,10 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
 	}
 
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(commonnodelabels.AnnotatePods(ctx, r.K8sClient(), &ems))
+
 	return results, status
 }
 
@@ -291,6 +297,12 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 
 	warnings, err := emsv1alpha1.Validate(&ems, nil)
 	if err != nil {
+		ulog.FromContext(ctx).Error(err, "Validation failed")
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+	if errs := commonnodelabels.ValidateAnnotation(ems.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
+		err := apierrors.NewInvalid(schema.GroupKind{Group: emsv1alpha1.GroupVersion.Group, Kind: emsv1alpha1.Kind}, ems.Name, errs)
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
@@ -329,6 +341,12 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 
 	// - in the Elastic Maps Server configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+
+	// Changes to the downward-node-labels annotation must roll the Elastic Maps Server Pods so the new
+	// annotations are re-applied on scheduling.
+	if ems.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(ems.Annotations[emsv1alpha1.DownwardNodeLabelsAnnotation]))
+	}
 
 	// - in the Elastic Maps Server TLS certificates
 	if ems.Spec.HTTP.TLS.Enabled() {

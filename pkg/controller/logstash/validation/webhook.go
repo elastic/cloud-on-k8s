@@ -15,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -29,10 +30,11 @@ const (
 var lslog = ulog.Log.WithName("ls-validation")
 
 // RegisterWebhook registers the Logstash validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels commonnodelabels.NodeLabels, managedNamespaces []string) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
+		exposedNodeLabels:    exposedNodeLabels,
 	}
 	// Logstash has no license-dependent validation, so we pass nil here.
 	v := commonwebhook.NewResourceValidator[*lsv1alpha1.Logstash](nil, managedNamespaces, inner)
@@ -44,11 +46,12 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespa
 type validator struct {
 	client               k8s.Client
 	validateStorageClass bool
+	exposedNodeLabels    commonnodelabels.NodeLabels
 }
 
 func (v *validator) ValidateCreate(_ context.Context, ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	lslog.V(1).Info("validate create", "name", ls.Name)
-	return ValidateLogstash(ls)
+	return ValidateLogstash(ls, v.exposedNodeLabels)
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alpha1.Logstash) (admission.Warnings, error) {
@@ -56,7 +59,7 @@ func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *lsv1alph
 
 	// Match Elasticsearch: run full validation on the new object first so warnings are collected before
 	// update-only checks; when update-only checks fail, return those errors but keep prior warnings.
-	warnings, valErr := ValidateLogstash(newObj)
+	warnings, valErr := ValidateLogstash(newObj, v.exposedNodeLabels)
 
 	var errs field.ErrorList
 	for _, val := range updateValidations(ctx, v.client, v.validateStorageClass) {
@@ -78,7 +81,7 @@ func (v *validator) ValidateDelete(_ context.Context, _ *lsv1alpha1.Logstash) (a
 
 // ValidateLogstash validates a Logstash instance against a set of validation funcs.
 // Returns any admission warnings plus an error if validation fails.
-func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
+func ValidateLogstash(ls *lsv1alpha1.Logstash, exposedNodeLabels commonnodelabels.NodeLabels) (admission.Warnings, error) {
 	var warnings admission.Warnings
 	// CheckDeprecatedStackVersion's second return is field.ErrorList; it is always nil
 	// (parse/unsupported-version failures are handled by validations(), not here).
@@ -95,6 +98,7 @@ func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 		warnings = append(warnings, resourcesWarning)
 	}
 	errs := check(ls, validations())
+	errs = append(errs, commonnodelabels.ValidateAnnotation(ls.Annotations, exposedNodeLabels)...)
 	if len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "logstash.k8s.elastic.co", Kind: lsv1alpha1.Kind},

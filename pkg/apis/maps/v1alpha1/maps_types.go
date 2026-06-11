@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
@@ -18,6 +19,9 @@ const (
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ElasticMapsServer"
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the Elastic Maps Server Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // MapsSpec holds the specification of an Elastic Maps Server instance.
@@ -82,6 +86,17 @@ type MapsStatus struct {
 // IsMarkedForDeletion returns true if the Elastic Maps Server instance is going to be deleted
 func (m *ElasticMapsServer) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the Elastic Maps Server Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (m *ElasticMapsServer) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(m.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Elastic Maps Server Pods.
+func (m *ElasticMapsServer) HasDownwardNodeLabels() bool {
+	return len(m.DownwardNodeLabels()) > 0
 }
 
 func (m *ElasticMapsServer) Associated() commonv1.Associated {

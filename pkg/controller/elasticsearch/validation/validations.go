@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	stackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -116,26 +117,8 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 // Zone-awareness topology keys are only validated when the policy is configured (non-empty), so that
 // zone awareness works out of the box when no exposed-node-labels restriction is in place.
 func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
-	var errs field.ErrorList
-	annotationValue := ""
-	if proposed.Annotations != nil {
-		annotationValue = proposed.Annotations[esv1.DownwardNodeLabelsAnnotation]
-	}
 	// firstly validate the downward-node-labels annotations
-	annotationLabels := esv1.ParseDownwardNodeLabels(annotationValue)
-	for nodeLabel := range annotationLabels {
-		if exposedNodeLabels.IsAllowed(nodeLabel) {
-			continue
-		}
-		errs = append(
-			errs,
-			field.Invalid(
-				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
-				nodeLabel,
-				notAllowedNodesLabelMsg,
-			),
-		)
-	}
+	errs := commonnodelabels.ValidateAnnotation(proposed.Annotations, exposedNodeLabels)
 
 	// then validate the zone-awareness-derived topology keys
 	if len(exposedNodeLabels) > 0 {

@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
@@ -19,6 +20,9 @@ const (
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ApmServer"
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the APM Server Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // ApmServerSpec holds the specification of an APM Server.
@@ -126,6 +130,17 @@ type ApmServerList struct {
 // IsMarkedForDeletion returns true if the APM is going to be deleted
 func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the APM Server Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (as *ApmServer) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(as.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the APM Server Pods.
+func (as *ApmServer) HasDownwardNodeLabels() bool {
+	return len(as.DownwardNodeLabels()) > 0
 }
 
 func (as *ApmServer) SecureSettings() []commonv1.SecretSource {

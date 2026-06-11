@@ -13,12 +13,16 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Beat"
+	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
+	// to be set as annotations on the Beat Pods.
+	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 var (
@@ -279,6 +283,17 @@ func (b *Beat) ServiceAccountName() string {
 // IsMarkedForDeletion returns true if the Beat is going to be deleted
 func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
+}
+
+// DownwardNodeLabels returns the node labels to copy as annotations on the Beat Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (b *Beat) DownwardNodeLabels() []string {
+	return nodelabels.FromAnnotations(b.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Beat Pods.
+func (b *Beat) HasDownwardNodeLabels() bool {
+	return len(b.DownwardNodeLabels()) > 0
 }
 
 func (b *Beat) ElasticsearchRef() commonv1.ElasticsearchSelector {

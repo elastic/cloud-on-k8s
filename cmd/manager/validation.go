@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -87,16 +88,21 @@ func setupWebhook(
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces,
+		commonwebhook.WithNodeLabelsValidation(apmv1.Validate, exposedNodeLabels, schema.GroupKind{Group: apmv1.GroupVersion.Group, Kind: apmv1.Kind}), "APM Server")
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces,
+		commonwebhook.WithNodeLabelsValidation(beatv1beta1.Validate, exposedNodeLabels, schema.GroupKind{Group: beatv1beta1.GroupVersion.Group, Kind: beatv1beta1.Kind}), "Beat")
 	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate, "Elasticsearch")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces,
+		commonwebhook.WithNodeLabelsValidation(kbv1.Validate, exposedNodeLabels, schema.GroupKind{Group: kbv1.GroupVersion.Group, Kind: kbv1.Kind}), "Kibana")
 	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate, "Elastic Maps Server")
-	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces,
+		commonwebhook.WithNodeLabelsValidation(emsv1alpha1.Validate, exposedNodeLabels, schema.GroupKind{Group: emsv1alpha1.GroupVersion.Group, Kind: emsv1alpha1.Kind}), "Elastic Maps Server")
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces,
+		commonwebhook.WithNodeLabelsValidation(eprv1alpha1.Validate, exposedNodeLabels, schema.GroupKind{Group: eprv1alpha1.GroupVersion.Group, Kind: eprv1alpha1.Kind}), "Package Registry")
 	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
 
 	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
@@ -104,9 +110,9 @@ func setupWebhook(
 	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, managedNamespaces)
 	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
-	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces)
+	agentcontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

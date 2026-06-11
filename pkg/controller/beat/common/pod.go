@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -149,6 +150,19 @@ func buildPodTemplate(
 		_, _ = configHash.Write([]byte(keystoreResources.Hash))
 		volumes = append(volumes, keystoreResources.Volume)
 		initContainers = append(initContainers, keystoreResources.InitContainer)
+	}
+
+	// Changes to the downward-node-labels annotation must roll the Beat Pods so the new annotations
+	// are re-applied on scheduling.
+	if params.Beat.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(params.Beat.Annotations[beatv1beta1.DownwardNodeLabelsAnnotation]))
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(params.Beat.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		volumes = append(volumes, downwardAPIVolume.Volume())
+		initContainers = append(initContainers, waitInit)
 	}
 
 	if monitoring.IsLogsDefined(&params.Beat) {
