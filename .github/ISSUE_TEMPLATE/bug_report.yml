@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a problem with ECK
+labels: [">bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check the [existing issues](https://github.com/elastic/cloud-on-k8s/issues) to see if this has already been reported.
+
+  - type: textarea
+    id: what-did-you-do
+    attributes:
+      label: What did you do?
+      description: Steps to reproduce the behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to see?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What did you see instead?
+    validations:
+      required: true
+
+  - type: input
+    id: eck-version
+    attributes:
+      label: ECK version
+      placeholder: "e.g. 2.14.0 or git commit SHA"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: k8s-distribution
+    attributes:
+      label: Kubernetes distribution
+      options:
+        - GKE
+        - EKS
+        - AKS
+        - OpenShift
+        - Rancher
+        - TKGI (formerly PKS)
+        - k3s
+        - RKE2
+        - microk8s
+        - kubeadm (on-premises)
+        - Self-managed (other)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: kubectl-version
+    attributes:
+      label: kubectl version output
+      render: shell
+      placeholder: |
+        $ kubectl version
+    validations:
+      required: true
+
+  - type: textarea
+    id: resource-definition
+    attributes:
+      label: Resource definition
+      description: Relevant ECK resource YAML (Elasticsearch, Kibana, etc.)
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Operator logs
+      description: Relevant log output from the ECK operator or the affected pods.
+      render: shell
