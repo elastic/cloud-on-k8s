@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -18,7 +19,7 @@ const (
 	noGroup  = "nogroup"
 	repoName = "elastic/cloud-on-k8s"
 
-	releaseNotesTemplate = `## {{$.Version}} [elastic-cloud-kubernetes-{{replace $.Version "." "" }}-release-notes] 
+	releaseNotesTemplate = `## {{$.Version}} [elastic-cloud-kubernetes-{{replace $.Version "." "" }}-release-notes]
 
 {{range $group := .GroupOrder -}}
 {{$grouplbl := index $.LabelMapping $group}}
@@ -87,10 +88,11 @@ func main() {
 		fmt.Printf("Usage: GH_TOKEN=<github token> %s VERSION [PREVIOUS_VERSION]\n", os.Args[0])
 		os.Exit(2)
 	}
+	ctx := context.Background()
 
 	version := os.Args[1]
 
-	prs, err := github.LoadPullRequests(repoName, version, ignoredLabels)
+	prs, err := github.LoadPullRequests(ctx, repoName, version, ignoredLabels)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 		os.Exit(1)
@@ -106,7 +108,7 @@ func main() {
 	var updatedDeps []string
 	if len(os.Args) > 2 {
 		previousVersion := os.Args[2]
-		updatedDeps = github.GoDiff(repoName, previousVersion, version)
+		updatedDeps = github.GoDiff(ctx, repoName, previousVersion, version)
 	} else {
 		_, err := fmt.Fprintln(os.Stderr, "No previous version provided, skipping go.mod diff.")
 		if err != nil {
@@ -161,8 +163,8 @@ func render(version string, groups map[string][]github.PullRequest, updatedDeps 
 		"id": func(s string) string {
 			return strings.TrimPrefix(s, ">")
 		},
-		"replace": func(input, old, new string) string {
-			replacedString := strings.ReplaceAll(input, old, new)
+		"replace": func(input, old, newStr string) string {
+			replacedString := strings.ReplaceAll(input, old, newStr)
 			return strings.ToLower(replacedString)
 		},
 	}
