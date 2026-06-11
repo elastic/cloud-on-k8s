@@ -90,6 +90,10 @@ type ReconcileRemoteClusters struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+		r.onNamespaceFlipOff(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -99,7 +103,7 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.keystoreProvider.ForgetCluster(request.NamespacedName)
+			r.onNamespaceFlipOff(request.NamespacedName)
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
 		}
 		return reconcile.Result{}, err
@@ -110,6 +114,10 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 		return reconcile.Result{}, nil
 	}
 	return doReconcile(ctx, r, &es)
+}
+
+func (r *ReconcileRemoteClusters) onNamespaceFlipOff(obj types.NamespacedName) {
+	r.keystoreProvider.ForgetCluster(obj)
 }
 
 // deleteAllRemoteCa deletes all associated remote certificate authorities

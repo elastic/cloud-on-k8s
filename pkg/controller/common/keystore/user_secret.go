@@ -103,7 +103,8 @@ func reconcileSecureSettings(
 	hasKeystore HasKeystore,
 	userSecrets []corev1.Secret,
 	namer name.Namer,
-	meta metadata.Metadata) (*corev1.Secret, error) {
+	meta metadata.Metadata,
+) (*corev1.Secret, error) {
 	aggregatedData := map[string][]byte{}
 
 	for _, s := range userSecrets {
