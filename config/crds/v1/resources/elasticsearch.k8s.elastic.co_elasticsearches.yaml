@@ -10845,6 +10845,23 @@ spec:
                     description: TLS defines options for configuring TLS on the transport
                       layer.
                     properties:
+                      caSecretKeys:
+                        description: |-
+                          CASecretKeys optionally overrides which keys ECK reads from the Secret referenced by Certificate.
+                          Useful when the Secret was produced by cert-manager, which emits tls.crt/tls.key alongside ca.crt.
+                          When either field is set, the legacy tls.* vs modern ca.* auto-detection (and its "both exist"
+                          conflict check) is skipped entirely.
+                        properties:
+                          caCertKey:
+                            description: CACertKey is the Secret data key holding
+                              the CA certificate (PEM). Defaults to "ca.crt" when
+                              empty.
+                            type: string
+                          caKeyKey:
+                            description: CAKeyKey is the Secret data key holding the
+                              CA private key (PEM). Defaults to "ca.key" when empty.
+                            type: string
+                        type: object
                       certificate:
                         description: |-
                           Certificate is a reference to a Kubernetes secret that contains the CA certificate
