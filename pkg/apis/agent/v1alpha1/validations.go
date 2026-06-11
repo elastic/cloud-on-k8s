@@ -329,5 +329,18 @@ func checkClientAuthentication(a *Agent) field.ErrorList {
 			),
 		}
 	}
+	v, err := semver.Parse(a.Spec.Version)
+	if err != nil {
+		return nil // version parse errors are reported by checkSupportedVersion
+	}
+	if !FleetServerClientAuthSupported(v) {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires Elastic Agent 9.3.6+, 9.4.3+, or 9.5.0+",
+			),
+		}
+	}
 	return nil
 }
