@@ -140,6 +140,15 @@ func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 			wantReturnedSecret: true,
 			wantSecretInAPI:    true,
 		},
+		{
+			// ES >= 9.5 without the opt-in annotation still uses the keystore path; FIPS applies.
+			// The annotation-based routing to the file-based path is handled in driver.go, not here.
+			name:               "ES >= 9.5 without annotation with FIPS enabled reconciles password secret",
+			es:                 esFIPSNodeSetOnly,
+			esVersion:          esversion.FileBasedSecureSettingsMinVersion,
+			wantReturnedSecret: true,
+			wantSecretInAPI:    true,
+		},
 	}
 
 	for _, tt := range tests {

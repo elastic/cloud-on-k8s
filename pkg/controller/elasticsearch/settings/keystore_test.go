@@ -567,6 +567,16 @@ func TestShouldManageGeneratedKeystorePassword(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			// ES >= 9.5 without the opt-in annotation still uses the keystore path,
+			// so the managed password applies when FIPS is enabled.
+			name:      "ES >= 9.5 without file-based-settings annotation still manages password when FIPS enabled",
+			esVersion: esversion.FileBasedSecureSettingsMinVersion,
+			nodeSets: []esv1.NodeSet{
+				{Name: "default", Config: &fipsConfig},
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
