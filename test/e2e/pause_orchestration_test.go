@@ -15,11 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1b1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -29,6 +31,7 @@ import (
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	agentlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	apmlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -43,6 +46,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
+	testautoops "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
@@ -71,6 +75,10 @@ func TestPauseOrchestration_Agent(t *testing.T) {
 
 func TestPauseOrchestration_Beat(t *testing.T) {
 	testSequenceForTypes(t, beatcommon.TypeLabelValue)
+}
+
+func TestPauseOrchestration_AutoOps(t *testing.T) {
+	testSequenceForTypes(t, autoops.TypeLabelValue)
 }
 
 func testSequenceForTypes(t *testing.T, typ ...string) {
@@ -383,6 +391,8 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 		return &agentv1alpha1.Agent{}
 	case beatcommon.TypeLabelValue:
 		return &beatv1b1.Beat{}
+	case autoops.TypeLabelValue:
+		return &autoopsv1alpha1.AutoOpsAgentPolicy{}
 	default:
 		t.Fatalf("unknown type: %s", typ)
 	}
@@ -391,7 +401,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, autoops.TypeLabelValue} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}
@@ -442,6 +452,9 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
+	if _, testAutoOps := testTypes[autoops.TypeLabelValue]; testAutoOps {
+		esInitial.WithLabel("autoops", "enabled")
+	}
 	esWithLicense := test.LicenseTestBuilder(esInitial)
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
 	initialBuilder.AddBuilder(esWithLicense)
@@ -515,6 +528,19 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		initialBuilder.MaybeAddBuilder(entlabel.Type, entInitial)
 	}
+
+	// AutoOps
+	mockURL := testautoops.CloudConnectedAPIMockURL()
+	autoopsInitial := testautoops.NewBuilder(testName(autoops.TypeLabelValue)).
+		WithNamespace(esInitial.Namespace()).
+		WithResourceSelector(metav1.LabelSelector{
+			MatchLabels: map[string]string{"autoops": "enabled"},
+		}).WithNamespaceSelector(metav1.LabelSelector{
+		MatchLabels: map[string]string{"kubernetes.io/metadata.name": esInitial.Namespace()},
+	}).WithCloudConnectedAPIURL(mockURL).
+		WithAutoOpsOTelURL(mockURL)
+	initialBuilder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsInitial)
+
 	initial = initialBuilder.phase
 
 	// Phase 1: transition to pause-orchestration: true
@@ -537,6 +563,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase1Builder.MaybeAddBuilder(entlabel.Type, entEnabled)
 	}
+	autoopsEnabled := autoopsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&autoopsInitial)
+	phase1Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsEnabled)
 	phase1 = phase1Builder.phase
 
 	// Phase 2: update topology of each application
@@ -582,6 +610,17 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase2Builder.MaybeAddBuilder(entlabel.Type, entUpdated)
 	}
+	autoopsUpdated := autoopsEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("400Mi"),
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+		},
+	}).WithMutatedFrom(&autoopsEnabled)
+	phase2Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsUpdated)
 	phase2 = phase2Builder.phase
 
 	// Phase 3: transition back to disabled
@@ -604,6 +643,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase3Builder.MaybeAddBuilder(entlabel.Type, entDisabled)
 	}
+	autoopsDisabled := autoopsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&autoopsUpdated)
+	phase3Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsDisabled)
 	phase3 = phase3Builder.phase
 
 	// Phase 4: transition back to enabled again
@@ -626,6 +667,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase4Builder.MaybeAddBuilder(entlabel.Type, entReenabled)
 	}
+	autoopsReenabled := autoopsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&autoopsDisabled)
+	phase4Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsReenabled)
 	phase4 = phase4Builder.phase
 
 	// Phase 5: pod deletion (no builders)
@@ -650,6 +693,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase6Builder.MaybeAddBuilder(entlabel.Type, entRedisabled)
 	}
+	autoopsRedisabled := autoopsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&autoopsReenabled)
+	phase6Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsRedisabled)
 	phase6 = phase6Builder.phase
 
 	require.Truef(t,

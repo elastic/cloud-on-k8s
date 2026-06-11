@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,6 +21,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -132,11 +134,15 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		accessibleClusters = append(accessibleClusters, es)
 	}
 
-	// Clean up resources that no longer match the Policy's selector OR where access was revoked
-	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, accessibleClusters); err != nil {
-		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-		results.WithError(err)
+	// Orphan cleanup is treated as a spec-driven write (it deletes Deployments for newly-unmatched ES
+	// clusters) so it is skipped while orchestration is paused, consistent with how other controllers
+	// handle the pause annotation.
+	if !common.IsOrchestrationPaused(&policy) {
+		if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, accessibleClusters); err != nil {
+			log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
+		}
 	}
 
 	state.UpdateMonitoredResources(len(accessibleClusters))
@@ -145,6 +151,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		return results
 	}
 
+	pendingChanges := false
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
 
@@ -216,6 +223,27 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
+		if common.IsOrchestrationPaused(&policy) {
+			var actual appsv1.Deployment
+			err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploymentParams), &actual)
+			switch {
+			case err == nil:
+				if common.HasPendingChanges(&deploymentParams, &actual) {
+					pendingChanges = true
+				}
+				if isDeploymentReady(actual) {
+					state.MarkResourceReady()
+				}
+			case apierrors.IsNotFound(err):
+				pendingChanges = true
+			default:
+				log.Error(err, "while fetching deployment while paused")
+				state.ResourceError(es, "Failed to fetch AutoOps agent deployment while paused", err)
+				results.WithError(err)
+			}
+			continue
+		}
+
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
 			log.Error(err, "while reconciling deployment")
@@ -227,6 +255,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if isDeploymentReady(reconciledDeployment) {
 			state.MarkResourceReady()
 		}
+	}
+
+	switch {
+	case common.IsOrchestrationPaused(&policy):
+		state.SetOrchestrationPaused(pendingChanges)
+	default:
+		state.MaybeResetOrchestrationPaused()
 	}
 
 	// Schedule a requeue to periodically re-check RBAC permissions.
