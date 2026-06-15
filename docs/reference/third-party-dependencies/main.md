@@ -23,7 +23,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.42.0 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.19.23 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.19.24 | Apache-2.0 |
 | [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.103.3 | Apache-2.0 |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
@@ -57,11 +57,11 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.53.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20251219203646-944ab1f22d93 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.283.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.284.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.36.1 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.36.1 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.36.1 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.36.2 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.36.2 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.36.2 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.140.0 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20260319190234-28399d86e0b5 | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.24.1 | Apache-2.0 |
@@ -252,7 +252,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [gonum.org/v1/gonum](https://github.com/gonum/gonum) | v0.17.0 | BSD-3-Clause |
 | [google.golang.org/genproto](https://google.golang.org/genproto) | v0.0.0-20260319201613-d00831a3d3e7 | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260401024825-9d38bb4040a9 | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260523011958-0a33c5d7ca68 | Apache-2.0 |
+| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260526163538-3dc84a4a5aaa | Apache-2.0 |
 | [google.golang.org/grpc](https://google.golang.org/grpc) | v1.81.1 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.12-0.20260120151049-f2248ac996af | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
@@ -268,7 +268,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/component-base](https://github.com/kubernetes/component-base) | v0.36.0 | Apache-2.0 |
 | [k8s.io/gengo/v2](https://github.com/kubernetes/gengo) | v2.0.0-20250922181213-ec3ebc5fd46b | Apache-2.0 |
 | [k8s.io/kube-openapi](https://github.com/kubernetes/kube-openapi) | v0.0.0-20260427204847-8949caaa1199 | Apache-2.0 |
-| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.36.1 | Apache-2.0 |
+| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.36.2 | Apache-2.0 |
 | [sigs.k8s.io/apiserver-network-proxy/konnectivity-client](https://sigs.k8s.io/apiserver-network-proxy/konnectivity-client) | v0.34.0 | Apache-2.0 |
 | [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20250730193827-2d320260d730 | Apache-2.0 |
 | [sigs.k8s.io/randfill](https://sigs.k8s.io/randfill) | v1.0.0 | Apache-2.0 |
