@@ -166,24 +166,24 @@ plans:
   clusterName: eck
   clientVersion: 0.31.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.1
   enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.36.1@sha256:21c46cf61fd45873f89e6a1bfcba4b7904dffa84c2bec88aeeca9a0409af4725
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
   clientVersion: 0.31.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.1
   enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.36.1@sha256:21c46cf61fd45873f89e6a1bfcba4b7904dffa84c2bec88aeeca9a0409af4725
     ipFamily: ipv4
 - id: k3d-dev
   operation: create
