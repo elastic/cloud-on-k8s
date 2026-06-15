@@ -1729,3 +1729,47 @@ func Test_validClientAuthentication(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "pause-orchestration false",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "pause-orchestration true",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "pause-orchestration invalid",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := commonv1.CheckPauseOrchestrationAnnotation(&tt.es)
+			actualErrors := len(actual) > 0
+			assert.Equal(t, tt.expectErrors, actualErrors)
+		})
+	}
+}

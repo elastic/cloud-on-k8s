@@ -27,10 +27,9 @@ import (
 )
 
 const (
-	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
-	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
-	// health monitoring).
-	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
+	// PauseOrchestrationAnnotation is re-exported from commonv1 so existing callers keep working; the canonical
+	// definition lives in pkg/apis/common/v1 because the validating webhook depends on it.
+	PauseOrchestrationAnnotation = commonv1.PauseOrchestrationAnnotation
 	// PausedWithPendingChangesMessage is the message displayed in the OrchestrationPaused condition when the
 	// PauseOrchestrationAnnotation is enabled and spec changes have been made.
 	PausedWithPendingChangesMessage = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"

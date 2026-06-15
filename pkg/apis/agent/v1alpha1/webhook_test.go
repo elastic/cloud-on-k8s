@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test"
 )
 
@@ -204,6 +205,39 @@ func TestWebhook(t *testing.T) {
 				`spec.version: Forbidden: Version downgrades are not supported`,
 			),
 		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, a)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, a)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, a)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(agentv1alpha1.Validate)
@@ -214,8 +248,9 @@ func TestWebhook(t *testing.T) {
 func mkAgent(uid string) *agentv1alpha1.Agent {
 	return &agentv1alpha1.Agent{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
+			Name:        "webhook-test",
+			UID:         types.UID(uid),
+			Annotations: make(map[string]string),
 		},
 		Spec: agentv1alpha1.AgentSpec{
 			Version:   "7.17.0",

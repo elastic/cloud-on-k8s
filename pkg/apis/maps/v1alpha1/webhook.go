@@ -27,6 +27,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		commonv1.PauseOrchestrationAnnotationCheck[*ElasticMapsServer](),
 	}
 )
 
