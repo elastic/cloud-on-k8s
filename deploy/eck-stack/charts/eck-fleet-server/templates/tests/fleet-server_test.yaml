@@ -22,7 +22,7 @@ tests:
           value: quickstart-eck-fleet-server
       - equal:
           path: spec.version
-          value: 9.4.0
+          value: 9.4.2
       - equal:
           path: spec.kibanaRef.name
           value: eck-kibana
@@ -52,7 +52,7 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.19.0
+            helm.sh/chart: eck-fleet-server-0.19.1
             test: label
       - equal:
           path: metadata.annotations
@@ -87,14 +87,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.19.0
+            helm.sh/chart: eck-fleet-server-0.19.1
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.4.0
+            version: 9.4.2
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -135,14 +135,14 @@ tests:
             app.kubernetes.io/instance: quickstart
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: eck-fleet-server
-            helm.sh/chart: eck-fleet-server-0.19.0
+            helm.sh/chart: eck-fleet-server-0.19.1
       - equal:
           path: spec
           value:
             fleetServerEnabled: true
             mode: fleet
             policyID: eck-fleet-server
-            version: 9.4.0
+            version: 9.4.2
             deployment: {}
             elasticsearchRefs:
             - name: eck-elasticsearch
@@ -160,47 +160,47 @@ tests:
     set:
       spec:
         deployment: {}
-        image: my.registry.com/elastic/fleet-server:9.4.0
+        image: my.registry.com/elastic/fleet-server:9.4.2
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0
+          value: my.registry.com/elastic/fleet-server:9.4.2
   - it: values.image should render properly
     set:
       deployment: {}
-      image: my.registry.com/elastic/fleet-server:9.4.0
+      image: my.registry.com/elastic/fleet-server:9.4.2
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0
+          value: my.registry.com/elastic/fleet-server:9.4.2
   - it: values.spec.image should take precedence over values.image
     set:
       spec:
         deployment: {}
-        image: quay.io/elastic/fleet-server:9.4.0
-      image: my.registry.com/elastic/fleet-server:9.4.0
+        image: quay.io/elastic/fleet-server:9.4.2
+      image: my.registry.com/elastic/fleet-server:9.4.2
     asserts:
       - equal:
           path: spec.image
-          value: quay.io/elastic/fleet-server:9.4.0
+          value: quay.io/elastic/fleet-server:9.4.2
   - it: values.spec.image null should fallback to values.image
     set:
       spec:
         deployment: {}
         image: null
-      image: my.registry.com/elastic/fleet-server:9.4.0
+      image: my.registry.com/elastic/fleet-server:9.4.2
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0
+          value: my.registry.com/elastic/fleet-server:9.4.2
   - it: values.image with digest should render properly
     set:
       deployment: {}
-      image: my.registry.com/elastic/fleet-server:9.4.0@sha256:abc123
+      image: my.registry.com/elastic/fleet-server:9.4.2@sha256:abc123
     asserts:
       - equal:
           path: spec.image
-          value: my.registry.com/elastic/fleet-server:9.4.0@sha256:abc123
+          value: my.registry.com/elastic/fleet-server:9.4.2@sha256:abc123
   - it: values.image null should omit spec.image
     set:
       deployment: {}
