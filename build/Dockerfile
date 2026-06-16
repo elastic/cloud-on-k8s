@@ -1,6 +1,6 @@
 # ---------------------------------------------
 # Build the operator binary
-FROM docker.elastic.co/wolfi/go:v1.26.2-r0@sha256:8ae760d4a7bb419d04944fe8c164de74a824e7374b359cd2f926716a6ebf9116 AS builder
+FROM docker.elastic.co/wolfi/go:v1.26.4-r0@sha256:c202f194a5e7a5c0ed5625b03c4a335dd2cc16cc51fe888c7d96a3cf99affd42 AS builder
 
 ARG VERSION
 ARG SHA1
@@ -31,7 +31,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # static - Default image for static binary
-FROM docker.elastic.co/wolfi/static:latest@sha256:d6d54da1c5bf5d9cecb231786adca86934607763067c8d7d9d22057abe6d5dbc AS static
+FROM docker.elastic.co/wolfi/static:latest@sha256:77d8b8925dc27970ec2f48243f44c7a260d52c49cd778288e4ee97566e0cb75b AS static
 
 ARG VERSION
 
@@ -94,7 +94,7 @@ CMD ["manager"]
 
 # ---------------------------------------------
 # ubi - Image that uses ubi-micro as base
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.7-1773894938 AS ubi
+FROM registry.access.redhat.com/ubi9/ubi-micro:1779858857 AS ubi
 
 ARG VERSION
 
