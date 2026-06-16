@@ -5,17 +5,25 @@
 package autoops
 
 import (
+	"context"
 	"testing"
 
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var defaultConfigNoSSL = []byte(`
@@ -299,128 +307,442 @@ func mkES(sslEnabled bool) esv1.Elasticsearch {
 	}
 }
 
-func Test_buildAutoOpsESConfigMap(t *testing.T) {
-	type args struct {
-		policy func() autoopsv1alpha1.AutoOpsAgentPolicy
-		es     func() esv1.Elasticsearch
+// mkReconciler builds a minimal AgentPolicyReconciler for use in tests.
+func mkReconciler(t *testing.T, objects ...client.Object) *AgentPolicyReconciler {
+	t.Helper()
+	scheme.SetupScheme()
+	c := k8s.NewFakeClient(objects...)
+	return &AgentPolicyReconciler{
+		Client:         c,
+		dynamicWatches: watches.NewDynamicWatches(),
+		recorder:       toolsevents.NewFakeRecorder(10),
 	}
+}
+
+// asMap asserts v is map[string]any, failing the test immediately if not.
+func asMap(t *testing.T, v any) map[string]any {
+	t.Helper()
+	m, ok := v.(map[string]any)
+	require.True(t, ok, "expected map[string]any, got %T", v)
+	return m
+}
+
+// asSlice asserts v is []any, failing the test immediately if not.
+func asSlice(t *testing.T, v any) []any {
+	t.Helper()
+	s, ok := v.([]any)
+	require.True(t, ok, "expected []any, got %T", v)
+	return s
+}
+
+// unpackConfigYAML parses a YAML string from a ConfigMap into a map for assertions.
+func unpackConfigYAML(t *testing.T, cm corev1.ConfigMap) map[string]any {
+	t.Helper()
+	data, ok := cm.Data[autoopsv1alpha1.ConfigFileName]
+	require.True(t, ok, "ConfigMap missing key %s", autoopsv1alpha1.ConfigFileName)
+	var out map[string]any
+	parsed, err := uyaml.NewConfig([]byte(data), commonv1.CfgOptions...)
+	require.NoError(t, err)
+	require.NoError(t, parsed.Unpack(&out))
+	return out
+}
+
+func Test_buildAutoOpsESConfigMap(t *testing.T) {
+	// validConfigRefYAML is a minimal valid config used by ConfigRef test cases.
+	validConfigRefYAML := []byte(`
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - module: autoops_es
+          hosts: ${env:AUTOOPS_ES_URL}
+          period: 10s
+          ssl:
+            verification_mode: none
+          metricsets:
+            - cluster_health
+`)
+
 	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
+		name           string
+		policy         func() autoopsv1alpha1.AutoOpsAgentPolicy // defaults to mkPolicy()
+		es             func() esv1.Elasticsearch                 // defaults to mkES(false)
+		specConfigYAML []byte                                    // raw YAML parsed into policy.Spec.Config
+		secrets        []client.Object
+		want           []byte                                  // exact YAML comparison via ucfg parse
+		check          func(t *testing.T, cm corev1.ConfigMap) // custom assertions
+		wantErr        bool
 	}{
 		{
 			name: "default config without SSL",
-			args: args{
-				policy: mkPolicy,
-				es:     func() esv1.Elasticsearch { return mkES(false) },
-			},
 			want: defaultConfigNoSSL,
 		},
 		{
 			name: "default config with SSL",
-			args: args{
-				policy: mkPolicy,
-				es:     func() esv1.Elasticsearch { return mkES(true) },
-			},
+			es:   func() esv1.Elasticsearch { return mkES(true) },
 			want: defaultConfigWithSSL,
 		},
 		{
 			name: "default config with SSL and client cert",
-			args: args{
-				policy: mkPolicy,
-				es: func() esv1.Elasticsearch {
-					es := mkES(true)
-					es.Annotations = map[string]string{
-						annotation.ClientAuthenticationRequiredAnnotation: "true",
-					}
-					return es
-				},
+			es: func() esv1.Elasticsearch {
+				es := mkES(true)
+				es.Annotations = map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"}
+				return es
 			},
 			want: defaultConfigWithSSLAndClientCert,
 		},
 		{
 			name: "client auth annotation with SSL disabled does not render client cert paths",
-			args: args{
-				policy: mkPolicy,
-				es: func() esv1.Elasticsearch {
-					es := mkES(false)
-					es.Annotations = map[string]string{
-						annotation.ClientAuthenticationRequiredAnnotation: "true",
-					}
-					return es
-				},
+			es: func() esv1.Elasticsearch {
+				es := mkES(false)
+				es.Annotations = map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"}
+				return es
 			},
 			want: defaultConfigNoSSL,
 		},
 		{
-			name: "with metadata labels and annotations",
-			args: args{
-				policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
-					p := mkPolicy()
-					p.ObjectMeta.Labels = map[string]string{
-						"label1": "value1",
-						"label2": "value2",
-					}
-					p.ObjectMeta.Annotations = map[string]string{
-						"annotation1": "value1",
-					}
-					return p
-				},
-				es: func() esv1.Elasticsearch {
-					es := mkES(false)
-					es.Namespace = "test-namespace"
-					return es
-				},
+			name: "metadata labels and annotations propagated to ConfigMap",
+			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := mkPolicy()
+				p.Labels = map[string]string{"label1": "value1", "label2": "value2"}
+				p.Annotations = map[string]string{"annotation1": "value1"}
+				return p
+			},
+			es: func() esv1.Elasticsearch {
+				es := mkES(false)
+				es.Namespace = "test-namespace"
+				return es
 			},
 			want: defaultConfigNoSSL,
+		},
+		{
+			name: "nil user config - output is identical to default",
+			want: defaultConfigNoSSL,
+		},
+		{
+			name: "user adds extra OTLP header - preserved alongside operator headers",
+			specConfigYAML: []byte(`
+exporters:
+  otlphttp:
+    headers:
+      X-Custom-Header: my-value
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				headers := asMap(t, asMap(t, asMap(t, got["exporters"])["otlphttp"])["headers"])
+				assert.Equal(t, "my-value", headers["X-Custom-Header"])
+				assert.Equal(t, "AutoOpsToken ${env:AUTOOPS_TOKEN}", headers["Authorization"])
+			},
+		},
+		{
+			// endpoint is in autoOpsMandatoryConfig, so it is re-applied after user config.
+			name: "user overrides endpoint - mandatory config wins",
+			specConfigYAML: []byte(`
+exporters:
+  otlphttp:
+    endpoint: https://custom.example.com
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				otlp := asMap(t, asMap(t, unpackConfigYAML(t, cm)["exporters"])["otlphttp"])
+				assert.Equal(t, "${env:AUTOOPS_OTEL_URL}", otlp["endpoint"])
+			},
+		},
+		{
+			name: "user increases sending_queue size - user value wins",
+			specConfigYAML: []byte(`
+exporters:
+  otlphttp:
+    sending_queue:
+      queue_size: 104857600
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				sq := asMap(t, asMap(t, asMap(t, got["exporters"])["otlphttp"])["sending_queue"])
+				assert.EqualValues(t, 104857600, sq["queue_size"], "user-supplied queue_size must win over the default 52428800")
+				// Other sending_queue fields from the operator default must still be present.
+				assert.Equal(t, true, sq["block_on_overflow"])
+				assert.Equal(t, true, sq["enabled"])
+			},
+		},
+		{
+			// Even an explicit empty string is overridden by autoOpsMandatoryConfig.
+			name: "user clears otlphttp endpoint - mandatory config re-applies env var reference",
+			specConfigYAML: []byte(`
+exporters:
+  otlphttp:
+    endpoint: ""
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				otlp := asMap(t, asMap(t, unpackConfigYAML(t, cm)["exporters"])["otlphttp"])
+				assert.Equal(t, "${env:AUTOOPS_OTEL_URL}", otlp["endpoint"])
+			},
+		},
+		{
+			// AppendValues appends to existing lists: [] appends nothing, so healthcheckv2 stays.
+			name: "user provides empty service.extensions - healthcheckv2 preserved by AppendValues",
+			specConfigYAML: []byte(`
+service:
+  extensions: []
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				exts := asSlice(t, asMap(t, unpackConfigYAML(t, cm)["service"])["extensions"])
+				found := false
+				for _, e := range exts {
+					if e == "healthcheckv2" {
+						found = true
+					}
+				}
+				assert.True(t, found, "healthcheckv2 must still be present")
+			},
+		},
+		{
+			// ucfg always deep-merges maps regardless of AppendValues: receivers: {} deep-merges
+			// with the existing receivers map, preserving metricbeatreceiver and all its content.
+			name: "user provides empty receivers map - original receivers preserved by map merge",
+			specConfigYAML: []byte(`
+receivers: {}
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				receivers, ok := got["receivers"].(map[string]any)
+				require.True(t, ok, "receivers section must be present")
+				mbr, ok := receivers["metricbeatreceiver"].(map[string]any)
+				require.True(t, ok, "metricbeatreceiver must be present")
+				modules, ok := mbr["metricbeat"].(map[string]any)["modules"].([]any)
+				require.True(t, ok, "modules must be present")
+				found := false
+				for _, m := range modules {
+					if mod, ok := m.(map[string]any); ok && mod["module"] == "autoops_es" {
+						found = true
+					}
+				}
+				assert.True(t, found, "autoops_es module must survive the empty-map merge")
+			},
+		},
+		{
+			// healthcheckv2.http.endpoint is in autoOpsMandatoryConfig and is always re-applied.
+			name: "user changes healthcheckv2 endpoint port - mandatory config re-applies correct port",
+			specConfigYAML: []byte(`
+extensions:
+  healthcheckv2:
+    http:
+      endpoint: "0.0.0.0:9999"
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				hc := asMap(t, asMap(t, got["extensions"])["healthcheckv2"])
+				assert.Equal(t, "0.0.0.0:13133", asMap(t, hc["http"])["endpoint"])
+			},
+		},
+		{
+			// service.telemetry.logs.encoding is in autoOpsMandatoryConfigTemplate, so it is
+			// always re-applied after user config.
+			name: "user sets service.telemetry.logs.encoding - mandatory config wins",
+			specConfigYAML: []byte(`
+service:
+  telemetry:
+    logs:
+      encoding: text
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				logs := asMap(t, asMap(t, asMap(t, got["service"])["telemetry"])["logs"])
+				assert.Equal(t, "json", logs["encoding"])
+			},
+		},
+		{
+			// AppendValues appends to existing lists, so the operator's two autoops_es modules
+			// are preserved. The user's module is appended after them.
+			name: "user adds non-autoops_es module - appended after operator modules",
+			specConfigYAML: []byte(`
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - module: some_other_module
+          period: 10s
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
+				foundAutoOps, foundOther := false, false
+				for _, m := range modules {
+					if mod, ok := m.(map[string]any); ok {
+						switch mod["module"] {
+						case "autoops_es":
+							foundAutoOps = true
+						case "some_other_module":
+							foundOther = true
+						}
+					}
+				}
+				assert.True(t, foundAutoOps, "operator autoops_es modules must be preserved")
+				assert.True(t, foundOther, "user module must be appended")
+			},
+		},
+		{
+			// Users can extend the baseline by adding custom modules, custom exporters, and
+			// additional pipelines via spec.config. The mandatory config is merged last, so the
+			// operator's two autoops_es modules (AppendValues) and the logs pipeline are always
+			// present alongside the user's additions.
+			name: "user adds custom module, exporter and pipeline alongside operator defaults",
+			specConfigYAML: []byte(`
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - module: autoops_es
+          hosts: ${env:AUTOOPS_ES_URL}
+          ssl:
+            verification_mode: none
+          period: 30s
+          metricsets:
+            - cluster_health
+exporters:
+  debug:
+    verbosity: detailed
+service:
+  pipelines:
+    logs/debug:
+      receivers: [metricbeatreceiver]
+      exporters: [debug]
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+
+				// User's module is first (from spec.config), then the mandatory autoops_es
+				// modules are appended by AppendValues when mandatory config is merged last.
+				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
+				require.Len(t, modules, 3, "1 user module + 2 mandatory autoops_es modules")
+
+				// User's exporter is present alongside the operator's otlphttp.
+				exporters := asMap(t, got["exporters"])
+				_, hasDebug := exporters["debug"]
+				_, hasOTLP := exporters["otlphttp"]
+				assert.True(t, hasDebug, "user's debug exporter must be present")
+				assert.True(t, hasOTLP, "operator's otlphttp exporter must be present")
+
+				// User's custom pipeline is present alongside the mandatory logs pipeline.
+				pipelines := asMap(t, asMap(t, got["service"])["pipelines"])
+				_, hasLogs := pipelines["logs"]
+				_, hasDebugPipeline := pipelines["logs/debug"]
+				assert.True(t, hasLogs, "mandatory logs pipeline must be present")
+				assert.True(t, hasDebugPipeline, "user's logs/debug pipeline must be present")
+			},
+		},
+		// ConfigRef: secret contains valid config - autoops_es module present after merge.
+		{
+			name: "ConfigRef secret with valid config - merged successfully",
+			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := mkPolicy()
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-config-secret"}}
+				return p
+			},
+			secrets: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "my-config-secret", Namespace: "default"},
+					Data:       map[string][]byte{autoopsv1alpha1.ConfigFileName: validConfigRefYAML},
+				},
+			},
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
+				found := false
+				for _, m := range modules {
+					if mod, ok := m.(map[string]any); ok && mod["module"] == "autoops_es" {
+						found = true
+					}
+				}
+				assert.True(t, found, "autoops_es module must be present")
+			},
+		},
+		{
+			name: "ConfigRef secret missing expected key - error",
+			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := mkPolicy()
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-config-secret"}}
+				return p
+			},
+			secrets: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "my-config-secret", Namespace: "default"},
+					Data:       map[string][]byte{"wrong-key.yml": validConfigRefYAML},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "ConfigRef secret not found - error",
+			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
+				p := mkPolicy()
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "nonexistent-secret"}}
+				return p
+			},
+			secrets: []client.Object{},
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildAutoOpsESConfigMap(tt.args.policy(), tt.args.es())
-			if (err != nil) != tt.wantErr {
-				t.Errorf("buildAutoOpsESConfigMap() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			policy := mkPolicy()
+			if tt.policy != nil {
+				policy = tt.policy()
 			}
+			es := mkES(false)
+			if tt.es != nil {
+				es = tt.es()
+			}
+
+			if len(tt.specConfigYAML) > 0 {
+				parsed, err := uyaml.NewConfig(tt.specConfigYAML, commonv1.CfgOptions...)
+				require.NoError(t, err)
+				var data map[string]any
+				require.NoError(t, parsed.Unpack(&data))
+				policy.Spec.Config = &commonv1.Config{Data: data}
+			}
+
+			r := mkReconciler(t, tt.secrets...)
+			cm, err := r.ReconcileAutoOpsESConfigMap(context.Background(), policy, es)
+
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-
-			if l := got.Labels[commonv1.RestrictWatchedResourcesLabelName]; l != commonv1.RestrictWatchedResourcesLabelValue {
-				t.Errorf("expected to have the watch label and it does not. Value = %s", l)
-			}
-			policy := tt.args.policy()
-			es := tt.args.es()
-			// Validate ConfigMap structure
-			expectedName := autoopsv1alpha1.Config(policy.GetName(), es)
-			if got.Name != expectedName {
-				t.Errorf("buildAutoOpsESConfigMap() ConfigMap name = %v, want %v", got.Name, expectedName)
-			}
-			if got.Namespace != policy.GetNamespace() {
-				t.Errorf("buildAutoOpsESConfigMap() ConfigMap namespace = %v, want %v", got.Namespace, policy.GetNamespace())
-			}
-			configYAML, exists := got.Data[autoOpsESConfigFileName]
-			if !exists {
-				t.Errorf("buildAutoOpsESConfigMap() ConfigMap missing key %v", autoOpsESConfigFileName)
-				return
-			}
-
-			// Parse both configs for comparison
-			var gotCfg map[string]any
-			gotParsed, err := uyaml.NewConfig([]byte(configYAML), commonv1.CfgOptions...)
 			require.NoError(t, err)
-			require.NoError(t, gotParsed.Unpack(&gotCfg))
+			require.NotNil(t, cm)
 
-			var wantCfg map[string]any
-			wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
-			require.NoError(t, err)
-			require.NoError(t, wantParsed.Unpack(&wantCfg))
+			// Always validate ConfigMap identity.
+			assert.Equal(t, autoopsv1alpha1.Config(policy.GetName(), es), cm.Name)
+			assert.Equal(t, policy.GetNamespace(), cm.Namespace)
+			_, hasKey := cm.Data[autoopsv1alpha1.ConfigFileName]
+			assert.True(t, hasKey, "ConfigMap must contain key %s", autoopsv1alpha1.ConfigFileName)
 
-			if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
-				t.Errorf("buildAutoOpsESConfigMap() config mismatch: %v", diff)
+			if tt.want != nil {
+				var gotCfg, wantCfg map[string]any
+				gotParsed, err := uyaml.NewConfig([]byte(cm.Data[autoopsv1alpha1.ConfigFileName]), commonv1.CfgOptions...)
+				require.NoError(t, err)
+				require.NoError(t, gotParsed.Unpack(&gotCfg))
+				wantParsed, err := uyaml.NewConfig(tt.want, commonv1.CfgOptions...)
+				require.NoError(t, err)
+				require.NoError(t, wantParsed.Unpack(&wantCfg))
+				if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
+					t.Errorf("config mismatch: %v", diff)
+				}
+			}
+			if tt.check != nil {
+				tt.check(t, *cm)
 			}
 		})
 	}

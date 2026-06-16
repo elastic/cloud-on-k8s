@@ -9,6 +9,7 @@
 package v1alpha1
 
 import (
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -82,6 +83,15 @@ func (in *AutoOpsAgentPolicySpec) DeepCopyInto(out *AutoOpsAgentPolicySpec) {
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)
+		**out = **in
+	}
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = (*in).DeepCopy()
+	}
+	if in.ConfigRef != nil {
+		in, out := &in.ConfigRef, &out.ConfigRef
+		*out = new(v1.ConfigSource)
 		**out = **in
 	}
 }

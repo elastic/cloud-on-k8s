@@ -17,6 +17,8 @@ const (
 	Kind = "AutoOpsAgentPolicy"
 	// AutoOpsAgentContainerName is the name of the main AutoOps Agent container in the pod.
 	AutoOpsAgentContainerName = "autoops-agent"
+	// ConfigFileName is the key used in the Secret referenced by ConfigRef.
+	ConfigFileName = "autoops_es.yml"
 )
 
 // +kubebuilder:object:root=true
@@ -84,6 +86,24 @@ type AutoOpsAgentPolicySpec struct {
 	// in the target namespaces.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Config holds additional OpenTelemetry collector configuration for the AutoOps agent.
+	// User-supplied settings are merged between the operator baseline defaults and the
+	// operator-owned mandatory settings, which always take final precedence. This allows
+	// tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,
+	// or defining additional exporters and pipelines. Elasticsearch connection details,
+	// OTLP endpoint and authorization, and the healthcheck extension are always injected
+	// by the operator and cannot be overridden.
+	// At most one of [`config`, `configRef`] can be specified.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+
+	// ConfigRef references a Kubernetes Secret holding the AutoOps agent configuration
+	// under the `autoops_es.yml` key. Applies the same merge semantics as `config`.
+	// At most one of [`config`, `configRef`] can be specified.
+	// +kubebuilder:validation:Optional
+	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 }
 
 // AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
