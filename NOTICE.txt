@@ -472,11 +472,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
-Version : v1.7.0
-Time    : 2026-05-14T17:02:28Z
+Version : v1.8.0
+Time    : 2026-06-15T09:20:47Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.7.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.8.0/LICENSE.txt:
 
     MIT License
 
@@ -8705,11 +8705,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/trace@v1.11.7/
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/azcore
-Version : v1.21.1
-Time    : 2026-04-16T22:03:54Z
+Version : v1.22.0
+Time    : 2026-06-04T17:26:12Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.21.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.22.0/LICENSE.txt:
 
 MIT License
 
@@ -30480,11 +30480,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.55.0
-Time    : 2026-05-22T01:45:50Z
+Version : v0.56.0
+Time    : 2026-06-09T16:58:42Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.55.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.56.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 

@@ -19,7 +19,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.20.0 | Apache-2.0 |
 | [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.62.3 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
-| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.7.0 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.0 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.42.0 | Apache-2.0 |
@@ -81,7 +81,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v0.9.0 | Apache-2.0 |
 | [cloud.google.com/go/monitoring](https://cloud.google.com/go/monitoring) | v1.24.3 | Apache-2.0 |
 | [cloud.google.com/go/trace](https://cloud.google.com/go/trace) | v1.11.7 | Apache-2.0 |
-| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.21.1 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.22.0 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/azidentity](https://github.com/Azure/azure-sdk-for-go) | v1.13.1 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.12.0 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage](https://github.com/Azure/azure-sdk-for-go) | v1.8.1 | MIT |
@@ -238,7 +238,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.4 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.4 | MIT |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.36.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.55.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.56.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.36.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.21.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.46.0 | BSD-3-Clause |
