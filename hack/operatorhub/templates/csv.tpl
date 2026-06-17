@@ -287,7 +287,7 @@ spec:
     Supported versions:
 
 
-    * Kubernetes 1.32-1.36
+    * Kubernetes 1.31-1.36
 
     * OpenShift 4.16-4.22
 
