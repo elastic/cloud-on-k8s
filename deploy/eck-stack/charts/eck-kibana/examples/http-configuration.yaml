@@ -1,7 +1,7 @@
 ---
 # Version of Kibana.
 #
-version: 9.4.0
+version: 9.4.2
 
 # Labels that will be applied to Kibana.
 #

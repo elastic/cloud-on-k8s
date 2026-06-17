@@ -1,5 +1,5 @@
 name: heartbeat
-version: 9.4.0
+version: 9.4.2
 type: heartbeat
 elasticsearchRef:
   name: eck-elasticsearch

@@ -1,6 +1,6 @@
 ---
 # values corresponding to config/recipes/logstash/logstash-es-role.yaml
-version: 9.4.0
+version: 9.4.2
 
 elasticsearchRefs:
   - clusterName: eck

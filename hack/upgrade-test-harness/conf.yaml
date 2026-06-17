@@ -77,6 +77,10 @@ testParams:
   - name: v332
     operatorVersion: 3.3.2
     stackVersion: 9.3.2
-  - name: upcoming
+  - name: v340
     operatorVersion: 3.4.0
-    stackVersion: 9.4.0-SNAPSHOT
+    stackVersion: 9.4.0
+  - name: v341
+    operatorVersion: 3.4.1
+    stackVersion: 9.4.2
+
