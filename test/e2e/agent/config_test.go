@@ -60,7 +60,6 @@ func TestSystemIntegrationConfig(t *testing.T) {
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
@@ -72,6 +71,7 @@ func TestSystemIntegrationConfig(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	if !skipAgentInternalLogsValidation(v) {
 		agentBuilder = agentBuilder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"))
 	}
@@ -105,7 +105,6 @@ func TestAgentConfigRef(t *testing.T) {
 		WithObjects(secret).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default")).
@@ -117,6 +116,7 @@ func TestAgentConfigRef(t *testing.T) {
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"))
 	if !skipAgentInternalLogsValidation(v) {
 		agentBuilder = agentBuilder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"))
 	}
@@ -143,7 +143,6 @@ func TestMultipleOutputConfig(t *testing.T) {
 			agent.ToOutput(esBuilder2.Ref(), "monitoring"),
 		).
 		WithOpenShiftRoles(test.UseSCCRole).
-		WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.diskio", "default"), "default").
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.load", "default"), "default").
@@ -155,6 +154,7 @@ func TestMultipleOutputConfig(t *testing.T) {
 		WithESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.uptime", "default"), "default")
 	if !skipAgentInternalLogsValidation(v) {
 		agentBuilder = agentBuilder.
+			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
 			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring").
 			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default"), "monitoring")
 	}
