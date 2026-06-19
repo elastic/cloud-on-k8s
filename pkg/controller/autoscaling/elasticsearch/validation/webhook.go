@@ -30,7 +30,7 @@ const (
 var esalog = ulog.Log.WithName("esa-validation")
 
 // RegisterWebhook registers the ElasticsearchAutoscaler validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.MatchNotifier) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,

@@ -147,7 +147,7 @@ var _ driver.Interface = (*ReconcileEnterpriseSearch)(nil)
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
 func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
 		r.onNamespaceFlipOff(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}

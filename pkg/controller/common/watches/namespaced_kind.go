@@ -5,8 +5,6 @@
 package watches
 
 import (
-	"context"
-
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -27,7 +25,7 @@ import (
 // source.Kind directly; the matcher already short-circuits empty namespaces,
 // but skipping the cache lookup is the cleaner signal.
 func NamespacedKind[T client.Object](
-	m *nsmatch.MatchNotifier,
+	m *nsmatch.NamespaceFlipNotifier,
 	c cache.Cache,
 	obj T,
 	h handler.TypedEventHandler[T, reconcile.Request],
@@ -37,7 +35,7 @@ func NamespacedKind[T client.Object](
 		return source.Kind(c, obj, h, preds...)
 	}
 	nsPred := predicate.NewTypedPredicateFuncs(func(o T) bool {
-		return m.Matches(context.Background(), o.GetNamespace())
+		return m.Matches(o.GetNamespace())
 	})
 	all := make([]predicate.TypedPredicate[T], 0, len(preds)+1)
 	all = append(all, nsPred)
