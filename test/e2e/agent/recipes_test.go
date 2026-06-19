@@ -240,9 +240,15 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
+		}
+		if skipAPMServerElasticAgentMetricsValidation(v) {
+			return builder.WithFleetAgentDataStreamsValidationFiltered(func(dsType, dataset string) bool {
+				return dsType != agent.MetricsType || dataset != "elastic_agent.elastic_agent"
+			})
 		}
 		return builder.WithFleetAgentDataStreamsValidation()
 	}
