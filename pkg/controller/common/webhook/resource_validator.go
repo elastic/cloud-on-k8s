@@ -31,7 +31,7 @@ type ResourceValidator[T runtime.Object] struct {
 	validator         admission.Validator[T]
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
-	namespaceMatcher  *nsmatch.MatchNotifier
+	namespaceMatcher  *nsmatch.NamespaceFlipNotifier
 }
 
 // NewResourceValidator wraps an admission.Validator[T] with namespace
@@ -67,7 +67,7 @@ func NewResourceFuncValidator[T runtime.Object](
 // WithNamespaceMatcher attaches a NamespaceMatcher so that dynamic-mode
 // installs can filter validation by the operator's current selector instead
 // of the static managedNamespaces list.
-func (v *ResourceValidator[T]) WithNamespaceMatcher(m *nsmatch.MatchNotifier) *ResourceValidator[T] {
+func (v *ResourceValidator[T]) WithNamespaceMatcher(m *nsmatch.NamespaceFlipNotifier) *ResourceValidator[T] {
 	v.namespaceMatcher = m
 	return v
 }
@@ -104,7 +104,7 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 	name, _ := accessor.Name(obj)
 
 	if v.namespaceMatcher.SelectorEnabled() {
-		if !v.namespaceMatcher.Matches(ctx, ns) {
+		if !v.namespaceMatcher.Matches(ns) {
 			whlog.V(1).Info("Skip resource validation: namespace does not match selector", "name", name, "namespace", ns)
 			return true, nil
 		}
@@ -129,7 +129,7 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 
 // RegisterResourceWebhook creates a ResourceValidator wrapping a ValidateFunc
 // and registers it as a validating webhook at the specified path.
-func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, matcher *nsmatch.MatchNotifier, validate ValidateFunc[T], resourceName string) {
+func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier, validate ValidateFunc[T], resourceName string) {
 	v := NewResourceFuncValidator(checker, managedNamespaces, validate).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[T](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(path, wh)

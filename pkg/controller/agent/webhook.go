@@ -21,7 +21,7 @@ import (
 )
 
 // RegisterWebhook registers the Agent validating webhook with license-aware validation.
-func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string, matcher *nsmatch.MatchNotifier) {
+func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier) {
 	inner := &webhookValidator{licenseChecker: checker}
 	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[*agentv1alpha1.Agent](mgr.GetScheme(), v)

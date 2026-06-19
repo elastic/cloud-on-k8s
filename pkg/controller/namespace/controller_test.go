@@ -8,20 +8,35 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
+
+// errLicenseChecker embeds MockLicenseChecker and overrides EnterpriseFeaturesEnabled
+// to return a configurable error.
+type errLicenseChecker struct {
+	license.MockLicenseChecker
+	err error
+}
+
+func (e errLicenseChecker) EnterpriseFeaturesEnabled(context.Context) (bool, error) {
+	return false, e.err
+}
 
 func makeNamespace(name string, lbls map[string]string) *corev1.Namespace {
 	return &corev1.Namespace{
@@ -33,9 +48,8 @@ func nsRequest(name string) reconcile.Request {
 	return reconcile.Request{NamespacedName: types.NamespacedName{Name: name}}
 }
 
-func TestReconciler_Reconcile(t *testing.T) {
-	matchLabels := labels.Set{"managed": "true"}
-	sel := labels.SelectorFromSet(matchLabels)
+func TestReconciler_doReconcile(t *testing.T) {
+	sel := labels.SelectorFromSet(labels.Set{"managed": "true"})
 
 	matchingNS := makeNamespace("matching-ns", map[string]string{"managed": "true"})
 	nonMatchingNS := makeNamespace("non-matching-ns", map[string]string{"managed": "false"})
@@ -43,23 +57,21 @@ func TestReconciler_Reconcile(t *testing.T) {
 	tests := []struct {
 		name          string
 		buildClient   func() k8s.Client
-		preloadState  func(*nsmatch.NamespaceStates)
+		preloadState  func(*nsmatch.NamespaceFlipNotifier)
 		request       reconcile.Request
 		wantResult    reconcile.Result
 		wantErr       bool
 		wantBroadcast bool
-		wantForgotten bool // whether the ns name should be absent from states after reconcile
 	}{
 		{
 			name:        "namespace not found: state forgotten, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient() },
-			preloadState: func(s *nsmatch.NamespaceStates) {
-				s.Swap("deleted-ns", true) // pretend we knew about it
+			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+				m.Swap("deleted-ns", true)
 			},
 			request:       nsRequest("deleted-ns"),
 			wantResult:    reconcile.Result{},
 			wantBroadcast: false,
-			wantForgotten: true,
 		},
 		{
 			name: "client error: error is propagated, no broadcast",
@@ -84,17 +96,17 @@ func TestReconciler_Reconcile(t *testing.T) {
 			wantBroadcast: true,
 		},
 		{
-			name:          "first reconcile, namespace does not match: broadcast (unknown -> non-matching)",
+			name:          "first reconcile, namespace does not match: no broadcast (unknown -> non-matching)",
 			buildClient:   func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
 			request:       nsRequest(nonMatchingNS.Name),
 			wantResult:    reconcile.Result{},
-			wantBroadcast: true,
+			wantBroadcast: false,
 		},
 		{
 			name:        "state unchanged: namespace still matches, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
-			preloadState: func(s *nsmatch.NamespaceStates) {
-				s.Swap(matchingNS.Name, true)
+			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+				m.Swap(matchingNS.Name, true)
 			},
 			request:       nsRequest(matchingNS.Name),
 			wantResult:    reconcile.Result{},
@@ -103,8 +115,8 @@ func TestReconciler_Reconcile(t *testing.T) {
 		{
 			name:        "state unchanged: namespace still does not match, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
-			preloadState: func(s *nsmatch.NamespaceStates) {
-				s.Swap(nonMatchingNS.Name, false)
+			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+				m.Swap(nonMatchingNS.Name, false)
 			},
 			request:       nsRequest(nonMatchingNS.Name),
 			wantResult:    reconcile.Result{},
@@ -113,8 +125,8 @@ func TestReconciler_Reconcile(t *testing.T) {
 		{
 			name:        "state change: namespace transitions matching -> non-matching, broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
-			preloadState: func(s *nsmatch.NamespaceStates) {
-				s.Swap(nonMatchingNS.Name, true) // previously matched
+			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+				m.Swap(nonMatchingNS.Name, true) // previously matched
 			},
 			request:       nsRequest(nonMatchingNS.Name),
 			wantResult:    reconcile.Result{},
@@ -123,8 +135,8 @@ func TestReconciler_Reconcile(t *testing.T) {
 		{
 			name:        "state change: namespace transitions non-matching -> matching, broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
-			preloadState: func(s *nsmatch.NamespaceStates) {
-				s.Swap(matchingNS.Name, false) // previously did not match
+			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+				m.Swap(matchingNS.Name, false) // previously did not match
 			},
 			request:       nsRequest(matchingNS.Name),
 			wantResult:    reconcile.Result{},
@@ -134,18 +146,17 @@ func TestReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			states := nsmatch.NewNamespaceStates()
+			notifier := nsmatch.NewMatchNotifier(sel, "")
 			if tt.preloadState != nil {
-				tt.preloadState(states)
+				tt.preloadState(notifier)
 			}
 
 			r := &reconciler{
 				client:          tt.buildClient(),
-				nsMatchNotifier: nsmatch.NewMatchNotifier(nil, sel, ""),
-				states:          states,
+				nsMatchNotifier: notifier,
 			}
 			sub := r.nsMatchNotifier.Subscribe()
-			result, err := r.Reconcile(t.Context(), tt.request)
+			result, err := r.doReconcile(t.Context(), logr.Discard(), tt.request)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -161,10 +172,132 @@ func TestReconciler_Reconcile(t *testing.T) {
 			} else {
 				assert.Empty(t, sub, "expected no broadcast event")
 			}
+		})
+	}
+}
 
-			if tt.wantForgotten {
-				_, known := states.Swap(tt.request.Name, false)
-				assert.False(t, known, "expected namespace state to be forgotten after reconcile")
+func TestNsInitRunnable_Start(t *testing.T) {
+	sel := labels.SelectorFromSet(labels.Set{"managed": "true"})
+
+	matchingNS := makeNamespace("matching-ns", map[string]string{"managed": "true"})
+	nonMatchingNS := makeNamespace("non-matching-ns", map[string]string{"managed": "false"})
+
+	tests := []struct {
+		name        string
+		buildClient func() k8s.Client
+		wantErr     bool
+		wantStates  map[string]bool // ns name -> expected match state after Start
+	}{
+		{
+			name: "list error is propagated",
+			buildClient: func() k8s.Client {
+				return k8s.NewFakeClientBuilder().
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build()
+			},
+			wantErr: true,
+		},
+		{
+			name:        "no namespaces: notifier state remains empty",
+			buildClient: func() k8s.Client { return k8s.NewFakeClient() },
+			wantStates:  map[string]bool{},
+		},
+		{
+			name:        "matching namespace is seeded as matching",
+			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
+			wantStates:  map[string]bool{matchingNS.Name: true},
+		},
+		{
+			name:        "non-matching namespace is seeded as non-matching",
+			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
+			wantStates:  map[string]bool{nonMatchingNS.Name: false},
+		},
+		{
+			name:        "mixed namespaces: each seeded with correct match state",
+			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS, nonMatchingNS) },
+			wantStates: map[string]bool{
+				matchingNS.Name:    true,
+				nonMatchingNS.Name: false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			notifier := nsmatch.NewMatchNotifier(sel, "")
+			r := &nsInitRunnable{
+				client:   tt.buildClient(),
+				notifier: notifier,
+			}
+
+			err := r.Start(t.Context())
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			for ns, wantMatch := range tt.wantStates {
+				wasMatching := notifier.Swap(ns, false)
+				assert.Equal(t, wantMatch, wasMatching, "unexpected match state for namespace %q", ns)
+			}
+		})
+	}
+}
+
+func TestReconciler_Reconcile(t *testing.T) {
+	sel := labels.SelectorFromSet(labels.Set{"managed": "true"})
+	matchingNS := makeNamespace("matching-ns", map[string]string{"managed": "true"})
+
+	tests := []struct {
+		name       string
+		lc         license.Checker
+		wantResult reconcile.Result
+		wantErr    bool
+	}{
+		{
+			name:    "license check error: error returned",
+			lc:      errLicenseChecker{err: errors.New("license check failed")},
+			wantErr: true,
+		},
+		{
+			name:       "enterprise disabled: requeue after 5m, no reconcile",
+			lc:         license.MockLicenseChecker{EnterpriseEnabled: false},
+			wantResult: reconcile.Result{RequeueAfter: 5 * time.Minute},
+		},
+		{
+			name:       "enterprise enabled: delegates to doReconcile",
+			lc:         license.MockLicenseChecker{EnterpriseEnabled: true},
+			wantResult: reconcile.Result{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fr := events.NewFakeRecorder(10)
+			r := &reconciler{
+				client:          k8s.NewFakeClient(matchingNS),
+				nsMatchNotifier: nsmatch.NewMatchNotifier(sel, ""),
+				licenseChecker:  tt.lc,
+				recorder:        fr,
+			}
+
+			result, err := r.Reconcile(t.Context(), nsRequest(matchingNS.Name))
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantResult, result)
+
+			if ok, _ := r.licenseChecker.EnterpriseFeaturesEnabled(t.Context()); !ok && !tt.wantErr {
+				assert.Equal(t, "Warning InvalidLicense Dynamic namespace selector is an enterprise feature. Enterprise features are disabled", <-fr.Events)
 			}
 		})
 	}

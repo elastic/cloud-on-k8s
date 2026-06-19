@@ -58,5 +58,5 @@ type Parameters struct {
 	// against Namespace labels per event and broadcasts Namespace objects to
 	// per-kind controllers whenever a namespace's match-state changes. Nil in
 	// legacy / static-resolution modes.
-	NamespaceMatchNotifier *nsmatch.MatchNotifier
+	NamespaceMatchNotifier *nsmatch.NamespaceFlipNotifier
 }

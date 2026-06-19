@@ -758,7 +758,7 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	nsMatchNotifier := nsmatch.NewMatchNotifier(mgr.GetCache(), parsedNsSelector, operatorNamespace)
+	nsMatchNotifier := nsmatch.NewMatchNotifier(parsedNsSelector, operatorNamespace)
 
 	params := operator.Parameters{
 		Dialer:                           dialer,
@@ -958,6 +958,7 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, operator.Parameters) error
 	}{
+		{name: "Namespace", registerFunc: namespace.Add},
 		{name: "APMServer", registerFunc: apmserver.Add},
 		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
 		{name: "ElasticsearchAutoscaling", registerFunc: autoscaling.Add},
@@ -971,7 +972,6 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		{name: "PackageRegistry", registerFunc: packageregistry.Add},
 		{name: "StackConfigPolicy", registerFunc: stackconfigpolicy.Add},
 		{name: "Logstash", registerFunc: logstash.Add},
-		{name: "Namespace", registerFunc: namespace.Add},
 	}
 
 	for _, c := range controllers {

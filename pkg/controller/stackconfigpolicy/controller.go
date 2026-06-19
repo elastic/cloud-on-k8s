@@ -54,11 +54,9 @@ const (
 	controllerName = "stackconfigpolicy-controller"
 )
 
-var (
-	// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
-	// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
-	defaultRequeue = 30 * time.Second
-)
+// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
+// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
+var defaultRequeue = 30 * time.Second
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -177,7 +175,7 @@ type ReconcileStackConfigPolicy struct {
 // Reconcile reads that state of the cluster for a StackConfigPolicy object and makes changes based on the state read and what is
 // in the StackConfigPolicy.Spec.
 func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+	if !r.params.NamespaceMatchNotifier.Matches(request.Namespace) {
 		r.onNamespaceFlipOff(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
