@@ -51,9 +51,16 @@ func Install(globalKubectlOptions ...string) error {
 	log.Println("Installing Kyverno policies")
 	if err := retry.UntilSuccess(
 		func() error { return apply(k, dir, policiesManifest, "policies.yaml") },
+		2*time.Minute,
 		5*time.Second,
-		1*time.Second,
 	); err != nil {
+		return err
+	}
+
+	// Applying policies can briefly disrupt the admission controller; wait for it to be ready again
+	// before returning so that subsequent kubectl commands don't hit "No agent available".
+	log.Println("Waiting for Kyverno to be ready after policy installation...")
+	if err := k.NewCommand(waitForKyvernoDeployments).Run(); err != nil {
 		return err
 	}
 
