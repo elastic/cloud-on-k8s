@@ -106,7 +106,7 @@ func (r *ReconcileElasticsearchAutoscaler) onNamespaceFlipOff(obj types.Namespac
 }
 
 func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
 		r.onNamespaceFlipOff(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}

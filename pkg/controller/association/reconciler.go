@@ -40,9 +40,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
-var (
-	defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
-)
+var defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct { //nolint:revive
@@ -153,7 +151,7 @@ type Reconciler struct {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(ctx, request.Namespace) {
+	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
 		r.onNamespaceFlipOff(types.NamespacedName{Namespace: request.Namespace, Name: request.Name})
 		return reconcile.Result{}, nil
 	}

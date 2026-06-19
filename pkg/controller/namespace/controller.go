@@ -13,17 +13,23 @@ package namespace
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/go-logr/logr"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -39,9 +45,15 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 		return nil
 	}
 	r := &reconciler{
-		client:          mgr.GetClient(),
-		nsMatchNotifier: params.NamespaceMatchNotifier,
-		states:          nsmatch.NewNamespaceStates(),
+		client:            mgr.GetClient(),
+		nsMatchNotifier:   params.NamespaceMatchNotifier,
+		licenseChecker:    license.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
+		recorder:          mgr.GetEventRecorder(controllerName),
+		operatorNamespace: params.OperatorNamespace,
+	}
+
+	if err := mgr.Add(&nsInitRunnable{client: mgr.GetClient(), notifier: params.NamespaceMatchNotifier}); err != nil {
+		return fmt.Errorf("registering namespace init runnable: %w", err)
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
 	if err != nil {
@@ -51,34 +63,67 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 type reconciler struct {
-	client          client.Client
-	nsMatchNotifier *nsmatch.MatchNotifier
-
-	states *nsmatch.NamespaceStates
+	client            client.Client
+	nsMatchNotifier   *nsmatch.NamespaceFlipNotifier
+	licenseChecker    license.Checker
+	recorder          toolsevents.EventRecorder
+	operatorNamespace string
 }
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := ulog.FromContext(ctx).WithValues("namespace", request.Name)
 
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !enabled {
+		const msg = "Dynamic namespace selector is an enterprise feature. Enterprise features are disabled"
+		log.V(1).Info(msg)
+		license.EmitEnterpriseFeatureEvent(r.recorder, r.operatorNamespace, msg)
+		return reconcile.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+
+	return r.doReconcile(ctx, log, request)
+}
+
+func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request reconcile.Request) (reconcile.Result, error) {
 	var ns corev1.Namespace
 	if err := r.client.Get(ctx, types.NamespacedName{Name: request.Name}, &ns); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.states.Forget(request.Name)
+			r.nsMatchNotifier.ForgetNamespace(request.Name) // namespace got deleted.
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	}
 
-	isMatching := r.nsMatchNotifier.MatchesLabels(ns.Labels)
-	wasMatching, known := r.states.Swap(request.Name, isMatching)
-	if known && wasMatching == isMatching {
-		// no state change, no reconciliation is required.
-		return reconcile.Result{}, nil
+	if stateChanged, isMatching := r.nsMatchNotifier.ObserveAndBroadcast(&ns); stateChanged {
+		log.Info("namespace match-state changed", "matches", isMatching)
 	}
 
-	log.Info("namespace match-state changed", "matches", isMatching, "previously_known", known)
-	r.nsMatchNotifier.Broadcast(&ns)
 	return reconcile.Result{}, nil
 }
 
 var _ reconcile.Reconciler = (*reconciler)(nil)
+
+// nsInitRunnable seeds the NamespaceFlipNotifier with the current match state
+// of all existing namespaces. It is registered with the manager so that it runs
+// after the cache is synced, reading from the cache rather than the API server.
+type nsInitRunnable struct {
+	client   client.Reader
+	notifier *nsmatch.NamespaceFlipNotifier
+}
+
+func (r *nsInitRunnable) Start(ctx context.Context) error {
+	var nsList corev1.NamespaceList
+	if err := r.client.List(ctx, &nsList); err != nil {
+		return err
+	}
+	for _, ns := range nsList.Items {
+		_, _ = r.notifier.ObserveAndBroadcast(&ns)
+	}
+	return nil
+}
+
+// NeedLeaderElection returns false so this runs on all replicas, not just the leader.
+func (r *nsInitRunnable) NeedLeaderElection() bool { return false }
