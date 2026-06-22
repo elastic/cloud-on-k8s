@@ -1,6 +1,6 @@
 # When bumping newVersion, also review minSkipVersion below.
 newVersion: 3.5.0-SNAPSHOT
-prevVersion: 3.4.1
+prevVersion: 3.4.0
 # minSkipVersion sets the lower bound of olm.skipRange, allowing direct upgrades from sparse/air-gapped
 # catalogs. 2.16.0 is the validated floor: no CRD storage version changes or breaking schema changes
 # exist between 2.16.0 and the current release. Do not lower this without re-validating CRD compatibility.
