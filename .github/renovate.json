@@ -8,7 +8,10 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^\\.buildkite/.*\\.ya?ml$", "^\\.buildkite/Makefile$"],
+      "managerFilePatterns": [
+        "/^\\.buildkite/.*\\.ya?ml$/",
+        "/^\\.buildkite/Makefile$/"
+      ],
       "matchStrings": [
         "(?:image:\\s+|CI_IMAGE\\s*\\?=\\s*)(?<depName>docker\\.elastic\\.co/ci-agent-images/cloud-k8s-operator/buildkite-agent):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
       ],
