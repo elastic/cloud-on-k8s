@@ -17,6 +17,10 @@ Review the deprecated functionality for Elastic Cloud on Kubernetes. While depre
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.4.1 [elastic-cloud-kubernetes-341-deprecations]
+
+There are no deprecations for ECK 3.4.1
+
 ## 3.4.0 [elastic-cloud-kubernetes-340-deprecations]
 
 There are no deprecations for ECK 3.4.0

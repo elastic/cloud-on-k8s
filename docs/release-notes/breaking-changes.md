@@ -14,6 +14,10 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.4.1 [elastic-cloud-kubernetes-341-breaking-changes]
+
+There are no breaking changes for ECK 3.4.1
+
 ## 3.4.0 [elastic-cloud-kubernetes-340-breaking-changes]
 
 ::::{dropdown} Rolling restart of {{es}} pods during operator upgrade
