@@ -5,6 +5,17 @@
   "labels": [
     ">renovate"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^\\.buildkite/.*\\.ya?ml$", "^\\.buildkite/Makefile$"],
+      "matchStrings": [
+        "(?:image:\\s+|CI_IMAGE\\s*\\?=\\s*)(?<depName>docker\\.elastic\\.co/ci-agent-images/cloud-k8s-operator/buildkite-agent):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "loose"
+    }
+  ],
   "ignorePaths": [
     "**/node_modules/**",
     "**/bower_components/**",
@@ -136,6 +147,19 @@
         "github.com/golangci/golangci-lint"
       ],
       "groupName": "go"
+    },
+    {
+      "matchPackageNames": [
+        "docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent"
+      ],
+      "groupName": "buildkite-agent",
+      "enabled": true,
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "schedule": [
+        "at any time"
+      ]
     }
   ],
   "separateMajorMinor": true
