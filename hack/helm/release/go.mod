@@ -6,7 +6,7 @@ toolchain go1.26.4
 
 require (
 	cloud.google.com/go/storage v1.62.3
-	github.com/elastic/cloud-on-k8s/v3 v3.4.0
+	github.com/elastic/cloud-on-k8s/v3 v3.4.1
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
