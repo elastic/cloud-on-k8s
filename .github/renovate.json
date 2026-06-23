@@ -17,6 +17,15 @@
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^test/e2e/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\n]+)\\nENV \\w+=(?<currentValue>[^\\n]+)"
+      ]
     }
   ],
   "ignorePaths": [
