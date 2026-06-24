@@ -65,6 +65,12 @@ func TestMatcher(t *testing.T) {
 		m.Swap("dev-ns", false)
 		assert.False(t, m.Matches("dev-ns"))
 	})
+
+	t.Run("Matches returns true when state for short-circuit", func(t *testing.T) {
+		sel := mustSelector(t, map[string]string{"env": "prod"})
+		m := NewMatchNotifier(sel, testOperatorNS)
+		assert.True(t, m.Matches(testOperatorNS))
+	})
 }
 
 func TestObserveNamespace(t *testing.T) {

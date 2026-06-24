@@ -125,5 +125,4 @@ func (r *nsInitRunnable) Start(ctx context.Context) error {
 	return nil
 }
 
-// NeedLeaderElection returns false so this runs on all replicas, not just the leader.
-func (r *nsInitRunnable) NeedLeaderElection() bool { return false }
+func (r *nsInitRunnable) NeedLeaderElection() bool { return true }
