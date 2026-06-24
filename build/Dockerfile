@@ -60,39 +60,6 @@ CMD ["manager"]
 # ---------------------------------------------
 
 # ---------------------------------------------
-# dynamic - Image for non-static binary (FIPS boringcrypto)
-FROM cgr.dev/chainguard/glibc-dynamic:latest@sha256:4fd32c47d5d83cb2bc5045f6d2a76458fb3a68c148ddc32841e452df5afe0279 AS dynamic
-
-ARG VERSION
-
-# Add common ECK labels and OCI annotations to image
-LABEL io.k8s.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
-      io.k8s.display-name="Elastic Cloud on Kubernetes" \
-      org.opencontainers.image.authors="eck@elastic.co" \
-      org.opencontainers.image.base.name="cgr.dev/chainguard/glibc-dynamic" \
-      org.opencontainers.image.description="Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana, APM Server, Beats, and Enterprise Search on Kubernetes" \
-      org.opencontainers.image.documentation="https://www.elastic.co/guide/en/cloud-on-k8s/" \
-      org.opencontainers.image.licenses="Elastic-License-2.0" \
-      org.opencontainers.image.source="https://github.com/elastic/cloud-on-k8s/" \
-      org.opencontainers.image.title="Elastic Cloud on Kubernetes" \
-      org.opencontainers.image.vendor="Elastic" \
-      org.opencontainers.image.version="$VERSION" \
-      org.opencontainers.image.url="https://github.com/elastic/cloud-on-k8s/"
-
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator /elastic-operator
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/eck.yaml         /conf/eck.yaml
-
-# Copy NOTICE.txt and LICENSE.txt into the image
-COPY *.txt /licenses/
-
-# This user id aligns with the wolfi/static image.
-USER 65532
-
-ENTRYPOINT ["/elastic-operator"]
-CMD ["manager"]
-# ---------------------------------------------
-
-# ---------------------------------------------
 # ubi - Image that uses ubi-micro as base
 FROM registry.access.redhat.com/ubi9/ubi-micro:1779858857 AS ubi
 
