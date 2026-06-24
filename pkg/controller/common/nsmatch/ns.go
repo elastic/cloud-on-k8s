@@ -107,8 +107,7 @@ func (m *NamespaceFlipNotifier) Subscribe() <-chan event.TypedGenericEvent[*core
 	return ch
 }
 
-// Broadcast sends ns to every subscriber. Drops the event for any subscriber
-// whose channel buffer is currently full.
+// Broadcast sends the namespace to every subscriber.
 func (m *NamespaceFlipNotifier) Broadcast(ns *corev1.Namespace) {
 	if !m.SelectorEnabled() {
 		return

@@ -77,7 +77,10 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, r.AssociatedObjListTemplate)
 }
 
 // referencedObjKind derives the Kind of the referenced resource from the manager's scheme.

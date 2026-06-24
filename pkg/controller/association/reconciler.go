@@ -49,6 +49,9 @@ type AssociationInfo struct { //nolint:revive
 	AssociationType commonv1.AssociationType
 	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for a Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
+	// AssociatedObjListTemplate builds an empty typed list of associated objects (e.g. &KibanaList{}).
+	// Used by WatchNamespaceFlips to re-enqueue all associated objects when a namespace flips back on.
+	AssociatedObjListTemplate func() client.ObjectList
 	// ReferencedObjTemplate builds an empty referenced object (e.g. Elasticsearch{} for a Kibana to Elasticsearch association).
 	ReferencedObjTemplate func() client.Object
 	// ReferencedResourceNamer is used to build the name of the Secret which contains the CA of the referenced resource
