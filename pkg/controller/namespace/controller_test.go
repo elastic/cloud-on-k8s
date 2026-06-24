@@ -242,6 +242,16 @@ func TestNsInitRunnable_Start(t *testing.T) {
 			}
 			require.NoError(t, err)
 
+			// Start launches a goroutine; poll until all expected states are visible.
+			require.Eventually(t, func() bool {
+				for ns, wantMatch := range tt.wantStates {
+					if notifier.Matches(ns) != wantMatch {
+						return false
+					}
+				}
+				return true
+			}, time.Second, time.Millisecond)
+
 			for ns, wantMatch := range tt.wantStates {
 				wasMatching := notifier.Swap(ns, false)
 				assert.Equal(t, wantMatch, wasMatching, "unexpected match state for namespace %q", ns)
