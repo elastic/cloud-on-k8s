@@ -67,6 +67,10 @@ func (m *NamespaceFlipNotifier) Matches(ns string) bool {
 		return true
 	}
 
+	if _, ok := m.shortCircuit[ns]; ok {
+		return true
+	}
+
 	m.statesMutex.Lock()
 	defer m.statesMutex.Unlock()
 	return m.states[ns]
@@ -113,10 +117,7 @@ func (m *NamespaceFlipNotifier) Broadcast(ns *corev1.Namespace) {
 	// and is immutable by the time Broadcast is first called. Concurrent sends
 	// to the same channel are safe because channels handle their own synchronization.
 	for _, ch := range m.subs {
-		select {
-		case ch <- event.TypedGenericEvent[*corev1.Namespace]{Object: ns}:
-		default:
-		}
+		ch <- event.TypedGenericEvent[*corev1.Namespace]{Object: ns}
 	}
 }
 
