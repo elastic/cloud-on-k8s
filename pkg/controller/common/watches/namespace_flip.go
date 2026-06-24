@@ -69,7 +69,7 @@ func TypedWatchNamespaceFlips(
 	notifier NamespaceNotifier,
 	listObjects func(ctx context.Context, cl client.Client, ns *corev1.Namespace) (iter.Seq[client.Object], error),
 ) error {
-	if notifier == nil {
+	if notifier == nil || !notifier.SelectorEnabled() {
 		return nil
 	}
 	return c.Watch(source.Channel(
@@ -97,4 +97,5 @@ func TypedWatchNamespaceFlips(
 
 type NamespaceNotifier interface {
 	Subscribe() <-chan event.TypedGenericEvent[*corev1.Namespace]
+	SelectorEnabled() bool
 }
