@@ -135,20 +135,6 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
 		return &agentv1alpha1.AgentList{}
 	})
-
-	// return watches.TypedWatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func(ctx context.Context, cl client.Client, ns *corev1.Namespace) (iter.Seq[client.Object], error) {
-	// 	lst := &agentv1alpha1.AgentList{}
-	// 	if err := cl.List(ctx, lst, client.InNamespace(ns.Name)); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return func(yield func(client.Object) bool) {
-	// 		for _, ob := range lst.Items {
-	// 			if !yield(&ob) {
-	// 				return
-	// 			}
-	// 		}
-	// 	}, nil
-	// })
 }
 
 var _ reconcile.Reconciler = (*ReconcileAgent)(nil)

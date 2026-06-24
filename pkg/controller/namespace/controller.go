@@ -119,9 +119,13 @@ func (r *nsInitRunnable) Start(ctx context.Context) error {
 	if err := r.client.List(ctx, &nsList); err != nil {
 		return err
 	}
-	for _, ns := range nsList.Items {
-		_, _ = r.notifier.ObserveAndBroadcast(&ns)
-	}
+
+	go func() {
+		for _, ns := range nsList.Items {
+			_, _ = r.notifier.ObserveAndBroadcast(&ns)
+		}
+	}()
+
 	return nil
 }
 

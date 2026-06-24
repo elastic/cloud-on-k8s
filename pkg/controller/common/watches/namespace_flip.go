@@ -6,7 +6,6 @@ package watches
 
 import (
 	"context"
-	"iter"
 
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -54,38 +53,6 @@ func WatchNamespaceFlips(
 						NamespacedName: types.NamespacedName{
 							Namespace: obj.GetNamespace(),
 							Name:      obj.GetName(),
-						},
-					})
-				}
-				return reqs
-			},
-		),
-	))
-}
-
-func TypedWatchNamespaceFlips(
-	c controller.Controller,
-	cl client.Client,
-	notifier NamespaceNotifier,
-	listObjects func(ctx context.Context, cl client.Client, ns *corev1.Namespace) (iter.Seq[client.Object], error),
-) error {
-	if notifier == nil || !notifier.SelectorEnabled() {
-		return nil
-	}
-	return c.Watch(source.Channel(
-		notifier.Subscribe(),
-		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Namespace, reconcile.Request](
-			func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
-				itr, err := listObjects(ctx, cl, ns)
-				if err != nil {
-					return nil
-				}
-				var reqs []reconcile.Request
-				for item := range itr {
-					reqs = append(reqs, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: item.GetNamespace(),
-							Name:      item.GetName(),
 						},
 					})
 				}

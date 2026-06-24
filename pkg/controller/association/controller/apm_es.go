@@ -40,6 +40,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedShortName:       "apm",
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &apmv1.ApmServerList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,

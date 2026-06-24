@@ -36,6 +36,7 @@ func AddLogstashES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate:     func() commonv1.Associated { return &logstashv1alpha1.Logstash{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &logstashv1alpha1.LogstashList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
