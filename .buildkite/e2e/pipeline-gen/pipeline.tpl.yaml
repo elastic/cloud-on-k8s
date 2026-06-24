@@ -33,7 +33,7 @@ steps:
       machineType: "{{ $.K8sInDockerMachineType }}"
       {{- end }}
       {{- else }}
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: "5G"
       {{- end }}
 
@@ -85,7 +85,7 @@ steps:
       diskSizeGb: 200
       {{- end }}
       {{- else }}
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: "4G"
       {{- end }}
 
@@ -121,7 +121,7 @@ steps:
         {{- if not $test.Dind }}
           - make run-deployer
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
           memory: "4G"
         {{- else }}
           - make -C .buildkite TARGET="run-deployer" ci
@@ -144,5 +144,5 @@ steps:
       - ".buildkite/e2e/reporter/*.md"
       - ".buildkite/e2e/reporter/*.yml"
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: "2G"

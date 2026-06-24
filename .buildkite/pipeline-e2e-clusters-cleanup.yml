@@ -10,7 +10,7 @@ steps:
       - make build-deployer
       - buildkite-agent artifact upload hack/deployer/deployer
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup gke"
@@ -26,7 +26,7 @@ steps:
       - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup aks"
@@ -55,7 +55,7 @@ steps:
       - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup eks-arm"
@@ -71,7 +71,7 @@ steps:
       - chmod u+x /usr/local/hack/deployer/deployer
       - /usr/local/hack/deployer/deployer cleanup --plans-file hack/deployer/config/plans.yml --cluster-prefix $${E2E_TEST_CLUSTER_PREFIX} --config-file deployer-config.yml
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:681d173c9e702c4122ac1ee9e9ef71db6cad2854a68b82ed97aa110dbc3b8116
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:a72a7498c0a1d55276c0c9d3c518f5fc8fc0cca0fcf48a58c44f7599cb230afa
       memory: 2G
 
   - label: ":broom: e2e test cluster cleanup ocp"
