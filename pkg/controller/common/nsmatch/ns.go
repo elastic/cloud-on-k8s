@@ -5,6 +5,7 @@
 package nsmatch
 
 import (
+	"context"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
@@ -107,28 +108,34 @@ func (m *NamespaceFlipNotifier) Subscribe() <-chan event.TypedGenericEvent[*core
 	return ch
 }
 
-// Broadcast sends the namespace to every subscriber.
-func (m *NamespaceFlipNotifier) Broadcast(ns *corev1.Namespace) {
+// Broadcast sends the namespace to every subscriber, blocking on each send
+// until delivery succeeds or ctx is cancelled.
+func (m *NamespaceFlipNotifier) Broadcast(ctx context.Context, ns *corev1.Namespace) {
 	if !m.SelectorEnabled() {
 		return
 	}
 	// No mutex needed: subs is written only during initialization (Subscribe)
 	// and is immutable by the time Broadcast is first called. Concurrent sends
 	// to the same channel are safe because channels handle their own synchronization.
+	ev := event.TypedGenericEvent[*corev1.Namespace]{Object: ns}
 	for _, ch := range m.subs {
-		ch <- event.TypedGenericEvent[*corev1.Namespace]{Object: ns}
+		select {
+		case ch <- ev:
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
 // ObserveAndBroadcast calls ObserveNamespace and broadcasts ns to all
 // subscribers if the match state changed. Returns whether the state changed
 // and the current match result.
-func (m *NamespaceFlipNotifier) ObserveAndBroadcast(ns *corev1.Namespace) (stateChanged, isMatching bool) {
+func (m *NamespaceFlipNotifier) ObserveAndBroadcast(ctx context.Context, ns *corev1.Namespace) (stateChanged, isMatching bool) {
 	var wasWatching bool
 	isMatching, wasWatching = m.ObserveNamespace(ns)
 	stateChanged = isMatching != wasWatching
 	if stateChanged {
-		m.Broadcast(ns)
+		m.Broadcast(ctx, ns)
 	}
 	return
 }

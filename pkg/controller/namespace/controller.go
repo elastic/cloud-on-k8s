@@ -97,7 +97,7 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 		return reconcile.Result{}, err
 	}
 
-	if stateChanged, isMatching := r.nsMatchNotifier.ObserveAndBroadcast(&ns); stateChanged {
+	if stateChanged, isMatching := r.nsMatchNotifier.ObserveAndBroadcast(ctx, &ns); stateChanged {
 		log.Info("namespace match-state changed", "matches", isMatching)
 	}
 
@@ -120,9 +120,15 @@ func (r *nsInitRunnable) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Run in a goroutine so that ObserveAndBroadcast can block waiting for
+	// subscribers to start consuming without holding up the Runnable that
+	// called us.
 	go func() {
 		for _, ns := range nsList.Items {
-			_, _ = r.notifier.ObserveAndBroadcast(&ns)
+			if ctx.Err() != nil {
+				return
+			}
+			_, _ = r.notifier.ObserveAndBroadcast(ctx, &ns)
 		}
 	}()
 
