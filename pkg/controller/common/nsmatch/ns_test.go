@@ -5,14 +5,17 @@
 package nsmatch
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 const testOperatorNS = "elastic-system"
@@ -88,7 +91,8 @@ func TestObserveNamespace(t *testing.T) {
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
 		// The short-circuit must not pollute the states map.
-		assert.False(t, m.Matches(""), "empty namespace must not be written to states")
+		_, inStates := m.states[""]
+		assert.False(t, inStates, "empty namespace must not be written to states")
 	})
 
 	t.Run("short-circuit operator namespace returns true true without updating state", func(t *testing.T) {
@@ -97,7 +101,8 @@ func TestObserveNamespace(t *testing.T) {
 		isMatching, wasMatching := m.ObserveNamespace(namespace(testOperatorNS, nil))
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
-		assert.False(t, m.Matches(testOperatorNS), "operator namespace must not be written to states")
+		_, inStates := m.states[testOperatorNS]
+		assert.False(t, inStates, "operator namespace must not be written to states")
 	})
 
 	t.Run("matching namespace updates state and returns correct values", func(t *testing.T) {
@@ -141,17 +146,18 @@ func TestObserveNamespace(t *testing.T) {
 
 func TestNotifier(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
+	ctx := context.Background()
 
 	t.Run("no subscribers", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
 		// Broadcast with no subscribers must not panic.
-		n.Broadcast(&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 	})
 
 	t.Run("disabled selector no-ops broadcast", func(t *testing.T) {
 		n := NewMatchNotifier(nil, "")
 		ch := n.Subscribe()
-		n.Broadcast(&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 		assert.Len(t, ch, 0, "broadcast is a no-op when selector is disabled")
 	})
 
@@ -160,7 +166,7 @@ func TestNotifier(t *testing.T) {
 		ch := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
-		n.Broadcast(ns)
+		n.Broadcast(ctx, ns)
 
 		require.Len(t, ch, 1)
 		assert.Equal(t, ns, (<-ch).Object)
@@ -172,7 +178,7 @@ func TestNotifier(t *testing.T) {
 		ch2 := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-b"}}
-		n.Broadcast(ns)
+		n.Broadcast(ctx, ns)
 
 		require.Len(t, ch1, 1)
 		require.Len(t, ch2, 1)
@@ -186,8 +192,8 @@ func TestNotifier(t *testing.T) {
 
 		ns1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-1"}}
 		ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-2"}}
-		n.Broadcast(ns1)
-		n.Broadcast(ns2)
+		n.Broadcast(ctx, ns1)
+		n.Broadcast(ctx, ns2)
 
 		require.Len(t, ch, 2)
 		assert.Equal(t, ns1, (<-ch).Object)
@@ -197,10 +203,63 @@ func TestNotifier(t *testing.T) {
 	t.Run("late subscriber does not receive earlier broadcasts", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-c"}}
-		n.Broadcast(ns) // no subscribers yet
+		n.Broadcast(ctx, ns) // no subscribers yet
 
 		ch := n.Subscribe()
 		assert.Len(t, ch, 0, "late subscriber must not receive events broadcast before it subscribed")
+	})
+
+	t.Run("cancelled context does not block on full subscriber channel", func(t *testing.T) {
+		n := NewMatchNotifier(sel, "")
+		_ = n.Subscribe()
+		// Access the underlying bidirectional channel to fill it.
+		internal := n.subs[0]
+		for range chanSize {
+			internal <- event.TypedGenericEvent[*corev1.Namespace]{}
+		}
+
+		done := make(chan struct{})
+		go func() {
+			cancelledCtx, cancel := context.WithCancel(t.Context())
+			cancel()
+			n.Broadcast(cancelledCtx, namespace("ns", nil))
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// expected: Broadcast returned without blocking
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Broadcast blocked despite cancelled context")
+		}
+		assert.Len(t, internal, chanSize, "no new event must be added to an already-full channel")
+	})
+
+	t.Run("cancelled context stops broadcast before reaching later subscribers", func(t *testing.T) {
+		n := NewMatchNotifier(sel, "")
+		_ = n.Subscribe() // will be filled to capacity → blocks
+		_ = n.Subscribe() // must not receive the event
+		first, second := n.subs[0], n.subs[1]
+
+		for range chanSize {
+			first <- event.TypedGenericEvent[*corev1.Namespace]{}
+		}
+
+		cancelledCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		done := make(chan struct{})
+		go func() {
+			n.Broadcast(cancelledCtx, namespace("ns", nil))
+			close(done)
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Broadcast blocked despite cancelled context")
+		}
+		assert.Len(t, second, 0, "subscriber after the blocked one must not receive any event")
 	})
 }
 
@@ -275,6 +334,7 @@ func TestNamespaceStates(t *testing.T) {
 
 func TestObserveAndBroadcast(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
+	ctx := context.Background()
 
 	matching := namespace("prod-ns", map[string]string{"env": "prod"})
 	nonMatching := namespace("dev-ns", map[string]string{"env": "dev"})
@@ -282,7 +342,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("disabled selector: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewMatchNotifier(nil, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(matching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -291,7 +351,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("short-circuit namespace: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(namespace(testOperatorNS, nil))
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, namespace(testOperatorNS, nil))
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -300,7 +360,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace matches: state changed, broadcast sent", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(matching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
@@ -310,7 +370,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace does not match: no state change, no broadcast", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(nonMatching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -320,7 +380,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, true)
-		stateChanged, isMatching := m.ObserveAndBroadcast(matching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -330,7 +390,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, false)
-		stateChanged, isMatching := m.ObserveAndBroadcast(nonMatching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -340,7 +400,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, true) // was matching
-		stateChanged, isMatching := m.ObserveAndBroadcast(nonMatching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.True(t, stateChanged)
 		assert.False(t, isMatching)
 		require.Len(t, ch, 1)
@@ -351,7 +411,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, false) // was non-matching
-		stateChanged, isMatching := m.ObserveAndBroadcast(matching)
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
