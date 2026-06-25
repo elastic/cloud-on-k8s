@@ -13,7 +13,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
 
 const (
@@ -23,9 +22,6 @@ const (
 	Kind = "Kibana"
 	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
 	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
-	// DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels
-	// to be set as annotations on the Kibana Pods.
-	DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 )
 
 // +kubebuilder:object:root=true
@@ -157,7 +153,7 @@ func (k *Kibana) IsMarkedForDeletion() bool {
 // DownwardNodeLabels returns the node labels to copy as annotations on the Kibana Pods,
 // as declared via the DownwardNodeLabelsAnnotation annotation.
 func (k *Kibana) DownwardNodeLabels() []string {
-	return nodelabels.FromAnnotations(k.Annotations)
+	return commonv1.DownwardNodeLabelsFromAnnotations(k.Annotations)
 }
 
 // HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Kibana Pods.

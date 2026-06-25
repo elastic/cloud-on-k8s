@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -24,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -263,14 +263,8 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := eprv1alpha1.Validate(&epr, nil)
+	warnings, err := validatePackageRegistry(&epr, nil, r.ExposedNodeLabels)
 	if err != nil {
-		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
-		return tracing.CaptureError(vctx, err)
-	}
-	if errs := commonnodelabels.ValidateAnnotation(epr.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
-		err := apierrors.NewInvalid(schema.GroupKind{Group: eprv1alpha1.GroupVersion.Group, Kind: eprv1alpha1.Kind}, epr.Name, errs)
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
@@ -320,7 +314,7 @@ func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret
 	// Changes to the downward-node-labels annotation must roll the Package Registry Pods so the new
 	// annotations are re-applied on scheduling.
 	if epr.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(epr.Annotations[eprv1alpha1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(epr.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	return fmt.Sprint(configHash.Sum32())

@@ -33,7 +33,7 @@ const (
 	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
 	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
 	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
-	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
+	DownwardNodeLabelsAnnotation = commonv1.DownwardNodeLabelsAnnotation
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"

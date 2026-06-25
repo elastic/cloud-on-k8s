@@ -9,45 +9,15 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
-
-// Validatable is the type constraint used by validation wrappers that need to access both the
-// runtime and metadata interfaces of a resource. ECK CRDs satisfy it by embedding
-// metav1.ObjectMeta and being registered with the runtime scheme.
-type Validatable interface {
-	runtime.Object
-	metav1.Object
-}
-
-// WithNodeLabelsValidation wraps a ValidateFunc with the operator's exposed-node-labels policy
-// check, so that any value of the downward-node-labels annotation is validated consistently
-// across resources.
-func WithNodeLabelsValidation[T Validatable](
-	validate ValidateFunc[T],
-	exposedNodeLabels commonnodelabels.NodeLabels,
-	groupKind schema.GroupKind,
-) ValidateFunc[T] {
-	return func(obj T, old T) (admission.Warnings, error) {
-		warnings, err := validate(obj, old)
-		if err != nil {
-			return warnings, err
-		}
-		if errs := commonnodelabels.ValidateAnnotation(obj.GetAnnotations(), exposedNodeLabels); len(errs) > 0 {
-			return warnings, apierrors.NewInvalid(groupKind, obj.GetName(), errs)
-		}
-		return warnings, nil
-	}
-}
 
 // ValidateFunc is the per-resource validation callback.
 // obj is the object being validated, old is nil/zero on create.

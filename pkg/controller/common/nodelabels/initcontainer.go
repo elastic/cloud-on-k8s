@@ -6,14 +6,12 @@ package nodelabels
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"text/template"
 
 	corev1 "k8s.io/api/core/v1"
 
 	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
-	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
 // WaitForAnnotationsContainerName is the name of the init container that blocks Pod start
@@ -27,7 +25,7 @@ expected_annotations=({{ .ExpectedAnnotations }})
 annotations_file={{ .AnnotationsFile }}
 function annotations_exist() {
   for expected_annotation in "${expected_annotations[@]}"; do
-    if ! grep -qE "^${expected_annotation}=" "${annotations_file}"; then
+    if ! grep -q "^${expected_annotation}=" "${annotations_file}"; then
       return 1
     fi
   done
@@ -60,7 +58,7 @@ func WaitForAnnotationsInitContainer(expectedAnnotations []string) (corev1.Conta
 		AnnotationsFile     string
 	}{
 		ExpectedAnnotations: strings.Join(expectedAnnotations, " "),
-		AnnotationsFile:     fmt.Sprintf("%s/%s", esvolume.DownwardAPIMountPath, esvolume.AnnotationsFile),
+		AnnotationsFile:     DownwardAPIVolume().AnnotationsFilePath(),
 	}); err != nil {
 		return corev1.Container{}, err
 	}

@@ -24,11 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
 )
-
-// DownwardNodeLabelsAnnotation is re-exported for convenience.
-const DownwardNodeLabelsAnnotation = nodelabels.DownwardNodeLabelsAnnotation
 
 // AnnotationTarget is implemented by ECK custom resources whose managed Pods should have
 // Kubernetes node labels copied to their annotations via AnnotatePods. Any ECK CR that already

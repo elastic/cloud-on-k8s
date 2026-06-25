@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -119,7 +120,7 @@ func buildConfigHash(c k8s.Client, as *apmv1.ApmServer, params PodSpecParams) (s
 	// Changes to the downward-node-labels annotation must roll the APM Server Pods so the new annotations
 	// are re-applied on scheduling.
 	if as.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(as.Annotations[apmv1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(as.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	// - in the APMServer keystore

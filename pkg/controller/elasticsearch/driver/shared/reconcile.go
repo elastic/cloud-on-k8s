@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
@@ -214,7 +215,7 @@ func ReconcileSharedResources(
 
 	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
 	// reconciliation loop as we don't want to prevent other updates from being applied to the cluster.
-	results.WithResults(annotatePodsWithNodeLabels(ctx, client, es))
+	results.WithResults(nodelabels.AnnotatePods(ctx, client, &es))
 
 	// Verify the operator supports existing pods
 	if err := VerifySupportsExistingPods(resourcesState.CurrentPods, params.SupportedVersions); err != nil {

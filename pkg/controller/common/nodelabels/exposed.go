@@ -10,7 +10,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/nodelabels"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 // NotAllowedNodesLabelMsg is returned when a node label requested via the downward-node-labels
@@ -52,12 +52,12 @@ func (n NodeLabels) IsAllowed(nodeLabel string) bool {
 // when no annotation is set.
 func ValidateAnnotation(annotations map[string]string, exposedNodeLabels NodeLabels) field.ErrorList {
 	var errs field.ErrorList
-	for _, nodeLabel := range nodelabels.FromAnnotations(annotations) {
+	for _, nodeLabel := range commonv1.DownwardNodeLabelsFromAnnotations(annotations) {
 		if exposedNodeLabels.IsAllowed(nodeLabel) {
 			continue
 		}
 		errs = append(errs, field.Invalid(
-			field.NewPath("metadata").Child("annotations", nodelabels.DownwardNodeLabelsAnnotation),
+			field.NewPath("metadata").Child("annotations", commonv1.DownwardNodeLabelsAnnotation),
 			nodeLabel,
 			NotAllowedNodesLabelMsg,
 		))

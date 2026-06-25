@@ -17,6 +17,7 @@ import (
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -286,7 +287,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	// Changes to the downward-node-labels annotation must roll the Kibana Pods so the new annotations
 	// are re-applied on scheduling.
 	if kb.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(kb.Annotations[kbv1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(kb.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {

@@ -119,8 +119,8 @@ func TestAnnotatePods(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.objects...)
 			target := &fakeTarget{
-				Pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sample"}},
-				labels: tt.expectedLabels,
+				Pod:      &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "sample"}},
+				labels:   tt.expectedLabels,
 				selector: podSelector,
 			}
 			results := AnnotatePods(context.Background(), c, target)

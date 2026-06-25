@@ -17,7 +17,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -300,14 +299,8 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := apmv1.Validate(as, nil)
+	warnings, err := validateApmServer(as, nil, r.ExposedNodeLabels)
 	if err != nil {
-		log.Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
-		return tracing.CaptureError(vctx, err)
-	}
-	if errs := commonnodelabels.ValidateAnnotation(as.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
-		err := apierrors.NewInvalid(schema.GroupKind{Group: apmv1.GroupVersion.Group, Kind: apmv1.Kind}, as.Name, errs)
 		log.Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)

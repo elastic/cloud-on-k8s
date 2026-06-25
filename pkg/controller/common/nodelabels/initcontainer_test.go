@@ -27,8 +27,9 @@ func TestWaitForAnnotationsInitContainer(t *testing.T) {
 	script := c.Command[2]
 	assert.Contains(t, script, "topology.kubernetes.io/zone topology.kubernetes.io/region")
 	assert.Contains(t, script, "/mnt/elastic-internal/downward-api/annotations")
-	// Each expected annotation is matched at the beginning of a line followed by '=':
-	assert.Contains(t, script, `grep -qE "^${expected_annotation}="`)
+	// Each expected annotation is matched at the beginning of a line followed by '='.
+	// Use BRE (no -E) to match the Elasticsearch prepare-fs script.
+	assert.Contains(t, script, `grep -q "^${expected_annotation}="`)
 	// No image/resources are set so they are inherited from the main container.
 	assert.Equal(t, "", c.Image)
 	assert.Empty(t, c.Resources.Limits)

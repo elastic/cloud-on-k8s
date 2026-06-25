@@ -2,10 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// Package nodelabels provides the constant and parsing helpers used by the ECK resources to
-// declare the set of Kubernetes node labels that must be copied to the annotations of the Pods
-// managed by a given resource.
-package nodelabels
+package v1
 
 import (
 	"strings"
@@ -14,12 +11,13 @@ import (
 )
 
 // DownwardNodeLabelsAnnotation holds an optional comma-separated list of expected node labels to
-// be set as annotations on the Pods managed by an ECK resource.
+// be set as annotations on the Pods managed by an ECK resource. It is a user-facing API annotation
+// shared by all ECK resource types, so the canonical definition lives here.
 const DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 
-// Parse normalizes a comma-separated node labels annotation value into a sorted, deduplicated
-// slice. An empty or whitespace-only value returns nil.
-func Parse(annotationValue string) []string {
+// ParseDownwardNodeLabels normalizes a comma-separated node labels annotation value into a sorted,
+// deduplicated slice. An empty or whitespace-only value returns nil.
+func ParseDownwardNodeLabels(annotationValue string) []string {
 	labels := set.Make()
 	for label := range strings.SplitSeq(annotationValue, ",") {
 		label = strings.TrimSpace(label)
@@ -34,7 +32,8 @@ func Parse(annotationValue string) []string {
 	return labels.AsSortedSlice()
 }
 
-// FromAnnotations returns the list of downward node labels declared via DownwardNodeLabelsAnnotation.
-func FromAnnotations(annotations map[string]string) []string {
-	return Parse(annotations[DownwardNodeLabelsAnnotation])
+// DownwardNodeLabelsFromAnnotations returns the list of downward node labels declared via the
+// DownwardNodeLabelsAnnotation annotation.
+func DownwardNodeLabelsFromAnnotations(annotations map[string]string) []string {
+	return ParseDownwardNodeLabels(annotations[DownwardNodeLabelsAnnotation])
 }

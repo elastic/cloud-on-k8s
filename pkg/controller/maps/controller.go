@@ -16,7 +16,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -25,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -295,14 +295,8 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := emsv1alpha1.Validate(&ems, nil)
+	warnings, err := validateMapsServer(&ems, nil, r.ExposedNodeLabels)
 	if err != nil {
-		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
-		return tracing.CaptureError(vctx, err)
-	}
-	if errs := commonnodelabels.ValidateAnnotation(ems.Annotations, r.ExposedNodeLabels); len(errs) > 0 {
-		err := apierrors.NewInvalid(schema.GroupKind{Group: emsv1alpha1.GroupVersion.Group, Kind: emsv1alpha1.Kind}, ems.Name, errs)
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
@@ -345,7 +339,7 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 	// Changes to the downward-node-labels annotation must roll the Elastic Maps Server Pods so the new
 	// annotations are re-applied on scheduling.
 	if ems.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(ems.Annotations[emsv1alpha1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(ems.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	// - in the Elastic Maps Server TLS certificates

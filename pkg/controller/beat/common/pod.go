@@ -155,7 +155,7 @@ func buildPodTemplate(
 	// Changes to the downward-node-labels annotation must roll the Beat Pods so the new annotations
 	// are re-applied on scheduling.
 	if params.Beat.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(params.Beat.Annotations[beatv1beta1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(params.Beat.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
 		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(params.Beat.DownwardNodeLabels())
 		if err != nil {

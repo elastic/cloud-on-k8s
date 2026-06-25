@@ -213,7 +213,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// Changes to the downward-node-labels annotation must roll the Agent Pods so the new annotations
 	// are re-applied on scheduling.
 	if params.Agent.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(params.Agent.Annotations[agentv1alpha1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(params.Agent.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	podMeta := params.Meta.Merge(metadata.Metadata{
@@ -245,11 +245,10 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 		}
 		builder = builder.
 			WithVolumes(downwardAPIVolume.Volume()).
-			WithInitContainers(waitInit).
-			WithInitContainerDefaults()
+			WithInitContainers(waitInit)
 	}
 
-	return builder.PodTemplate, nil
+	return builder.WithInitContainerDefaults().PodTemplate, nil
 }
 
 func fleetConfigPath(v version.Version) string {

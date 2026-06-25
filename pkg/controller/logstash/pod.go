@@ -92,7 +92,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	// Changes to the downward-node-labels annotation must roll the Logstash Pods so the new annotations
 	// are re-applied on scheduling.
 	if params.Logstash.HasDownwardNodeLabels() {
-		_, _ = configHash.Write([]byte(params.Logstash.Annotations[logstashv1alpha1.DownwardNodeLabelsAnnotation]))
+		_, _ = configHash.Write([]byte(params.Logstash.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	annotations := map[string]string{
