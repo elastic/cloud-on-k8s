@@ -28,6 +28,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		validSettings,
+		checkVariablesFrom,
 	}
 )
 
@@ -118,6 +119,23 @@ func validSettings(policy *StackConfigPolicy) field.ErrorList {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("elasticsearch"), "One out of Elasticsearch or Kibana settings is mandatory, both must not be empty")}
 	}
 	return nil
+}
+
+func checkVariablesFrom(policy *StackConfigPolicy) field.ErrorList {
+	var errs field.ErrorList
+	path := field.NewPath("spec").Child("variablesFrom")
+	for i, src := range policy.Spec.VariablesFrom {
+		if src.Name == "" {
+			errs = append(errs, field.Required(path.Index(i).Child("name"), "name must not be empty"))
+		}
+		if src.Kind != VariableSourceKindConfigMap && src.Kind != VariableSourceKindSecret {
+			errs = append(errs, field.NotSupported(path.Index(i).Child("kind"), src.Kind, []string{
+				string(VariableSourceKindConfigMap),
+				string(VariableSourceKindSecret),
+			}))
+		}
+	}
+	return errs
 }
 
 // uniqueSecretMountPaths returns true if all given mountpaths are unique

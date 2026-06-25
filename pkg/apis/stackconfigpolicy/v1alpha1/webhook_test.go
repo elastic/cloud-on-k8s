@@ -118,6 +118,46 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "variablesFrom-empty-name",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.VariablesFrom = []policyv1alpha1.VariableSource{
+					{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: ""},
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed("name must not be empty"),
+		},
+		{
+			Name:      "variablesFrom-invalid-kind",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.VariablesFrom = []policyv1alpha1.VariableSource{
+					{Kind: "InvalidKind", Name: "my-cm"},
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed("Unsupported value"),
+		},
+		{
+			Name:      "variablesFrom-valid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.VariablesFrom = []policyv1alpha1.VariableSource{
+					{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "my-cm"},
+					{Kind: policyv1alpha1.VariableSourceKindSecret, Name: "my-secret", Namespace: "other-ns"},
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "create-duplicate-mountpaths",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

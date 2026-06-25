@@ -50,6 +50,40 @@ type StackConfigPolicyList struct {
 	Items           []StackConfigPolicy `json:"items"`
 }
 
+// VariableSourceKind is the type of source for variable substitution.
+// +kubebuilder:validation:Enum=ConfigMap;Secret
+type VariableSourceKind string
+
+const (
+	VariableSourceKindConfigMap VariableSourceKind = "ConfigMap"
+	VariableSourceKindSecret    VariableSourceKind = "Secret"
+)
+
+// VariableSource references a ConfigMap or Secret from which variables are loaded for substitution.
+type VariableSource struct {
+	// Kind is the type of the source, either ConfigMap or Secret.
+	// +kubebuilder:validation:Enum=ConfigMap;Secret
+	Kind VariableSourceKind `json:"kind"`
+	// Name is the name of the ConfigMap or Secret.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// Namespace is the namespace of the ConfigMap or Secret. Defaults to the StackConfigPolicy namespace if not set.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+	// Optional indicates whether the source is optional. When true, a missing ConfigMap or Secret is silently ignored
+	// instead of causing a reconciliation error. Other errors (for example, permission denied) are still reported.
+	// +optional
+	Optional bool `json:"optional,omitempty"`
+}
+
+// EffectiveNamespace returns the source's namespace, falling back to policyNamespace when not set.
+func (v VariableSource) EffectiveNamespace(policyNamespace string) string {
+	if v.Namespace != "" {
+		return v.Namespace
+	}
+	return policyNamespace
+}
+
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 	// Weight determines the priority of this policy when multiple policies target the same resource.
@@ -60,6 +94,12 @@ type StackConfigPolicySpec struct {
 	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
 	Kibana         KibanaConfigPolicySpec        `json:"kibana,omitempty"`
+	// VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
+	// Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
+	// Sources without a namespace default to the policy's namespace. Later entries take precedence over earlier ones on key conflicts.
+	// If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
+	// Referencing an undefined variable (one not present in any source and without a default) is an error; use ${VAR:-default} to supply a fallback.
+	VariablesFrom []VariableSource `json:"variablesFrom,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {

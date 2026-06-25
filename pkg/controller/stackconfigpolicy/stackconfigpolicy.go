@@ -6,6 +6,7 @@ package stackconfigpolicy
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -21,6 +22,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/substitution"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -35,10 +37,10 @@ type configPolicy[T any] struct {
 	// Spec is the merged config policy specification
 	Spec T
 	// extractFunc extracts the relevant spec (ES or Kibana) from a StackConfigPolicy
-	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec T)
+	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec *T)
 	// mergeFunc merges a source spec into the destination configPolicy, handling conflicts and aggregating
 	// secret sources and mounts. It receives the entire configPolicy to allow updating both Spec and SecretSources.
-	mergeFunc func(dst *configPolicy[T], srcSpec T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
+	mergeFunc func(dst *configPolicy[T], srcSpec *T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
 	// SecretSources contains aggregated secure settings secret sources, keyed by StackConfigPolicy namespace
 	SecretSources []commonv1.NamespacedSecretSource
 	// PolicyRefs contains references to all policies that targeted and were merged for this object
@@ -49,7 +51,9 @@ type configPolicy[T any] struct {
 // in order of their weight (lowest weight first). Policies with the same weight are flagged as conflicts.
 // The merge operation is customized through the configPolicy's extractFunc and mergeFunc callbacks.
 func merge[T any](
+	ctx context.Context,
 	c *configPolicy[T],
+	client k8s.Client,
 	obj metav1.Object,
 	allPolicies []policyv1alpha1.StackConfigPolicy,
 	operatorNamespace string,
@@ -86,6 +90,20 @@ func merge[T any](
 
 	for _, p := range c.PolicyRefs {
 		srcSpec := c.extractFunc(&p)
+
+		if len(p.Spec.VariablesFrom) > 0 {
+			pNsn := k8s.ExtractNamespacedName(&p)
+			vars, err := substitution.ResolveVars(ctx, client, &p)
+			if err != nil {
+				return fmt.Errorf("failed to resolve vars for policy %q: %w", pNsn, err)
+			}
+
+			err = substitution.SubstituteVars(srcSpec, vars)
+			if err != nil {
+				return fmt.Errorf("failed to substitute vars for %T in policy %q: %w", srcSpec, pNsn, err)
+			}
+		}
+
 		if err := c.mergeFunc(c, srcSpec, &p); err != nil {
 			return err
 		}
@@ -99,15 +117,21 @@ func merge[T any](
 // in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
-func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
+func getConfigPolicyForElasticsearch(
+	ctx context.Context,
+	c k8s.Client,
+	es *esv1.Elasticsearch,
+	allPolicies []policyv1alpha1.StackConfigPolicy,
+	params operator.Parameters,
+) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
 	secretMountsAggr := secretMountsAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec]{
-		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.ElasticsearchConfigPolicySpec {
-			return p.Spec.Elasticsearch
+		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.ElasticsearchConfigPolicySpec {
+			return &p.Spec.Elasticsearch
 		},
-		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src *policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
-			if err = mergeElasticsearchSpecs(&c.Spec, &src); err != nil {
+			if err = mergeElasticsearchSpecs(&c.Spec, src); err != nil {
 				return err
 			}
 
@@ -124,7 +148,7 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 		},
 	}
 
-	if err := merge(cfgPolicy, es, allPolicies, params.OperatorNamespace); err != nil {
+	if err := merge(ctx, cfgPolicy, c, es, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	return cfgPolicy, nil
@@ -164,12 +188,18 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 // in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
-func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
+func getConfigPolicyForKibana(
+	ctx context.Context,
+	c k8s.Client,
+	kbn *kbv1.Kibana,
+	allPolicies []policyv1alpha1.StackConfigPolicy,
+	params operator.Parameters,
+) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
 	cfgPolicy := &configPolicy[policyv1alpha1.KibanaConfigPolicySpec]{
-		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.KibanaConfigPolicySpec {
-			return p.Spec.Kibana
+		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.KibanaConfigPolicySpec {
+			return &p.Spec.Kibana
 		},
-		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src *policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
 			if c.Spec.Config, err = deepMergeConfig(c.Spec.Config, src.Config); err != nil {
 				return err
@@ -180,7 +210,7 @@ func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.Sta
 		},
 	}
 
-	if err := merge(cfgPolicy, kbn, allPolicies, params.OperatorNamespace); err != nil {
+	if err := merge(ctx, cfgPolicy, c, kbn, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	return cfgPolicy, nil
