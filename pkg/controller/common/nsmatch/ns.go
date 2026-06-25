@@ -37,7 +37,7 @@ type NamespaceFlipNotifier struct {
 	shortCircuit map[string]struct{} // namespaces excluded from label-selector evaluation.
 	subs         []chan event.TypedGenericEvent[*corev1.Namespace]
 	statesMutex  sync.Mutex
-	states       map[string]bool // namespace name -> last known match result
+	states       map[string]struct{} // namespace name -> present if namespace matches to the selector
 }
 
 // NewMatchNotifier returns a NamespaceFlipNotifier. When sel is nil it acts as
@@ -51,7 +51,7 @@ func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceFlipNoti
 			"":         {},
 			operatorNS: {},
 		},
-		states: map[string]bool{},
+		states: map[string]struct{}{},
 	}
 }
 
@@ -74,7 +74,8 @@ func (m *NamespaceFlipNotifier) Matches(ns string) bool {
 
 	m.statesMutex.Lock()
 	defer m.statesMutex.Unlock()
-	return m.states[ns]
+	_, match := m.states[ns]
+	return match
 }
 
 // ObserveNamespace evaluates the selector against ns's current labels, records
@@ -145,15 +146,11 @@ func (m *NamespaceFlipNotifier) ObserveAndBroadcast(ctx context.Context, ns *cor
 func (m *NamespaceFlipNotifier) Swap(ns string, isMatching bool) (wasMatching bool) {
 	m.statesMutex.Lock()
 	defer m.statesMutex.Unlock()
-	wasMatching = m.states[ns]
-	m.states[ns] = isMatching
+	_, wasMatching = m.states[ns]
+	if isMatching {
+		m.states[ns] = struct{}{}
+	} else {
+		delete(m.states, ns)
+	}
 	return
-}
-
-// ForgetNamespace removes the recorded state for a namespace, typically when it is
-// deleted.
-func (m *NamespaceFlipNotifier) ForgetNamespace(ns string) {
-	m.statesMutex.Lock()
-	defer m.statesMutex.Unlock()
-	delete(m.states, ns)
 }

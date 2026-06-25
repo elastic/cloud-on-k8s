@@ -91,7 +91,7 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 	var ns corev1.Namespace
 	if err := r.client.Get(ctx, types.NamespacedName{Name: request.Name}, &ns); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.nsMatchNotifier.ForgetNamespace(request.Name) // namespace got deleted.
+			r.nsMatchNotifier.Swap(request.Name, false) // namespace got deleted.
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err

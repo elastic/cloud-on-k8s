@@ -6,7 +6,6 @@ package nsmatch
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -73,6 +72,12 @@ func TestMatcher(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
 		m := NewMatchNotifier(sel, testOperatorNS)
 		assert.True(t, m.Matches(testOperatorNS))
+	})
+
+	t.Run("Matches returns true for empty string short-circuit when selector is enabled", func(t *testing.T) {
+		sel := mustSelector(t, map[string]string{"env": "prod"})
+		m := NewMatchNotifier(sel, testOperatorNS)
+		assert.True(t, m.Matches(""), "empty namespace is always short-circuited")
 	})
 }
 
@@ -263,75 +268,6 @@ func TestNotifier(t *testing.T) {
 	})
 }
 
-func TestNamespaceStates(t *testing.T) {
-	t.Run("Swap unknown namespace returns not known", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		wasMatching := s.Swap("ns-a", true)
-		assert.False(t, wasMatching, "zero value returned for unknown namespace")
-	})
-
-	t.Run("Swap known namespace returns previous value", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		s.Swap("ns-a", true) // seed
-
-		wasMatching := s.Swap("ns-a", false)
-		assert.True(t, wasMatching, "previous value was true")
-	})
-
-	t.Run("Swap same value round-trips correctly", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		s.Swap("ns-a", true)
-
-		wasMatching := s.Swap("ns-a", true)
-		assert.True(t, wasMatching)
-	})
-
-	t.Run("ForgetNamespace makes namespace unknown again", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		s.Swap("ns-a", true)
-		s.ForgetNamespace("ns-a")
-
-		wasMatching := s.Swap("ns-a", false)
-		assert.False(t, wasMatching, "after ForgetNamespace the namespace must be non-matching again")
-	})
-
-	t.Run("ForgetNamespace unknown namespace does not panic", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		s.ForgetNamespace("never-seen")
-	})
-
-	t.Run("independent namespaces do not share state", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		s.Swap("ns-a", true)
-		s.Swap("ns-b", false)
-
-		wasA := s.Swap("ns-a", false)
-		wasB := s.Swap("ns-b", true)
-
-		assert.True(t, wasA)
-		assert.False(t, wasB)
-	})
-
-	t.Run("concurrent Swap and ForgetNamespace do not race", func(t *testing.T) {
-		s := &NamespaceFlipNotifier{states: map[string]bool{}}
-		const goroutines = 10
-
-		var wg sync.WaitGroup
-		wg.Add(goroutines * 2)
-		for range goroutines {
-			go func() {
-				defer wg.Done()
-				s.Swap("ns-concurrent", true)
-			}()
-			go func() {
-				defer wg.Done()
-				s.ForgetNamespace("ns-concurrent")
-			}()
-		}
-		wg.Wait()
-	})
-}
-
 func TestObserveAndBroadcast(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 	ctx := context.Background()
@@ -416,5 +352,48 @@ func TestObserveAndBroadcast(t *testing.T) {
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
 		assert.Equal(t, matching, (<-ch).Object)
+	})
+
+	t.Run("empty namespace short-circuit: no state change, no broadcast, reports matching", func(t *testing.T) {
+		m := NewMatchNotifier(sel, testOperatorNS)
+		ch := m.Subscribe()
+		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, namespace("", nil))
+		assert.False(t, stateChanged)
+		assert.True(t, isMatching)
+		assert.Len(t, ch, 0)
+	})
+}
+
+func TestSwap(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"env": "prod"})
+
+	t.Run("first swap true: wasMatching false, namespace added to states", func(t *testing.T) {
+		m := NewMatchNotifier(sel, testOperatorNS)
+		wasMatching := m.Swap("ns", true)
+		assert.False(t, wasMatching)
+		assert.True(t, m.Matches("ns"))
+	})
+
+	t.Run("second swap true: wasMatching true, namespace stays in states", func(t *testing.T) {
+		m := NewMatchNotifier(sel, testOperatorNS)
+		m.Swap("ns", true)
+		wasMatching := m.Swap("ns", true)
+		assert.True(t, wasMatching)
+		assert.True(t, m.Matches("ns"))
+	})
+
+	t.Run("swap false when was matching: wasMatching true, namespace removed from states", func(t *testing.T) {
+		m := NewMatchNotifier(sel, testOperatorNS)
+		m.Swap("ns", true)
+		wasMatching := m.Swap("ns", false)
+		assert.True(t, wasMatching)
+		assert.False(t, m.Matches("ns"))
+	})
+
+	t.Run("swap false when was not tracked: wasMatching false, namespace absent from states", func(t *testing.T) {
+		m := NewMatchNotifier(sel, testOperatorNS)
+		wasMatching := m.Swap("ns", false)
+		assert.False(t, wasMatching)
+		assert.False(t, m.Matches("ns"))
 	})
 }
