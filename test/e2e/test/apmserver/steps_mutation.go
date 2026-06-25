@@ -6,6 +6,7 @@ package apmserver
 
 import (
 	"context"
+	"maps"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -34,6 +35,12 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
 					return err
 				}
+				// merge annotations
+				if as.Annotations == nil {
+					as.Annotations = make(map[string]string)
+				}
+				maps.Copy(as.Annotations, b.ApmServer.Annotations)
+
 				as.Spec = b.ApmServer.Spec
 				return k.Client.Update(context.Background(), &as)
 			}),

@@ -111,6 +111,16 @@ func (m *PackageRegistry) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the PackageRegistryStatus's Conditions with the new Condition(s).
+func (m *PackageRegistry) MergeConditions(conditions ...commonv1.Condition) {
+	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this PackageRegistry's PackageRegistry Conditions.
+func (m *PackageRegistry) Conditions() commonv1.Conditions {
+	return m.Status.Conditions
+}
+
 // +kubebuilder:object:root=true
 
 // PackageRegistryList contains a list of PackageRegistry

@@ -29,6 +29,7 @@ func validations(ctx context.Context, checker license.Checker) []validation {
 		},
 		checkConfigSecretName,
 		checkResourceSelector,
+		commonv1.PauseOrchestrationAnnotationCheck[*autoopsv1alpha1.AutoOpsAgentPolicy](),
 	}
 }
 

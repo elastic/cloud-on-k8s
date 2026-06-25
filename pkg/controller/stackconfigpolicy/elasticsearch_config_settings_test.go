@@ -5,7 +5,6 @@
 package stackconfigpolicy
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,10 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -94,7 +96,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := reconcileSecretMounts(context.TODO(), tt.args.client, tt.args.es, tt.args.policy, metadata.Metadata{})
+			err := reconcileSecretMounts(t.Context(), tt.args.client, tt.args.es, tt.args.policy, metadata.Metadata{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -108,7 +110,7 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 						Name:      esv1.StackConfigAdditionalSecretName(tt.args.es.Name, secretMount.SecretName),
 						Namespace: "test-ns",
 					}
-					err := tt.args.client.Get(context.TODO(), expectedNsn, expectedSecret)
+					err := tt.args.client.Get(t.Context(), expectedNsn, expectedSecret)
 					if (err != nil) != tt.wantErr {
 						t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 						return
@@ -121,32 +123,200 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 	}
 }
 
-// TestNewElasticsearchConfigSecret_NilDataWhenEmpty verifies that newElasticsearchConfigSecret
-// returns a secret with nil Data when there are no SecretMounts and no Config.
-// This is the root cause of https://github.com/elastic/cloud-on-k8s/issues/9175:
-// when Data was initialized as an empty map (make(map[string][]byte)), the Kubernetes API server
-// would normalize it to nil on storage. On the next reconciliation, reflect.DeepEqual(map[string][]byte{}, nil)
-// returns false, causing NeedsUpdate to return true and triggering an unnecessary Update API call every cycle.
-func TestNewElasticsearchConfigSecret_NilDataWhenEmpty(t *testing.T) {
+func TestNewElasticsearchConfigSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es"},
 		Spec:       esv1.ElasticsearchSpec{Version: "9.3.1"},
 	}
 
-	// Policy with only clusterSettings — no Config, no SecretMounts
-	esConfig := policyv1alpha1.ElasticsearchConfigPolicySpec{
-		ClusterSettings: &commonv1.Config{Data: map[string]any{
-			"indices.recovery.max_bytes_per_sec": "40mb",
-		}},
+	tests := []struct {
+		name                  string
+		esConfig              policyv1alpha1.ElasticsearchConfigPolicySpec
+		wantDataNil           bool
+		wantDataKeys          []string
+		wantAbsentDataKeys    []string
+		wantRolesJSONContains []string
+		wantRolesHashNonEmpty bool
+	}{
+		{
+			name: "cluster settings only - no Config, no SecretMounts, no SecurityRoles",
+			esConfig: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				ClusterSettings: &commonv1.Config{Data: map[string]any{
+					"indices.recovery.max_bytes_per_sec": "40mb",
+				}},
+			},
+			wantDataNil:           true,
+			wantRolesHashNonEmpty: false,
+		},
+		{
+			name: "non-empty SecurityRoles",
+			esConfig: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecurityRoles: &commonv1.Config{Data: map[string]any{
+					"custom_admin": map[string]any{
+						"cluster": []any{"all"},
+						"indices": []any{map[string]any{
+							"names":      []any{"*"},
+							"privileges": []any{"all"},
+						}},
+					},
+					"custom_reader": map[string]any{
+						"cluster": []any{"monitor"},
+						"indices": []any{map[string]any{
+							"names":      []any{"logs-*"},
+							"privileges": []any{"read"},
+						}},
+					},
+				}},
+			},
+			wantDataNil:           false,
+			wantDataKeys:          []string{esv1.StackConfigRolesKey},
+			wantAbsentDataKeys:    []string{esv1.StackConfigElasticsearchConfigKey},
+			wantRolesJSONContains: []string{"custom_admin", "custom_reader"},
+			wantRolesHashNonEmpty: true,
+		},
+		{
+			name: "SecurityRoles with empty Data map",
+			esConfig: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecurityRoles: &commonv1.Config{Data: map[string]any{}},
+			},
+			wantDataNil:           true,
+			wantRolesHashNonEmpty: false,
+		},
+		{
+			name:                  "nil SecurityRoles",
+			esConfig:              policyv1alpha1.ElasticsearchConfigPolicySpec{},
+			wantDataNil:           true,
+			wantRolesHashNonEmpty: false,
+		},
 	}
 
-	secret, err := newElasticsearchConfigSecret(esConfig, es)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secret, err := newElasticsearchConfigSecret(tt.esConfig, es)
+			require.NoError(t, err)
 
-	// Data must be nil (not empty map) so that reflect.DeepEqual matches what the API server returns
-	require.Nil(t, secret.Data,
-		"Data should be nil when there are no SecretMounts and no Config; "+
-			"an empty map causes spurious updates because the API server normalizes it to nil")
+			if tt.wantDataNil {
+				require.Nil(t, secret.Data)
+			} else {
+				require.NotNil(t, secret.Data)
+			}
+
+			for _, key := range tt.wantDataKeys {
+				require.Contains(t, secret.Data, key)
+			}
+			for _, key := range tt.wantAbsentDataKeys {
+				require.NotContains(t, secret.Data, key)
+			}
+
+			for _, substr := range tt.wantRolesJSONContains {
+				require.Contains(t, string(secret.Data[esv1.StackConfigRolesKey]), substr)
+			}
+
+			rolesHash, ok := secret.Annotations[commonannotation.ElasticsearchRolesHashAnnotation]
+			require.True(t, ok, "ElasticsearchRolesHashAnnotation must always be present")
+			if tt.wantRolesHashNonEmpty {
+				require.NotEmpty(t, rolesHash)
+			} else {
+				require.Empty(t, rolesHash)
+			}
+		})
+	}
+}
+
+func TestElasticsearchConfigAndSecretMountsApplied(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es"},
+		Spec:       esv1.ElasticsearchSpec{Version: "9.3.1"},
+	}
+
+	securityRoles := &commonv1.Config{Data: map[string]any{
+		"custom_role": map[string]any{"cluster": []any{"monitor"}},
+	}}
+	expectedHash := hash.HashObject(securityRoles)
+
+	// pod is identical across all cases - only the roles-and-file-realm secret varies
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns", Name: "test-es-es-default-0",
+			Labels:      map[string]string{eslabel.ClusterNameLabelName: "test-es"},
+			Annotations: map[string]string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: getElasticsearchConfigAndMountsHash(nil, nil)},
+		},
+	}
+
+	rolesSecretWithHash := func(h string) *corev1.Secret {
+		s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: esv1.RolesAndFileRealmSecret("test-es")}}
+		if h != "" {
+			s.Annotations = map[string]string{commonannotation.ElasticsearchRolesHashAnnotation: h}
+		}
+		return s
+	}
+
+	tests := []struct {
+		name        string
+		esConfig    policyv1alpha1.ElasticsearchConfigPolicySpec
+		rolesSecret *corev1.Secret
+		wantApplied bool
+	}{
+		{
+			name:        "roles not yet applied - roles-and-file-realm secret missing",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: securityRoles},
+			rolesSecret: nil,
+			wantApplied: false,
+		},
+		{
+			name:        "roles not yet applied - hash mismatch on roles-and-file-realm secret",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: securityRoles},
+			rolesSecret: rolesSecretWithHash("wrong-hash"),
+			wantApplied: false,
+		},
+		{
+			name:        "roles applied - hash matches on roles-and-file-realm secret",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: securityRoles},
+			rolesSecret: rolesSecretWithHash(expectedHash),
+			wantApplied: true,
+		},
+		{
+			name:        "nil SecurityRoles, no roles-and-file-realm secret yet",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: nil},
+			rolesSecret: nil,
+			wantApplied: true,
+		},
+		{
+			name:        "nil SecurityRoles, roles-and-file-realm secret has no roles hash annotation",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: nil},
+			rolesSecret: rolesSecretWithHash(""),
+			wantApplied: true,
+		},
+		{
+			// SCP previously had roles and they were removed. The secret still carries
+			// the stale annotation because the ES controller has not reconciled yet.
+			// Must report not-applied until the ES controller cleans up the annotation.
+			name:        "nil SecurityRoles, stale roles hash annotation - not yet applied",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: nil},
+			rolesSecret: rolesSecretWithHash("stale-hash-from-removed-roles"),
+			wantApplied: false,
+		},
+		{
+			name:        "empty-Data SecurityRoles is equivalent to nil",
+			esConfig:    policyv1alpha1.ElasticsearchConfigPolicySpec{SecurityRoles: &commonv1.Config{Data: map[string]any{}}},
+			rolesSecret: nil,
+			wantApplied: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var c k8s.Client
+			if tt.rolesSecret != nil {
+				c = k8s.NewFakeClient(pod, tt.rolesSecret)
+			} else {
+				c = k8s.NewFakeClient(pod)
+			}
+			applied, err := elasticsearchConfigAndSecretMountsApplied(t.Context(), c, tt.esConfig, es)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantApplied, applied)
+		})
+	}
 }
 
 func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, orphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {

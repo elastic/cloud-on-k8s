@@ -33,6 +33,10 @@ type AutoscalingBuilder struct {
 	es       types.NamespacedName
 }
 
+func (ab *AutoscalingBuilder) ResourceName() string {
+	return ab.es.Name
+}
+
 func (ab *AutoscalingBuilder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{

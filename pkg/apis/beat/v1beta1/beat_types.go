@@ -301,6 +301,16 @@ func (b *Beat) GetObservedGeneration() int64 {
 	return b.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the BeatStatus's Conditions with the new Condition(s).
+func (b *Beat) MergeConditions(conditions ...commonv1.Condition) {
+	b.Status.Conditions = b.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this Beat's BeatStatus Conditions.
+func (b *Beat) Conditions() commonv1.Conditions {
+	return b.Status.Conditions
+}
+
 type BeatESAssociation struct {
 	*Beat
 }

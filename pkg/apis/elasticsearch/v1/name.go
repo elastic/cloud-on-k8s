@@ -50,6 +50,10 @@ const (
 	// StackConfigElasticsearchConfigKey is the key used for Elasticsearch
 	// config in StackConfigPolicy per-cluster secrets.
 	StackConfigElasticsearchConfigKey = "elasticsearch.json"
+
+	// StackConfigRolesKey is the key used for Elasticsearch role definitions
+	// in StackConfigPolicy per-cluster secrets.
+	StackConfigRolesKey = "roles.json"
 )
 
 var (

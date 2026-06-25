@@ -10,15 +10,11 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	commondriver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
-	remotekeystore "github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 )
 
 // Driver is the stateless Elasticsearch driver implementation.
@@ -37,7 +33,8 @@ var _ commondriver.Interface = (*Driver)(nil)
 func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// Reconcile resources which are common to all drivers.
 	// clientAuthenticationRequired is always false for stateless: mTLS is rejected by validation.
-	sharedState, results := shared.ReconcileSharedResources(ctx, d, d.Parameters, false)
+	// TODO(#9204): wire up StackConfigPolicy support for stateless ES (currently passing empty PolicyConfig{}
+	sharedState, results := shared.ReconcileSharedResources(ctx, d, d.Parameters, false, stackconfig.PolicyConfig{})
 	if results.HasError() {
 		return results
 	}
@@ -67,35 +64,5 @@ func (d *Driver) reconcileSecureSettings(ctx context.Context) error {
 // buildClusterSecrets gathers all secure settings sources and returns them in the nested
 // structure expected by Elasticsearch file-based settings cluster_secrets.
 func (d *Driver) buildClusterSecrets(ctx context.Context) (*commonv1.Config, error) {
-	// Gather all secret sources
-	secretSources := keystore.WatchedSecretNames(&d.ES)
-
-	remoteClusterAPIKeys, err := remotekeystore.APIKeySecretSource(ctx, &d.ES, d.Client)
-	if err != nil {
-		return nil, err
-	}
-	secretSources = append(secretSources, remoteClusterAPIKeys...)
-
-	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, d.Client, &d.ES, "Elasticsearch")
-	if err != nil {
-		return nil, err
-	}
-	secretSources = append(secretSources, policySecretSources...)
-
-	// Set up watches so reconciliation is triggered when those secrets change
-	watcher := k8s.ExtractNamespacedName(&d.ES)
-	if err := watches.WatchUserProvidedNamespacedSecrets(
-		watcher,
-		d.DynamicWatches(),
-		keystore.SecureSettingsWatchName(watcher),
-		secretSources,
-	); err != nil {
-		return nil, err
-	}
-
-	data, err := keystore.BuildSecureSettingsData(ctx, d.Client, d.Recorder(), &d.ES, secretSources)
-	if err != nil {
-		return nil, err
-	}
-	return &commonv1.Config{Data: data}, nil
+	return shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
 }

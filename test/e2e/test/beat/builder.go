@@ -96,6 +96,42 @@ func newBuilder(name string, suffix string) Builder {
 
 type ValidationFunc func(client.Client) error
 
+func (b Builder) DeepCopy() *Builder {
+	bCopy := b.Beat.DeepCopy()
+	builderCopy := Builder{
+		Beat: *bCopy,
+	}
+	switch {
+	case bCopy.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.DaemonSet.PodTemplate
+	case bCopy.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.Deployment.PodTemplate
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	containerName := b.Beat.Spec.Type
+	for i := range b.PodTemplate.Spec.Containers {
+		if b.PodTemplate.Spec.Containers[i].Name == containerName {
+			b.PodTemplate.Spec.Containers[i].Resources = resources
+			return b
+		}
+	}
+	b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{
+		Name:      containerName,
+		Resources: resources,
+	})
+	return b
+}
+
+func (b Builder) ResourceName() string {
+	return b.Beat.Name
+}
+
 func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
 	b.Beat.Spec.Type = typeStr
@@ -202,6 +238,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.Beat.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Beat.Annotations == nil {
+		b.Beat.Annotations = make(map[string]string)
+	}
+	b.Beat.Annotations[key] = value
 	return b
 }
 

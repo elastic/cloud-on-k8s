@@ -48,6 +48,7 @@ func validations() []validation {
 		checkESRefsNamed,
 		checkAssociations,
 		checkSinglePipelineSource,
+		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
 	}
 }
 

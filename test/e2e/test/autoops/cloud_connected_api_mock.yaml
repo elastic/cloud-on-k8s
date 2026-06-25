@@ -202,7 +202,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: JAVA_OPTS
-              value: "-Xms32m -Xmx64m -XX:+UseSerialGC -XX:MaxMetaspaceSize=32m"
+              value: "-Xms128m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m"
           args:
             - "--port=8080"
             - "--global-response-templating"
@@ -225,10 +225,10 @@ spec:
             periodSeconds: 5
           resources:
             limits:
-              memory: 128Mi
+              memory: 512Mi
             requests:
               cpu: "50m"
-              memory: 64Mi
+              memory: 256Mi
           volumeMounts:
             - name: mappings
               mountPath: /home/wiremock/mappings

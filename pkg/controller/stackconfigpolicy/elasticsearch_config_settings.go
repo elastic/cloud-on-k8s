@@ -43,6 +43,11 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		data[SecretsMountKey] = secretMountBytes
 	}
 
+	// getElasticsearchConfigAndMountsHash returns the hash propagated to pod annotations to drive
+	// rolling restarts when the Elasticsearch config or mounted secrets change. SecurityRoles is
+	// intentionally excluded from this hash because roles are reloaded by ES at runtime from the
+	// mounted roles.yml file (via resource.reload.interval.high, default 5s), so role changes do
+	// not require a pod restart.
 	elasticsearchAndMountsConfigHash := getElasticsearchConfigAndMountsHash(esConfig.Config, esConfig.SecretMounts)
 	if esConfig.Config != nil {
 		configDataJSONBytes, err := esConfig.Config.MarshalJSON()
@@ -52,15 +57,33 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		data[esv1.StackConfigElasticsearchConfigKey] = configDataJSONBytes
 	}
 
+	if esConfig.SecurityRoles != nil && len(esConfig.SecurityRoles.Data) > 0 {
+		rolesBytes, err := json.Marshal(esConfig.SecurityRoles.Data)
+		if err != nil {
+			return corev1.Secret{}, err
+		}
+		data[esv1.StackConfigRolesKey] = rolesBytes
+	}
+
 	if len(data) == 0 {
 		data = nil
 	}
 
+	// Always set the roles hash annotation: a non-empty hash when SCP defines roles, an empty
+	// string otherwise. This ensures the value propagated to the roles-and-file-realm secret
+	// is always overwritten with the current state, leaving no stale value behind.
+	rolesHash := ""
+	if esConfig.SecurityRoles != nil && len(esConfig.SecurityRoles.Data) > 0 {
+		rolesHash = hash.HashObject(esConfig.SecurityRoles)
+	}
+	annotations := map[string]string{
+		commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
+		commonannotation.ElasticsearchRolesHashAnnotation:                 rolesHash,
+	}
+
 	meta := metadata.Propagate(&es, metadata.Metadata{
-		Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es)),
-		Annotations: map[string]string{
-			commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchAndMountsConfigHash,
-		},
+		Labels:      eslabel.NewLabels(k8s.ExtractNamespacedName(&es)),
+		Annotations: annotations,
 	})
 	elasticsearchConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -174,13 +197,18 @@ func cleanupOrphanedSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elas
 }
 
 func getElasticsearchConfigAndMountsHash(elasticsearchConfig *commonv1.Config, secretMounts []policyv1alpha1.SecretMount) string {
-	if elasticsearchConfig != nil {
+	switch {
+	case elasticsearchConfig != nil && len(elasticsearchConfig.Data) > 0:
 		return hash.HashObject([]any{elasticsearchConfig, secretMounts})
+	case len(secretMounts) > 0:
+		return hash.HashObject(secretMounts)
+	default:
+		return ""
 	}
-	return hash.HashObject(secretMounts)
 }
 
-// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config and secret mounts have been applied to the Elasticsearch cluster.
+// elasticsearchConfigAndSecretMountsApplied checks if the Elasticsearch config, secret mounts, and security roles
+// have been applied to the Elasticsearch cluster.
 func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec, es esv1.Elasticsearch) (bool, error) {
 	// Get Pods for the given Elasticsearch
 	podList := corev1.PodList{}
@@ -195,6 +223,29 @@ func elasticsearchConfigAndSecretMountsApplied(ctx context.Context, c k8s.Client
 		if esPod.Annotations[commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation] != elasticsearchAndMountsConfigHash {
 			return false, nil
 		}
+	}
+
+	// Check that the roles hash annotation on the roles-and-file-realm secret matches what we expect.
+	// - When SCP defines roles: the secret must carry the matching hash (ES controller has applied them).
+	// - When SCP has no roles: the annotation must be absent or empty. The ES controller always writes
+	//   an empty value when there are no SCP roles, overwriting any stale hash from a prior reconciliation.
+	expectedRolesHash := ""
+	if esConfigPolicy.SecurityRoles != nil && len(esConfigPolicy.SecurityRoles.Data) > 0 {
+		expectedRolesHash = hash.HashObject(esConfigPolicy.SecurityRoles)
+	}
+	var rolesSecret corev1.Secret
+	if err := c.Get(ctx, types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      esv1.RolesAndFileRealmSecret(es.Name),
+	}, &rolesSecret); err != nil {
+		if apierrors.IsNotFound(err) {
+			// No secret yet: only OK when we don't expect any roles hash to be set.
+			return expectedRolesHash == "", nil
+		}
+		return false, err
+	}
+	if rolesSecret.Annotations[commonannotation.ElasticsearchRolesHashAnnotation] != expectedRolesHash {
+		return false, nil
 	}
 
 	return true, nil

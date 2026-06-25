@@ -53,6 +53,10 @@ type Builder struct {
 	Suffix string
 }
 
+func (b Builder) ResourceName() string {
+	return b.Agent.Name
+}
+
 func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 	containerIdx := getContainerIndex(agent.ContainerName, b.PodTemplate.Spec.Containers)
 	if containerIdx < 0 {
@@ -131,6 +135,25 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name).
 		WithDaemonSet()
 	return builder
+}
+
+func (b Builder) DeepCopy() *Builder {
+	a := b.Agent.DeepCopy()
+	builderCopy := Builder{
+		Agent: *a,
+	}
+	switch {
+	case a.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.DaemonSet.PodTemplate
+	case a.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.Deployment.PodTemplate
+	case a.Spec.StatefulSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Agent.Spec.StatefulSet.PodTemplate
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
 }
 
 // MoreResourcesForIssue4730 adjusts Agent resource requirements to deal with https://github.com/elastic/elastic-agent/issues/4730.
@@ -221,23 +244,34 @@ func (b Builder) WithESValidation(validation ValidationFunc, outputName string) 
 }
 
 func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
+	return b.WithFleetAgentDataStreamsValidationFiltered(nil)
+}
+
+// WithFleetAgentDataStreamsValidationFiltered adds data stream validations for elastic-agent
+// internal streams. When filter is non-nil it is called for each (type, dataset) pair and only
+// streams for which it returns true are validated. When nil, all streams are validated.
+func (b Builder) WithFleetAgentDataStreamsValidationFiltered(filter func(dsType, dataset string) bool) Builder {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	b = b.
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default"))
+	maybeAdd := func(dsType, dataset string) {
+		if filter == nil || filter(dsType, dataset) {
+			b = b.WithDefaultESValidation(HasWorkingDataStream(dsType, dataset, "default"))
+		}
+	}
+	maybeAdd(LogsType, "elastic_agent")
+	maybeAdd(LogsType, "elastic_agent.filebeat")
+	maybeAdd(LogsType, "elastic_agent.fleet_server")
+	maybeAdd(LogsType, "elastic_agent.metricbeat")
+	maybeAdd(MetricsType, "elastic_agent.elastic_agent")
+	maybeAdd(MetricsType, "elastic_agent.fleet_server")
 	// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 	// so beat/metrics-monitoring is not created and metrics-elastic_agent.metricbeat-default
 	// is no longer populated. See https://github.com/elastic/elastic-agent/pull/13411.
 	if v.LT(version.MinFor(9, 5, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.metricbeat")
 	}
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
 	if v.LT(version.MinFor(8, 12, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.filebeat")
 	}
 	return b
 }
@@ -474,19 +508,38 @@ func (b Builder) Ref() commonv1.ObjectSelector {
 func (b Builder) RuntimeObjects() []k8sclient.Object {
 	// OpenShift does not only require running as root, the privileged field must also be
 	// set to true in order to write in a hostPath volume.
-	if test.Ctx().OcpCluster {
-		podSecurityContext := b.getPodSecurityContext()
-		if podSecurityContext != nil && podSecurityContext.RunAsUser != nil {
-			if *podSecurityContext.RunAsUser == 0 {
-				// Only update the container's SecurityContext if the Pod runs as root.
-				b = b.WithContainerSecurityContext(corev1.SecurityContext{
-					Privileged: new(true),
-					RunAsUser:  new(int64(0)),
-				})
-			}
-		}
-	}
+	// Deep-copy before applying OCP modifications so the original builder is not mutated
+	// through the shared DaemonSetSpec pointer — phase builders (created via DeepCopy before
+	// RuntimeObjects runs) would otherwise miss the modification in UpgradeTestSteps.
+	b = b.withOCPSecurityContext()
 	return append(b.AdditionalObjects, &b.Agent)
+}
+
+// withOCPSecurityContext returns a copy of the builder with the OCP-required privileged
+// container security context applied when the pod runs as root on an OCP cluster.
+// Only b.Agent is deep-copied to break the shared *DaemonSetSpec pointer; all other
+// builder fields (including AdditionalObjects) are preserved via the value receiver copy.
+func (b Builder) withOCPSecurityContext() Builder {
+	if !test.Ctx().OcpCluster {
+		return b
+	}
+	podSecurityContext := b.getPodSecurityContext()
+	if podSecurityContext == nil || podSecurityContext.RunAsUser == nil || *podSecurityContext.RunAsUser != 0 {
+		return b
+	}
+	b.Agent = *b.Agent.DeepCopy()
+	switch {
+	case b.Agent.Spec.DaemonSet != nil:
+		b.PodTemplate = &b.Agent.Spec.DaemonSet.PodTemplate
+	case b.Agent.Spec.Deployment != nil:
+		b.PodTemplate = &b.Agent.Spec.Deployment.PodTemplate
+	case b.Agent.Spec.StatefulSet != nil:
+		b.PodTemplate = &b.Agent.Spec.StatefulSet.PodTemplate
+	}
+	return b.WithContainerSecurityContext(corev1.SecurityContext{
+		Privileged: new(true),
+		RunAsUser:  new(int64(0)),
+	})
 }
 
 func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {

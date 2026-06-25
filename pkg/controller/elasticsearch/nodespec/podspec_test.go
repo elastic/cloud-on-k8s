@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -235,7 +236,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, PolicyConfig{}, metadata.Metadata{}, "", false)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -253,7 +254,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		MountPath:  "/usr/test",
 	}}
 	elasticsearchConfigAndMountsHash := hash.HashObject([]any{policyEsConfig, secretMounts})
-	policyConfig := PolicyConfig{
+	policyConfig := stackconfig.PolicyConfig{
 		ElasticsearchConfig: policyEsConfig,
 		AdditionalVolumes: []volume.VolumeLike{
 			volume.NewSecretVolumeWithMountPath("test-es-secretname", "test-es-secretname", "/usr/test"),
@@ -270,7 +271,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		es                        esv1.Elasticsearch
 		keystoreResources         *keystore.Resources
 		setDefaultSecurityContext bool
-		policyConfig              PolicyConfig
+		policyConfig              stackconfig.PolicyConfig
 	}
 	tests := []struct {
 		name    string
@@ -830,7 +831,7 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 			require.NoError(t, err)
 
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, es, nodeSet, cfg, nil, false, PolicyConfig{}, metadata.Metadata{}, "", false)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, nodeSet, cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 
 			gotJSON, err := json.MarshalIndent(&actual, " ", " ")
@@ -1157,7 +1158,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false, sampleES.Spec.NodeSets[0].ZoneAwareness != nil, false)
 			require.NoError(t, err)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, PolicyConfig{}, metadata.Metadata{}, "", false)
+			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 
 			env := actual.Spec.Containers[1].Env

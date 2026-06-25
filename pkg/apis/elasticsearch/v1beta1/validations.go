@@ -42,6 +42,7 @@ var validations = []validation{
 	hasMaster,
 	supportedVersion,
 	validSanIP,
+	commonv1.PauseOrchestrationAnnotationCheck[*Elasticsearch](),
 }
 
 type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList

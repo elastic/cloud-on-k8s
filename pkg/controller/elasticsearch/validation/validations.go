@@ -109,6 +109,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validClientAuthentication(ctx, proposed, checker)
 		},
+		func(es esv1.Elasticsearch) field.ErrorList { return commonv1.CheckPauseOrchestrationAnnotation(&es) },
 	}
 }
 

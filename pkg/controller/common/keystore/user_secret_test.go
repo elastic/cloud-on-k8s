@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -511,5 +512,32 @@ func Test_BuildSecureSettingsData(t *testing.T) {
 			"s3.client.default.access_key": "AKIA",
 			"gcs.credentials":              "creds",
 		}}, got)
+	})
+}
+
+func TestDeleteSecureSettingsSecret(t *testing.T) {
+	namer := name.NewNamer("es")
+	kb := &kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "mykb"}}
+
+	t.Run("no-op when secret does not exist", func(t *testing.T) {
+		client := k8s.NewFakeClient()
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+	})
+
+	t.Run("deletes the secret when it exists", func(t *testing.T) {
+		secretName := namer.Suffix(kb.Name, secureSettingsSecretSuffix)
+		existing := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: kb.Namespace, Name: secretName},
+			Data:       map[string][]byte{"key": []byte("value")},
+		}
+		client := k8s.NewFakeClient(existing)
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+
+		var stored corev1.Secret
+		err = client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: secretName}, &stored)
+		require.Error(t, err)
+		assert.True(t, apierrors.IsNotFound(err))
 	})
 }

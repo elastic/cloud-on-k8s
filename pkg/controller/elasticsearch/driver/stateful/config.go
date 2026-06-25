@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -29,7 +30,7 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 	}
 
 	// Get policy config from StackConfigPolicy
-	policyConfig, err := nodespec.GetPolicyConfig(ctx, client, es)
+	policyConfig, err := stackconfig.GetPolicyConfig(ctx, client, es)
 	if err != nil {
 		return nodespec.ResolvedConfig{}, err
 	}
@@ -75,7 +76,7 @@ func detectClientAuthenticationRequired(
 	es esv1.Elasticsearch,
 	ver version.Version,
 	ipFamily corev1.IPFamily,
-	policyConfig nodespec.PolicyConfig,
+	policyConfig stackconfig.PolicyConfig,
 	enterpriseFeaturesEnabled bool,
 ) (bool, string, error) {
 	if !enterpriseFeaturesEnabled {

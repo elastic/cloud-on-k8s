@@ -384,6 +384,15 @@ func (a *Agent) GetObservedGeneration() int64 {
 	return a.Status.ObservedGeneration
 }
 
+func (a *Agent) MergeConditions(conditions ...commonv1.Condition) {
+	a.Status.Conditions = a.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this Agent's AgentStatus Conditions.
+func (a *Agent) Conditions() commonv1.Conditions {
+	return a.Status.Conditions
+}
+
 type AgentESAssociation struct {
 	*Agent
 	// ref is the Elasticsearch selector used in Association

@@ -6,6 +6,7 @@ package enterprisesearch
 
 import (
 	"context"
+	"maps"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -35,6 +36,13 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.EnterpriseSearch), &ent); err != nil {
 					return err
 				}
+
+				// merge annotations
+				if ent.Annotations == nil {
+					ent.Annotations = make(map[string]string)
+				}
+				maps.Copy(ent.Annotations, b.EnterpriseSearch.Annotations)
+
 				ent.Spec = b.EnterpriseSearch.Spec
 				return k.Client.Update(context.Background(), &ent)
 			}),

@@ -203,6 +203,16 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 	return namer.Suffix(hasKeystore.GetName(), secureSettingsSecretSuffix)
 }
 
+// DeleteSecureSettingsSecret deletes the operator-managed aggregated secure settings Secret
+// for the given owner if it exists. This is used when upgrading to ES >= 9.5 where secure
+// settings are delivered via file-based settings instead of the keystore init container.
+func DeleteSecureSettingsSecret(ctx context.Context, c k8s.Client, namer name.Namer, owner HasKeystore) error {
+	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{
+		Namespace: owner.GetNamespace(),
+		Name:      namer.Suffix(owner.GetName(), secureSettingsSecretSuffix),
+	})
+}
+
 // SecureSettingsWatchName returns the watch name according to the deployment name.
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
@@ -214,11 +224,10 @@ func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 //
 //	{"string_secrets": {"s3.client.default.access_key": "..."}}
 //
-// Keystore keys are passed through as-is. Elasticsearch's SecureClusterStateSettings parses the
-// inner map via Settings.fromXContent, which accepts both flat dotted keys and nested objects.
-// Keeping the flat representation avoids ambiguity at intermediate paths and matches how keystore
-// keys are stored in the source Secrets.
-// This is used by the stateless Elasticsearch driver to populate cluster_secrets in file-based settings.
+// All values are placed in string_secrets. ES's SecureClusterStateSettings merges string_secrets
+// and file_secrets into a single internal map, so both getString() and getFile() resolve keys from
+// either bucket — placement does not affect which API the plugin uses to retrieve the value.
+// Keystore keys are passed through as-is.
 func BuildSecureSettingsData(
 	ctx context.Context,
 	c k8s.Client,
@@ -237,7 +246,5 @@ func BuildSecureSettingsData(
 			stringSecrets[k] = string(v)
 		}
 	}
-	return map[string]any{
-		"string_secrets": stringSecrets,
-	}, nil
+	return map[string]any{"string_secrets": stringSecrets}, nil
 }
