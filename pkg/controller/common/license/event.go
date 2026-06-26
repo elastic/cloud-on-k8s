@@ -24,6 +24,8 @@ func EmitEnterpriseFeatureEvent(recorder toolsevents.EventRecorder, operatorNS, 
 		return
 	}
 	pod := corev1.Pod{}
+	pod.APIVersion = "v1"
+	pod.Kind = "Pod"
 	pod.Name = podName
 	pod.Namespace = operatorNS
 	k8s.EmitEvent(recorder, &pod, corev1.EventTypeWarning, EventInvalidLicense, events.EventActionLicenseCheck, msg)
