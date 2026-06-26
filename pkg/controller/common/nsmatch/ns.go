@@ -30,7 +30,7 @@ const chanSize = 32
 //
 // Matches returns false for any namespace whose state has not yet been
 // recorded by ObserveNamespace. The namespace flip-state controller seeds
-// all existing namespaces at startup via initiateNamespaces and re-enqueues
+// all existing namespaces at startup and re-enqueues
 // CRs whenever a namespace's match state changes.
 type NamespaceFlipNotifier struct {
 	selector     labels.Selector
