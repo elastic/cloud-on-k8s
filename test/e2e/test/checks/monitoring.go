@@ -72,6 +72,9 @@ func (c stackMonitoringChecks) CheckBeatSidecarsInElasticsearch() test.Step {
 			if err != nil {
 				return err
 			}
+			if len(pods) == 0 {
+				return fmt.Errorf("no pods found for %s/%s", c.monitored.Namespace(), c.monitored.Name())
+			}
 			for _, pod := range pods {
 				if len(pod.Spec.Containers) != 3 {
 					return fmt.Errorf("expected %d containers, got %d", 3, len(pod.Spec.Containers))
@@ -116,7 +119,7 @@ func (c stackMonitoringChecks) CheckFilebeatIndex() test.Step {
 	return test.Step{
 		Name: "Check that documents are indexed in one filebeat-* index",
 		Test: test.Eventually(func() error {
-			if c.monitored.GetMetricsCluster() == nil {
+			if c.monitored.GetLogsCluster() == nil {
 				return nil
 			}
 			esLogsRef := *c.monitored.GetLogsCluster()
