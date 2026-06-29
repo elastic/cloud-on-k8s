@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -29,6 +30,7 @@ type Monitored interface {
 	GetMetricsIndexPattern() string
 	GetLogsCluster() *types.NamespacedName
 	GetMetricsCluster() *types.NamespacedName
+	ListOptions() []k8sclient.ListOption
 }
 
 func MonitoredSteps(monitored Monitored, k8sClient *test.K8sClient) test.StepList {
@@ -54,21 +56,17 @@ type stackMonitoringChecks struct {
 
 func (c stackMonitoringChecks) Steps() test.StepList {
 	return test.StepList{
-		c.CheckBeatSidecarsInElasticsearch(),
+		c.CheckBeatSidecars(),
 		c.CheckMonitoringMetricsIndex(),
 		c.CheckFilebeatIndex(),
 	}
 }
 
-func (c stackMonitoringChecks) CheckBeatSidecarsInElasticsearch() test.Step {
+func (c stackMonitoringChecks) CheckBeatSidecars() test.Step {
 	return test.Step{
 		Name: "Check that beat sidecars are running",
 		Test: test.Eventually(func() error {
-			pods, err := c.k8sClient.GetPods(
-				test.ESPodListOptions(
-					c.monitored.Namespace(),
-					c.monitored.Name())...,
-			)
+			pods, err := c.k8sClient.GetPods(c.monitored.ListOptions()...)
 			if err != nil {
 				return err
 			}
