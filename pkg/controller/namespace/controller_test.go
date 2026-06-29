@@ -229,7 +229,7 @@ func TestNsInitRunnable_Start(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier := nsmatch.NewMatchNotifier(sel, "")
-			r := &nsInitRunnable{
+			r := &namespaceSeedRunnable{
 				client:   tt.buildClient(),
 				notifier: notifier,
 			}

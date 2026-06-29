@@ -52,7 +52,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 		operatorNamespace: params.OperatorNamespace,
 	}
 
-	if err := mgr.Add(&nsInitRunnable{client: mgr.GetClient(), notifier: params.NamespaceMatchNotifier}); err != nil {
+	seedLog := mgr.GetLogger().WithName(controllerName).WithName("seeder")
+	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetClient(), notifier: params.NamespaceMatchNotifier}); err != nil {
 		return fmt.Errorf("registering namespace init runnable: %w", err)
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
@@ -97,7 +98,11 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 		return reconcile.Result{}, err
 	}
 
-	if stateChanged, isMatching := r.nsMatchNotifier.ObserveAndBroadcast(ctx, &ns); stateChanged {
+	stateChanged, isMatching, err := r.nsMatchNotifier.ObserveAndBroadcast(ctx, &ns)
+	if err != nil {
+		log.Error(err, "error while broadcasting namespace match change", "namespace", ns.Name)
+	}
+	if stateChanged {
 		log.Info("namespace match-state changed", "matches", isMatching)
 	}
 
@@ -106,15 +111,16 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 
 var _ reconcile.Reconciler = (*reconciler)(nil)
 
-// nsInitRunnable seeds the NamespaceFlipNotifier with the current match state
+// namespaceSeedRunnable seeds the NamespaceFlipNotifier with the current match state
 // of all existing namespaces. It is registered with the manager so that it runs
 // after the cache is synced, reading from the cache rather than the API server.
-type nsInitRunnable struct {
+type namespaceSeedRunnable struct {
+	log      logr.Logger
 	client   client.Reader
 	notifier *nsmatch.NamespaceFlipNotifier
 }
 
-func (r *nsInitRunnable) Start(ctx context.Context) error {
+func (r *namespaceSeedRunnable) Start(ctx context.Context) error {
 	var nsList corev1.NamespaceList
 	if err := r.client.List(ctx, &nsList); err != nil {
 		return err
@@ -128,11 +134,13 @@ func (r *nsInitRunnable) Start(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return
 			}
-			_, _ = r.notifier.ObserveAndBroadcast(ctx, &ns)
+			if _, _, err := r.notifier.ObserveAndBroadcast(ctx, &ns); err != nil {
+				r.log.Error(err, "failed to seed namespace match state", "namespace", ns.Name)
+			}
 		}
 	}()
 
 	return nil
 }
 
-func (r *nsInitRunnable) NeedLeaderElection() bool { return true }
+func (r *namespaceSeedRunnable) NeedLeaderElection() bool { return true }
