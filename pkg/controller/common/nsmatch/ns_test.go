@@ -96,7 +96,7 @@ func TestObserveNamespace(t *testing.T) {
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
 		// The short-circuit must not pollute the states map.
-		_, inStates := m.states[""]
+		_, inStates := m.matchedNamespaces[""]
 		assert.False(t, inStates, "empty namespace must not be written to states")
 	})
 
@@ -106,7 +106,7 @@ func TestObserveNamespace(t *testing.T) {
 		isMatching, wasMatching := m.ObserveNamespace(namespace(testOperatorNS, nil))
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
-		_, inStates := m.states[testOperatorNS]
+		_, inStates := m.matchedNamespaces[testOperatorNS]
 		assert.False(t, inStates, "operator namespace must not be written to states")
 	})
 
@@ -216,12 +216,10 @@ func TestNotifier(t *testing.T) {
 
 	t.Run("cancelled context does not block on full subscriber channel", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
+		n.subscriberBufferSize = 0
 		_ = n.Subscribe()
-		// Access the underlying bidirectional channel to fill it.
+		// Access the underlying bidirectional channel.
 		internal := n.subs[0]
-		for range chanSize {
-			internal <- event.TypedGenericEvent[*corev1.Namespace]{}
-		}
 
 		done := make(chan struct{})
 		go func() {
@@ -237,25 +235,54 @@ func TestNotifier(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("Broadcast blocked despite cancelled context")
 		}
-		assert.Len(t, internal, chanSize, "no new event must be added to an already-full channel")
+		assert.Len(t, internal, n.subscriberBufferSize, "no new event must be added to an already-full channel")
 	})
 
-	t.Run("cancelled context stops broadcast before reaching later subscribers", func(t *testing.T) {
+	t.Run("full subscriber channel", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
-		_ = n.Subscribe() // will be filled to capacity → blocks
-		_ = n.Subscribe() // must not receive the event
+		n.subscriberSendTimeout = 20 * time.Millisecond
+		n.subscriberBufferSize = 1
+		_ = n.Subscribe() // first: will be full → send times out
+		_ = n.Subscribe() // second: must still receive the event
 		first, second := n.subs[0], n.subs[1]
 
-		for range chanSize {
+		for range n.subscriberBufferSize {
 			first <- event.TypedGenericEvent[*corev1.Namespace]{}
 		}
 
-		cancelledCtx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			err := n.Broadcast(context.Background(), namespace("ns", nil))
+			assert.Error(t, err)
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// expected: Broadcast returned after the per-subscriber timeout fired
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("Broadcast blocked despite send timeout")
+		}
+
+		require.Len(t, second, 1, "second subscriber must receive event despite first timing out")
+		assert.Len(t, first, n.subscriberBufferSize, "full subscriber must not gain a new event")
+	})
+
+	t.Run("cancelled context", func(t *testing.T) {
+		n := NewMatchNotifier(sel, "")
+		// Make channels non-buffered so that ch <- item cannot win the select race,
+		// guaranteeing context.Canceled is always returned for each subscriber.
+		n.subscriberBufferSize = 0
+		_ = n.Subscribe()
+		_ = n.Subscribe()
+
+		cancelledCtx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		done := make(chan struct{})
+		var broadcastErr error
 		go func() {
-			n.Broadcast(cancelledCtx, namespace("ns", nil))
+			broadcastErr = n.Broadcast(cancelledCtx, namespace("ns", nil))
 			close(done)
 		}()
 
@@ -264,7 +291,14 @@ func TestNotifier(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("Broadcast blocked despite cancelled context")
 		}
-		assert.Len(t, second, 0, "subscriber after the blocked one must not receive any event")
+
+		require.Error(t, broadcastErr)
+		var joinedErrs interface{ Unwrap() []error }
+		require.ErrorAs(t, broadcastErr, &joinedErrs)
+		errs := joinedErrs.Unwrap()
+		require.Len(t, errs, 2, "expected one error per subscriber")
+		assert.ErrorIs(t, errs[0], context.Canceled)
+		assert.ErrorIs(t, errs[1], context.Canceled)
 	})
 }
 
@@ -278,7 +312,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("disabled selector: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewMatchNotifier(nil, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -287,7 +321,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("short-circuit namespace: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, namespace(testOperatorNS, nil))
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace(testOperatorNS, nil))
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -296,7 +330,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace matches: state changed, broadcast sent", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
@@ -306,7 +340,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace does not match: no state change, no broadcast", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -316,7 +350,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, true)
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -326,7 +360,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, false)
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -336,7 +370,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, true) // was matching
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.True(t, stateChanged)
 		assert.False(t, isMatching)
 		require.Len(t, ch, 1)
@@ -347,7 +381,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, false) // was non-matching
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
@@ -357,7 +391,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("empty namespace short-circuit: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewMatchNotifier(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching := m.ObserveAndBroadcast(ctx, namespace("", nil))
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace("", nil))
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
