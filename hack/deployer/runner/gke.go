@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/exec"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/bucket"
 	"github.com/elastic/cloud-on-k8s/v3/hack/deployer/runner/kyverno"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/vault"
 )
 
@@ -171,7 +172,11 @@ func (d *GKEDriver) Execute() error {
 				return err
 			}
 			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI
-			if err := apply(kyverno.GKEPolicies); err != nil {
+			if err := retry.UntilSuccess(
+				func() error { return apply(kyverno.GKEPolicies) },
+				2*time.Minute,
+				5*time.Second,
+			); err != nil {
 				return err
 			}
 		}
