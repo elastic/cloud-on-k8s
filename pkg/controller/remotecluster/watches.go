@@ -80,7 +80,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 		return err
 	}
 
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
 		return &esv1.ElasticsearchList{}
 	})
 }

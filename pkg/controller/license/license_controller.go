@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -100,7 +101,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.D
 	return requeueAfter
 }
 
-// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
+// addWatches adds a new Controller to mgr wresource_validator.go:106ith r as the reconcile.Reconciler
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicenses) error {
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.

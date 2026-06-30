@@ -80,7 +80,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, r.AssociatedObjListTemplate)
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, r.AssociatedObjListTemplate)
 }
 
 // referencedObjKind derives the Kind of the referenced resource from the manager's scheme.

@@ -140,7 +140,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
 		return &esv1.ElasticsearchList{}
 	})
 }
