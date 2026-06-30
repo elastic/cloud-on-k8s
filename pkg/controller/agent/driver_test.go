@@ -23,12 +23,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_isFleetServerClientAuthRequired(t *testing.T) {
 	tests := []struct {
 		name            string
+		agentVersion    string // defaults to 9.5.0 if empty
 		specClientAuth  bool
 		tlsDisabled     bool
 		envVar          *corev1.EnvVar
@@ -116,6 +118,20 @@ func Test_isFleetServerClientAuthRequired(t *testing.T) {
 			wantRequired:   false,
 		},
 		{
+			name:            "unsupported version, spec true: not required, warning",
+			agentVersion:    "8.15.0",
+			specClientAuth:  true,
+			wantRequired:    false,
+			wantWarning:     true,
+			wantWarningLike: "8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
+		},
+		{
+			name:           "unsupported version, spec false: not required, no warning",
+			agentVersion:   "8.15.0",
+			specClientAuth: false,
+			wantRequired:   false,
+		},
+		{
 			name:           "spec true, env via valueFrom, TLS on: not required, warning",
 			specClientAuth: true,
 			envVar: &corev1.EnvVar{
@@ -165,9 +181,14 @@ func Test_isFleetServerClientAuthRequired(t *testing.T) {
 				}
 			}
 
+			agentVersion := tt.agentVersion
+			if agentVersion == "" {
+				agentVersion = "9.5.0"
+			}
 			params := Params{
-				Context: context.Background(),
-				Agent:   agent,
+				Context:      context.Background(),
+				Agent:        agent,
+				AgentVersion: version.MustParse(agentVersion),
 			}
 			if !tt.nilChecker {
 				params.LicenseChecker = commonlicense.MockLicenseChecker{EnterpriseEnabled: !tt.enterpriseOff}

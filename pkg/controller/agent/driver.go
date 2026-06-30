@@ -250,6 +250,13 @@ func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Servi
 func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
 	specEnabled := params.Agent.Spec.HTTP.TLS.Client.Authentication
 
+	if !agentv1alpha1.FleetServerClientAuthSupported(params.AgentVersion) {
+		if specEnabled {
+			return false, "spec.http.tls.client.authentication is ineffective: Fleet Server client certificate authentication requires Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+", nil
+		}
+		return false, "", nil
+	}
+
 	if params.LicenseChecker == nil {
 		return false, "", nil
 	}
