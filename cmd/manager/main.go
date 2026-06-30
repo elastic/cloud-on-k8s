@@ -637,6 +637,8 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	nsMatchNotifier := nsmatch.NewMatchNotifier(parsedNsSelector, operatorNamespace)
+
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
 		DefaultTransform:  cache.TransformStripManagedFields(),
@@ -645,6 +647,15 @@ func startOperator(ctx context.Context) error {
 	if !dynamicNSSelector {
 		for _, ns := range managedNamespaces {
 			opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+		}
+	} else {
+		opts.NewClient = func(config *rest.Config, options client.Options) (client.Client, error) {
+			delegate, err := client.New(config, options) // cache-backed; options.Cache already set by mgr
+			if err != nil {
+				return nil, err
+			}
+
+			return nsmatch.NewFilterClient(delegate, nsMatchNotifier), nil
 		}
 	}
 
@@ -757,8 +768,6 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to create password generator")
 		return err
 	}
-
-	nsMatchNotifier := nsmatch.NewMatchNotifier(parsedNsSelector, operatorNamespace)
 
 	params := operator.Parameters{
 		Dialer:                           dialer,

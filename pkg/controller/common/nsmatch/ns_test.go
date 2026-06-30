@@ -156,13 +156,15 @@ func TestNotifier(t *testing.T) {
 	t.Run("no subscribers", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
 		// Broadcast with no subscribers must not panic.
-		n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		require.NoError(t, err)
 	})
 
 	t.Run("disabled selector no-ops broadcast", func(t *testing.T) {
 		n := NewMatchNotifier(nil, "")
 		ch := n.Subscribe()
-		n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		require.NoError(t, err)
 		assert.Len(t, ch, 0, "broadcast is a no-op when selector is disabled")
 	})
 
@@ -171,7 +173,7 @@ func TestNotifier(t *testing.T) {
 		ch := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
-		n.Broadcast(ctx, ns)
+		require.NoError(t, n.Broadcast(ctx, ns))
 
 		require.Len(t, ch, 1)
 		assert.Equal(t, ns, (<-ch).Object)
@@ -183,7 +185,7 @@ func TestNotifier(t *testing.T) {
 		ch2 := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-b"}}
-		n.Broadcast(ctx, ns)
+		require.NoError(t, n.Broadcast(ctx, ns))
 
 		require.Len(t, ch1, 1)
 		require.Len(t, ch2, 1)
@@ -197,8 +199,8 @@ func TestNotifier(t *testing.T) {
 
 		ns1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-1"}}
 		ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-2"}}
-		n.Broadcast(ctx, ns1)
-		n.Broadcast(ctx, ns2)
+		require.NoError(t, n.Broadcast(ctx, ns1))
+		require.NoError(t, n.Broadcast(ctx, ns2))
 
 		require.Len(t, ch, 2)
 		assert.Equal(t, ns1, (<-ch).Object)
@@ -208,7 +210,7 @@ func TestNotifier(t *testing.T) {
 	t.Run("late subscriber does not receive earlier broadcasts", func(t *testing.T) {
 		n := NewMatchNotifier(sel, "")
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-c"}}
-		n.Broadcast(ctx, ns) // no subscribers yet
+		require.NoError(t, n.Broadcast(ctx, ns)) // no subscribers yet
 
 		ch := n.Subscribe()
 		assert.Len(t, ch, 0, "late subscriber must not receive events broadcast before it subscribed")
@@ -225,7 +227,8 @@ func TestNotifier(t *testing.T) {
 		go func() {
 			cancelledCtx, cancel := context.WithCancel(t.Context())
 			cancel()
-			n.Broadcast(cancelledCtx, namespace("ns", nil))
+			err := n.Broadcast(cancelledCtx, namespace("ns", nil))
+			require.Error(t, err)
 			close(done)
 		}()
 
