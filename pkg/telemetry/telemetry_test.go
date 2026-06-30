@@ -6,13 +6,17 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -28,7 +32,9 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	testmock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 var (
@@ -143,14 +149,36 @@ func createKbAndSecret(name, namespace string, count int32) (kbv1.Kibana, corev1
 	}
 }
 
-func TestNewReporter(t *testing.T) {
+type fixtures struct {
+	Kibana1 kbv1.Kibana
+	Secret1 corev1.Secret
+	Kibana2 kbv1.Kibana
+	Secret2 corev1.Secret
+	Kibana3 kbv1.Kibana
+	Secret3 corev1.Secret
+	Kibana4 kbv1.Kibana
+	Secret4 corev1.Secret
+}
+
+func initFakeClient() (k8s.Client, fixtures) {
 	kb1, s1 := createKbAndSecret("kb1", "ns1", 1)
 	kb2, s2 := createKbAndSecret("kb2", "ns2", 2)
 	kb3, s3 := createKbAndSecret("kb3", "ns3", 3)
 	kb4, s4 := createKbAndSecret("kb4", "ns2", 1)
 	kb4.Labels = map[string]string{"helm.sh/chart": "eck-kibana-0.1.0"}
 
-	client := k8s.NewFakeClient(
+	fx := fixtures{
+		Kibana1: kb1,
+		Secret1: s1,
+		Kibana2: kb2,
+		Secret2: s2,
+		Kibana3: kb3,
+		Secret3: s3,
+		Kibana4: kb4,
+		Secret4: s4,
+	}
+
+	return k8s.NewFakeClient(
 		&kb1,
 		&kb2,
 		&kb3,
@@ -443,14 +471,21 @@ func TestNewReporter(t *testing.T) {
 				Resources: 2,
 			},
 		},
-	)
+	), fx
+}
 
-	// We only want the reporter to handle the managed namespaces, in this test only ns1 and ns2 are managed.
-	r := NewReporter(testOperatorInfo, client, "elastic-system", []string{kb1.Namespace, kb2.Namespace}, 1*time.Hour, nil)
-	r.report(context.Background())
+func TestNewReporter(t *testing.T) {
+	const operatorNamespace = "elastic-system"
 
-	wantData := map[string][]byte{
-		"telemetry.yml": []byte(`eck:
+	t.Run("managed namespaces", func(t *testing.T) {
+		client, fx := initFakeClient()
+
+		// We only want the reporter to handle the managed namespaces, in this test only ns1 and ns2 are managed.
+		r := NewReporter(testOperatorInfo, client, operatorNamespace, []string{fx.Kibana1.Namespace, fx.Kibana2.Namespace}, nil, 1*time.Hour, nil)
+		r.report(context.Background())
+
+		wantData := map[string][]byte{
+			"telemetry.yml": []byte(`eck:
   build:
     date: "2019-09-20T07:00:00Z"
     hash: b5316231
@@ -533,18 +568,128 @@ func TestNewReporter(t *testing.T) {
         snapshot_lifecycle_policies_count: 3
         snapshot_repositories_count: 2
 `),
-	}
+		}
 
-	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s1), &s1))
-	assertSameSecretContent(t, wantData, s1.Data)
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret1), &fx.Secret1))
+		assertSameSecretContent(t, wantData, fx.Secret1.Data)
 
-	// We expect Kibana instances in s1 and s2 to have the same content.
-	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s2), &s2))
-	assertSameSecretContent(t, wantData, s2.Data)
+		// We expect Kibana instances in s1 and s2 to have the same content.
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret2), &fx.Secret2))
+		assertSameSecretContent(t, wantData, fx.Secret2.Data)
 
-	// No data expected in s3 since it is not a managed namespace.
-	require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s3), &s3))
-	require.Nil(t, s3.Data)
+		// No data expected in s3 since it is not a managed namespace.
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret3), &fx.Secret3))
+		require.Nil(t, fx.Secret3.Data)
+	})
+
+	t.Run("dynamic namespaces", func(t *testing.T) {
+		client, fx := initFakeClient()
+
+		mc := testmock.NewCache(t)
+		mc.OnListSetNamespaceList(
+			nsLabelled("ns1", map[string]string{"env": "prod1"}),
+			nsLabelled("ns2", map[string]string{"env": "prod2"}),
+			nsLabelled("ns3", map[string]string{"env": "prod1"}),
+		).Return(nil)
+		sel := mustLabelSelector(t, map[string]string{"env": "prod1"})
+		nm := nsmatch.NewNamespaceMatcher(sel, operatorNamespace)
+		nm.SetCache(mc)
+		r := NewReporter(testOperatorInfo, client, operatorNamespace, nil, nm, 1*time.Hour, nil)
+		r.report(context.Background())
+
+		wantData := map[string][]byte{
+			"telemetry.yml": []byte(`eck:
+  build:
+    date: "2019-09-20T07:00:00Z"
+    hash: b5316231
+    snapshot: "true"
+    version: 1.1.0
+  custom_operator_namespace: true
+  distribution: v1.16.13-gke.1
+  distributionChannel: test-channel
+  license:
+    eck_license_level: basic
+    enterprise_resource_units: "1"
+    total_managed_memory: 3.22GB
+  operator_uuid: 15039433-f873-41bd-b6e7-10ee3665cafa
+  stats:
+    agents:
+      helm_resource_count: 0
+      multiple_refs: 0
+      pod_count: 0
+      resource_count: 0
+    apms:
+      helm_resource_count: 1
+      pod_count: 2
+      resource_count: 1
+    autoopsagentpolicies:
+      helm_resource_count: 1
+      pod_count: 2
+      resource_count: 1
+    beats:
+      auditbeat_count: 0
+      filebeat_count: 1
+      heartbeat_count: 0
+      helm_resource_count: 1
+      journalbeat_count: 0
+      metricbeat_count: 1
+      packetbeat_count: 0
+      pod_count: 14
+      resource_count: 2
+    elasticsearches:
+      autoscaled_resource_count: 2
+      helm_resource_count: 1
+      pod_count: 10
+      remote_clusters_api_keys_count: 0
+      remote_clusters_count: 0
+      resource_count: 4
+      stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
+    enterprisesearches:
+      helm_resource_count: 1
+      pod_count: 3
+      resource_count: 1
+    kibanas:
+      helm_resource_count: 0
+      pod_count: 0
+      resource_count: 2
+    logstashes:
+      helm_resource_count: 1
+      pipeline_count: 1
+      pipeline_ref_count: 0
+      pod_count: 3
+      resource_count: 1
+      service_count: 2
+      stack_monitoring_logs_count: 1
+      stack_monitoring_metrics_count: 1
+    maps:
+      pod_count: 1
+      resource_count: 1
+    stackconfigpolicies:
+      configured_resources_count: 10
+      resource_count: 1
+      settings:
+        cluster_settings_count: 1
+        component_templates_count: 0
+        composable_index_templates_count: 0
+        index_lifecycle_policies_count: 0
+        ingest_pipelines_count: 0
+        role_mappings_count: 0
+        roles_count: 0
+        snapshot_lifecycle_policies_count: 2
+        snapshot_repositories_count: 1
+`),
+		}
+
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret1), &fx.Secret1))
+		assertSameSecretContent(t, wantData, fx.Secret1.Data)
+
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret2), &fx.Secret2))
+		require.Nil(t, fx.Secret2.Data)
+
+		require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&fx.Secret3), &fx.Secret3))
+		assertSameSecretContent(t, wantData, fx.Secret3.Data)
+	})
 }
 
 // assertSameSecretContent compares 2 data secrets and print a human friendly diff if not equal.
@@ -668,7 +813,8 @@ func TestReporter_report(t *testing.T) {
 					RemoteClustersAPIKeysCount: 0,
 				},
 			},
-		}, {
+		},
+		{
 			name: "With downward API and one label",
 			fields: fields{
 				objects: []client.Object{
@@ -707,7 +853,8 @@ func TestReporter_report(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name: "With downward API and several labels",
 			fields: fields{
 				objects: []client.Object{
@@ -827,6 +974,115 @@ func TestReporter_report(t *testing.T) {
 			require.NoError(t, client.Get(context.Background(), k8s.ExtractNamespacedName(&s1), &s1))
 			wantData := map[string][]byte{"telemetry.yml": renderExpectedTemplate(t, tt.wantData)}
 			assertSameSecretContent(t, wantData, s1.Data)
+		})
+	}
+}
+
+func nsLabelled(name string, lbls map[string]string) corev1.Namespace {
+	return corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: lbls}}
+}
+
+func mustLabelSelector(t *testing.T, matchLabels map[string]string) labels.Selector {
+	t.Helper()
+	sel, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: matchLabels})
+	require.NoError(t, err)
+	return sel
+}
+
+func matcherWithCache(sel labels.Selector, c cache.Cache) *nsmatch.NamespaceMatcher {
+	m := nsmatch.NewNamespaceMatcher(sel, "elastic-system")
+	m.SetCache(c)
+	return m
+}
+
+func TestGetNamespaces(t *testing.T) {
+	ctx := t.Context()
+	managed := []string{"ns1", "ns2"}
+	sel := mustLabelSelector(t, map[string]string{"env": "prod"})
+
+	for _, tt := range []struct {
+		name       string
+		setup      func(t *testing.T) Reporter
+		wantNSes   []string
+		wantErrMsg string
+	}{
+		{
+			name: "nil namespaceMatcher returns managedNamespaces",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				return Reporter{managedNamespaces: managed}
+			},
+			wantNSes: managed,
+		},
+		{
+			name: "disabled selector returns managedNamespaces",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				return Reporter{
+					managedNamespaces: managed,
+					namespaceMatcher:  nsmatch.NewNamespaceMatcher(nil, "elastic-system"),
+				}
+			},
+			wantNSes: managed,
+		},
+		{
+			name: "enabled selector with all namespaces matching",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				mc := testmock.NewCache(t)
+				mc.OnListSetNamespaceList(
+					nsLabelled("prod-a", map[string]string{"env": "prod"}),
+					nsLabelled("prod-b", map[string]string{"env": "prod"}),
+				).Return(nil)
+				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
+			},
+			wantNSes: []string{"prod-a", "prod-b"},
+		},
+		{
+			name: "enabled selector with only some namespaces matching",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				mc := testmock.NewCache(t)
+				mc.OnListSetNamespaceList(
+					nsLabelled("prod-ns", map[string]string{"env": "prod"}),
+					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
+				).Return(nil)
+				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
+			},
+			wantNSes: []string{"prod-ns"},
+		},
+		{
+			name: "enabled selector with no matching namespaces",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				mc := testmock.NewCache(t)
+				mc.OnListSetNamespaceList(
+					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
+				).Return(nil)
+				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
+			},
+			wantNSes: []string{},
+		},
+		{
+			name: "enabled selector with cache error returns error",
+			setup: func(t *testing.T) Reporter {
+				t.Helper()
+				mc := testmock.NewCache(t)
+				mc.On("List", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("cache unavailable"))
+				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
+			},
+			wantErrMsg: "cache unavailable",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := tt.setup(t)
+			got, err := r.getNamespaces(ctx)
+			if tt.wantErrMsg != "" {
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.ElementsMatch(t, tt.wantNSes, got)
 		})
 	}
 }

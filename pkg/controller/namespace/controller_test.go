@@ -146,7 +146,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			notifier := nsmatch.NewMatchNotifier(sel, "")
+			notifier := nsmatch.NewNamespaceMatcher(sel, "")
 			if tt.preloadState != nil {
 				tt.preloadState(notifier)
 			}
@@ -228,7 +228,7 @@ func TestNsInitRunnable_Start(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			notifier := nsmatch.NewMatchNotifier(sel, "")
+			notifier := nsmatch.NewNamespaceMatcher(sel, "")
 			r := &namespaceSeedRunnable{
 				client:           tt.buildClient(),
 				namespaceMatcher: notifier,
@@ -292,7 +292,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 			fr := events.NewFakeRecorder(10)
 			r := &reconciler{
 				client:          k8s.NewFakeClient(matchingNS),
-				nsMatchNotifier: nsmatch.NewMatchNotifier(sel, ""),
+				nsMatchNotifier: nsmatch.NewNamespaceMatcher(sel, ""),
 				licenseChecker:  tt.lc,
 				recorder:        fr,
 			}
