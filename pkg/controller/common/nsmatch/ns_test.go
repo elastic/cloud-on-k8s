@@ -6,6 +6,7 @@ package nsmatch
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 const testOperatorNS = "elastic-system"
@@ -38,52 +41,52 @@ func namespace(name string, lbls map[string]string) *corev1.Namespace {
 func TestMatcher(t *testing.T) {
 	t.Run("SelectorEnabled", func(t *testing.T) {
 		assert.False(t, (*NamespaceMatcher)(nil).SelectorEnabled(), "nil MatchNotifier is disabled")
-		assert.False(t, NewMatchNotifier(nil, testOperatorNS).SelectorEnabled(), "nil selector is disabled")
-		assert.True(t, NewMatchNotifier(mustSelector(t, map[string]string{"env": "prod"}), testOperatorNS).SelectorEnabled(), "non-nil selector is enabled")
+		assert.False(t, NewNamespaceMatcher(nil, testOperatorNS).SelectorEnabled(), "nil selector is disabled")
+		assert.True(t, NewNamespaceMatcher(mustSelector(t, map[string]string{"env": "prod"}), testOperatorNS).SelectorEnabled(), "non-nil selector is enabled")
 	})
 
 	t.Run("Matches disabled always returns true", func(t *testing.T) {
-		m := NewMatchNotifier(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS)
 		assert.True(t, m.Matches("any-namespace"), "disabled matcher always matches")
 		assert.True(t, m.Matches(""), "disabled matcher matches empty namespace")
 	})
 
 	t.Run("Matches unknown namespace returns false", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		assert.False(t, m.Matches("unknown"), "namespace not yet in states returns false")
 	})
 
 	t.Run("Matches returns true when state is true", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.Swap("prod-ns", true)
 		assert.True(t, m.Matches("prod-ns"))
 	})
 
 	t.Run("Matches returns false when state is false", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.Swap("dev-ns", false)
 		assert.False(t, m.Matches("dev-ns"))
 	})
 
 	t.Run("Matches returns true when state for short-circuit", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		assert.True(t, m.Matches(testOperatorNS))
 	})
 
 	t.Run("Matches returns true for empty string short-circuit when selector is enabled", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		assert.True(t, m.Matches(""), "empty namespace is always short-circuited")
 	})
 }
 
 func TestObserveNamespace(t *testing.T) {
 	t.Run("disabled returns true true for any namespace", func(t *testing.T) {
-		m := NewMatchNotifier(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS)
 		isMatching, wasMatching := m.ObserveNamespace(namespace("any", map[string]string{"env": "dev"}))
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
@@ -91,7 +94,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("short-circuit empty namespace returns true true without updating state", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		isMatching, wasMatching := m.ObserveNamespace(namespace("", nil))
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
@@ -102,7 +105,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("short-circuit operator namespace returns true true without updating state", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		isMatching, wasMatching := m.ObserveNamespace(namespace(testOperatorNS, nil))
 		assert.True(t, isMatching)
 		assert.True(t, wasMatching)
@@ -112,7 +115,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("matching namespace updates state and returns correct values", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		isMatching, wasMatching := m.ObserveNamespace(namespace("prod-ns", map[string]string{"env": "prod"}))
 		assert.True(t, isMatching)
 		assert.False(t, wasMatching, "not previously known")
@@ -121,7 +124,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("non-matching namespace updates state and returns correct values", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		isMatching, wasMatching := m.ObserveNamespace(namespace("dev-ns", map[string]string{"env": "dev"}))
 		assert.False(t, isMatching)
 		assert.False(t, wasMatching, "not previously known")
@@ -130,7 +133,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("namespace transitions from matching to non-matching", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.ObserveNamespace(namespace("ns", map[string]string{"env": "prod"}))
 
 		isMatching, wasMatching := m.ObserveNamespace(namespace("ns", map[string]string{"env": "staging"}))
@@ -140,7 +143,7 @@ func TestObserveNamespace(t *testing.T) {
 
 	t.Run("namespace transitions from non-matching to matching", func(t *testing.T) {
 		sel := mustSelector(t, map[string]string{"env": "prod"})
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.ObserveNamespace(namespace("ns", map[string]string{"env": "dev"}))
 
 		isMatching, wasMatching := m.ObserveNamespace(namespace("ns", map[string]string{"env": "prod"}))
@@ -154,14 +157,14 @@ func TestNotifier(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("no subscribers", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		// Broadcast with no subscribers must not panic.
 		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 		require.NoError(t, err)
 	})
 
 	t.Run("disabled selector no-ops broadcast", func(t *testing.T) {
-		n := NewMatchNotifier(nil, "")
+		n := NewNamespaceMatcher(nil, "")
 		ch := n.Subscribe()
 		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 		require.NoError(t, err)
@@ -169,7 +172,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("single subscriber receives broadcast", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		ch := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
@@ -180,7 +183,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("multiple subscribers each receive broadcast", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		ch1 := n.Subscribe()
 		ch2 := n.Subscribe()
 
@@ -194,7 +197,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("multiple events delivered in order", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		ch := n.Subscribe()
 
 		ns1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-1"}}
@@ -208,7 +211,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("late subscriber does not receive earlier broadcasts", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-c"}}
 		require.NoError(t, n.Broadcast(ctx, ns)) // no subscribers yet
 
@@ -217,7 +220,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("cancelled context does not block on full subscriber channel", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		n.subscriberBufferSize = 0
 		_ = n.Subscribe()
 		// Access the underlying bidirectional channel.
@@ -242,7 +245,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("full subscriber channel", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		n.subscriberSendTimeout = 20 * time.Millisecond
 		n.subscriberBufferSize = 1
 		_ = n.Subscribe() // first: will be full → send times out
@@ -272,7 +275,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("cancelled context", func(t *testing.T) {
-		n := NewMatchNotifier(sel, "")
+		n := NewNamespaceMatcher(sel, "")
 		// Make channels non-buffered so that ch <- item cannot win the select race,
 		// guaranteeing context.Canceled is always returned for each subscriber.
 		n.subscriberBufferSize = 0
@@ -313,7 +316,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	nonMatching := namespace("dev-ns", map[string]string{"env": "dev"})
 
 	t.Run("disabled selector: no state change, no broadcast, reports matching", func(t *testing.T) {
-		m := NewMatchNotifier(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS)
 		ch := m.Subscribe()
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.False(t, stateChanged)
@@ -322,7 +325,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("short-circuit namespace: no state change, no broadcast, reports matching", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace(testOperatorNS, nil))
 		assert.False(t, stateChanged)
@@ -331,7 +334,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("first observe, namespace matches: state changed, broadcast sent", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
 		assert.True(t, stateChanged)
@@ -341,7 +344,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("first observe, namespace does not match: no state change, no broadcast", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
 		assert.False(t, stateChanged)
@@ -350,7 +353,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("state unchanged: namespace still matches, no broadcast", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, true)
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
@@ -360,7 +363,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("state unchanged: namespace still does not match, no broadcast", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, false)
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
@@ -370,7 +373,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("state change matching -> non-matching: state changed, broadcast sent", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, true) // was matching
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
@@ -381,7 +384,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("state change non-matching -> matching: state changed, broadcast sent", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, false) // was non-matching
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
@@ -392,7 +395,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 
 	t.Run("empty namespace short-circuit: no state change, no broadcast, reports matching", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace("", nil))
 		assert.False(t, stateChanged)
@@ -401,18 +404,141 @@ func TestObserveAndBroadcast(t *testing.T) {
 	})
 }
 
+func TestMatchesCachedLabels(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"env": "prod"})
+	ctx := context.Background()
+
+	t.Run("selector disabled: always returns true without touching cache", func(t *testing.T) {
+		m := NewNamespaceMatcher(nil, testOperatorNS) // no expectations — cache must not be called
+		assert.True(t, m.MatchesCachedLabels(ctx, "any-ns"))
+	})
+
+	t.Run("short-circuit empty namespace: returns true without touching cache", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		assert.True(t, m.MatchesCachedLabels(ctx, ""))
+	})
+
+	t.Run("short-circuit operator namespace: returns true without touching cache", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		assert.True(t, m.MatchesCachedLabels(ctx, testOperatorNS))
+	})
+
+	t.Run("cache Get error: returns false", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnGetSetNamespace(map[string]string{}).Return(errors.New("cache unavailable"))
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		assert.False(t, m.MatchesCachedLabels(ctx, "prod-ns"))
+	})
+
+	t.Run("labels match selector: returns true", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnGetSetNamespace(map[string]string{"env": "prod"}).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		assert.True(t, m.MatchesCachedLabels(ctx, "prod-ns"))
+	})
+
+	t.Run("labels do not match selector: returns false", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnGetSetNamespace(map[string]string{"env": "dev"}).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		assert.False(t, m.MatchesCachedLabels(ctx, "dev-ns"))
+	})
+
+	t.Run("namespace has no labels: returns false", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnGetSetNamespace(nil).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		assert.False(t, m.MatchesCachedLabels(ctx, "unlabelled-ns"))
+	})
+}
+
+func TestMatchingNamespacesFromCache(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"env": "prod"})
+	ctx := context.Background()
+
+	ns := func(name string, lbls map[string]string) corev1.Namespace {
+		return corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: lbls}}
+	}
+	prod := func(name string) corev1.Namespace { return ns(name, map[string]string{"env": "prod"}) }
+	dev := func(name string) corev1.Namespace { return ns(name, map[string]string{"env": "dev"}) }
+
+	t.Run("selector disabled: returns all namespace names", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2")).Return(nil)
+		m := NewNamespaceMatcher(nil, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
+	})
+
+	t.Run("cache List error: returns error", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList().Return(errors.New("cache unavailable"))
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.Error(t, err)
+		assert.Nil(t, names)
+	})
+
+	t.Run("empty cache: returns empty slice", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList().Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, names)
+	})
+
+	t.Run("all namespaces match: returns all names", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(prod("ns-1"), prod("ns-2")).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
+	})
+
+	t.Run("some namespaces match: returns only matching names", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), prod("ns-3")).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ns-1", "ns-3"}, names)
+	})
+
+	t.Run("no namespaces match: returns empty slice", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(dev("ns-1"), dev("ns-2")).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, names)
+	})
+}
+
 func TestSwap(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("first swap true: wasMatching false, namespace added to states", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		wasMatching := m.Swap("ns", true)
 		assert.False(t, wasMatching)
 		assert.True(t, m.Matches("ns"))
 	})
 
 	t.Run("second swap true: wasMatching true, namespace stays in states", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.Swap("ns", true)
 		wasMatching := m.Swap("ns", true)
 		assert.True(t, wasMatching)
@@ -420,7 +546,7 @@ func TestSwap(t *testing.T) {
 	})
 
 	t.Run("swap false when was matching: wasMatching true, namespace removed from states", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.Swap("ns", true)
 		wasMatching := m.Swap("ns", false)
 		assert.True(t, wasMatching)
@@ -428,7 +554,7 @@ func TestSwap(t *testing.T) {
 	})
 
 	t.Run("swap false when was not tracked: wasMatching false, namespace absent from states", func(t *testing.T) {
-		m := NewMatchNotifier(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
 		wasMatching := m.Swap("ns", false)
 		assert.False(t, wasMatching)
 		assert.False(t, m.Matches("ns"))
