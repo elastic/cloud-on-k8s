@@ -373,6 +373,17 @@ func (r *ReconcileElasticsearch) annotateResource(
 	return r.Update(ctx, &es)
 }
 
+// onNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource
+// when its namespace no longer matches the operator's namespace selector. The resource is not deleted —
+// it simply becomes invisible to this operator instance — so we stop observing its cluster health and
+// remove all dynamic watches that were registered on its behalf to avoid stale watch handlers.
+//
+// Do not remove expectations when a namespace moves out of scope.
+// The Elasticsearch resource and its child resources still exist, and the
+// namespace may move back into scope before the controller cache observes
+// recent StatefulSet/pod changes. Keeping expectations preserves the usual
+// stale-cache safety across short namespace label flaps. Expectations are
+// removed on CR deletion and are also cleared by operator restart.
 func (r *ReconcileElasticsearch) onNamespaceOutOfScope(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
