@@ -92,7 +92,10 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 	var ns corev1.Namespace
 	if err := r.client.Get(ctx, types.NamespacedName{Name: request.Name}, &ns); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.nsMatchNotifier.Swap(request.Name, false) // namespace got deleted.
+			// Namespace was deleted: mark it as non-matching without broadcasting. All resources
+			// that lived in it are being deleted or cleaned up by their own controllers, so there
+			// is nothing for the namespace-selector logic to react to.
+			r.nsMatchNotifier.Swap(request.Name, false)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
