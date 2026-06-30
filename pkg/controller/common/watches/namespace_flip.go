@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -24,7 +25,7 @@ import (
 // each. No-ops when notifier is nil (legacy / static-namespace mode).
 func WatchNamespaceFlips(
 	c controller.Controller,
-	cl client.Client,
+	ch cache.Cache,
 	notifier NamespaceNotifier,
 	newList func() client.ObjectList,
 ) error {
@@ -36,7 +37,11 @@ func WatchNamespaceFlips(
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Namespace, reconcile.Request](
 			func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
 				list := newList()
-				if err := cl.List(ctx, list, client.InNamespace(ns.Name)); err != nil {
+				// Use the cache directly (not the FilterClient) so that resources in
+				// namespaces being de-scoped are still visible here. The FilterClient
+				// would silently drop them because the namespace no longer matches the
+				// selector, causing us to miss the reconcile requests needed to clean up.
+				if err := ch.List(ctx, list, client.InNamespace(ns.Name)); err != nil {
 					return nil
 				}
 				items, err := apimeta.ExtractList(list)
