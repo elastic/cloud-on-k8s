@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	commonannotation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -406,4 +407,49 @@ func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Regression: MaybeReconcileEmptyFileSettingsSecret re-saves an existing file-settings Secret to
+// propagate operator labels. That Save must not strip StackConfigPolicy-managed annotations
+// (secure-settings secret references), which would otherwise break Elasticsearch keystore init.
+func Test_MaybeReconcileEmptyFileSettingsSecret_preserves_SCP_secure_settings_annotation(t *testing.T) {
+	const operatorNamespace = "elastic-system"
+
+	es := &esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-es",
+			Namespace: "default",
+			Labels: map[string]string{
+				"app": "elasticsearch",
+			},
+		},
+	}
+
+	wantAnnotation := `[{"namespace":"default","secretName":"user-secure"}]`
+	existing := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      esv1.FileSettingsSecretName("test-es"),
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonannotation.SecureSettingsSecretsAnnotationName: wantAnnotation,
+			},
+		},
+		Data: map[string][]byte{
+			"settings.json": []byte(`{}`),
+		},
+	}
+
+	c := k8s.NewFakeClient(existing, es)
+
+	requeue, err := MaybeReconcileEmptyFileSettingsSecret(t.Context(), c,
+		commonlicense.MockLicenseChecker{EnterpriseEnabled: true}, es, operatorNamespace)
+	assert.NoError(t, err)
+	assert.False(t, requeue)
+
+	var got corev1.Secret
+	assert.NoError(t, c.Get(t.Context(), types.NamespacedName{
+		Name:      existing.Name,
+		Namespace: existing.Namespace,
+	}, &got))
+	assert.Equal(t, wantAnnotation, got.Annotations[commonannotation.SecureSettingsSecretsAnnotationName])
 }

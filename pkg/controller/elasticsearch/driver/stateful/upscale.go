@@ -276,7 +276,7 @@ func reconcileResources(
 			return results, fmt.Errorf("reconcile service: %w", err)
 		}
 		if actualSset, exists := actualStatefulSets.GetByName(res.StatefulSet.Name); exists {
-			recreateSset, err := handleVolumeExpansion(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
+			recreateSset, err := reconcilePVCsForStatefulSet(ctx.parentCtx, ctx.k8sClient, ctx.es, res.StatefulSet, actualSset, ctx.validateStorageClass)
 			if err != nil {
 				return results, fmt.Errorf("handle volume expansion: %w", err)
 			}
