@@ -323,6 +323,17 @@ func (a *Agent) IsMarkedForDeletion() bool {
 	return !a.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Agent Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (a *Agent) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(a.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Agent Pods.
+func (a *Agent) HasDownwardNodeLabels() bool {
+	return len(a.DownwardNodeLabels()) > 0
+}
+
 func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:

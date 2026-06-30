@@ -5,32 +5,14 @@
 package validation
 
 import (
-	"fmt"
-	"regexp"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 )
 
-type NodeLabels []*regexp.Regexp
+// NodeLabels is an alias for the shared exposed-node-labels policy. It is kept here so that
+// existing callers can continue to import esvalidation.NodeLabels.
+type NodeLabels = commonnodelabels.NodeLabels
 
+// NewExposedNodeLabels delegates to the shared exposed-node-labels constructor.
 func NewExposedNodeLabels(exposedNodeLabels []string) (NodeLabels, error) {
-	if len(exposedNodeLabels) == 0 {
-		return nil, nil
-	}
-	compiledNodeLabels := make([]*regexp.Regexp, len(exposedNodeLabels))
-	for i, exposedNodeLabel := range exposedNodeLabels {
-		r, err := regexp.Compile(exposedNodeLabel)
-		if err != nil {
-			return nil, fmt.Errorf("exposed node label \"%s\" cannot be compiled as a regular expression: %w", exposedNodeLabel, err)
-		}
-		compiledNodeLabels[i] = r
-	}
-	return compiledNodeLabels, nil
-}
-
-func (n NodeLabels) IsAllowed(nodeLabel string) bool {
-	for _, r := range n {
-		if r.MatchString(nodeLabel) {
-			return true
-		}
-	}
-	return false
+	return commonnodelabels.NewExposedNodeLabels(exposedNodeLabels)
 }

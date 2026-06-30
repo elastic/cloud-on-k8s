@@ -220,6 +220,17 @@ func (l *Logstash) IsMarkedForDeletion() bool {
 	return !l.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Logstash Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (l *Logstash) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(l.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Logstash Pods.
+func (l *Logstash) HasDownwardNodeLabels() bool {
+	return len(l.DownwardNodeLabels()) > 0
+}
+
 // GetObservedGeneration will return the observedGeneration from the Elastic Logstash's status.
 func (l *Logstash) GetObservedGeneration() int64 {
 	return l.Status.ObservedGeneration

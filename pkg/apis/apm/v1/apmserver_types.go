@@ -128,6 +128,17 @@ func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the APM Server Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (as *ApmServer) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(as.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the APM Server Pods.
+func (as *ApmServer) HasDownwardNodeLabels() bool {
+	return len(as.DownwardNodeLabels()) > 0
+}
+
 func (as *ApmServer) SecureSettings() []commonv1.SecretSource {
 	return as.Spec.SecureSettings
 }

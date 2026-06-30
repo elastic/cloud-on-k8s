@@ -19,27 +19,27 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
-	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
-	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
-	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	apmservercontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
+	beatcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
+	kibanacontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
+	mapscontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
+	eprcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
 )
 
@@ -87,26 +87,28 @@ func setupWebhook(
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
 	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate, "Elasticsearch")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate, "Kibana")
 	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate, "Elastic Maps Server")
-	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
 	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
 
-	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
-	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
-	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
+	// Types that support the exposed-node-labels policy register their own webhook so that a single
+	// validation function enforces the policy on both the webhook and reconciler paths. The same is
+	// true for Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps, whose validators additionally
+	// use the API client and/or embed license checks. Elasticsearch v1beta1 and the other types above
+	// remain in the RegisterResourceWebhook list because they only need a ValidateFunc.
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
 	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, managedNamespaces)
 	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
-	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces)
+	agentcontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
+	apmservercontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
+	beatcontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
+	kibanacontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
+	mapscontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
+	eprcontroller.RegisterWebhook(mgr, checker, exposedNodeLabels, managedNamespaces)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

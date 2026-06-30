@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -35,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -276,6 +278,10 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		return results.WithError(fmt.Errorf("calculating status: %w", err)), status
 	}
 
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(commonnodelabels.AnnotatePods(ctx, r.K8sClient(), &ems))
+
 	return results, status
 }
 
@@ -289,7 +295,7 @@ func (r *ReconcileMapsServer) validate(ctx context.Context, ems emsv1alpha1.Elas
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := emsv1alpha1.Validate(&ems, nil)
+	warnings, err := validateMapsServer(&ems, nil, r.ExposedNodeLabels)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &ems, events.EventReasonValidation, events.EventActionValidation, err.Error())
@@ -329,6 +335,12 @@ func buildConfigHash(c k8s.Client, ems emsv1alpha1.ElasticMapsServer, configSecr
 
 	// - in the Elastic Maps Server configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+
+	// Changes to the downward-node-labels annotation must roll the Elastic Maps Server Pods so the new
+	// annotations are re-applied on scheduling.
+	if ems.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(ems.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
+	}
 
 	// - in the Elastic Maps Server TLS certificates
 	if ems.Spec.HTTP.TLS.Enabled() {

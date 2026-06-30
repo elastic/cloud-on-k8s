@@ -281,6 +281,17 @@ func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Beat Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (b *Beat) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(b.Annotations)
+}
+
+// HasDownwardNodeLabels returns true if node labels are expected to be propagated to the Beat Pods.
+func (b *Beat) HasDownwardNodeLabels() bool {
+	return len(b.DownwardNodeLabels()) > 0
+}
+
 func (b *Beat) ElasticsearchRef() commonv1.ElasticsearchSelector {
 	return b.Spec.ElasticsearchRef
 }

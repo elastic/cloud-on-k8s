@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -31,6 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -244,6 +246,10 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}
 	status.DeploymentStatus = deploymentStatus
 
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(commonnodelabels.AnnotatePods(ctx, r.K8sClient(), &epr))
+
 	return results, status
 }
 
@@ -257,7 +263,7 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := eprv1alpha1.Validate(&epr, nil)
+	warnings, err := validatePackageRegistry(&epr, nil, r.ExposedNodeLabels)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
@@ -303,6 +309,12 @@ func buildConfigHash(epr eprv1alpha1.PackageRegistry, configSecret corev1.Secret
 		if certPem, ok := httpCertificate.Data[certificates.CertFileName]; ok {
 			_, _ = configHash.Write(certPem)
 		}
+	}
+
+	// Changes to the downward-node-labels annotation must roll the Package Registry Pods so the new
+	// annotations are re-applied on scheduling.
+	if epr.HasDownwardNodeLabels() {
+		_, _ = configHash.Write([]byte(epr.Annotations[commonv1.DownwardNodeLabelsAnnotation]))
 	}
 
 	return fmt.Sprint(configHash.Sum32())

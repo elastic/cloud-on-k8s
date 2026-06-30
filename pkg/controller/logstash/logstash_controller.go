@@ -214,7 +214,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
-	warnings, err := validation.ValidateLogstash(&logstash)
+	warnings, err := validation.ValidateLogstash(&logstash, r.ExposedNodeLabels)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, events.EventActionValidation, err.Error())

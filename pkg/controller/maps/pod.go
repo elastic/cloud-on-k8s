@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
@@ -114,6 +115,20 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 		return corev1.PodTemplateSpec{}, err
 	}
 	builder = withHTTPCertsVolume(builder, ems)
+
+	// Block Pod start on the operator patching the expected node-label annotations onto the
+	// Pod, so the Elastic Maps Server container does not start while those annotations are missing
+	// from the downward-API annotations file.
+	if ems.HasDownwardNodeLabels() {
+		downwardAPIVolume := commonnodelabels.DownwardAPIVolume()
+		waitInit, err := commonnodelabels.WaitForAnnotationsInitContainer(ems.DownwardNodeLabels())
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		builder = builder.
+			WithVolumes(downwardAPIVolume.Volume()).
+			WithInitContainers(waitInit)
+	}
 
 	esAssocConf, err := ems.AssociationConf()
 	if err != nil {

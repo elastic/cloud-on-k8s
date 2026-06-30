@@ -5,6 +5,8 @@
 package volume
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -64,4 +66,10 @@ func (d DownwardAPI) Volume() corev1.Volume {
 
 func (DownwardAPI) VolumeMount() corev1.VolumeMount {
 	return downwardAPIVolumeMount
+}
+
+// AnnotationsFilePath returns the absolute path of the file exposing the Pod annotations within the
+// downward API volume mount. It is only populated when the volume is built WithAnnotations(true).
+func (DownwardAPI) AnnotationsFilePath() string {
+	return fmt.Sprintf("%s/%s", volume.DownwardAPIMountPath, volume.AnnotationsFile)
 }

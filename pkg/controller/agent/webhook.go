@@ -15,13 +15,14 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // RegisterWebhook registers the Agent validating webhook with license-aware validation.
-func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string) {
-	inner := &webhookValidator{licenseChecker: checker}
+func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, exposedNodeLabels commonnodelabels.NodeLabels, managedNamespaces []string) {
+	inner := &webhookValidator{licenseChecker: checker, exposedNodeLabels: exposedNodeLabels}
 	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner)
 	wh := admission.WithValidator[*agentv1alpha1.Agent](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(agentv1alpha1.WebhookPath, wh)
@@ -29,7 +30,8 @@ func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNam
 }
 
 type webhookValidator struct {
-	licenseChecker commonlicense.Checker
+	licenseChecker    commonlicense.Checker
+	exposedNodeLabels commonnodelabels.NodeLabels
 }
 
 func (v *webhookValidator) ValidateCreate(ctx context.Context, obj *agentv1alpha1.Agent) (admission.Warnings, error) {
@@ -49,7 +51,10 @@ func (v *webhookValidator) validate(ctx context.Context, a *agentv1alpha1.Agent,
 	if err != nil {
 		return warnings, err
 	}
-	if errs := validClientAuthentication(ctx, a, v.licenseChecker); len(errs) > 0 {
+	var errs field.ErrorList
+	errs = append(errs, validClientAuthentication(ctx, a, v.licenseChecker)...)
+	errs = append(errs, commonnodelabels.ValidateAnnotation(a.Annotations, v.exposedNodeLabels)...)
+	if len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind},
 			a.Name, errs,
