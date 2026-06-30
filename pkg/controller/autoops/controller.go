@@ -86,7 +86,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReco
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment())); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.params.NamespaceMatcher, func() client.ObjectList {
 		return &autoopsv1alpha1.AutoOpsAgentPolicyList{}
 	})
 }

@@ -35,7 +35,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err := controller.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(controller, mgr.GetClient(), p.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(controller, mgr.GetCache(), p.NamespaceMatcher, func() client.ObjectList {
 		return &v1alpha1.ElasticsearchAutoscalerList{}
 	})
 }

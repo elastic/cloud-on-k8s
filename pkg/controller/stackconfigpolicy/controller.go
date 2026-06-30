@@ -108,7 +108,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.params.NamespaceMatcher, func() client.ObjectList {
 		return &policyv1alpha1.StackConfigPolicyList{}
 	})
 }

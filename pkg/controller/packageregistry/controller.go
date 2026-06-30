@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
 		return &eprv1alpha1.PackageRegistryList{}
 	})
 }
