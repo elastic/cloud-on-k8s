@@ -12,6 +12,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
@@ -41,6 +43,7 @@ const subscriberSendTimeout = 3 * time.Second
 // all existing namespaces at startup and re-enqueues
 // CRs whenever a namespace's match state changes.
 type NamespaceMatcher struct {
+	cache                   cache.Cache
 	selector                labels.Selector
 	alwaysManagedNamespaces map[string]struct{} // namespaces excluded from label-selector evaluation.
 	subs                    []chan event.TypedGenericEvent[*corev1.Namespace]
@@ -50,12 +53,12 @@ type NamespaceMatcher struct {
 	subscriberBufferSize    int
 }
 
-// NewMatchNotifier returns a NamespaceFlipNotifier. When sel is nil it acts as
+// NewNamespaceMatcher returns a NamespaceMatcher. When sel is nil it acts as
 // a no-op (Matches always returns true). Both the empty string (cluster-scoped
 // resources) and operatorNS are pre-seeded in the short-circuit set so that
 // cluster-scoped events and the operator's own namespace always match regardless
 // of the configured selector.
-func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceMatcher {
+func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatcher {
 	return &NamespaceMatcher{
 		selector: sel,
 		alwaysManagedNamespaces: map[string]struct{}{
@@ -66,6 +69,10 @@ func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceMatcher 
 		subscriberSendTimeout: subscriberSendTimeout,
 		subscriberBufferSize:  subscriberBufferSize,
 	}
+}
+
+func (m *NamespaceMatcher) SetCache(c cache.Cache) {
+	m.cache = c
 }
 
 // SelectorEnabled reports whether the matcher is actively filtering.
@@ -90,6 +97,44 @@ func (m *NamespaceMatcher) Matches(ns string) bool {
 	defer m.matchedNamespacesMutex.Unlock()
 	_, match := m.matchedNamespaces[ns]
 	return match
+}
+
+// MatchesCachedLabels fetches the Namespace named ns from the cache and
+// evaluates the selector against its current labels. Unlike Matches, which
+// returns the last recorded in-memory state, this method performs a live label
+// evaluation against the cached Namespace object. Returns false when the cache
+// lookup fails or the labels do not match.
+func (m *NamespaceMatcher) MatchesCachedLabels(ctx context.Context, ns string) bool {
+	if !m.SelectorEnabled() {
+		return true
+	}
+	if _, ok := m.alwaysManagedNamespaces[ns]; ok {
+		return true
+	}
+	var nsObj corev1.Namespace
+	if err := m.cache.Get(ctx, client.ObjectKey{Name: ns}, &nsObj); err != nil {
+		return false
+	}
+	return m.selector.Matches(labels.Set(nsObj.Labels))
+}
+
+// MatchingNamespacesFromCache lists all Namespace objects from the cache and
+// returns the names of those whose labels satisfy the selector. Unlike Matches,
+// which checks the in-memory state map, this method performs a live label
+// evaluation for every namespace in the cache. Returns an error if the cache
+// list fails. When the selector is disabled, returns all namespace names.
+func (m *NamespaceMatcher) MatchingNamespacesFromCache(ctx context.Context) ([]string, error) {
+	var nsList corev1.NamespaceList
+	if err := m.cache.List(ctx, &nsList); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(nsList.Items))
+	for _, ns := range nsList.Items {
+		if !m.SelectorEnabled() || m.selector.Matches(labels.Set(ns.Labels)) {
+			names = append(names, ns.Name)
+		}
+	}
+	return names, nil
 }
 
 // ObserveNamespace evaluates the selector against ns's current labels, records

@@ -637,7 +637,7 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	nsMatchNotifier := nsmatch.NewMatchNotifier(parsedNsSelector, operatorNamespace)
+	namespaceMatcher := nsmatch.NewNamespaceMatcher(parsedNsSelector, operatorNamespace)
 
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
@@ -655,7 +655,7 @@ func startOperator(ctx context.Context) error {
 				return nil, err
 			}
 
-			return nsmatch.NewFilterClient(delegate, nsMatchNotifier), nil
+			return nsmatch.NewFilterClient(delegate, namespaceMatcher), nil
 		}
 	}
 
@@ -689,6 +689,9 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to create controller manager")
 		return err
 	}
+
+	// cache can only be set after manager is created.
+	namespaceMatcher.SetCache(mgr.GetCache())
 
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
@@ -791,7 +794,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
-		NamespaceMatcher:          nsMatchNotifier,
+		NamespaceMatcher:          namespaceMatcher,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -813,7 +816,7 @@ func startOperator(ctx context.Context) error {
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
 	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
+	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, namespaceMatcher, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -868,6 +871,7 @@ func asyncTasks(
 	cfg *rest.Config,
 	managedNamespaces []string,
 	operatorNamespace string,
+	namespaceMatcher *nsmatch.NamespaceMatcher,
 	operatorInfo about.OperatorInfo,
 	disableTelemetry bool,
 	telemetryInterval time.Duration,
@@ -891,7 +895,7 @@ func asyncTasks(
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval, tracer)
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, telemetryInterval, tracer)
 			tr.Start(ctx)
 		}()
 	}
