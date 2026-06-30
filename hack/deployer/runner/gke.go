@@ -171,7 +171,9 @@ func (d *GKEDriver) Execute() error {
 			if err := kyverno.Install(); err != nil {
 				return err
 			}
-			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI
+			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI.
+			// Retry because `rollout status` (used in kyverno.Install) only guarantees the pods are available,
+			// not that the webhook server is ready to accept connections yet.
 			if err := retry.UntilSuccess(
 				func() error { return apply(kyverno.GKEPolicies) },
 				2*time.Minute,
