@@ -166,6 +166,10 @@ type LogstashStatus struct {
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
 	Selector string `json:"selector"`
+
+	// Conditions holds the current service state of the Logstash.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -422,6 +426,16 @@ func (l *Logstash) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1
 		Logstash: l,
 		ref:      esRef.WithDefaultNamespace(l.Namespace),
 	}
+}
+
+// MergeConditions provides a nil-safe way to merge the LogstashStatus's Conditions with the new Condition(s).
+func (l *Logstash) MergeConditions(conditions ...commonv1.Condition) {
+	l.Status.Conditions = l.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns the current conditions of the Logstash resource.
+func (l *Logstash) Conditions() commonv1.Conditions {
+	return l.Status.Conditions
 }
 
 // APIServerService returns the user defined API Service

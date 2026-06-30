@@ -12,7 +12,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -22,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
@@ -192,7 +192,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 	}
 
 	for _, set := range actualSets {
-		if !ssetIsSteady(set) {
+		if !statefulset.IsSteady(set) {
 			d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, common.PausedWaitingMessage)
 			return results.WithRequeue(reconciler.DefaultRequeue)
 		}
@@ -212,12 +212,6 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 	}
 	d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, message)
 	return results
-}
-
-func ssetIsSteady(s appsv1.StatefulSet) bool {
-	return s.Status.ObservedGeneration == s.Generation &&
-		s.Status.CurrentRevision == s.Status.UpdateRevision &&
-		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 0)
 }
 
 func (d *Driver) hasPendingSpecChanges(
