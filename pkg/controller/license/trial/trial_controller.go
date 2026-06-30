@@ -240,7 +240,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(watches.NamespacedKind(r.NamespaceMatchNotifier, mgr.GetCache(), &corev1.Secret{},
+	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if licensing.IsEnterpriseTrial(*secret) {
 				return []reconcile.Request{

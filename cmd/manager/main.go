@@ -791,7 +791,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
-		NamespaceMatchNotifier:    nsMatchNotifier,
+		NamespaceMatcher:          nsMatchNotifier,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {

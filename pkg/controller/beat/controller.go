@@ -68,7 +68,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to Beat
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &beatv1beta1.Beat{}, &handler.TypedEnqueueRequestForObject[*beatv1beta1.Beat]{})); err != nil {
 		return err
@@ -111,7 +111,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &beatv1beta1.BeatList{}
 	})
 }
@@ -131,8 +131,8 @@ type ReconcileBeat struct {
 // Reconcile reads that state of the cluster for a Beat object and makes changes based on the state read
 // and what is in the Beat.Spec.
 func (r *ReconcileBeat) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "beat_name", request)
@@ -213,13 +213,13 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcileBeat) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
 func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, beatv1beta1.Kind)
 }
 

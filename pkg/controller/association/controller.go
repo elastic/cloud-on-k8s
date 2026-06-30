@@ -52,7 +52,7 @@ func AddAssociationController(
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch the associated resource (e.g. Kibana for a Kibana -> Elasticsearch association)
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), r.AssociatedObjTemplate(), &handler.TypedEnqueueRequestForObject[commonv1.Associated]{})); err != nil {
 		return err
@@ -80,7 +80,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, r.AssociatedObjListTemplate)
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, r.AssociatedObjListTemplate)
 }
 
 // referencedObjKind derives the Kind of the referenced resource from the manager's scheme.

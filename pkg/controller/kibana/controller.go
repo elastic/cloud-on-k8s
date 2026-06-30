@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana) error {
-	m := r.params.NamespaceMatchNotifier
+	m := r.params.NamespaceMatcher
 	// Watch for changes to Kibana
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &kbv1.Kibana{}, &handler.TypedEnqueueRequestForObject[*kbv1.Kibana]{})); err != nil {
 		return err
@@ -114,7 +114,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatcher, func() client.ObjectList {
 		return &kbv1.KibanaList{}
 	})
 }
@@ -137,8 +137,8 @@ type ReconcileKibana struct {
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "kibana_name", request)
@@ -254,13 +254,13 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(ctx, r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcileKibana) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
 }
 
 func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, kbv1.Kind)
 }
 

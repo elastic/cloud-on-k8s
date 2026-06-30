@@ -28,14 +28,14 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	m := p.NamespaceMatchNotifier
+	m := p.NamespaceMatcher
 	if err := controller.Watch(watches.NamespacedKind(m, mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
 		return err
 	}
 	if err := controller.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(controller, mgr.GetClient(), p.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(controller, mgr.GetClient(), p.NamespaceMatcher, func() client.ObjectList {
 		return &v1alpha1.ElasticsearchAutoscalerList{}
 	})
 }

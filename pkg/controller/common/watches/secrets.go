@@ -65,7 +65,7 @@ func WatchUserProvidedNamespacedSecrets(
 }
 
 // WatchSoftOwnedSecrets triggers reconciliations on secrets referencing a soft owner.
-func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, m *nsmatch.NamespaceFlipNotifier, ownerKind string) error {
+func WatchSoftOwnedSecrets(mgr manager.Manager, c controller.Controller, m *nsmatch.NamespaceMatcher, ownerKind string) error {
 	return c.Watch(
 		NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](reconcileReqForSoftOwner(ownerKind))),
 	)

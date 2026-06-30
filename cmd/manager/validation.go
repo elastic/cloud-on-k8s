@@ -86,7 +86,7 @@ func setupWebhook(
 	}
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-	matcher := params.NamespaceMatchNotifier
+	matcher := params.NamespaceMatcher
 	// setup webhooks for supported types
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, matcher, apmv1.Validate, "APM Server")
 	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, matcher, apmv1beta1.Validate, "APM Server")

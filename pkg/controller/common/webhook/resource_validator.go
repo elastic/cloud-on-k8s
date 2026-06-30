@@ -31,7 +31,7 @@ type ResourceValidator[T runtime.Object] struct {
 	validator         admission.Validator[T]
 	managedNamespaces set.StringSet
 	licenseChecker    license.Checker
-	namespaceMatcher  *nsmatch.NamespaceFlipNotifier
+	namespaceMatcher  *nsmatch.NamespaceMatcher
 }
 
 // NewResourceValidator wraps an admission.Validator[T] with namespace
@@ -67,7 +67,7 @@ func NewResourceFuncValidator[T runtime.Object](
 // WithNamespaceMatcher attaches a NamespaceMatcher so that dynamic-mode
 // installs can filter validation by the operator's current selector instead
 // of the static managedNamespaces list.
-func (v *ResourceValidator[T]) WithNamespaceMatcher(m *nsmatch.NamespaceFlipNotifier) *ResourceValidator[T] {
+func (v *ResourceValidator[T]) WithNamespaceMatcher(m *nsmatch.NamespaceMatcher) *ResourceValidator[T] {
 	v.namespaceMatcher = m
 	return v
 }
@@ -129,7 +129,7 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 
 // RegisterResourceWebhook creates a ResourceValidator wrapping a ValidateFunc
 // and registers it as a validating webhook at the specified path.
-func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier, validate ValidateFunc[T], resourceName string) {
+func RegisterResourceWebhook[T runtime.Object](mgr ctrl.Manager, path string, checker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher, validate ValidateFunc[T], resourceName string) {
 	v := NewResourceFuncValidator(checker, managedNamespaces, validate).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[T](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(path, wh)

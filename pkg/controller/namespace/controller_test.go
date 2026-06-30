@@ -57,7 +57,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 	tests := []struct {
 		name          string
 		buildClient   func() k8s.Client
-		preloadState  func(*nsmatch.NamespaceFlipNotifier)
+		preloadState  func(*nsmatch.NamespaceMatcher)
 		request       reconcile.Request
 		wantResult    reconcile.Result
 		wantErr       bool
@@ -66,7 +66,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name:        "namespace not found: state forgotten, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient() },
-			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap("deleted-ns", true)
 			},
 			request:       nsRequest("deleted-ns"),
@@ -105,7 +105,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name:        "state unchanged: namespace still matches, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
-			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(matchingNS.Name, true)
 			},
 			request:       nsRequest(matchingNS.Name),
@@ -115,7 +115,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name:        "state unchanged: namespace still does not match, no broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
-			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(nonMatchingNS.Name, false)
 			},
 			request:       nsRequest(nonMatchingNS.Name),
@@ -125,7 +125,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name:        "state change: namespace transitions matching -> non-matching, broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
-			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(nonMatchingNS.Name, true) // previously matched
 			},
 			request:       nsRequest(nonMatchingNS.Name),
@@ -135,7 +135,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name:        "state change: namespace transitions non-matching -> matching, broadcast",
 			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
-			preloadState: func(m *nsmatch.NamespaceFlipNotifier) {
+			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(matchingNS.Name, false) // previously did not match
 			},
 			request:       nsRequest(matchingNS.Name),
@@ -230,8 +230,8 @@ func TestNsInitRunnable_Start(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier := nsmatch.NewMatchNotifier(sel, "")
 			r := &namespaceSeedRunnable{
-				client:   tt.buildClient(),
-				notifier: notifier,
+				client:           tt.buildClient(),
+				namespaceMatcher: notifier,
 			}
 
 			err := r.Start(t.Context())

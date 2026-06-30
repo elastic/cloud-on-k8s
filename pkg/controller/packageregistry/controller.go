@@ -67,7 +67,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePa
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackageRegistry) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to packageregistry
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
 		return err
@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &eprv1alpha1.PackageRegistryList{}
 	})
 }
@@ -144,8 +144,8 @@ var _ driver.Interface = (*ReconcilePackageRegistry)(nil)
 // Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
 // in the PackageRegistry.Spec
 func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "epr_name", request)
@@ -359,13 +359,13 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 	return common.UpdateStatus(ctx, r.Client, &epr)
 }
 
-func (r *ReconcilePackageRegistry) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcilePackageRegistry) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
 func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, eprv1alpha1.Kind)
 }
 

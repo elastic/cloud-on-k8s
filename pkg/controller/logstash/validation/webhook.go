@@ -30,7 +30,7 @@ const (
 var lslog = ulog.Log.WithName("ls-validation")
 
 // RegisterWebhook registers the Logstash validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
