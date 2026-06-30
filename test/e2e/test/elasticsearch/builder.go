@@ -596,6 +596,10 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	return &metricsCluster
 }
 
+func (b Builder) ListOptions() []client.ListOption {
+	return test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
+}
+
 // TolerateMutationChecksFailures relaxes the continuous health check performed during a mutation by accepting a given number of failures.
 // When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
 // which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
