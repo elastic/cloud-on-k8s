@@ -2,10 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// Package namespace contains the flip-state controller used in dynamic
+// Package namespace contains the match-state controller used in dynamic
 // namespaceSelector mode. It watches Namespace objects and, whenever a
 // namespace's match-state against the configured selector changes, broadcasts
-// the Namespace to all per-kind controllers via a NamespaceFlipNotifier.
+// the Namespace to all per-kind controllers via a NamespaceMatcher.
 // Each per-kind controller subscribes to the notifier and uses
 // handler.EnqueueRequestsFromMapFunc to list its own CRs in the namespace and
 // enqueue reconcile requests — no API writes are needed.
@@ -37,23 +37,23 @@ import (
 
 const controllerName = "namespace-controller"
 
-// Add registers the namespace flip-state controller with the manager. It is
+// Add registers the namespace match-state controller with the manager. It is
 // only meaningful when the matcher is enabled (dynamic mode); the caller
 // should skip registration otherwise.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	if !params.NamespaceMatchNotifier.SelectorEnabled() {
+	if !params.NamespaceMatcher.SelectorEnabled() {
 		return nil
 	}
 	r := &reconciler{
 		client:            mgr.GetClient(),
-		nsMatchNotifier:   params.NamespaceMatchNotifier,
+		nsMatchNotifier:   params.NamespaceMatcher,
 		licenseChecker:    license.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
 		recorder:          mgr.GetEventRecorder(controllerName),
 		operatorNamespace: params.OperatorNamespace,
 	}
 
 	seedLog := mgr.GetLogger().WithName(controllerName).WithName("seeder")
-	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetClient(), notifier: params.NamespaceMatchNotifier}); err != nil {
+	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetClient(), namespaceMatcher: params.NamespaceMatcher}); err != nil {
 		return fmt.Errorf("registering namespace init runnable: %w", err)
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
@@ -65,7 +65,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 type reconciler struct {
 	client            client.Client
-	nsMatchNotifier   *nsmatch.NamespaceFlipNotifier
+	nsMatchNotifier   *nsmatch.NamespaceMatcher
 	licenseChecker    license.Checker
 	recorder          toolsevents.EventRecorder
 	operatorNamespace string
@@ -111,13 +111,13 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 
 var _ reconcile.Reconciler = (*reconciler)(nil)
 
-// namespaceSeedRunnable seeds the NamespaceFlipNotifier with the current match state
+// namespaceSeedRunnable seeds the NamespaceMatcher with the current match state
 // of all existing namespaces. It is registered with the manager so that it runs
 // after the cache is synced, reading from the cache rather than the API server.
 type namespaceSeedRunnable struct {
-	log      logr.Logger
-	client   client.Reader
-	notifier *nsmatch.NamespaceFlipNotifier
+	log              logr.Logger
+	client           client.Reader
+	namespaceMatcher *nsmatch.NamespaceMatcher
 }
 
 func (r *namespaceSeedRunnable) Start(ctx context.Context) error {
@@ -134,7 +134,7 @@ func (r *namespaceSeedRunnable) Start(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return
 			}
-			if _, _, err := r.notifier.ObserveAndBroadcast(ctx, &ns); err != nil {
+			if _, _, err := r.namespaceMatcher.ObserveAndBroadcast(ctx, &ns); err != nil {
 				r.log.Error(err, "failed to seed namespace match state", "namespace", ns.Name)
 			}
 		}

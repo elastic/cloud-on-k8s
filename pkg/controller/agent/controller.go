@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to Agent
 	if err := c.Watch(
 		watches.NamespacedKind(m, mgr.GetCache(), &agentv1alpha1.Agent{}, &handler.TypedEnqueueRequestForObject[*agentv1alpha1.Agent]{})); err != nil {
@@ -124,7 +124,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	}
 
 	// Watch soft-owned secrets (e.g. client certificate secrets for Fleet Server mTLS)
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, r.NamespaceMatchNotifier, agentv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, r.NamespaceMatcher, agentv1alpha1.Kind); err != nil {
 		return err
 	}
 
@@ -132,7 +132,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &agentv1alpha1.AgentList{}
 	})
 }
@@ -153,8 +153,8 @@ type ReconcileAgent struct {
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
@@ -249,12 +249,12 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	return nil
 }
 
-func (r *ReconcileAgent) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcileAgent) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
 func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, agentv1alpha1.Kind)
 }

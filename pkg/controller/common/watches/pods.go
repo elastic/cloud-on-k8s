@@ -20,7 +20,7 @@ import (
 
 // WatchPods updates the given controller to enqueue reconciliation requests triggered by changes on Pods.
 // The resource to reconcile is identified by a label on the Pods.
-func WatchPods(mgr manager.Manager, c controller.Controller, m *nsmatch.NamespaceFlipNotifier, objNameLabel string) error {
+func WatchPods(mgr manager.Manager, c controller.Controller, m *nsmatch.NamespaceMatcher, objNameLabel string) error {
 	return c.Watch(NamespacedKind(m, mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc[*corev1.Pod](objToReconcileRequest[*corev1.Pod](objNameLabel))))
 }
 

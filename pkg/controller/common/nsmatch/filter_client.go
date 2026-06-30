@@ -21,11 +21,11 @@ import (
 // the underlying client unchanged.
 type FilterClient struct {
 	client.Client
-	nfn *NamespaceFlipNotifier
+	nfn *NamespaceMatcher
 }
 
 // NewFilterClient returns a WrappedClient backed by the provided delegate.
-func NewFilterClient(delegate client.Client, nfn *NamespaceFlipNotifier) *FilterClient {
+func NewFilterClient(delegate client.Client, nfn *NamespaceMatcher) *FilterClient {
 	return &FilterClient{Client: delegate, nfn: nfn}
 }
 
