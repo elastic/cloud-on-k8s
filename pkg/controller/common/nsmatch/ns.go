@@ -23,7 +23,7 @@ const subscriberBufferSize = 32
 // Declared as a var so tests can override it without waiting 3 seconds.
 const subscriberSendTimeout = 3 * time.Second
 
-// NamespaceFlipNotifier evaluates a label selector against namespace labels,
+// NamespaceMatcher evaluates a label selector against namespace labels,
 // tracks each namespace's match state, and broadcasts to subscribers whenever
 // that state flips.
 //
@@ -40,7 +40,7 @@ const subscriberSendTimeout = 3 * time.Second
 // recorded by ObserveNamespace. The namespace flip-state controller seeds
 // all existing namespaces at startup and re-enqueues
 // CRs whenever a namespace's match state changes.
-type NamespaceFlipNotifier struct {
+type NamespaceMatcher struct {
 	selector                labels.Selector
 	alwaysManagedNamespaces map[string]struct{} // namespaces excluded from label-selector evaluation.
 	subs                    []chan event.TypedGenericEvent[*corev1.Namespace]
@@ -55,8 +55,8 @@ type NamespaceFlipNotifier struct {
 // resources) and operatorNS are pre-seeded in the short-circuit set so that
 // cluster-scoped events and the operator's own namespace always match regardless
 // of the configured selector.
-func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceFlipNotifier {
-	return &NamespaceFlipNotifier{
+func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceMatcher {
+	return &NamespaceMatcher{
 		selector: sel,
 		alwaysManagedNamespaces: map[string]struct{}{
 			"":         {},
@@ -70,14 +70,14 @@ func NewMatchNotifier(sel labels.Selector, operatorNS string) *NamespaceFlipNoti
 
 // SelectorEnabled reports whether the matcher is actively filtering.
 // Safe to call on a nil receiver; returns false in that case.
-func (m *NamespaceFlipNotifier) SelectorEnabled() bool {
+func (m *NamespaceMatcher) SelectorEnabled() bool {
 	return m != nil && m.selector != nil
 }
 
 // Matches returns the last recorded match state for ns. It returns false for
 // any namespace not yet observed by ObserveNamespace. When the selector is
 // disabled, always returns true.
-func (m *NamespaceFlipNotifier) Matches(ns string) bool {
+func (m *NamespaceMatcher) Matches(ns string) bool {
 	if !m.SelectorEnabled() {
 		return true
 	}
@@ -97,7 +97,7 @@ func (m *NamespaceFlipNotifier) Matches(ns string) bool {
 // circuited namespaces (empty string and the operator's namespace) always
 // return (true, true) without updating the internal state map. When the
 // selector is disabled, always returns (true, true).
-func (m *NamespaceFlipNotifier) ObserveNamespace(ns *corev1.Namespace) (isMatching bool, wasMatching bool) {
+func (m *NamespaceMatcher) ObserveNamespace(ns *corev1.Namespace) (isMatching bool, wasMatching bool) {
 	if !m.SelectorEnabled() {
 		return true, true
 	}
@@ -114,7 +114,7 @@ func (m *NamespaceFlipNotifier) ObserveNamespace(ns *corev1.Namespace) (isMatchi
 
 // Subscribe returns a receive-only channel that receives one event each time
 // Broadcast is called. Intended to be passed to a controller's Watch source.
-func (m *NamespaceFlipNotifier) Subscribe() <-chan event.TypedGenericEvent[*corev1.Namespace] {
+func (m *NamespaceMatcher) Subscribe() <-chan event.TypedGenericEvent[*corev1.Namespace] {
 	ch := make(chan event.TypedGenericEvent[*corev1.Namespace], m.subscriberBufferSize)
 	// No mutex needed: all controllers call Subscribe sequentially during
 	// manager initialization, before mgr.Start() launches any goroutines.
@@ -126,7 +126,7 @@ func (m *NamespaceFlipNotifier) Subscribe() <-chan event.TypedGenericEvent[*core
 // broadcastTimeout. On timeout the error is logged and delivery continues to the
 // remaining subscribers. On context cancellation the error is logged and Broadcast
 // returns early.
-func (m *NamespaceFlipNotifier) Broadcast(ctx context.Context, ns *corev1.Namespace) error {
+func (m *NamespaceMatcher) Broadcast(ctx context.Context, ns *corev1.Namespace) error {
 	if !m.SelectorEnabled() {
 		return nil
 	}
@@ -145,7 +145,7 @@ func (m *NamespaceFlipNotifier) Broadcast(ctx context.Context, ns *corev1.Namesp
 // subscribers if the match state flipped. Returns whether the state changed
 // and the current match result. When the selector is disabled, ObserveNamespace
 // returns (true, true), so stateChanged is always false and no broadcast occurs.
-func (m *NamespaceFlipNotifier) ObserveAndBroadcast(ctx context.Context, ns *corev1.Namespace) (stateChanged, isMatching bool, err error) {
+func (m *NamespaceMatcher) ObserveAndBroadcast(ctx context.Context, ns *corev1.Namespace) (stateChanged, isMatching bool, err error) {
 	var wasWatching bool
 	isMatching, wasWatching = m.ObserveNamespace(ns)
 	stateChanged = isMatching != wasWatching
@@ -157,7 +157,7 @@ func (m *NamespaceFlipNotifier) ObserveAndBroadcast(ctx context.Context, ns *cor
 
 // Swap records isMatching for ns and returns the previously recorded value
 // (wasMatching).
-func (m *NamespaceFlipNotifier) Swap(ns string, isMatching bool) (wasMatching bool) {
+func (m *NamespaceMatcher) Swap(ns string, isMatching bool) (wasMatching bool) {
 	m.matchedNamespacesMutex.Lock()
 	defer m.matchedNamespacesMutex.Unlock()
 	_, wasMatching = m.matchedNamespaces[ns]

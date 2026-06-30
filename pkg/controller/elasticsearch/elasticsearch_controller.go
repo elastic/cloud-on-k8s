@@ -84,7 +84,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
 		watches.NamespacedKind(m, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
@@ -140,7 +140,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &esv1.ElasticsearchList{}
 	})
 }
@@ -169,8 +169,8 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
@@ -384,7 +384,7 @@ func (r *ReconcileElasticsearch) annotateResource(
 	return r.Update(ctx, &es)
 }
 
-func (r *ReconcileElasticsearch) onNamespaceFlipOff(es types.NamespacedName) {
+func (r *ReconcileElasticsearch) onNamespaceOutOfScope(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
@@ -397,6 +397,6 @@ func (r *ReconcileElasticsearch) onNamespaceFlipOff(es types.NamespacedName) {
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
-	r.onNamespaceFlipOff(es)
+	r.onNamespaceOutOfScope(es)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

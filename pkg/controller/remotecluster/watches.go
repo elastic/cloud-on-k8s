@@ -28,7 +28,7 @@ import (
 
 // AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemoteClusters) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
@@ -80,7 +80,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 		return err
 	}
 
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &esv1.ElasticsearchList{}
 	})
 }

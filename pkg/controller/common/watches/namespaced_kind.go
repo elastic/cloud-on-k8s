@@ -25,7 +25,7 @@ import (
 // source.Kind directly; the matcher already short-circuits empty namespaces,
 // but skipping the cache lookup is the cleaner signal.
 func NamespacedKind[T client.Object](
-	m *nsmatch.NamespaceFlipNotifier,
+	m *nsmatch.NamespaceMatcher,
 	c cache.Cache,
 	obj T,
 	h handler.TypedEventHandler[T, reconcile.Request],

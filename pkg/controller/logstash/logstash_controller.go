@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogstash) error {
-	m := r.NamespaceMatchNotifier
+	m := r.NamespaceMatcher
 	// Watch for changes to Logstash
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &logstashv1alpha1.Logstash{}, &handler.TypedEnqueueRequestForObject[*logstashv1alpha1.Logstash]{})); err != nil {
 		return err
@@ -110,7 +110,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.NamespaceMatcher, func() client.ObjectList {
 		return &logstashv1alpha1.LogstashList{}
 	})
 }
@@ -136,8 +136,8 @@ type ReconcileLogstash struct {
 // +kubebuilder:rbac:groups=logstash.k8s.elastic.co,resources=logstashes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=logstash.k8s.elastic.co,resources=logstashes/status,verbs=get;update;patch
 func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "logstash_name", request)
@@ -236,7 +236,7 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	return nil
 }
 
-func (r *ReconcileLogstash) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcileLogstash) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.expectations.RemoveCluster(obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
@@ -244,6 +244,6 @@ func (r *ReconcileLogstash) onNamespaceFlipOff(obj types.NamespacedName) {
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, logstashv1alpha1.Kind)
 }

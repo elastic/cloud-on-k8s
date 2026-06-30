@@ -30,7 +30,7 @@ const (
 var autoopslog = ulog.Log.WithName("autoops-validation")
 
 // RegisterWebhook registers the AutoOpsAgentPolicy validating webhook with the manager.
-func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceFlipNotifier) {
+func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	autoopsValidator := &validator{
 		licenseChecker: licenseChecker,
 	}

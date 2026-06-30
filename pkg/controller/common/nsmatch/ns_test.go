@@ -37,7 +37,7 @@ func namespace(name string, lbls map[string]string) *corev1.Namespace {
 
 func TestMatcher(t *testing.T) {
 	t.Run("SelectorEnabled", func(t *testing.T) {
-		assert.False(t, (*NamespaceFlipNotifier)(nil).SelectorEnabled(), "nil MatchNotifier is disabled")
+		assert.False(t, (*NamespaceMatcher)(nil).SelectorEnabled(), "nil MatchNotifier is disabled")
 		assert.False(t, NewMatchNotifier(nil, testOperatorNS).SelectorEnabled(), "nil selector is disabled")
 		assert.True(t, NewMatchNotifier(mustSelector(t, map[string]string{"env": "prod"}), testOperatorNS).SelectorEnabled(), "non-nil selector is enabled")
 	})

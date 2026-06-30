@@ -84,7 +84,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
-	m := r.params.NamespaceMatchNotifier
+	m := r.params.NamespaceMatcher
 	// watch for changes to StackConfigPolicy
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
@@ -115,7 +115,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 		return err
 	}
 
-	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatchNotifier, func() client.ObjectList {
+	return watches.WatchNamespaceFlips(c, mgr.GetClient(), r.params.NamespaceMatcher, func() client.ObjectList {
 		return &policyv1alpha1.StackConfigPolicyList{}
 	})
 }
@@ -182,8 +182,8 @@ type ReconcileStackConfigPolicy struct {
 // Reconcile reads that state of the cluster for a StackConfigPolicy object and makes changes based on the state read and what is
 // in the StackConfigPolicy.Spec.
 func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatchNotifier.Matches(request.Namespace) {
-		r.onNamespaceFlipOff(request.NamespacedName)
+	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
@@ -610,7 +610,7 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	return common.UpdateStatus(ctx, r.Client, &scp)
 }
 
-func (r *ReconcileStackConfigPolicy) onNamespaceFlipOff(obj types.NamespacedName) {
+func (r *ReconcileStackConfigPolicy) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Remove dynamic watches on variablesFrom sources
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(variableSourcesWatcherName(obj))
@@ -619,7 +619,7 @@ func (r *ReconcileStackConfigPolicy) onNamespaceFlipOff(obj types.NamespacedName
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
-	r.onNamespaceFlipOff(obj)
+	r.onNamespaceOutOfScope(obj)
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }

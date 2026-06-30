@@ -19,7 +19,7 @@ import (
 )
 
 // WatchNamespaceFlips registers a source.Channel watch driven by notifier.
-// Whenever a namespace's match-state flips, the mapper lists all objects of the
+// Whenever a namespace's match state changes, the mapper lists all objects of the
 // kind produced by newList in that namespace and enqueues a reconcile request for
 // each. No-ops when notifier is nil (legacy / static-namespace mode).
 func WatchNamespaceFlips(
