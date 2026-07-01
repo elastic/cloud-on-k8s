@@ -122,8 +122,11 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initConfigContainer(params)).
-		WithInitContainerDefaults().
-		WithPodSecurityContext(DefaultSecurityContext)
+		WithInitContainerDefaults()
+
+	if params.OperatorParams.SetDefaultSecurityContext {
+		builder = builder.WithPodSecurityContext(DefaultSecurityContext)
+	}
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig, params.Meta)
 	if err != nil {
