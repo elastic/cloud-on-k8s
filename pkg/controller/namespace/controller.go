@@ -20,6 +20,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -45,7 +46,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 		return nil
 	}
 	r := &reconciler{
-		client:            mgr.GetClient(),
+		cache:             mgr.GetCache(),
 		nsMatchNotifier:   params.NamespaceMatcher,
 		licenseChecker:    license.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
 		recorder:          mgr.GetEventRecorder(controllerName),
@@ -53,7 +54,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	}
 
 	seedLog := mgr.GetLogger().WithName(controllerName).WithName("seeder")
-	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetClient(), namespaceMatcher: params.NamespaceMatcher}); err != nil {
+	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetCache(), namespaceMatcher: params.NamespaceMatcher}); err != nil {
 		return fmt.Errorf("registering namespace init runnable: %w", err)
 	}
 	c, err := common.NewController(mgr, controllerName, r, params)
@@ -64,7 +65,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 type reconciler struct {
-	client            client.Client
+	cache             cache.Cache
 	nsMatchNotifier   *nsmatch.NamespaceMatcher
 	licenseChecker    license.Checker
 	recorder          toolsevents.EventRecorder
@@ -90,14 +91,16 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request reconcile.Request) (reconcile.Result, error) {
 	var ns corev1.Namespace
-	if err := r.client.Get(ctx, types.NamespacedName{Name: request.Name}, &ns); err != nil {
+	if err := r.cache.Get(ctx, types.NamespacedName{Name: request.Name}, &ns); err != nil {
 		if apierrors.IsNotFound(err) {
+			log.Info("namespace deleted")
 			// Namespace was deleted: mark it as non-matching without broadcasting. All resources
 			// that lived in it are being deleted or cleaned up by their own controllers, so there
 			// is nothing for the namespace-selector logic to react to.
 			r.nsMatchNotifier.ForgetNamespace(request.Name)
 			return reconcile.Result{}, nil
 		}
+		log.Error(err, "error while fetching namespace")
 		return reconcile.Result{}, err
 	}
 
