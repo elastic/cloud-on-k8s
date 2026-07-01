@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,49 +55,6 @@ func (m *Cache) OnGetSetNamespace(lbls map[string]string) *mock.Call {
 func NewCache(t *testing.T) *Cache {
 	t.Helper()
 	m := &Cache{}
-	t.Cleanup(func() { m.AssertExpectations(t) })
-	return m
-}
-
-// Client stubs List and Get on client.Client via testify/mock.
-type Client struct {
-	mock.Mock
-	client.Client
-}
-
-func (m *Client) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	args := m.Called(ctx, list, opts)
-	return args.Error(0)
-}
-
-func (m *Client) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	args := m.Called(ctx, key, obj, opts)
-	return args.Error(0)
-}
-
-// OnListSetPodList sets up a List expectation that populates the PodList with pods.
-func (m *Client) OnListSetPodList(pods ...corev1.Pod) *mock.Call {
-	return m.On("List", mock.Anything, mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			args.Get(1).(*corev1.PodList).Items = pods //nolint:forcetypeassert
-		})
-}
-
-// OnGetSetPod sets up a Get expectation that populates obj as a Pod in ns.
-func (m *Client) OnGetSetPod() *mock.Call {
-	return m.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			key := args.Get(1).(types.NamespacedName) //nolint:forcetypeassert
-			p := args.Get(2).(*corev1.Pod)            //nolint:forcetypeassert
-			p.Name = key.Name
-			p.Namespace = key.Namespace
-		})
-}
-
-// NewClient creates a mockClient and registers AssertExpectations as a test cleanup.
-func NewClient(t *testing.T) *Client {
-	t.Helper()
-	m := new(Client)
 	t.Cleanup(func() { m.AssertExpectations(t) })
 	return m
 }
