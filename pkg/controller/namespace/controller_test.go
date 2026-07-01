@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -25,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 // errLicenseChecker embeds MockLicenseChecker and overrides EnterpriseFeaturesEnabled
@@ -56,7 +59,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		buildClient   func() k8s.Client
+		buildCache    func(t *testing.T) cache.Cache
 		preloadState  func(*nsmatch.NamespaceMatcher)
 		request       reconcile.Request
 		wantResult    reconcile.Result
@@ -64,8 +67,12 @@ func TestReconciler_doReconcile(t *testing.T) {
 		wantBroadcast bool
 	}{
 		{
-			name:        "namespace not found: state forgotten, no broadcast",
-			buildClient: func() k8s.Client { return k8s.NewFakeClient() },
+			name: "namespace not found: state forgotten, no broadcast",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(nil).Return(apierrors.NewNotFound(corev1.Resource("namespaces"), "deleted-ns"))
+				return mc
+			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap("deleted-ns", true)
 			},
@@ -75,36 +82,44 @@ func TestReconciler_doReconcile(t *testing.T) {
 		},
 		{
 			name: "client error: error is propagated, no broadcast",
-			buildClient: func() k8s.Client {
-				return k8s.NewFakeClientBuilder().
-					WithInterceptorFuncs(interceptor.Funcs{
-						Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
-							return errors.New("connection refused")
-						},
-					}).
-					Build()
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(nil).Return(errors.New("connection refused"))
+				return mc
 			},
 			request:       nsRequest("any-ns"),
 			wantErr:       true,
 			wantBroadcast: false,
 		},
 		{
-			name:          "first reconcile, namespace matches: broadcast (unknown -> matching)",
-			buildClient:   func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
+			name: "first reconcile, namespace matches: broadcast (unknown -> matching)",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
+				return mc
+			},
 			request:       nsRequest(matchingNS.Name),
 			wantResult:    reconcile.Result{},
 			wantBroadcast: true,
 		},
 		{
-			name:          "first reconcile, namespace does not match: no broadcast (unknown -> non-matching)",
-			buildClient:   func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
+			name: "first reconcile, namespace does not match: no broadcast (unknown -> non-matching)",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
+				return mc
+			},
 			request:       nsRequest(nonMatchingNS.Name),
 			wantResult:    reconcile.Result{},
 			wantBroadcast: false,
 		},
 		{
-			name:        "state unchanged: namespace still matches, no broadcast",
-			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
+			name: "state unchanged: namespace still matches, no broadcast",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
+				return mc
+			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(matchingNS.Name, true)
 			},
@@ -113,8 +128,12 @@ func TestReconciler_doReconcile(t *testing.T) {
 			wantBroadcast: false,
 		},
 		{
-			name:        "state unchanged: namespace still does not match, no broadcast",
-			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
+			name: "state unchanged: namespace still does not match, no broadcast",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
+				return mc
+			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(nonMatchingNS.Name, false)
 			},
@@ -123,8 +142,12 @@ func TestReconciler_doReconcile(t *testing.T) {
 			wantBroadcast: false,
 		},
 		{
-			name:        "state change: namespace transitions matching -> non-matching, broadcast",
-			buildClient: func() k8s.Client { return k8s.NewFakeClient(nonMatchingNS) },
+			name: "state change: namespace transitions matching -> non-matching, broadcast",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
+				return mc
+			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(nonMatchingNS.Name, true) // previously matched
 			},
@@ -133,8 +156,12 @@ func TestReconciler_doReconcile(t *testing.T) {
 			wantBroadcast: true,
 		},
 		{
-			name:        "state change: namespace transitions non-matching -> matching, broadcast",
-			buildClient: func() k8s.Client { return k8s.NewFakeClient(matchingNS) },
+			name: "state change: namespace transitions non-matching -> matching, broadcast",
+			buildCache: func(t *testing.T) cache.Cache {
+				mc := mock.NewCache(t)
+				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
+				return mc
+			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
 				m.Swap(matchingNS.Name, false) // previously did not match
 			},
@@ -152,7 +179,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 			}
 
 			r := &reconciler{
-				client:          tt.buildClient(),
+				cache:           tt.buildCache(t),
 				nsMatchNotifier: notifier,
 			}
 			sub := r.nsMatchNotifier.Subscribe()
@@ -269,6 +296,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 		lc         license.Checker
 		wantResult reconcile.Result
 		wantErr    bool
+		wantGet    bool
 	}{
 		{
 			name:    "license check error: error returned",
@@ -284,14 +312,19 @@ func TestReconciler_Reconcile(t *testing.T) {
 			name:       "enterprise enabled: delegates to doReconcile",
 			lc:         license.MockLicenseChecker{EnterpriseEnabled: true},
 			wantResult: reconcile.Result{},
+			wantGet:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fr := events.NewFakeRecorder(10)
+			mc := mock.NewCache(t)
+			if tt.wantGet {
+				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
+			}
 			r := &reconciler{
-				client:          k8s.NewFakeClient(matchingNS),
+				cache:           mc,
 				nsMatchNotifier: nsmatch.NewNamespaceMatcher(sel, ""),
 				licenseChecker:  tt.lc,
 				recorder:        fr,
