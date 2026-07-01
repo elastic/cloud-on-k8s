@@ -118,18 +118,12 @@ func Test_isFleetServerClientAuthRequired(t *testing.T) {
 			wantRequired:   false,
 		},
 		{
-			name:            "unsupported version, spec true: not required, warning",
-			agentVersion:    "8.15.0",
-			specClientAuth:  true,
-			wantRequired:    false,
-			wantWarning:     true,
-			wantWarningLike: "8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
-		},
-		{
-			name:           "unsupported version, spec false: not required, no warning",
-			agentVersion:   "8.15.0",
-			specClientAuth: false,
-			wantRequired:   false,
+			// Validation blocks spec.http.tls.client.authentication=true for unsupported versions,
+			// but a manually-set FLEET_SERVER_CLIENT_AUTH env var must be honored regardless.
+			name:         "unsupported version, FLEET_SERVER_CLIENT_AUTH=required set manually: required",
+			agentVersion: "8.15.0",
+			envVar:       &corev1.EnvVar{Name: FleetServerClientAuth, Value: FleetServerClientAuthRequired},
+			wantRequired: true,
 		},
 		{
 			name:           "spec true, env via valueFrom, TLS on: not required, warning",

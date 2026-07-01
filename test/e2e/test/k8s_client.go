@@ -601,7 +601,11 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 
 // OnAnyPod runs f on every pod in parallel and returns nil if at least one invocation succeeds.
 // If every invocation fails, the last error seen is returned.
+// Returns an error if pods is empty so callers cannot silently pass with nothing checked.
 func OnAnyPod(pods []corev1.Pod, f func(corev1.Pod) error) error {
+	if len(pods) == 0 {
+		return errors.New("OnAnyPod: no pods to check")
+	}
 	// map phase: execute a function on all pods in parallel
 	fResults := make(chan error, len(pods))
 	for _, p := range pods {
