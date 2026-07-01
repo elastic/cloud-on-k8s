@@ -201,7 +201,9 @@ func (m *NamespaceMatcher) ObserveAndBroadcast(ctx context.Context, ns *corev1.N
 }
 
 // Swap records isMatching for ns and returns the previously recorded value
-// (wasMatching).
+// (wasMatching). It is intended for internal use by ObserveNamespace and for
+// external test usage; other callers should use ObserveNamespace and
+// ForgetNamespace instead.
 func (m *NamespaceMatcher) Swap(ns string, isMatching bool) (wasMatching bool) {
 	m.matchedNamespacesMutex.Lock()
 	defer m.matchedNamespacesMutex.Unlock()
@@ -212,6 +214,13 @@ func (m *NamespaceMatcher) Swap(ns string, isMatching bool) (wasMatching bool) {
 		delete(m.matchedNamespaces, ns)
 	}
 	return
+}
+
+// ForgetNamespace clears any recorded match state for ns without broadcasting.
+// Intended for use when ns has been deleted: its resources are being cleaned
+// up by their own controllers, so there is nothing for subscribers to react to.
+func (m *NamespaceMatcher) ForgetNamespace(ns string) {
+	_ = m.Swap(ns, false)
 }
 
 func sendWithTimeout[chType any](ctx context.Context, ch chan<- chType, timeout time.Duration, item chType) error {

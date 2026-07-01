@@ -95,7 +95,7 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 			// Namespace was deleted: mark it as non-matching without broadcasting. All resources
 			// that lived in it are being deleted or cleaned up by their own controllers, so there
 			// is nothing for the namespace-selector logic to react to.
-			r.nsMatchNotifier.Swap(request.Name, false)
+			r.nsMatchNotifier.ForgetNamespace(request.Name)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
