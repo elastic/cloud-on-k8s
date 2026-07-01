@@ -36,6 +36,14 @@ ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggeri
 **Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, the memory limit change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
 ::::
 
+::::{dropdown} Rolling restart of Logstash pods during operator upgrade
+ECK 3.4.0 includes changes that modify the Logstash pod spec, triggering a rolling restart of all Logstash pods during the operator upgrade.
+
+**Impact**<br> All Logstash pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that Logstash pods will restart during the upgrade.
+::::
+
 ::::{dropdown} Default PVC handling change for {{es}} volumes
 ECK 3.4.0 unifies how the operator handles default volume claim templates. Previously, the operator only skipped adding a default PVC when a non-PVC volume (such as `emptyDir` or `hostPath`) with the same name existed. Now, it skips the default PVC whenever any volume with the same name exists, including user-provided PVCs.
 
