@@ -91,17 +91,8 @@ func merge[T any](
 	for _, p := range c.PolicyRefs {
 		srcSpec := c.extractFunc(&p)
 
-		if len(p.Spec.VariablesFrom) > 0 {
-			pNsn := k8s.ExtractNamespacedName(&p)
-			vars, err := substitution.ResolveVars(ctx, client, &p)
-			if err != nil {
-				return fmt.Errorf("failed to resolve vars for policy %q: %w", pNsn, err)
-			}
-
-			err = substitution.SubstituteVars(srcSpec, vars)
-			if err != nil {
-				return fmt.Errorf("failed to substitute vars for %T in policy %q: %w", srcSpec, pNsn, err)
-			}
+		if err := substitution.Apply(ctx, client, &p, operatorNamespace, srcSpec); err != nil {
+			return fmt.Errorf("failed to apply variable substitution for %T in policy %q: %w", srcSpec, k8s.ExtractNamespacedName(&p), err)
 		}
 
 		if err := c.mergeFunc(c, srcSpec, &p); err != nil {

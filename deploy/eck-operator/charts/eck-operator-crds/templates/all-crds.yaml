@@ -12898,9 +12898,16 @@ spec:
                 description: |-
                   VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
                   Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
-                  Sources without a namespace default to the policy's namespace. Later entries take precedence over earlier ones on key conflicts.
+                  Sources without a namespace default to the policy's namespace; cross-namespace sources are only
+                  permitted for policies deployed in the operator namespace.
+                  Later entries take precedence over earlier ones on key conflicts.
                   If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
-                  Referencing an undefined variable (one not present in any source and without a default) is an error; use ${VAR:-default} to supply a fallback.
+                  Only keys present in a source are substituted; any other ${...} expression (including native
+                  ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by
+                  Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.
+                  Values from sources are JSON-escaped before substitution and are limited to string-typed
+                  fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret
+                  values are always strings and the intended target type cannot be inferred.
                 items:
                   description: VariableSource references a ConfigMap or Secret from
                     which variables are loaded for substitution.
@@ -12917,14 +12924,18 @@ spec:
                       minLength: 1
                       type: string
                     namespace:
-                      description: Namespace is the namespace of the ConfigMap or
-                        Secret. Defaults to the StackConfigPolicy namespace if not
-                        set.
+                      description: |-
+                        Namespace is the namespace of the ConfigMap or Secret.
+                        When empty, the StackConfigPolicy's own namespace is used.
+                        Cross-namespace references are only permitted for policies
+                        deployed in the operator namespace; all other policies must
+                        reference sources in their own namespace.
                       type: string
                     optional:
                       description: |-
-                        Optional indicates whether the source is optional. When true, a missing ConfigMap or Secret is silently ignored
-                        instead of causing a reconciliation error. Other errors (for example, permission denied) are still reported.
+                        Optional indicates whether the source is optional. When true,
+                        a missing ConfigMap or Secret is silently ignored instead of
+                        causing a reconciliation error.
                       type: boolean
                   required:
                   - kind

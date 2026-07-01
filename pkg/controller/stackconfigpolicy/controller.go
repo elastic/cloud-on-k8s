@@ -47,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	scpvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -570,7 +571,7 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := policyv1alpha1.Validate(policy, nil)
+	warnings, err := scpvalidation.Validate(policy, r.params.OperatorNamespace)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())

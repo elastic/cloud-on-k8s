@@ -5,11 +5,11 @@
 package substitution
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/fluxcd/pkg/envsubst"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,24 +18,65 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// jsonEscape returns s safe to splice into a JSON string literal.
-func jsonEscape(s string) string {
-	b, _ := json.Marshal(s) // json.Marshal never fails for plain strings
-	return string(b[1 : len(b)-1])
+// Apply resolves variables from policy.Spec.VariablesFrom and substitutes them into spec in place.
+// It is a no-op when VariablesFrom is empty.
+// operatorNamespace is used to enforce the cross-namespace scoping rule at read time: a
+// namespace-scoped policy may not read sources outside its own namespace even when the validating
+// webhook is bypassed.
+func Apply[T any](ctx context.Context, client k8s.Client, policy *policyv1alpha1.StackConfigPolicy, operatorNamespace string, spec *T) error {
+	if len(policy.Spec.VariablesFrom) == 0 {
+		return nil
+	}
+	vars, err := resolveVars(ctx, client, policy, operatorNamespace)
+	if err != nil {
+		return err
+	}
+	return substituteVars(spec, vars)
 }
 
-// ResolveVars builds the substitution variable map from VariablesFrom sources.
-// Later entries in VariablesFrom take precedence over earlier ones on key conflicts.
-// Values are JSON-escaped so they are safe to splice into a JSON string literal.
-func ResolveVars(ctx context.Context, client k8s.Client, policy *policyv1alpha1.StackConfigPolicy) (map[string]string, error) {
-	if policy == nil || len(policy.Spec.VariablesFrom) == 0 {
-		return nil, nil
+// indexClosingBrace returns the index of the } that closes the ${ already consumed,
+// correctly handling nested { } pairs. Returns -1 if no matching } is found.
+func indexClosingBrace(s []byte) int {
+	depth := 1
+	for i, r := range s {
+		switch r {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
 	}
+	return -1
+}
 
+// jsonEscape encodes v as a JSON string value (without surrounding quotes), making it safe
+// to substitute directly into a JSON string literal. This ensures that values containing
+// backslashes, quotes, newlines (e.g. PEM certificates, Windows paths) produce valid JSON.
+func jsonEscape(v string) []byte {
+	b, _ := json.Marshal(v)
+	// json.Marshal always succeeds for strings; strip the surrounding quotes.
+	return b[1 : len(b)-1]
+}
+
+// resolveVars builds the substitution variable map from VariablesFrom sources.
+// Later entries take precedence over earlier ones on key conflicts.
+// Values are JSON-escaped so they can be substituted safely into a JSON string literal.
+// The cross-namespace scoping rule is enforced here so the read path is self-guarding even
+// when the validating webhook is bypassed (e.g. failurePolicy=ignore) and this policy is
+// pulled into a sibling policy's merge.
+func resolveVars(ctx context.Context, client k8s.Client, policy *policyv1alpha1.StackConfigPolicy, operatorNamespace string) (map[string][]byte, error) {
 	pNsn := k8s.ExtractNamespacedName(policy)
-	vars := make(map[string]string)
+	vars := make(map[string][]byte)
 	for idx, src := range policy.Spec.VariablesFrom {
-		nsn := types.NamespacedName{Namespace: src.EffectiveNamespace(policy.Namespace), Name: src.Name}
+		srcNamespace := src.EffectiveNamespace(policy.Namespace)
+		if !src.AllowedFrom(policy.Namespace, operatorNamespace) {
+			return nil, fmt.Errorf("policy %q may not reference variablesFrom source %q in namespace %q",
+				pNsn, src.Name, srcNamespace)
+		}
+		nsn := types.NamespacedName{Namespace: srcNamespace, Name: src.Name}
 		switch src.Kind {
 		case policyv1alpha1.VariableSourceKindConfigMap:
 			var cm corev1.ConfigMap
@@ -60,27 +101,71 @@ func ResolveVars(ctx context.Context, client k8s.Client, policy *policyv1alpha1.
 				vars[k] = jsonEscape(string(v))
 			}
 		default:
+			// The CRD enum marker (+kubebuilder:validation:Enum=ConfigMap;Secret) makes any other
+			// kind unreachable at the API level; this branch is a defensive guard against direct
+			// object creation that bypasses the API server.
 			return nil, fmt.Errorf("unknown variablesFrom kind %q for %q at index %d", src.Kind, pNsn, idx)
 		}
 	}
 	return vars, nil
 }
 
-// SubstituteVars marshals spec to JSON, substitutes ${VAR} references, and unmarshals back in place.
-func SubstituteVars[T any](spec *T, vars map[string]string) error {
+// substituteVars marshals spec to JSON, applies substitute, then unmarshals back in place.
+func substituteVars[T any](spec *T, vars map[string][]byte) error {
 	data, err := json.Marshal(spec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal spec: %w", err)
 	}
-	substituted, err := envsubst.Eval(string(data), func(key string) (string, bool) {
-		v, ok := vars[key]
-		return v, ok
-	})
-	if err != nil {
-		return fmt.Errorf("failed to substitute vars: %w", err)
-	}
-	if err := json.Unmarshal([]byte(substituted), spec); err != nil {
+	substituted := substitute(data, vars)
+	if err := json.Unmarshal(substituted, spec); err != nil {
 		return fmt.Errorf("failed to unmarshal substituted spec: %w", err)
 	}
 	return nil
+}
+
+// substitute replaces ${VAR} and ${VAR:-default} expressions in a string.
+// Only keys present in vars are substituted; all other ${...} expressions are left verbatim
+// so that native ES references (e.g. ${ENV}, ${foo.bar}) survive unchanged.
+// The :- separator (bash-style) marks ECK defaults and is intentionally distinct from
+// ES's ${name:value} single-colon syntax, which therefore always passes through.
+// Values sourced from ConfigMaps/Secrets are pre-escaped by resolveVars; inline defaults
+// are part of the policy spec and were JSON-encoded during marshal, so they are already safe.
+func substitute(data []byte, vars map[string][]byte) []byte {
+	var (
+		startToken = []byte("${")
+		defaultVal = []byte(":-")
+	)
+	var buf bytes.Buffer
+	for {
+		start := bytes.Index(data, startToken)
+		if start == -1 {
+			buf.Write(data)
+			break
+		}
+		buf.Write(data[:start])
+		data = data[start+2:] // consume "${"
+		end := indexClosingBrace(data)
+		if end == -1 {
+			// no closing brace — restore the "${" we consumed and leave the rest as-is
+			buf.WriteString("${")
+			buf.Write(data)
+			break
+		}
+		expr := data[:end]
+		data = data[end+1:] // consume expression and "}"
+
+		name, def, hasDef := bytes.Cut(expr, defaultVal)
+		val, defined := vars[string(name)]
+		switch {
+		case defined && (len(val) > 0 || !hasDef):
+			buf.Write(val)
+		case hasDef:
+			buf.Write(def)
+		default:
+			buf.WriteString("${") // undefined with no default — pass through verbatim
+			buf.Write(expr)
+			buf.WriteString("}")
+		}
+	}
+	return buf.Bytes()
 }
