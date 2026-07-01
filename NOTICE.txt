@@ -222,11 +222,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.20.0/L
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/storage
-Version : v1.62.3
-Time    : 2026-06-04T04:52:32Z
+Version : v1.63.0
+Time    : 2026-06-26T04:25:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.62.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.63.0/LICENSE:
 
 
                                  Apache License
@@ -774,11 +774,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.42
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/credentials
-Version : v1.19.24
-Time    : 2026-06-10T18:23:40Z
+Version : v1.19.25
+Time    : 2026-06-29T18:13:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.24/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.25/LICENSE.txt:
 
 
                                  Apache License
@@ -986,11 +986,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/crede
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/s3
-Version : v1.104.0
-Time    : 2026-06-16T18:25:13Z
+Version : v1.104.1
+Time    : 2026-06-29T18:13:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.104.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.104.1/LICENSE.txt:
 
 
                                  Apache License
@@ -7645,11 +7645,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/compute/metada
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/iam
-Version : v1.7.0
-Time    : 2026-04-02T16:16:03Z
+Version : v1.11.0
+Time    : 2026-05-07T21:21:33Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/iam@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/iam@v1.11.0/LICENSE:
 
 
                                  Apache License
@@ -7857,11 +7857,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/iam@v1.7.0/LIC
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/logging
-Version : v1.13.2
-Time    : 2026-02-05T16:31:06Z
+Version : v1.18.0
+Time    : 2026-05-07T21:21:33Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/logging@v1.13.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/logging@v1.18.0/LICENSE:
 
 
                                  Apache License
@@ -8069,11 +8069,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/logging@v1.13.
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/longrunning
-Version : v0.9.0
-Time    : 2026-04-02T16:16:03Z
+Version : v1.0.0
+Time    : 2026-05-11T16:07:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/longrunning@v0.9.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/longrunning@v1.0.0/LICENSE:
 
 
                                  Apache License
@@ -8281,11 +8281,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/longrunning@v0
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/monitoring
-Version : v1.24.3
-Time    : 2025-10-08T19:17:02Z
+Version : v1.29.0
+Time    : 2026-05-07T21:21:33Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/monitoring@v1.24.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/monitoring@v1.29.0/LICENSE:
 
 
                                  Apache License
@@ -8493,11 +8493,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/monitoring@v1.
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/trace
-Version : v1.11.7
-Time    : 2025-10-09T18:20:38Z
+Version : v1.16.0
+Time    : 2026-05-07T21:21:33Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/trace@v1.11.7/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/trace@v1.16.0/LICENSE:
 
 
                                  Apache License
@@ -9071,11 +9071,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/
 
 --------------------------------------------------------------------------------
 Module  : github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric
-Version : v0.55.0
-Time    : 2026-01-16T21:40:50Z
+Version : v0.57.0
+Time    : 2026-06-04T20:21:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/exporter/metric@v0.55.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/exporter/metric@v0.57.0/LICENSE:
 
 
                                  Apache License
@@ -9283,11 +9283,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/
 
 --------------------------------------------------------------------------------
 Module  : github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock
-Version : v0.55.0
-Time    : 2026-01-16T21:40:50Z
+Version : v0.57.0
+Time    : 2026-06-04T20:21:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/internal/cloudmock@v0.55.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/internal/cloudmock@v0.57.0/LICENSE:
 
 
                                  Apache License
@@ -9495,11 +9495,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/
 
 --------------------------------------------------------------------------------
 Module  : github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping
-Version : v0.55.0
-Time    : 2026-01-16T21:40:50Z
+Version : v0.57.0
+Time    : 2026-06-04T20:21:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/internal/resourcemapping@v0.55.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/internal/resourcemapping@v0.57.0/LICENSE:
 
 
                                  Apache License
@@ -11530,11 +11530,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/servi
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/internal/s3shared
-Version : v1.19.29
-Time    : 2026-06-08T18:35:52Z
+Version : v1.19.30
+Time    : 2026-06-29T18:13:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/s3shared@v1.19.29/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/s3shared@v1.19.30/LICENSE.txt:
 
 
                                  Apache License
@@ -27501,11 +27501,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
-Version : v0.67.0
-Time    : 2026-03-06T20:24:46Z
+Version : v0.68.0
+Time    : 2026-04-07T08:53:54Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc@v0.67.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc@v0.68.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -28701,11 +28701,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/exporters/stdout/stdoutmetric
-Version : v1.43.0
-Time    : 2026-04-03T08:30:03Z
+Version : v1.44.0
+Time    : 2026-05-27T16:42:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/stdout/stdoutmetric@v1.43.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/stdout/stdoutmetric@v1.44.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31334,11 +31334,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto
-Version : v0.0.0-20260319201613-d00831a3d3e7
-Time    : 2026-03-19T20:16:13Z
+Version : v0.0.0-20260519071638-aa98bba5eb94
+Time    : 2026-05-19T07:16:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-20260319201613-d00831a3d3e7/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-20260519071638-aa98bba5eb94/LICENSE:
 
 
                                  Apache License
@@ -31546,11 +31546,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/api
-Version : v0.0.0-20260526163538-3dc84a4a5aaa
-Time    : 2026-05-26T16:35:38Z
+Version : v0.0.0-20260615183401-62b3387ff324
+Time    : 2026-06-15T18:34:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260526163538-3dc84a4a5aaa/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260615183401-62b3387ff324/LICENSE:
 
 
                                  Apache License
@@ -31758,11 +31758,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googlea
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/rpc
-Version : v0.0.0-20260610212136-7ab31c22f7ad
-Time    : 2026-06-10T21:21:36Z
+Version : v0.0.0-20260615183401-62b3387ff324
+Time    : 2026-06-15T18:34:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260610212136-7ab31c22f7ad/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260615183401-62b3387ff324/LICENSE:
 
 
                                  Apache License
