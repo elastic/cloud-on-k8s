@@ -104,7 +104,13 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 	name, _ := accessor.Name(obj)
 
 	if v.namespaceMatcher.SelectorEnabled() {
-		if !v.namespaceMatcher.Matches(ns) {
+		// The webhook server runs in a single operator pod but receives admission requests
+		// for every namespace in the cluster: several operator instances, each watching a
+		// different set of namespaces, may be installed side by side, but only one of their
+		// webhooks is actually registered. A live label check (rather than this operator's
+		// last-observed match state) is used here so an operator never denies a request for
+		// a namespace it doesn't manage; unmanaged namespaces are silently let through instead.
+		if !v.namespaceMatcher.MatchesCachedLabels(ctx, ns) {
 			whlog.V(1).Info("Skip resource validation: namespace does not match selector", "name", name, "namespace", ns)
 			return true, nil
 		}

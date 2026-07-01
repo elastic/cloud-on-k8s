@@ -35,6 +35,7 @@ import (
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -79,7 +80,7 @@ func setupWebhook(
 ) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, params.NamespaceMatcher, clientset, tracer); err != nil {
 			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
@@ -135,7 +136,7 @@ func setupWebhook(
 	}
 }
 
-func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
+func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, m *nsmatch.NamespaceMatcher, clientset kubernetes.Interface, tracer *apm.Tracer) error {
 	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
 	defer tracing.EndContextTransaction(ctx)
 	log.Info("Automatic management of the webhook certificates enabled")
@@ -158,5 +159,5 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 		return err
 	}
 
-	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+	return webhook.Add(mgr, m, webhookParams, clientset, wh, tracer)
 }
