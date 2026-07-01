@@ -39,7 +39,7 @@ ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggeri
 ::::{dropdown} Rolling restart of Logstash pods during operator upgrade on OpenShift
 ECK 3.4.0 includes changes that modify the Logstash pod spec, including setting `seccompProfile` to `RuntimeDefault`, triggering a rolling restart of Logstash pods during the operator upgrade.
 
-**Impact**<br> Logstash pods will be restarted as part of the operator upgrade. On OpenShift clusters using a non-default SCC such as `anyuid` — which does not permit explicit seccomp configuration — Logstash pods may fail to be scheduled after the restart. Refer to [known issues](docs-content://release-notes/cloud-on-k8s/known-issues.md) for details and a workaround.
+**Impact**<br> Logstash pods will be restarted as part of the operator upgrade. On OpenShift clusters using a non-default SCC such as `anyuid` — which does not permit explicit seccomp configuration — Logstash pods may fail to be scheduled after the restart. Refer to [known issues](./known-issues.md) for details and a workaround.
 
 **Action**<br> No action required for standard deployments. If you are running on OpenShift with a non-default SCC, review the known issue and apply the workaround before upgrading.
 ::::
