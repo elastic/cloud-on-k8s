@@ -41,7 +41,7 @@ spec:
         # seccompProfile intentionally omitted — not permitted by anyuid SCC
 ```
 
-This override can be removed once you upgrade to the ECK version that includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
+This override can be removed once you upgrade to ECK 3.5.0 or later when available, which includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
 :::
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
