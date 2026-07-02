@@ -59,8 +59,6 @@ const (
 	// present in the keystore at startup and cannot be delivered via the reload path.
 	// Set this annotation to "true" only when all your secure settings are reloadable (S3/Azure/GCS
 	// credentials, remote-cluster API keys, etc.).
-	// This annotation applies to stateful Elasticsearch only: stateless/Serverless clusters always deliver
-	// secure settings via cluster_secrets, regardless of this annotation.
 	FileBasedSecureSettingsAnnotation = "eck.k8s.elastic.co/file-based-secure-settings"
 
 	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
@@ -128,19 +126,6 @@ type ElasticsearchSpec struct {
 
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
-
-	// Mode selects the deployment mode for this Elasticsearch cluster.
-	// "stateful" (default) uses persistent local volumes for data storage.
-	// "stateless" uses an external object store for data storage.
-	// Note: stateless mode is under active development and not yet ready for use.
-	// +kubebuilder:validation:Optional
-	Mode ElasticsearchMode `json:"mode,omitempty"`
-
-	// ObjectStore configures the external object store for stateless Elasticsearch.
-	// Required when mode is "stateless", forbidden when mode is "stateful".
-	// Note: stateless mode is under active development and not yet ready for use.
-	// +kubebuilder:validation:Optional
-	ObjectStore *ObjectStoreConfig `json:"objectStore,omitempty"`
 
 	// RemoteClusterServer specifies if the remote cluster server should be enabled.
 	// This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication.
@@ -402,12 +387,6 @@ type NodeSet struct {
 	// Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
 	// +kubebuilder:validation:Optional
 	Resources commonv1.Resources `json:"resources,omitzero"`
-
-	// Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
-	// Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
-	// Note: stateless mode is under active development and not yet ready for use.
-	// +kubebuilder:validation:Optional
-	Tier StatelessTier `json:"tier,omitempty"`
 
 	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
 	// +kubebuilder:validation:Optional

@@ -338,18 +338,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		// Reject policy fields that are not supported for stateless Elasticsearch.
-		// ILM is managed server-side on stateless; applying ILM via file settings has no effect and is confusing.
-		if es.IsStateless() && esConfigPolicyFinal.Spec.IndexLifecyclePolicies != nil && len(esConfigPolicyFinal.Spec.IndexLifecyclePolicies.Data) > 0 {
-			err := fmt.Errorf("indexLifecyclePolicies are not supported for stateless Elasticsearch %s/%s", es.Namespace, es.Name)
-			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
-			results.WithError(err)
-			if err := status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
-				return results.WithError(err), status
-			}
-			continue
-		}
-
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// Recompute expected settings secret on each retry attempt using the latest
@@ -359,7 +347,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 			return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 		}, func() error {
-			fs, err := filesettings.Load(ctx, r.Client, esNsn, es.IsStateless(), meta)
+			fs, err := filesettings.Load(ctx, r.Client, esNsn, meta)
 			if err != nil {
 				return err
 			}
@@ -706,7 +694,7 @@ func resetOrphanESFileSettings(
 			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
 
 		esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
-		fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
+		fs, err := filesettings.Load(ctx, c, namespacedName, esMeta)
 		if err != nil {
 			return err
 		}

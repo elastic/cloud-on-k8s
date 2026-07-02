@@ -37,7 +37,7 @@ func Test_FileSettingsSecret_ApplyPolicy(t *testing.T) {
 	fakeClient := k8s.NewFakeClient()
 
 	// No policy: empty settings
-	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.Save(context.Background(), fakeClient, &es)
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func Test_FileSettingsSecret_ApplyPolicy(t *testing.T) {
 	assert.Equal(t, 0, len(parseSettings(t, secret).State.ClusterSettings.Data))
 
 	// With policy
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs2, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs2.ApplyPolicy(policy, nil)
 	require.NoError(t, err)
@@ -70,21 +70,21 @@ func Test_FileSettingsSecret_VersionUnchanged(t *testing.T) {
 	fakeClient := k8s.NewFakeClient()
 
 	// Create empty settings
-	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.Save(context.Background(), fakeClient, &es)
 	require.NoError(t, err)
 	v1 := fs.Version()
 
 	// Load again, save with no changes: version should stay the same
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs2, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs2.Save(context.Background(), fakeClient, &es)
 	require.NoError(t, err)
 	assert.Equal(t, v1, fs2.Version())
 
 	// Load again, apply policy: version should change
-	fs3, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs3, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs3.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{
 		ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
@@ -95,11 +95,11 @@ func Test_FileSettingsSecret_VersionUnchanged(t *testing.T) {
 	assert.NotEqual(t, v1, fs3.Version())
 }
 
-func Test_FileSettingsSecret_PreservesClusterSecrets(t *testing.T) {
+func Test_FileSettingsSecret_ApplyPolicy_ClearsClusterSecrets(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 
 	// Create a current secret that has cluster_secrets (written by ES controller)
-	currentSettings := NewEmptySettings(1, true)
+	currentSettings := NewEmptySettings(1)
 	currentSettings.State.ClusterSecrets = &commonv1.Config{Data: map[string]any{
 		"string_secrets": map[string]any{"s3": map[string]any{"key": "value"}},
 	}}
@@ -117,29 +117,21 @@ func Test_FileSettingsSecret_PreservesClusterSecrets(t *testing.T) {
 
 	fakeClient := k8s.NewFakeClient(currentSecret)
 
-	// SCP rebuilds with ApplyPolicy: cluster_secrets should be preserved for stateless
-	fs, err := Load(context.Background(), fakeClient, esNsn, true, metadata.Metadata{})
+	// ApplyPolicy replaces the full state, so cluster_secrets is overwritten (not preserved)
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	require.NoError(t, err)
 
-	// Verify settings before save
-	assert.NotNil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should be preserved for stateless")
-	assert.Equal(t, currentSettings.State.ClusterSecrets.Data, fs.settings.State.ClusterSecrets.Data)
-
-	// Stateful: cluster_secrets should NOT be preserved
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
-	require.NoError(t, err)
-	err = fs2.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
-	require.NoError(t, err)
-	assert.Nil(t, fs2.settings.State.ClusterSecrets, "cluster_secrets should not be preserved for stateful")
+	// cluster_secrets is cleared (not preserved) since ApplyPolicy replaces the full state
+	assert.Nil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should not be preserved by ApplyPolicy")
 }
 
-func Test_Reset_PreservesClusterSecretsForStateless(t *testing.T) {
+func Test_Reset_ClearsSCPManagedFields(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 
 	// Create a current secret with cluster_secrets and cluster_settings
-	currentSettings := NewEmptySettings(1, true)
+	currentSettings := NewEmptySettings(1)
 	currentSettings.State.ClusterSecrets = &commonv1.Config{Data: map[string]any{
 		"string_secrets": map[string]any{"s3": map[string]any{"key": "value"}},
 	}}
@@ -160,23 +152,17 @@ func Test_Reset_PreservesClusterSecretsForStateless(t *testing.T) {
 
 	fakeClient := k8s.NewFakeClient(currentSecret)
 
-	// Reset preserves cluster_secrets for stateless (managed by ES controller, not SCP)
-	fs, err := Load(context.Background(), fakeClient, esNsn, true, metadata.Metadata{})
+	// Reset clears all SCP-managed fields (including cluster_secrets which came from prior SCP state)
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	assert.NotNil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should be loaded from current")
 
 	fs.Reset()
-	assert.NotNil(t, fs.settings.State.ClusterSecrets, "Reset should preserve cluster_secrets for stateless")
+	assert.Nil(t, fs.settings.State.ClusterSecrets, "Reset should clear cluster_secrets")
 	assert.Empty(t, fs.settings.State.ClusterSettings.Data, "Reset should clear SCP-managed cluster_settings")
-
-	// Reset drops cluster_secrets for stateful (not applicable)
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
-	require.NoError(t, err)
-	fs2.Reset()
-	assert.Nil(t, fs2.settings.State.ClusterSecrets, "Reset should not preserve cluster_secrets for stateful")
 }
 
-func Test_ApplyEmptyPolicy_PreservesClusterSecretsForStateless(t *testing.T) {
+func Test_ApplyEmptyPolicy_ClearsSCPManagedFields(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 		Namespace: esNsn.Namespace,
@@ -184,11 +170,8 @@ func Test_ApplyEmptyPolicy_PreservesClusterSecretsForStateless(t *testing.T) {
 		UID:       "test-uid",
 	}}
 
-	// Create a current secret with cluster_secrets and cluster_settings (SCP-managed)
-	currentSettings := NewEmptySettings(1, true)
-	currentSettings.State.ClusterSecrets = &commonv1.Config{Data: map[string]any{
-		"string_secrets": map[string]any{"gcs": map[string]any{"credentials": "secret"}},
-	}}
+	// Create a current secret with cluster_settings (SCP-managed)
+	currentSettings := NewEmptySettings(1)
 	currentSettings.State.ClusterSettings = &commonv1.Config{Data: map[string]any{
 		"indices.recovery.max_bytes_per_sec": "100mb",
 	}}
@@ -207,8 +190,8 @@ func Test_ApplyEmptyPolicy_PreservesClusterSecretsForStateless(t *testing.T) {
 	fakeClient := k8s.NewFakeClient(&es, currentSecret)
 
 	// Simulate last SCP owner removed: ApplyPolicy with empty policy should
-	// clear SCP-managed fields but preserve cluster_secrets for stateless.
-	fs, err := Load(context.Background(), fakeClient, esNsn, true, metadata.Metadata{})
+	// clear all SCP-managed fields.
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	require.NoError(t, err)
@@ -227,14 +210,6 @@ func Test_ApplyEmptyPolicy_PreservesClusterSecretsForStateless(t *testing.T) {
 	err = json.Unmarshal(secret.Data[SettingsSecretKey], &settings)
 	require.NoError(t, err)
 
-	// cluster_secrets preserved
-	require.NotNil(t, settings.State.ClusterSecrets, "cluster_secrets should be preserved")
-	stringSecrets, ok := settings.State.ClusterSecrets.Data["string_secrets"].(map[string]any)
-	require.True(t, ok)
-	gcs, ok := stringSecrets["gcs"].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "secret", gcs["credentials"])
-
 	// SCP-managed fields cleared
 	assert.Empty(t, settings.State.ClusterSettings.Data, "cluster_settings should be empty after clearing policy")
 }
@@ -249,7 +224,7 @@ func Test_SecureSettings_RoundTrip(t *testing.T) {
 	fakeClient := k8s.NewFakeClient()
 
 	// No secure settings
-	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.Save(context.Background(), fakeClient, &es)
 	require.NoError(t, err)
@@ -262,7 +237,7 @@ func Test_SecureSettings_RoundTrip(t *testing.T) {
 	assert.Equal(t, []commonv1.NamespacedSecretSource{}, secureSettings)
 
 	// With secure settings via ApplyPolicy
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs2, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs2.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, []commonv1.NamespacedSecretSource{
 		{Namespace: "otherNs", SecretName: "secure-settings-secret"},
@@ -305,7 +280,7 @@ func Test_Save_SecureSettingsAnnotation(t *testing.T) {
 				UID:       "test-uid",
 			}}
 
-			existingSettings := NewEmptySettings(1, false)
+			existingSettings := NewEmptySettings(1)
 			settingsBytes, err := json.Marshal(existingSettings)
 			require.NoError(t, err)
 
@@ -329,7 +304,7 @@ func Test_Save_SecureSettingsAnnotation(t *testing.T) {
 
 			fakeClient := k8s.NewFakeClient(&es, existingSecret)
 
-			fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+			fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 			require.NoError(t, err)
 
 			if tt.useAdditiveMetadata {
@@ -378,7 +353,7 @@ func Test_buildSecret(t *testing.T) {
 	fs := &Secret{
 		es:       esNsn,
 		meta:     meta,
-		settings: NewEmptySettings(42, false),
+		settings: NewEmptySettings(42),
 		version:  42,
 	}
 

@@ -316,26 +316,8 @@ func Test_validPVCNaming(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "stateless: elasticsearch-cache claim name is OK",
-			es: func() esv1.Elasticsearch {
-				es := esWithClaim("elasticsearch-cache", esFixture())
-				es.Spec.Mode = esv1.ElasticsearchModeStateless
-				return es
-			}(),
-			wantErr: false,
-		},
-		{
-			name:    "stateful: elasticsearch-cache claim name not mounted is NOK",
+			name:    "elasticsearch-cache claim name not mounted is NOK",
 			es:      esWithClaim("elasticsearch-cache", esFixture()),
-			wantErr: true,
-		},
-		{
-			name: "stateless: elasticsearch-data claim name not mounted is NOK",
-			es: func() esv1.Elasticsearch {
-				es := esWithClaim("elasticsearch-data", esFixture())
-				es.Spec.Mode = esv1.ElasticsearchModeStateless
-				return es
-			}(),
 			wantErr: true,
 		},
 	}

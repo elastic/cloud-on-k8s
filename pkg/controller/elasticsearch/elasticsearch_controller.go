@@ -40,7 +40,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateful"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/stateless"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -283,12 +282,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	// TODO(#9204): implement stateless driver and replace this guard with proper driver selection.
-	if es.IsStateless() {
-		log.Info("Stateless Elasticsearch detected, stateless driver not yet implemented")
-		return results
-	}
-
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)
@@ -311,10 +304,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
 		LicenseChecker:     r.licenseChecker,
-	}
-
-	if es.IsStateless() {
-		return stateless.NewDriver(driverParams).Reconcile(ctx)
 	}
 
 	return stateful.NewDriver(driverParams).Reconcile(ctx)

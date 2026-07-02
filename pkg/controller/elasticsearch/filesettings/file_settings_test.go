@@ -143,7 +143,7 @@ func Test_updateState(t *testing.T) {
 		{
 			name: "empty settings",
 			args: args{policy: policyv1alpha1.StackConfigPolicy{}},
-			want: newEmptySettingsState(false),
+			want: newEmptySettingsState(),
 		},
 		{
 			name: "gcs, azure and s3 snapshot repository settings: default base_path",
@@ -450,18 +450,13 @@ func Test_updateState(t *testing.T) {
 	}
 }
 
-func Test_newEmptySettingsState_stateless(t *testing.T) {
-	stateful := newEmptySettingsState(false)
-	assert.NotNil(t, stateful.IndexLifecyclePolicies, "stateful should include ILM")
-
-	stateless := newEmptySettingsState(true)
-	assert.Nil(t, stateless.IndexLifecyclePolicies, "stateless should exclude ILM")
-
-	// All other fields should be present in both
-	assert.NotNil(t, stateless.ClusterSettings)
-	assert.NotNil(t, stateless.SnapshotRepositories)
-	assert.NotNil(t, stateless.SLM)
-	assert.NotNil(t, stateless.RoleMappings)
-	assert.NotNil(t, stateless.IngestPipelines)
-	assert.NotNil(t, stateless.IndexTemplates)
+func Test_newEmptySettingsState(t *testing.T) {
+	state := newEmptySettingsState()
+	assert.NotNil(t, state.IndexLifecyclePolicies, "should include ILM")
+	assert.NotNil(t, state.ClusterSettings)
+	assert.NotNil(t, state.SnapshotRepositories)
+	assert.NotNil(t, state.SLM)
+	assert.NotNil(t, state.RoleMappings)
+	assert.NotNil(t, state.IngestPipelines)
+	assert.NotNil(t, state.IndexTemplates)
 }
