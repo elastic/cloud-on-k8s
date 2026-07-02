@@ -36,6 +36,13 @@ ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggeri
 **Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, the memory limit change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
 ::::
 
+::::{dropdown} Rolling restart of APM Server, Logstash, Elastic Maps Server, and Package Registry pods during operator upgrade ECK 3.4.0 sets `seccompProfile` to `RuntimeDefault` on the pod security context for APM Server, Logstash, Elastic Maps Server, and Package Registry workloads, triggering a rolling restart during the operator upgrade. This change is applied when the `--set-default-security-context` operator flag is `true`, or when using the default `auto-detect` value on a non-OpenShift Kubernetes cluster. With `auto-detect`, ECK detects the environment and suppresses the injection of default security contexts on OpenShift.
+
+**Impact**<br> APM Server, Logstash, Elastic Maps Server, and Package Registry pods will be restarted as part of the operator upgrade on clusters where `--set-default-security-context` is `true` or `auto-detect` (default) on non-OpenShift Kubernetes. On OpenShift, `auto-detect` suppresses this change for all workloads.
+
+**Action**<br> No action required for standard Kubernetes deployments. If you are running on OpenShift, refer to [known issues](./known-issues.md) for a Logstash-specific issue where the flag is incorrectly ignored.
+::::
+
 ::::{dropdown} Default PVC handling change for {{es}} volumes
 ECK 3.4.0 unifies how the operator handles default volume claim templates. Previously, the operator only skipped adding a default PVC when a non-PVC volume (such as `emptyDir` or `hostPath`) with the same name existed. Now, it skips the default PVC whenever any volume with the same name exists, including user-provided PVCs.
 
