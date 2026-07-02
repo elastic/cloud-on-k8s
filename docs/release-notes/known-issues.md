@@ -19,7 +19,26 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.4.1 [elastic-cloud-kubernetes-341-known-issues]
 
-There are no known issues in ECK 3.4.1
+:::{dropdown} Logstash pods rejected by OpenShift SCC when using a non-default security context constraint
+In ECK 3.4.x, the Logstash controller unconditionally injects `seccompProfile: RuntimeDefault` and `fsGroup: 1000` into the pod security context, ignoring the `--set-default-security-context=auto-detect` operator flag. On OpenShift, this flag should suppress the injection, as it does for all other ECK-managed workloads ({{es}}, {{product.kibana}}, APM Server). Clusters using a non-default SCC such as `anyuid` — which does not permit explicit seccomp configuration — will see Logstash pods rejected at admission after upgrading.
+
+For more information, check this [Issue #9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
+
+**Workaround**
+
+Override the Logstash pod security context explicitly to prevent ECK from injecting its defaults. Keep `fsGroup: 1000` as Logstash requires it for volume writes, but omit `seccompProfile`:
+
+```yaml
+spec:
+  podTemplate:
+    spec:
+      securityContext:
+        fsGroup: 1000
+        # seccompProfile intentionally omitted — not permitted by anyuid SCC
+```
+
+This override can be removed once you upgrade to ECK 3.5.0 or later when available, which includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
+:::
 
 ## 3.4.0 [elastic-cloud-kubernetes-340-known-issues]
 
