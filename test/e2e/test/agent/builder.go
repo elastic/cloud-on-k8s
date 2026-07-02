@@ -10,6 +10,7 @@ import (
 
 	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +26,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -556,6 +559,38 @@ func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
 }
 
 var _ test.Builder = Builder{}
+var _ test.Subject = Builder{}
+
+func (b Builder) NSN() types.NamespacedName {
+	return k8s.ExtractNamespacedName(&b.Agent)
+}
+
+func (b Builder) Kind() string {
+	return agentv1alpha1.Kind
+}
+
+func (b Builder) Spec() any {
+	return b.Agent.Spec
+}
+
+func (b Builder) Count() int32 {
+	switch {
+	case b.Agent.Spec.Deployment != nil:
+		return pointer.Int32OrDefault(b.Agent.Spec.Deployment.Replicas, 1)
+	case b.Agent.Spec.StatefulSet != nil:
+		return pointer.Int32OrDefault(b.Agent.Spec.StatefulSet.Replicas, 1)
+	default:
+		return 0
+	}
+}
+
+func (b Builder) ServiceName() string {
+	return b.Agent.Name + "-agent-http"
+}
+
+func (b Builder) ListOptions() []k8sclient.ListOption {
+	return test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)
+}
 
 func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
 	t.Helper()
