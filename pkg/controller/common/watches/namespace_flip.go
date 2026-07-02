@@ -29,41 +29,54 @@ func WatchNamespaceFlips(
 	notifier NamespaceNotifier,
 	newList func() client.ObjectList,
 ) error {
+	return WatchNamespaceFlipsMapped(c, notifier,
+		func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+			list := newList()
+			// Use the cache directly (not the FilterClient) so that resources in
+			// namespaces being de-scoped are still visible here. The FilterClient
+			// would silently drop them because the namespace no longer matches the
+			// selector, causing us to miss the reconcile requests needed to clean up.
+			if err := ch.List(ctx, list, client.InNamespace(ns.Name)); err != nil {
+				return nil
+			}
+			items, err := apimeta.ExtractList(list)
+			if err != nil {
+				return nil
+			}
+			reqs := make([]reconcile.Request, 0, len(items))
+			for _, item := range items {
+				obj, ok := item.(client.Object)
+				if !ok {
+					continue
+				}
+				reqs = append(reqs, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: obj.GetNamespace(),
+						Name:      obj.GetName(),
+					},
+				})
+			}
+			return reqs
+		},
+	)
+}
+
+// WatchNamespaceFlipsMapped registers a source.Channel watch driven by notifier with a
+// caller-provided mapper deciding which reconcile requests a namespace match-state change
+// translates into. Use this instead of WatchNamespaceFlips when the objects to re-enqueue
+// are not simply the ones living in the flipped namespace (e.g. associations referencing
+// resources in that namespace). No-ops when notifier is nil (legacy / static-namespace mode).
+func WatchNamespaceFlipsMapped(
+	c controller.Controller,
+	notifier NamespaceNotifier,
+	mapFn func(context.Context, *corev1.Namespace) []reconcile.Request,
+) error {
 	if notifier == nil {
 		return nil
 	}
 	return c.Watch(source.Channel(
 		notifier.Subscribe(),
-		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Namespace, reconcile.Request](
-			func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
-				list := newList()
-				// Use the cache directly (not the FilterClient) so that resources in
-				// namespaces being de-scoped are still visible here. The FilterClient
-				// would silently drop them because the namespace no longer matches the
-				// selector, causing us to miss the reconcile requests needed to clean up.
-				if err := ch.List(ctx, list, client.InNamespace(ns.Name)); err != nil {
-					return nil
-				}
-				items, err := apimeta.ExtractList(list)
-				if err != nil {
-					return nil
-				}
-				reqs := make([]reconcile.Request, 0, len(items))
-				for _, item := range items {
-					obj, ok := item.(client.Object)
-					if !ok {
-						continue
-					}
-					reqs = append(reqs, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: obj.GetNamespace(),
-							Name:      obj.GetName(),
-						},
-					})
-				}
-				return reqs
-			},
-		),
+		handler.TypedEnqueueRequestsFromMapFunc(mapFn),
 	))
 }
 

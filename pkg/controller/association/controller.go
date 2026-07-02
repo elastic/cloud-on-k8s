@@ -5,18 +5,22 @@
 package association
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -80,7 +84,59 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, r.AssociatedObjListTemplate)
+
+	return watches.WatchNamespaceFlipsMapped(c, r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the associated resources affected by it: the ones living in the
+// flipped namespace, and the ones living elsewhere whose association references a resource
+// in the flipped namespace (e.g. a Kibana in an in-scope namespace referencing an
+// Elasticsearch in the namespace that just went out of scope). The latter cannot rely on the
+// dynamic referenced-resource watch: a namespace label change produces no event on the
+// referenced object, and the NamespacedKind predicate drops events from de-scoped namespaces.
+//
+// Known limitation: transitive references (e.g. Agent -> Fleet Server -> Elasticsearch, each
+// in a different namespace) are matched on the direct reference only; a flip of the transitive
+// Elasticsearch namespace does not re-enqueue the Agent.
+func namespaceFlipRequests(reader client.Reader, r *Reconciler) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		list := r.AssociatedObjListTemplate()
+		// List cluster-wide from the cache (not the FilterClient): associated resources
+		// referencing the flipped namespace can live in any matched namespace, and
+		// resources in the namespace being de-scoped would be hidden by the FilterClient.
+		if err := reader.List(ctx, list); err != nil {
+			return nil
+		}
+		items, err := apimeta.ExtractList(list)
+		if err != nil {
+			return nil
+		}
+		var reqs []reconcile.Request
+		for _, item := range items {
+			associated, ok := item.(commonv1.Associated)
+			if !ok {
+				continue
+			}
+			if associated.GetNamespace() == ns.Name {
+				// the associated resource's own namespace changed state.
+				reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(associated)})
+				continue
+			}
+			for _, association := range associated.GetAssociations() {
+				if association.AssociationType() != r.AssociationType {
+					continue
+				}
+				// AssociationRef() resolves an empty ref namespace to the associated
+				// resource's namespace, so the comparison is direct.
+				if association.AssociationRef().NamespacedName().Namespace == ns.Name {
+					reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(associated)})
+					break
+				}
+			}
+		}
+		return reqs
+	}
 }
 
 // referencedObjKind derives the Kind of the referenced resource from the manager's scheme.
