@@ -41,11 +41,11 @@ import (
 //	// or: fs.Reset()                      // clear to empty
 //	fs.Save(ctx, c, owner)
 type Secret struct {
-	es      types.NamespacedName
-	current *corev1.Secret
+	es       types.NamespacedName
+	current  *corev1.Secret
 	settings Settings
-	meta    metadata.Metadata
-	version int64
+	meta     metadata.Metadata
+	version  int64
 
 	secureSettingsSources []commonv1.NamespacedSecretSource
 
