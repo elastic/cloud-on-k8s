@@ -22,6 +22,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -98,7 +99,7 @@ func newReconciler(mgr manager.Manager, webhookParams Params, clientset kubernet
 }
 
 // Add adds a new Controller to mgr with r as the reconcile.Reconciler
-func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, tracer *apm.Tracer) error {
+func Add(mgr manager.Manager, m *nsmatch.NamespaceMatcher, webhookParams Params, clientset kubernetes.Interface, webhook AdmissionControllerInterface, tracer *apm.Tracer) error {
 	r := newReconciler(mgr, webhookParams, clientset, tracer)
 	// Create a new controller
 	c, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: r})
@@ -111,7 +112,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name:      webhookParams.SecretName,
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, &watches.NamedWatch[*corev1.Secret]{
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, &watches.NamedWatch[*corev1.Secret]{
 		Name:    "webhook-server-cert",
 		Watched: []types.NamespacedName{secret},
 		Watcher: secret,
@@ -123,6 +124,7 @@ func Add(mgr manager.Manager, webhookParams Params, clientset kubernetes.Interfa
 		Name: webhookParams.Name,
 	}
 
+	// ValidatingWebhookConfiguration (and MutatingWebhookConfiguration) are cluster-scoped resources (no namespace), so source.Kind is used directly.
 	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object]{
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},

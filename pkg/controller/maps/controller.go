@@ -18,11 +18,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -73,13 +73,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMa
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsServer) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to MapsServer
-	if err := c.Watch(source.Kind(mgr.GetCache(), &emsv1alpha1.ElasticMapsServer{}, &handler.TypedEnqueueRequestForObject[*emsv1alpha1.ElasticMapsServer]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &emsv1alpha1.ElasticMapsServer{}, &handler.TypedEnqueueRequestForObject[*emsv1alpha1.ElasticMapsServer]{})); err != nil {
 		return err
 	}
 
 	// Watch deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&emsv1alpha1.ElasticMapsServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -88,12 +89,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsSe
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&emsv1alpha1.ElasticMapsServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -101,18 +102,23 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsSe
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&emsv1alpha1.ElasticMapsServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, emsv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, emsv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
+		return &emsv1alpha1.ElasticMapsServerList{}
+	})
 }
 
 var _ reconcile.Reconciler = (*ReconcileMapsServer)(nil)
@@ -145,6 +151,10 @@ var _ driver.Interface = (*ReconcileMapsServer)(nil)
 // Reconcile reads that state of the cluster for a MapsServer object and makes changes based on the state read and what is
 // in the MapsServer.Spec
 func (r *ReconcileMapsServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "maps_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -423,10 +433,12 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 	return common.UpdateStatus(ctx, r.Client, &ems)
 }
 
-func (r *ReconcileMapsServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on custom http tls certificates
+func (r *ReconcileMapsServer) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(EMSNamer, obj.Name))
-	// same for the configRef secret
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
+func (r *ReconcileMapsServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, emsv1alpha1.Kind)
 }

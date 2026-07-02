@@ -15,6 +15,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -29,7 +30,7 @@ const (
 var esalog = ulog.Log.WithName("esa-validation")
 
 // RegisterWebhook registers the ElasticsearchAutoscaler validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker license.Checker, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
@@ -37,7 +38,7 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, licenseChecker
 	}
 	// License checks run inside validations(), so we pass nil here
 	// (the reconciler calls ValidateElasticsearchAutoscaler directly).
-	v := commonwebhook.NewResourceValidator[*v1alpha1.ElasticsearchAutoscaler](nil, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*v1alpha1.ElasticsearchAutoscaler](nil, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	esalog.Info("Registering ElasticsearchAutoscaler validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*v1alpha1.ElasticsearchAutoscaler](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(webhookPath, wh)

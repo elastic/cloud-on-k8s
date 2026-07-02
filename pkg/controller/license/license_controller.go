@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -31,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -70,7 +70,7 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(mgr, c, r.Client)
+	return addWatches(mgr, c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -101,16 +101,16 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.D
 	return requeueAfter
 }
 
-// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Client) error {
+// addWatches adds a new Controller to mgr wresource_validator.go:106ith r as the reconcile.Reconciler
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicenses) error {
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
+		watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if !license.IsOperatorLicense(*secret) {
 				return nil
@@ -118,7 +118,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(k8sClient, log)
+			rs, err := reconcileRequestsForAllClusters(r.Client, log)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")

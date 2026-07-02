@@ -20,13 +20,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -238,9 +238,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if licensing.IsEnterpriseTrial(*secret) {
 				return []reconcile.Request{
@@ -276,7 +276,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(mgr, c)
+	return addWatches(mgr, c, r)
 }
 
 var _ reconcile.Reconciler = (*ReconcileTrials)(nil)

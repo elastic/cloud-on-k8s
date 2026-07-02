@@ -17,12 +17,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -84,42 +84,43 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := watches.WatchPods(mgr, c, label.ClusterNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, label.ClusterNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch config maps for dynamic watches (currently used for additional CAs trust)
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
 		return err
 	}
 
 	// Watch PodDisruptionBudgets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &policyv1.PodDisruptionBudget{}, handler.TypedEnqueueRequestForOwner[*policyv1.PodDisruptionBudget](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &policyv1.PodDisruptionBudget{}, handler.TypedEnqueueRequestForOwner[*policyv1.PodDisruptionBudget](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch[*corev1.Secret]{
@@ -131,12 +132,17 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, esv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, esv1.Kind); err != nil {
 		return err
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
+	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
+		return &esv1.ElasticsearchList{}
+	})
 }
 
 var _ reconcile.Reconciler = (*ReconcileElasticsearch)(nil)
@@ -163,6 +169,10 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -374,9 +384,18 @@ func (r *ReconcileElasticsearch) annotateResource(
 	return r.Update(ctx, &es)
 }
 
-// onDelete garbage collect resources when an Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
-	r.expectations.RemoveCluster(es)
+// onNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource
+// when its namespace no longer matches the operator's namespace selector. The resource is not deleted —
+// it simply becomes invisible to this operator instance — so we stop observing its cluster health and
+// remove all dynamic watches that were registered on its behalf to avoid stale watch handlers.
+//
+// Do not remove expectations when a namespace moves out of scope.
+// The Elasticsearch resource and its child resources still exist, and the
+// namespace may move back into scope before the controller cache observes
+// recent StatefulSet/pod changes. Keeping expectations preserves the usual
+// stale-cache safety across short namespace label flaps. Expectations are
+// removed on CR deletion and are also cleared by operator restart.
+func (r *ReconcileElasticsearch) onNamespaceOutOfScope(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
@@ -384,5 +403,11 @@ func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.Namespac
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
+}
+
+// onDelete garbage collect resources when an Elasticsearch cluster is deleted
+func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
+	r.expectations.RemoveCluster(es)
+	r.onNamespaceOutOfScope(es)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

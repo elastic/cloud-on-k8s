@@ -40,9 +40,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
-var (
-	defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
-)
+var defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct { //nolint:revive
@@ -51,6 +49,9 @@ type AssociationInfo struct { //nolint:revive
 	AssociationType commonv1.AssociationType
 	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{} for a Kibana to Elasticsearch association).
 	AssociatedObjTemplate func() commonv1.Associated
+	// AssociatedObjListTemplate builds an empty typed list of associated objects (e.g. &KibanaList{}).
+	// Used by WatchNamespaceFlips to re-enqueue all associated objects when a namespace state change to match.
+	AssociatedObjListTemplate func() client.ObjectList
 	// ReferencedObjTemplate builds an empty referenced object (e.g. Elasticsearch{} for a Kibana to Elasticsearch association).
 	ReferencedObjTemplate func() client.Object
 	// ReferencedResourceNamer is used to build the name of the Secret which contains the CA of the referenced resource
@@ -153,6 +154,10 @@ type Reconciler struct {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(types.NamespacedName{Namespace: request.Namespace, Name: request.Name})
+		return reconcile.Result{}, nil
+	}
 	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -570,9 +575,12 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
-	// remove watches
+func (r *Reconciler) onNamespaceOutOfScope(associated types.NamespacedName) {
 	r.removeWatches(associated)
+}
+
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
+	r.onNamespaceOutOfScope(associated)
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {

@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -67,23 +66,29 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReconciler) error {
+	m := r.params.NamespaceMatcher
 	// watch for changes to AutoOpsAgentPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all AutoOpsAgentPolicies
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 
 	// watch for changes to deployments created by this controller
-	return c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment())); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.params.NamespaceMatcher, func() client.ObjectList {
+		return &autoopsv1alpha1.AutoOpsAgentPolicyList{}
+	})
 }
 
 // reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
@@ -138,6 +143,10 @@ type AgentPolicyReconciler struct {
 
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -221,13 +230,16 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	return reconcile.Result{}, nil
 }
 
+func (r *AgentPolicyReconciler) onNamespaceOutOfScope(obj types.NamespacedName) {
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+}
+
 func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
 
-	// Remove dynamic watches on secrets
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	r.onNamespaceOutOfScope(obj)
 
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
 	// Query for secrets labeled with this policy to find all associated ES clusters.

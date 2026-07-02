@@ -8,13 +8,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 )
 
 // Add creates a new Elasticsearch autoscaling controllers, and adds it to the Manager with default RBAC.
@@ -28,8 +28,14 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	if err := controller.Watch(source.Kind(mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
+	m := p.NamespaceMatcher
+	if err := controller.Watch(watches.NamespacedKind(m, mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
 		return err
 	}
-	return controller.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources))
+	if err := controller.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(controller, mgr.GetCache(), p.NamespaceMatcher, func() client.ObjectList {
+		return &v1alpha1.ElasticsearchAutoscalerList{}
+	})
 }

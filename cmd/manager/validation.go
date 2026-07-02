@@ -35,6 +35,7 @@ import (
 	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
@@ -79,34 +80,35 @@ func setupWebhook(
 ) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, params.NamespaceMatcher, clientset, tracer); err != nil {
 			log.Error(err, "unable to setup the webhook certificates")
 			os.Exit(1)
 		}
 	}
 
 	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
+	matcher := params.NamespaceMatcher
 	// setup webhooks for supported types
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, apmv1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, apmv1beta1.Validate, "APM Server")
-	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, beatv1beta1.Validate, "Beat")
-	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, entv1.Validate, "Enterprise Search")
-	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, entv1beta1.Validate, "Enterprise Search")
-	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, esv1beta1.Validate, "Elasticsearch")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, kbv1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, kbv1beta1.Validate, "Kibana")
-	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, emsv1alpha1.Validate, "Elastic Maps Server")
-	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, eprv1alpha1.Validate, "Package Registry")
-	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, policyv1alpha1.Validate, "Stack Config Policy")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, matcher, apmv1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, matcher, apmv1beta1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, matcher, beatv1beta1.Validate, "Beat")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, matcher, entv1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, matcher, entv1beta1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, matcher, esv1beta1.Validate, "Elasticsearch")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, matcher, kbv1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, matcher, kbv1beta1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, matcher, emsv1alpha1.Validate, "Elastic Maps Server")
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, matcher, eprv1alpha1.Validate, "Package Registry")
+	commonwebhook.RegisterResourceWebhook(mgr, policyv1alpha1.WebhookPath, checker, managedNamespaces, matcher, policyv1alpha1.Validate, "Stack Config Policy")
 
 	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
 	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
 	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
-	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
-	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
-	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces)
-	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces)
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces, matcher)
+	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces, matcher)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces, matcher)
+	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
@@ -134,7 +136,7 @@ func setupWebhook(
 	}
 }
 
-func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
+func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, m *nsmatch.NamespaceMatcher, clientset kubernetes.Interface, tracer *apm.Tracer) error {
 	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
 	defer tracing.EndContextTransaction(ctx)
 	log.Info("Automatic management of the webhook certificates enabled")
@@ -157,5 +159,5 @@ func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Mana
 		return err
 	}
 
-	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+	return webhook.Add(mgr, m, webhookParams, clientset, wh, tracer)
 }

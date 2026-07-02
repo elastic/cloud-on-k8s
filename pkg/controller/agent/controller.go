@@ -14,11 +14,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -64,15 +64,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to Agent
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &agentv1alpha1.Agent{}, &handler.TypedEnqueueRequestForObject[*agentv1alpha1.Agent]{})); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &agentv1alpha1.Agent{}, &handler.TypedEnqueueRequestForObject[*agentv1alpha1.Agent]{})); err != nil {
 		return err
 	}
 
 	// Watch DaemonSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.DaemonSet{},
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.DaemonSet{},
 			handler.TypedEnqueueRequestForOwner[*appsv1.DaemonSet](mgr.GetScheme(), mgr.GetRESTMapper(),
 				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
 		)); err != nil {
@@ -81,7 +82,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 
 	// Watch Deployments
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.Deployment{},
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{},
 			handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](mgr.GetScheme(), mgr.GetRESTMapper(),
 				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
 		)); err != nil {
@@ -90,7 +91,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{},
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.StatefulSet{},
 			handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(),
 				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
 		)); err != nil {
@@ -99,13 +100,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch Secrets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{},
+		watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{},
 			handler.TypedEnqueueRequestForOwner[*corev1.Secret](mgr.GetScheme(), mgr.GetRESTMapper(),
 				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
 		)); err != nil {
@@ -115,7 +116,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	// Watch services - Agent in Fleet mode with Fleet Server enabled configures and exposes a Service
 	// for Elastic Agents to connect to.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Service{},
+		watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{},
 			handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(),
 				&agentv1alpha1.Agent{}, handler.OnlyControllerOwner()),
 		)); err != nil {
@@ -123,15 +124,17 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	}
 
 	// Watch soft-owned secrets (e.g. client certificate secrets for Fleet Server mTLS)
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, agentv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, r.NamespaceMatcher, agentv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Secret{},
-			r.dynamicWatches.Secrets,
-		))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
+		return &agentv1alpha1.AgentList{}
+	})
 }
 
 var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
@@ -150,6 +153,10 @@ type ReconcileAgent struct {
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		r.onNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -242,8 +249,12 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	return nil
 }
 
-func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {
+func (r *ReconcileAgent) onNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
+func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.onNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, agentv1alpha1.Kind)
 }

@@ -35,6 +35,7 @@ const (
 func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &entv1.EnterpriseSearch{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &entv1.EnterpriseSearchList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
