@@ -542,7 +542,7 @@ extensions:
 			},
 		},
 		{
-			// service.telemetry.logs.encoding is in autoOpsMandatoryConfigTemplate, so it is
+			// service.telemetry.logs.encoding is in autoOpsMandatoryConfig, so it is
 			// always re-applied after user config.
 			name: "user sets service.telemetry.logs.encoding - mandatory config wins",
 			specConfigYAML: []byte(`
@@ -559,8 +559,8 @@ service:
 			},
 		},
 		{
-			// AppendValues appends to existing lists, so the operator's two autoops_es modules
-			// are preserved. The user's module is appended after them.
+			// AppendValues appends to existing lists. The user's module comes first (from the
+			// user config layer), and the operator's two autoops_es modules are appended after.
 			name: "user adds non-autoops_es module - appended after operator modules",
 			specConfigYAML: []byte(`
 receivers:
@@ -590,20 +590,19 @@ receivers:
 			},
 		},
 		{
-			// Users can extend the baseline by adding custom modules, custom exporters, and
-			// additional pipelines via spec.config. The mandatory config is merged last, so the
-			// operator's two autoops_es modules (AppendValues) and the logs pipeline are always
-			// present alongside the user's additions.
-			name: "user adds custom module, exporter and pipeline alongside operator defaults",
+			// When the user provides an autoops_es module the operator skips injecting its own
+			// default modules (Metrics + Templates), giving the user full control over which
+			// autoops_es data is collected. The operator still injects connection settings
+			// (hosts, ssl) into all autoops_es modules and always merges mandatory fields last.
+			// Non-module user additions (exporters, pipelines) are present alongside the
+			// operator's mandatory ones.
+			name: "user provides autoops_es module - replaces operator defaults, custom exporter and pipeline added alongside",
 			specConfigYAML: []byte(`
 receivers:
   metricbeatreceiver:
     metricbeat:
       modules:
         - module: autoops_es
-          hosts: ${env:AUTOOPS_ES_URL}
-          ssl:
-            verification_mode: none
           period: 30s
           metricsets:
             - cluster_health
@@ -620,10 +619,17 @@ service:
 				t.Helper()
 				got := unpackConfigYAML(t, cm)
 
-				// User's module is first (from spec.config), then the mandatory autoops_es
-				// modules are appended by AppendValues when mandatory config is merged last.
+				// Only the user's module is present — operator defaults are not injected when
+				// the user supplies at least one autoops_es module.
 				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
-				require.Len(t, modules, 3, "1 user module + 2 mandatory autoops_es modules")
+				require.Len(t, modules, 1, "only the user's autoops_es module, operator defaults omitted")
+
+				mod := asMap(t, modules[0])
+				assert.Equal(t, "autoops_es", mod["module"])
+				assert.Equal(t, "30s", mod["period"])
+				// Operator injects connection settings regardless of module source.
+				assert.Equal(t, "${env:AUTOOPS_ES_URL}", mod["hosts"])
+				assert.Equal(t, "none", asMap(t, mod["ssl"])["verification_mode"])
 
 				// User's exporter is present alongside the operator's otlphttp.
 				exporters := asMap(t, got["exporters"])
@@ -638,6 +644,88 @@ service:
 				_, hasDebugPipeline := pipelines["logs/debug"]
 				assert.True(t, hasLogs, "mandatory logs pipeline must be present")
 				assert.True(t, hasDebugPipeline, "user's logs/debug pipeline must be present")
+			},
+		},
+		{
+			// When the user provides autoops_es modules and SSL is enabled on the ES cluster,
+			// injectModuleConnectionSettings must always override any user-supplied ssl fields
+			// with the operator-managed values. The user-supplied ssl.verification_mode: none
+			// and a bogus CA path must be replaced by the operator's certificate settings.
+			name: "user provides autoops_es module with SSL-enabled ES - operator always overrides ssl fields",
+			es:   func() esv1.Elasticsearch { return mkES(true) },
+			specConfigYAML: []byte(`
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - module: autoops_es
+          period: 30s
+          metricsets:
+            - cluster_health
+          hosts: http://wrong-host:9200
+          ssl:
+            verification_mode: none
+            certificate_authorities:
+              - /wrong/ca/path.crt
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
+				require.Len(t, modules, 1, "only the user's module, operator defaults omitted")
+
+				mod := asMap(t, modules[0])
+				assert.Equal(t, "${env:AUTOOPS_ES_URL}", mod["hosts"], "operator must override user-supplied hosts")
+				ssl := asMap(t, mod["ssl"])
+				assert.Equal(t, "certificate", ssl["verification_mode"], "operator must override user-supplied verification_mode")
+				cas := asSlice(t, ssl["certificate_authorities"])
+				require.Len(t, cas, 1)
+				assert.Equal(t, "/mnt/elastic-internal/es-ca/default-test-es/ca.crt", cas[0], "operator must override user-supplied CA path")
+				_, hasClientCert := ssl["certificate"]
+				assert.False(t, hasClientCert, "no client cert expected when client auth is not required")
+			},
+		},
+		{
+			// When client authentication is required the operator must inject ssl.certificate
+			// and ssl.key, overriding any user-supplied values for all ssl connection fields.
+			name: "user provides autoops_es module with SSL and client cert - operator always overrides all ssl fields",
+			es: func() esv1.Elasticsearch {
+				es := mkES(true)
+				es.Annotations = map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"}
+				return es
+			},
+			specConfigYAML: []byte(`
+receivers:
+  metricbeatreceiver:
+    metricbeat:
+      modules:
+        - module: autoops_es
+          period: 30s
+          metricsets:
+            - cluster_health
+          hosts: http://wrong-host:9200
+          ssl:
+            verification_mode: none
+            certificate_authorities:
+              - /wrong/ca/path.crt
+            certificate: /wrong/cert.crt
+            key: /wrong/key.key
+`),
+			check: func(t *testing.T, cm corev1.ConfigMap) {
+				t.Helper()
+				got := unpackConfigYAML(t, cm)
+				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
+				require.Len(t, modules, 1)
+
+				mod := asMap(t, modules[0])
+				assert.Equal(t, "${env:AUTOOPS_ES_URL}", mod["hosts"], "operator must override user-supplied hosts")
+				ssl := asMap(t, mod["ssl"])
+				assert.Equal(t, "certificate", ssl["verification_mode"], "operator must override user-supplied verification_mode")
+				cas := asSlice(t, ssl["certificate_authorities"])
+				require.Len(t, cas, 1)
+				assert.Equal(t, "/mnt/elastic-internal/es-ca/default-test-es/ca.crt", cas[0], "operator must override user-supplied CA path")
+				assert.Equal(t, "/mnt/elastic-internal/es-client-cert/default-test-es/tls.crt", ssl["certificate"], "operator must override user-supplied certificate path")
+				assert.Equal(t, "/mnt/elastic-internal/es-client-cert/default-test-es/tls.key", ssl["key"], "operator must override user-supplied key path")
 			},
 		},
 		// ConfigRef: secret contains valid config - autoops_es module present after merge.
@@ -658,13 +746,17 @@ service:
 				t.Helper()
 				got := unpackConfigYAML(t, cm)
 				modules := asSlice(t, asMap(t, asMap(t, asMap(t, got["receivers"])["metricbeatreceiver"])["metricbeat"])["modules"])
-				found := false
+				var autoOpsModule map[string]any
 				for _, m := range modules {
 					if mod, ok := m.(map[string]any); ok && mod["module"] == "autoops_es" {
-						found = true
+						autoOpsModule = mod
+						break
 					}
 				}
-				assert.True(t, found, "autoops_es module must be present")
+				require.NotNil(t, autoOpsModule, "autoops_es module must be present")
+				assert.Equal(t, "${env:AUTOOPS_ES_URL}", autoOpsModule["hosts"], "operator must override user-supplied hosts")
+				ssl := asMap(t, autoOpsModule["ssl"])
+				assert.Equal(t, "none", ssl["verification_mode"], "operator must set verification_mode to none for non-SSL ES")
 			},
 		},
 		{

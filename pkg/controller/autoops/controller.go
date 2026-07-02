@@ -26,6 +26,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -122,6 +123,7 @@ func reconcileRequestForAutoOpsPolicyFromDeployment() handler.TypedEventHandler[
 }
 
 var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
+var _ driver.Interface = (*AgentPolicyReconciler)(nil)
 
 // AgentPolicyReconciler reconciles an AutoOpsAgentPolicy object
 type AgentPolicyReconciler struct {
