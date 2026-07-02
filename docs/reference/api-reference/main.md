@@ -304,6 +304,8 @@ AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods |
 | *`revisionHistoryLimit`* __integer__ | RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access to Elasticsearch resources in different namespaces.<br>Can only be used if ECK is enforcing RBAC on references (--enforce-rbac-on-refs flag).<br>The service account must have "get" permission on elasticsearch.k8s.elastic.co/elasticsearches<br>in the target namespaces. |
+| *`config`* __[Config](#config)__ | Config holds additional OpenTelemetry collector configuration for the AutoOps agent.<br>User-supplied settings are merged between the operator baseline defaults and the<br>operator-owned mandatory settings, which always take final precedence. This allows<br>tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,<br>or defining additional exporters and pipelines. Elasticsearch connection details,<br>OTLP endpoint and authorization, and the healthcheck extension are always injected<br>by the operator and cannot be overridden.<br>At most one of [`config`, `configRef`] can be specified. |
+| *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef references a Kubernetes Secret holding the AutoOps agent configuration<br>under the `autoops_es.yml` key. Applies the same merge semantics as `config`.<br>At most one of [`config`, `configRef`] can be specified. |
 
 
 ### AutoOpsRef  [#autoopsref]
@@ -539,6 +541,7 @@ Config represents untyped YAML configuration.
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
 * [ApmServerSpec](#apmserverspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
@@ -576,6 +579,7 @@ ConfigSource references configuration settings.
 
 :::{admonition} Appears In:
 * [AgentSpec](#agentspec)
+* [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)

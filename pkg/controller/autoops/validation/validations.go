@@ -29,6 +29,7 @@ func validations(ctx context.Context, checker license.Checker) []validation {
 		},
 		checkConfigSecretName,
 		checkResourceSelector,
+		checkSingleConfigSource,
 		commonv1.PauseOrchestrationAnnotationCheck[*autoopsv1alpha1.AutoOpsAgentPolicy](),
 	}
 }
@@ -69,6 +70,17 @@ func checkConfigSecretName(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.Err
 func checkResourceSelector(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList {
 	if policy.Spec.ResourceSelector.MatchLabels == nil && len(policy.Spec.ResourceSelector.MatchExpressions) == 0 {
 		return field.ErrorList{field.Required(field.NewPath("spec").Child("resourceSelector"), "ResourceSelector must be specified with either matchLabels or matchExpressions")}
+	}
+	return nil
+}
+
+func checkSingleConfigSource(policy *autoopsv1alpha1.AutoOpsAgentPolicy) field.ErrorList {
+	if policy.Spec.Config != nil && policy.Spec.ConfigRef != nil {
+		msg := "Specify at most one of [`config`, `configRef`], not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("config"), msg),
+			field.Forbidden(field.NewPath("spec").Child("configRef"), msg),
+		}
 	}
 	return nil
 }

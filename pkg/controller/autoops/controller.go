@@ -26,6 +26,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -122,6 +123,7 @@ func reconcileRequestForAutoOpsPolicyFromDeployment() handler.TypedEventHandler[
 }
 
 var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
+var _ driver.Interface = (*AgentPolicyReconciler)(nil)
 
 // AgentPolicyReconciler reconciles an AutoOpsAgentPolicy object
 type AgentPolicyReconciler struct {
@@ -228,6 +230,7 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
 	// Query for secrets labeled with this policy to find all associated ES clusters.
@@ -282,7 +285,9 @@ func (r *AgentPolicyReconciler) reconcileWatches(policy autoopsv1alpha1.AutoOpsA
 
 	secretNames := []string{policy.Spec.AutoOpsRef.SecretName}
 
-	// Set up dynamic watches for referenced secrets
+	// Set up dynamic watch for the AutoOpsRef secret.
+	// The configRef watch is managed by common.ParseConfigRef, called unconditionally
+	// in ReconcileAutoOpsESConfigMap, so we do not set it up here.
 	return watches.WatchUserProvidedSecrets(
 		watcher,
 		r.dynamicWatches,
@@ -295,3 +300,12 @@ func (r *AgentPolicyReconciler) reconcileWatches(policy autoopsv1alpha1.AutoOpsA
 func configSecretWatchName(watcher types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-config-secret", watcher.Namespace, watcher.Name)
 }
+
+// K8sClient returns the Kubernetes client from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) K8sClient() k8s.Client { return r.Client }
+
+// DynamicWatches returns the set of dynamic watches from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) DynamicWatches() watches.DynamicWatches { return r.dynamicWatches }
+
+// Recorder returns the event recorder from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) Recorder() toolsevents.EventRecorder { return r.recorder }

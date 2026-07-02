@@ -269,3 +269,47 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckSingleConfigSource(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       *commonv1.Config
+		configRef    *commonv1.ConfigSource
+		wantErrCount int
+	}{
+		{
+			name:         "both nil - no error",
+			config:       nil,
+			configRef:    nil,
+			wantErrCount: 0,
+		},
+		{
+			name:         "only Config set - no error",
+			config:       &commonv1.Config{Data: map[string]any{"key": "value"}},
+			configRef:    nil,
+			wantErrCount: 0,
+		},
+		{
+			name:         "only ConfigRef set - no error",
+			config:       nil,
+			configRef:    &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			wantErrCount: 0,
+		},
+		{
+			name:         "both Config and ConfigRef set - two Forbidden errors",
+			config:       &commonv1.Config{Data: map[string]any{"key": "value"}},
+			configRef:    &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			wantErrCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policy := newPolicy("9.2.4")
+			policy.Spec.Config = tt.config
+			policy.Spec.ConfigRef = tt.configRef
+			errs := checkSingleConfigSource(policy)
+			require.Len(t, errs, tt.wantErrCount)
+		})
+	}
+}
