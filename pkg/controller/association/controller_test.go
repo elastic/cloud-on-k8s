@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 func Test_namespaceFlipRequests(t *testing.T) {
@@ -54,7 +55,15 @@ func Test_namespaceFlipRequests(t *testing.T) {
 		},
 	}
 
-	reqs := namespaceFlipRequests(k8s.NewFakeClient(objs...), r)(
+	c := cachemock.NewCache(t)
+	c.On("List", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		list := args.Get(1).(*apmv1.ApmServerList) //nolint:forcetypeassert
+		for _, obj := range objs {
+			list.Items = append(list.Items, *obj.(*apmv1.ApmServer)) //nolint:forcetypeassert
+		}
+	}).Return(nil)
+
+	reqs := namespaceFlipRequests(c, r)(
 		context.Background(),
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "descoped"}},
 	)
