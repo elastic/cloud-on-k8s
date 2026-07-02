@@ -69,11 +69,13 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "namespace not found: state forgotten, no broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(nil).Return(apierrors.NewNotFound(corev1.Resource("namespaces"), "deleted-ns"))
 				return mc
 			},
 			preloadState: func(m *nsmatch.NamespaceMatcher) {
+				t.Helper()
 				m.Swap("deleted-ns", true)
 			},
 			request:       nsRequest("deleted-ns"),
@@ -83,6 +85,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "client error: error is propagated, no broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(nil).Return(errors.New("connection refused"))
 				return mc
@@ -94,6 +97,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "first reconcile, namespace matches: broadcast (unknown -> matching)",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
 				return mc
@@ -105,6 +109,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "first reconcile, namespace does not match: no broadcast (unknown -> non-matching)",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
 				return mc
@@ -116,6 +121,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "state unchanged: namespace still matches, no broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
 				return mc
@@ -130,6 +136,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "state unchanged: namespace still does not match, no broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
 				return mc
@@ -144,6 +151,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "state change: namespace transitions matching -> non-matching, broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(nonMatchingNS.Labels).Return(nil)
 				return mc
@@ -158,6 +166,7 @@ func TestReconciler_doReconcile(t *testing.T) {
 		{
 			name: "state change: namespace transitions non-matching -> matching, broadcast",
 			buildCache: func(t *testing.T) cache.Cache {
+				t.Helper()
 				mc := mock.NewCache(t)
 				mc.OnGetSetNamespace(matchingNS.Labels).Return(nil)
 				return mc
