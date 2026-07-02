@@ -244,23 +244,34 @@ func (b Builder) WithESValidation(validation ValidationFunc, outputName string) 
 }
 
 func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
+	return b.WithFleetAgentDataStreamsValidationFiltered(nil)
+}
+
+// WithFleetAgentDataStreamsValidationFiltered adds data stream validations for elastic-agent
+// internal streams. When filter is non-nil it is called for each (type, dataset) pair and only
+// streams for which it returns true are validated. When nil, all streams are validated.
+func (b Builder) WithFleetAgentDataStreamsValidationFiltered(filter func(dsType, dataset string) bool) Builder {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	b = b.
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default"))
+	maybeAdd := func(dsType, dataset string) {
+		if filter == nil || filter(dsType, dataset) {
+			b = b.WithDefaultESValidation(HasWorkingDataStream(dsType, dataset, "default"))
+		}
+	}
+	maybeAdd(LogsType, "elastic_agent")
+	maybeAdd(LogsType, "elastic_agent.filebeat")
+	maybeAdd(LogsType, "elastic_agent.fleet_server")
+	maybeAdd(LogsType, "elastic_agent.metricbeat")
+	maybeAdd(MetricsType, "elastic_agent.elastic_agent")
+	maybeAdd(MetricsType, "elastic_agent.fleet_server")
 	// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 	// so beat/metrics-monitoring is not created and metrics-elastic_agent.metricbeat-default
 	// is no longer populated. See https://github.com/elastic/elastic-agent/pull/13411.
 	if v.LT(version.MinFor(9, 5, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.metricbeat")
 	}
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
 	if v.LT(version.MinFor(8, 12, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.filebeat")
 	}
 	return b
 }

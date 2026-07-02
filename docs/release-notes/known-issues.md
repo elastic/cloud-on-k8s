@@ -17,6 +17,10 @@ Known issues are significant defects or limitations that may impact your impleme
 
 :::
 
+## 3.4.1 [elastic-cloud-kubernetes-341-known-issues]
+
+There are no known issues in ECK 3.4.1
+
 ## 3.4.0 [elastic-cloud-kubernetes-340-known-issues]
 
 There are no known issues in ECK 3.4.0
@@ -195,7 +199,7 @@ For more information, check [Issue #8655](https://github.com/elastic/cloud-on-k8
 
 **Workaround**
 
-To workaround the issue override the container command for Elastic Maps Server: 
+To workaround the issue override the container command for Elastic Maps Server:
 
 ```
 apiVersion: maps.k8s.elastic.co/v1alpha1
