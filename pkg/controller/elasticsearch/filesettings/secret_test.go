@@ -95,7 +95,7 @@ func Test_FileSettingsSecret_VersionUnchanged(t *testing.T) {
 	assert.NotEqual(t, v1, fs3.Version())
 }
 
-func Test_FileSettingsSecret_ApplyPolicy_ClearsClusterSecrets(t *testing.T) {
+func Test_FileSettingsSecret_ApplyPolicy_PreservesClusterSecrets(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
 
 	// Create a current secret that has cluster_secrets (written by ES controller)
@@ -117,14 +117,14 @@ func Test_FileSettingsSecret_ApplyPolicy_ClearsClusterSecrets(t *testing.T) {
 
 	fakeClient := k8s.NewFakeClient(currentSecret)
 
-	// ApplyPolicy replaces the full state, so cluster_secrets is overwritten (not preserved)
+	// ApplyPolicy must not wipe cluster_secrets, which is owned by the ES controller.
 	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	require.NoError(t, err)
 	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	require.NoError(t, err)
 
-	// cluster_secrets is cleared (not preserved) since ApplyPolicy replaces the full state
-	assert.Nil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should not be preserved by ApplyPolicy")
+	assert.NotNil(t, fs.settings.State.ClusterSecrets, "cluster_secrets must be preserved by ApplyPolicy")
+	assert.Equal(t, currentSettings.State.ClusterSecrets, fs.settings.State.ClusterSecrets)
 }
 
 func Test_Reset_ClearsSCPManagedFields(t *testing.T) {
@@ -158,7 +158,8 @@ func Test_Reset_ClearsSCPManagedFields(t *testing.T) {
 	assert.NotNil(t, fs.settings.State.ClusterSecrets, "cluster_secrets should be loaded from current")
 
 	fs.Reset()
-	assert.Nil(t, fs.settings.State.ClusterSecrets, "Reset should clear cluster_secrets")
+	// cluster_secrets is owned by the ES controller, not SCP — Reset must not clear it.
+	assert.NotNil(t, fs.settings.State.ClusterSecrets, "Reset must not clear cluster_secrets (ES controller owns it)")
 	assert.Empty(t, fs.settings.State.ClusterSettings.Data, "Reset should clear SCP-managed cluster_settings")
 }
 

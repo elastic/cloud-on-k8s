@@ -121,13 +121,16 @@ func (f *Secret) Reset() *Secret {
 	return f
 }
 
-// ApplyPolicy replaces the settings state from a StackConfigPolicy.
+// ApplyPolicy replaces the SCP-managed settings state while preserving the
+// cluster_secrets field, which is owned exclusively by the ES controller.
 // Unlike SetClusterSecrets, corruption is not checked here because ApplyPolicy
-// replaces the full state — corrupted prior settings are safely discarded.
+// replaces the full SCP-managed state — corrupted prior settings are safely discarded.
 func (f *Secret) ApplyPolicy(policy policyv1alpha1.ElasticsearchConfigPolicySpec, secretSources []commonv1.NamespacedSecretSource) error {
+	savedClusterSecrets := f.settings.State.ClusterSecrets
 	if err := f.settings.updateState(f.es, policy); err != nil {
 		return err
 	}
+	f.settings.State.ClusterSecrets = savedClusterSecrets
 	f.secureSettingsSources = secretSources
 	return nil
 }
