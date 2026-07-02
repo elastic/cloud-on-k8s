@@ -35,18 +35,17 @@ import (
 //
 // Usage:
 //
-//	fs, err := Load(ctx, c, esNsn, isStateless, meta)
+//	fs, err := Load(ctx, c, esNsn, meta)
 //	fs.ApplyPolicy(policy, secretSources)  // SCP controller
 //	// or: fs.SetClusterSecrets(secrets)   // ES controller
 //	// or: fs.Reset()                      // clear to empty
 //	fs.Save(ctx, c, owner)
 type Secret struct {
-	es          types.NamespacedName
-	isStateless bool
-	current     *corev1.Secret
-	settings    Settings
-	meta        metadata.Metadata
-	version     int64
+	es       types.NamespacedName
+	current  *corev1.Secret
+	settings Settings
+	meta     metadata.Metadata
+	version  int64
 
 	secureSettingsSources []commonv1.NamespacedSecretSource
 
@@ -59,18 +58,17 @@ type Secret struct {
 // Load fetches the current file settings Secret from the API server and returns
 // a Secret initialized with the current settings state. If the Secret
 // does not exist, the settings start empty.
-func Load(ctx context.Context, c k8s.Client, es types.NamespacedName, isStateless bool, meta metadata.Metadata) (*Secret, error) {
+func Load(ctx context.Context, c k8s.Client, es types.NamespacedName, meta metadata.Metadata) (*Secret, error) {
 	f := &Secret{
-		es:          es,
-		isStateless: isStateless,
-		meta:        meta,
-		version:     time.Now().UnixNano(),
+		es:      es,
+		meta:    meta,
+		version: time.Now().UnixNano(),
 	}
 
 	var secret corev1.Secret
 	err := c.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &secret)
 	if apierrors.IsNotFound(err) {
-		f.settings = NewEmptySettings(f.version, isStateless)
+		f.settings = NewEmptySettings(f.version)
 		return f, nil
 	}
 	if err != nil {
@@ -82,17 +80,15 @@ func Load(ctx context.Context, c k8s.Client, es types.NamespacedName, isStateles
 	if data, ok := secret.Data[SettingsSecretKey]; ok {
 		if err := json.Unmarshal(data, &f.settings); err != nil {
 			ulog.FromContext(ctx).Error(err, "Failed to unmarshal current file settings, starting from empty")
-			f.settings = NewEmptySettings(f.version, isStateless)
+			f.settings = NewEmptySettings(f.version)
 			f.settingsCorrupted = true
-		} else {
-			f.settings.IsStateless = isStateless
 		}
 	} else {
 		ulog.FromContext(ctx).Error(
 			fmt.Errorf("missing %s key", SettingsSecretKey),
 			"Current file settings Secret is malformed, starting from empty",
 		)
-		f.settings = NewEmptySettings(f.version, isStateless)
+		f.settings = NewEmptySettings(f.version)
 		f.settingsCorrupted = true
 	}
 
@@ -116,30 +112,25 @@ func (f *Secret) Version() int64 {
 	return f.version
 }
 
-// Reset clears SCP-managed settings state. For stateless clusters, cluster_secrets
-// are preserved since they are managed by the ES controller, not by SCP.
+// Reset clears SCP-managed settings state.
 // Use when the Secret should be reset (e.g. when all StackConfigPolicy owners are removed).
 func (f *Secret) Reset() *Secret {
-	// ApplyPolicy with an empty policy clears all SCP-managed fields while
-	// preserving cluster_secrets for stateless clusters.
+	// ApplyPolicy with an empty policy clears all SCP-managed fields.
 	_ = f.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{}, nil)
 	f.settingsCorrupted = false
 	return f
 }
 
-// ApplyPolicy replaces the settings state from a StackConfigPolicy.
-// For stateless clusters, cluster_secrets are preserved since they are
-// managed separately by the ES controller.
+// ApplyPolicy replaces the SCP-managed settings state while preserving the
+// cluster_secrets field, which is owned exclusively by the ES controller.
 // Unlike SetClusterSecrets, corruption is not checked here because ApplyPolicy
-// replaces the full state — corrupted prior settings are safely discarded.
+// replaces the full SCP-managed state — corrupted prior settings are safely discarded.
 func (f *Secret) ApplyPolicy(policy policyv1alpha1.ElasticsearchConfigPolicySpec, secretSources []commonv1.NamespacedSecretSource) error {
 	savedClusterSecrets := f.settings.State.ClusterSecrets
 	if err := f.settings.updateState(f.es, policy); err != nil {
 		return err
 	}
-	if f.isStateless {
-		f.settings.State.ClusterSecrets = savedClusterSecrets
-	}
+	f.settings.State.ClusterSecrets = savedClusterSecrets
 	f.secureSettingsSources = secretSources
 	return nil
 }

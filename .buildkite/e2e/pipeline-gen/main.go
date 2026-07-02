@@ -43,7 +43,6 @@ const (
 	EnvVarGoTags                   = "GO_TAGS"
 	EnvVarOperatorImage            = "OPERATOR_IMAGE"
 	EnvVarE2EImage                 = "E2E_IMG"
-	EnvVarStateless                = "STATELESS"
 	EnvVarRestrictWatchedResources = "RESTRICT_WATCHED_RESOURCES"
 
 	K8sInDockerMachineType = "n1-standard-16"
@@ -68,7 +67,6 @@ var (
 		"k":   EnvVarK8sVersion,
 		"s":   EnvVarStackVersion,
 		"t":   EnvVarTestsMatch,
-		"sl":  EnvVarStateless,
 		"rwr": EnvVarRestrictWatchedResources,
 	}
 
