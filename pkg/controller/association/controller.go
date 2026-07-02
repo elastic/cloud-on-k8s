@@ -10,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -99,13 +100,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 // Known limitation: transitive references (e.g. Agent -> Fleet Server -> Elasticsearch, each
 // in a different namespace) are matched on the direct reference only; a flip of the transitive
 // Elasticsearch namespace does not re-enqueue the Agent.
-func namespaceFlipRequests(reader client.Reader, r *Reconciler) func(context.Context, *corev1.Namespace) []reconcile.Request {
+func namespaceFlipRequests(cache cache.Cache, r *Reconciler) func(context.Context, *corev1.Namespace) []reconcile.Request {
 	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
 		list := r.AssociatedObjListTemplate()
-		// List cluster-wide from the cache (not the FilterClient): associated resources
+		// List **cluster-wide** from the cache (not the FilterClient): associated resources
 		// referencing the flipped namespace can live in any matched namespace, and
 		// resources in the namespace being de-scoped would be hidden by the FilterClient.
-		if err := reader.List(ctx, list); err != nil {
+		if err := cache.List(ctx, list); err != nil {
 			return nil
 		}
 		items, err := apimeta.ExtractList(list)
@@ -118,12 +119,16 @@ func namespaceFlipRequests(reader client.Reader, r *Reconciler) func(context.Con
 			if !ok {
 				continue
 			}
+
+			// case A: Reconcile the associated resources that their own namespace changed state.
 			if associated.GetNamespace() == ns.Name {
-				// the associated resource's own namespace changed state.
 				reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(associated)})
 				continue
 			}
+
+			// case B: Reconcile the associated resources that at least one of their associations belong to the namespace that changed state.
 			for _, association := range associated.GetAssociations() {
+				// omit the ones that belong to another association controller
 				if association.AssociationType() != r.AssociationType {
 					continue
 				}
