@@ -819,6 +819,94 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 	return ls
 }
 
+func TestReconcileLogstash_PauseOrchestration(t *testing.T) {
+	defaultLabels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "testLogstash"}}).GetIdentityLabels()
+	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "test", Name: "testLogstash"}}
+
+	pausedLogstash := &logstashv1alpha1.Logstash{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "testLogstash",
+			Namespace:  "test",
+			Generation: 2,
+			Annotations: map[string]string{
+				common.PauseOrchestrationAnnotation: "true",
+			},
+		},
+		Spec: logstashv1alpha1.LogstashSpec{
+			Version: "8.12.0",
+			Count:   1,
+		},
+	}
+
+	tests := []struct {
+		name        string
+		objs        []client.Object
+		wantRequeue bool
+	}{
+		{
+			name: "paused and unsteady StatefulSet requeues with OrchestrationPaused=True",
+			objs: []client.Object{
+				pausedLogstash,
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testLogstash-ls",
+						Namespace: "test",
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
+					},
+					Status: appsv1.StatefulSetStatus{
+						ReadyReplicas:   1,
+						CurrentRevision: "rev-a",
+						UpdateRevision:  "rev-b",
+					},
+				},
+			},
+			wantRequeue: true,
+		},
+		{
+			name: "paused and steady StatefulSet syncs OrchestrationPaused condition",
+			objs: []client.Object{
+				pausedLogstash,
+				&appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testLogstash-ls",
+						Namespace: "test",
+						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
+					},
+					Status: appsv1.StatefulSetStatus{
+						ReadyReplicas:   1,
+						CurrentRevision: "rev-a",
+						UpdateRevision:  "rev-a",
+					},
+				},
+			},
+			wantRequeue: false,
+		},
+		{
+			// notFound=true bypasses the IsSteady guard; ReconcilePauseAware reports
+			// OrchestrationPaused with a pending-changes message.
+			name:        "paused before StatefulSet exists sets OrchestrationPaused condition",
+			objs:        []client.Object{pausedLogstash},
+			wantRequeue: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newReconcileLogstash(tt.objs...)
+			got, err := r.Reconcile(context.Background(), request)
+			require.NoError(t, err)
+			if tt.wantRequeue {
+				assert.NotZero(t, got.RequeueAfter, "expected a requeue")
+			}
+
+			var ls logstashv1alpha1.Logstash
+			require.NoError(t, r.Client.Get(context.Background(), request.NamespacedName, &ls))
+			idx := ls.Status.Conditions.Index(commonv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, idx, 0, "OrchestrationPaused condition should be present")
+			assert.Equal(t, corev1.ConditionTrue, ls.Status.Conditions[idx].Status)
+		})
+	}
+}
+
 func addLabel(labels map[string]string, key, value string) map[string]string {
 	newLabels := make(map[string]string, len(labels))
 	maps.Copy(newLabels, labels)

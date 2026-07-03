@@ -169,7 +169,7 @@ type LogstashStatus struct {
 
 	// Conditions holds the current service state of the Logstash.
 	// +optional
-	Conditions commonv1.Conditions `json:"conditions,omitempty"`
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true

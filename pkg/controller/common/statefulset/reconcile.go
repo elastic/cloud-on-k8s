@@ -108,6 +108,8 @@ func Reconcile(
 
 // IsSteady reports whether the StatefulSet has converged: observed generation matches the metadata
 // generation, current and update revisions are identical, and all expected replicas are ready.
+// The default for nil Spec.Replicas is 1, matching the Kubernetes StatefulSet default, so a
+// StatefulSet with no explicit replica count is only steady once its one pod is ready.
 func IsSteady(s appsv1.StatefulSet) bool {
 	return s.Status.ObservedGeneration == s.Generation &&
 		s.Status.CurrentRevision == s.Status.UpdateRevision &&
