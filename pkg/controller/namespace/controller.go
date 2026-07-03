@@ -118,8 +118,16 @@ func (r *reconciler) doReconcile(ctx context.Context, log logr.Logger, request r
 var _ reconcile.Reconciler = (*reconciler)(nil)
 
 // namespaceSeedRunnable seeds the NamespaceMatcher with the current match state
-// of all existing namespaces. It is registered with the manager so that it runs
-// after the cache is synced, reading from the cache rather than the API server.
+// of all existing namespaces. Registered via mgr.Add, it starts after the
+// manager's cache has synced, so it reads from the cache rather than the API
+// server. The manager provides no ordering between this runnable and the
+// controllers: they all start concurrently, so watch predicates and reconcile
+// loops may briefly observe an unseeded matcher (Matches returning false).
+// Correctness does not depend on that ordering: ObserveAndBroadcast broadcasts
+// every false->true transition it seeds, and each per-kind controller's
+// namespace-flip watch reacts by re-enqueueing all CRs in the broadcast
+// namespace, backfilling any events the predicates dropped during the
+// cold-start window.
 type namespaceSeedRunnable struct {
 	log              logr.Logger
 	client           client.Reader
