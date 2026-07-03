@@ -119,21 +119,31 @@ func (m *NamespaceMatcher) MatchesCachedLabels(ctx context.Context, ns string) b
 }
 
 // MatchingNamespacesFromCache lists all Namespace objects from the cache and
-// returns the names of those whose labels satisfy the selector. Unlike Matches,
-// which checks the in-memory state map, this method performs a live label
-// evaluation for every namespace in the cache. Returns an error if the cache
-// list fails. When the selector is disabled, returns all namespace names.
+// returns the names of those whose labels satisfy the selector, plus the
+// namespaces excluded from selector evaluation (the operator's own namespace),
+// which are managed by definition. Unlike Matches, which checks the in-memory
+// state map, this method performs a live label evaluation for every namespace
+// in the cache. Returns an error if the cache list fails. When the selector is
+// disabled, returns all namespace names.
 func (m *NamespaceMatcher) MatchingNamespacesFromCache(ctx context.Context) ([]string, error) {
 	var nsList corev1.NamespaceList
 	if err := m.cache.List(ctx, &nsList); err != nil {
 		return nil, err
 	}
+
 	names := make([]string, 0, len(nsList.Items))
+
 	for _, ns := range nsList.Items {
-		if !m.SelectorEnabled() || m.selector.Matches(labels.Set(ns.Labels)) {
+		// Always-managed namespaces bypass selector evaluation everywhere else
+		// (Matches, MatchesCachedLabels, the FilterClient), so they belong in this
+		// result too, even when their labels do not match the selector.
+		_, isAlwaysManaged := m.alwaysManagedNamespaces[ns.Name]
+
+		if !m.SelectorEnabled() || isAlwaysManaged || m.selector.Matches(labels.Set(ns.Labels)) {
 			names = append(names, ns.Name)
 		}
 	}
+
 	return names, nil
 }
 

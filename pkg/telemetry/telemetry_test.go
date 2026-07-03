@@ -1033,10 +1033,11 @@ func TestGetNamespaces(t *testing.T) {
 				mc.OnListSetNamespaceList(
 					nsLabelled("prod-a", map[string]string{"env": "prod"}),
 					nsLabelled("prod-b", map[string]string{"env": "prod"}),
+					nsLabelled("elastic-system", nil),
 				).Return(nil)
 				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
 			},
-			wantNSes: []string{"prod-a", "prod-b"},
+			wantNSes: []string{"prod-a", "prod-b", "elastic-system"},
 		},
 		{
 			name: "enabled selector with only some namespaces matching",
@@ -1046,10 +1047,11 @@ func TestGetNamespaces(t *testing.T) {
 				mc.OnListSetNamespaceList(
 					nsLabelled("prod-ns", map[string]string{"env": "prod"}),
 					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
+					nsLabelled("elastic-system", nil),
 				).Return(nil)
 				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
 			},
-			wantNSes: []string{"prod-ns"},
+			wantNSes: []string{"prod-ns", "elastic-system"},
 		},
 		{
 			name: "enabled selector with no matching namespaces",
@@ -1058,10 +1060,11 @@ func TestGetNamespaces(t *testing.T) {
 				mc := testmock.NewCache(t)
 				mc.OnListSetNamespaceList(
 					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
+					nsLabelled("elastic-system", nil),
 				).Return(nil)
 				return Reporter{namespaceMatcher: matcherWithCache(sel, mc)}
 			},
-			wantNSes: []string{},
+			wantNSes: []string{"elastic-system"},
 		},
 		{
 			name: "enabled selector with cache error returns error",
