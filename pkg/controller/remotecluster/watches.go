@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -80,9 +81,72 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 		return err
 	}
 
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
-		return &esv1.ElasticsearchList{}
-	})
+	return watches.WatchNamespaceFlipsMapped(c, r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache()))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the Elasticsearch clusters affected by it: the ones living in the
+// flipped namespace, the ones living elsewhere whose Spec.RemoteClusters reference a cluster
+// in the flipped namespace, and the counterparts referenced by the flipped namespace's own
+// clusters. Reconcile re-evaluates all of a cluster's remote cluster relationships in both
+// directions (see getExpectedRemoteClientsFor), so enqueueing the counterparts is enough for
+// them to establish or tear down trust; the FilterClient then decides what remains visible.
+func namespaceFlipRequests(cache cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list esv1.ElasticsearchList
+		// List **cluster-wide** from the cache (not the FilterClient): affected clusters can
+		// live in any matched namespace, and clusters in the namespace being de-scoped would
+		// be hidden by the FilterClient.
+		if err := cache.List(ctx, &list); err != nil {
+			return nil
+		}
+
+		seen := make(map[types.NamespacedName]struct{})
+		enqueue := func(nsn types.NamespacedName) {
+			if _, ok := seen[nsn]; ok {
+				return
+			}
+			seen[nsn] = struct{}{}
+		}
+
+		for _, es := range list.Items {
+			if es.Namespace == ns.Name {
+				// case A: the cluster lives in the flipped namespace.
+				enqueue(k8s.ExtractNamespacedName(&es))
+
+				// case B: the counterparts its own spec declares, wherever they live.
+				for _, remoteCluster := range es.Spec.RemoteClusters {
+					if !remoteCluster.ElasticsearchRef.IsSet() {
+						continue
+					}
+					enqueue(remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace).NamespacedName())
+				}
+				continue
+			}
+
+			// case C: the cluster lives elsewhere but references a cluster in the flipped
+			// namespace. Its side of the relationship (remote CA copies, API keys) depends on
+			// that counterpart's visibility, which just changed, so it must be re-reconciled.
+			for _, remoteCluster := range es.Spec.RemoteClusters {
+				if !remoteCluster.ElasticsearchRef.IsSet() {
+					continue
+				}
+				// Compare the ref's effective namespace: WithDefaultNamespace resolves an
+				// unset ref namespace the same way getExpectedRemoteClientsFor does, i.e. to
+				// the declaring cluster's own namespace — which is not the flipped one here.
+				if remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace).NamespacedName().Namespace == ns.Name {
+					enqueue(k8s.ExtractNamespacedName(&es))
+					break
+				}
+			}
+		}
+
+		reqs := make([]reconcile.Request, 0, len(seen))
+		for nsn := range seen {
+			reqs = append(reqs, reconcile.Request{NamespacedName: nsn})
+		}
+		return reqs
+	}
 }
 
 // newRequestsFromMatchedLabels creates a watch handler function that creates reconcile requests based on the
