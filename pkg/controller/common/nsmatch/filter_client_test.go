@@ -170,10 +170,23 @@ func TestFilterClientGet(t *testing.T) {
 		assert.Equal(t, "prod-ns", obj.Namespace)
 	})
 
-	t.Run("namespace does not match: NotFound error returned", func(t *testing.T) {
-		fc := makeFilterClient(fake.NewClientBuilder().WithObjects(pod("my-pod", "dev-ns")).Build(), sel) // dev-ns not seeded
-		err := fc.Get(ctx, types.NamespacedName{Name: "my-pod", Namespace: "dev-ns"}, &corev1.Pod{})
+	t.Run("namespace does not match: NotFound error, object untouched, delegate not queried", func(t *testing.T) {
+		delegateCalled := false
+		delegate := fake.NewClientBuilder().WithObjects(pod("my-pod", "dev-ns")).WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				delegateCalled = true
+				return c.Get(ctx, key, obj, opts...)
+			},
+		}).Build()
+		fc := makeFilterClient(delegate, sel) // dev-ns not seeded
+		obj := &corev1.Pod{}
+		err := fc.Get(ctx, types.NamespacedName{Name: "my-pod", Namespace: "dev-ns"}, obj)
 		require.True(t, apierrors.IsNotFound(err))
+		// The object must be left exactly as passed in, like a real API-server NotFound:
+		// callers (and the data of the hidden resource) must not observe a populated object.
+		assert.Empty(t, obj.Name)
+		assert.Empty(t, obj.Namespace)
+		assert.False(t, delegateCalled)
 	})
 
 	t.Run("operator namespace always passes filter", func(t *testing.T) {
