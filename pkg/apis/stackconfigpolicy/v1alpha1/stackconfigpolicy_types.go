@@ -50,6 +50,54 @@ type StackConfigPolicyList struct {
 	Items           []StackConfigPolicy `json:"items"`
 }
 
+// VariableSourceKind is the type of source for variable substitution.
+// +kubebuilder:validation:Enum=ConfigMap;Secret
+type VariableSourceKind string
+
+const (
+	VariableSourceKindConfigMap VariableSourceKind = "ConfigMap"
+	VariableSourceKindSecret    VariableSourceKind = "Secret"
+)
+
+// VariableSource references a ConfigMap or Secret from which variables are loaded for substitution.
+type VariableSource struct {
+	// Kind is the type of the source, either ConfigMap or Secret.
+	// +kubebuilder:validation:Enum=ConfigMap;Secret
+	Kind VariableSourceKind `json:"kind"`
+	// Name is the name of the ConfigMap or Secret.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// Namespace is the namespace of the ConfigMap or Secret.
+	// When empty, the StackConfigPolicy's own namespace is used.
+	// Cross-namespace references are only permitted for policies
+	// deployed in the operator namespace; all other policies must
+	// reference sources in their own namespace.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+	// Optional indicates whether the source is optional. When true,
+	// a missing ConfigMap or Secret is silently ignored instead of
+	// causing a reconciliation error.
+	// +optional
+	Optional bool `json:"optional,omitempty"`
+}
+
+// EffectiveNamespace returns the namespace for this variable source, falling back to
+// policyNamespace when no explicit namespace is set.
+func (v VariableSource) EffectiveNamespace(policyNamespace string) string {
+	if v.Namespace != "" {
+		return v.Namespace
+	}
+	return policyNamespace
+}
+
+// AllowedFrom reports whether a policy deployed in policyNamespace may reference this source.
+// Cross-namespace references (a source namespace different from the policy's own) are only
+// permitted for policies deployed in the operator namespace; all other policies must reference
+// sources in their own namespace.
+func (v VariableSource) AllowedFrom(policyNamespace, operatorNamespace string) bool {
+	return v.EffectiveNamespace(policyNamespace) == policyNamespace || policyNamespace == operatorNamespace
+}
+
 type StackConfigPolicySpec struct {
 	ResourceSelector metav1.LabelSelector `json:"resourceSelector,omitempty"`
 	// Weight determines the priority of this policy when multiple policies target the same resource.
@@ -60,6 +108,19 @@ type StackConfigPolicySpec struct {
 	SecureSettings []commonv1.SecretSource       `json:"secureSettings,omitempty"`
 	Elasticsearch  ElasticsearchConfigPolicySpec `json:"elasticsearch,omitempty"`
 	Kibana         KibanaConfigPolicySpec        `json:"kibana,omitempty"`
+	// VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
+	// Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
+	// Sources without a namespace default to the policy's namespace; cross-namespace sources are only
+	// permitted for policies deployed in the operator namespace.
+	// Later entries take precedence over earlier ones on key conflicts.
+	// If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
+	// Only keys present in a source are substituted; any other ${...} expression (including native
+	// ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by
+	// Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.
+	// Values from sources are JSON-escaped before substitution and are limited to string-typed
+	// fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret
+	// values are always strings and the intended target type cannot be inferred.
+	VariablesFrom []VariableSource `json:"variablesFrom,omitempty"`
 }
 
 type ElasticsearchConfigPolicySpec struct {
