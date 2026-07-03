@@ -468,12 +468,12 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 
 	t.Run("selector disabled: returns all namespace names", func(t *testing.T) {
 		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2")).Return(nil)
+		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(nil, testOperatorNS)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespacesFromCache(ctx)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
+		assert.ElementsMatch(t, []string{"ns-1", "ns-2", testOperatorNS}, names)
 	})
 
 	t.Run("cache List error: returns error", func(t *testing.T) {
@@ -506,24 +506,44 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
 	})
 
-	t.Run("some namespaces match: returns only matching names", func(t *testing.T) {
+	t.Run("some namespaces match: returns matching names plus the operator namespace", func(t *testing.T) {
 		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), prod("ns-3")).Return(nil)
+		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), prod("ns-3"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespacesFromCache(ctx)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", "ns-3"}, names)
+		assert.ElementsMatch(t, []string{"ns-1", "ns-3", testOperatorNS}, names)
 	})
 
-	t.Run("no namespaces match: returns empty slice", func(t *testing.T) {
+	t.Run("no namespaces match: returns only the operator namespace", func(t *testing.T) {
 		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(dev("ns-1"), dev("ns-2")).Return(nil)
+		mc.OnListSetNamespaceList(dev("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespacesFromCache(ctx)
 		require.NoError(t, err)
-		assert.Empty(t, names)
+		assert.ElementsMatch(t, []string{testOperatorNS}, names)
+	})
+
+	t.Run("operator namespace does not match selector: included exactly once", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(ns(testOperatorNS, nil), prod("ns-1")).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
+	})
+
+	t.Run("operator namespace matches selector: not duplicated", func(t *testing.T) {
+		mc := mock.NewCache(t)
+		mc.OnListSetNamespaceList(prod(testOperatorNS), prod("ns-1")).Return(nil)
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.SetCache(mc)
+		names, err := m.MatchingNamespacesFromCache(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
 	})
 }
 
