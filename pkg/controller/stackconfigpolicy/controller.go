@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -115,9 +116,33 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 		return err
 	}
 
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.params.NamespaceMatcher, func() client.ObjectList {
-		return &policyv1alpha1.StackConfigPolicyList{}
-	})
+	return watches.WatchNamespaceFlipsMapped(c, m, namespaceFlipRequests(mgr.GetCache(), r.params.OperatorNamespace))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the StackConfigPolicies affected by it: the ones living in the
+// flipped namespace (the default flip behavior), and the ones living in the operator
+// namespace, which target resources cluster-wide. The latter cannot rely on the default
+// behavior: the operator namespace is always managed and never flips itself, so a scope
+// change of a target namespace would otherwise never re-enqueue its policies — leaving
+// their settings unapplied on scope-in and their status counting hidden clusters on
+// scope-out — unless a target object event incidentally hit the ES/Kibana mappers.
+func namespaceFlipRequests(cache cache.Cache, operatorNamespace string) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list policyv1alpha1.StackConfigPolicyList
+		// List **cluster-wide** from the cache (not the FilterClient): policies in the
+		// namespace being de-scoped would be hidden by the FilterClient.
+		if err := cache.List(ctx, &list); err != nil {
+			return nil
+		}
+		var reqs []reconcile.Request
+		for _, policy := range list.Items {
+			if policy.Namespace == ns.Name || policy.Namespace == operatorNamespace {
+				reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&policy)})
+			}
+		}
+		return reqs
+	}
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
