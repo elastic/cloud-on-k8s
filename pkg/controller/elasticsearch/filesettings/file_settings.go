@@ -82,8 +82,10 @@ func newEmptySettingsState() SettingsState {
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
+// cluster_secrets is owned by the ES controller and is always preserved across the update.
 func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec) error {
 	esConfigPolicy = *esConfigPolicy.DeepCopy() // be sure to not mutate the original es config policy
+	savedClusterSecrets := s.State.ClusterSecrets
 	state := newEmptySettingsState()
 	// mutate Snapshot Repositories
 	if esConfigPolicy.SnapshotRepositories != nil {
@@ -122,6 +124,7 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 	if esConfigPolicy.IndexTemplates.ComponentTemplates != nil {
 		state.IndexTemplates.ComponentTemplates = esConfigPolicy.IndexTemplates.ComponentTemplates
 	}
+	state.ClusterSecrets = savedClusterSecrets
 	s.State = state
 	return nil
 }

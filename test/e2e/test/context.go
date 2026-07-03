@@ -126,9 +126,6 @@ type Context struct {
 	E2ETags               string            `json:"e2e_tags"`
 	LogToFile             bool              `json:"log_to_file"`
 	ArtefactsDir          string            `json:"artefacts_dir"`
-	// DatePrefix is the date prefix for bucket paths (YYYYMMDD format).
-	// Set once at context initialization to ensure consistency across a test run.
-	DatePrefix string `json:"date_prefix"`
 	// RestrictWatchedResources enables the operator's --restrict-watched-resources flag, restricting
 	// resource watching (secrets, services and configmaps) to resources carrying the
 	// eck.k8s.elastic.co/watched=true label.

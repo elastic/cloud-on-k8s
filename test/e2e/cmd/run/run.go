@@ -188,7 +188,6 @@ func (h *helper) initTestContext() error {
 		LogToFile:                h.logToFile,
 		AutopilotCluster:         isAutopilotCluster(h),
 		ArtefactsDir:             artefactsDir,
-		DatePrefix:               time.Now().UTC().Format("20060102"),
 		RestrictWatchedResources: h.restrictWatchedResources,
 	}
 
