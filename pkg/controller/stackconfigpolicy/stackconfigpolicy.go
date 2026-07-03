@@ -36,7 +36,7 @@ var errMergeConflict = errors.New("merge conflict")
 type configPolicy[T any] struct {
 	// Spec is the merged config policy specification
 	Spec T
-	// extractFunc extracts the relevant spec (ES or Kibana) from a StackConfigPolicy
+	// extractFunc returns an isolated copy of the relevant spec (ES or Kibana) from a StackConfigPolicy
 	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec *T)
 	// mergeFunc merges a source spec into the destination configPolicy, handling conflicts and aggregating
 	// secret sources and mounts. It receives the entire configPolicy to allow updating both Spec and SecretSources.
@@ -118,7 +118,7 @@ func getConfigPolicyForElasticsearch(
 	secretMountsAggr := secretMountsAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec]{
 		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.ElasticsearchConfigPolicySpec {
-			return &p.Spec.Elasticsearch
+			return p.Spec.Elasticsearch.DeepCopy()
 		},
 		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src *policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
@@ -188,7 +188,7 @@ func getConfigPolicyForKibana(
 ) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
 	cfgPolicy := &configPolicy[policyv1alpha1.KibanaConfigPolicySpec]{
 		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.KibanaConfigPolicySpec {
-			return &p.Spec.Kibana
+			return p.Spec.Kibana.DeepCopy()
 		},
 		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src *policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error

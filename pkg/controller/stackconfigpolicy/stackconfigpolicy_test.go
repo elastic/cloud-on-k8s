@@ -1684,6 +1684,42 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 	}
 }
 
+func Test_getConfigPolicyForElasticsearch_noSharedStateMutation(t *testing.T) {
+	// OUTER's value is the string "${INNER}". Single-pass substitution resolves ${OUTER} → ${INNER}
+	// but does not re-scan the output, so every reconcile pass must produce "${INNER}", not "42mb".
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "vars", Namespace: "test"},
+		Data:       map[string]string{"OUTER": "${INNER}", "INNER": "42mb"},
+	}
+
+	allPolicies := []policyv1alpha1.StackConfigPolicy{
+		{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "policy"},
+			Spec: policyv1alpha1.StackConfigPolicySpec{
+				ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
+				VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "vars"}},
+				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+					ClusterSettings: &commonv1.Config{Data: map[string]any{
+						"indices.recovery.max_bytes_per_sec": "${OUTER}",
+					}},
+				},
+			},
+		},
+	}
+
+	fakeClient := k8s.NewFakeClient(cm)
+	params := operator.Parameters{}
+	esLabels := map[string]string{"env": "prod"}
+
+	for _, name := range []string{"es-a", "es-b"} {
+		es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Labels: esLabels}}
+		cfg, err := getConfigPolicyForElasticsearch(context.Background(), fakeClient, es, allPolicies, params)
+		require.NoError(t, err)
+		assert.Equal(t, "${INNER}", cfg.Spec.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"],
+			"cluster %s: shared allPolicies must not be mutated between reconcile passes", name)
+	}
+}
+
 func canonicaliseMap(t *testing.T, src map[string]any) map[string]any {
 	t.Helper()
 
