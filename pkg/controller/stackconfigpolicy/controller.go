@@ -930,6 +930,10 @@ func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnVariableSources(policy p
 	var secretSrcs []commonv1.NamespacedSecretSource
 	var configMapNsns []types.NamespacedName
 	for _, src := range policy.Spec.VariablesFrom {
+		if !src.AllowedFrom(policy.Namespace, r.params.OperatorNamespace) {
+			// Skip sources that fail AllowedFrom
+			continue
+		}
 		ns := src.EffectiveNamespace(policy.Namespace)
 		switch src.Kind {
 		case policyv1alpha1.VariableSourceKindSecret:
