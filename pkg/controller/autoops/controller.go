@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -66,6 +68,8 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReconciler) error {
+	log := ulog.Log // no context available for contextual logging
+
 	m := r.params.NamespaceMatcher
 	// watch for changes to AutoOpsAgentPolicy
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
@@ -86,9 +90,33 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReco
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment())); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.params.NamespaceMatcher, func() client.ObjectList {
-		return &autoopsv1alpha1.AutoOpsAgentPolicyList{}
-	})
+	return watches.WatchNamespaceFlipsMapped(c, m, namespaceFlipRequests(log, mgr.GetCache()))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the AutoOpsAgentPolicies affected by it. A policy selects its
+// Elasticsearch clusters cluster-wide by label (ResourceSelector), so a flip of any namespace
+// can change any policy's set of matching clusters: policies living in the flipped namespace
+// must be picked up or cleaned up, and policies living elsewhere must deploy agents for newly
+// scoped clusters or clean up agents and API keys for de-scoped ones. Mirroring the
+// Elasticsearch watch above (reconcileRequestForAllAutoOpsPolicies), all policies are
+// re-enqueued.
+func namespaceFlipRequests(log logr.Logger, cache cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list autoopsv1alpha1.AutoOpsAgentPolicyList
+		// List **cluster-wide** from the cache (not the FilterClient): policies in the
+		// namespace being de-scoped would be hidden by the FilterClient, causing us to miss
+		// the reconcile requests needed to clean them up.
+		if err := cache.List(ctx, &list); err != nil {
+			log.Error(err, "failed to list AutoOpsAgentPolicies in namespace flip watch", "namespace", ns.Name)
+			return nil
+		}
+		reqs := make([]reconcile.Request, 0, len(list.Items))
+		for i := range list.Items {
+			reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&list.Items[i])})
+		}
+		return reqs
+	}
 }
 
 // reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
