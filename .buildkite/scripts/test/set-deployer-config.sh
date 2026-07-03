@@ -17,7 +17,6 @@
 #   DEPLOYER_CLIENT_VERSION
 #   DEPLOYER_KIND_NODE_IMAGE
 #   DEPLOYER_KIND_IP_FAMILY
-#   STATELESS - when "true", enables stateless bucket credentials from Vault
 
 set -eu
 
@@ -78,11 +77,6 @@ write_deployer_config() {
     w "    nodeImage: ${DEPLOYER_K3D_NODE_IMAGE}"
     fi
 
-    # Stateless mode: configure bucket
-    if [[ "${STATELESS:-}" == "true" ]]; then
-    w "  bucket:"
-    w "    fromVault: true"
-    fi
 }
 
 write_deployer_config
