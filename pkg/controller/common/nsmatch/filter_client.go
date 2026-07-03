@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // Currently the only filtering axis is namespace; the design can be extended to
@@ -32,19 +33,33 @@ func NewFilterClient(delegate client.Client, nfn *NamespaceMatcher) *FilterClien
 }
 
 // Get overrides the delegate's Get to apply namespace-selector filtering. When the
-// retrieved object's namespace does not match, a NotFound error is returned so the
-// caller treats the object as invisible, consistent with how List filters it out.
+// requested key's namespace does not match, a synthetic NotFound error is returned
+// without querying the delegate, so the caller treats the object as invisible,
+// consistent with how List filters it out. As with a NotFound returned by the API
+// server, obj is left untouched: callers must not rely on it being populated when
+// an error is returned. Cluster-scoped objects have an empty key.Namespace, which
+// always matches.
 func (w *FilterClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if err := w.Client.Get(ctx, key, obj, opts...); err != nil {
-		return err
+	if w.nfn.SelectorEnabled() && !w.nfn.Matches(key.Namespace) {
+		return apierrors.NewNotFound(w.groupResource(obj), key.Name)
 	}
-	if !w.nfn.SelectorEnabled() {
-		return nil
+	return w.Client.Get(ctx, key, obj, opts...)
+}
+
+// groupResource best-effort resolves the GroupResource of obj so that the synthetic
+// NotFound error renders like one returned by the API server. Falls back to an empty
+// (or group-only) GroupResource when the type is not registered in the scheme or the
+// RESTMapper; apierrors.IsNotFound is unaffected either way.
+func (w *FilterClient) groupResource(obj client.Object) schema.GroupResource {
+	gvk, err := apiutil.GVKForObject(obj, w.Scheme())
+	if err != nil {
+		return schema.GroupResource{}
 	}
-	if !w.nfn.Matches(obj.GetNamespace()) {
-		return apierrors.NewNotFound(schema.GroupResource{}, key.Name)
+	mapping, err := w.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return schema.GroupResource{Group: gvk.Group}
 	}
-	return nil
+	return mapping.Resource.GroupResource()
 }
 
 // List overrides the delegate's List to apply namespace-selector filtering on results.

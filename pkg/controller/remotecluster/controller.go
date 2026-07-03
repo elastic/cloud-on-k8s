@@ -217,6 +217,11 @@ func doReconcile(
 			if errors.IsNotFound(err) {
 				// Remote client cluster does not exist, invalidate API keys for that client cluster.
 				apiKeyReconciledRemoteClients.Insert(remoteClientKey)
+
+				// The remote client cluster is deleted or out of scope. Only its identity is
+				// known; set it explicitly so API key invalidation can match its keys.
+				remoteClient.Namespace = remoteClientKey.Namespace
+				remoteClient.Name = remoteClientKey.Name
 				results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
 				continue
 			}
