@@ -22,7 +22,7 @@ var log = ulog.Log.WithName("stackconfigpolicy-validation")
 // RegisterWebhook registers the StackConfigPolicy validating webhook with the manager.
 // operatorNamespace is forwarded to Validate so the namespace-scoping rule is enforced at
 // admission time.
-func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, operatorNamespace string, m *nsmatch.MatchNotifier) {
+func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, operatorNamespace string, m *nsmatch.NamespaceMatcher) {
 	v := commonwebhook.NewResourceValidator[*policyv1alpha1.StackConfigPolicy](licenseChecker, managedNamespaces, &webhookValidator{operatorNamespace: operatorNamespace}).WithNamespaceMatcher(m)
 	wh := admission.WithValidator[*policyv1alpha1.StackConfigPolicy](mgr.GetScheme(), v)
 	log.Info("Registering StackConfigPolicy validating webhook", "path", policyv1alpha1.WebhookPath)
