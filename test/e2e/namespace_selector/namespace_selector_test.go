@@ -7,7 +7,6 @@
 package namespace_selector
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -15,8 +14,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -63,12 +60,8 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
 	t.Cleanup(func() {
-		for _, nsName := range []string{ns1, ns2} {
-			var ns corev1.Namespace
-			if err := k.Client.Get(context.Background(), types.NamespacedName{Name: nsName}, &ns); err == nil {
-				delete(ns.Labels, eckVisibleLabel)
-				_ = k.Client.Update(context.Background(), &ns)
-			}
+		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, ns1, ns2); err != nil {
+			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
 		}
 		if err := helper.UpdateOperatorConfig(k.Client, func(cfg map[string]any) {
 			delete(cfg, "namespace-selector")
@@ -97,13 +90,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 		WithStep(test.Step{
 			Name: "add eck-visible=true label to ns1; ns2 remains unlabeled",
 			Test: func(t *testing.T) {
-				var ns corev1.Namespace
-				require.NoError(t, k.Client.Get(context.Background(), types.NamespacedName{Name: ns1}, &ns))
-				if ns.Labels == nil {
-					ns.Labels = make(map[string]string)
-				}
-				ns.Labels[eckVisibleLabel] = "true"
-				require.NoError(t, k.Client.Update(context.Background(), &ns))
+				require.NoError(t, helper.SetNamespaceLabel(t.Context(), k.Client, ns1, eckVisibleLabel, "true"))
 			},
 		}).
 		WithStep(test.Step{
@@ -161,13 +148,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 		WithStep(test.Step{
 			Name: "add eck-visible=true to ns2 to trigger dynamic namespace pickup",
 			Test: func(t *testing.T) {
-				var ns corev1.Namespace
-				require.NoError(t, k.Client.Get(context.Background(), types.NamespacedName{Name: ns2}, &ns))
-				if ns.Labels == nil {
-					ns.Labels = make(map[string]string)
-				}
-				ns.Labels[eckVisibleLabel] = "true"
-				require.NoError(t, k.Client.Update(context.Background(), &ns))
+				require.NoError(t, helper.SetNamespaceLabel(t.Context(), k.Client, ns2, eckVisibleLabel, "true"))
 			},
 		}).
 		WithSteps(test.CheckTestSteps(esNs2, k)).
