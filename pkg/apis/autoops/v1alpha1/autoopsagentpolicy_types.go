@@ -91,9 +91,11 @@ type AutoOpsAgentPolicySpec struct {
 	// User-supplied settings are merged between the operator baseline defaults and the
 	// operator-owned mandatory settings, which always take final precedence. This allows
 	// tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,
-	// or defining additional exporters and pipelines. Elasticsearch connection details,
-	// OTLP endpoint and authorization, and the healthcheck extension are always injected
-	// by the operator and cannot be overridden.
+	// or defining additional exporters and pipelines. Supplying at least one autoops_es
+	// module replaces the operator's built-in modules entirely, giving full control over
+	// which metricsets are collected and at what period. Elasticsearch connection details
+	// (hosts, SSL), OTLP endpoint and authorization, and the healthcheck extension are
+	// always injected by the operator and cannot be overridden.
 	// At most one of [`config`, `configRef`] can be specified.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
