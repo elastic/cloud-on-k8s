@@ -26,6 +26,7 @@ var (
 		checkSpec,
 		checkAssociations,
 		checkMonitoring,
+		commonv1.PauseOrchestrationAnnotationCheck[*Beat](),
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{

@@ -35,10 +35,6 @@ var (
 
 // Validate validates the StackConfigPolicy. There's no update-specific checks, so the old parameter is ignored.
 func Validate(p *StackConfigPolicy, _ *StackConfigPolicy) (admission.Warnings, error) {
-	return p.validate()
-}
-
-func (p *StackConfigPolicy) validate() (admission.Warnings, error) {
 	warnings := admission.Warnings(p.GetWarnings())
 	var errors field.ErrorList
 

@@ -5,12 +5,15 @@
 package stackconfigpolicy
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -18,18 +21,21 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
 		operatorNamespace     string
+		k8sObjects            []client.Object
 		targetElasticsearch   *esv1.Elasticsearch
 		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
 		expectedConfigPolicy  policyv1alpha1.StackConfigPolicy
 		expectedSecretSources []commonv1.NamespacedSecretSource
 		expectedPolicyRefs    map[string]struct{}
 		expectedMergeConflict bool
+		wantErr               bool
 	}{
 		{
 			name: "merges without overwrites",
@@ -1054,11 +1060,119 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 			},
 			expectedPolicyRefs: map[string]struct{}{},
 		},
+		{
+			name: "variablesFrom: substitutes variables from ConfigMap and Secret",
+			k8sObjects: []client.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: "repo-vars", Namespace: "test"},
+					Data:       map[string]string{"BUCKET_NAME": "my-bucket", "REGION": "eu-west-1"},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "repo-creds", Namespace: "test"},
+					Data:       map[string][]byte{"ACCESS_KEY": []byte("AKIAIOSFODNN7")},
+				},
+			},
+			targetElasticsearch: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "vars-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
+						Weight:           10,
+						VariablesFrom: []policyv1alpha1.VariableSource{
+							{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "repo-vars"},
+							{Kind: policyv1alpha1.VariableSourceKindSecret, Name: "repo-creds"},
+						},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+								"my-repo": map[string]any{
+									"type": "s3",
+									"settings": map[string]any{
+										"bucket":     "${BUCKET_NAME}",
+										"region":     "${REGION}",
+										"access_key": "${ACCESS_KEY}",
+									},
+								},
+							}},
+						},
+					},
+				},
+			},
+			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+						SnapshotRepositories: &commonv1.Config{Data: map[string]any{
+							"my-repo": map[string]any{
+								"type": "s3",
+								"settings": map[string]any{
+									"bucket":     "my-bucket",
+									"region":     "eu-west-1",
+									"access_key": "AKIAIOSFODNN7",
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedPolicyRefs: map[string]struct{}{"test/vars-policy": {}},
+		},
+		{
+			name: "variablesFrom: no VariablesFrom is a no-op",
+			targetElasticsearch: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "no-vars-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
+						Weight:           10,
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							ClusterSettings: &commonv1.Config{Data: map[string]any{"key": "value"}},
+						},
+					},
+				},
+			},
+			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+						ClusterSettings: &commonv1.Config{Data: map[string]any{"key": "value"}},
+					},
+				},
+			},
+			expectedPolicyRefs: map[string]struct{}{"test/no-vars-policy": {}},
+		},
+		{
+			name: "variablesFrom: missing non-optional source returns error",
+			targetElasticsearch: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "missing-vars-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
+						Weight:           10,
+						VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "missing-cm"}},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							ClusterSettings: &commonv1.Config{Data: map[string]any{"key": "${VAR}"}},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			esConfigPolicy, err := getConfigPolicyForElasticsearch(tc.targetElasticsearch, tc.stackConfigPolicies, operator.Parameters{
+			esConfigPolicy, err := getConfigPolicyForElasticsearch(context.Background(), k8s.NewFakeClient(tc.k8sObjects...), tc.targetElasticsearch, tc.stackConfigPolicies, operator.Parameters{
 				OperatorNamespace: tc.operatorNamespace,
 			})
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
 			// Check for expected conflict errors
 			if tc.expectedMergeConflict {
 				assert.ErrorIs(t, err, errMergeConflict, "getConfigPolicyForElasticsearch should return an error")
@@ -1088,12 +1202,14 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
 		operatorNamespace     string
+		k8sObjects            []client.Object
 		targetKibana          *kbv1.Kibana
 		stackConfigPolicies   []policyv1alpha1.StackConfigPolicy
 		expectedConfigPolicy  policyv1alpha1.StackConfigPolicy
 		expectedSecretSources []commonv1.NamespacedSecretSource
 		expectedPolicyRefs    map[string]struct{}
 		expectedMergeConflict bool
+		wantErr               bool
 	}{
 		{
 			name: "merges Kibana configs without overwrites",
@@ -1448,11 +1564,101 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 				"test/kb-single-policy": {},
 			},
 		},
+		{
+			name: "variablesFrom: substitutes variables from ConfigMap",
+			k8sObjects: []client.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: "kb-vars", Namespace: "test"},
+					Data:       map[string]string{"MAX_PAYLOAD": "2097152"},
+				},
+			},
+			targetKibana: &kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-vars-cm-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
+						Weight:           10,
+						VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "kb-vars"}},
+						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+							Config: &commonv1.Config{Data: map[string]any{"server.maxPayload": "${MAX_PAYLOAD}"}},
+						},
+					},
+				},
+			},
+			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+						Config: &commonv1.Config{Data: map[string]any{"server.maxPayload": "2097152"}},
+					},
+				},
+			},
+			expectedPolicyRefs: map[string]struct{}{"test/kb-vars-cm-policy": {}},
+		},
+		{
+			name: "variablesFrom: substitutes variables from Secret",
+			k8sObjects: []client.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "kb-creds", Namespace: "test"},
+					Data:       map[string][]byte{"LOG_LEVEL": []byte("debug")},
+				},
+			},
+			targetKibana: &kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-vars-secret-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
+						Weight:           10,
+						VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindSecret, Name: "kb-creds"}},
+						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+							Config: &commonv1.Config{Data: map[string]any{"logging.root.level": "${LOG_LEVEL}"}},
+						},
+					},
+				},
+			},
+			expectedConfigPolicy: policyv1alpha1.StackConfigPolicy{
+				Spec: policyv1alpha1.StackConfigPolicySpec{
+					Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+						Config: &commonv1.Config{Data: map[string]any{"logging.root.level": "debug"}},
+					},
+				},
+			},
+			expectedPolicyRefs: map[string]struct{}{"test/kb-vars-secret-policy": {}},
+		},
+		{
+			name: "variablesFrom: missing non-optional source returns error",
+			targetKibana: &kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+			},
+			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-missing-vars-policy", ResourceVersion: "1"},
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
+						Weight:           10,
+						VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "missing-cm"}},
+						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+							Config: &commonv1.Config{Data: map[string]any{"key": "${VAR}"}},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			kbPolicyConfig, err := getConfigPolicyForKibana(tc.targetKibana, tc.stackConfigPolicies, operator.Parameters{
+			kbPolicyConfig, err := getConfigPolicyForKibana(context.Background(), k8s.NewFakeClient(tc.k8sObjects...), tc.targetKibana, tc.stackConfigPolicies, operator.Parameters{
 				OperatorNamespace: tc.operatorNamespace,
 			})
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
 			// Verify conflict errors
 			if tc.expectedMergeConflict {
 				assert.ErrorIs(t, err, errMergeConflict)
@@ -1475,6 +1681,42 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			}
 			assert.EqualValues(t, tc.expectedPolicyRefs, actualPolicyRefs)
 		})
+	}
+}
+
+func Test_getConfigPolicyForElasticsearch_noSharedStateMutation(t *testing.T) {
+	// OUTER's value is the string "${INNER}". Single-pass substitution resolves ${OUTER} → ${INNER}
+	// but does not re-scan the output, so every reconcile pass must produce "${INNER}", not "42mb".
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "vars", Namespace: "test"},
+		Data:       map[string]string{"OUTER": "${INNER}", "INNER": "42mb"},
+	}
+
+	allPolicies := []policyv1alpha1.StackConfigPolicy{
+		{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "policy"},
+			Spec: policyv1alpha1.StackConfigPolicySpec{
+				ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
+				VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "vars"}},
+				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+					ClusterSettings: &commonv1.Config{Data: map[string]any{
+						"indices.recovery.max_bytes_per_sec": "${OUTER}",
+					}},
+				},
+			},
+		},
+	}
+
+	fakeClient := k8s.NewFakeClient(cm)
+	params := operator.Parameters{}
+	esLabels := map[string]string{"env": "prod"}
+
+	for _, name := range []string{"es-a", "es-b"} {
+		es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Labels: esLabels}}
+		cfg, err := getConfigPolicyForElasticsearch(context.Background(), fakeClient, es, allPolicies, params)
+		require.NoError(t, err)
+		assert.Equal(t, "${INNER}", cfg.Spec.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"],
+			"cluster %s: shared allPolicies must not be mutated between reconcile passes", name)
 	}
 }
 

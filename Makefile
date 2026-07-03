@@ -463,15 +463,13 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.4.0
+E2E_STACK_VERSION          ?= 9.4.2
 # regexp to filter tests to run
 export TESTS_MATCH         ?= ^Test
 export E2E_JSON            ?= false
 TEST_TIMEOUT               ?= 15m
 E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
-# Defaults to STATELESS env var set by the Buildkite pipeline (via set-deployer-config.sh).
-E2E_STATELESS              ?= $(or $(STATELESS),false)
 # Defaults to RESTRICT_WATCHED_RESOURCES env var set by the Buildkite pipeline.
 E2E_RESTRICT_WATCHED_RESOURCES ?= $(or $(RESTRICT_WATCHED_RESOURCES),false)
 # go build constraints potentially restricting the tests to run
@@ -504,7 +502,6 @@ e2e-run: go-generate
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
-		--stateless=$(E2E_STATELESS) \
 		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
 
 e2e-generate-xml:

@@ -22,6 +22,12 @@ type DeploymentHealth string
 const (
 	GreenHealth DeploymentHealth = "green"
 	RedHealth   DeploymentHealth = "red"
+
+	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
+	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
+	// health monitoring). Defined here (rather than in pkg/controller/common) so the validating webhook can reference
+	// it without introducing an import cycle.
+	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
 )
 
 // DeploymentStatus represents status information about a deployment.

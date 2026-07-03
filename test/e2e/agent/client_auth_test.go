@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
+	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
@@ -33,6 +33,7 @@ func TestClientAuthRequiredTransition_StandaloneAgent(t *testing.T) {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	name := "test-sa-mtls-trans"
 	namespace := test.Ctx().ManagedNamespace(0)
 
@@ -44,10 +45,14 @@ func TestClientAuthRequiredTransition_StandaloneAgent(t *testing.T) {
 	agentBuilder := agent.NewBuilder(name).
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"))
+
+	if !skipAgentInternalLogsValidation(v) {
+		agentBuilder = agentBuilder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+	}
 
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
@@ -82,6 +87,7 @@ func TestClientAuthRequiredCustomCertificate_StandaloneAgent(t *testing.T) {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	name := "test-sa-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
 	userCertSecretName := name + "-user-client-cert"
@@ -96,11 +102,14 @@ func TestClientAuthRequiredCustomCertificate_StandaloneAgent(t *testing.T) {
 			commonv1.ObjectSelector{Name: esBuilder.Elasticsearch.Name, Namespace: esBuilder.Elasticsearch.Namespace},
 			userCertSecretName, "default")).
 		WithOpenShiftRoles(test.UseSCCRole).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default")).
 		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"))
 
+	if !skipAgentInternalLogsValidation(v) {
+		agentBuilder = agentBuilder.
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.filebeat", "default")).
+			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+	}
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
 
 	certPEM, keyPEM := helper.GenerateSelfSignedClientCert(t, name)

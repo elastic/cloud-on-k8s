@@ -51,7 +51,7 @@ import (
 // DefaultRequeue is the default requeue result for reconciliation.
 var DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
 
-// ReconcileSharedResources contains the reconciliation logic shared by both stateful and stateless Elasticsearch drivers.
+// ReconcileSharedResources contains the reconciliation logic shared across all Elasticsearch driver implementations.
 // clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
 // policyConfig holds StackConfigPolicy-derived configuration for the Elasticsearch cluster.
 func ReconcileSharedResources(
@@ -357,7 +357,7 @@ func ReconcileSharedResources(
 func MaybeReconcileEmptyFileSettingsSecret(ctx context.Context, c k8s.Client, licenseChecker commonlicense.Checker, es *esv1.Elasticsearch, operatorNamespace string) (bool, error) {
 	esNsn := k8s.ExtractNamespacedName(es)
 	meta := metadata.Propagate(es, metadata.Metadata{Labels: label.NewLabels(esNsn)})
-	fs, err := filesettings.Load(ctx, c, esNsn, es.IsStateless(), meta)
+	fs, err := filesettings.Load(ctx, c, esNsn, meta)
 	if err != nil {
 		return false, err
 	}

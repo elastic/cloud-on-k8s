@@ -21,8 +21,8 @@ const (
 	// buildLicensePubKeyPrefixEnvVar allows to prefix the field to retrieve a specific license public key secret
 	buildLicensePubKeyPrefixEnvVar = "BUILD_LICENSE_PUBKEY"
 
-	retryTimeout  = 10 * time.Second
-	retryInterval = 1 * time.Second
+	retryTimeout  = 2 * time.Minute
+	retryInterval = 5 * time.Second
 )
 
 // SecretFile maps a Vault Secret into a file that is optionally written to disk.

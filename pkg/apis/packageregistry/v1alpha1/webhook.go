@@ -26,6 +26,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		commonv1.PauseOrchestrationAnnotationCheck[*PackageRegistry](),
 	}
 )
 

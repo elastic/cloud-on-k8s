@@ -93,10 +93,9 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 		}
 	}
 
-	// Keystore (stateful: init container + volume, optional managed password Secret).
-	// Stateless clusters don't use the init container keystore — they deliver secure
-	// settings via cluster_secrets in file-based settings.
-	keystoreResources, err := d.reconcileKeystore(ctx, sharedState.Meta)
+	// For ES >= 9.5, secure settings can be delivered via cluster_secrets in file-based settings
+	// when the opt-in annotation is set. For all other cases the keystore init container path is used.
+	keystoreResources, err := d.reconcileSecureSettings(ctx, sharedState.Meta)
 	if err != nil {
 		return results.WithError(err)
 	}

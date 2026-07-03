@@ -28,7 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
-var associationEventRegex = regexp.MustCompile(`Association status changed from \[(.+?)] to \[(.+?)]`)
+var associationEventRegex = regexp.MustCompile(`Association status changed from \[(.*?)] to \[(.*?)]`)
 
 // TestCrossNSAssociation tests associating Elasticsearch and Kibana running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {

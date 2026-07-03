@@ -309,44 +309,6 @@ func Test_supportsRemoteClusterUsingAPIKey(t *testing.T) {
 	}
 }
 
-func Test_statelessSkipsRemoteClusterAPIKeyValidation(t *testing.T) {
-	// A stateless cluster with remote clusters should only get the mode-specific
-	// "remote clusters not supported" error, not the API-key-version error.
-	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "foo"},
-		Spec: esv1.ElasticsearchSpec{
-			Version:     "9.4.0",
-			Mode:        esv1.ElasticsearchModeStateless,
-			ObjectStore: &esv1.ObjectStoreConfig{Type: esv1.ObjectStoreTypeS3, Bucket: "b"},
-			RemoteClusters: []esv1.RemoteCluster{
-				{Name: "remote", APIKey: &esv1.RemoteClusterAPIKey{}},
-			},
-			RemoteClusterServer: esv1.RemoteClusterServer{Enabled: true},
-			NodeSets: []esv1.NodeSet{
-				{Name: "index", Count: 1},
-				{Name: "search", Count: 2},
-			},
-		},
-	}
-	checker := license.MockLicenseChecker{EnterpriseEnabled: true}
-	errs := validations(context.Background(), checker, nil)
-	var allErrs field.ErrorList
-	for _, v := range errs {
-		allErrs = append(allErrs, v(es)...)
-	}
-
-	// Should get mode-specific errors only, not API-key-version errors.
-	msgs := make([]string, 0, len(allErrs))
-	for _, e := range allErrs {
-		msgs = append(msgs, e.Detail)
-	}
-	for _, msg := range msgs {
-		assert.NotContains(t, msg, "minimum required version for remote cluster")
-	}
-	assert.Contains(t, msgs, remoteClustersStatelessMsg)
-	assert.Contains(t, msgs, remoteClusterServerStatelessMsg)
-}
-
 func Test_validName(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -1726,6 +1688,50 @@ func Test_validClientAuthentication(t *testing.T) {
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed validClientAuthentication(). Name: %v, actual %v, wanted errors: %v", tt.name, actual, tt.expectErrors)
 			}
+		})
+	}
+}
+
+func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           esv1.Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "pause-orchestration false",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "pause-orchestration true",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "pause-orchestration invalid",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := commonv1.CheckPauseOrchestrationAnnotation(&tt.es)
+			actualErrors := len(actual) > 0
+			assert.Equal(t, tt.expectErrors, actualErrors)
 		})
 	}
 }

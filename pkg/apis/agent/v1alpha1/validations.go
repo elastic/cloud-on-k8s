@@ -35,6 +35,7 @@ var (
 		checkSingleESRefInFleetMode,
 		checkAssociations,
 		checkClientAuthentication,
+		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{

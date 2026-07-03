@@ -256,7 +256,7 @@ func Test_FileSettingsSecret_CreateAndIdempotent(t *testing.T) {
 	fakeClient := k8s.NewFakeClient()
 
 	// First save: creates the Secret
-	fs, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.False(t, fs.Exists())
 	err = fs.Save(context.Background(), fakeClient, &es)
@@ -274,7 +274,7 @@ func Test_FileSettingsSecret_CreateAndIdempotent(t *testing.T) {
 	assert.Empty(t, settings.State.SLM.Data)
 
 	// Load again: exists, save with no changes should not update
-	fs2, err := Load(context.Background(), fakeClient, esNsn, false, metadata.Metadata{})
+	fs2, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
 	assert.NoError(t, err)
 	assert.True(t, fs2.Exists())
 	err = fs2.Save(context.Background(), fakeClient, &es)

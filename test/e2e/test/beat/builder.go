@@ -406,3 +406,7 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 	logsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
 	return &logsCluster
 }
+
+func (b Builder) ListOptions() []k8sclient.ListOption {
+	return test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)
+}

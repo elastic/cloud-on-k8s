@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
@@ -42,10 +43,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		logstash        logstashv1alpha1.Logstash
-		apiServerConfig configs.APIServer
-		assertions      func(pod corev1.PodTemplateSpec)
+		name                      string
+		logstash                  logstashv1alpha1.Logstash
+		apiServerConfig           configs.APIServer
+		setDefaultSecurityContext bool
+		assertions                func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
@@ -302,6 +304,30 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
+			name: "with SetDefaultSecurityContext=true, seccomp profile is set",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig:           GetDefaultAPIServer(),
+			setDefaultSecurityContext: true,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				require.NotNil(t, pod.Spec.SecurityContext)
+				require.NotNil(t, pod.Spec.SecurityContext.SeccompProfile)
+				assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, pod.Spec.SecurityContext.SeccompProfile.Type)
+			},
+		},
+		{
+			name: "with SetDefaultSecurityContext=false, seccomp profile is not set",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig:           GetDefaultAPIServer(),
+			setDefaultSecurityContext: false,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Nil(t, pod.Spec.SecurityContext)
+			},
+		},
+		{
 			name: "with user-provided volumes and volume mounts",
 			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
 				Version: "8.6.1",
@@ -339,6 +365,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Client:          k8s.NewFakeClient(&testHTTPCertsInternalSecret),
 				Logstash:        tt.logstash,
 				APIServerConfig: tt.apiServerConfig,
+				OperatorParams:  operator.Parameters{SetDefaultSecurityContext: tt.setDefaultSecurityContext},
 			}
 			configHash := fnv.New32a()
 			got, err := buildPodTemplate(params, configHash)
