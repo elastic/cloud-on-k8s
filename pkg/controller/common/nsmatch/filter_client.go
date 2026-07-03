@@ -6,9 +6,11 @@ package nsmatch
 
 import (
 	"context"
+	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -67,19 +69,18 @@ func (w *FilterClient) List(ctx context.Context, list client.ObjectList, opts ..
 	return filterByNamespace(list, w.nfn.Matches)
 }
 
-// filterByNamespace removes items from list whose namespace does not satisfy matches,
-// reusing the extracted slice's backing array to avoid an extra allocation.
+// filterByNamespace removes items from list whose namespace does not satisfy matches.
+// Items are kept (fail-open) if their namespace cannot be determined, since an Accessor
+// error is not expected for real list items and dropping objects on such an error would
+// be surprising.
 func filterByNamespace(list client.ObjectList, matches func(string) bool) error {
 	items, err := apimeta.ExtractList(list)
 	if err != nil {
 		return err
 	}
-	filtered := items[:0]
-	for _, item := range items {
+	items = slices.DeleteFunc(items, func(item runtime.Object) bool {
 		acc, err := apimeta.Accessor(item)
-		if err != nil || matches(acc.GetNamespace()) {
-			filtered = append(filtered, item)
-		}
-	}
-	return apimeta.SetList(list, filtered)
+		return err == nil && !matches(acc.GetNamespace())
+	})
+	return apimeta.SetList(list, items)
 }
