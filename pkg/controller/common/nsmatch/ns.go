@@ -41,7 +41,10 @@ const subscriberSendTimeout = 3 * time.Second
 // Matches returns false for any namespace whose state has not yet been
 // recorded by ObserveNamespace. The namespace flip-state controller seeds
 // all existing namespaces at startup and re-enqueues
-// CRs whenever a namespace's match state changes.
+// CRs whenever a namespace's match state changes. Seeding runs concurrently
+// with the controllers (the manager does not order runnables), so events
+// dropped while a namespace is not yet seeded are backfilled by the broadcast
+// its seeding emits.
 type NamespaceMatcher struct {
 	cache                   cache.Cache
 	selector                labels.Selector
