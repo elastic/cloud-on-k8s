@@ -11,15 +11,130 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata/reserved"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
-	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change is forbidden"
+	PvcImmutableErrMsg = "volume claim templates can only have their storage requests increased, if the storage class allows volume expansion. Any other change outside of labels modification is forbidden"
+
+	// reservedPVCLabelKeyErrMsgFmt is the admission error message when a user sets or changes
+	// an ECK-reserved label key on a volumeClaimTemplate.
+	reservedPVCLabelKeyErrMsgFmt = "label key %q is reserved by ECK and cannot be set on volumeClaimTemplates"
 )
+
+// StripReservedLabelKeys returns a deep copy of claims with all ECK-reserved label keys
+// removed from each claim's metadata.labels. This is the reconciler-side complement to
+// the create-time webhook check (ValidateReservedLabelsOnCreate):
+// it provides defense-in-depth so that operators running with webhooks disabled, or CRs
+// that otherwise bypass admission, still cannot leak reserved label keys onto freshly
+// provisioned PVCs (the StatefulSet controller copies VCT metadata to PVCs at creation time).
+//
+// Claims are cloned only when at least one reserved key is present; the returned slice is
+// safe to mutate. If no reserved keys are present, the input slice is returned unchanged.
+func StripReservedLabelKeys(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	if !anyClaimCarriesReservedKey(claims) {
+		return claims
+	}
+	out := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		c := *claim.DeepCopy()
+		for k := range c.ObjectMeta.Labels {
+			if reserved.IsReservedLabelKey(k) {
+				delete(c.ObjectMeta.Labels, k)
+			}
+		}
+		// Drop empty maps so the resulting object is byte-equivalent to one that never
+		// carried labels in the first place (avoids spurious StatefulSet diff on update).
+		if len(c.ObjectMeta.Labels) == 0 {
+			c.ObjectMeta.Labels = nil
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// anyClaimCarriesReservedKey reports whether any claim carries an ECK-reserved label key.
+func anyClaimCarriesReservedKey(claims []corev1.PersistentVolumeClaim) bool {
+	for _, claim := range claims {
+		for k := range claim.ObjectMeta.Labels {
+			if reserved.IsReservedLabelKey(k) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ClaimsWithoutAdjustableFields returns a copy of the given claims with all adjustable
+// fields cleared so unrelated changes can be compared via deep equality. Adjustable
+// fields are storage requests and metadata labels.
+func ClaimsWithoutAdjustableFields(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
+	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
+	for _, claim := range claims {
+		patchedClaim := *claim.DeepCopy()
+		// Storage quantity is allowed to be adjusted. Defensively initialize Requests
+		// to avoid panicking on malformed claims with a nil Requests map.
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
+		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
+		// Labels are allowed to be adjusted.
+		patchedClaim.ObjectMeta.Labels = map[string]string{}
+		result = append(result, patchedClaim)
+	}
+	return result
+}
+
+// ValidateReservedLabelsOnCreate rejects any volumeClaimTemplate label that uses an
+// ECK-reserved label key on a brand-new resource. templatesPath must point at the
+// volumeClaimTemplates array (e.g. spec.volumeClaimTemplates or
+// spec.nodeSets[i].volumeClaimTemplates).
+func ValidateReservedLabelsOnCreate(proposed []corev1.PersistentVolumeClaim, templatesPath *field.Path) field.ErrorList {
+	var errs field.ErrorList
+	for j, claim := range proposed {
+		for key := range claim.ObjectMeta.Labels {
+			if !reserved.IsReservedLabelKey(key) {
+				continue
+			}
+			errs = append(errs, invalidReservedLabel(templatesPath.Index(j).Child("metadata", "labels").Key(key), key))
+		}
+	}
+	return errs
+}
+
+// ValidateReservedLabelsOnUpdate rejects volumeClaimTemplate labels that introduce or
+// change ECK-reserved keys. Identical (key, value) pairs already present on the
+// matching current claim (by name) are grandfathered. templatesPath must point at the
+// volumeClaimTemplates array.
+func ValidateReservedLabelsOnUpdate(current, proposed []corev1.PersistentVolumeClaim, templatesPath *field.Path) field.ErrorList {
+	var errs field.ErrorList
+	for j, proposedClaim := range proposed {
+		currentClaim := claimMatchingName(current, proposedClaim.Name)
+		for key, value := range proposedClaim.ObjectMeta.Labels {
+			if !reserved.IsReservedLabelKey(key) {
+				continue
+			}
+			if currentClaim != nil {
+				if currentValue, exists := currentClaim.ObjectMeta.Labels[key]; exists && currentValue == value {
+					continue
+				}
+			}
+			errs = append(errs, invalidReservedLabel(templatesPath.Index(j).Child("metadata", "labels").Key(key), key))
+		}
+	}
+	return errs
+}
+
+// invalidReservedLabel builds a field.Invalid error for a reserved volumeClaimTemplate label key.
+func invalidReservedLabel(path *field.Path, key string) *field.Error {
+	return field.Invalid(path, key, fmt.Sprintf(reservedPVCLabelKeyErrMsgFmt, key))
+}
 
 // ValidateClaimsStorageUpdate compares updated vs. initial claim, and returns an error if:
 // - a storage decrease is attempted
@@ -35,14 +150,14 @@ func ValidateClaimsStorageUpdate(
 	for _, updatedClaim := range updated {
 		initialClaim := claimMatchingName(initial, updatedClaim.Name)
 		if initialClaim == nil {
-			// existing claim does not exist in updated
+			// updated declares a claim that does not exist in initial: adding new claims is forbidden.
 			return errors.New(PvcImmutableErrMsg)
 		}
 		cmp := k8s.CompareStorageRequests(initialClaim.Spec.Resources, updatedClaim.Spec.Resources)
 		switch {
 		case cmp.Increase:
 			// storage increase requested: ensure the storage class allows volume expansion
-			if err := EnsureClaimSupportsExpansion(ctx, k8sClient, updatedClaim, validateStorageClass); err != nil {
+			if err := ensureClaimSupportsExpansion(ctx, k8sClient, updatedClaim, validateStorageClass); err != nil {
 				return err
 			}
 		case cmp.Decrease:
@@ -53,6 +168,7 @@ func ValidateClaimsStorageUpdate(
 	return nil
 }
 
+// claimMatchingName returns the claim with the given name in claims, or nil if not found.
 func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
 	for i, claim := range claims {
 		if claim.Name == name {
@@ -62,9 +178,9 @@ func claimMatchingName(claims []corev1.PersistentVolumeClaim, name string) *core
 	return nil
 }
 
-// EnsureClaimSupportsExpansion inspects whether the storage class referenced by the claim
+// ensureClaimSupportsExpansion inspects whether the storage class referenced by the claim
 // allows volume expansion, and returns an error if it doesn't.
-func EnsureClaimSupportsExpansion(ctx context.Context, k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
+func ensureClaimSupportsExpansion(ctx context.Context, k8sClient k8s.Client, claim corev1.PersistentVolumeClaim, validateStorageClass bool) error {
 	if !validateStorageClass {
 		ulog.FromContext(ctx).V(1).Info("Skipping storage class validation")
 		return nil
@@ -109,14 +225,8 @@ func getDefaultStorageClass(k8sClient k8s.Client) (storagev1.StorageClass, error
 
 // isDefaultStorageClass inspects the given storage class and returns true if it is annotated as the default one.
 func isDefaultStorageClass(sc storagev1.StorageClass) bool {
-	if len(sc.Annotations) == 0 {
-		return false
-	}
-	if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
-		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true" {
-		return true
-	}
-	return false
+	return sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
+		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true"
 }
 
 // allowsVolumeExpansion returns true if the given storage class allows volume expansion.

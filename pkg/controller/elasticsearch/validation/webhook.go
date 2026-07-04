@@ -53,7 +53,18 @@ type validator struct {
 
 func (v *validator) ValidateCreate(ctx context.Context, es *esv1.Elasticsearch) (admission.Warnings, error) {
 	eslog.V(1).Info("validate create", "name", es.Name)
-	return ValidateElasticsearch(ctx, v.client, *es, v.licenseChecker, v.exposedNodeLabels)
+	warnings, validationErr := ValidateElasticsearch(ctx, v.client, *es, v.licenseChecker, v.exposedNodeLabels)
+	// Reserved-VCT-label validation runs on create only (no current CR to compare against).
+	// On update, validPVCReservedLabels handles diff-aware checks with grandfathering for
+	// already-present (key, value) pairs. This check is intentionally NOT in validations()
+	// because ValidateElasticsearch is also invoked by the reconciler on every reconcile pass,
+	// which would otherwise reject any CR carrying grandfathered reserved keys.
+	if errs := validPVCReservedLabelsOnCreate(*es); len(errs) > 0 {
+		return warnings, apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},
+			es.Name, errs)
+	}
+	return warnings, validationErr
 }
 
 func (v *validator) ValidateUpdate(ctx context.Context, oldObj, newObj *esv1.Elasticsearch) (admission.Warnings, error) {
