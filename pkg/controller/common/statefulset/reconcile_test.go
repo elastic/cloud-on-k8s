@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,4 +104,125 @@ func TestReconcile(t *testing.T) {
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &retrieved)
+}
+
+func TestIsSteady(t *testing.T) {
+	tests := []struct {
+		name     string
+		sset     appsv1.StatefulSet
+		expected bool
+	}{
+		{
+			name: "steady statefulset returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "steady statefulset with nil Spec.Replicas returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: nil,
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "steady statefulset with empty Spec returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "observed generation differs from generation returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 2,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "current revision differs from revision returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "current",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "ready replicas differs from expected replicas returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := IsSteady(tt.sset)
+			assert.Equal(t, tt.expected, output)
+		})
+	}
 }

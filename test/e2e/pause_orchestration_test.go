@@ -25,6 +25,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	agentlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
@@ -36,6 +37,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	entlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/enterprisesearch"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	lslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	emslabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	eprlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
@@ -48,6 +50,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/epr"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 	ems "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/maps"
 )
 
@@ -71,6 +74,10 @@ func TestPauseOrchestration_Agent(t *testing.T) {
 
 func TestPauseOrchestration_Beat(t *testing.T) {
 	testSequenceForTypes(t, beatcommon.TypeLabelValue)
+}
+
+func TestPauseOrchestration_Logstash(t *testing.T) {
+	testSequenceForTypes(t, lslabels.TypeLabelValue)
 }
 
 func testSequenceForTypes(t *testing.T, typ ...string) {
@@ -383,6 +390,8 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 		return &agentv1alpha1.Agent{}
 	case beatcommon.TypeLabelValue:
 		return &beatv1b1.Beat{}
+	case lslabels.TypeLabelValue:
+		return &logstashv1alpha1.Logstash{}
 	default:
 		t.Fatalf("unknown type: %s", typ)
 	}
@@ -391,7 +400,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, lslabels.TypeLabelValue} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}
@@ -515,6 +524,16 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		initialBuilder.MaybeAddBuilder(entlabel.Type, entInitial)
 	}
+
+	// Logstash
+	lsInitial := logstash.NewBuilder(testName(lslabels.TypeLabelValue)).
+		WithNodeCount(1).
+		WithElasticsearchRefs(logstashv1alpha1.ElasticsearchCluster{
+			ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esRef},
+			ClusterName:           "monitoring",
+		})
+	initialBuilder.MaybeAddBuilder(lslabels.TypeLabelValue, lsInitial)
+
 	initial = initialBuilder.phase
 
 	// Phase 1: transition to pause-orchestration: true
@@ -537,6 +556,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase1Builder.MaybeAddBuilder(entlabel.Type, entEnabled)
 	}
+	lsEnabled := lsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&lsInitial)
+	phase1Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsEnabled)
 	phase1 = phase1Builder.phase
 
 	// Phase 2: update topology of each application
@@ -582,6 +603,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase2Builder.MaybeAddBuilder(entlabel.Type, entUpdated)
 	}
+	lsUpdated := lsEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&lsEnabled)
+	phase2Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsUpdated)
 	phase2 = phase2Builder.phase
 
 	// Phase 3: transition back to disabled
@@ -604,6 +627,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase3Builder.MaybeAddBuilder(entlabel.Type, entDisabled)
 	}
+	lsDisabled := lsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&lsUpdated)
+	phase3Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsDisabled)
 	phase3 = phase3Builder.phase
 
 	// Phase 4: transition back to enabled again
@@ -626,6 +651,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase4Builder.MaybeAddBuilder(entlabel.Type, entReenabled)
 	}
+	lsReenabled := lsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&lsDisabled)
+	phase4Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsReenabled)
 	phase4 = phase4Builder.phase
 
 	// Phase 5: pod deletion (no builders)
@@ -650,6 +677,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	if entSearchEnabled {
 		phase6Builder.MaybeAddBuilder(entlabel.Type, entRedisabled)
 	}
+	lsRedisabled := lsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&lsReenabled)
+	phase6Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsRedisabled)
 	phase6 = phase6Builder.phase
 
 	require.Truef(t,
