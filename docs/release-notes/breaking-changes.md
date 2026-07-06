@@ -36,11 +36,12 @@ ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggeri
 **Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, the memory limit change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
 ::::
 
-::::{dropdown} Rolling restart of APM Server, Logstash, Elastic Maps Server, and Package Registry pods during operator upgrade ECK 3.4.0.
+::::{dropdown} Rolling restart of APM Server, Logstash, Elastic Maps Server, and Package Registry pods during operator upgrade
+ECK 3.4.0 sets `seccompProfile: RuntimeDefault` on APM Server, Logstash, Elastic Maps Server, and Package Registry pods, triggering a rolling restart during the operator upgrade. This applies when `--set-default-security-context` is `true`, or `auto-detect` (the default) on non-OpenShift clusters. On OpenShift, `auto-detect` suppresses the injection.
 
-**Impact**<br> APM Server, Logstash, Elastic Maps Server, and Package Registry pods will be restarted as part of the operator upgrade on clusters where `--set-default-security-context` is `true` or `auto-detect` (default) on non-OpenShift Kubernetes. On OpenShift, `auto-detect` suppresses this change for all workloads.
+**Impact**<br> These pods restart during the operator upgrade wherever the security context is injected (flag `true`, or `auto-detect` on non-OpenShift). OpenShift is unaffected.
 
-**Action**<br> No action required for standard Kubernetes deployments. If you are running on OpenShift, refer to [known issues](./known-issues.md) for a Logstash-specific issue where the flag is incorrectly ignored.
+**Action**<br> No action required on standard Kubernetes. On OpenShift, see [known issues](./known-issues.md) for a Logstash-specific case where the flag is incorrectly ignored.
 ::::
 
 ::::{dropdown} Default PVC handling change for {{es}} volumes
