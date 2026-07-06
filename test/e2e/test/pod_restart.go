@@ -60,8 +60,8 @@ func (c *PodRestartChecker) RecordUIDs(k *K8sClient) StepList {
 	}
 }
 
-// WaitForRestart returns a step that polls until none of the previously recorded pods are still
-// running.
+// WaitForRestart returns a step that polls until all previously recorded pods have been replaced
+// and at least as many new pods (with different UIDs) are running.
 func (c *PodRestartChecker) WaitForRestart(k *K8sClient) StepList {
 	return StepList{
 		{
@@ -71,10 +71,15 @@ func (c *PodRestartChecker) WaitForRestart(k *K8sClient) StepList {
 				if err := k.Client.List(context.Background(), &pods, c.listOpts...); err != nil {
 					return err
 				}
+				var newPods int
 				for _, pod := range pods.Items {
 					if _, ok := c.prevUIDs[pod.UID]; ok {
 						return fmt.Errorf("%s pod %s (uid=%s) has not been restarted yet", c.name, pod.Name, pod.UID)
 					}
+					newPods++
+				}
+				if newPods < len(c.prevUIDs) {
+					return fmt.Errorf("%s pods restarting: %d/%d replacement pods running", c.name, newPods, len(c.prevUIDs))
 				}
 				return nil
 			}),
