@@ -7,16 +7,19 @@ package nsmatch
 import (
 	"context"
 	"errors"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
@@ -154,19 +157,18 @@ func TestObserveNamespace(t *testing.T) {
 
 func TestNotifier(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
-	ctx := context.Background()
 
 	t.Run("no subscribers", func(t *testing.T) {
 		n := NewNamespaceMatcher(sel, "")
 		// Broadcast with no subscribers must not panic.
-		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		err := n.Broadcast(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 		require.NoError(t, err)
 	})
 
 	t.Run("disabled selector no-ops broadcast", func(t *testing.T) {
 		n := NewNamespaceMatcher(nil, "")
 		ch := n.Subscribe()
-		err := n.Broadcast(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
+		err := n.Broadcast(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns"}})
 		require.NoError(t, err)
 		assert.Len(t, ch, 0, "broadcast is a no-op when selector is disabled")
 	})
@@ -176,7 +178,7 @@ func TestNotifier(t *testing.T) {
 		ch := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
-		require.NoError(t, n.Broadcast(ctx, ns))
+		require.NoError(t, n.Broadcast(t.Context(), ns))
 
 		require.Len(t, ch, 1)
 		assert.Equal(t, ns, (<-ch).Object)
@@ -188,7 +190,7 @@ func TestNotifier(t *testing.T) {
 		ch2 := n.Subscribe()
 
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-b"}}
-		require.NoError(t, n.Broadcast(ctx, ns))
+		require.NoError(t, n.Broadcast(t.Context(), ns))
 
 		require.Len(t, ch1, 1)
 		require.Len(t, ch2, 1)
@@ -202,8 +204,8 @@ func TestNotifier(t *testing.T) {
 
 		ns1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-1"}}
 		ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-2"}}
-		require.NoError(t, n.Broadcast(ctx, ns1))
-		require.NoError(t, n.Broadcast(ctx, ns2))
+		require.NoError(t, n.Broadcast(t.Context(), ns1))
+		require.NoError(t, n.Broadcast(t.Context(), ns2))
 
 		require.Len(t, ch, 2)
 		assert.Equal(t, ns1, (<-ch).Object)
@@ -213,7 +215,7 @@ func TestNotifier(t *testing.T) {
 	t.Run("late subscriber does not receive earlier broadcasts", func(t *testing.T) {
 		n := NewNamespaceMatcher(sel, "")
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-c"}}
-		require.NoError(t, n.Broadcast(ctx, ns)) // no subscribers yet
+		require.NoError(t, n.Broadcast(t.Context(), ns)) // no subscribers yet
 
 		ch := n.Subscribe()
 		assert.Len(t, ch, 0, "late subscriber must not receive events broadcast before it subscribed")
@@ -244,34 +246,34 @@ func TestNotifier(t *testing.T) {
 		assert.Len(t, internal, n.subscriberBufferSize, "no new event must be added to an already-full channel")
 	})
 
-	t.Run("full subscriber channel", func(t *testing.T) {
+	t.Run("full subscriber channel blocks until context is cancelled", func(t *testing.T) {
 		n := NewNamespaceMatcher(sel, "")
-		n.subscriberSendTimeout = 20 * time.Millisecond
-		n.subscriberBufferSize = 1
-		_ = n.Subscribe() // first: will be full → send times out
-		_ = n.Subscribe() // second: must still receive the event
-		first, second := n.subs[0], n.subs[1]
+		n.subscriberBufferSize = 0
+		_ = n.Subscribe() // unbuffered, no receiver: any send blocks indefinitely
 
-		for range n.subscriberBufferSize {
-			first <- event.TypedGenericEvent[*corev1.Namespace]{}
-		}
-
+		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
+		var broadcastErr error
 		go func() {
-			err := n.Broadcast(context.Background(), namespace("ns", nil))
-			assert.Error(t, err)
+			broadcastErr = n.Broadcast(ctx, namespace("ns", nil))
 			close(done)
 		}()
 
 		select {
 		case <-done:
-			// expected: Broadcast returned after the per-subscriber timeout fired
-		case <-time.After(500 * time.Millisecond):
-			t.Fatal("Broadcast blocked despite send timeout")
+			t.Fatal("Broadcast returned before context was cancelled; a blocked send must have no deadline of its own")
+		case <-time.After(100 * time.Millisecond):
+			// expected: still blocked, there is no send timeout any more
 		}
 
-		require.Len(t, second, 1, "second subscriber must receive event despite first timing out")
-		assert.Len(t, first, n.subscriberBufferSize, "full subscriber must not gain a new event")
+		cancel()
+
+		select {
+		case <-done:
+			assert.ErrorIs(t, broadcastErr, context.Canceled)
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("Broadcast did not return after context cancellation")
+		}
 	})
 
 	t.Run("cancelled context", func(t *testing.T) {
@@ -308,9 +310,63 @@ func TestNotifier(t *testing.T) {
 	})
 }
 
+// TestBroadcastLogsBackpressure verifies that a subscriber send blocked past
+// subscriberLogBackpressureDuration is actually logged, and logged again on
+// each subsequent tick, not just once.
+func TestBroadcastLogsBackpressure(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"env": "prod"})
+	n := NewNamespaceMatcher(sel, "")
+	n.subscriberBufferSize = 0
+	n.subscriberLogBackpressureDuration = 10 * time.Millisecond
+	_ = n.Subscribe() // unbuffered, no receiver: the send blocks, triggering backpressure logs
+
+	var mu sync.Mutex
+	var lines []string
+	testLogger := funcr.New(func(_, args string) {
+		mu.Lock()
+		defer mu.Unlock()
+		lines = append(lines, args)
+	}, funcr.Options{})
+
+	ctx, cancel := context.WithCancel(ulog.AddToContext(t.Context(), testLogger))
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		_ = n.Broadcast(ctx, namespace("ns", nil))
+		close(done)
+	}()
+
+	countBackpressureLines := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		count := 0
+		for _, l := range lines {
+			if strings.Contains(l, "backpressure") {
+				count++
+			}
+		}
+		return count
+	}
+
+	require.Eventually(t, func() bool {
+		return countBackpressureLines() >= 1
+	}, time.Second, 5*time.Millisecond, "expected at least one backpressure log line while the send is blocked")
+
+	require.Eventually(t, func() bool {
+		return countBackpressureLines() >= 2
+	}, time.Second, 5*time.Millisecond, "expected the backpressure log line to repeat while still blocked")
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Broadcast did not return after context cancellation")
+	}
+}
+
 func TestObserveAndBroadcast(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
-	ctx := context.Background()
 
 	matching := namespace("prod-ns", map[string]string{"env": "prod"})
 	nonMatching := namespace("dev-ns", map[string]string{"env": "dev"})
@@ -318,7 +374,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("disabled selector: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewNamespaceMatcher(nil, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -327,7 +383,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("short-circuit namespace: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace(testOperatorNS, nil))
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), namespace(testOperatorNS, nil))
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -336,7 +392,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace matches: state changed, broadcast sent", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
@@ -346,7 +402,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("first observe, namespace does not match: no state change, no broadcast", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -356,7 +412,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, true)
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), matching)
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -366,7 +422,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, false)
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), nonMatching)
 		assert.False(t, stateChanged)
 		assert.False(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -376,7 +432,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(nonMatching.Name, true) // was matching
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, nonMatching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), nonMatching)
 		assert.True(t, stateChanged)
 		assert.False(t, isMatching)
 		require.Len(t, ch, 1)
@@ -387,7 +443,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
 		m.Swap(matching.Name, false) // was non-matching
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, matching)
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), matching)
 		assert.True(t, stateChanged)
 		assert.True(t, isMatching)
 		require.Len(t, ch, 1)
@@ -397,7 +453,7 @@ func TestObserveAndBroadcast(t *testing.T) {
 	t.Run("empty namespace short-circuit: no state change, no broadcast, reports matching", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		ch := m.Subscribe()
-		stateChanged, isMatching, _ := m.ObserveAndBroadcast(ctx, namespace("", nil))
+		stateChanged, isMatching, _ := m.ObserveAndBroadcast(t.Context(), namespace("", nil))
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
@@ -406,21 +462,20 @@ func TestObserveAndBroadcast(t *testing.T) {
 
 func TestMatchesCachedLabels(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
-	ctx := context.Background()
 
 	t.Run("selector disabled: always returns true without touching cache", func(t *testing.T) {
 		m := NewNamespaceMatcher(nil, testOperatorNS) // no expectations — cache must not be called
-		assert.True(t, m.MatchesCachedLabels(ctx, "any-ns"))
+		assert.True(t, m.MatchesCachedLabels(t.Context(), "any-ns"))
 	})
 
 	t.Run("short-circuit empty namespace: returns true without touching cache", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
-		assert.True(t, m.MatchesCachedLabels(ctx, ""))
+		assert.True(t, m.MatchesCachedLabels(t.Context(), ""))
 	})
 
 	t.Run("short-circuit operator namespace: returns true without touching cache", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
-		assert.True(t, m.MatchesCachedLabels(ctx, testOperatorNS))
+		assert.True(t, m.MatchesCachedLabels(t.Context(), testOperatorNS))
 	})
 
 	t.Run("cache Get error: returns false", func(t *testing.T) {
@@ -428,7 +483,7 @@ func TestMatchesCachedLabels(t *testing.T) {
 		mc.OnGetSetNamespace(map[string]string{}).Return(errors.New("cache unavailable"))
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(ctx, "prod-ns"))
+		assert.False(t, m.MatchesCachedLabels(t.Context(), "prod-ns"))
 	})
 
 	t.Run("labels match selector: returns true", func(t *testing.T) {
@@ -436,7 +491,7 @@ func TestMatchesCachedLabels(t *testing.T) {
 		mc.OnGetSetNamespace(map[string]string{"env": "prod"}).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		assert.True(t, m.MatchesCachedLabels(ctx, "prod-ns"))
+		assert.True(t, m.MatchesCachedLabels(t.Context(), "prod-ns"))
 	})
 
 	t.Run("labels do not match selector: returns false", func(t *testing.T) {
@@ -444,7 +499,7 @@ func TestMatchesCachedLabels(t *testing.T) {
 		mc.OnGetSetNamespace(map[string]string{"env": "dev"}).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(ctx, "dev-ns"))
+		assert.False(t, m.MatchesCachedLabels(t.Context(), "dev-ns"))
 	})
 
 	t.Run("namespace has no labels: returns false", func(t *testing.T) {
@@ -452,13 +507,12 @@ func TestMatchesCachedLabels(t *testing.T) {
 		mc.OnGetSetNamespace(nil).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(ctx, "unlabelled-ns"))
+		assert.False(t, m.MatchesCachedLabels(t.Context(), "unlabelled-ns"))
 	})
 }
 
 func TestMatchingNamespacesFromCache(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
-	ctx := context.Background()
 
 	ns := func(name string, lbls map[string]string) corev1.Namespace {
 		return corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: lbls}}
@@ -471,7 +525,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(nil, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"ns-1", "ns-2", testOperatorNS}, names)
 	})
@@ -481,7 +535,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList().Return(errors.New("cache unavailable"))
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.Error(t, err)
 		assert.Nil(t, names)
 	})
@@ -491,7 +545,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList().Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.Empty(t, names)
 	})
@@ -501,7 +555,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(prod("ns-1"), prod("ns-2")).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
 	})
@@ -511,7 +565,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), prod("ns-3"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"ns-1", "ns-3", testOperatorNS}, names)
 	})
@@ -521,7 +575,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(dev("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{testOperatorNS}, names)
 	})
@@ -531,7 +585,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(ns(testOperatorNS, nil), prod("ns-1")).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
 	})
@@ -541,7 +595,7 @@ func TestMatchingNamespacesFromCache(t *testing.T) {
 		mc.OnListSetNamespaceList(prod(testOperatorNS), prod("ns-1")).Return(nil)
 		m := NewNamespaceMatcher(sel, testOperatorNS)
 		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(ctx)
+		names, err := m.MatchingNamespacesFromCache(t.Context())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
 	})

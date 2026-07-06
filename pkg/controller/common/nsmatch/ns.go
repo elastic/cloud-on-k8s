@@ -15,15 +15,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/go-logr/logr"
 )
 
 // subscriberBufferSize is the buffer depth for each subscriber channel. A buffer this size
 // lets the broadcaster proceed without blocking during bursts of namespace events.
 const subscriberBufferSize = 32
 
-// subscriberSendTimeout is the per-subscriber send deadline used by Broadcast.
-// Declared as a var so tests can override it without waiting 3 seconds.
-const subscriberSendTimeout = 3 * time.Second
+const subscriberLogBackpressureDuration = 3 * time.Second
 
 // NamespaceMatcher evaluates a label selector against namespace labels,
 // tracks each namespace's match state, and broadcasts to subscribers whenever
@@ -46,14 +47,14 @@ const subscriberSendTimeout = 3 * time.Second
 // dropped while a namespace is not yet seeded are backfilled by the broadcast
 // its seeding emits.
 type NamespaceMatcher struct {
-	cache                   cache.Cache
-	selector                labels.Selector
-	alwaysManagedNamespaces map[string]struct{} // namespaces excluded from label-selector evaluation.
-	subs                    []chan event.TypedGenericEvent[*corev1.Namespace]
-	matchedNamespacesMutex  sync.Mutex
-	matchedNamespaces       map[string]struct{} // namespace name -> present if namespace matches to the selector
-	subscriberSendTimeout   time.Duration
-	subscriberBufferSize    int
+	cache                             cache.Cache
+	selector                          labels.Selector
+	alwaysManagedNamespaces           map[string]struct{} // namespaces excluded from label-selector evaluation.
+	subs                              []chan event.TypedGenericEvent[*corev1.Namespace]
+	matchedNamespacesMutex            sync.Mutex
+	matchedNamespaces                 map[string]struct{} // namespace name -> present if namespace matches to the selector
+	subscriberLogBackpressureDuration time.Duration
+	subscriberBufferSize              int
 }
 
 // NewNamespaceMatcher returns a NamespaceMatcher. When sel is nil it acts as
@@ -68,9 +69,9 @@ func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatch
 			"":         {},
 			operatorNS: {},
 		},
-		matchedNamespaces:     map[string]struct{}{},
-		subscriberSendTimeout: subscriberSendTimeout,
-		subscriberBufferSize:  subscriberBufferSize,
+		matchedNamespaces:                 map[string]struct{}{},
+		subscriberLogBackpressureDuration: subscriberLogBackpressureDuration,
+		subscriberBufferSize:              subscriberBufferSize,
 	}
 }
 
@@ -180,21 +181,25 @@ func (m *NamespaceMatcher) Subscribe() <-chan event.TypedGenericEvent[*corev1.Na
 	return ch
 }
 
-// Broadcast sends the namespace to every subscriber using a per-send timeout of
-// broadcastTimeout. On timeout the error is logged and delivery continues to the
-// remaining subscribers. On context cancellation the error is logged and Broadcast
-// returns early.
+// Broadcast sends the namespace to every subscriber, blocking on each send
+// until it succeeds or ctx is done. A blocked send is logged periodically
+// (every subscriberLogBackpressureDuration) so persistent backpressure is
+// visible. On context cancellation, Broadcast stops waiting on the current
+// subscriber, records ctx's error for it, and moves on to the rest.
 func (m *NamespaceMatcher) Broadcast(ctx context.Context, ns *corev1.Namespace) error {
 	if !m.SelectorEnabled() {
 		return nil
 	}
+
+	log := ulog.FromContext(ctx)
+
 	// No mutex needed: subs is written only during initialization (Subscribe)
 	// and is immutable by the time Broadcast is first called. Concurrent sends
 	// to the same channel are safe because channels handle their own synchronization.
 	ev := event.TypedGenericEvent[*corev1.Namespace]{Object: ns}
 	errs := make([]error, len(m.subs))
 	for i, ch := range m.subs {
-		errs[i] = sendWithTimeout(ctx, ch, m.subscriberSendTimeout, ev)
+		errs[i] = sendAndLogBackpressure(ctx, log, ch, m.subscriberLogBackpressureDuration, ev)
 	}
 	return errors.Join(errs...)
 }
@@ -236,13 +241,19 @@ func (m *NamespaceMatcher) ForgetNamespace(ns string) {
 	_ = m.Swap(ns, false)
 }
 
-func sendWithTimeout[chType any](ctx context.Context, ch chan<- chType, timeout time.Duration, item chType) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	select {
-	case ch <- item:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+func sendAndLogBackpressure[chType any](ctx context.Context, log logr.Logger, ch chan<- chType, logDuration time.Duration, item chType) error {
+	ticker := time.NewTicker(logDuration)
+	defer ticker.Stop()
+	waited := time.Duration(0)
+	for {
+		select {
+		case ch <- item:
+			return nil
+		case <-ticker.C:
+			waited += logDuration
+			log.Info("subscriber channel send is still blocked, possible backpressure", "waited", waited.String())
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
