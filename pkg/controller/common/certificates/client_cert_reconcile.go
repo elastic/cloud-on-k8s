@@ -208,16 +208,13 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 func hasVerifiedECKOwnerRef(ctx context.Context, c k8s.Client, secret *corev1.Secret) (bool, error) {
 	log := ulog.FromContext(ctx)
 	for _, ref := range secret.OwnerReferences {
-		group := ref.APIVersion
-		if i := strings.Index(group, "/"); i != -1 {
-			group = group[:i]
-		}
+		group, _, _ := strings.Cut(ref.APIVersion, "/")
 		if !strings.HasSuffix(group, eckAPIGroupSuffix) {
 			continue
 		}
 		// Guard against malformed owner references (missing Kind or Name) that would
 		// cause c.Get to return a non-transient error. Treat them as a non-match.
-		if ref.Kind == "" || ref.Name == "" || ref.APIVersion == "" {
+		if ref.Kind == "" || ref.Name == "" {
 			log.V(1).Info("Skipping malformed ECK owner reference",
 				"secret_namespace", secret.Namespace, "secret_name", secret.Name,
 				"api_version", ref.APIVersion, "kind", ref.Kind, "name", ref.Name)
