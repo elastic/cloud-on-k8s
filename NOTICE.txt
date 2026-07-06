@@ -774,11 +774,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.42
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/credentials
-Version : v1.19.26
-Time    : 2026-07-01T18:16:50Z
+Version : v1.19.27
+Time    : 2026-07-06T18:20:27Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.26/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.27/LICENSE.txt:
 
 
                                  Apache License
@@ -986,11 +986,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/crede
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/s3
-Version : v1.104.2
-Time    : 2026-07-01T18:16:50Z
+Version : v1.105.0
+Time    : 2026-07-06T18:20:27Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.104.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.105.0/LICENSE.txt:
 
 
                                  Apache License
