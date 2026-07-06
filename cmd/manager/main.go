@@ -692,6 +692,10 @@ func startOperator(ctx context.Context) error {
 
 	// cache can only be set after manager is created.
 	namespaceMatcher.SetCache(mgr.GetCache())
+	// The match-state map is maintained on every replica, but the subscribed
+	// controllers only consume broadcasts on the leader: give the matcher the
+	// election signal so Broadcast is a no-op until this replica is elected.
+	namespaceMatcher.SetElected(mgr.Elected())
 
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))

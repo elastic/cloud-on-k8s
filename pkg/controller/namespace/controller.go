@@ -22,6 +22,7 @@ import (
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -57,7 +57,16 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err := mgr.Add(&namespaceSeedRunnable{log: seedLog, client: mgr.GetCache(), namespaceMatcher: params.NamespaceMatcher}); err != nil {
 		return fmt.Errorf("registering namespace init runnable: %w", err)
 	}
-	c, err := common.NewController(mgr, controllerName, r, params)
+	// Unlike the per-kind controllers, this controller runs on every replica
+	// (leader or not): the webhook server and the namespace-filtering client
+	// consult the match-state map on non-leaders too, so each replica maintains
+	// its own copy from the same watch stream. Broadcasting to subscribers is
+	// still leader-only, enforced inside NamespaceMatcher.Broadcast.
+	c, err := controller.New(controllerName, mgr, controller.Options{
+		Reconciler:              r,
+		MaxConcurrentReconciles: params.MaxConcurrentReconciles,
+		NeedLeaderElection:      new(false),
+	})
 	if err != nil {
 		return err
 	}
@@ -128,6 +137,10 @@ var _ reconcile.Reconciler = (*reconciler)(nil)
 // namespace-flip watch reacts by re-enqueueing all CRs in the broadcast
 // namespace, backfilling any events the predicates dropped during the
 // cold-start window.
+//
+// It runs on every replica (NeedLeaderElection is false) so that non-leaders
+// maintain the same match-state map as the leader; on non-leaders the
+// broadcasts its seeding emits are no-ops (see NamespaceMatcher.Broadcast).
 type namespaceSeedRunnable struct {
 	log              logr.Logger
 	client           client.Reader
@@ -157,4 +170,4 @@ func (r *namespaceSeedRunnable) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *namespaceSeedRunnable) NeedLeaderElection() bool { return true }
+func (r *namespaceSeedRunnable) NeedLeaderElection() bool { return false }
