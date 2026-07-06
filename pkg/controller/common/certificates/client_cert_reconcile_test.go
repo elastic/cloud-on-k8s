@@ -261,11 +261,29 @@ func TestClientCertSecretCleanup(t *testing.T) {
 }
 
 func TestDiscoverClientCertSecrets(t *testing.T) {
-	t.Run("discovers secrets with matching labels", func(t *testing.T) {
+	// kibana1 / kibana2 act as ECK owners in their respective namespaces.
+	kibana1 := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "client-ns-1", Name: "my-kibana-1", UID: "uid-kibana-1"},
+	}
+	kibana2 := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "client-ns-2", Name: "my-kibana-2", UID: "uid-kibana-2"},
+	}
+
+	eckOwnerRef := func(kb *kbv1.Kibana) metav1.OwnerReference {
+		return metav1.OwnerReference{
+			APIVersion: "kibana.k8s.elastic.co/v1",
+			Kind:       "Kibana",
+			Name:       kb.Name,
+			UID:        kb.UID,
+		}
+	}
+
+	t.Run("discovers secrets with matching labels and verified ECK owner", func(t *testing.T) {
 		secret1 := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "client-ns-1",
-				Name:      "client-1-es-client-cert",
+				Namespace:       "client-ns-1",
+				Name:            "client-1-es-client-cert",
+				OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana1)},
 				Labels: map[string]string{
 					labels.ClientCertificateLabelName:  "true",
 					reconciler.SoftOwnerNameLabel:      "my-es",
@@ -277,8 +295,9 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 		}
 		secret2 := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "client-ns-2",
-				Name:      "client-2-es-client-cert",
+				Namespace:       "client-ns-2",
+				Name:            "client-2-es-client-cert",
+				OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana2)},
 				Labels: map[string]string{
 					labels.ClientCertificateLabelName:  "true",
 					reconciler.SoftOwnerNameLabel:      "my-es",
@@ -288,6 +307,7 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-2")},
 		}
+		// Belongs to a different ES — should not appear in results.
 		secretOther := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "other-ns",
@@ -302,10 +322,93 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 			Data: map[string][]byte{CertFileName: []byte("other-cert")},
 		}
 
-		c := k8s.NewFakeClient(secret1, secret2, secretOther)
+		c := k8s.NewFakeClient(kibana1, kibana2, secret1, secret2, secretOther)
 		secrets, err := discoverClientCertSecrets(context.Background(), c, "my-es", "es-ns", esv1.Kind)
 		require.NoError(t, err)
 		require.Len(t, secrets, 2)
+	})
+
+	t.Run("excludes secret with no owner reference", func(t *testing.T) {
+		// Secret has correct soft-owner labels but was not created through the ECK
+		// association flow and therefore carries no owner reference.
+		unowned := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "other-ns",
+				Name:      "unowned-client-cert",
+				Labels: map[string]string{
+					labels.ClientCertificateLabelName:  "true",
+					reconciler.SoftOwnerNameLabel:      "my-es",
+					reconciler.SoftOwnerNamespaceLabel: "es-ns",
+					reconciler.SoftOwnerKindLabel:      esv1.Kind,
+				},
+			},
+			Data: map[string][]byte{CertFileName: []byte("cert-data")},
+		}
+
+		c := k8s.NewFakeClient(unowned)
+		secrets, err := discoverClientCertSecrets(context.Background(), c, "my-es", "es-ns", esv1.Kind)
+		require.NoError(t, err)
+		require.Empty(t, secrets, "secret without an ECK owner reference must not be included")
+	})
+
+	t.Run("excludes secret with non-ECK owner reference", func(t *testing.T) {
+		// Secret is owned by a core Kubernetes resource rather than an ECK custom resource.
+		nonECKOwned := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "other-ns",
+				Name:      "pod-owned-client-cert",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: "v1",
+					Kind:       "Pod",
+					Name:       "some-pod",
+					UID:        "uid-pod",
+				}},
+				Labels: map[string]string{
+					labels.ClientCertificateLabelName:  "true",
+					reconciler.SoftOwnerNameLabel:      "my-es",
+					reconciler.SoftOwnerNamespaceLabel: "es-ns",
+					reconciler.SoftOwnerKindLabel:      esv1.Kind,
+				},
+			},
+			Data: map[string][]byte{CertFileName: []byte("cert-data")},
+		}
+
+		c := k8s.NewFakeClient(nonECKOwned)
+		secrets, err := discoverClientCertSecrets(context.Background(), c, "my-es", "es-ns", esv1.Kind)
+		require.NoError(t, err)
+		require.Empty(t, secrets, "secret owned by a non-ECK resource must not be included")
+	})
+
+	t.Run("excludes secret with stale ECK owner reference", func(t *testing.T) {
+		// Owner reference points to an existing Kibana but the UID does not match,
+		// as would happen with a stale reference after a delete/recreate cycle.
+		kb := &kbv1.Kibana{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "other-ns", Name: "my-kibana", UID: "current-uid"},
+		}
+		staleRef := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "other-ns",
+				Name:      "stale-ref-client-cert",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: "kibana.k8s.elastic.co/v1",
+					Kind:       "Kibana",
+					Name:       kb.Name,
+					UID:        "old-uid",
+				}},
+				Labels: map[string]string{
+					labels.ClientCertificateLabelName:  "true",
+					reconciler.SoftOwnerNameLabel:      "my-es",
+					reconciler.SoftOwnerNamespaceLabel: "es-ns",
+					reconciler.SoftOwnerKindLabel:      esv1.Kind,
+				},
+			},
+			Data: map[string][]byte{CertFileName: []byte("cert-data")},
+		}
+
+		c := k8s.NewFakeClient(kb, staleRef)
+		secrets, err := discoverClientCertSecrets(context.Background(), c, "my-es", "es-ns", esv1.Kind)
+		require.NoError(t, err)
+		require.Empty(t, secrets, "secret with a mismatched owner UID must not be included")
 	})
 
 	t.Run("returns empty list when no matching secrets", func(t *testing.T) {
