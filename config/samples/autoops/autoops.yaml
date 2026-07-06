@@ -6,7 +6,7 @@ metadata:
   labels:
     autoops: enabled
 spec:
-  version: 9.2.0
+  version: 9.4.3
   nodeSets:
   - name: default
     count: 3
@@ -21,7 +21,7 @@ kind: AutoOpsAgentPolicy
 metadata:
   name: autoops-sample
 spec:
-  version: 9.2.0
+  version: 9.4.3
   autoOpsRef:
     # This secret contains the AutoOps configuration.
     # It must contain the following:
