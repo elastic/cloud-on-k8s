@@ -26,9 +26,7 @@ For more information, check this [Issue #9550](https://github.com/elastic/cloud-
 
 **Workaround**
 
-This workaround applies only to namespaces governed by an `anyuid`-style SCC (`RunAsAny` fsGroup, seccomp forbidden) that are **not** also enforcing [restricted Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/).
-
-To check whether your namespace enforces restricted PSA, run:
+This workaround applies **only** to namespaces using an `anyuid`-style SCC (`RunAsAny` fsGroup, seccomp forbidden) that do **not** enforce [restricted Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/). Check your namespace's labels first:
 
 ```bash
 kubectl get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
