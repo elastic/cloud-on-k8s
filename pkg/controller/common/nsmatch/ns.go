@@ -16,8 +16,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
-	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/go-logr/logr"
+
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // subscriberBufferSize is the buffer depth for each subscriber channel. A buffer this size
@@ -46,6 +47,12 @@ const subscriberLogBackpressureDuration = 3 * time.Second
 // with the controllers (the manager does not order runnables), so events
 // dropped while a namespace is not yet seeded are backfilled by the broadcast
 // its seeding emits.
+//
+// The match-state map is maintained on every operator replica (the namespace
+// controller and its seeder do not require leader election) so that consumers
+// that run on non-leaders — the webhook server and the namespace-filtering
+// client — see the same state as the leader. Broadcasting to subscribers, in
+// contrast, only happens on the elected leader; see Broadcast and SetElected.
 type NamespaceMatcher struct {
 	cache                             cache.Cache
 	selector                          labels.Selector
@@ -55,6 +62,7 @@ type NamespaceMatcher struct {
 	matchedNamespaces                 map[string]struct{} // namespace name -> present if namespace matches to the selector
 	subscriberLogBackpressureDuration time.Duration
 	subscriberBufferSize              int
+	elected                           <-chan struct{} // closed once this replica is elected leader; nil means always elected.
 }
 
 // NewNamespaceMatcher returns a NamespaceMatcher. When sel is nil it acts as
@@ -77,6 +85,37 @@ func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatch
 
 func (m *NamespaceMatcher) SetCache(c cache.Cache) {
 	m.cache = c
+}
+
+// SetElected provides the manager's election signal (manager.Elected()), a
+// channel that is closed once this replica becomes leader (or immediately when
+// leader election is disabled). The match-state map is maintained on every
+// replica, but the controllers subscribed via Subscribe are leader-election
+// runnables: on a non-leader they never consume from their channels, so
+// Broadcast must not send. When set, Broadcast drops events until the channel
+// is closed. When never set (tests), Broadcast always sends.
+func (m *NamespaceMatcher) SetElected(elected <-chan struct{}) {
+	m.elected = elected
+}
+
+// isElected reports whether this replica may broadcast to subscribers. True
+// when no election signal was provided or when the election channel is closed.
+//
+// The select is deterministic: default only runs when no other case can
+// proceed, and a receive from a closed channel always proceeds, so once
+// elected is closed this never returns false. A select racing with the close
+// itself may still return false; that at worst drops one broadcast at the
+// moment of election, which the subscribers' initial sync covers anyway.
+func (m *NamespaceMatcher) isElected() bool {
+	if m.elected == nil {
+		return true
+	}
+	select {
+	case <-m.elected:
+		return true
+	default:
+		return false
+	}
 }
 
 // SelectorEnabled reports whether the matcher is actively filtering.
@@ -186,8 +225,28 @@ func (m *NamespaceMatcher) Subscribe() <-chan event.TypedGenericEvent[*corev1.Na
 // (every subscriberLogBackpressureDuration) so persistent backpressure is
 // visible. On context cancellation, Broadcast stops waiting on the current
 // subscriber, records ctx's error for it, and moves on to the rest.
+//
+// On a replica that has not (yet) been elected leader, Broadcast is a no-op:
+// subscriber controllers only run on the leader, so nothing consumes from the
+// channels and a blocking send would never complete. Dropping is safe because
+// when this replica is later elected, every subscriber controller starts with
+// a full initial sync of its own CRs, whose watch predicates consult the
+// match-state map — maintained on every replica — so flips dropped here are
+// re-evaluated then.
 func (m *NamespaceMatcher) Broadcast(ctx context.Context, ns *corev1.Namespace) error {
 	if !m.SelectorEnabled() {
+		return nil
+	}
+
+	if !m.isElected() {
+		// Dropping the event here loses no information: the match state was
+		// recorded in the map before Broadcast was called, and the map is what
+		// carries the state across the election. When this replica becomes
+		// leader, the elected channel is closed before the subscriber
+		// controllers start, so their initial sync replays every CR against
+		// the already-warm map — re-enqueue triggers dropped here are subsumed
+		// by that replay. Broadcasts are only needed for flips that happen
+		// after the initial sync, and by then this branch is no longer taken.
 		return nil
 	}
 

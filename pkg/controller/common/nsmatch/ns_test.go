@@ -365,6 +365,41 @@ func TestBroadcastLogsBackpressure(t *testing.T) {
 	}
 }
 
+func TestBroadcastElectionGating(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"env": "prod"})
+
+	t.Run("no election signal set: broadcast delivers", func(t *testing.T) {
+		n := NewNamespaceMatcher(sel, testOperatorNS)
+		sub := n.Subscribe()
+		require.NoError(t, n.Broadcast(t.Context(), namespace("ns", nil)))
+		require.Len(t, sub, 1)
+	})
+
+	t.Run("not elected: broadcast is a no-op", func(t *testing.T) {
+		n := NewNamespaceMatcher(sel, testOperatorNS)
+		n.SetElected(make(chan struct{})) // never closed: this replica is never elected
+		sub := n.Subscribe()
+		require.NoError(t, n.Broadcast(t.Context(), namespace("ns", nil)))
+		require.Empty(t, sub, "no event must be delivered on a non-elected replica")
+	})
+
+	t.Run("elected: broadcast delivers", func(t *testing.T) {
+		n := NewNamespaceMatcher(sel, testOperatorNS)
+		elected := make(chan struct{})
+		n.SetElected(elected)
+		sub := n.Subscribe()
+
+		require.NoError(t, n.Broadcast(t.Context(), namespace("dropped", nil)))
+		require.Empty(t, sub)
+
+		close(elected)
+		require.NoError(t, n.Broadcast(t.Context(), namespace("delivered", nil)))
+		require.Len(t, sub, 1)
+		ev := <-sub
+		require.Equal(t, "delivered", ev.Object.GetName())
+	})
+}
+
 func TestObserveAndBroadcast(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
