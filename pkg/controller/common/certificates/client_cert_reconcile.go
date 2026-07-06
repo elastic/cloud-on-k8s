@@ -186,7 +186,7 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 		if ok {
 			verified = append(verified, *secret)
 		} else {
-			log.Info("Ignoring client certificate secret: no verified ECK owner reference",
+			log.V(1).Info("Ignoring client certificate secret: no verified ECK owner reference",
 				"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		}
 	}
@@ -202,16 +202,25 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 
 // hasVerifiedECKOwnerRef returns true if the Secret has at least one owner reference pointing to
 // an ECK custom resource (API group ending in .k8s.elastic.co) that currently exists in the same
-// namespace with the expected UID. Kubernetes enforces that owner references are namespace-scoped,
-// so a cross-namespace attacker cannot plant a valid owner reference to an ECK resource they do
-// not control.
+// namespace with the expected UID. All ECK custom resources are namespace-scoped, and Kubernetes
+// prevents a namespace-scoped resource from carrying an owner reference to a resource in a
+// different namespace, so the owner is always co-located with the Secret.
 func hasVerifiedECKOwnerRef(ctx context.Context, c k8s.Client, secret *corev1.Secret) (bool, error) {
+	log := ulog.FromContext(ctx)
 	for _, ref := range secret.OwnerReferences {
 		group := ref.APIVersion
 		if i := strings.Index(group, "/"); i != -1 {
 			group = group[:i]
 		}
 		if !strings.HasSuffix(group, eckAPIGroupSuffix) {
+			continue
+		}
+		// Guard against malformed owner references (missing Kind or Name) that would
+		// cause c.Get to return a non-transient error. Treat them as a non-match.
+		if ref.Kind == "" || ref.Name == "" || ref.APIVersion == "" {
+			log.V(1).Info("Skipping malformed ECK owner reference",
+				"secret_namespace", secret.Namespace, "secret_name", secret.Name,
+				"api_version", ref.APIVersion, "kind", ref.Kind, "name", ref.Name)
 			continue
 		}
 		owner := &unstructured.Unstructured{}
