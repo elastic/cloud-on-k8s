@@ -136,6 +136,17 @@ func (a AssociationInfo) userLabelSelector(
 	)
 }
 
+// serviceAccountTokenLabelSelector returns labels selecting ES-side service-account-token secrets for this association.
+func (a AssociationInfo) serviceAccountTokenLabelSelector(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
+	return maps.Merge(
+		map[string]string{commonv1.TypeLabelName: user.ServiceAccountTokenType},
+		a.AssociationResourceLabels(associated, association),
+	)
+}
+
 // Reconciler reconciles a generic association for a specific AssociationInfo.
 type Reconciler struct {
 	AssociationInfo
@@ -484,16 +495,41 @@ func (r *Reconciler) getElasticsearch(
 
 // Unbind removes the association resources.
 func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
+	associated := k8s.ExtractNamespacedName(association)
+	assocRef := association.AssociationRef().NamespacedName()
+
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
 	if err := k8s.DeleteSecretMatching(
 		ctx,
 		r.Client,
-		r.userLabelSelector(
-			k8s.ExtractNamespacedName(association),
-			association.AssociationRef().NamespacedName(),
-		)); err != nil {
+		r.userLabelSelector(associated, assocRef),
+	); err != nil {
 		return err
 	}
+
+	// Delete Elasticsearch-side service-account-token secrets. Elasticsearch reads these to validate
+	// bearer tokens, so removing them immediately revokes access on the Elasticsearch side.
+	if err := k8s.DeleteSecretMatching(
+		ctx,
+		r.Client,
+		r.serviceAccountTokenLabelSelector(associated, assocRef),
+	); err != nil {
+		return err
+	}
+
+	// Delete the application-side service-account token secret (lives in the associated resource's namespace).
+	if r.ElasticsearchUserCreation != nil {
+		appSecretKey := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+		var appSecret corev1.Secret
+		if err := r.Client.Get(ctx, appSecretKey, &appSecret); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		} else if err == nil {
+			if err := r.Client.Delete(ctx, &appSecret); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+
 	// Also remove the association configuration
 	return RemoveAssociationConf(ctx, r.Client, association)
 }

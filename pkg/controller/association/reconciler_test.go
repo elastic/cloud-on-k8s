@@ -1586,3 +1586,63 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
+
+// TestReconciler_Unbind_ServiceAccountTokens verifies that Unbind deletes both the
+// Elasticsearch-side and application-side service-account-token secrets so that a
+// revoked cross-namespace association cannot continue to authenticate against ES.
+func TestReconciler_Unbind_ServiceAccountTokens(t *testing.T) {
+	// Labels that both SA token secrets carry from the association metadata.
+	assocResourceLabels := map[string]string{
+		"elasticsearch.k8s.elastic.co/cluster-name":      sampleES.Name,
+		"elasticsearch.k8s.elastic.co/cluster-namespace": sampleES.Namespace,
+		"kibanaassociation.k8s.elastic.co/name":          "kbname",
+		"kibanaassociation.k8s.elastic.co/namespace":     kibanaNamespace,
+	}
+
+	// ES-side SA token secret: Elasticsearch reads this to validate the bearer token.
+	esTokenSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: esNamespace,
+			Name:      "kbns-kbname-es-sa-token",
+			Labels: map[string]string{
+				commonv1.TypeLabelName:            user.ServiceAccountTokenType,
+				eslabel.ClusterNameLabelName:      sampleES.Name,
+				eslabel.ClusterNamespaceLabelName: sampleES.Namespace,
+				"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
+				"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
+			},
+		},
+	}
+
+	// Application-side SA token secret: holds the bearer token value, lives in the associated namespace.
+	// secretKey(kb.EsAssociation(), "kibana-user") = {Namespace: kibanaNamespace, Name: "kbname-kibana-user"}.
+	appTokenSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: kibanaNamespace,
+			Name:      "kbname-kibana-user",
+			Labels: map[string]string{
+				"eck.k8s.elastic.co/credentials":   "true",
+				eslabel.ClusterNameLabelName:        sampleES.Name,
+				eslabel.ClusterNamespaceLabelName:   sampleES.Namespace,
+				"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
+				"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
+			},
+		},
+	}
+
+	kb := sampleKibanaWithESRef()
+	r := testReconciler(&sampleES, &kb, &esTokenSecret, &appTokenSecret)
+
+	err := r.Unbind(context.Background(), kb.EsAssociation())
+	require.NoError(t, err)
+
+	// ES-side token secret must be deleted to revoke Elasticsearch access.
+	var esSecret corev1.Secret
+	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&esTokenSecret), &esSecret)
+	require.True(t, apierrors.IsNotFound(err), "ES-side SA token secret should have been deleted by Unbind")
+
+	// Application-side token secret must also be deleted.
+	var appSecret corev1.Secret
+	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&appTokenSecret), &appSecret)
+	require.True(t, apierrors.IsNotFound(err), "Application-side SA token secret should have been deleted by Unbind")
+}
