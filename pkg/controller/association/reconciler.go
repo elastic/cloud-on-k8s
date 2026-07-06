@@ -519,14 +519,8 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 
 	// Delete the application-side service-account token secret (lives in the associated resource's namespace).
 	if r.ElasticsearchUserCreation != nil {
-		appSecretKey := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
-		var appSecret corev1.Secret
-		if err := r.Client.Get(ctx, appSecretKey, &appSecret); err != nil && !apierrors.IsNotFound(err) {
+		if err := k8s.DeleteSecretIfExists(ctx, r.Client, secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)); err != nil {
 			return err
-		} else if err == nil {
-			if err := r.Client.Delete(ctx, &appSecret); err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
 		}
 	}
 
