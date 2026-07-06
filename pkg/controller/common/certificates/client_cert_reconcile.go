@@ -186,7 +186,7 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 		if ok {
 			verified = append(verified, *secret)
 		} else {
-			log.V(1).Info("Ignoring client certificate secret: no verified ECK owner reference",
+			log.Info("Ignoring client certificate secret: no verified ECK owner reference",
 				"secret_namespace", secret.Namespace, "secret_name", secret.Name)
 		}
 	}
