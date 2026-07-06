@@ -884,6 +884,126 @@ func Test_checkClientAuthentication(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 8.15.0: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "8.15.0",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.5 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.5",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 8.19.17 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "8.19.17",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.6 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.6",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.4.1 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.4.1",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.4.3 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.4.3",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.5.0: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.5.0",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.6-SNAPSHOT: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.6-SNAPSHOT",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkClientAuthentication(tt.a)
