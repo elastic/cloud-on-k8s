@@ -1,11 +1,10 @@
-# This sample sets up a stateful Elasticsearch cluster with 3 nodes.
-# For a stateless deployment backed by an object store, see elasticsearch-stateless.yaml.
+# This sample sets up an Elasticsearch cluster with 3 nodes.
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 9.4.2
+  version: 9.4.3
   nodeSets:
   - name: default
     # Uncomment zoneAwareness to spread this NodeSet across zones.

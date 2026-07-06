@@ -36,7 +36,7 @@ func ReconcileClusterSecrets(
 	return retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
-		fs, err := Load(ctx, c, esNsn, true, meta)
+		fs, err := Load(ctx, c, esNsn, meta)
 		if err != nil {
 			return err
 		}

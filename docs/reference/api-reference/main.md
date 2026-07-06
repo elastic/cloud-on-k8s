@@ -2399,5 +2399,34 @@ StackConfigPolicy represents a StackConfigPolicy resource in a Kubernetes cluste
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | Deprecated: SecureSettings only applies to Elasticsearch and is deprecated. It must be set per application instead. |
 | *`elasticsearch`* __[ElasticsearchConfigPolicySpec](#elasticsearchconfigpolicyspec)__ |  |
 | *`kibana`* __[KibanaConfigPolicySpec](#kibanaconfigpolicyspec)__ |  |
+| *`variablesFrom`* __[VariableSource](#variablesource) array__ | VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.<br>Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.<br>Sources without a namespace default to the policy's namespace; cross-namespace sources are only<br>permitted for policies deployed in the operator namespace.<br>Later entries take precedence over earlier ones on key conflicts.<br>If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.<br>Only keys present in a source are substituted; any other ${...} expression (including native<br>ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by<br>Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.<br>Values from sources are JSON-escaped before substitution and are limited to string-typed<br>fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret<br>values are always strings and the intended target type cannot be inferred. |
+
+
+### VariableSource  [#variablesource]
+
+VariableSource references a ConfigMap or Secret from which variables are loaded for substitution.
+
+:::{admonition} Appears In:
+* [StackConfigPolicySpec](#stackconfigpolicyspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`kind`* __[VariableSourceKind](#variablesourcekind)__ | Kind is the type of the source, either ConfigMap or Secret. |
+| *`name`* __string__ | Name is the name of the ConfigMap or Secret. |
+| *`namespace`* __string__ | Namespace is the namespace of the ConfigMap or Secret.<br>When empty, the StackConfigPolicy's own namespace is used.<br>Cross-namespace references are only permitted for policies<br>deployed in the operator namespace; all other policies must<br>reference sources in their own namespace. |
+| *`optional`* __boolean__ | Optional indicates whether the source is optional. When true,<br>a missing ConfigMap or Secret is silently ignored instead of<br>causing a reconciliation error. |
+
+
+### VariableSourceKind (string)  [#variablesourcekind]
+
+VariableSourceKind is the type of source for variable substitution.
+
+:::{admonition} Appears In:
+* [VariableSource](#variablesource)
+
+:::
+
 
 

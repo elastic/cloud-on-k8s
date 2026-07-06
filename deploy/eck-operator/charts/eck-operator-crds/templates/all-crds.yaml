@@ -5128,16 +5128,6 @@ spec:
               image:
                 description: Image is the Elasticsearch Docker image to deploy.
                 type: string
-              mode:
-                description: |-
-                  Mode selects the deployment mode for this Elasticsearch cluster.
-                  "stateful" (default) uses persistent local volumes for data storage.
-                  "stateless" uses an external object store for data storage.
-                  Note: stateless mode is under active development and not yet ready for use.
-                enum:
-                - stateful
-                - stateless
-                type: string
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
@@ -5332,17 +5322,6 @@ spec:
                               x-kubernetes-int-or-string: true
                           type: object
                       type: object
-                    tier:
-                      description: |-
-                        Tier explicitly maps this NodeSet to a stateless tier (index, search, master, or ml).
-                        Only valid when spec.mode is "stateless". If omitted in stateless mode, the tier is inferred from the NodeSet name.
-                        Note: stateless mode is under active development and not yet ready for use.
-                      enum:
-                      - index
-                      - search
-                      - master
-                      - ml
-                      type: string
                     volumeClaimTemplates:
                       description: |-
                         VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
@@ -5617,36 +5596,6 @@ spec:
                   type: object
                 minItems: 1
                 type: array
-              objectStore:
-                description: |-
-                  ObjectStore configures the external object store for stateless Elasticsearch.
-                  Required when mode is "stateless", forbidden when mode is "stateful".
-                  Note: stateless mode is under active development and not yet ready for use.
-                properties:
-                  basePath:
-                    description: BasePath is the path prefix within the bucket.
-                    type: string
-                  bucket:
-                    description: Bucket is the name of the storage bucket.
-                    minLength: 1
-                    type: string
-                  client:
-                    description: |-
-                      Client is the named client configuration in elasticsearch.yml.
-                      Defaults to "default" if not specified.
-                    type: string
-                  type:
-                    description: Type is the object store backend type (s3, gcs, or
-                      azure).
-                    enum:
-                    - s3
-                    - gcs
-                    - azure
-                    type: string
-                required:
-                - bucket
-                - type
-                type: object
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
@@ -12916,6 +12865,54 @@ spec:
                       type: string
                   required:
                   - secretName
+                  type: object
+                type: array
+              variablesFrom:
+                description: |-
+                  VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
+                  Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
+                  Sources without a namespace default to the policy's namespace; cross-namespace sources are only
+                  permitted for policies deployed in the operator namespace.
+                  Later entries take precedence over earlier ones on key conflicts.
+                  If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
+                  Only keys present in a source are substituted; any other ${...} expression (including native
+                  ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by
+                  Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.
+                  Values from sources are JSON-escaped before substitution and are limited to string-typed
+                  fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret
+                  values are always strings and the intended target type cannot be inferred.
+                items:
+                  description: VariableSource references a ConfigMap or Secret from
+                    which variables are loaded for substitution.
+                  properties:
+                    kind:
+                      description: Kind is the type of the source, either ConfigMap
+                        or Secret.
+                      enum:
+                      - ConfigMap
+                      - Secret
+                      type: string
+                    name:
+                      description: Name is the name of the ConfigMap or Secret.
+                      minLength: 1
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace is the namespace of the ConfigMap or Secret.
+                        When empty, the StackConfigPolicy's own namespace is used.
+                        Cross-namespace references are only permitted for policies
+                        deployed in the operator namespace; all other policies must
+                        reference sources in their own namespace.
+                      type: string
+                    optional:
+                      description: |-
+                        Optional indicates whether the source is optional. When true,
+                        a missing ConfigMap or Secret is silently ignored instead of
+                        causing a reconciliation error.
+                      type: boolean
+                  required:
+                  - kind
+                  - name
                   type: object
                 type: array
               weight:

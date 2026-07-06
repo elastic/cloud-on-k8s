@@ -30,7 +30,6 @@ func testES() esv1.Elasticsearch {
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.4.0",
-			Mode:    esv1.ElasticsearchModeStateless,
 		},
 	}
 }
@@ -160,7 +159,7 @@ func TestReconcileClusterSecrets_PreservesOtherFields(t *testing.T) {
 	es := testES()
 
 	// Create a secret that already has cluster_settings (set by SCP)
-	existingSettings := NewEmptySettings(1, true)
+	existingSettings := NewEmptySettings(1)
 	existingSettings.State.ClusterSettings = &commonv1.Config{Data: map[string]any{"indices.recovery.max_bytes_per_sec": "100mb"}}
 	settingsBytes, err := json.Marshal(existingSettings)
 	require.NoError(t, err)
@@ -205,7 +204,7 @@ func TestReconcileClusterSecrets_PreservesSCPManagedMetadata(t *testing.T) {
 	es := testES()
 
 	// Create a secret with SCP-managed annotations and labels.
-	existingSettings := NewEmptySettings(1, true)
+	existingSettings := NewEmptySettings(1)
 	settingsBytes, err := json.Marshal(existingSettings)
 	require.NoError(t, err)
 
@@ -257,7 +256,7 @@ func TestReconcileClusterSecrets_ClearsWhenNil(t *testing.T) {
 	es := testES()
 
 	// Create a secret with existing cluster_secrets
-	existingSettings := NewEmptySettings(1, true)
+	existingSettings := NewEmptySettings(1)
 	existingSettings.State.ClusterSecrets = testClusterSecrets()
 	settingsBytes, err := json.Marshal(existingSettings)
 	require.NoError(t, err)
