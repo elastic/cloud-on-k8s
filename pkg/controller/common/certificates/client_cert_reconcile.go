@@ -22,7 +22,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -206,23 +206,21 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 // prevents a namespace-scoped resource from carrying an owner reference to a resource in a
 // different namespace, so the owner is always co-located with the Secret.
 func hasVerifiedECKOwnerRef(ctx context.Context, c k8s.Client, secret *corev1.Secret) (bool, error) {
-	log := ulog.FromContext(ctx)
 	for _, ref := range secret.OwnerReferences {
 		group, _, _ := strings.Cut(ref.APIVersion, "/")
 		if !strings.HasSuffix(group, eckAPIGroupSuffix) {
 			continue
 		}
-		// Guard against malformed owner references (missing Kind or Name) that would
-		// cause c.Get to return a non-transient error. Treat them as a non-match.
-		if ref.Kind == "" || ref.Name == "" {
-			log.V(1).Info("Skipping malformed ECK owner reference",
-				"secret_namespace", secret.Namespace, "secret_name", secret.Name,
-				"api_version", ref.APIVersion, "kind", ref.Kind, "name", ref.Name)
+		gvk := schema.FromAPIVersionAndKind(ref.APIVersion, ref.Kind)
+		runtimeObj, err := c.Scheme().New(gvk)
+		if err != nil {
+			// GVK not registered in the ECK scheme — not a CR we manage; skip this ref.
 			continue
 		}
-		owner := &unstructured.Unstructured{}
-		owner.SetAPIVersion(ref.APIVersion)
-		owner.SetKind(ref.Kind)
+		owner, ok := runtimeObj.(client.Object)
+		if !ok {
+			continue
+		}
 		if err := c.Get(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: ref.Name}, owner); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
