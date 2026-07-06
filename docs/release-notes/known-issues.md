@@ -50,7 +50,7 @@ spec:
         # seccompProfile intentionally omitted — not permitted by anyuid SCC
 ```
 
-**Important:** The `podTemplate.spec.securityContext` override must be applied to existing Logstash CRs before upgrading to ECK 3.4.0. If the upgrade happens first and the Logstash pods enter the SCC rejection loop, updating the CR afterwards won't help. For the latter, the only recovery is to delete and re-create the Logstash CR with the security context as described in place.
+**Important:** Apply this override to existing Logstash resources **before** upgrading. If you upgrade first and the pods enter the SCC rejection loop, editing the resource afterwards has no effect — the only recovery is to delete and re-create the Logstash resource with the override already in place.
 
 This override can be removed once you upgrade to ECK 3.5.0 or later when available, which includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
 :::
@@ -88,7 +88,7 @@ spec:
         # seccompProfile intentionally omitted — not permitted by anyuid SCC
 ```
 
-**Important:** The `podTemplate.spec.securityContext` override must be applied to existing Logstash CRs before upgrading to ECK 3.4.0. If the upgrade happens first and the Logstash pods enter the SCC rejection loop, updating the CR afterwards won't help. For the latter, the only recovery is to delete and re-create the Logstash CR with the security context as described in place.
+**Important:** Apply this override to existing Logstash resources **before** upgrading. If you upgrade first and the pods enter the SCC rejection loop, editing the resource afterwards has no effect — the only recovery is to delete and re-create the Logstash resource with the override already in place.
 
 This override can be removed once you upgrade to ECK 3.5.0 or later when available, which includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
 :::
