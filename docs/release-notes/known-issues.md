@@ -19,16 +19,14 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## 3.4.1 [elastic-cloud-kubernetes-341-known-issues]
 
-:::{dropdown} Logstash pods rejected by OpenShift SCC when using a non-default security context constraint
-In ECK 3.4.x, the Logstash controller unconditionally injects `seccompProfile: RuntimeDefault` and `fsGroup: 1000` into the pod security context, ignoring the `--set-default-security-context=auto-detect` operator flag. On OpenShift, this flag should suppress the injection, as it does for all other ECK-managed workloads ({{es}}, {{product.kibana}}, APM Server). Clusters using a non-default SCC such as `anyuid` — which does not permit explicit seccomp configuration — will see Logstash pods rejected at admission after upgrading.
+::::{dropdown} Logstash pods rejected by OpenShift SCC when using a non-default security context constraint
+In ECK 3.4.x, the Logstash controller always injects `seccompProfile: RuntimeDefault` and `fsGroup: 1000` into the pod security context, ignoring the `--set-default-security-context=auto-detect` flag. On OpenShift, this flag should suppress the injection — as it does for {{es}}, {{product.kibana}}, and APM Server. As a result, clusters using a non-default SCC such as `anyuid`, which forbids explicit seccomp settings, reject Logstash pods at admission after upgrading.
 
 For more information, check this [Issue #9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
 
 **Workaround**
 
-This workaround applies only to namespaces governed by an `anyuid`-style SCC (`RunAsAny` fsGroup, seccomp forbidden) that are **not** also enforcing [restricted Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/).
-
-To check whether your namespace enforces restricted PSA, run:
+This workaround applies **only** to namespaces using an `anyuid`-style SCC (`RunAsAny` fsGroup, seccomp forbidden) that do **not** enforce [restricted Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/). Check your namespace's labels first:
 
 ```bash
 kubectl get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
@@ -37,9 +35,9 @@ kubectl get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 oc get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 ```
 
-If you see `pod-security.kubernetes.io/enforce: restricted`, do **not** use this workaround — in restricted-PSA namespaces, `seccompProfile` is required and must not be omitted, and `fsGroup` must fall within the namespace's allocated `supplemental-groups` range rather than a fixed value like `1000`.
+If the output contains `pod-security.kubernetes.io/enforce: restricted`, do **not** apply this workaround: restricted PSA requires `seccompProfile` and expects `fsGroup` within the namespace's allocated `supplemental-groups` range, not a fixed `1000`.
 
-For namespaces using `anyuid`-style SCC without restricted PSA enforcement, override the Logstash pod security context as follows to prevent ECK from injecting its defaults:
+Otherwise, set the security context on the Logstash resource so ECK skips its own injection:
 
 ```yaml
 spec:
@@ -53,7 +51,7 @@ spec:
 **Important:** Apply this override to existing Logstash resources **before** upgrading. If you upgrade first and the pods enter the SCC rejection loop, editing the resource afterwards has no effect — the only recovery is to delete and re-create the Logstash resource with the override already in place.
 
 This override can be removed once you upgrade to ECK 3.5.0 or later when available, which includes the fix for [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
-:::
+::::
 
 ## 3.4.0 [elastic-cloud-kubernetes-340-known-issues]
 
