@@ -35,7 +35,7 @@ kubectl get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 oc get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 ```
 
-If you see `pod-security.kubernetes.io/enforce: restricted`, do **not** use this workaround — in restricted-PSA namespaces, `seccompProfile` is required and must not be omitted, and `fsGroup` must fall within the namespace's allocated `supplemental-groups` range rather than a fixed value like `1000`.
+If the output contains `pod-security.kubernetes.io/enforce: restricted`, do **not** apply this workaround: restricted PSA requires `seccompProfile` and expects `fsGroup` within the namespace's allocated `supplemental-groups` range, not a fixed `1000`.
 
 For namespaces using `anyuid`-style SCC without restricted PSA enforcement, override the Logstash pod security context as follows to prevent ECK from injecting its defaults:
 
