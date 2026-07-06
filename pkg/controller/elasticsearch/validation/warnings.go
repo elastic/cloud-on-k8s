@@ -32,7 +32,6 @@ var warnings = []validation{
 	deprecatedStackVersionWarning,
 	shorthandResourcesOverrideWarning,
 	validZoneAwarenessAffinityWarnings,
-	statelessNodeRolesWarning,
 	managedFalseDeprecationWarning,
 }
 

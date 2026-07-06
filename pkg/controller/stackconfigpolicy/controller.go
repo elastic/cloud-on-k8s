@@ -47,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
+	scpvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -106,8 +107,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 		return err
 	}
 
-	// watch dynamically refrenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	// watch dynamically referenced secrets
+	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+
+	// watch dynamically referenced ConfigMaps
+	return c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
@@ -249,6 +255,10 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, reconcilin
 		return results.WithError(err), status
 	}
 
+	if err := r.addDynamicWatchesOnVariableSources(reconcilingPolicy); err != nil {
+		return results.WithError(err), status
+	}
+
 	var policyList policyv1alpha1.StackConfigPolicyList
 	if err := r.Client.List(ctx, &policyList); err != nil {
 		return results.WithError(err), status
@@ -326,7 +336,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		}
 
 		// build the final config by merging all policies that target the given Elasticsearch cluster
-		esConfigPolicyFinal, err := getConfigPolicyForElasticsearch(&es, allPolicies, r.params)
+		esConfigPolicyFinal, err := getConfigPolicyForElasticsearch(ctx, r.Client, &es, allPolicies, r.params)
 		switch {
 		case errors.Is(err, errMergeConflict):
 			log.Info("StackConfigPolicy merge conflict for Elasticsearch", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
@@ -338,18 +348,6 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
-		// Reject policy fields that are not supported for stateless Elasticsearch.
-		// ILM is managed server-side on stateless; applying ILM via file settings has no effect and is confusing.
-		if es.IsStateless() && esConfigPolicyFinal.Spec.IndexLifecyclePolicies != nil && len(esConfigPolicyFinal.Spec.IndexLifecyclePolicies.Data) > 0 {
-			err := fmt.Errorf("indexLifecyclePolicies are not supported for stateless Elasticsearch %s/%s", es.Namespace, es.Name)
-			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
-			results.WithError(err)
-			if err := status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
-				return results.WithError(err), status
-			}
-			continue
-		}
-
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// Recompute expected settings secret on each retry attempt using the latest
@@ -359,7 +357,7 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 		if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 			return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 		}, func() error {
-			fs, err := filesettings.Load(ctx, r.Client, esNsn, es.IsStateless(), meta)
+			fs, err := filesettings.Load(ctx, r.Client, esNsn, meta)
 			if err != nil {
 				return err
 			}
@@ -478,7 +476,7 @@ func (r *ReconcileStackConfigPolicy) reconcileKibanaResources(ctx context.Contex
 		kibanaNsn := k8s.ExtractNamespacedName(&kibana)
 
 		// build the final config by merging all policies that target the given Kibana instance
-		kbnPolicyConfigFinal, err := getConfigPolicyForKibana(&kibana, allPolicies, r.params)
+		kbnPolicyConfigFinal, err := getConfigPolicyForKibana(ctx, r.Client, &kibana, allPolicies, r.params)
 		switch {
 		case errors.Is(err, errMergeConflict):
 			log.Info("StackConfigPolicy merge conflict for Kibana", "kibana_namespace", kibana.Namespace, "kibana_name", kibana.Name, "error", err)
@@ -561,7 +559,7 @@ func (r *ReconcileStackConfigPolicy) validate(ctx context.Context, policy *polic
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := policyv1alpha1.Validate(policy, nil)
+	warnings, err := scpvalidation.Validate(policy, r.params.OperatorNamespace)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
@@ -596,6 +594,9 @@ func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.Nam
 	defer tracing.Span(&ctx)()
 	// Remove dynamic watches on secrets
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
+	// Remove dynamic watches on variablesFrom sources
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(variableSourcesWatcherName(obj))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(variableSourcesWatcherName(obj))
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }
@@ -706,7 +707,7 @@ func resetOrphanESFileSettings(
 			"owner_namespace", softOwner.Namespace, "owner_name", softOwner.Name)
 
 		esMeta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(namespacedName)})
-		fs, err := filesettings.Load(ctx, c, namespacedName, es.IsStateless(), esMeta)
+		fs, err := filesettings.Load(ctx, c, namespacedName, esMeta)
 		if err != nil {
 			return err
 		}
@@ -908,4 +909,34 @@ func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(p
 
 func additionalSecretMountsWatcherName(watcher types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-additional-secret-mounts-watcher", watcher.Name, watcher.Namespace)
+}
+
+func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnVariableSources(policy policyv1alpha1.StackConfigPolicy) error {
+	watcher := k8s.ExtractNamespacedName(&policy)
+	watchName := variableSourcesWatcherName(watcher)
+
+	var secretSrcs []commonv1.NamespacedSecretSource
+	var configMapNsns []types.NamespacedName
+	for _, src := range policy.Spec.VariablesFrom {
+		if !src.AllowedFrom(policy.Namespace, r.params.OperatorNamespace) {
+			// Skip sources that fail AllowedFrom
+			continue
+		}
+		ns := src.EffectiveNamespace(policy.Namespace)
+		switch src.Kind {
+		case policyv1alpha1.VariableSourceKindSecret:
+			secretSrcs = append(secretSrcs, commonv1.NamespacedSecretSource{Namespace: ns, SecretName: src.Name})
+		case policyv1alpha1.VariableSourceKindConfigMap:
+			configMapNsns = append(configMapNsns, types.NamespacedName{Namespace: ns, Name: src.Name})
+		}
+	}
+
+	if err := watches.WatchUserProvidedConfigMaps(watcher, r.dynamicWatches, watchName, configMapNsns); err != nil {
+		return err
+	}
+	return watches.WatchUserProvidedNamespacedSecrets(watcher, r.dynamicWatches, watchName, secretSrcs)
+}
+
+func variableSourcesWatcherName(watcher types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-substitution-watcher", watcher.Name, watcher.Namespace)
 }

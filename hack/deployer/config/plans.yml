@@ -103,7 +103,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.21.7
+  clientVersion: 4.22.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true
@@ -114,7 +114,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.21.7
+  clientVersion: 4.22.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true
@@ -164,40 +164,40 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.31.0
+  clientVersion: 0.32.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.1
   enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.31.0
+  clientVersion: 0.32.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.1
   enforceSecurityPolicies: true
   diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
     ipFamily: ipv4
 - id: k3d-dev
   operation: create
   clusterName: eck
   provider: k3d
-  kubernetesVersion: 1.35.3
+  kubernetesVersion: 1.36.2
   k3d:
-    clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.35.3-k3s1
+    clientImage: ghcr.io/k3d-io/k3d:5.9.0
+    nodeImage: rancher/k3s:v1.36.2-k3s1
 - id: k3d-ci
   operation: create
   clusterName: k3d-ci
   provider: k3d
-  kubernetesVersion: 1.35.3
+  kubernetesVersion: 1.36.2
   k3d:
-    clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.35.3-k3s1
+    clientImage: ghcr.io/k3d-io/k3d:5.9.0
+    nodeImage: rancher/k3s:v1.36.2-k3s1

@@ -7,6 +7,8 @@ package statefulset
 import (
 	"context"
 
+	"k8s.io/utils/ptr"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -102,6 +104,16 @@ func Reconcile(
 		},
 	})
 	return *reconciled, err
+}
+
+// IsSteady reports whether the StatefulSet has converged: observed generation matches the metadata
+// generation, current and update revisions are identical, and all expected replicas are ready.
+// The default for nil Spec.Replicas is 1, matching the Kubernetes StatefulSet default, so a
+// StatefulSet with no explicit replica count is only steady once its one pod is ready.
+func IsSteady(s appsv1.StatefulSet) bool {
+	return s.Status.ObservedGeneration == s.Generation &&
+		s.Status.CurrentRevision == s.Status.UpdateRevision &&
+		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 1)
 }
 
 // WithTemplateHash returns a new StatefulSet with a hash of its template to ease comparisons.

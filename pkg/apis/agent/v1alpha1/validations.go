@@ -35,6 +35,7 @@ var (
 		checkSingleESRefInFleetMode,
 		checkAssociations,
 		checkClientAuthentication,
+		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -326,6 +327,19 @@ func checkClientAuthentication(a *Agent) field.ErrorList {
 				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
 				true,
 				"client certificate authentication requires TLS to be enabled",
+			),
+		}
+	}
+	v, err := semver.Parse(a.Spec.Version)
+	if err != nil {
+		return nil // version parse errors are reported by checkSupportedVersion
+	}
+	if !FleetServerClientAuthSupported(v) {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
 			),
 		}
 	}

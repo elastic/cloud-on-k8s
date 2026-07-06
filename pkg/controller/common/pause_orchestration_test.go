@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,7 +77,7 @@ func TestIsOrchestrationPaused(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for i, expectedState := range test.expectedState {
 				// testing with a secret, but could be any kind
-				obj := corev1.Secret{ObjectMeta: v1.ObjectMeta{
+				obj := corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 					Name:        "bar",
 					Namespace:   "foo",
 					Annotations: test.annotationSequence[i],
@@ -101,7 +101,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	two := int32(2)
 	makeDeployment := func(replicas *int32) *appsv1.Deployment {
 		d := &appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: replicas,
 			},
@@ -111,7 +111,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	}
 	makeDaemonSet := func(updateStrategy appsv1.DaemonSetUpdateStrategy) *appsv1.DaemonSet {
 		d := &appsv1.DaemonSet{
-			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
 			Spec: appsv1.DaemonSetSpec{
 				UpdateStrategy: updateStrategy,
 			},
@@ -121,7 +121,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	}
 	makeStatefulSet := func(replicas *int32) *appsv1.StatefulSet {
 		d := &appsv1.StatefulSet{
-			ObjectMeta: v1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: replicas,
 			},
@@ -266,7 +266,7 @@ func TestHasPendingChanges(t *testing.T) {
 	originalDeployment := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
@@ -284,7 +284,7 @@ func TestHasPendingChanges(t *testing.T) {
 	originalDaemonSet := appsv1.DaemonSet{
 		Spec: appsv1.DaemonSetSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
@@ -302,7 +302,7 @@ func TestHasPendingChanges(t *testing.T) {
 	originalStatefulSet := appsv1.StatefulSet{
 		Spec: appsv1.StatefulSetSpec{
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
@@ -478,6 +478,145 @@ func Test_maybeResetPausedCondition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReportPausedWaitingCondition(t *testing.T) {
+	tests := []struct {
+		name               string
+		parent             ObjectWithConditions
+		expectedConditions commonv1.Conditions
+	}{
+		{
+			name: "non-conflicting conditions are appended",
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
+				{
+					Type:    "some-other-condition",
+					Status:  corev1.ConditionTrue,
+					Message: "a different condition's message",
+				},
+			}},
+			expectedConditions: commonv1.Conditions{
+				{
+					Type:    "some-other-condition",
+					Status:  corev1.ConditionTrue,
+					Message: "a different condition's message",
+				},
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue,
+					Message: PausedWaitingMessage,
+				},
+			},
+		},
+		{
+			name:   "condition is appended when parent conditions is nil",
+			parent: &mockWithConditions{conditions: nil},
+			expectedConditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue,
+					Message: PausedWaitingMessage,
+				},
+			},
+		},
+		{
+			name:   "condition is appended when parent conditions is empty",
+			parent: &mockWithConditions{conditions: commonv1.Conditions{}},
+			expectedConditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue,
+					Message: PausedWaitingMessage,
+				},
+			},
+		},
+		{
+			name: "conflicting conditions overwrite when the status has changed",
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionFalse,
+					Message: PausedWaitingMessage, // testing for change on Status field; leave this as equal
+				},
+			}},
+			expectedConditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue,
+					Message: PausedWaitingMessage,
+				},
+			},
+		},
+		{
+			name: "conflicting conditions overwrite when the message has changed",
+			parent: &mockWithConditions{conditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue, // testing for change on Message field; leave this as equal
+					Message: PausedNoChangesMessage,
+				},
+			}},
+			expectedConditions: commonv1.Conditions{
+				{
+					Type:    commonv1.OrchestrationPaused,
+					Status:  corev1.ConditionTrue,
+					Message: PausedWaitingMessage,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ReportPausedWaitingCondition(tt.parent)
+			require.Lenf(t, tt.parent.Conditions(), len(tt.expectedConditions), "expected conditions length is %d", len(tt.expectedConditions))
+			for i, expected := range tt.expectedConditions {
+				actual := tt.parent.Conditions()[i]
+				assert.Equal(t, expected.Type, actual.Type, "expected condition type is %s", expected.Type)
+				assert.Equal(t, expected.Status, actual.Status, "expected condition status is %s", expected.Status)
+				assert.Equal(t, expected.Message, actual.Message, "expected condition message is %s", expected.Message)
+				// deliberately do not test for equality of LastTransitionTime
+			}
+		})
+	}
+
+	t.Run("existing condition LastTransitionTime is not overwritten when neither status nor message has changed", func(t *testing.T) {
+		existingTimestamp := metav1.Now()
+		parent := &mockWithConditions{conditions: commonv1.Conditions{
+			{
+				Type:               commonv1.OrchestrationPaused,
+				Status:             corev1.ConditionTrue,
+				Message:            PausedWaitingMessage,
+				LastTransitionTime: existingTimestamp,
+			},
+		}}
+
+		ReportPausedWaitingCondition(parent)
+		require.Len(t, parent.conditions, 1)
+		actual := parent.conditions[0]
+		assert.Equal(t, existingTimestamp, actual.LastTransitionTime)
+		assert.Equal(t, corev1.ConditionTrue, actual.Status)
+		assert.Equal(t, PausedWaitingMessage, actual.Message)
+	})
+
+	t.Run("existing condition LastTransitionTime is overwritten when either status or message has changed", func(t *testing.T) {
+		existingTimestamp := metav1.Now()
+		parent := &mockWithConditions{conditions: commonv1.Conditions{
+			{
+				Type:               commonv1.OrchestrationPaused,
+				Status:             corev1.ConditionFalse,
+				Message:            PausedOrchestrationResumed,
+				LastTransitionTime: existingTimestamp,
+			},
+		}}
+
+		ReportPausedWaitingCondition(parent)
+		require.Len(t, parent.conditions, 1)
+		actual := parent.conditions[0]
+		assert.NotEqual(t, existingTimestamp, actual.LastTransitionTime)
+		assert.Equal(t, corev1.ConditionTrue, actual.Status)
+		assert.Equal(t, PausedWaitingMessage, actual.Message)
+	})
 }
 
 type mockWithConditions struct {

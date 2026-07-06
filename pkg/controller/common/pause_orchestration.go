@@ -20,6 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	maps "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -28,10 +29,9 @@ import (
 )
 
 const (
-	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
-	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
-	// health monitoring).
-	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
+	// PauseOrchestrationAnnotation is re-exported from commonv1 so existing callers keep working; the canonical
+	// definition lives in pkg/apis/common/v1 because the validating webhook depends on it.
+	PauseOrchestrationAnnotation = commonv1.PauseOrchestrationAnnotation
 	// PausedWithPendingChangesMessage is the message displayed in the OrchestrationPaused condition when the
 	// PauseOrchestrationAnnotation is enabled and spec changes have been made.
 	PausedWithPendingChangesMessage = "Orchestration paused via annotation; spec changes are pending and will be applied on resume"
@@ -154,6 +154,18 @@ func HasPendingChanges(expected client.Object, actual client.Object) bool {
 	return hash.GetTemplateHashLabel(actual.GetLabels()) != hash.GetTemplateHashLabel(expected.GetLabels())
 }
 
+// ReportPausedWaitingCondition sets OrchestrationPaused=True with PausedWaitingMessage on owner.
+// Use it from StatefulSet-based controllers when orchestration is paused and the underlying
+// StatefulSet has not yet converged (e.g. a rolling update is still in progress).
+func ReportPausedWaitingCondition(owner ObjectWithConditions) {
+	owner.MergeConditions(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Message:            PausedWaitingMessage,
+	})
+}
+
 // ObjectWithConditions provides an interfacing wrapping a client.Object with an additional MergeCondition function to
 // allow setPausedConditionAndEmitEvent to be agnostic of the underlying resource type. This is defined here because:
 //  1. controller-gen does not allow the interface type to be defined in the API source, preventing this from being
@@ -177,4 +189,5 @@ var _ ObjectWithConditions = (*eprv1alpha1.PackageRegistry)(nil)
 var _ ObjectWithConditions = (*maps.ElasticMapsServer)(nil)
 var _ ObjectWithConditions = (*agentv1alpha1.Agent)(nil)
 var _ ObjectWithConditions = (*entv1.EnterpriseSearch)(nil)
+var _ ObjectWithConditions = (*logstashv1alpha1.Logstash)(nil)
 var _ ObjectWithConditions = (*autoopsv1alpha1.AutoOpsAgentPolicy)(nil)

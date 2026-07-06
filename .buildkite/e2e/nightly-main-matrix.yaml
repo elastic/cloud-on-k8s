@@ -3,11 +3,11 @@
   fixed:
     E2E_PROVIDER: gke
   mixed:
-    - E2E_STACK_VERSION: "8.19.15"
+    - E2E_STACK_VERSION: "8.19.18"
     - E2E_STACK_VERSION: "9.2.8"
-    - E2E_STACK_VERSION: "9.3.4"
-    # current stack version 9.4.0 is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.19.16-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.3.7"
+    # current stack version 9.4.3 is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "8.19.19-SNAPSHOT"
     - E2E_STACK_VERSION: "9.5.0-SNAPSHOT"
 
 - label: ocp
@@ -15,7 +15,7 @@
     E2E_PROVIDER: ocp
   mixed:
     ## Test the current stack version.
-    - E2E_STACK_VERSION: "9.4.0"
+    - E2E_STACK_VERSION: "9.4.3"
     ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
     - E2E_STACK_VERSION: "9.5.0-SNAPSHOT"
 
@@ -23,14 +23,14 @@
   fixed:
     E2E_PROVIDER: kind
   mixed:
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32e4ee01386f0489b3b2be24b0a55aac2b
     - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.11@sha256:5fc52d52a7b9574015299724bd68f183702956aa4a2116ae75a63cb574b35af8
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.7@sha256:d26ef333bdb2cbe9862a0f7c3803ecc7b4303d8cea8e814b481b09949d353040
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.3@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.12@sha256:3f5c8443c620245e4d355cfe09e96a91ead32ceaa569d3f1ca9edf0cb2fe2ff4
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.8@sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
     # The latest version of kind/k8s needs to be listed twice at the end of this list
     # as it's tested in both ipv4 and ipv6 mode.
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
       DEPLOYER_KIND_IP_FAMILY: ipv6
 
 - label: gke
@@ -62,18 +62,3 @@
   fixed:
     E2E_PROVIDER: aks
 
-# Stateless Elasticsearch tests
-#- label: gke-stateless
-#  fixed:
-#    E2E_PROVIDER: gke
-#    STATELESS: "true"
-#
-#- label: eks-stateless
-#  fixed:
-#    E2E_PROVIDER: eks
-#    STATELESS: "true"
-#
-#- label: aks-stateless
-#  fixed:
-#    E2E_PROVIDER: aks
-#    STATELESS: "true"

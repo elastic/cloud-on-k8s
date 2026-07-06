@@ -67,7 +67,6 @@ func doRun(flags runFlags) error {
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.createRoles,
 			helper.createManagedNamespaces,
-			helper.copyStatelessBucketSecret,
 			helper.deploySecurityConstraints,
 			helper.runTestsLocally,
 		}
@@ -81,7 +80,6 @@ func doRun(flags runFlags) error {
 			helper.createRoles,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
-			helper.copyStatelessBucketSecret,
 			helper.deployTestSecrets,
 			helper.deploySecurityConstraints,
 			helper.deployMonitoring,
@@ -190,19 +188,7 @@ func (h *helper) initTestContext() error {
 		LogToFile:                h.logToFile,
 		AutopilotCluster:         isAutopilotCluster(h),
 		ArtefactsDir:             artefactsDir,
-		DatePrefix:               time.Now().UTC().Format("20060102"),
 		RestrictWatchedResources: h.restrictWatchedResources,
-	}
-
-	// Initialize stateless config if enabled (reads bucket config from Secret annotations).
-	if h.statelessEnabled {
-		h.testContext.Stateless = &test.StatelessConfig{
-			SecretName:      h.statelessSecretName,
-			SecretNamespace: h.statelessSecretNamespace,
-		}
-		if err := h.initStatelessConfig(); err != nil {
-			return err
-		}
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -870,7 +856,7 @@ func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
 	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
 	otherNS := append([]string{h.testContext.E2ENamespace, "default"}, h.testContext.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:noctx
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics", "--keep-secret-data") //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

@@ -25,10 +25,10 @@ import (
 func TestSystemIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"))
 		if !skipAgentInternalLogsValidation(v) {
-			builder = builder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+			builder = builder.
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
 		}
 		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 		// so metrics-elastic_agent.metricbeat-default is no longer populated.
@@ -56,10 +56,10 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 func TestKubernetesIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.
-			WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"))
 		if !skipAgentInternalLogsValidation(v) {
-			builder = builder.WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
+			builder = builder.
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default")).
+				WithDefaultESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"))
 		}
 		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 		// so metrics-elastic_agent.metricbeat-default is no longer populated.
@@ -86,10 +86,10 @@ func TestKubernetesIntegrationRecipe(t *testing.T) {
 func TestMultiOutputRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
-		builder = builder.
-			WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring")
 		if !skipAgentInternalLogsValidation(v) {
-			builder = builder.WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring")
+			builder = builder.
+				WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent", "default"), "monitoring").
+				WithESValidation(agent.HasWorkingDataStream(agent.LogsType, "elastic_agent.metricbeat", "default"), "monitoring")
 		}
 		// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 		// so metrics-elastic_agent.metricbeat-default is no longer populated.
@@ -240,9 +240,15 @@ func TestFleetCustomLogsIntegrationRecipe(t *testing.T) {
 }
 
 func TestFleetAPMIntegrationRecipe(t *testing.T) {
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
+		}
+		if skipAPMServerElasticAgentMetricsValidation(v) {
+			return builder.WithFleetAgentDataStreamsValidationFiltered(func(dsType, dataset string) bool {
+				return dsType != agent.MetricsType || dataset != "elastic_agent.elastic_agent"
+			})
 		}
 		return builder.WithFleetAgentDataStreamsValidation()
 	}

@@ -27,6 +27,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		commonv1.PauseOrchestrationAnnotationCheck[*EnterpriseSearch](),
 	}
 
 	updateChecks = []func(old, curr *EnterpriseSearch) field.ErrorList{

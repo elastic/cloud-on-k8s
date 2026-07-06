@@ -26,6 +26,7 @@ var (
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		commonv1.PauseOrchestrationAnnotationCheck[*ApmServer](),
 	}
 
 	updateChecks = []func(old, curr *ApmServer) field.ErrorList{

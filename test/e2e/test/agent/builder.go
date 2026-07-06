@@ -10,6 +10,7 @@ import (
 
 	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +26,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -244,23 +247,34 @@ func (b Builder) WithESValidation(validation ValidationFunc, outputName string) 
 }
 
 func (b Builder) WithFleetAgentDataStreamsValidation() Builder {
+	return b.WithFleetAgentDataStreamsValidationFiltered(nil)
+}
+
+// WithFleetAgentDataStreamsValidationFiltered adds data stream validations for elastic-agent
+// internal streams. When filter is non-nil it is called for each (type, dataset) pair and only
+// streams for which it returns true are validated. When nil, all streams are validated.
+func (b Builder) WithFleetAgentDataStreamsValidationFiltered(filter func(dsType, dataset string) bool) Builder {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	b = b.
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.filebeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.fleet_server", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(LogsType, "elastic_agent.metricbeat", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.elastic_agent", "default")).
-		WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.fleet_server", "default"))
+	maybeAdd := func(dsType, dataset string) {
+		if filter == nil || filter(dsType, dataset) {
+			b = b.WithDefaultESValidation(HasWorkingDataStream(dsType, dataset, "default"))
+		}
+	}
+	maybeAdd(LogsType, "elastic_agent")
+	maybeAdd(LogsType, "elastic_agent.filebeat")
+	maybeAdd(LogsType, "elastic_agent.fleet_server")
+	maybeAdd(LogsType, "elastic_agent.metricbeat")
+	maybeAdd(MetricsType, "elastic_agent.elastic_agent")
+	maybeAdd(MetricsType, "elastic_agent.fleet_server")
 	// In 9.5.0+ beats run as OTel receivers and no longer expose the HTTP stats endpoint,
 	// so beat/metrics-monitoring is not created and metrics-elastic_agent.metricbeat-default
 	// is no longer populated. See https://github.com/elastic/elastic-agent/pull/13411.
 	if v.LT(version.MinFor(9, 5, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.metricbeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.metricbeat")
 	}
 	// https://github.com/elastic/cloud-on-k8s/issues/7389
 	if v.LT(version.MinFor(8, 12, 0)) {
-		b = b.WithDefaultESValidation(HasWorkingDataStream(MetricsType, "elastic_agent.filebeat", "default"))
+		maybeAdd(MetricsType, "elastic_agent.filebeat")
 	}
 	return b
 }
@@ -545,6 +559,38 @@ func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
 }
 
 var _ test.Builder = Builder{}
+var _ test.Subject = Builder{}
+
+func (b Builder) NSN() types.NamespacedName {
+	return k8s.ExtractNamespacedName(&b.Agent)
+}
+
+func (b Builder) Kind() string {
+	return agentv1alpha1.Kind
+}
+
+func (b Builder) Spec() any {
+	return b.Agent.Spec
+}
+
+func (b Builder) Count() int32 {
+	switch {
+	case b.Agent.Spec.Deployment != nil:
+		return pointer.Int32OrDefault(b.Agent.Spec.Deployment.Replicas, 1)
+	case b.Agent.Spec.StatefulSet != nil:
+		return pointer.Int32OrDefault(b.Agent.Spec.StatefulSet.Replicas, 1)
+	default:
+		return 0
+	}
+}
+
+func (b Builder) ServiceName() string {
+	return b.Agent.Name + "-agent-http"
+}
+
+func (b Builder) ListOptions() []k8sclient.ListOption {
+	return test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)
+}
 
 func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Builder {
 	t.Helper()

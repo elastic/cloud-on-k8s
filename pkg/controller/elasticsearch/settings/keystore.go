@@ -114,6 +114,9 @@ func AnyNodeSetHasUserProvidedKeystorePassword(
 // Management is enabled only for Elasticsearch versions >= 9.4.0, when FIPS is
 // enabled in any NodeSet or StackConfigPolicy config, and when no NodeSet
 // provides a user-managed keystore password through env or envFrom.
+// Callers that have already determined that file-based secure settings are active
+// (opt-in annotation + ES >= 9.5) must not call this function; they should GC the
+// secret directly.
 func ShouldManageGeneratedKeystorePassword(
 	ctx context.Context,
 	c k8s.Client,
