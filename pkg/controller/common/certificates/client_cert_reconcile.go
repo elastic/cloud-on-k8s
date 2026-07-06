@@ -21,6 +21,8 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -39,6 +41,9 @@ const (
 
 	// internalClientCertCommonName is the CommonName used in the operator's client certificate.
 	internalClientCertCommonName = "eck-internal"
+
+	// eckAPIGroupSuffix is the common suffix for all ECK custom resource API groups.
+	eckAPIGroupSuffix = ".k8s.elastic.co"
 
 	// clientCertTrustBundleSecretSuffix is the suffix appended to the owner name to form the trust bundle secret name.
 	clientCertTrustBundleSecretSuffix = "client-trust-bundle"
@@ -152,7 +157,9 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 }
 
 // discoverClientCertSecrets lists all secrets across namespaces that are labeled as client certificates
-// with soft-owner labels matching the specified owner.
+// with soft-owner labels matching the specified owner, then verifies each secret has an ECK-managed
+// owner reference. Only secrets created through the ECK association flow carry such a reference,
+// so secrets with labels set externally are excluded.
 func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, ownerNamespace, ownerKind string) ([]corev1.Secret, error) {
 	log := ulog.FromContext(ctx)
 
@@ -166,13 +173,61 @@ func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, own
 		return nil, fmt.Errorf("failed to list client certificate secrets: %w", err)
 	}
 
+	// Post-filter: only include secrets that have a verified ECK-managed owner reference.
+	// ECK always sets such an owner reference when creating client cert secrets through the
+	// association flow; secrets without one were not created by the operator.
+	var verified []corev1.Secret
+	for i := range clientCertificateSecrets.Items {
+		secret := &clientCertificateSecrets.Items[i]
+		ok, err := hasVerifiedECKOwnerRef(ctx, c, secret)
+		if err != nil {
+			return nil, fmt.Errorf("verifying owner reference for client certificate secret %s/%s: %w", secret.Namespace, secret.Name, err)
+		}
+		if ok {
+			verified = append(verified, *secret)
+		} else {
+			log.Info("Ignoring client certificate secret: no verified ECK owner reference",
+				"secret_namespace", secret.Namespace, "secret_name", secret.Name)
+		}
+	}
+
 	log.V(1).Info("Discovered client certificate secrets",
 		"owner_name", ownerName,
 		"owner_namespace", ownerNamespace,
 		"owner_kind", ownerKind,
-		"count", len(clientCertificateSecrets.Items))
+		"count", len(verified))
 
-	return clientCertificateSecrets.Items, nil
+	return verified, nil
+}
+
+// hasVerifiedECKOwnerRef returns true if the Secret has at least one owner reference pointing to
+// an ECK custom resource (API group ending in .k8s.elastic.co) that currently exists in the same
+// namespace with the expected UID. Kubernetes enforces that owner references are namespace-scoped,
+// so a cross-namespace attacker cannot plant a valid owner reference to an ECK resource they do
+// not control.
+func hasVerifiedECKOwnerRef(ctx context.Context, c k8s.Client, secret *corev1.Secret) (bool, error) {
+	for _, ref := range secret.OwnerReferences {
+		group := ref.APIVersion
+		if i := strings.Index(group, "/"); i != -1 {
+			group = group[:i]
+		}
+		if !strings.HasSuffix(group, eckAPIGroupSuffix) {
+			continue
+		}
+		owner := &unstructured.Unstructured{}
+		owner.SetAPIVersion(ref.APIVersion)
+		owner.SetKind(ref.Kind)
+		if err := c.Get(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: ref.Name}, owner); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return false, err
+		}
+		if owner.GetUID() == ref.UID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // buildTrustBundleFromSecrets extracts client certificates from the given secrets and concatenates them.
