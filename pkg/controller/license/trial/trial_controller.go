@@ -57,6 +57,9 @@ type ReconcileTrials struct {
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
 func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if !r.NamespaceMatcher.Matches(request.Namespace) {
+		return reconcile.Result{}, nil
+	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "secret_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
