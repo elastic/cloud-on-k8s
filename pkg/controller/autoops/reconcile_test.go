@@ -1188,6 +1188,7 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 		wantConditionStatus      corev1.ConditionStatus
 		wantConditionMsg         string
 		wantDeploymentNotCreated bool // assert no new Deployment is created
+		wantDeploymentCreated    bool // assert at least one Deployment is created
 		wantReady                int
 	}{
 		{
@@ -1222,7 +1223,7 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 			wantDeploymentNotCreated: true,
 		},
 		{
-			name: "paused with two ES clusters: one matches hash, one doesn't — reports PendingChanges",
+			name: "paused with two ES clusters: neither has a deployment — reports PendingChanges",
 			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
 				if a.Annotations == nil {
 					a.Annotations = make(map[string]string)
@@ -1231,7 +1232,7 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 			}),
 			initialObjects: []client.Object{
 				newSecret(),
-				newElasticsearch(), // es-1: no Deployment yet → pending
+				newElasticsearch(), // es-1: no Deployment → IsNotFound → pending
 				newElasticsearch(func(e *esv1.Elasticsearch) { e.Name = "es-2" }), // es-2: same
 			},
 			wantConditionStatus:      corev1.ConditionTrue,
@@ -1280,10 +1281,21 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 				newSecret(),
 				newElasticsearch(),
 			},
-			// After a successful resume reconcile the condition should be set to False.
-			// A Deployment will be created (normal reconcile path), so don't check wantDeploymentCreated.
-			wantConditionStatus: corev1.ConditionFalse,
-			wantConditionMsg:    common.PausedOrchestrationResumed,
+			// After a successful resume reconcile the condition should be set to False and a Deployment created.
+			wantConditionStatus:   corev1.ConditionFalse,
+			wantConditionMsg:      common.PausedOrchestrationResumed,
+			wantDeploymentCreated: true,
+		},
+		{
+			name:   "paused with no accessible ES clusters reports PausedNoChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				// no Elasticsearch object: accessibleClusters == 0, early-return path
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedNoChangesMessage,
+			wantDeploymentNotCreated: true,
 		},
 	}
 
@@ -1328,6 +1340,20 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 					_, hasPolicyLabel := d.Labels[PolicyNameLabelKey]
 					assert.False(t, hasPolicyLabel, "unexpected new Deployment created while paused: %s", d.Name)
 				}
+			}
+
+			// Verify at least one Deployment was created on the normal reconcile path.
+			if tt.wantDeploymentCreated {
+				var deplList appsv1.DeploymentList
+				require.NoError(t, k8sClient.List(ctx, &deplList))
+				found := false
+				for _, d := range deplList.Items {
+					if _, hasPolicyLabel := d.Labels[PolicyNameLabelKey]; hasPolicyLabel {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected a Deployment to be created but none was found")
 			}
 
 			if tt.wantReady > 0 {

@@ -84,8 +84,83 @@ func TestPauseOrchestration_Logstash(t *testing.T) {
 	testSequenceForTypes(t, lslabels.TypeLabelValue)
 }
 
+// TestPauseOrchestration_AutoOps tests the pause-orchestration annotation for AutoOpsAgentPolicy.
+// It uses a dedicated sequence that does NOT pause the underlying Elasticsearch cluster, avoiding
+// the ES readiness gate that would otherwise prevent AutoOps from computing pending Deployment changes.
 func TestPauseOrchestration_AutoOps(t *testing.T) {
-	testSequenceForTypes(t, autoops.TypeLabelValue)
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	namespace := test.Ctx().ManagedNamespace(0)
+
+	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext().
+		WithLabel("autoops", "enabled")
+	esWithLicense := test.LicenseTestBuilder(esInitial)
+
+	mockURL := testautoops.CloudConnectedAPIMockURL()
+
+	aoInitial := testautoops.NewBuilder(testName(autoops.TypeLabelValue)).
+		WithNamespace(esInitial.Namespace()).
+		WithNamespaceSelector(metav1.LabelSelector{
+			MatchLabels: map[string]string{"kubernetes.io/metadata.name": esInitial.Namespace()},
+		}).
+		WithCloudConnectedAPIURL(mockURL).
+		WithAutoOpsOTelURL(mockURL)
+
+	// Phase 1: pause, no spec changes yet
+	aoEnabled := aoInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&aoInitial)
+
+	// Phase 2: update resources while paused (values differ from the 400Mi/200m defaults so the template hash changes)
+	aoUpdated := aoEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+		},
+	}).WithMutatedFrom(&aoEnabled)
+
+	// Phase 3: resume
+	aoDisabled := aoUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&aoUpdated)
+
+	// Phase 4: re-pause (no new changes since phase 3)
+	aoReenabled := aoDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&aoDisabled)
+
+	// Phase 6: re-disable
+	aoRedisabled := aoReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&aoReenabled)
+
+	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.
+			// Initial: verify annotation absent, policy ready
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoInitial, false)).
+			// Phase 1: pause with no pending changes
+			WithSteps(aoEnabled.UpgradeTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoEnabled, false)).
+			// Phase 2: change resources while paused; verify change is held
+			WithSteps(aoUpdated.UpgradeTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoUpdated, true)).
+			WithSteps(test.CheckTestSteps(aoEnabled, k)).
+			// Phase 3: resume; verify resources applied
+			WithSteps(aoDisabled.UpgradeTestSteps(k)).
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoDisabled, true)).
+			WithSteps(test.CheckTestSteps(aoDisabled, k)).
+			// Phase 4: re-pause
+			WithSteps(aoReenabled.MutationTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoReenabled, false)).
+			// Phase 5: delete pod while paused; verify pod recovers
+			WithStep(deletePod(t, k, namespace, aoReenabled)).
+			WithSteps(test.CheckTestSteps(aoReenabled, k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoReenabled, false)).
+			// Phase 6: re-disable
+			WithSteps(aoRedisabled.UpgradeTestSteps(k)).
+			WithSteps(test.CheckTestSteps(aoRedisabled, k)).
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoRedisabled, true))
+	}, esWithLicense, aoInitial).RunSequential(t)
 }
 
 func testSequenceForTypes(t *testing.T, typ ...string) {
@@ -410,7 +485,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, lslabels.TypeLabelValue, autoops.TypeLabelValue} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, autoops.TypeLabelValue, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, lslabels.TypeLabelValue} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}
@@ -461,9 +536,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
-	if _, testAutoOps := testTypes[autoops.TypeLabelValue]; testAutoOps {
-		esInitial.WithLabel("autoops", "enabled")
-	}
 	esWithLicense := test.LicenseTestBuilder(esInitial)
 	esRef := commonv1.ObjectSelector{Namespace: esInitial.Elasticsearch.Namespace, Name: esInitial.Elasticsearch.Name}
 	initialBuilder.AddBuilder(esWithLicense)
@@ -547,19 +619,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 		})
 	initialBuilder.MaybeAddBuilder(lslabels.TypeLabelValue, lsInitial)
 
-
-	// AutoOps
-	mockURL := testautoops.CloudConnectedAPIMockURL()
-	autoopsInitial := testautoops.NewBuilder(testName(autoops.TypeLabelValue)).
-		WithNamespace(esInitial.Namespace()).
-		WithResourceSelector(metav1.LabelSelector{
-			MatchLabels: map[string]string{"autoops": "enabled"},
-		}).WithNamespaceSelector(metav1.LabelSelector{
-		MatchLabels: map[string]string{"kubernetes.io/metadata.name": esInitial.Namespace()},
-	}).WithCloudConnectedAPIURL(mockURL).
-		WithAutoOpsOTelURL(mockURL)
-	initialBuilder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsInitial)
-
 	initial = initialBuilder.phase
 
 	// Phase 1: transition to pause-orchestration: true
@@ -584,8 +643,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	}
 	lsEnabled := lsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&lsInitial)
 	phase1Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsEnabled)
-	autoopsEnabled := autoopsInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&autoopsInitial)
-	phase1Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsEnabled)
 	phase1 = phase1Builder.phase
 
 	// Phase 2: update topology of each application
@@ -633,17 +690,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	}
 	lsUpdated := lsEnabled.DeepCopy().WithNodeCount(2).WithMutatedFrom(&lsEnabled)
 	phase2Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsUpdated)
-	autoopsUpdated := autoopsEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("400Mi"),
-			corev1.ResourceCPU:    resource.MustParse("200m"),
-		},
-		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("400Mi"),
-			corev1.ResourceCPU:    resource.MustParse("200m"),
-		},
-	}).WithMutatedFrom(&autoopsEnabled)
-	phase2Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsUpdated)
 	phase2 = phase2Builder.phase
 
 	// Phase 3: transition back to disabled
@@ -668,8 +714,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	}
 	lsDisabled := lsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&lsUpdated)
 	phase3Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsDisabled)
-	autoopsDisabled := autoopsUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&autoopsUpdated)
-	phase3Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsDisabled)
 	phase3 = phase3Builder.phase
 
 	// Phase 4: transition back to enabled again
@@ -694,8 +738,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	}
 	lsReenabled := lsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&lsDisabled)
 	phase4Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsReenabled)
-	autoopsReenabled := autoopsDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&autoopsDisabled)
-	phase4Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsReenabled)
 	phase4 = phase4Builder.phase
 
 	// Phase 5: pod deletion (no builders)
@@ -722,8 +764,6 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	}
 	lsRedisabled := lsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&lsReenabled)
 	phase6Builder.MaybeAddBuilder(lslabels.TypeLabelValue, lsRedisabled)
-	autoopsRedisabled := autoopsReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&autoopsReenabled)
-	phase6Builder.MaybeAddBuilder(autoops.TypeLabelValue, autoopsRedisabled)
 	phase6 = phase6Builder.phase
 
 	require.Truef(t,

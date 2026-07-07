@@ -79,8 +79,11 @@ func NewBuilder(name string) Builder {
 
 func (b Builder) DeepCopy() *Builder {
 	policy := b.AutoOpsAgentPolicy.DeepCopy()
+	configSecret := b.ConfigSecret.DeepCopy()
 	builderCopy := Builder{
 		AutoOpsAgentPolicy: *policy,
+		ConfigSecret:       *configSecret,
+		Suffix:             b.Suffix,
 	}
 	if b.MutatedFrom != nil {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()

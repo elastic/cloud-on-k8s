@@ -148,6 +148,11 @@ func (r *AgentPolicyReconciler) internalReconcile(
 	state.UpdateMonitoredResources(len(accessibleClusters))
 	if len(accessibleClusters) == 0 {
 		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
+		if common.IsOrchestrationPaused(&policy) {
+			state.SetOrchestrationPaused(false)
+		} else {
+			state.MaybeResetOrchestrationPaused()
+		}
 		return results
 	}
 

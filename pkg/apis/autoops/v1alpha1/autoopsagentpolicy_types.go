@@ -182,6 +182,11 @@ func (p *AutoOpsAgentPolicy) Conditions() commonv1.Conditions {
 	return p.Status.Conditions
 }
 
+// GetObservedGeneration returns the observed generation from the AutoOpsAgentPolicy status.
+func (p *AutoOpsAgentPolicy) GetObservedGeneration() int64 {
+	return p.Status.ObservedGeneration
+}
+
 func (p PolicyPhase) Priority() int {
 	switch p {
 	case ApplyingChangesPhase, ReadyPhase:
