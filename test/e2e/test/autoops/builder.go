@@ -144,10 +144,10 @@ func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 func resourceAllocationsFromList(list corev1.ResourceList) commonv1.ResourceAllocations {
 	var allocations commonv1.ResourceAllocations
 	if cpu, ok := list[corev1.ResourceCPU]; ok {
-		allocations.CPU = new(cpu.DeepCopy())
+		allocations.CPU = new(cpu.DeepCopy()) //nolint:staticcheck // value is used
 	}
 	if mem, ok := list[corev1.ResourceMemory]; ok {
-		allocations.Memory = new(mem.DeepCopy())
+		allocations.Memory = new(mem.DeepCopy()) //nolint:staticcheck // value is used
 	}
 	return allocations
 }
