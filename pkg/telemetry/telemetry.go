@@ -117,22 +117,19 @@ func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[st
 	})
 }
 
-func (r *Reporter) getNamespaces(ctx context.Context) ([]string, error) {
+func (r *Reporter) getNamespaces() []string {
 	if r.namespaceMatcher.SelectorEnabled() {
-		return r.namespaceMatcher.MatchingNamespacesFromCache(ctx)
+		return r.namespaceMatcher.MatchingNamespaces()
 	}
 
-	return r.managedNamespaces, nil
+	return r.managedNamespaces
 }
 
 func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
 
-	namespaces, err := r.getNamespaces(ctx)
-	if err != nil {
-		return nil, err
-	}
+	namespaces := r.getNamespaces()
 
 	stats := map[string]any{}
 	for _, f := range []getStatsFn{
@@ -163,11 +160,7 @@ func (r *Reporter) report(ctx context.Context) {
 
 	log := ulog.FromContext(ctx)
 
-	namespaces, err := r.getNamespaces(ctx)
-	if err != nil {
-		log.Error(err, "failed to get namespaces")
-		return
-	}
+	namespaces := r.getNamespaces()
 
 	stats, err := r.getResourceStats(ctx)
 	if err != nil {

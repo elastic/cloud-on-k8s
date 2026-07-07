@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/go-logr/logr"
@@ -142,52 +141,22 @@ func (m *NamespaceMatcher) Matches(ns string) bool {
 	return match
 }
 
-// MatchesCachedLabels fetches the Namespace named ns from the cache and
-// evaluates the selector against its current labels. Unlike Matches, which
-// returns the last recorded in-memory state, this method performs a live label
-// evaluation against the cached Namespace object. Returns false when the cache
-// lookup fails or the labels do not match.
-func (m *NamespaceMatcher) MatchesCachedLabels(ctx context.Context, ns string) bool {
-	if !m.SelectorEnabled() {
-		return true
-	}
-	if _, ok := m.alwaysManagedNamespaces[ns]; ok {
-		return true
-	}
-	var nsObj corev1.Namespace
-	if err := m.cache.Get(ctx, client.ObjectKey{Name: ns}, &nsObj); err != nil {
-		return false
-	}
-	return m.selector.Matches(labels.Set(nsObj.Labels))
-}
+func (m *NamespaceMatcher) MatchingNamespaces() []string {
+	m.matchedNamespacesMutex.Lock()
+	defer m.matchedNamespacesMutex.Unlock()
 
-// MatchingNamespacesFromCache lists all Namespace objects from the cache and
-// returns the names of those whose labels satisfy the selector, plus the
-// namespaces excluded from selector evaluation (the operator's own namespace),
-// which are managed by definition. Unlike Matches, which checks the in-memory
-// state map, this method performs a live label evaluation for every namespace
-// in the cache. Returns an error if the cache list fails. When the selector is
-// disabled, returns all namespace names.
-func (m *NamespaceMatcher) MatchingNamespacesFromCache(ctx context.Context) ([]string, error) {
-	var nsList corev1.NamespaceList
-	if err := m.cache.List(ctx, &nsList); err != nil {
-		return nil, err
+	names := make([]string, 0, len(m.matchedNamespaces)+len(m.alwaysManagedNamespaces))
+	for ns := range m.matchedNamespaces {
+		names = append(names, ns)
 	}
-
-	names := make([]string, 0, len(nsList.Items))
-
-	for _, ns := range nsList.Items {
-		// Always-managed namespaces bypass selector evaluation everywhere else
-		// (Matches, MatchesCachedLabels, the FilterClient), so they belong in this
-		// result too, even when their labels do not match the selector.
-		_, isAlwaysManaged := m.alwaysManagedNamespaces[ns.Name]
-
-		if !m.SelectorEnabled() || isAlwaysManaged || m.selector.Matches(labels.Set(ns.Labels)) {
-			names = append(names, ns.Name)
+	for ns := range m.alwaysManagedNamespaces {
+		if ns == "" {
+			continue
 		}
+		names = append(names, ns)
 	}
 
-	return names, nil
+	return names
 }
 
 // ObserveNamespace evaluates the selector against ns's current labels, records

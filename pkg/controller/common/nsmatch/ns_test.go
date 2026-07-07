@@ -6,7 +6,6 @@ package nsmatch
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -20,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 const testOperatorNS = "elastic-system"
@@ -492,147 +490,6 @@ func TestObserveAndBroadcast(t *testing.T) {
 		assert.False(t, stateChanged)
 		assert.True(t, isMatching)
 		assert.Len(t, ch, 0)
-	})
-}
-
-func TestMatchesCachedLabels(t *testing.T) {
-	sel := mustSelector(t, map[string]string{"env": "prod"})
-
-	t.Run("selector disabled: always returns true without touching cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(nil, testOperatorNS) // no expectations — cache must not be called
-		assert.True(t, m.MatchesCachedLabels(t.Context(), "any-ns"))
-	})
-
-	t.Run("short-circuit empty namespace: returns true without touching cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		assert.True(t, m.MatchesCachedLabels(t.Context(), ""))
-	})
-
-	t.Run("short-circuit operator namespace: returns true without touching cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		assert.True(t, m.MatchesCachedLabels(t.Context(), testOperatorNS))
-	})
-
-	t.Run("cache Get error: returns false", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnGetSetNamespace(map[string]string{}).Return(errors.New("cache unavailable"))
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(t.Context(), "prod-ns"))
-	})
-
-	t.Run("labels match selector: returns true", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnGetSetNamespace(map[string]string{"env": "prod"}).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		assert.True(t, m.MatchesCachedLabels(t.Context(), "prod-ns"))
-	})
-
-	t.Run("labels do not match selector: returns false", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnGetSetNamespace(map[string]string{"env": "dev"}).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(t.Context(), "dev-ns"))
-	})
-
-	t.Run("namespace has no labels: returns false", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnGetSetNamespace(nil).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		assert.False(t, m.MatchesCachedLabels(t.Context(), "unlabelled-ns"))
-	})
-}
-
-func TestMatchingNamespacesFromCache(t *testing.T) {
-	sel := mustSelector(t, map[string]string{"env": "prod"})
-
-	ns := func(name string, lbls map[string]string) corev1.Namespace {
-		return corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: lbls}}
-	}
-	prod := func(name string) corev1.Namespace { return ns(name, map[string]string{"env": "prod"}) }
-	dev := func(name string) corev1.Namespace { return ns(name, map[string]string{"env": "dev"}) }
-
-	t.Run("selector disabled: returns all namespace names", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
-		m := NewNamespaceMatcher(nil, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", "ns-2", testOperatorNS}, names)
-	})
-
-	t.Run("cache List error: returns error", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList().Return(errors.New("cache unavailable"))
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.Error(t, err)
-		assert.Nil(t, names)
-	})
-
-	t.Run("empty cache: returns empty slice", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList().Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.Empty(t, names)
-	})
-
-	t.Run("all namespaces match: returns all names", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod("ns-1"), prod("ns-2")).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", "ns-2"}, names)
-	})
-
-	t.Run("some namespaces match: returns matching names plus the operator namespace", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod("ns-1"), dev("ns-2"), prod("ns-3"), ns(testOperatorNS, nil)).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", "ns-3", testOperatorNS}, names)
-	})
-
-	t.Run("no namespaces match: returns only the operator namespace", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(dev("ns-1"), dev("ns-2"), ns(testOperatorNS, nil)).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{testOperatorNS}, names)
-	})
-
-	t.Run("operator namespace does not match selector: included exactly once", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(ns(testOperatorNS, nil), prod("ns-1")).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
-	})
-
-	t.Run("operator namespace matches selector: not duplicated", func(t *testing.T) {
-		mc := mock.NewCache(t)
-		mc.OnListSetNamespaceList(prod(testOperatorNS), prod("ns-1")).Return(nil)
-		m := NewNamespaceMatcher(sel, testOperatorNS)
-		m.SetCache(mc)
-		names, err := m.MatchingNamespacesFromCache(t.Context())
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ns-1", testOperatorNS}, names)
 	})
 }
 
