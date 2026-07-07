@@ -156,16 +156,7 @@ func (r *namespaceSeedRunnable) Start(ctx context.Context) error {
 	// Run in a goroutine so that ObserveAndBroadcast can block waiting for
 	// subscribers to start consuming without holding up the Runnable that
 	// called us.
-	go func() {
-		for _, ns := range nsList.Items {
-			if ctx.Err() != nil {
-				return
-			}
-			if _, _, err := r.namespaceMatcher.ObserveAndBroadcast(ctx, &ns); err != nil {
-				r.log.Error(err, "failed to seed namespace match state", "namespace", ns.Name)
-			}
-		}
-	}()
+	go r.namespaceMatcher.InitialSeed(ctx, r.log, nsList.Items)
 
 	return nil
 }

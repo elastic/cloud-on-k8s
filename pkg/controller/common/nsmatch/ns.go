@@ -60,6 +60,8 @@ type NamespaceMatcher struct {
 	subscriberLogBackpressureDuration time.Duration
 	subscriberBufferSize              int
 	elected                           <-chan struct{} // closed once this replica is elected leader; nil means always elected.
+	initialSeeding                    chan struct{}   // closed by InitialSeed once all pre-existing namespaces have been observed.
+	initialSeedingOnce                sync.Once
 }
 
 // NewNamespaceMatcher returns a NamespaceMatcher. When sel is nil it acts as
@@ -77,6 +79,7 @@ func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatch
 		matchedNamespaces:                 map[string]struct{}{},
 		subscriberLogBackpressureDuration: subscriberLogBackpressureDuration,
 		subscriberBufferSize:              subscriberBufferSize,
+		initialSeeding:                    make(chan struct{}),
 	}
 }
 
@@ -238,6 +241,40 @@ func (m *NamespaceMatcher) ObserveAndBroadcast(ctx context.Context, ns *corev1.N
 		err = m.Broadcast(ctx, ns)
 	}
 	return
+}
+
+// InitialSeed observes and broadcasts each namespace in seed, then marks
+// initial seeding as complete, releasing every WaitForInitialSeeding caller.
+// Stops early, without marking seeding complete, if ctx is done before all
+// namespaces have been processed. Safe to call more than once.
+func (m *NamespaceMatcher) InitialSeed(ctx context.Context, log logr.Logger, seed []corev1.Namespace) {
+	for _, ns := range seed {
+		if ctx.Err() != nil {
+			return
+		}
+		if _, _, err := m.ObserveAndBroadcast(ctx, &ns); err != nil {
+			log.Error(err, "failed to seed namespace match state", "namespace", ns.Name)
+		}
+	}
+
+	m.initialSeedingOnce.Do(func() {
+		close(m.initialSeeding)
+	})
+}
+
+// WaitForInitialSeeding blocks until InitialSeed has finished or ctx is done,
+// in which case it returns ctx's error. When the selector is disabled no
+// seeding takes place, so it returns immediately.
+func (m *NamespaceMatcher) WaitForInitialSeeding(ctx context.Context) error {
+	if !m.SelectorEnabled() {
+		return nil
+	}
+	select {
+	case <-m.initialSeeding:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Swap records isMatching for ns and returns the previously recorded value

@@ -887,6 +887,9 @@ func asyncTasks(
 
 	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
 	mgr.GetCache().WaitForCacheSync(ctx) // wait until k8s client cache is initialized
+	if namespaceMatcher.SelectorEnabled() {
+		_ = namespaceMatcher.WaitForInitialSeeding(ctx) // wait for initial seeding to be done
+	}
 
 	// Start the resource reporter
 	go func() {
@@ -902,11 +905,15 @@ func asyncTasks(
 		}()
 	}
 
+	namespaces := managedNamespaces
+	if namespaceMatcher.SelectorEnabled() {
+		namespaces = namespaceMatcher.MatchingNamespaces()
+	}
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
 	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
-	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
+	err := garbageCollectUsers(gcCtx, cfg, namespaces)
 	if err != nil {
 		log.Error(err, "exiting due to unrecoverable error")
 		os.Exit(1)

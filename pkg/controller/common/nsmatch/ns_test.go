@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -524,5 +525,130 @@ func TestSwap(t *testing.T) {
 		wasMatching := m.Swap("ns", false)
 		assert.False(t, wasMatching)
 		assert.False(t, m.Matches("ns"))
+	})
+}
+
+func TestWaitForInitialSeeding(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"managed": "true"})
+
+	t.Run("returns once InitialSeed finishes", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		done := make(chan error, 1)
+		go func() { done <- m.WaitForInitialSeeding(t.Context()) }()
+		select {
+		case <-done:
+			t.Fatal("WaitForInitialSeeding returned before InitialSeed finished")
+		case <-time.After(20 * time.Millisecond):
+		}
+		m.InitialSeed(t.Context(), logr.Discard(), nil)
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(time.Second):
+			t.Fatal("WaitForInitialSeeding did not return after InitialSeed finished")
+		}
+	})
+
+	t.Run("returns ctx error when context is cancelled", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		require.ErrorIs(t, m.WaitForInitialSeeding(ctx), context.Canceled)
+	})
+
+	t.Run("returns immediately when selector is disabled", func(t *testing.T) {
+		m := NewNamespaceMatcher(nil, testOperatorNS)
+		require.NoError(t, m.WaitForInitialSeeding(t.Context()))
+	})
+
+	t.Run("InitialSeed with no namespaces is idempotent", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.InitialSeed(t.Context(), logr.Discard(), nil)
+		m.InitialSeed(t.Context(), logr.Discard(), nil)
+		require.NoError(t, m.WaitForInitialSeeding(t.Context()))
+	})
+}
+
+func TestInitialSeed(t *testing.T) {
+	sel := mustSelector(t, map[string]string{"managed": "true"})
+
+	t.Run("observes and broadcasts each namespace, then closes the seeding gate", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		sub := m.Subscribe()
+		seed := []corev1.Namespace{
+			*namespace("matching", map[string]string{"managed": "true"}),
+			*namespace("non-matching", nil),
+		}
+
+		m.InitialSeed(t.Context(), logr.Discard(), seed)
+
+		assert.True(t, m.Matches("matching"))
+		assert.False(t, m.Matches("non-matching"))
+		require.Len(t, sub, 1, "expected a broadcast only for the namespace whose match state changed")
+		require.NoError(t, m.WaitForInitialSeeding(t.Context()))
+	})
+
+	t.Run("stops seeding without closing the gate once the context is done", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		m.InitialSeed(ctx, logr.Discard(), []corev1.Namespace{
+			*namespace("ns", map[string]string{"managed": "true"}),
+		})
+
+		assert.False(t, m.Matches("ns"), "namespace should not have been observed once the context was already done")
+
+		waitCtx, waitCancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		defer waitCancel()
+		require.ErrorIs(t, m.WaitForInitialSeeding(waitCtx), context.DeadlineExceeded, "seeding gate should not be closed when seeding was aborted early")
+	})
+
+	t.Run("logs an error but keeps seeding when ObserveAndBroadcast fails for a namespace", func(t *testing.T) {
+		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m.subscriberBufferSize = 0
+		m.Subscribe() // unbuffered, no receiver: forces Broadcast to observe ctx cancellation instead of completing
+
+		var mu sync.Mutex
+		var lines []string
+		testLogger := funcr.New(func(_, args string) {
+			mu.Lock()
+			defer mu.Unlock()
+			lines = append(lines, args)
+		}, funcr.Options{})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		seed := []corev1.Namespace{
+			*namespace("blocked", map[string]string{"managed": "true"}),
+			*namespace("never-reached", map[string]string{"managed": "true"}),
+		}
+
+		done := make(chan struct{})
+		go func() {
+			m.InitialSeed(ctx, testLogger, seed)
+			close(done)
+		}()
+
+		time.Sleep(20 * time.Millisecond) // let the broadcast for "blocked" start blocking on the unbuffered subscriber channel
+		cancel()
+
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("InitialSeed did not return after context cancellation")
+		}
+
+		assert.True(t, m.Matches("blocked"), "match state is recorded before broadcast is attempted, regardless of broadcast outcome")
+		assert.False(t, m.Matches("never-reached"), "seeding should have stopped once ctx was done, before reaching the second namespace")
+
+		mu.Lock()
+		defer mu.Unlock()
+		found := false
+		for _, l := range lines {
+			if strings.Contains(l, "failed to seed namespace match state") {
+				found = true
+			}
+		}
+		assert.True(t, found, "expected an error to be logged for the namespace whose broadcast failed")
 	})
 }
