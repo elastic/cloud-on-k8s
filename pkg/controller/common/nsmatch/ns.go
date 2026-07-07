@@ -12,7 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/go-logr/logr"
@@ -53,7 +52,6 @@ const subscriberLogBackpressureDuration = 3 * time.Second
 // client — see the same state as the leader. Broadcasting to subscribers, in
 // contrast, only happens on the elected leader; see Broadcast and SetElected.
 type NamespaceMatcher struct {
-	cache                             cache.Cache
 	selector                          labels.Selector
 	alwaysManagedNamespaces           map[string]struct{} // namespaces excluded from label-selector evaluation.
 	subs                              []chan event.TypedGenericEvent[*corev1.Namespace]
@@ -80,10 +78,6 @@ func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatch
 		subscriberLogBackpressureDuration: subscriberLogBackpressureDuration,
 		subscriberBufferSize:              subscriberBufferSize,
 	}
-}
-
-func (m *NamespaceMatcher) SetCache(c cache.Cache) {
-	m.cache = c
 }
 
 // SetElected provides the manager's election signal (manager.Elected()), a
