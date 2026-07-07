@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 	"testing"
 	"time"
 
@@ -301,9 +302,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if policy.Annotations == nil {
 					policy.Annotations = make(map[string]string)
 				}
-				for key, val := range b.AutoOpsAgentPolicy.Annotations {
-					policy.Annotations[key] = val
-				}
+				maps.Copy(policy.Annotations, b.AutoOpsAgentPolicy.Annotations)
 				policy.Spec = b.AutoOpsAgentPolicy.Spec
 				return k.Client.Update(context.Background(), &policy)
 			}),
