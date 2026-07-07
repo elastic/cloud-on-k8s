@@ -125,11 +125,9 @@ func (r *Reporter) getNamespaces() []string {
 	return r.managedNamespaces
 }
 
-func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
+func (r *Reporter) getResourceStats(ctx context.Context, namespaces []string) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
-
-	namespaces := r.getNamespaces()
 
 	stats := map[string]any{}
 	for _, f := range []getStatsFn{
@@ -162,7 +160,7 @@ func (r *Reporter) report(ctx context.Context) {
 
 	namespaces := r.getNamespaces()
 
-	stats, err := r.getResourceStats(ctx)
+	stats, err := r.getResourceStats(ctx, namespaces)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
 		return
