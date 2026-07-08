@@ -40,7 +40,7 @@ func NewFilterClient(delegate client.Client, nfn *NamespaceMatcher) *FilterClien
 // an error is returned. Cluster-scoped objects have an empty key.Namespace, which
 // always matches.
 func (w *FilterClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if w.nfn.SelectorEnabled() && !w.nfn.Matches(key.Namespace) {
+	if w.nfn.SelectorEnabled() && !w.nfn.NamespaceNameMatches(ctx, key.Namespace) {
 		return apierrors.NewNotFound(w.groupResource(obj), key.Name)
 	}
 	return w.Client.Get(ctx, key, obj, opts...)
@@ -76,12 +76,12 @@ func (w *FilterClient) List(ctx context.Context, list client.ObjectList, opts ..
 		opt.ApplyToList(listOpts)
 	}
 	if listOpts.Namespace != "" {
-		if !w.nfn.Matches(listOpts.Namespace) {
+		if !w.nfn.NamespaceNameMatches(ctx, listOpts.Namespace) {
 			return apimeta.SetList(list, nil)
 		}
 		return nil
 	}
-	return filterByNamespace(list, w.nfn.Matches)
+	return filterByNamespace(list, func(ns string) bool { return w.nfn.NamespaceNameMatches(ctx, ns) })
 }
 
 // filterByNamespace removes items from list whose namespace does not satisfy matches.

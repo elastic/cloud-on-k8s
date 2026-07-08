@@ -46,7 +46,12 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &kbv1.KibanaList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -111,15 +116,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.params.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &kbv1.KibanaList{} },
-		),
-	)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcileKibana)(nil)
@@ -140,10 +137,6 @@ type ReconcileKibana struct {
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "kibana_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -257,13 +250,15 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(ctx, r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Kibana
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileKibana) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
 }
 
 func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, kbv1.Kind)
 }
 

@@ -49,7 +49,12 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &eprv1alpha1.PackageRegistryList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -107,15 +112,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	}
 
 	// Dynamically watch referenced secrets
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &eprv1alpha1.PackageRegistryList{} },
-		),
-	)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
@@ -147,10 +144,6 @@ var _ driver.Interface = (*ReconcilePackageRegistry)(nil)
 // Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
 // in the PackageRegistry.Spec
 func (r *ReconcilePackageRegistry) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "epr_name", request)
 	log := ulog.FromContext(ctx)
 	defer common.LogReconciliationRun(log)()
@@ -362,13 +355,15 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 	return common.UpdateStatus(ctx, r.Client, &epr)
 }
 
-func (r *ReconcilePackageRegistry) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given PackageRegistry
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcilePackageRegistry) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
 func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, eprv1alpha1.Kind)
 }
 

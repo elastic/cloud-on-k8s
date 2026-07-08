@@ -165,10 +165,6 @@ type Reconciler struct {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(types.NamespacedName{Namespace: request.Namespace, Name: request.Name})
-		return reconcile.Result{}, nil
-	}
 	nameField := fmt.Sprintf("%s_name", r.AssociatedShortName)
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, r.AssociationName, nameField, request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
@@ -605,12 +601,14 @@ func resultFromStatuses(statusMap commonv1.AssociationStatusMap) reconcile.Resul
 	return reconcile.Result{} // we are done or there is not much we can do
 }
 
-func (r *Reconciler) onNamespaceOutOfScope(associated types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given associated
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *Reconciler) OnNamespaceOutOfScope(associated types.NamespacedName) {
 	r.removeWatches(associated)
 }
 
 func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
-	r.onNamespaceOutOfScope(associated)
+	r.OnNamespaceOutOfScope(associated)
 
 	// delete user Secret in the Elasticsearch namespace
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {

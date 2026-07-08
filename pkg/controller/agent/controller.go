@@ -43,7 +43,12 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &agentv1alpha1.AgentList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -129,15 +134,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	}
 
 	// Watch dynamically referenced Secrets
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &agentv1alpha1.AgentList{} },
-		),
-	)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
@@ -156,10 +153,6 @@ type ReconcileAgent struct {
 // Reconcile reads that state of the cluster for an Agent object and makes changes based on the state read
 // and what is in the Agent.Spec
 func (r *ReconcileAgent) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "agent_name", request)
 	defer common.LogReconciliationRun(logconf.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -252,12 +245,14 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 	return nil
 }
 
-func (r *ReconcileAgent) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Agent
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileAgent) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
 func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, agentv1alpha1.Kind)
 }

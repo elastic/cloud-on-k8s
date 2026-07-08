@@ -59,7 +59,12 @@ const name = "elasticsearch-controller"
 // this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, name, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &esv1.ElasticsearchList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -136,16 +141,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	}
 
 	// Trigger a reconciliation when observers report a cluster health change
-	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers)); err != nil {
-		return err
-	}
-
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &esv1.ElasticsearchList{} },
-		),
-	)
+	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
 var _ reconcile.Reconciler = (*ReconcileElasticsearch)(nil)
@@ -172,10 +168,6 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -377,7 +369,7 @@ func (r *ReconcileElasticsearch) annotateResource(
 	return r.Update(ctx, &es)
 }
 
-// onNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource
 // when its namespace no longer matches the operator's namespace selector. The resource is not deleted —
 // it simply becomes invisible to this operator instance — so we stop observing its cluster health and
 // remove all dynamic watches that were registered on its behalf to avoid stale watch handlers.
@@ -388,7 +380,7 @@ func (r *ReconcileElasticsearch) annotateResource(
 // recent StatefulSet/pod changes. Keeping expectations preserves the usual
 // stale-cache safety across short namespace label flaps. Expectations are
 // removed on CR deletion and are also cleared by operator restart.
-func (r *ReconcileElasticsearch) onNamespaceOutOfScope(es types.NamespacedName) {
+func (r *ReconcileElasticsearch) OnNamespaceOutOfScope(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
@@ -401,6 +393,6 @@ func (r *ReconcileElasticsearch) onNamespaceOutOfScope(es types.NamespacedName) 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
-	r.onNamespaceOutOfScope(es)
+	r.OnNamespaceOutOfScope(es)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

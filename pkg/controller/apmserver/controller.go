@@ -87,7 +87,12 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &apmv1.ApmServerList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -146,15 +151,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &apmv1.ApmServerList{} },
-		),
-	)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
@@ -190,10 +187,6 @@ var _ driver.Interface = (*ReconcileApmServer)(nil)
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "as_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -320,13 +313,15 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	return nil
 }
 
-func (r *ReconcileApmServer) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given ApmServer
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileApmServer) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
 }
 
 func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, apmv1.Kind)
 }
 

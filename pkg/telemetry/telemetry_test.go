@@ -31,6 +31,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 var (
@@ -582,7 +583,7 @@ func TestNewReporter(t *testing.T) {
 		client, fx := initFakeClient()
 
 		sel := mustLabelSelector(t, map[string]string{"env": "prod1"})
-		nm := matcherObserving(sel, operatorNamespace,
+		nm := matcherObserving(t, sel, operatorNamespace,
 			nsLabelled("ns1", map[string]string{"env": "prod1"}),
 			nsLabelled("ns2", map[string]string{"env": "prod2"}),
 			nsLabelled("ns3", map[string]string{"env": "prod1"}),
@@ -982,13 +983,14 @@ func mustLabelSelector(t *testing.T, matchLabels map[string]string) labels.Selec
 	return sel
 }
 
-// matcherObserving returns a NamespaceMatcher for operatorNS that has observed
-// the given namespaces, so its in-memory match state reflects their labels.
-func matcherObserving(sel labels.Selector, operatorNS string, nss ...corev1.Namespace) *nsmatch.NamespaceMatcher {
+// matcherObserving returns a NamespaceMatcher for operatorNS backed by a mock
+// cache that lists the given namespaces, so MatchingNamespaces reflects their labels.
+func matcherObserving(t *testing.T, sel labels.Selector, operatorNS string, nss ...corev1.Namespace) *nsmatch.NamespaceMatcher {
+	t.Helper()
 	m := nsmatch.NewNamespaceMatcher(sel, operatorNS)
-	for i := range nss {
-		m.ObserveNamespace(&nss[i])
-	}
+	mc := cachemock.NewCache(t)
+	mc.OnListSetNamespaceList(nss...).Return(nil)
+	m.SetCache(mc)
 	return m
 }
 
@@ -1024,7 +1026,7 @@ func TestGetNamespaces(t *testing.T) {
 			name: "enabled selector with all namespaces matching",
 			setup: func(t *testing.T) Reporter {
 				t.Helper()
-				nm := matcherObserving(sel, "elastic-system",
+				nm := matcherObserving(t, sel, "elastic-system",
 					nsLabelled("prod-a", map[string]string{"env": "prod"}),
 					nsLabelled("prod-b", map[string]string{"env": "prod"}),
 					nsLabelled("elastic-system", nil),
@@ -1037,7 +1039,7 @@ func TestGetNamespaces(t *testing.T) {
 			name: "enabled selector with only some namespaces matching",
 			setup: func(t *testing.T) Reporter {
 				t.Helper()
-				nm := matcherObserving(sel, "elastic-system",
+				nm := matcherObserving(t, sel, "elastic-system",
 					nsLabelled("prod-ns", map[string]string{"env": "prod"}),
 					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
 					nsLabelled("elastic-system", nil),
@@ -1050,7 +1052,7 @@ func TestGetNamespaces(t *testing.T) {
 			name: "enabled selector with no matching namespaces",
 			setup: func(t *testing.T) Reporter {
 				t.Helper()
-				nm := matcherObserving(sel, "elastic-system",
+				nm := matcherObserving(t, sel, "elastic-system",
 					nsLabelled("dev-ns", map[string]string{"env": "dev"}),
 					nsLabelled("elastic-system", nil),
 				)
@@ -1059,15 +1061,12 @@ func TestGetNamespaces(t *testing.T) {
 			wantNSes: []string{"elastic-system"},
 		},
 		{
-			name: "namespace that stopped matching is excluded",
+			name: "namespace that does not match is excluded",
 			setup: func(t *testing.T) Reporter {
 				t.Helper()
-				nm := matcherObserving(sel, "elastic-system",
-					nsLabelled("prod-ns", map[string]string{"env": "prod"}),
+				nm := matcherObserving(t, sel, "elastic-system",
+					nsLabelled("prod-ns", map[string]string{"env": "dev"}),
 				)
-				// prod-ns loses its matching label.
-				flipped := nsLabelled("prod-ns", map[string]string{"env": "dev"})
-				nm.ObserveNamespace(&flipped)
 				return Reporter{namespaceMatcher: nm}
 			},
 			wantNSes: []string{"elastic-system"},
@@ -1075,7 +1074,8 @@ func TestGetNamespaces(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.setup(t)
-			got := r.getNamespaces()
+			got, err := r.getNamespaces(t.Context())
+			require.NoError(t, err)
 			require.ElementsMatch(t, tt.wantNSes, got)
 		})
 	}

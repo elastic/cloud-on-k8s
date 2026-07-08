@@ -24,7 +24,12 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 
 	// The CRD based controller watches for changes on both the ElasticsearchAutoscaler CRD, and on the Elasticsearch resources to make sure the
 	// NodeSets resources are reconciled with the required resources.
-	controller, err := common.NewController(mgr, elasticsearch.ControllerName, reconciler, p)
+	controller, err := common.NewNamespacedController(mgr, elasticsearch.ControllerName, reconciler, p,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &v1alpha1.ElasticsearchAutoscalerList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -32,13 +37,5 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 	if err := controller.Watch(watches.NamespacedKind(m, mgr.GetCache(), &v1alpha1.ElasticsearchAutoscaler{}, &handler.TypedEnqueueRequestForObject[*v1alpha1.ElasticsearchAutoscaler]{})); err != nil {
 		return err
 	}
-	if err := controller.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(controller, mgr.GetCache(), p.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &v1alpha1.ElasticsearchAutoscalerList{} },
-		),
-	)
+	return controller.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconciler.Watches.ReferencedResources))
 }

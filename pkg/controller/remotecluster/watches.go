@@ -70,18 +70,14 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileRemote
 		return err
 	}
 
-	if err := r.watches.Secrets.AddHandlers(
+	return r.watches.Secrets.AddHandlers(
 		&watches.OwnerWatch[*corev1.Secret]{
 			Scheme:       mgr.GetScheme(),
 			Mapper:       mgr.GetRESTMapper(),
 			OwnerType:    &esv1.Elasticsearch{},
 			IsController: true,
 		},
-	); err != nil {
-		return err
-	}
-
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache()))
+	)
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into

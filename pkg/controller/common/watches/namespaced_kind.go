@@ -5,6 +5,8 @@
 package watches
 
 import (
+	"context"
+
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -35,7 +37,10 @@ func NamespacedKind[T client.Object](
 		return source.Kind(c, obj, h, preds...)
 	}
 	nsPred := predicate.NewTypedPredicateFuncs(func(o T) bool {
-		return m.Matches(o.GetNamespace())
+		// predicate.Filter has no context parameter to propagate; Matches only
+		// uses ctx for the cache read's cancellation, so context.TODO() is safe
+		// here (no deadline tied to a reconcile loop applies to this lookup).
+		return m.NamespaceNameMatches(context.TODO(), o.GetNamespace())
 	})
 	all := make([]predicate.TypedPredicate[T], 0, len(preds)+1)
 	all = append(all, nsPred)

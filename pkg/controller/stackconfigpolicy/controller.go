@@ -64,7 +64,7 @@ var defaultRequeue = 30 * time.Second
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(mgr.GetCache(), params.OperatorNamespace))
 	if err != nil {
 		return err
 	}
@@ -112,11 +112,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackC
 	}
 
 	// watch dynamically referenced ConfigMaps
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
-		return err
-	}
-
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), m, namespaceFlipRequests(mgr.GetCache(), r.params.OperatorNamespace))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into
@@ -207,10 +203,6 @@ type ReconcileStackConfigPolicy struct {
 // Reconcile reads that state of the cluster for a StackConfigPolicy object and makes changes based on the state read and what is
 // in the StackConfigPolicy.Spec.
 func (r *ReconcileStackConfigPolicy) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -623,7 +615,9 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	return common.UpdateStatus(ctx, r.Client, &scp)
 }
 
-func (r *ReconcileStackConfigPolicy) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given StackConfigPolicy
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileStackConfigPolicy) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Remove dynamic watches on variablesFrom sources
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(variableSourcesWatcherName(obj))
@@ -632,7 +626,7 @@ func (r *ReconcileStackConfigPolicy) onNamespaceOutOfScope(obj types.NamespacedN
 
 func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }

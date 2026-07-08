@@ -107,12 +107,12 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 		// The webhook server runs in a single operator pod but receives admission requests
 		// for every namespace in the cluster: several operator instances, each watching a
 		// different set of namespaces, may be installed side by side, but only one of their
-		// webhooks is actually registered. Matches consults the match-state map, which is
-		// maintained on every replica — including the non-leader one that may be serving
-		// this webhook. Namespaces that do not match, including those not yet observed,
-		// are silently let through instead of denied, so an operator never rejects a
-		// request for a namespace it doesn't manage.
-		if !v.namespaceMatcher.Matches(ns) {
+		// webhooks is actually registered. Matches reads the namespace live from the cache
+		// and evaluates the selector against its current labels. A namespace that doesn't
+		// match, including one that can't be read from the cache, is silently let through
+		// instead of denied, so an operator never rejects a request for a namespace it
+		// doesn't manage.
+		if !v.namespaceMatcher.NamespaceNameMatches(ctx, ns) {
 			whlog.V(1).Info("Skip resource validation: namespace does not match selector", "name", name, "namespace", ns)
 			return true, nil
 		}

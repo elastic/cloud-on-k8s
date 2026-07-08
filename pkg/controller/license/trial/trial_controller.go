@@ -16,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -57,9 +59,6 @@ type ReconcileTrials struct {
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
 func (r *ReconcileTrials) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "secret_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -245,28 +244,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials
 	// Watch the trial status secret and the enterprise trial licenses as well
 	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
-			if licensing.IsEnterpriseTrial(*secret) {
-				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Namespace: secret.GetNamespace(),
-							Name:      secret.GetName(),
-						},
-					},
-				}
-			}
-
-			if secret.GetName() != licensing.TrialStatusSecretKey {
+			req, shouldEnqueue := trialLicenseRequestForSecret(*secret)
+			if !shouldEnqueue {
 				return nil
 			}
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
-					},
-				},
-			}
+
+			return []reconcile.Request{req}
 		}),
 	))
 }
@@ -275,11 +258,63 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, r, params)
+	c, err := common.NewNamespacedController(mgr, name, r, params, namespaceFlipRequests(mgr.GetCache()))
 	if err != nil {
 		return err
 	}
 	return addWatches(mgr, c, r)
 }
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the enterprise trial license secrets living in the flipped namespace.
+func namespaceFlipRequests(ch cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var secrets corev1.SecretList
+		// List via the cache (not the FilterClient) so that secrets in a namespace being
+		// de-scoped are still visible here.
+		if err := ch.List(ctx, &secrets, client.InNamespace(ns.Name)); err != nil {
+			return nil
+		}
+		var reqs []reconcile.Request
+		for i := range secrets.Items {
+			// enqueue the trial status secret and the enterprise trial licenses as well
+			if r, shouldEnqueue := trialLicenseRequestForSecret(secrets.Items[i]); shouldEnqueue {
+				reqs = append(reqs, r)
+			}
+		}
+		return reqs
+	}
+}
+
+// trialLicenseRequestForSecret resolves a secret to the trial license reconcile request it maps
+// to: an enterprise trial license secret maps to itself, while the trial status secret is
+// redirected, via its annotations, to the trial license it tracks. The boolean is false for
+// secrets unrelated to trials, which should not be enqueued.
+func trialLicenseRequestForSecret(secret corev1.Secret) (reconcile.Request, bool) {
+	if licensing.IsEnterpriseTrial(secret) {
+		return reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: secret.GetNamespace(),
+				Name:      secret.GetName(),
+			},
+		}, true
+	}
+
+	if secret.GetName() == licensing.TrialStatusSecretKey {
+		return reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+				Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+			},
+		}, true
+	}
+
+	return reconcile.Request{}, false
+}
+
+// OnNamespaceOutOfScope implements common.NamespacedReconciler. The trial state kept in memory
+// is operator-wide, not tied to the trial secret's namespace, so there is nothing to release
+// when a namespace moves out of scope.
+func (r *ReconcileTrials) OnNamespaceOutOfScope(types.NamespacedName) {}
 
 var _ reconcile.Reconciler = (*ReconcileTrials)(nil)

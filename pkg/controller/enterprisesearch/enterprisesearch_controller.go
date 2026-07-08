@@ -50,7 +50,12 @@ const (
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &entv1.EnterpriseSearchList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -110,15 +115,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
-		watches.ReconcileObjectsInNamespace(
-			mgr.GetCache(),
-			func() client.ObjectList { return &entv1.EnterpriseSearchList{} },
-		),
-	)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcileEnterpriseSearch)(nil)
@@ -150,10 +147,6 @@ var _ driver.Interface = (*ReconcileEnterpriseSearch)(nil)
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
 func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, controllerName, "ent_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -185,13 +178,15 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	return results.Aggregate()
 }
 
-func (r *ReconcileEnterpriseSearch) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given EnterpriseSearch
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileEnterpriseSearch) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj.Name))
 }
 
 func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, entv1.Kind)
 }
 

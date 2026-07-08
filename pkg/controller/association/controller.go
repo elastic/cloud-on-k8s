@@ -49,7 +49,7 @@ func AddAssociationController(
 		Parameters:             params,
 		referencedResourceKind: referencedResourceKind,
 	}
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(mgr.GetCache(), r))
 	if err != nil {
 		return err
 	}
@@ -82,11 +82,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 	}
 
 	// Dynamically watch Service objects for custom services setup by the user
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services)); err != nil {
-		return err
-	}
-
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, r.watches.Services))
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into

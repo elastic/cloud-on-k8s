@@ -89,7 +89,6 @@ import (
 	licensetrial "github.com/elastic/cloud-on-k8s/v3/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/namespace"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
@@ -690,10 +689,6 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	// The match-state map is maintained on every replica, but the subscribed
-	// controllers only consume broadcasts on the leader: give the matcher the
-	// election signal so Broadcast is a no-op until this replica is elected.
-	namespaceMatcher.SetElected(mgr.Elected())
 	namespaceMatcher.SetCache(mgr.GetCache())
 
 	// Retrieve globally shared CA if any
@@ -888,9 +883,6 @@ func asyncTasks(
 
 	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
 	mgr.GetCache().WaitForCacheSync(ctx) // wait until k8s client cache is initialized
-	if namespaceMatcher.SelectorEnabled() {
-		_ = namespaceMatcher.WaitForInitialSeeding(ctx) // wait for initial seeding to be done
-	}
 
 	// Start the resource reporter
 	go func() {
@@ -908,7 +900,12 @@ func asyncTasks(
 
 	namespaces := managedNamespaces
 	if namespaceMatcher.SelectorEnabled() {
-		namespaces = namespaceMatcher.MatchingNamespaces()
+		nsp, err := namespaceMatcher.MatchingNamespaces(ctx)
+		if err != nil {
+			log.Error(err, "exiting due to unrecoverable error while fetching the namespaces")
+			os.Exit(1)
+		}
+		namespaces = nsp
 	}
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
@@ -981,7 +978,6 @@ func registerControllers(mgr manager.Manager, params operator.Parameters, access
 		name         string
 		registerFunc func(manager.Manager, operator.Parameters) error
 	}{
-		{name: "Namespace", registerFunc: namespace.Add},
 		{name: "APMServer", registerFunc: apmserver.Add},
 		{name: "Elasticsearch", registerFunc: elasticsearch.Add},
 		{name: "ElasticsearchAutoscaling", registerFunc: autoscaling.Add},

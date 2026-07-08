@@ -48,7 +48,7 @@ const (
 // Add creates a new ReconcileRemoteClusters Controller and adds it to the manager with default RBAC.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := NewReconciler(mgr, accessReviewer, params)
-	c, err := common.NewController(mgr, name, r, params)
+	c, err := common.NewNamespacedController(mgr, name, r, params, namespaceFlipRequests(mgr.GetCache()))
 	if err != nil {
 		return err
 	}
@@ -90,10 +90,6 @@ type ReconcileRemoteClusters struct {
 // Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
 // It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -103,7 +99,7 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.onNamespaceOutOfScope(request.NamespacedName)
+			r.OnNamespaceOutOfScope(request.NamespacedName)
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
 		}
 		return reconcile.Result{}, err
@@ -116,7 +112,9 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 	return doReconcile(ctx, r, &es)
 }
 
-func (r *ReconcileRemoteClusters) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileRemoteClusters) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.keystoreProvider.ForgetCluster(obj)
 }
 

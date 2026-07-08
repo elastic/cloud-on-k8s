@@ -55,9 +55,6 @@ const (
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.NamespaceMatcher.Matches(request.Namespace) {
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.Tracer, name, "es_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -72,12 +69,17 @@ func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Req
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
 	r := newReconciler(mgr, p)
-	c, err := common.NewController(mgr, name, r, p)
+	c, err := common.NewNamespacedController(mgr, name, r, p, namespaceFlipRequests(mgr.GetCache(), r.Client, ulog.Log))
 	if err != nil {
 		return err
 	}
 	return addWatches(mgr, c, r)
 }
+
+// OnNamespaceOutOfScope implements common.NamespacedReconciler. The license controller holds no
+// controller-local state per Elasticsearch cluster, so there is nothing to release when a
+// namespace moves out of scope.
+func (r *ReconcileLicenses) OnNamespaceOutOfScope(types.NamespacedName) {}
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
@@ -116,7 +118,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicens
 		return err
 	}
 
-	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
+	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if !license.IsOperatorLicense(*secret) {
 				return nil
@@ -132,11 +134,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicens
 			}
 			return rs
 		}),
-	)); err != nil {
-		return err
-	}
-
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r.Client, log))
+	))
 }
 
 // namespaceFlipRequests returns the mapper deciding which Elasticsearch clusters to reconcile when a

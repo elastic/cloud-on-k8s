@@ -47,7 +47,7 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(ulog.Log, mgr.GetCache()))
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReconciler) error {
-	log := ulog.Log // no context available for contextual logging
-
 	m := r.params.NamespaceMatcher
 	// watch for changes to AutoOpsAgentPolicy
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
@@ -87,10 +85,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReco
 	}
 
 	// watch for changes to deployments created by this controller
-	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment())); err != nil {
-		return err
-	}
-	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), m, namespaceFlipRequests(log, mgr.GetCache()))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into
@@ -171,10 +166,6 @@ type AgentPolicyReconciler struct {
 
 // Reconcile reconciles the AutoOpsAgentPolicy resource ensuring that any resources are created/updated/deleted as needed.
 func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	if !r.params.NamespaceMatcher.Matches(request.Namespace) {
-		r.onNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
 	ctx = common.NewReconciliationContext(ctx, &r.iteration, r.params.Tracer, controllerName, "policy_name", request)
 	defer common.LogReconciliationRun(ulog.FromContext(ctx))()
 	defer tracing.EndContextTransaction(ctx)
@@ -258,7 +249,9 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	return reconcile.Result{}, nil
 }
 
-func (r *AgentPolicyReconciler) onNamespaceOutOfScope(obj types.NamespacedName) {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given AutoOpsAgentPolicy
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *AgentPolicyReconciler) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
 }
 
@@ -267,7 +260,7 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
 
-	r.onNamespaceOutOfScope(obj)
+	r.OnNamespaceOutOfScope(obj)
 
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
 	// Query for secrets labeled with this policy to find all associated ES clusters.

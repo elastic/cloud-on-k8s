@@ -7,7 +7,6 @@ package watches
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,6 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 )
 
 // WatchNamespaceScopeChange registers a direct watch on Namespace objects
@@ -46,24 +47,24 @@ func WatchNamespaceScopeChange(
 				// A namespace observed for the first time only needs a reconcile
 				// if it's already in scope; an out-of-scope namespace should not
 				// trigger reconciliation.
-				return matcher.Match(e.Object)
+				return matcher.NamespaceMatches(e.Object)
 			},
 			UpdateFunc: func(e event.TypedUpdateEvent[*corev1.Namespace]) bool {
 				// Label edits in general can be irrelevant; only a change
 				// across the selector boundary changes which resources are
 				// in scope, so that's the only case worth reconciling.
-				return matcher.Match(e.ObjectOld) != matcher.Match(e.ObjectNew)
+				return matcher.NamespaceMatches(e.ObjectOld) != matcher.NamespaceMatches(e.ObjectNew)
 			},
 			DeleteFunc: func(e event.TypedDeleteEvent[*corev1.Namespace]) bool {
 				// Mirrors CreateFunc: only an in-scope namespace going away
 				// can leave behind managed resources that need handling.
-				return matcher.Match(e.Object)
+				return matcher.NamespaceMatches(e.Object)
 			},
 			GenericFunc: func(e event.TypedGenericEvent[*corev1.Namespace]) bool {
 				// Namespace watches never produce generic events;
 				// Mirrors CreateFunc: only an in-scope namespace
 				// [TODO: revisit].
-				return matcher.Match(e.Object)
+				return matcher.NamespaceMatches(e.Object)
 			},
 		},
 	))
