@@ -90,7 +90,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReco
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment())); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlipsMapped(c, m, namespaceFlipRequests(log, mgr.GetCache()))
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), m, namespaceFlipRequests(log, mgr.GetCache()))
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into

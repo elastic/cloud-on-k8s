@@ -86,7 +86,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *Reconciler) err
 		return err
 	}
 
-	return watches.WatchNamespaceFlipsMapped(c, r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r))
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r))
 }
 
 // namespaceFlipRequests returns a mapper translating a namespace match-state change into

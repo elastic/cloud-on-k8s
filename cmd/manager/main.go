@@ -694,6 +694,7 @@ func startOperator(ctx context.Context) error {
 	// controllers only consume broadcasts on the leader: give the matcher the
 	// election signal so Broadcast is a no-op until this replica is elected.
 	namespaceMatcher.SetElected(mgr.Elected())
+	namespaceMatcher.SetCache(mgr.GetCache())
 
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))

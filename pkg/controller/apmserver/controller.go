@@ -149,9 +149,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
-		return &apmv1.ApmServerList{}
-	})
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &apmv1.ApmServerList{} },
+		),
+	)
 }
 
 var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)

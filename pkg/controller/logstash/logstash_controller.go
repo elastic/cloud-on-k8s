@@ -110,9 +110,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
-		return &logstashv1alpha1.LogstashList{}
-	})
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &logstashv1alpha1.LogstashList{} },
+		),
+	)
 }
 
 var _ reconcile.Reconciler = (*ReconcileLogstash)(nil)

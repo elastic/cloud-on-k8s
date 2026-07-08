@@ -12,6 +12,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/go-logr/logr"
@@ -62,6 +63,7 @@ type NamespaceMatcher struct {
 	elected                           <-chan struct{} // closed once this replica is elected leader; nil means always elected.
 	initialSeeding                    chan struct{}   // closed by InitialSeed once all pre-existing namespaces have been observed.
 	initialSeedingOnce                sync.Once
+	cache                             cache.Cache
 }
 
 // NewNamespaceMatcher returns a NamespaceMatcher. When sel is nil it acts as
@@ -92,6 +94,13 @@ func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatch
 // is closed. When never set (tests), Broadcast always sends.
 func (m *NamespaceMatcher) SetElected(elected <-chan struct{}) {
 	m.elected = elected
+}
+
+// SetCache provides the manager's cache (manager.GetCache()). The matcher is
+// constructed before the manager, so the cache is not available until after
+// ctrl.NewManager returns and must be set separately.
+func (m *NamespaceMatcher) SetCache(c cache.Cache) {
+	m.cache = c
 }
 
 // isElected reports whether this replica may broadcast to subscribers. True
@@ -156,6 +165,24 @@ func (m *NamespaceMatcher) MatchingNamespaces() []string {
 	return names
 }
 
+// Match reports whether ns currently satisfies the selector, evaluated purely
+// from ns.Labels. Unlike ObserveNamespace, it has no side effects: it neither
+// reads nor updates the match-state map, so it is safe to call from a
+// predicate on both sides of an update (ObjectOld and ObjectNew). Short-
+// circuited namespaces (empty string and the operator's namespace) always
+// return true, as does a disabled selector.
+func (m *NamespaceMatcher) Match(ns *corev1.Namespace) bool {
+	if !m.SelectorEnabled() {
+		return true
+	}
+
+	if _, ok := m.alwaysManagedNamespaces[ns.Name]; ok {
+		return true
+	}
+
+	return m.selector.Matches(labels.Set(ns.Labels))
+}
+
 // ObserveNamespace evaluates the selector against ns's current labels, records
 // the result, and returns both the current and previous match states. Short-
 // circuited namespaces (empty string and the operator's namespace) always
@@ -170,7 +197,7 @@ func (m *NamespaceMatcher) ObserveNamespace(ns *corev1.Namespace) (isMatching bo
 		return true, true
 	}
 
-	isMatching = m.selector.Matches(labels.Set(ns.Labels))
+	isMatching = m.Match(ns)
 
 	wasMatching = m.Swap(ns.Name, isMatching)
 	return

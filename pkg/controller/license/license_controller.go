@@ -136,7 +136,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicens
 		return err
 	}
 
-	return watches.WatchNamespaceFlipsMapped(c, r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r.Client, log))
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r.Client, log))
 }
 
 // namespaceFlipRequests returns the mapper deciding which Elasticsearch clusters to reconcile when a

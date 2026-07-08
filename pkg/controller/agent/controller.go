@@ -132,9 +132,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
-	return watches.WatchNamespaceFlips(c, mgr.GetCache(), r.NamespaceMatcher, func() client.ObjectList {
-		return &agentv1alpha1.AgentList{}
-	})
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &agentv1alpha1.AgentList{} },
+		),
+	)
 }
 
 var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
