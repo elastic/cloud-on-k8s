@@ -89,7 +89,7 @@ spec:
 **Important:** Apply this override to existing Logstash resources **before** upgrading. If you upgrade first and the pods enter the SCC rejection loop, editing the resource afterwards has no effect — the only recovery is to delete and re-create the Logstash resource with the override already in place.
 
 You can remove this override after upgrading to ECK 3.5.0 or later (once available), which fixes [#9550](https://github.com/elastic/cloud-on-k8s/issues/9550).
-:::
+::::
 
 ## 3.3.2 [elastic-cloud-kubernetes-332-known-issues]
 
