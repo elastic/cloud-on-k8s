@@ -28,12 +28,12 @@
   {{- end -}}
 {{- end -}}
 
-{{- if not (empty .Values.namespaceSelector) -}}
+{{- if not (empty .Values.managedNamespaceSelector) -}}
   {{- if not (empty .Values.managedNamespaces) -}}
-  {{- fail "namespaceSelector and managedNamespaces are mutually exclusive" -}}
+  {{- fail "managedNamespaceSelector and managedNamespaces are mutually exclusive" -}}
   {{- end -}}
 
   {{- if not .Values.createClusterScopedResources -}}
-  {{- fail "namespaceSelector requires createClusterScopedResources to be true" -}}
+  {{- fail "managedNamespaceSelector requires createClusterScopedResources to be true" -}}
   {{- end -}}
 {{- end -}}

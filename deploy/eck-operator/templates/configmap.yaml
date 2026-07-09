@@ -71,7 +71,7 @@ data:
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
     {{- end }}
-    {{- with .Values.namespaceSelector }}
+    {{- with .Values.managedNamespaceSelector }}
     namespace-selector:
       {{- . | toYaml | nindent 6 }}
     {{- end }}

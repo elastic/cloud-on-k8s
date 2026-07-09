@@ -5,24 +5,25 @@ nameOverride: "elastic-operator"
 fullnameOverride: "elastic-operator"
 
 # managedNamespaces is the set of namespaces that the operator manages. Leave empty to manage all namespaces.
-# Mutually exclusive with namespaceSelector.
+# Mutually exclusive with managedNamespaceSelector.
 managedNamespaces: []
 
-# namespaceSelector is a Kubernetes label selector that dynamically controls which namespaces the operator manages.
+# managedNamespaceSelector is a Kubernetes label selector that dynamically controls which namespaces the operator manages.
 # The operator watches all namespaces cluster-wide and filters events by matching each namespace's labels against
 # this selector at runtime. When a namespace gains or loses the matching labels the operator automatically
 # starts or stops managing resources in that namespace without a restart.
 # Mutually exclusive with managedNamespaces. Requires createClusterScopedResources: true.
-# Example:
-#   namespaceSelector:
+# Examples:
+#   managedNamespaceSelector:
 #     matchLabels:
 #       eck-managed: "true"
-#   namespaceSelector:
+#
+#   managedNamespaceSelector:
 #     matchExpressions:
 #       - key: environment
 #         operator: In
 #         values: [production, staging]
-namespaceSelector: {}
+managedNamespaceSelector: {}
 
 # installCRDs determines whether Custom Resource Definitions (CRD) are installed by the chart.
 # Note that CRDs are global resources and require cluster admin privileges to install.
