@@ -286,6 +286,7 @@ func namespaceFlipRequests(ch cache.Cache) func(context.Context, *corev1.Namespa
 		// List via the cache (not the FilterClient) so that secrets in a namespace being
 		// de-scoped are still visible here.
 		if err := ch.List(ctx, &secrets, client.InNamespace(ns.Name)); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list trial license secrets", "namespace", ns.Name)
 			return nil
 		}
 		var reqs []reconcile.Request

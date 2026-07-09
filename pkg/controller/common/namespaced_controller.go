@@ -82,8 +82,13 @@ func (r *namespacedReconcilerWrapper) Reconcile(ctx context.Context, request rec
 
 	matches, err := r.parameters.NamespaceMatcher.NamespaceNameMatches(ctx, request.Namespace)
 	if err != nil {
-		log.Error(err, "error while performing namespace match check")
-		return reconcile.Result{}, err
+		// Treat a failed match check the same as a non-matching namespace: skip
+		// reconciliation and let the inner reconciler clean up any state it holds
+		// for this resource, rather than requeuing on an error that a namespace
+		// selector check is unlikely to recover from on its own.
+		log.Error(err, "Failed to check namespace selector match; treating as out of scope", "namespace", request.Namespace, "name", request.Name)
+		r.inner.OnNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
 	}
 	if !matches {
 		// The namespace no longer matches the selector: skip reconciliation and let

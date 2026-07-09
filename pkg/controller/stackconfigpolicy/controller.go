@@ -129,6 +129,7 @@ func namespaceFlipRequests(cache cache.Cache, operatorNamespace string) func(con
 		// List **cluster-wide** from the cache (not the FilterClient): policies in the
 		// namespace being de-scoped would be hidden by the FilterClient.
 		if err := cache.List(ctx, &list); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list StackConfigPolicies", "namespace", ns.Name)
 			return nil
 		}
 		var reqs []reconcile.Request

@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
@@ -94,6 +95,7 @@ func namespaceFlipRequests(cache cache.Cache) func(context.Context, *corev1.Name
 		// live in any matched namespace, and clusters in the namespace being de-scoped would
 		// be hidden by the FilterClient.
 		if err := cache.List(ctx, &list); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list Elasticsearch clusters", "namespace", ns.Name)
 			return nil
 		}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -103,6 +104,7 @@ func namespaceFlipRequests(cache cache.Cache, r *Reconciler) func(context.Contex
 		// referencing the flipped namespace can live in any matched namespace, and
 		// resources in the namespace being de-scoped would be hidden by the FilterClient.
 		if err := cache.List(ctx, list); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list associated objects", "association_type", r.AssociationType, "namespace", ns.Name)
 			return nil
 		}
 		items, err := apimeta.ExtractList(list)
