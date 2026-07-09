@@ -67,19 +67,22 @@ func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Req
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+//
+// The controller is deliberately not wrapped in the enterprise-license gate of
+// common.NewNamespacedController: it must keep reconciling in the unlicensed state to remove
+// per-cluster license secrets so clusters revert to Basic. Namespace scoping is still honored:
+// the watches are namespace-filtered and the flip watch below re-enqueues clusters when a
+// namespace moves in or out of scope.
 func Add(mgr manager.Manager, p operator.Parameters) error {
 	r := newReconciler(mgr, p)
-	c, err := common.NewNamespacedController(mgr, name, r, p, namespaceFlipRequests(mgr.GetCache(), r.Client, ulog.Log))
+
+	c, err := common.NewController(mgr, name, r, p)
 	if err != nil {
 		return err
 	}
+
 	return addWatches(mgr, c, r)
 }
-
-// OnNamespaceOutOfScope implements common.NamespacedReconciler. The license controller holds no
-// controller-local state per Elasticsearch cluster, so there is nothing to release when a
-// namespace moves out of scope.
-func (r *ReconcileLicenses) OnNamespaceOutOfScope(types.NamespacedName) {}
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
@@ -118,7 +121,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicens
 		return err
 	}
 
-	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
+	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if !license.IsOperatorLicense(*secret) {
 				return nil
@@ -134,7 +137,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicens
 			}
 			return rs
 		}),
-	))
+	)); err != nil {
+		return err
+	}
+
+	// no-op when the dynamic namespace selector is disabled
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r.Client, ulog.Log))
 }
 
 // namespaceFlipRequests returns the mapper deciding which Elasticsearch clusters to reconcile when a
