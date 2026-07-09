@@ -602,7 +602,7 @@ func startOperator(ctx context.Context) error {
 	// the operator runs in dynamic mode: the cache is cluster-wide and a
 	// Matcher consulted by a predicate on every controller's watches
 	// evaluates the selector against Namespace labels per event.
-	parsedNsSelector, err := parseNSSelector(log)
+	parsedNsSelector, err := parseNSSelector(viper.GetViper(), log)
 	if err != nil {
 		return err
 	}
@@ -1153,11 +1153,11 @@ func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObj
 	return byObject, nil
 }
 
-func parseNSSelector(log logr.Logger) (labels.Selector, error) {
-	if !viper.IsSet(operator.NamespaceSelectorFlag) {
+func parseNSSelector(v *viper.Viper, log logr.Logger) (labels.Selector, error) {
+	if !v.IsSet(operator.NamespaceSelectorFlag) {
 		return nil, nil
 	}
-	raw := viper.Get(operator.NamespaceSelectorFlag)
+	raw := v.Get(operator.NamespaceSelectorFlag)
 	yamlBytes, err := yaml.Marshal(raw)
 	if err != nil {
 		log.Error(err, "Failed to serialize namespace-selector for parsing")

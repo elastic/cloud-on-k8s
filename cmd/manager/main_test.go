@@ -468,13 +468,12 @@ func Test_parseNSSelector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			viper.Reset()
-			defer viper.Reset()
+			v := viper.New()
 			if tt.rawSelector != nil {
-				viper.Set(operator.NamespaceSelectorFlag, tt.rawSelector)
+				v.Set(operator.NamespaceSelectorFlag, tt.rawSelector)
 			}
 
-			got, err := parseNSSelector(logr.Discard())
+			got, err := parseNSSelector(v, logr.Discard())
 			if tt.wantErr {
 				require.Error(t, err)
 				return
