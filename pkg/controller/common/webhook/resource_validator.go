@@ -112,7 +112,12 @@ func (v *ResourceValidator[T]) preValidate(ctx context.Context, obj T) (skip boo
 		// match, including one that can't be read from the cache, is silently let through
 		// instead of denied, so an operator never rejects a request for a namespace it
 		// doesn't manage.
-		if !v.namespaceMatcher.NamespaceNameMatches(ctx, ns) {
+		matches, err := v.namespaceMatcher.NamespaceNameMatches(ctx, ns)
+		if err != nil {
+			whlog.Error(err, "Failed to check namespace selector match", "name", name, "namespace", ns)
+			return true, nil
+		}
+		if !matches {
 			whlog.V(1).Info("Skip resource validation: namespace does not match selector", "name", name, "namespace", ns)
 			return true, nil
 		}

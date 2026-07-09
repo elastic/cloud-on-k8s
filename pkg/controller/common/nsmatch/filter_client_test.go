@@ -172,6 +172,41 @@ func TestFilterClientList(t *testing.T) {
 		require.NoError(t, fc.List(t.Context(), list))
 		assert.ElementsMatch(t, []string{"cluster-res"}, podNames(list))
 	})
+
+	t.Run("namespace-scoped list, cache error while checking namespace selector: error returned", func(t *testing.T) {
+		cacheErr := errors.New("cache unavailable")
+		mc := cachemock.NewCache(t)
+		mc.OnGetSetNamespace(nil).Return(cacheErr).Once()
+
+		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn.SetCache(mc)
+		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "dev-ns")).Build(), nfn)
+
+		list := &corev1.PodList{}
+		err := fc.List(t.Context(), list, client.InNamespace("dev-ns"))
+		require.ErrorIs(t, err, cacheErr)
+		assert.Empty(t, list.Items)
+	})
+
+	t.Run("cluster-scoped list, cache error for one namespace: error returned, list cleared", func(t *testing.T) {
+		cacheErr := errors.New("cache unavailable")
+		mc := cachemock.NewCache(t)
+
+		mc.On("Get", mock.Anything, mock.MatchedBy(func(key client.ObjectKey) bool { return key.Name == "bad-ns" }), mock.Anything, mock.Anything).
+			Return(cacheErr).
+			Once()
+
+		mc.OnGetNamepsace("ns-1").Once()
+
+		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn.SetCache(mc)
+		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "ns-1"), pod("b", "bad-ns")).Build(), nfn)
+
+		list := &corev1.PodList{}
+		err := fc.List(t.Context(), list)
+		require.ErrorIs(t, err, cacheErr)
+		assert.Empty(t, list.Items)
+	})
 }
 
 func TestFilterClientGet(t *testing.T) {
@@ -236,5 +271,28 @@ func TestFilterClientGet(t *testing.T) {
 		obj := &corev1.Pod{}
 		require.NoError(t, fc.Get(t.Context(), types.NamespacedName{Name: "cluster-res"}, obj))
 		assert.Equal(t, "", obj.Namespace)
+	})
+
+	t.Run("cache error while checking namespace selector: error returned, delegate not queried", func(t *testing.T) {
+		delegateCalled := false
+		delegate := fake.NewClientBuilder().WithObjects(pod("my-pod", "dev-ns")).WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				delegateCalled = true
+				return c.Get(ctx, key, obj, opts...)
+			},
+		}).Build()
+
+		cacheErr := errors.New("cache unavailable")
+		mc := cachemock.NewCache(t)
+		mc.OnGetSetNamespace(nil).Return(cacheErr)
+
+		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn.SetCache(mc)
+		fc := NewFilterClient(delegate, nfn)
+
+		obj := &corev1.Pod{}
+		err := fc.Get(t.Context(), types.NamespacedName{Name: "my-pod", Namespace: "dev-ns"}, obj)
+		require.ErrorIs(t, err, cacheErr)
+		assert.False(t, delegateCalled)
 	})
 }

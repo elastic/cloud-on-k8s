@@ -51,6 +51,27 @@ func (m *Cache) OnGetSetNamespace(lbls map[string]string) *mock.Call {
 		})
 }
 
+// OnGetSetNamespace sets up a Get expectation that populates obj as a Namespace with the given labels.
+func (m *Cache) OnGetNamepsace(nsName string) *mock.Call {
+	return m.
+		On(
+			"Get",
+			mock.Anything,
+			mock.MatchedBy(
+				func(key client.ObjectKey) bool { return key.Name == nsName },
+			),
+			mock.Anything,
+			mock.Anything,
+		).
+		Run(func(args mock.Arguments) {
+			key := args.Get(1).(client.ObjectKey) //nolint:forcetypeassert
+			ns := args.Get(2).(*corev1.Namespace) //nolint:forcetypeassert
+			ns.Name = key.Name
+			ns.ObjectMeta = metav1.ObjectMeta{Name: key.Name}
+		}).
+		Return(nil)
+}
+
 // newMockCache creates a mockCache and registers AssertExpectations as a test cleanup.
 func NewCache(t *testing.T) *Cache {
 	t.Helper()

@@ -80,10 +80,15 @@ type namespacedReconcilerWrapper struct {
 func (r *namespacedReconcilerWrapper) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := ulog.FromContext(ctx)
 
-	if !r.parameters.NamespaceMatcher.NamespaceNameMatches(ctx, request.Namespace) {
+	matches, err := r.parameters.NamespaceMatcher.NamespaceNameMatches(ctx, request.Namespace)
+	if err != nil {
+		log.Error(err, "error while performing namespace match check")
+		return reconcile.Result{}, err
+	}
+	if !matches {
 		// The namespace no longer matches the selector: skip reconciliation and let
 		// the inner reconciler clean up any state it holds for this resource.
-		log.V(2).Info("Skipping reconciliation: namespace out of scope", "namespace", request.Namespace, "name", request.Name)
+		log.V(1).Info("Skipping reconciliation: namespace out of scope", "namespace", request.Namespace, "name", request.Name)
 		r.inner.OnNamespaceOutOfScope(request.NamespacedName)
 		return reconcile.Result{}, nil
 	}

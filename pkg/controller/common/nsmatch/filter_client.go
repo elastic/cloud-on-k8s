@@ -6,6 +6,7 @@ package nsmatch
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // Currently the only filtering axis is namespace; the design can be extended to
@@ -40,8 +43,15 @@ func NewFilterClient(delegate client.Client, nfn *NamespaceMatcher) *FilterClien
 // an error is returned. Cluster-scoped objects have an empty key.Namespace, which
 // always matches.
 func (w *FilterClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if w.nfn.SelectorEnabled() && !w.nfn.NamespaceNameMatches(ctx, key.Namespace) {
-		return apierrors.NewNotFound(w.groupResource(obj), key.Name)
+	if w.nfn.SelectorEnabled() {
+		matches, err := w.nfn.NamespaceNameMatches(ctx, key.Namespace)
+		if err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to check namespace selector match", "namespace", key.Namespace)
+			return err
+		}
+		if !matches {
+			return apierrors.NewNotFound(w.groupResource(obj), key.Name)
+		}
 	}
 	return w.Client.Get(ctx, key, obj, opts...)
 }
@@ -73,7 +83,12 @@ func (w *FilterClient) List(ctx context.Context, list client.ObjectList, opts ..
 	// Fast path for namespace-scoped lists: one Matches call decides the whole result.
 	listOpts := (&client.ListOptions{}).ApplyOptions(opts)
 	if listOpts.Namespace != "" {
-		if !w.nfn.NamespaceNameMatches(ctx, listOpts.Namespace) {
+		matches, err := w.nfn.NamespaceNameMatches(ctx, listOpts.Namespace)
+		if err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to check namespace selector match", "namespace", listOpts.Namespace)
+			return errors.Join(err, apimeta.SetList(list, nil))
+		}
+		if !matches {
 			return apimeta.SetList(list, nil)
 		}
 		return nil
@@ -81,14 +96,25 @@ func (w *FilterClient) List(ctx context.Context, list client.ObjectList, opts ..
 	// Memoize per distinct namespace: items typically cluster into a few namespaces,
 	// and each miss costs a cache Get of the Namespace plus a selector match.
 	verdicts := map[string]bool{}
-	return filterByNamespace(list, func(ns string) bool {
-		v, ok := verdicts[ns]
-		if !ok {
-			v = w.nfn.NamespaceNameMatches(ctx, ns)
-			verdicts[ns] = v
+	var matchErr error
+	listErr := filterByNamespace(list, func(ns string) bool {
+		if v, ok := verdicts[ns]; ok {
+			return v
 		}
+
+		v, err := w.nfn.NamespaceNameMatches(ctx, ns)
+		if err != nil {
+			matchErr = err
+			return false
+		}
+		verdicts[ns] = v
 		return v
 	})
+	if matchErr != nil {
+		ulog.FromContext(ctx).Error(matchErr, "Failed to check namespace selector match")
+		return errors.Join(matchErr, apimeta.SetList(list, nil))
+	}
+	return listErr
 }
 
 // filterByNamespace removes items from list whose namespace does not satisfy matches.

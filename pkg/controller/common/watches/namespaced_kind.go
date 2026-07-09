@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // NamespacedKind is a drop-in replacement for source.Kind that injects a
@@ -40,7 +41,12 @@ func NamespacedKind[T client.Object](
 		// predicate.Filter has no context parameter to propagate; Matches only
 		// uses ctx for the cache read's cancellation, so context.TODO() is safe
 		// here (no deadline tied to a reconcile loop applies to this lookup).
-		return m.NamespaceNameMatches(context.TODO(), o.GetNamespace())
+		matches, err := m.NamespaceNameMatches(context.TODO(), o.GetNamespace())
+		if err != nil {
+			ulog.Log.Error(err, "Failed to check namespace selector match", "namespace", o.GetNamespace(), "name", o.GetName())
+			return false
+		}
+		return matches
 	})
 	all := make([]predicate.TypedPredicate[T], 0, len(preds)+1)
 	all = append(all, nsPred)

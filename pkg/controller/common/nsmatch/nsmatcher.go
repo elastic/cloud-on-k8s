@@ -40,21 +40,21 @@ func (m *NamespaceMatcher) SelectorEnabled() bool {
 	return m != nil && m.selector != nil
 }
 
-func (m *NamespaceMatcher) NamespaceNameMatches(ctx context.Context, ns string) bool {
+func (m *NamespaceMatcher) NamespaceNameMatches(ctx context.Context, ns string) (bool, error) {
 	if !m.SelectorEnabled() {
-		return true
+		return true, nil
 	}
 
 	if _, ok := m.alwaysManagedNamespaces[ns]; ok {
-		return true
+		return true, nil
 	}
 
 	namespace := &corev1.Namespace{}
 	if err := m.cache.Get(ctx, types.NamespacedName{Name: ns}, namespace); err != nil {
-		return false
+		return false, err
 	}
 
-	return m.NamespaceMatches(namespace)
+	return m.NamespaceMatches(namespace), nil
 }
 
 func (m *NamespaceMatcher) NamespaceMatches(ns *corev1.Namespace) bool {
@@ -70,6 +70,10 @@ func (m *NamespaceMatcher) NamespaceMatches(ns *corev1.Namespace) bool {
 }
 
 func (m *NamespaceMatcher) MatchingNamespaces(ctx context.Context) ([]string, error) {
+	if !m.SelectorEnabled() {
+		return nil, nil
+	}
+
 	var list corev1.NamespaceList
 	if err := m.cache.List(ctx, &list); err != nil {
 		return nil, fmt.Errorf("error while listing all namespaces: %w", err)
