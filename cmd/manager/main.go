@@ -610,8 +610,9 @@ func startOperator(ctx context.Context) error {
 
 	// Validate that dynamic ns selector cannot co-exist with the fixed list of managed namespaces.
 	if dynamicNSSelector && len(managedNamespaces) > 0 {
-		log.Error(errors.New("namespaces and namespaceSelector are mutually exclusive"), "Invalid configuration")
-		return errors.New("namespaces and namespaceSelector are mutually exclusive")
+		err := fmt.Errorf("%q and %q are mutually exclusive", operator.NamespacesFlag, operator.NamespaceSelectorFlag)
+		log.Error(err, "Invalid configuration")
+		return err
 	}
 
 	switch {
