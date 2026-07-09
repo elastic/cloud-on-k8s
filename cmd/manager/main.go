@@ -1171,7 +1171,7 @@ func parseNSSelector(v *viper.Viper, log logr.Logger) (labels.Selector, error) {
 	if len(ls.MatchLabels) == 0 && len(ls.MatchExpressions) == 0 {
 		// an empty selector ({}) means dynamic namespace selection is disabled,
 		// so fallback to all namespaces.
-		log.Error(errors.New("namespace-selector is empty"), "dynamic namespace selection is disabled and all namespaces will be watched")
+		log.Info("namespace-selector is empty: dynamic namespace selection is disabled, all namespaces will be watched")
 		return nil, nil
 	}
 	sel, err := metav1.LabelSelectorAsSelector(&ls)
