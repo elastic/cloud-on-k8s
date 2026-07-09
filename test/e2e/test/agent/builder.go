@@ -455,6 +455,16 @@ func (b Builder) WithClientAuthenticationRequired() Builder {
 	return b
 }
 
+func (b Builder) WithEmptyDirDataVolume() Builder {
+	b.PodTemplate.Spec.Volumes = append(b.PodTemplate.Spec.Volumes, corev1.Volume{
+		Name: agent.DataVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	return b
+}
+
 func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
 	b.Agent.Spec.KibanaRef = ref
 

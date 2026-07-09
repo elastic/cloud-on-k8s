@@ -409,7 +409,13 @@ func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
 
-	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+	// Use emptyDir for Fleet Server state to prevent stale fleet.enc from persisting across
+	// rolling updates on the same node. When mTLS is disabled the trust-bundle volume is removed,
+	// but the hostPath-backed fleet.enc still references the (now unmounted) CA path, causing
+	// Fleet Server to crash on startup. Until fixed upstream, use emptyDir as a workaround.
+	// See: https://github.com/elastic/cloud-on-k8s/issues/9443
+	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate).
+		WithEmptyDirDataVolume()
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
 
 	// Wrap the ES builder with license setup.
