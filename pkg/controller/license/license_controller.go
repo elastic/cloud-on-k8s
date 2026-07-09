@@ -112,7 +112,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.D
 	return requeueAfter
 }
 
-// addWatches adds a new Controller to mgr wresource_validator.go:106ith r as the reconcile.Reconciler
+// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicenses) error {
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.

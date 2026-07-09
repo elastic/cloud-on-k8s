@@ -80,6 +80,14 @@ type namespacedReconcilerWrapper struct {
 func (r *namespacedReconcilerWrapper) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := ulog.FromContext(ctx)
 
+	if !r.parameters.NamespaceMatcher.NamespaceNameMatches(ctx, request.Namespace) {
+		// The namespace no longer matches the selector: skip reconciliation and let
+		// the inner reconciler clean up any state it holds for this resource.
+		log.V(2).Info("Skipping reconciliation: namespace out of scope", "namespace", request.Namespace, "name", request.Name)
+		r.inner.OnNamespaceOutOfScope(request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
+
 	// the dynamic namespace selector is an enterprise feature: this wrapper is only installed
 	// when the selector is enabled, so gate every reconciliation on the license.
 	ok, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
@@ -92,14 +100,6 @@ func (r *namespacedReconcilerWrapper) Reconcile(ctx context.Context, request rec
 		log.V(1).Info(msg)
 		license.EmitEnterpriseFeatureEvent(r.recorder, r.parameters.OperatorNamespace, msg)
 		return reconcile.Result{RequeueAfter: 5 * time.Minute}, nil
-	}
-
-	if !r.parameters.NamespaceMatcher.NamespaceNameMatches(ctx, request.Namespace) {
-		// The namespace no longer matches the selector: skip reconciliation and let
-		// the inner reconciler clean up any state it holds for this resource.
-		log.V(2).Info("Skipping reconciliation: namespace out of scope", "namespace", request.Namespace, "name", request.Name)
-		r.inner.OnNamespaceOutOfScope(request.NamespacedName)
-		return reconcile.Result{}, nil
 	}
 
 	return r.inner.Reconcile(ctx, request)

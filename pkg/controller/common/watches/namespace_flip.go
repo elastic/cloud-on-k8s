@@ -63,7 +63,6 @@ func WatchNamespaceScopeChange(
 			GenericFunc: func(e event.TypedGenericEvent[*corev1.Namespace]) bool {
 				// Namespace watches never produce generic events;
 				// Mirrors CreateFunc: only an in-scope namespace
-				// [TODO: revisit].
 				return matcher.NamespaceMatches(e.Object)
 			},
 		},

@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,7 +19,9 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -30,6 +34,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -394,6 +399,88 @@ func TestBuildByObject(t *testing.T) {
 				assert.True(t, found, "object not found in expected, %s", tp.String())
 				assert.Equal(t, expected, query)
 			}
+		})
+	}
+}
+
+func Test_parseNSSelector(t *testing.T) {
+	tests := []struct {
+		name        string
+		rawSelector any // value set for operator.NamespaceSelectorFlag, unset if nil
+		wantSel     labels.Selector
+		wantErr     bool
+	}{
+		{
+			name:        "flag not set returns nil selector",
+			rawSelector: nil,
+			wantSel:     nil,
+		},
+		{
+			name:        "empty selector ({}) returns nil selector",
+			rawSelector: map[string]any{},
+			wantSel:     nil,
+		},
+		{
+			name: "matchLabels is parsed into a selector",
+			rawSelector: map[string]any{
+				"matchLabels": map[string]any{
+					"environment": "prod",
+				},
+			},
+			wantSel: labels.SelectorFromSet(labels.Set{"environment": "prod"}),
+		},
+		{
+			name: "matchExpressions is parsed into a selector",
+			rawSelector: map[string]any{
+				"matchExpressions": []any{
+					map[string]any{
+						"key":      "environment",
+						"operator": "In",
+						"values":   []any{"prod", "staging"},
+					},
+				},
+			},
+			wantSel: func() labels.Selector {
+				req, err := labels.NewRequirement("environment", selection.In, []string{"prod", "staging"})
+				require.NoError(t, err)
+				return labels.NewSelector().Add(*req)
+			}(),
+		},
+		{
+			name:        "malformed selector value returns an error",
+			rawSelector: "not-a-label-selector",
+			wantErr:     true,
+		},
+		{
+			name: "invalid matchExpressions operator returns an error",
+			rawSelector: map[string]any{
+				"matchExpressions": []any{
+					map[string]any{
+						"key":      "environment",
+						"operator": "NotAValidOperator",
+						"values":   []any{"prod"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			defer viper.Reset()
+			if tt.rawSelector != nil {
+				viper.Set(operator.NamespaceSelectorFlag, tt.rawSelector)
+			}
+
+			got, err := parseNSSelector(logr.Discard())
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantSel, got)
 		})
 	}
 }
