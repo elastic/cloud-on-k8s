@@ -21,6 +21,24 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
+// NewNamespacedController creates a controller that is aware of the operator's dynamic namespace
+// selector (--namespace-selector). It is meant to be used instead of NewController by controllers
+// whose reconciliations must be restricted to the set of namespaces currently matching the selector.
+//
+// When the selector is disabled, it behaves exactly like NewController: the given reconciler is
+// registered as-is with no extra overhead.
+//
+// When the selector is enabled, the reconciler is wrapped so that every reconciliation is:
+//   - gated on an Enterprise license, since the dynamic namespace selector is an enterprise feature
+//     (reconciliations are skipped and retried later while enterprise features are disabled);
+//   - skipped when the request's namespace no longer matches the selector, in which case
+//     OnNamespaceOutOfScope is invoked to let the reconciler drop any state it holds for
+//     the resource (e.g. dynamic watches, in-memory associations).
+//
+// In addition, the controller watches namespace label changes that flip a namespace in or out of
+// the selector's scope. On such a change, requestsForNamespace is called to enumerate the
+// reconcile requests to enqueue for that namespace, so resources are picked up (or cleaned up)
+// without waiting for another event on them.
 func NewNamespacedController(mgr manager.Manager, name string, r NamespacedReconciler, p operator.Parameters, requestsForNamespace func(context.Context, *corev1.Namespace) []reconcile.Request) (controller.Controller, error) {
 	if !p.NamespaceMatcher.SelectorEnabled() {
 		return NewController(mgr, name, r, p)
@@ -40,11 +58,18 @@ func NewNamespacedController(mgr manager.Manager, name string, r NamespacedRecon
 	return c, err
 }
 
+// NamespacedReconciler is a reconcile.Reconciler that can additionally be notified when a resource
+// falls out of the operator's namespace scope, to release any state it holds for that resource.
 type NamespacedReconciler interface {
 	reconcile.Reconciler
+	// OnNamespaceOutOfScope is called instead of Reconcile when the resource's namespace no longer
+	// matches the namespace selector. Implementations should clean up any internal state associated
+	// with the resource (dynamic watches, caches, etc.) but must not touch the resource itself.
 	OnNamespaceOutOfScope(resource types.NamespacedName)
 }
 
+// namespacedReconcilerWrapper enforces the enterprise license and namespace selector checks
+// before delegating to the inner reconciler. See NewNamespacedController.
 type namespacedReconcilerWrapper struct {
 	inner          NamespacedReconciler
 	parameters     operator.Parameters
