@@ -242,7 +242,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
+	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			req, shouldEnqueue := trialLicenseRequestForSecret(*secret)
 			if !shouldEnqueue {
@@ -251,17 +251,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials
 
 			return []reconcile.Request{req}
 		}),
-	))
+	)); err != nil {
+		return err
+	}
+
+	// no-op when the dynamic namespace selector is disabled
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache()))
 }
 
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+//
+// The controller is deliberately not wrapped in the enterprise-license gate of
+// common.NewNamespacedController: a trial is started exactly when no valid enterprise license
+// exists yet, so gating reconciliation on the license would deadlock the trial bootstrap.
+// Namespace scoping is still honored: the watches are namespace-filtered and the flip watch
+// re-enqueues trial secrets when a namespace moves in or out of scope.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewNamespacedController(mgr, name, r, params, namespaceFlipRequests(mgr.GetCache()))
+
+	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
 	}
+
 	return addWatches(mgr, c, r)
 }
 
@@ -311,10 +324,5 @@ func trialLicenseRequestForSecret(secret corev1.Secret) (reconcile.Request, bool
 
 	return reconcile.Request{}, false
 }
-
-// OnNamespaceOutOfScope implements common.NamespacedReconciler. The trial state kept in memory
-// is operator-wide, not tied to the trial secret's namespace, so there is nothing to release
-// when a namespace moves out of scope.
-func (r *ReconcileTrials) OnNamespaceOutOfScope(types.NamespacedName) {}
 
 var _ reconcile.Reconciler = (*ReconcileTrials)(nil)
