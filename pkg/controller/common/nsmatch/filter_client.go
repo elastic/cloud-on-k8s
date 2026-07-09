@@ -71,17 +71,24 @@ func (w *FilterClient) List(ctx context.Context, list client.ObjectList, opts ..
 		return nil
 	}
 	// Fast path for namespace-scoped lists: one Matches call decides the whole result.
-	listOpts := &client.ListOptions{}
-	for _, opt := range opts {
-		opt.ApplyToList(listOpts)
-	}
+	listOpts := (&client.ListOptions{}).ApplyOptions(opts)
 	if listOpts.Namespace != "" {
 		if !w.nfn.NamespaceNameMatches(ctx, listOpts.Namespace) {
 			return apimeta.SetList(list, nil)
 		}
 		return nil
 	}
-	return filterByNamespace(list, func(ns string) bool { return w.nfn.NamespaceNameMatches(ctx, ns) })
+	// Memoize per distinct namespace: items typically cluster into a few namespaces,
+	// and each miss costs a cache Get of the Namespace plus a selector match.
+	verdicts := map[string]bool{}
+	return filterByNamespace(list, func(ns string) bool {
+		v, ok := verdicts[ns]
+		if !ok {
+			v = w.nfn.NamespaceNameMatches(ctx, ns)
+			verdicts[ns] = v
+		}
+		return v
+	})
 }
 
 // filterByNamespace removes items from list whose namespace does not satisfy matches.
@@ -93,9 +100,14 @@ func filterByNamespace(list client.ObjectList, matches func(string) bool) error 
 	if err != nil {
 		return err
 	}
+	n := len(items)
 	items = slices.DeleteFunc(items, func(item runtime.Object) bool {
 		acc, err := apimeta.Accessor(item)
 		return err == nil && !matches(acc.GetNamespace())
 	})
+	if len(items) == n {
+		// Nothing filtered; skip the reflection-based rebuild of list.Items.
+		return nil
+	}
 	return apimeta.SetList(list, items)
 }
