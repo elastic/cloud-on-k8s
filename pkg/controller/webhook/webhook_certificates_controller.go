@@ -125,7 +125,7 @@ func Add(mgr manager.Manager, m *nsmatch.NamespaceMatcher, webhookParams Params,
 	}
 
 	// ValidatingWebhookConfiguration (and MutatingWebhookConfiguration) are cluster-scoped resources (no namespace), so source.Kind is used directly.
-	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object]{
+	return c.Watch(source.Kind(mgr.GetCache(), webhook.getType(), &watches.NamedWatch[client.Object]{ //nolint:forbidigo //cluster-scoped resources
 		Name:    "validatingwebhookconfiguration",
 		Watched: []types.NamespacedName{webhookConfiguration},
 		Watcher: webhookConfiguration,

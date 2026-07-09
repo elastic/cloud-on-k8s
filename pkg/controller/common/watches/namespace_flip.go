@@ -38,7 +38,7 @@ func WatchNamespaceScopeChange(
 		return nil
 	}
 
-	return c.Watch(source.Kind(
+	return c.Watch(source.Kind( //nolint:forbidigo // Watch all namespaces to cover the off-boarding cases.
 		ch,
 		&corev1.Namespace{},
 		handler.TypedEnqueueRequestsFromMapFunc(mapFn),

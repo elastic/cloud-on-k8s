@@ -34,7 +34,7 @@ func NamespacedKind[T client.Object](
 	preds ...predicate.TypedPredicate[T],
 ) source.SyncingSource {
 	if !m.SelectorEnabled() {
-		return source.Kind(c, obj, h, preds...)
+		return source.Kind(c, obj, h, preds...) //nolint:forbidigo //NamespacedKind is the drop-in wrapper around source.Kind; it must call it directly.
 	}
 	nsPred := predicate.NewTypedPredicateFuncs(func(o T) bool {
 		// predicate.Filter has no context parameter to propagate; Matches only
@@ -45,5 +45,5 @@ func NamespacedKind[T client.Object](
 	all := make([]predicate.TypedPredicate[T], 0, len(preds)+1)
 	all = append(all, nsPred)
 	all = append(all, preds...)
-	return source.Kind(c, obj, h, all...)
+	return source.Kind(c, obj, h, all...) //nolint:forbidigo //NamespacedKind is the drop-in wrapper around source.Kind; it must call it directly.
 }
