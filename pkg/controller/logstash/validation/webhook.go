@@ -15,6 +15,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -29,13 +30,13 @@ const (
 var lslog = ulog.Log.WithName("ls-validation")
 
 // RegisterWebhook registers the Logstash validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
 	}
 	// Logstash has no license-dependent validation, so we pass nil here.
-	v := commonwebhook.NewResourceValidator[*lsv1alpha1.Logstash](nil, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*lsv1alpha1.Logstash](nil, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	lslog.Info("Registering Logstash validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*lsv1alpha1.Logstash](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(webhookPath, wh)

@@ -13,11 +13,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -48,7 +48,12 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &beatv1beta1.BeatList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -68,13 +73,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to Beat
-	if err := c.Watch(source.Kind(mgr.GetCache(), &beatv1beta1.Beat{}, &handler.TypedEnqueueRequestForObject[*beatv1beta1.Beat]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &beatv1beta1.Beat{}, &handler.TypedEnqueueRequestForObject[*beatv1beta1.Beat]{})); err != nil {
 		return err
 	}
 
 	// Watch DaemonSets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.DaemonSet](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.DaemonSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.DaemonSet](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -82,7 +88,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -91,23 +97,23 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileBeat) 
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching Deployments or DaemonSets only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, beatcommon.NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, beatcommon.NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned Secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&beatv1beta1.Beat{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, beatv1beta1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, beatv1beta1.Kind); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcileBeat)(nil)
@@ -203,9 +209,15 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) error {
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Beat
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileBeat) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
+func (r *ReconcileBeat) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, beatv1beta1.Kind)
 }
 

@@ -41,6 +41,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 func esMonitoringAssociationInfo() association.AssociationInfo {
 	return association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &esv1.ElasticsearchList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,

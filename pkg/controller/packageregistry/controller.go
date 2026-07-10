@@ -17,11 +17,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -49,7 +49,12 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &eprv1alpha1.PackageRegistryList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -67,13 +72,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePa
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackageRegistry) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to packageregistry
-	if err := c.Watch(source.Kind(mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
 		return err
 	}
 
 	// Watch deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -82,12 +88,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, label.NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, label.NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -95,18 +101,18 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, eprv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, eprv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Dynamically watch referenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
 }
 
 var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
@@ -349,11 +355,15 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 	return common.UpdateStatus(ctx, r.Client, &epr)
 }
 
-func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on custom http tls certificates
+// OnNamespaceOutOfScope releases all controller-local state associated with the given PackageRegistry
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcilePackageRegistry) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
-	// same for the configRef secret
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
+func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, eprv1alpha1.Kind)
 }
 

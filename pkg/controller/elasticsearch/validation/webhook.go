@@ -15,6 +15,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -29,7 +30,7 @@ const (
 var eslog = ulog.Log.WithName("es-validation")
 
 // RegisterWebhook registers the Elasticsearch validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
@@ -38,7 +39,7 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLab
 	}
 	// License checks run inside validations(), so we pass nil here
 	// (the reconciler calls ValidateElasticsearch directly).
-	v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*esv1.Elasticsearch](nil, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	eslog.Info("Registering Elasticsearch validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*esv1.Elasticsearch](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(webhookPath, wh)

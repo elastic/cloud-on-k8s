@@ -16,6 +16,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -29,13 +30,13 @@ const (
 var autoopslog = ulog.Log.WithName("autoops-validation")
 
 // RegisterWebhook registers the AutoOpsAgentPolicy validating webhook with the manager.
-func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	autoopsValidator := &validator{
 		licenseChecker: licenseChecker,
 	}
 	// License checks run inside validations(), so we pass nil here
 	// (the reconciler calls Validate directly).
-	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, autoopsValidator)
+	v := commonwebhook.NewResourceValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](nil, managedNamespaces, autoopsValidator).WithNamespaceMatcher(matcher)
 	autoopslog.Info("Registering AutoOpsAgentPolicy validating webhook", "path", webhookPath)
 	wh := admission.WithValidator[*autoopsv1alpha1.AutoOpsAgentPolicy](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(webhookPath, wh)

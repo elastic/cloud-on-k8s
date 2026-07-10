@@ -4,6 +4,11 @@ linters:
     exhaustive:
       default-signifies-exhaustive: true
 
+    forbidigo:
+      forbid:
+        - pattern: '^source\.Kind$'
+          msg: "use watches.NamespacedKind (pkg/controller/common/watches) instead of source.Kind directly, so namespace-selector filtering is respected"
+
     goheader:
       template: |-
         Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
@@ -97,6 +102,7 @@ linters:
       - linters:
           - gosec
           - unparam
+          - forbidigo
         path: .*_test\.go
       - linters:
           - staticcheck
@@ -134,6 +140,7 @@ linters:
     - errcheck
     - errorlint
     - exhaustive
+    - forbidigo
     - forcetypeassert
     - gocritic
     - goheader

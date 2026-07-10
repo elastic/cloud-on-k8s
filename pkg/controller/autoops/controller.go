@@ -9,18 +9,19 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -46,7 +47,7 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(ulog.Log, mgr.GetCache()))
 	if err != nil {
 		return err
 	}
@@ -67,23 +68,50 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReconciler) error {
+	m := r.params.NamespaceMatcher
 	// watch for changes to AutoOpsAgentPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all AutoOpsAgentPolicies
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 
 	// watch for changes to deployments created by this controller
-	return c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the AutoOpsAgentPolicies affected by it. A policy selects its
+// Elasticsearch clusters cluster-wide by label (ResourceSelector), so a flip of any namespace
+// can change any policy's set of matching clusters: policies living in the flipped namespace
+// must be picked up or cleaned up, and policies living elsewhere must deploy agents for newly
+// scoped clusters or clean up agents and API keys for de-scoped ones. Mirroring the
+// Elasticsearch watch above (reconcileRequestForAllAutoOpsPolicies), all policies are
+// re-enqueued.
+func namespaceFlipRequests(log logr.Logger, cache cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list autoopsv1alpha1.AutoOpsAgentPolicyList
+		// List **cluster-wide** from the cache (not the FilterClient): policies in the
+		// namespace being de-scoped would be hidden by the FilterClient, causing us to miss
+		// the reconcile requests needed to clean them up.
+		if err := cache.List(ctx, &list); err != nil {
+			log.Error(err, "failed to list AutoOpsAgentPolicies in namespace flip watch", "namespace", ns.Name)
+			return nil
+		}
+		reqs := make([]reconcile.Request, 0, len(list.Items))
+		for i := range list.Items {
+			reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&list.Items[i])})
+		}
+		return reqs
+	}
 }
 
 // reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
@@ -221,13 +249,18 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	return reconcile.Result{}, nil
 }
 
+// OnNamespaceOutOfScope releases all controller-local state associated with the given AutoOpsAgentPolicy
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *AgentPolicyReconciler) OnNamespaceOutOfScope(obj types.NamespacedName) {
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+}
+
 func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
 
-	// Remove dynamic watches on secrets
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	r.OnNamespaceOutOfScope(obj)
 
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
 	// Query for secrets labeled with this policy to find all associated ES clusters.

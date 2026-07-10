@@ -13,23 +13,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	e2e_agent "github.com/elastic/cloud-on-k8s/v3/test/e2e/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	elasticagent "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
@@ -90,7 +88,7 @@ func TestGlobalCA(t *testing.T) {
 	_, err = reconciler.ReconcileSecret(context.Background(), k.Client, secret, nil)
 	require.NoError(t, err)
 	// reconfigure the operator to use the CA
-	require.NoError(t, addToOperatorConfig(k.Client, "ca", "/tmp/ca-certs"))
+	require.NoError(t, helper.AddToOperatorConfig(k.Client, "ca", "/tmp/ca-certs"))
 
 	// keep track of operator restarts
 	var restartCount int32
@@ -109,20 +107,20 @@ func TestGlobalCA(t *testing.T) {
 				{
 					Name: "retrieve current operator restart count",
 					Test: func(t *testing.T) {
-						restartCount, err = operatorRestartCount(k)
+						restartCount, err = helper.OperatorRestartCount(k)
 						require.NoError(t, err)
 					},
 				},
 				{
 					Name: "reset operator to use self-signed certificates per resource",
 					Test: func(t *testing.T) {
-						require.NoError(t, removeFromOperatorConfig(k.Client, "ca"))
+						require.NoError(t, helper.RemoveFromOperatorConfig(k.Client, "ca"))
 					},
 				},
 				{
 					Name: "assert operator has been restarted once more",
 					Test: test.Eventually(func() error {
-						newCount, err := operatorRestartCount(k)
+						newCount, err := helper.OperatorRestartCount(k)
 						if err != nil {
 							return err
 						}
@@ -147,55 +145,6 @@ func TestGlobalCA(t *testing.T) {
 	}
 
 	test.RunMutations(t, []test.Builder{es, kb, ent, agent, ls, testPod}, []test.Builder{esUpd})
-}
-
-func removeFromOperatorConfig(k k8s.Client, key string) error {
-	return updateOperatorConfig(k, func(cfg map[string]interface{}) {
-		delete(cfg, key)
-	})
-}
-
-func addToOperatorConfig(k k8s.Client, key, value string) error {
-	return updateOperatorConfig(k, func(cfg map[string]interface{}) {
-		cfg[key] = value
-	})
-}
-
-func updateOperatorConfig(k k8s.Client, f func(map[string]interface{})) error {
-	var cm corev1.ConfigMap
-	if err := k.Get(context.Background(),
-		types.NamespacedName{Name: fmt.Sprintf("%s-operator", test.Ctx().TestRun), Namespace: test.Ctx().Operator.Namespace},
-		&cm,
-	); err != nil {
-		return err
-	}
-	raw := cm.Data["eck.yaml"]
-	config := map[string]interface{}{}
-	if err := yaml.Unmarshal([]byte(raw), &config); err != nil {
-		return err
-	}
-	f(config)
-	bytes, err := yaml.Marshal(config)
-	if err != nil {
-		return err
-	}
-	cm.Data["eck.yaml"] = string(bytes)
-	return k.Update(context.Background(), &cm)
-}
-
-func operatorRestartCount(k *test.K8sClient) (int32, error) {
-	pods, err := k.GetPods(test.OperatorPodListOptions(test.Ctx().Operator.Namespace)...)
-	if err != nil {
-		return 0, err
-	}
-	for _, p := range pods {
-		for _, c := range p.Status.ContainerStatuses {
-			if c.Name == "manager" {
-				return c.RestartCount, nil
-			}
-		}
-	}
-	return 0, fmt.Errorf("could not find operator container")
 }
 
 func operatorSecretForCA(
