@@ -14,7 +14,7 @@ kubectl get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 oc get namespace <your-namespace> -o jsonpath='{.metadata.labels}'
 ```
 
-If the output contains `pod-security.kubernetes.io/enforce: restricted`, do **not** apply this workaround: restricted PSA requires `seccompProfile` and expects `fsGroup` within the namespace's allocated `supplemental-groups` range, not a fixed `1000`.
+If the output contains `pod-security.kubernetes.io/enforce: restricted`, do **not** apply this workaround. Restricted PSA requires `seccompProfile` and expects `fsGroup` to be within the namespace's allocated `supplemental-groups` range, rather than set to a fixed value of `1000`.
 
 Otherwise, set the security context on the Logstash resource so ECK skips its own injection:
 
