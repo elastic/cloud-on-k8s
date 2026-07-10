@@ -58,25 +58,24 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esNs1.Elasticsearch)
 
-	originalNamespaces, err := helper.GetOperatorConfigValue(k.Client, "namespaces")
+	originalConfig, err := helper.GetOperatorConfig(k.Client)
 	require.NoError(t, err)
 
 	var restartCount int32
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
 	t.Cleanup(func() {
+		// cleanup namespaces labels
 		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, ns1, ns2); err != nil {
 			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
 		}
-		if err := helper.UpdateOperatorConfig(k.Client, func(cfg map[string]any) {
-			delete(cfg, "namespace-selector")
-			if originalNamespaces != nil {
-				cfg["namespaces"] = originalNamespaces
-			}
-		}); err != nil {
+
+		// restore original config
+		if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
 			t.Logf("WARNING: failed to restore operator config: %v", err)
 			return
 		}
+
 		test.Eventually(func() error {
 			newCount, err := helper.OperatorRestartCount(k)
 			if err != nil {
