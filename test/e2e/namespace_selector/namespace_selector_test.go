@@ -15,9 +15,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/kibana"
 )
 
 // TestNamespaceSelectorDynamicLabelChange verifies that the operator dynamically picks up a namespace
@@ -162,6 +167,179 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 		}).
 		WithSteps(esNs1.DeletionTestSteps(k)).
 		WithSteps(esNs2.DeletionTestSteps(k)).
+		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
+		RunSequential(t)
+}
+
+// TestNamespaceSelectorDynamicLabelChangeAssociation verifies that a cross-namespace association follows
+// the referenced resource's namespace in and out of the operator's namespace-selector scope.
+//
+// Both namespaces are labeled at startup, an Elasticsearch is created in ns1 and a Kibana
+// referencing it in ns2, and the association must be Established. When ns1 (the Elasticsearch
+// namespace) loses the label, the operator must stop seeing the referenced Elasticsearch and move
+// the Kibana association to Pending. When ns1 is labeled again, the association must be
+// re-established, all without an operator restart.
+//
+// The test requires an enterprise license.
+//
+// NOTE: this test mutates global operator configuration and must not run in parallel
+// with other tests in the same test run.
+func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	k := test.NewK8sClientOrFatal()
+	esNamespace := test.Ctx().ManagedNamespace(1) // this namespace will be off-boarder later so use the second once since the license is installed in the first one.
+	kbNamespace := test.Ctx().ManagedNamespace(0)
+
+	const eckVisibleLabel = "eck-visible"
+
+	licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
+	require.NoError(t, err)
+
+	esBuilder := elasticsearch.NewBuilder("ns-sel-assoc").
+		WithNamespace(esNamespace).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	kbBuilder := kibana.NewBuilder("ns-sel-assoc").
+		WithNamespace(kbNamespace).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+
+	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
+
+	originalConfig, err := helper.GetOperatorConfig(k.Client)
+	require.NoError(t, err)
+
+	var restartCount int32
+
+	// Always restore namespace labels and operator config on exit, even on test failure.
+	t.Cleanup(func() {
+		// cleanup namespaces labels
+		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, esNamespace, kbNamespace); err != nil {
+			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
+		}
+
+		// restore original config
+		if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
+			t.Logf("WARNING: failed to restore operator config: %v", err)
+			return
+		}
+
+		test.Eventually(func() error {
+			newCount, err := helper.OperatorRestartCount(k)
+			if err != nil {
+				return err
+			}
+			if newCount <= restartCount {
+				return errors.New("waiting to restart after config restore")
+			}
+			return nil
+		})(t)
+	})
+
+	// kbAssociationStatusIs returns a step waiting for the Kibana Elasticsearch association
+	// status to reach the expected value.
+	kbAssociationStatusIs := func(expected commonv1.AssociationStatus) test.Step {
+		return test.Step{
+			Name: fmt.Sprintf("wait for Kibana Elasticsearch association status to be %q", expected),
+			Test: test.Eventually(func() error {
+				var kb kbv1.Kibana
+				if err := k.Client.Get(t.Context(), types.NamespacedName{
+					Namespace: kbBuilder.Kibana.Namespace,
+					Name:      kbBuilder.Kibana.Name,
+				}, &kb); err != nil {
+					return err
+				}
+				if s := kb.Status.ElasticsearchAssociationStatus; s != expected {
+					return fmt.Errorf("kibana Elasticsearch association status is %q, expected %q", s, expected)
+				}
+				return nil
+			}),
+		}
+	}
+
+	test.StepList{}.
+		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
+		WithStep(licenseTestContext.CreateEnterpriseLicenseSecret("eck-license-ns-sel-assoc", licenseBytes)).
+		WithStep(test.Step{
+			Name: "add eck-visible=true label to both the Elasticsearch and the Kibana namespaces",
+			Test: func(t *testing.T) {
+				require.NoError(t, helper.SetNamespaceLabel(t.Context(), k.Client, esNamespace, eckVisibleLabel, "true"))
+				require.NoError(t, helper.SetNamespaceLabel(t.Context(), k.Client, kbNamespace, eckVisibleLabel, "true"))
+			},
+		}).
+		WithStep(test.Step{
+			Name: "record baseline operator restart count",
+			Test: func(t *testing.T) {
+				restartCount, err = helper.OperatorRestartCount(k)
+				require.NoError(t, err)
+			},
+		}).
+		WithStep(test.Step{
+			Name: "switch operator to eck-visible=true namespace-selector",
+			Test: func(t *testing.T) {
+				require.NoError(t, helper.UpdateOperatorConfig(k.Client, func(cfg map[string]any) {
+					delete(cfg, "namespaces")
+					cfg["namespace-selector"] = map[string]any{
+						"matchLabels": map[string]any{
+							eckVisibleLabel: "true",
+						},
+					}
+				}))
+			},
+		}).
+		WithStep(test.Step{
+			Name: "wait for operator restart with new namespace-selector config",
+			Test: test.Eventually(func() error {
+				newCount, err := helper.OperatorRestartCount(k)
+				if err != nil {
+					return err
+				}
+				if newCount <= restartCount {
+					return fmt.Errorf("waiting for operator restart after namespace-selector config change (current restarts: %d)", newCount)
+				}
+				return nil
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "record post-restart count as the no-restart baseline",
+			Test: func(t *testing.T) {
+				restartCount, err = helper.OperatorRestartCount(k)
+				require.NoError(t, err)
+			},
+		}).
+		WithSteps(esBuilder.InitTestSteps(k)).
+		WithSteps(esBuilder.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(esBuilder, k)).
+		WithSteps(kbBuilder.InitTestSteps(k)).
+		WithSteps(kbBuilder.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(kbBuilder, k)).
+		WithStep(kbAssociationStatusIs(commonv1.AssociationEstablished)).
+		WithStep(test.Step{
+			Name: "remove the eck-visible label from the Elasticsearch namespace",
+			Test: func(t *testing.T) {
+				require.NoError(t, helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, esNamespace))
+			},
+		}).
+		WithStep(kbAssociationStatusIs(commonv1.AssociationPending)).
+		WithStep(test.Step{
+			Name: "re-add eck-visible=true to the Elasticsearch namespace",
+			Test: func(t *testing.T) {
+				require.NoError(t, helper.SetNamespaceLabel(t.Context(), k.Client, esNamespace, eckVisibleLabel, "true"))
+			},
+		}).
+		WithStep(kbAssociationStatusIs(commonv1.AssociationEstablished)).
+		WithStep(test.Step{
+			Name: "assert operator did not restart during the namespace scope changes",
+			Test: func(t *testing.T) {
+				postLabelRestartCount, err := helper.OperatorRestartCount(k)
+				require.NoError(t, err)
+				require.Equal(t, restartCount, postLabelRestartCount, "operator must not restart when namespaces flip in and out of the selector scope")
+			},
+		}).
+		WithSteps(kbBuilder.DeletionTestSteps(k)).
+		WithSteps(esBuilder.DeletionTestSteps(k)).
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
 		RunSequential(t)
 }

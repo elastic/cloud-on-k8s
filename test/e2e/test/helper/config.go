@@ -31,16 +31,8 @@ func AddToOperatorConfig(k k8s.Client, key, value string) error {
 }
 
 func UpdateOperatorConfig(k k8s.Client, f func(map[string]any)) error {
-	var cm corev1.ConfigMap
-	if err := k.Get(context.Background(),
-		types.NamespacedName{Name: fmt.Sprintf("%s-operator", test.Ctx().TestRun), Namespace: test.Ctx().Operator.Namespace},
-		&cm,
-	); err != nil {
-		return err
-	}
-	raw := cm.Data["eck.yaml"]
-	config := map[string]any{}
-	if err := yaml.Unmarshal([]byte(raw), &config); err != nil {
+	cm, config, err := getOperatorConfig(k)
+	if err != nil {
 		return err
 	}
 	f(config)
@@ -49,15 +41,53 @@ func UpdateOperatorConfig(k k8s.Client, f func(map[string]any)) error {
 		return err
 	}
 	cm.Data["eck.yaml"] = string(bytes)
-	return k.Update(context.Background(), &cm)
+	return k.Update(context.Background(), cm)
+}
+
+func SetOperatorConfig(k k8s.Client, cnf map[string]any) error {
+	cm, _, err := getOperatorConfig(k)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := yaml.Marshal(cnf)
+	if err != nil {
+		return err
+	}
+	cm.Data["eck.yaml"] = string(bytes)
+	return k.Update(context.Background(), cm)
+}
+
+// GetOperatorConfig returns the operator configuration (the eck.yaml entry of the operator
+// ConfigMap) as a map.
+func GetOperatorConfig(k k8s.Client) (map[string]any, error) {
+	_, config, err := getOperatorConfig(k)
+	return config, err
 }
 
 func GetOperatorConfigValue(k k8s.Client, key string) (any, error) {
-	var result any
-	err := UpdateOperatorConfig(k, func(cfg map[string]any) {
-		result = cfg[key]
-	})
-	return result, err
+	config, err := GetOperatorConfig(k)
+	if err != nil {
+		return nil, err
+	}
+	return config[key], nil
+}
+
+// getOperatorConfig fetches the operator ConfigMap and unmarshals its eck.yaml entry.
+func getOperatorConfig(k k8s.Client) (*corev1.ConfigMap, map[string]any, error) {
+	var cm corev1.ConfigMap
+	if err := k.Get(
+		context.Background(),
+		types.NamespacedName{Name: fmt.Sprintf("%s-operator", test.Ctx().TestRun), Namespace: test.Ctx().Operator.Namespace},
+		&cm,
+	); err != nil {
+		return nil, nil, err
+	}
+	config := map[string]any{}
+	if err := yaml.Unmarshal([]byte(cm.Data["eck.yaml"]), &config); err != nil {
+		return nil, nil, err
+	}
+	return &cm, config, nil
 }
 
 func OperatorRestartCount(k *test.K8sClient) (int32, error) {
