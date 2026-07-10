@@ -72,13 +72,19 @@ func RunWithK8s(m *testing.M) {
 
 // StartManager sets up a manager and controller to perform reconciliations in background.
 // It must be stopped by calling the returned function.
-func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
+// Optional option functions can adjust the manager options (e.g. to wrap the manager client)
+// before the manager is created.
+func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters, optFns ...func(*manager.Options)) (k8s.Client, func()) {
 	t.Helper()
-	mgr, err := manager.New(Config, manager.Options{
+	opts := manager.Options{
 		Metrics: metricsserver.Options{
 			BindAddress: "0", // disable
 		},
-	})
+	}
+	for _, fn := range optFns {
+		fn(&opts)
+	}
+	mgr, err := manager.New(Config, opts)
 	require.NoError(t, err)
 
 	err = addToMgrFunc(mgr, parameters)
