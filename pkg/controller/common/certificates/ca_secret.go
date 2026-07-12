@@ -18,6 +18,9 @@ import (
 // ParseCustomCASecret checks that mandatory fields are present and returns a CA struct.
 // It does not check that the public key matches the private key.
 // Legacy tls.* keys are still supported while the expected default keys are ca.crt and ca.key.
+// A Secret may also contain ca.crt alongside tls.crt/tls.key without ca.key, as produced by a
+// cert-manager Certificate with isCA: true; in that case the tls.* pair is used unambiguously.
+// It's only a conflict when both complete key pairs (tls.crt+tls.key and ca.crt+ca.key) are present.
 func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	keyFileName := CAKeyFileName
 	crtFileName := CAFileName
@@ -26,7 +29,7 @@ func ParseCustomCASecret(s corev1.Secret) (*CA, error) {
 	_, legacyCrtExists := s.Data[CertFileName]
 	_, keyExists := s.Data[keyFileName]
 	_, crtExists := s.Data[crtFileName]
-	if (legacyKeyExists || legacyCrtExists) && (keyExists || crtExists) {
+	if (legacyKeyExists && legacyCrtExists) && (keyExists && crtExists) {
 		return nil, fmt.Errorf("both tls.* keys and ca.* keys exist in secret %s/%s, this is likely a configuration error", s.Namespace, s.Name)
 	}
 	if legacyKeyExists && legacyCrtExists {
