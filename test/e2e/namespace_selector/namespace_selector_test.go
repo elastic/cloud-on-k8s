@@ -158,6 +158,12 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 		WithSteps(test.CheckTestSteps(esNs2, k)).
 		WithStep(test.Step{
 			Name: "assert operator did not restart to pick up the newly labeled namespace",
+			Skip: func() bool {
+				// the chaos job randomly deletes operator Pods and flips replica counts, which
+				// resets/bumps restart counts independently of the namespace-selector behaviour
+				// under test, making this assertion meaningless (and flaky) in that mode.
+				return test.Ctx().DeployChaosJob
+			},
 			Test: func(t *testing.T) {
 				postLabelRestartCount, err := helper.OperatorRestartCount(k)
 				require.NoError(t, err)
@@ -331,6 +337,12 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 		WithStep(kbAssociationStatusIs(commonv1.AssociationEstablished)).
 		WithStep(test.Step{
 			Name: "assert operator did not restart during the namespace scope changes",
+			Skip: func() bool {
+				// the chaos job randomly deletes operator Pods and flips replica counts, which
+				// resets/bumps restart counts independently of the namespace-selector behaviour
+				// under test, making this assertion meaningless (and flaky) in that mode.
+				return test.Ctx().DeployChaosJob
+			},
 			Test: func(t *testing.T) {
 				postLabelRestartCount, err := helper.OperatorRestartCount(k)
 				require.NoError(t, err)
