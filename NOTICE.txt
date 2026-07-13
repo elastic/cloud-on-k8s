@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/auth
-Version : v0.20.0
-Time    : 2026-04-06T22:09:02Z
+Version : v0.21.0
+Time    : 2026-07-07T20:38:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.20.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.21.0/LICENSE:
 
 
                                  Apache License
@@ -774,11 +774,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.42
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/credentials
-Version : v1.19.27
-Time    : 2026-07-06T18:20:27Z
+Version : v1.19.28
+Time    : 2026-07-08T23:19:12Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.27/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.19.28/LICENSE.txt:
 
 
                                  Apache License
@@ -1526,11 +1526,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/gkampitakis/go-snaps
-Version : v0.5.22
-Time    : 2026-05-24T14:19:57Z
+Version : v0.5.23
+Time    : 2026-07-07T08:27:46Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.22/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/gkampitakis/go-snaps@v0.5.23/LICENSE:
 
 MIT License
 
@@ -3754,11 +3754,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.69.0
-Time    : 2026-06-17T08:40:11Z
+Version : v0.70.0
+Time    : 2026-07-10T08:22:00Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.69.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.70.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5149,11 +5149,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.53.0
-Time    : 2026-06-08T15:52:49Z
+Version : v0.54.0
+Time    : 2026-07-08T18:22:26Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.53.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.54.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -5223,11 +5223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/api
-Version : v0.287.0
-Time    : 2026-06-30T20:11:30Z
+Version : v0.288.0
+Time    : 2026-07-09T18:55:08Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.287.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.288.0/LICENSE:
 
 Copyright (c) 2011 Google Inc. All rights reserved.
 
@@ -9175,11 +9175,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!azure!a!d/microsoft-au
 
 --------------------------------------------------------------------------------
 Module  : github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp
-Version : v1.31.0
-Time    : 2026-01-16T21:40:50Z
+Version : v1.32.0
+Time    : 2026-04-06T19:50:39Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/detectors/gcp@v1.31.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!google!cloud!platform/opentelemetry-operations-go/detectors/gcp@v1.32.0/LICENSE:
 
 
                                  Apache License
@@ -20262,11 +20262,11 @@ Contents of probable licence file $GOMODCACHE/github.com/googleapis/enterprise-c
 
 --------------------------------------------------------------------------------
 Module  : github.com/googleapis/gax-go/v2
-Version : v2.22.0
-Time    : 2026-04-14T19:15:00Z
+Version : v2.23.0
+Time    : 2026-07-07T18:28:26Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/googleapis/gax-go/v2@v2.22.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/googleapis/gax-go/v2@v2.23.0/LICENSE:
 
 Copyright 2016, Google Inc.
 All rights reserved.
@@ -26206,11 +26206,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.20.1
-Time    : 2026-02-28T15:22:44Z
+Version : v0.21.0
+Time    : 2026-06-27T06:39:03Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.21.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -27577,11 +27577,11 @@ Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/auto/sdk@v1.2.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/contrib/detectors/gcp
-Version : v1.42.0
-Time    : 2026-03-06T20:24:46Z
+Version : v1.43.0
+Time    : 2026-04-07T08:53:54Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/contrib/detectors/gcp@v1.42.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/contrib/detectors/gcp@v1.43.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31110,11 +31110,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.21.0
-Time    : 2026-06-04T16:57:53Z
+Version : v0.22.0
+Time    : 2026-07-01T17:29:34Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.21.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.22.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -31147,11 +31147,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.46.0
-Time    : 2026-05-27T14:14:43Z
+Version : v0.47.0
+Time    : 2026-06-30T17:07:31Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.46.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.47.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -31184,11 +31184,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/term
-Version : v0.44.0
-Time    : 2026-06-08T15:10:55Z
+Version : v0.45.0
+Time    : 2026-07-08T15:40:56Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/term@v0.45.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -31221,11 +31221,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/text
-Version : v0.38.0
-Time    : 2026-06-08T15:10:20Z
+Version : v0.40.0
+Time    : 2026-07-08T15:41:08Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.38.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/text@v0.40.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -31295,11 +31295,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.46.0
-Time    : 2026-06-11T15:32:39Z
+Version : v0.47.0
+Time    : 2026-06-25T17:02:32Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.46.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.47.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -31862,11 +31862,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/api
-Version : v0.0.0-20260615183401-62b3387ff324
-Time    : 2026-06-15T18:34:01Z
+Version : v0.0.0-20260630182238-925bb5da69e7
+Time    : 2026-06-30T18:22:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260615183401-62b3387ff324/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260630182238-925bb5da69e7/LICENSE:
 
 
                                  Apache License
@@ -32074,11 +32074,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googlea
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/rpc
-Version : v0.0.0-20260622175928-b703f567277d
-Time    : 2026-06-22T17:59:28Z
+Version : v0.0.0-20260630182238-925bb5da69e7
+Time    : 2026-06-30T18:22:38Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260622175928-b703f567277d/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260630182238-925bb5da69e7/LICENSE:
 
 
                                  Apache License
@@ -32286,11 +32286,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googlea
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/grpc
-Version : v1.81.1
-Time    : 2026-05-13T05:19:17Z
+Version : v1.82.0
+Time    : 2026-06-30T13:47:03Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.81.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.82.0/LICENSE:
 
 
                                  Apache License
