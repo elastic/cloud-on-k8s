@@ -21,12 +21,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -56,17 +56,15 @@ const (
 	controllerName = "stackconfigpolicy-controller"
 )
 
-var (
-	// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
-	// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
-	defaultRequeue = 30 * time.Second
-)
+// defaultRequeue is the default requeue interval for this controller. It is longer than the default interval used elsewhere to account
+// for secret propagation times and the time it takes for Elasticsearch to observe the updates.
+var defaultRequeue = 30 * time.Second
 
 // Add creates a new StackConfigPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(mgr.GetCache(), params.OperatorNamespace))
 	if err != nil {
 		return err
 	}
@@ -87,33 +85,61 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileStackConfigPolicy) error {
+	m := r.params.NamespaceMatcher
 	// watch for changes to StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &policyv1alpha1.StackConfigPolicy{}, &handler.TypedEnqueueRequestForObject[*policyv1alpha1.StackConfigPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch for changes to Kibana and reconcile all StackConfigPolicy
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &kibanav1.Kibana{}, reconcileRequestForAllPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch Secrets soft owned by StackConfigPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, reconcileRequestForSoftOwnerPolicy())); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced ConfigMaps
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the StackConfigPolicies affected by it: the ones living in the
+// flipped namespace (the default flip behavior), and the ones living in the operator
+// namespace, which target resources cluster-wide. The latter cannot rely on the default
+// behavior: the operator namespace is always managed and never flips itself, so a scope
+// change of a target namespace would otherwise never re-enqueue its policies — leaving
+// their settings unapplied on scope-in and their status counting hidden clusters on
+// scope-out — unless a target object event incidentally hit the ES/Kibana mappers.
+func namespaceFlipRequests(cache cache.Cache, operatorNamespace string) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list policyv1alpha1.StackConfigPolicyList
+		// List **cluster-wide** from the cache (not the FilterClient): policies in the
+		// namespace being de-scoped would be hidden by the FilterClient.
+		if err := cache.List(ctx, &list); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list StackConfigPolicies", "namespace", ns.Name)
+			return nil
+		}
+		var reqs []reconcile.Request
+		for _, policy := range list.Items {
+			if policy.Namespace == ns.Name || policy.Namespace == operatorNamespace {
+				reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&policy)})
+			}
+		}
+		return reqs
+	}
 }
 
 func reconcileRequestForSoftOwnerPolicy() handler.TypedEventHandler[*corev1.Secret, reconcile.Request] {
@@ -590,13 +616,18 @@ func (r *ReconcileStackConfigPolicy) updateStatus(ctx context.Context, scp polic
 	return common.UpdateStatus(ctx, r.Client, &scp)
 }
 
-func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	defer tracing.Span(&ctx)()
-	// Remove dynamic watches on secrets
+// OnNamespaceOutOfScope releases all controller-local state associated with the given StackConfigPolicy
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileStackConfigPolicy) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(additionalSecretMountsWatcherName(obj))
 	// Remove dynamic watches on variablesFrom sources
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(variableSourcesWatcherName(obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(variableSourcesWatcherName(obj))
+}
+
+func (r *ReconcileStackConfigPolicy) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	defer tracing.Span(&ctx)()
+	r.OnNamespaceOutOfScope(obj)
 	// Send empty resource type so that we reset/delete secrets for configured elasticsearch and kibana clusters
 	return handleOrphanSoftOwnedSecrets(ctx, r.Client, obj, nil, nil, "")
 }

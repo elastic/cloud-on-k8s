@@ -12,6 +12,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
@@ -52,4 +53,10 @@ type Parameters struct {
 	ValidateStorageClass bool
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
+	// NamespaceMatcher combines namespace-selector matching and match state change
+	// notification. In dynamic mode it evaluates the configured namespaceSelector
+	// against Namespace labels per event and broadcasts Namespace objects to
+	// per-kind controllers whenever a namespace's match-state changes. Nil in
+	// legacy / static-resolution modes.
+	NamespaceMatcher *nsmatch.NamespaceMatcher
 }

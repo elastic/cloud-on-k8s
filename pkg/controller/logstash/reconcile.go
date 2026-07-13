@@ -24,6 +24,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/sset"
@@ -59,54 +60,71 @@ func reconcileStatefulSet(params Params, podTemplate corev1.PodTemplateSpec) (*r
 		VolumeClaimTemplates: params.Logstash.Spec.VolumeClaimTemplates,
 	})
 
-	recreations, err := volume.RecreateStatefulSets(params.Context, params.Client, params.Logstash)
-
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
-			return results.WithRequeue(), params.Status
-		}
-		return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
-	}
-
-	if recreations > 0 {
-		// Statefulset is in the process of being recreated to handle PVC expansion:
-		// it is safer to requeue until the re-creation is done.
-		// Otherwise, some operation could be performed with wrong assumptions:
-		// the sset doesn't exist (was just deleted), but the Pods do actually exist.
-		ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
-			"status", params.Status)
-		return results.WithRequeue(30 * time.Second), params.Status
-	}
-
+	// actualStatefulSet is preemptively fetched as it is needed whether orchestration is paused or not, and needs to
+	// maintain the appropriate scope to be available where needed. This removes duplicate code.
 	actualStatefulSet, err := retrieveActualStatefulSet(params.Client, params.Logstash)
-
 	notFound := apierrors.IsNotFound(err)
 	if err != nil && !notFound {
 		return results.WithError(err), params.Status
 	}
 
-	if !notFound {
-		recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
-		if err != nil {
-			return results.WithError(err), params.Status
-		}
-		if recreateSset {
+	// Volume expansion is skipped while paused: spec changes (including PVC resizes) are held
+	// until orchestration resumes.
+	if !common.IsOrchestrationPaused(&params.Logstash) {
+		recreations, err := volume.RecreateStatefulSets(params.Context, params.Client, params.Logstash)
+		switch {
+		case apierrors.IsConflict(err):
+			ulog.FromContext(params.Context).V(1).Info("Conflict while recreating stateful set, requeueing", "message", err)
 			return results.WithRequeue(), params.Status
+		case err != nil:
+			return results.WithError(fmt.Errorf("StatefulSet recreation: %w", err)), params.Status
+		case recreations > 0:
+			// Statefulset is in the process of being recreated to handle PVC expansion:
+			// it is safer to requeue until the re-creation is done.
+			// Otherwise, some operation could be performed with wrong assumptions:
+			// the sset doesn't exist (was just deleted), but the Pods do actually exist.
+			ulog.FromContext(params.Context).V(1).Info("StatefulSets recreation in progress, re-queueing after 30 seconds.", "namespace", params.Logstash.Namespace, "ls_name", params.Logstash.Name,
+				"status", params.Status)
+			return results.WithRequeue(30 * time.Second), params.Status
+		case !notFound:
+			recreateSset, err := volume.HandleVolumeExpansion(params.Context, params.Client, params.Logstash, expected, actualStatefulSet, true)
+			if err != nil {
+				return results.WithError(err), params.Status
+			}
+			if recreateSset {
+				return results.WithRequeue(), params.Status
+			}
 		}
+	}
+
+	// When paused, wait for the StatefulSet to converge before computing pending changes.
+	// A hash computed against a partially-updated sset would be unreliable.
+	if common.IsOrchestrationPaused(&params.Logstash) && !notFound && !statefulset.IsSteady(actualStatefulSet) {
+		common.ReportPausedWaitingCondition(&params.Logstash)
+		params.Status.Conditions = params.Logstash.Status.Conditions
+		return results.WithRequeue(), params.Status
 	}
 
 	if err := controllerutil.SetControllerReference(&params.Logstash, &expected, scheme.Scheme); err != nil {
 		return results.WithError(err), params.Status
 	}
-	reconciled, err := sset.Reconcile(params.Context, params.Client, expected, params.Logstash, params.Expectations)
 
+	reconciled, err := common.ReconcilePauseAware(
+		params.Context, params.Client, params.Recorder(),
+		expected, &params.Logstash,
+		func(ctx context.Context, c k8s.Client, expected appsv1.StatefulSet, _ client.Object) (appsv1.StatefulSet, error) {
+			return sset.Reconcile(ctx, c, expected, params.Logstash, params.Expectations)
+		},
+	)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
-	var status logstashv1alpha1.LogstashStatus
+	// ReconcilePauseAware writes OrchestrationPaused conditions to params.Logstash; sync into
+	// params.Status so common.UpdateStatus persists them.
+	params.Status.Conditions = params.Logstash.Status.Conditions
 
+	var status logstashv1alpha1.LogstashStatus
 	if status, err = calculateStatus(&params, reconciled); err != nil {
 		results.WithError(errors.Wrap(err, "while calculating status"))
 	}

@@ -97,8 +97,14 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 }
 
-func dynamicWatchName(request reconcile.Request) string {
-	return fmt.Sprintf("%s-%s-referenced-es-watch", request.Namespace, request.Name)
+func dynamicWatchName(obj types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-referenced-es-watch", obj.Namespace, obj.Name)
+}
+
+// OnNamespaceOutOfScope releases all controller-local state associated with the given ElasticsearchAutoscaler
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileElasticsearchAutoscaler) OnNamespaceOutOfScope(obj types.NamespacedName) {
+	r.Watches.ReferencedResources.RemoveHandlerForKey(dynamicWatchName(obj))
 }
 
 func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -112,7 +118,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	if err := r.Get(ctx, request.NamespacedName, &esa); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.V(1).Info("ElasticsearchAutoscaler not found", "namespace", request.Namespace, "esa_name", request.Name)
-			r.Watches.ReferencedResources.RemoveHandlerForKey(dynamicWatchName(request))
+			r.OnNamespaceOutOfScope(request.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -121,7 +127,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	// Ensure we watch the associated Elasticsearch
 	esNamespacedName := types.NamespacedName{Name: esa.Spec.ElasticsearchRef.Name, Namespace: request.Namespace}
 	if err := r.Watches.ReferencedResources.AddHandler(watches.NamedWatch[client.Object]{
-		Name:    dynamicWatchName(request),
+		Name:    dynamicWatchName(request.NamespacedName),
 		Watched: []types.NamespacedName{esNamespacedName},
 		Watcher: request.NamespacedName,
 	}); err != nil {

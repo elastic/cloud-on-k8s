@@ -16,17 +16,19 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -238,45 +240,90 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 	}
 }
 
-func addWatches(mgr manager.Manager, c controller.Controller) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileTrials) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
-			if licensing.IsEnterpriseTrial(*secret) {
-				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Namespace: secret.GetNamespace(),
-							Name:      secret.GetName(),
-						},
-					},
-				}
-			}
-
-			if secret.GetName() != licensing.TrialStatusSecretKey {
+			req, shouldEnqueue := trialLicenseRequestForSecret(*secret)
+			if !shouldEnqueue {
 				return nil
 			}
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
-					},
-				},
-			}
+
+			return []reconcile.Request{req}
 		}),
-	))
+	)); err != nil {
+		return err
+	}
+
+	// no-op when the dynamic namespace selector is disabled
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache()))
 }
 
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+//
+// The controller is deliberately not wrapped in the enterprise-license gate of
+// common.NewNamespacedController: a trial is started exactly when no valid enterprise license
+// exists yet, so gating reconciliation on the license would deadlock the trial bootstrap.
+// Namespace scoping is still honored: the watches are namespace-filtered and the flip watch
+// re-enqueues trial secrets when a namespace moves in or out of scope.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
+
 	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
 	}
-	return addWatches(mgr, c)
+
+	return addWatches(mgr, c, r)
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the enterprise trial license secrets living in the flipped namespace.
+func namespaceFlipRequests(ch cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var secrets corev1.SecretList
+		// List via the cache (not the FilterClient) so that secrets in a namespace being
+		// de-scoped are still visible here.
+		if err := ch.List(ctx, &secrets, client.InNamespace(ns.Name)); err != nil {
+			ulog.FromContext(ctx).Error(err, "Failed to list trial license secrets", "namespace", ns.Name)
+			return nil
+		}
+		var reqs []reconcile.Request
+		for i := range secrets.Items {
+			// enqueue the trial status secret and the enterprise trial licenses as well
+			if r, shouldEnqueue := trialLicenseRequestForSecret(secrets.Items[i]); shouldEnqueue {
+				reqs = append(reqs, r)
+			}
+		}
+		return reqs
+	}
+}
+
+// trialLicenseRequestForSecret resolves a secret to the trial license reconcile request it maps
+// to: an enterprise trial license secret maps to itself, while the trial status secret is
+// redirected, via its annotations, to the trial license it tracks. The boolean is false for
+// secrets unrelated to trials, which should not be enqueued.
+func trialLicenseRequestForSecret(secret corev1.Secret) (reconcile.Request, bool) {
+	if licensing.IsEnterpriseTrial(secret) {
+		return reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: secret.GetNamespace(),
+				Name:      secret.GetName(),
+			},
+		}, true
+	}
+
+	if secret.GetName() == licensing.TrialStatusSecretKey {
+		return reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+				Name:      secret.Annotations[licensing.TrialLicenseSecretName],
+			},
+		}, true
+	}
+
+	return reconcile.Request{}, false
 }
 
 var _ reconcile.Reconciler = (*ReconcileTrials)(nil)

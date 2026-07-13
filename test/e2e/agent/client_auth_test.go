@@ -288,6 +288,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerClientAuthNotSupported(t)
 
 	name := "test-fs-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -369,12 +370,11 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 
 // TestClientAuthRequired_FleetServerToAgent tests that a fleet-managed Agent works with auto-generated
 // client certificates when connecting to a Fleet Server that has client authentication enabled.
-// NOTE: Transition test steps (disabling mTLS) are commented out due to an upstream Elastic Agent bug:
-// https://github.com/elastic/elastic-agent/issues/13810
 func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerClientAuthNotSupported(t)
 
 	name := "test-fs-mtls-auto"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -397,7 +397,10 @@ func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetAgentDataStreamsValidation()
 
-	kbBuilder = kbBuilder.WithConfig(fleetConfigWithOutputsForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
+	kbBuilder = kbBuilder.WithConfig(fleetConfigWithOutputsForKibanaAndPolicies(
+		// don't include Kubernetes policy here, see https://github.com/elastic/cloud-on-k8s/issues/9485
+		t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref(), []byte(E2EFleetPoliciesWithSystemOnly),
+	))
 
 	agentBuilder := agent.NewBuilder(name + "-ea").
 		WithRoles(agent.AgentFleetModeRoleName).
@@ -406,7 +409,13 @@ func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetServerRef(fleetServerBuilder.Ref())
 
-	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate)
+	// Use emptyDir for Fleet Server state to prevent stale fleet.enc from persisting across
+	// rolling updates on the same node. When mTLS is disabled the trust-bundle volume is removed,
+	// but the hostPath-backed fleet.enc still references the (now unmounted) CA path, causing
+	// Fleet Server to crash on startup. Until fixed upstream, use emptyDir as a workaround.
+	// See: https://github.com/elastic/cloud-on-k8s/issues/9443
+	fleetServerBuilder = agent.ApplyYamls(t, fleetServerBuilder, "", E2EAgentFleetModePodTemplate).
+		WithEmptyDirDataVolume()
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, "", E2EAgentFleetModePodTemplate)
 
 	// Wrap the ES builder with license setup.
@@ -449,35 +458,45 @@ func TestClientAuthRequired_FleetServerToAgent(t *testing.T) {
 		},
 	}
 
-	// For now, just run the initial setup without transitions.
-	test.Sequence(nil, test.EmptySteps, esWithLicense, kbBuilder, fleetServerBuilder, agentWrapped).RunSequential(t)
+	fsMutated := fleetServerBuilder.DeepCopy().WithMutatedFrom(&fleetServerBuilder)
+	fsMutated.Agent.Spec.HTTP.TLS.Client.Authentication = false
 
-	// TODO: Uncomment transition tests once https://github.com/elastic/elastic-agent/issues/13810 is fixed.
-	// The upstream bug causes Elastic Agent to crashloop when transitioning from mTLS-enabled to disabled
-	// (and vice versa) because the agent's stored configuration retains old certificate paths.
-	//
-	// // Transition Fleet Server to client auth disabled.
-	// fsMutated := fleetServerBuilder.DeepCopy().WithMutatedFrom(&fleetServerBuilder)
-	// fsMutated.Agent.Spec.HTTP.TLS.Client.Authentication = false
-	//
-	// fsMutatedWrapped := test.WrappedBuilder{
-	// 	BuildingThis: fsMutated,
-	// 	PostMutationSteps: func(k *test.K8sClient) test.StepList {
-	// 		return test.CheckTestSteps(agentBuilder, k).
-	// 			WithSteps(test.StepList{
-	// 				clientauth.CheckClientCertificatesCountStep(k, namespace, fleetServerBuilder.Agent.Name, 0),
-	// 			})
-	// 	},
-	// }
-	//
-	// test.RunMutations(t, []test.Builder{esWithLicense, kbBuilder, fleetServerBuilder, agentWrapped}, []test.Builder{fsMutatedWrapped})
+	agentRestartChecker := test.NewPodRestartChecker("Agent", test.AgentPodListOptions(agentBuilder.Agent.Namespace, agentBuilder.Agent.Name)...)
+
+	fsMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: fsMutated,
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return agentRestartChecker.RecordUIDs(k)
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return agentRestartChecker.WaitForRestart(k).
+				WithSteps(agentBuilder.CheckFleetServerConnected(k)).WithStep(
+				clientauth.CheckClientCertificatesCountStep(k, namespace, fleetServerBuilder.Agent.Name, 0),
+			)
+		},
+	}
+
+	test.RunMutations(t, []test.Builder{esWithLicense, kbBuilder, fleetServerBuilder, agentWrapped}, []test.Builder{fsMutatedWrapped})
 }
 
-// fleetConfigWithOutputsForKibana builds a Kibana config that uses xpack.fleet.outputs instead of
+// fleetConfigWithOutputsForKibana is a convenience wrapper around fleetConfigWithOutputsForKibanaAndPolicies
+// that uses E2EFleetPolicies as the fleet policies configuration.
+func fleetConfigWithOutputsForKibana(t *testing.T, agentVersion string, esRef commonv1.ObjectSelector, fsRef commonv1.ObjectSelector) map[string]interface{} {
+	return fleetConfigWithOutputsForKibanaAndPolicies(t, agentVersion, esRef, fsRef, []byte(E2EFleetPolicies))
+}
+
+// fleetConfigWithOutputsForKibanaAndPolicies builds a Kibana config that uses xpack.fleet.outputs instead of
 // xpack.fleet.agents.elasticsearch.hosts. The two cannot coexist. Defining outputs explicitly is
 // necessary for mTLS tests so the Kibana controller can inject ssl.certificate and ssl.key into
-// the fleet output via injectFleetOutputClientCerts.
-func fleetConfigWithOutputsForKibana(t *testing.T, agentVersion string, esRef commonv1.ObjectSelector, fsRef commonv1.ObjectSelector) map[string]interface{} {
+// the fleet output via injectFleetOutputClientCerts. The caller supplies the fleet policies YAML to
+// embed, allowing tests to override E2EFleetPolicies with a custom policy set.
+func fleetConfigWithOutputsForKibanaAndPolicies(
+	t *testing.T,
+	agentVersion string,
+	esRef commonv1.ObjectSelector,
+	fsRef commonv1.ObjectSelector,
+	fleetPoliciesYAML []byte,
+) map[string]interface{} {
 	t.Helper()
 	cfg := map[string]interface{}{}
 
@@ -486,7 +505,7 @@ func fleetConfigWithOutputsForKibana(t *testing.T, agentVersion string, esRef co
 		t.Fatalf("Unable to parse Agent version: %v", err)
 	}
 	if v.GTE(version.MustParse("7.16.0")) {
-		if err := yaml.Unmarshal([]byte(E2EFleetPolicies), &cfg); err != nil {
+		if err := yaml.Unmarshal(fleetPoliciesYAML, &cfg); err != nil {
 			t.Fatalf("Unable to parse Fleet policies: %v", err)
 		}
 	}
@@ -509,4 +528,17 @@ func fleetConfigWithOutputsForKibana(t *testing.T, agentVersion string, esRef co
 	}
 
 	return cfg
+}
+
+// skipIfFleetServerClientAuthNotSupported skips the test if the current stack version does not
+// support Fleet Server client certificate authentication (requires 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+).
+func skipIfFleetServerClientAuthNotSupported(t *testing.T) {
+	t.Helper()
+	v, err := version.Parse(test.Ctx().ElasticStackVersion)
+	if err != nil {
+		t.Fatalf("failed to parse stack version %q: %v", test.Ctx().ElasticStackVersion, err)
+	}
+	if !agentv1alpha1.FleetServerClientAuthSupported(v) {
+		t.Skipf("skipping Fleet Server client authentication test: requires 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+, got %s", v)
+	}
 }
