@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
@@ -44,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -69,6 +71,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -593,7 +596,30 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to parse managed namespaces flag")
 		return err
 	}
+
+	// Parse the optional namespace label selector. This field is config-file
+	// only (a metav1.LabelSelector object); it has no CLI flag. When set,
+	// the operator runs in dynamic mode: the cache is cluster-wide and a
+	// Matcher consulted by a predicate on every controller's watches
+	// evaluates the selector against Namespace labels per event.
+	parsedNsSelector, err := parseNSSelector(viper.GetViper(), log)
+	if err != nil {
+		return err
+	}
+	dynamicNSSelector := parsedNsSelector != nil
+
+	// Validate that dynamic ns selector cannot co-exist with the fixed list of managed namespaces.
+	if dynamicNSSelector && len(managedNamespaces) > 0 {
+		err := fmt.Errorf("%q and %q are mutually exclusive", operator.NamespacesFlag, operator.NamespaceSelectorFlag)
+		log.Error(err, "Invalid configuration")
+		return err
+	}
+
 	switch {
+	case dynamicNSSelector:
+		log.Info("Operator configured to manage namespaces dynamically via selector",
+			"selector", parsedNsSelector.String(),
+			"operator_namespace", operatorNamespace)
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
@@ -611,13 +637,26 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	namespaceMatcher := nsmatch.NewNamespaceMatcher(parsedNsSelector, operatorNamespace)
+
 	opts.Cache = cache.Options{
 		DefaultNamespaces: map[string]cache.Config{},
 		DefaultTransform:  cache.TransformStripManagedFields(),
 		ByObject:          byObject,
 	}
-	for _, ns := range managedNamespaces {
-		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	if !dynamicNSSelector {
+		for _, ns := range managedNamespaces {
+			opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+		}
+	} else {
+		opts.NewClient = func(config *rest.Config, options client.Options) (client.Client, error) {
+			delegate, err := client.New(config, options) // cache-backed; options.Cache already set by mgr
+			if err != nil {
+				return nil, err
+			}
+
+			return nsmatch.NewFilterClient(delegate, namespaceMatcher), nil
+		}
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -650,6 +689,8 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to create controller manager")
 		return err
 	}
+
+	namespaceMatcher.SetCache(mgr.GetCache())
 
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
@@ -752,6 +793,7 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		NamespaceMatcher:          namespaceMatcher,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -773,7 +815,7 @@ func startOperator(ctx context.Context) error {
 
 	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
 	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
+	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, namespaceMatcher, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -828,6 +870,7 @@ func asyncTasks(
 	cfg *rest.Config,
 	managedNamespaces []string,
 	operatorNamespace string,
+	namespaceMatcher *nsmatch.NamespaceMatcher,
 	operatorInfo about.OperatorInfo,
 	disableTelemetry bool,
 	telemetryInterval time.Duration,
@@ -851,16 +894,25 @@ func asyncTasks(
 	if !disableTelemetry {
 		// Start the telemetry reporter
 		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval, tracer)
+			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, telemetryInterval, tracer)
 			tr.Start(ctx)
 		}()
 	}
 
+	namespaces := managedNamespaces
+	if namespaceMatcher.SelectorEnabled() {
+		nsp, err := namespaceMatcher.MatchingNamespaces(ctx)
+		if err != nil {
+			log.Error(err, "exiting due to unrecoverable error while fetching the namespaces")
+			os.Exit(1)
+		}
+		namespaces = nsp
+	}
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
 	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
-	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
+	err := garbageCollectUsers(gcCtx, cfg, namespaces)
 	if err != nil {
 		log.Error(err, "exiting due to unrecoverable error")
 		os.Exit(1)
@@ -1100,4 +1152,33 @@ func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObj
 	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: watchedResourcesSelector}
 
 	return byObject, nil
+}
+
+func parseNSSelector(v *viper.Viper, log logr.Logger) (labels.Selector, error) {
+	if !v.IsSet(operator.NamespaceSelectorFlag) {
+		return nil, nil
+	}
+	raw := v.Get(operator.NamespaceSelectorFlag)
+	yamlBytes, err := yaml.Marshal(raw)
+	if err != nil {
+		log.Error(err, "Failed to serialize namespace-selector for parsing")
+		return nil, err
+	}
+	var ls metav1.LabelSelector
+	if err := yaml.Unmarshal(yamlBytes, &ls); err != nil {
+		log.Error(err, "Failed to parse namespace-selector")
+		return nil, err
+	}
+	if len(ls.MatchLabels) == 0 && len(ls.MatchExpressions) == 0 {
+		// an empty selector ({}) means dynamic namespace selection is disabled,
+		// so fallback to all namespaces.
+		log.Info("namespace-selector is empty: dynamic namespace selection is disabled, all namespaces will be watched")
+		return nil, nil
+	}
+	sel, err := metav1.LabelSelectorAsSelector(&ls)
+	if err != nil {
+		log.Error(err, "Invalid namespace-selector")
+		return nil, err
+	}
+	return sel, nil
 }

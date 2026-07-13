@@ -48,7 +48,7 @@ const (
 // Add creates a new ReconcileRemoteClusters Controller and adds it to the manager with default RBAC.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := NewReconciler(mgr, accessReviewer, params)
-	c, err := common.NewController(mgr, name, r, params)
+	c, err := common.NewNamespacedController(mgr, name, r, params, namespaceFlipRequests(mgr.GetCache()))
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 	err := r.Get(ctx, request.NamespacedName, &es)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.keystoreProvider.ForgetCluster(request.NamespacedName)
+			r.OnNamespaceOutOfScope(request.NamespacedName)
 			return deleteAllRemoteCa(ctx, r, request.NamespacedName)
 		}
 		return reconcile.Result{}, err
@@ -110,6 +110,12 @@ func (r *ReconcileRemoteClusters) Reconcile(ctx context.Context, request reconci
 		return reconcile.Result{}, nil
 	}
 	return doReconcile(ctx, r, &es)
+}
+
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileRemoteClusters) OnNamespaceOutOfScope(obj types.NamespacedName) {
+	r.keystoreProvider.ForgetCluster(obj)
 }
 
 // deleteAllRemoteCa deletes all associated remote certificate authorities
@@ -209,6 +215,11 @@ func doReconcile(
 			if errors.IsNotFound(err) {
 				// Remote client cluster does not exist, invalidate API keys for that client cluster.
 				apiKeyReconciledRemoteClients.Insert(remoteClientKey)
+
+				// The remote client cluster is deleted or out of scope. Only its identity is
+				// known; set it explicitly so API key invalidation can match its keys.
+				remoteClient.Namespace = remoteClientKey.Namespace
+				remoteClient.Name = remoteClientKey.Name
 				results.WithResults(reconcileAPIKeys(ctx, r.Client, activeAPIKeys, remoteServer, remoteClient, nil, esClient, r.keystoreProvider))
 				continue
 			}

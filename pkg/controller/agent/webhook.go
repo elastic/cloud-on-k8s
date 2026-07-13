@@ -15,14 +15,15 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // RegisterWebhook registers the Agent validating webhook with license-aware validation.
-func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string) {
+func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &webhookValidator{licenseChecker: checker}
-	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner)
+	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[*agentv1alpha1.Agent](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(agentv1alpha1.WebhookPath, wh)
 	ulog.Log.Info("Registering Agent validating webhook", "path", agentv1alpha1.WebhookPath)

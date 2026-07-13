@@ -31,6 +31,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -65,10 +66,11 @@ func NewReporter(
 	client client.Client,
 	operatorNamespace string,
 	managedNamespaces []string,
+	namespaceMatcher *nsmatch.NamespaceMatcher,
 	telemetryInterval time.Duration,
 	tracer *apm.Tracer,
 ) Reporter {
-	if len(managedNamespaces) == 0 {
+	if len(managedNamespaces) == 0 && !namespaceMatcher.SelectorEnabled() {
 		// treat no managed namespaces as managing all namespaces, ie. set empty string for namespace filtering
 		managedNamespaces = append(managedNamespaces, "")
 	}
@@ -78,6 +80,7 @@ func NewReporter(
 		client:            client,
 		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
+		namespaceMatcher:  namespaceMatcher,
 		telemetryInterval: telemetryInterval,
 		tracer:            tracer,
 	}
@@ -88,6 +91,7 @@ type Reporter struct {
 	client            k8s.Client
 	operatorNamespace string
 	managedNamespaces []string
+	namespaceMatcher  *nsmatch.NamespaceMatcher
 	telemetryInterval time.Duration
 	tracer            *apm.Tracer
 }
@@ -113,7 +117,15 @@ func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[st
 	})
 }
 
-func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
+func (r *Reporter) getNamespaces(ctx context.Context) ([]string, error) {
+	if r.namespaceMatcher.SelectorEnabled() {
+		return r.namespaceMatcher.MatchingNamespaces(ctx)
+	}
+
+	return r.managedNamespaces, nil
+}
+
+func (r *Reporter) getResourceStats(ctx context.Context, namespaces []string) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -130,7 +142,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error)
 		logstashStats,
 		aopStats,
 	} {
-		key, statsPart, err := f(r.client, r.managedNamespaces)
+		key, statsPart, err := f(r.client, namespaces)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +158,13 @@ func (r *Reporter) report(ctx context.Context) {
 
 	log := ulog.FromContext(ctx)
 
-	stats, err := r.getResourceStats(ctx)
+	namespaces, err := r.getNamespaces(ctx)
+	if err != nil {
+		log.Error(err, "failed to get namespaces")
+		return
+	}
+
+	stats, err := r.getResourceStats(ctx, namespaces)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
 		return
@@ -164,7 +182,7 @@ func (r *Reporter) report(ctx context.Context) {
 		return
 	}
 
-	for _, ns := range r.managedNamespaces {
+	for _, ns := range namespaces {
 		var kibanaList kbv1.KibanaList
 		if err := r.client.List(ctx, &kibanaList, client.InNamespace(ns)); err != nil {
 			log.Error(err, "failed to list Kibanas")

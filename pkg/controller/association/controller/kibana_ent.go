@@ -25,6 +25,7 @@ import (
 func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &kbv1.KibanaList{} },
 		ReferencedObjTemplate:     func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL:        getEntExternalURL,
 		ReferencedResourceVersion: referencedEntStatusVersion,

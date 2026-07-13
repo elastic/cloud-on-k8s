@@ -10,17 +10,19 @@ import (
 	"errors"
 	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -31,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -64,13 +67,21 @@ func (r *ReconcileLicenses) Reconcile(ctx context.Context, request reconcile.Req
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+//
+// The controller is deliberately not wrapped in the enterprise-license gate of
+// common.NewNamespacedController: it must keep reconciling in the unlicensed state to remove
+// per-cluster license secrets so clusters revert to Basic. Namespace scoping is still honored:
+// the watches are namespace-filtered and the flip watch below re-enqueues clusters when a
+// namespace moves in or out of scope.
 func Add(mgr manager.Manager, p operator.Parameters) error {
 	r := newReconciler(mgr, p)
+
 	c, err := common.NewController(mgr, name, r, p)
 	if err != nil {
 		return err
 	}
-	return addWatches(mgr, c, r.Client)
+
+	return addWatches(mgr, c, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -102,15 +113,15 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) time.D
 }
 
 // addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
-func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Client) error {
+func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLicenses) error {
 	log := ulog.Log // no context available for contextual logging
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
+		watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{},
+	if err := c.Watch(watches.NamespacedKind(r.NamespaceMatcher, mgr.GetCache(), &corev1.Secret{},
 		handler.TypedEnqueueRequestsFromMapFunc[*corev1.Secret](func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
 			if !license.IsOperatorLicense(*secret) {
 				return nil
@@ -118,7 +129,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(k8sClient, log)
+			rs, err := reconcileRequestsForAllClusters(r.Client, log)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -129,7 +140,53 @@ func addWatches(mgr manager.Manager, c controller.Controller, k8sClient k8s.Clie
 	)); err != nil {
 		return err
 	}
-	return nil
+
+	// no-op when the dynamic namespace selector is disabled
+	return watches.WatchNamespaceScopeChange(c, mgr.GetCache(), r.NamespaceMatcher, namespaceFlipRequests(mgr.GetCache(), r.Client, ulog.Log))
+}
+
+// namespaceFlipRequests returns the mapper deciding which Elasticsearch clusters to reconcile when a
+// namespace's selector match state flips. If the flipped namespace holds an operator license secret,
+// the licensing outcome may change for every cluster, so all clusters are reconciled. Otherwise only
+// the clusters in the flipped namespace are affected.
+//
+// The two clients are used deliberately: lookups inside the flipped namespace go through the cache
+// (ch) directly because the filtering client would hide the namespace's contents when it is being
+// descoped, and we still need to see them to decide what to re-enqueue. The cluster-wide list in
+// reconcileRequestsForAllClusters goes through the filtering client (clt) instead: its match state
+// is already updated when the flip event fires, so it yields exactly the clusters currently in
+// scope — including the newly scoped namespace and excluding the descoped one, whose clusters we
+// must not reconcile.
+func namespaceFlipRequests(ch cache.Cache, clt client.Client, log logr.Logger) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var licenseSecrets corev1.SecretList
+		if err := ch.List(ctx, &licenseSecrets, client.InNamespace(ns.Name), license.NewLicenseByScopeSelector(license.LicenseScopeOperator)); err != nil {
+			log.Error(err, "failed to list license secrets in namespace flip watch", "namespace", ns.Name)
+			return nil
+		}
+
+		// the flipped namespace carries a license with it: the licensing outcome may change for every cluster.
+		if len(licenseSecrets.Items) > 0 {
+			rs, err := reconcileRequestsForAllClusters(clt, log)
+			if err != nil {
+				log.Error(err, "failed to list all clusters in namespace flip watch")
+				return nil
+			}
+			return rs
+		}
+
+		// no license involved: only the clusters in the flipped namespace are affected.
+		var clusters esv1.ElasticsearchList
+		if err := ch.List(ctx, &clusters, client.InNamespace(ns.Name)); err != nil {
+			log.Error(err, "failed to list clusters in namespace flip watch", "namespace", ns.Name)
+			return nil
+		}
+		reqs := make([]reconcile.Request, 0, len(clusters.Items))
+		for i := range clusters.Items {
+			reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&clusters.Items[i])})
+		}
+		return reqs
+	}
 }
 
 var _ reconcile.Reconciler = (*ReconcileLicenses)(nil)

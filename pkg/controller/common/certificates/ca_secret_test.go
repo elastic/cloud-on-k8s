@@ -17,6 +17,7 @@ import (
 func TestParseCustomCASecret(t *testing.T) {
 	ca := loadFileBytes("ca.crt")
 	key := loadFileBytes("tls.key")
+	corruptedCert := loadFileBytes("corrupted.crt")
 	corruptedKey := loadFileBytes("corrupted.key")
 	encryptedKey := loadFileBytes("encrypted.key")
 
@@ -81,6 +82,28 @@ func TestParseCustomCASecret(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "cert-manager isCA Certificate shape: tls.crt/tls.key alongside corrupted ca.crt, no ca.key",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					certFileName: ca,
+					keyFileName:  key,
+					caFileName:   corruptedCert,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "modern ca.crt/ca.key alongside a stray corrupted tls.crt, no tls.key",
+			s: corev1.Secret{
+				Data: map[string][]byte{
+					caFileName:    ca,
+					caKeyFileName: key,
+					certFileName:  corruptedCert,
+				},
+			},
+			wantErr: false,
 		},
 		{
 			name: "Empty certificate",

@@ -7,13 +7,17 @@ package license
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -23,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 func Test_nextReconcileRelativeTo(t *testing.T) {
@@ -208,6 +213,85 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, license.Data)
 			}
+		})
+	}
+}
+
+func Test_namespaceFlipRequests(t *testing.T) {
+	// the namespace whose selector match state just changed
+	changedNS := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
+
+	operatorLicense := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "eck-license",
+			Namespace: changedNS.Name,
+			Labels:    map[string]string{commonlicense.LicenseLabelScope: string(commonlicense.LicenseScopeOperator)},
+		},
+	}
+	esA := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-a", Namespace: "ns-a"}}
+	esB := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-b", Namespace: "ns-b"}}
+
+	tests := []struct {
+		name           string
+		licenseSecrets []corev1.Secret // license secrets in the changed namespace, listed from the cache
+		secretListErr  error
+		clusters       []esv1.Elasticsearch // clusters in the changed namespace, listed from the cache
+		clusterListErr error
+		clientClusters []crclient.Object // clusters visible to the filtering client
+		want           []reconcile.Request
+	}{
+		{
+			name:           "license in the changed namespace: reconcile all clusters visible to the client",
+			licenseSecrets: []corev1.Secret{operatorLicense},
+			clientClusters: []crclient.Object{esA.DeepCopy(), esB.DeepCopy()},
+			want: []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Namespace: "ns-a", Name: "es-a"}},
+				{NamespacedName: types.NamespacedName{Namespace: "ns-b", Name: "es-b"}},
+			},
+		},
+		{
+			name:     "no license in the changed namespace: reconcile only its clusters",
+			clusters: []esv1.Elasticsearch{esA},
+			// the filtering client must not be consulted here: this cluster must not show up
+			clientClusters: []crclient.Object{esB.DeepCopy()},
+			want: []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Namespace: "ns-a", Name: "es-a"}},
+			},
+		},
+		{
+			name:          "error listing license secrets: drop the event",
+			secretListErr: errors.New("cache not started"),
+		},
+		{
+			name:           "error listing clusters: drop the event",
+			clusterListErr: errors.New("cache not started"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ch := cachemock.NewCache(t)
+			ch.On("List", mock.Anything, mock.AnythingOfType("*v1.SecretList"), mock.Anything).
+				Run(func(args mock.Arguments) {
+					// the license secret lookup must be scoped to the changed namespace and the operator license scope
+					require.Contains(t, args.Get(2), crclient.InNamespace(changedNS.Name))
+					require.Contains(t, args.Get(2), commonlicense.NewLicenseByScopeSelector(commonlicense.LicenseScopeOperator))
+					args.Get(1).(*corev1.SecretList).Items = tt.licenseSecrets //nolint:forcetypeassert
+				}).
+				Return(tt.secretListErr)
+			// the cluster list from the cache only happens when no license secret was found
+			if tt.secretListErr == nil && len(tt.licenseSecrets) == 0 {
+				ch.On("List", mock.Anything, mock.AnythingOfType("*v1.ElasticsearchList"), mock.Anything).
+					Run(func(args mock.Arguments) {
+						require.Contains(t, args.Get(2), crclient.InNamespace(changedNS.Name))
+						args.Get(1).(*esv1.ElasticsearchList).Items = tt.clusters //nolint:forcetypeassert
+					}).
+					Return(tt.clusterListErr)
+			}
+
+			reqs := namespaceFlipRequests(ch, k8s.NewFakeClient(tt.clientClusters...), logr.Discard())(context.Background(), changedNS)
+
+			require.ElementsMatch(t, tt.want, reqs)
 		})
 	}
 }
