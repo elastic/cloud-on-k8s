@@ -222,11 +222,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.21.0/L
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/storage
-Version : v1.63.0
-Time    : 2026-06-26T04:25:24Z
+Version : v1.63.1
+Time    : 2026-07-13T04:30:52Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.63.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.63.1/LICENSE:
 
 
                                  Apache License
@@ -8385,11 +8385,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/logging@v1.18.
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/longrunning
-Version : v1.0.0
-Time    : 2026-05-11T16:07:01Z
+Version : v1.2.0
+Time    : 2026-07-08T18:05:14Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/longrunning@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/longrunning@v1.2.0/LICENSE:
 
 
                                  Apache License
