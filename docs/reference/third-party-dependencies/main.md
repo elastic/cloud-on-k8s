@@ -17,7 +17,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | Name | Version | Licence |
 | --- | --- | --- |
 | [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.21.0 | Apache-2.0 |
-| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.63.0 | Apache-2.0 |
+| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.63.1 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.0 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
@@ -79,7 +79,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/compute/metadata](https://cloud.google.com/go/compute/metadata) | v0.9.0 | Apache-2.0 |
 | [cloud.google.com/go/iam](https://cloud.google.com/go/iam) | v1.11.0 | Apache-2.0 |
 | [cloud.google.com/go/logging](https://cloud.google.com/go/logging) | v1.18.0 | Apache-2.0 |
-| [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v1.0.0 | Apache-2.0 |
+| [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v1.2.0 | Apache-2.0 |
 | [cloud.google.com/go/monitoring](https://cloud.google.com/go/monitoring) | v1.29.0 | Apache-2.0 |
 | [cloud.google.com/go/trace](https://cloud.google.com/go/trace) | v1.16.0 | Apache-2.0 |
 | [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.22.0 | MIT |
