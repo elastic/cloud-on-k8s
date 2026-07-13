@@ -16,15 +16,15 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 
 | Name | Version | Licence |
 | --- | --- | --- |
-| [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.21.0 | Apache-2.0 |
+| [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.22.0 | Apache-2.0 |
 | [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.63.1 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.0 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.42.1 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.19.28 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.105.0 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.19.29 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.105.1 | Apache-2.0 |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.1 | Apache-2.0 |
