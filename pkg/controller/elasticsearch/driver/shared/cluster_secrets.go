@@ -28,6 +28,7 @@ func BuildClusterSecrets(
 	recorder toolsevents.EventRecorder,
 	dynamicWatches watches.DynamicWatches,
 	es esv1.Elasticsearch,
+	operatorNamespace string,
 ) (*commonv1.Config, error) {
 	secretSources := keystore.WatchedSecretNames(&es)
 
@@ -37,7 +38,7 @@ func BuildClusterSecrets(
 	}
 	secretSources = append(secretSources, remoteClusterAPIKeys...)
 
-	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, c, &es, "Elasticsearch")
+	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, c, &es, "Elasticsearch", operatorNamespace)
 	if err != nil {
 		return nil, err
 	}

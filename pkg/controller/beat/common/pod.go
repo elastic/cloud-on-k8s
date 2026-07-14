@@ -93,6 +93,7 @@ func buildPodTemplate(
 		&params.Beat,
 		namer,
 		meta,
+		"", // operator namespace is not really needed for beats keystore resources
 		initContainerParameters(params.Beat.Spec.Type),
 	)
 	if err != nil {

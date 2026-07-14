@@ -104,7 +104,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 				Watches:      tt.w,
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
-			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer)
+			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer, "")
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
 			assert.Equal(t, tt.wantHash, hash)
