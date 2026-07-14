@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,7 +26,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
@@ -1160,3 +1163,344 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		require.Equal(t, 1, state.status.Resources, "Resources count should be 1 after access revoked")
 	})
 }
+
+// buildDeploymentName returns the expected name for the AutoOps Deployment for a given policy+ES pair.
+func buildDeploymentName(policyName string, esName, esNamespace string) string {
+	return autoopsv1alpha1.Deployment(policyName, esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Name: esName, Namespace: esNamespace},
+	})
+}
+
+func TestInternalReconcile_PauseOrchestration(t *testing.T) {
+	scheme.SetupScheme()
+
+	policyWithPause := newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		if a.Annotations == nil {
+			a.Annotations = make(map[string]string)
+		}
+		a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+	})
+
+	tests := []struct {
+		name                     string
+		policy                   autoopsv1alpha1.AutoOpsAgentPolicy
+		initialObjects           []client.Object
+		wantConditionStatus      corev1.ConditionStatus
+		wantConditionMsg         string
+		wantDeploymentNotCreated bool // assert no new Deployment is created
+		wantDeploymentCreated    bool // assert at least one Deployment is created
+		wantReady                int
+	}{
+		{
+			name:   "paused with no existing deployment reports PendingChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name:   "paused with existing deployment with different hash reports PendingChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      buildDeploymentName("policy-1", "es-1", "ns-1"),
+						Namespace: "ns-1",
+						Labels: map[string]string{
+							"common.k8s.elastic.co/template-hash": "old-stale-hash",
+						},
+					},
+				},
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name: "paused with two ES clusters: neither has a deployment — reports PendingChanges",
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				if a.Annotations == nil {
+					a.Annotations = make(map[string]string)
+				}
+				a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(), // es-1: no Deployment → IsNotFound → pending
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.Name = "es-2" }), // es-2: same
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name:   "paused with ready deployment counts ready correctly",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      buildDeploymentName("policy-1", "es-1", "ns-1"),
+						Namespace: "ns-1",
+						Labels: map[string]string{
+							"common.k8s.elastic.co/template-hash": "old-stale-hash",
+						},
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+			wantReady:                1,
+		},
+		{
+			name: "condition flips to False on resume",
+			// Policy has no pause annotation but has a pre-existing OrchestrationPaused=True condition.
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Status.Conditions = commonv1.Conditions{
+					{
+						Type:    commonv1.OrchestrationPaused,
+						Status:  corev1.ConditionTrue,
+						Message: common.PausedNoChangesMessage,
+					},
+				}
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			// After a successful resume reconcile the condition should be set to False and a Deployment created.
+			wantConditionStatus:   corev1.ConditionFalse,
+			wantConditionMsg:      common.PausedOrchestrationResumed,
+			wantDeploymentCreated: true,
+		},
+		{
+			name:   "paused with no accessible ES clusters reports PausedNoChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				// no Elasticsearch object: accessibleClusters == 0, early-return path
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedNoChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.NewFakeClient(tt.initialObjects...)
+			r := &AgentPolicyReconciler{
+				Client:           k8sClient,
+				esClientProvider: newFakeESClientProvider().Provider,
+				accessReviewer:   &fakeAccessReviewer{allowed: true},
+				recorder:         toolsevents.NewFakeRecorder(10),
+				params:           operator.Parameters{Dialer: &fakeDialer{}},
+				dynamicWatches:   watches.NewDynamicWatches(),
+			}
+
+			ctx := t.Context()
+			state := newState(tt.policy)
+			results := reconciler.NewResult(ctx)
+			r.internalReconcile(ctx, tt.policy, results, state)
+
+			// Verify exactly one OrchestrationPaused condition.
+			idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition to be set")
+			cond := state.status.Conditions[idx]
+			assert.Equal(t, tt.wantConditionStatus, cond.Status, "condition Status mismatch")
+			assert.Equal(t, tt.wantConditionMsg, cond.Message, "condition Message mismatch")
+
+			// Verify single condition entry (no duplicates by type).
+			count := 0
+			for _, c := range state.status.Conditions {
+				if c.Type == commonv1.OrchestrationPaused {
+					count++
+				}
+			}
+			assert.Equal(t, 1, count, "expected exactly one OrchestrationPaused condition")
+
+			// Verify no Deployment was created when orchestration is paused.
+			if tt.wantDeploymentNotCreated {
+				var deplList appsv1.DeploymentList
+				require.NoError(t, k8sClient.List(ctx, &deplList))
+				for _, d := range deplList.Items {
+					_, hasPolicyLabel := d.Labels[PolicyNameLabelKey]
+					assert.False(t, hasPolicyLabel, "unexpected new Deployment created while paused: %s", d.Name)
+				}
+			}
+
+			// Verify at least one Deployment was created on the normal reconcile path.
+			if tt.wantDeploymentCreated {
+				var deplList appsv1.DeploymentList
+				require.NoError(t, k8sClient.List(ctx, &deplList))
+				found := false
+				for _, d := range deplList.Items {
+					if _, hasPolicyLabel := d.Labels[PolicyNameLabelKey]; hasPolicyLabel {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected a Deployment to be created but none was found")
+			}
+
+			if tt.wantReady > 0 {
+				assert.Equal(t, tt.wantReady, state.status.Ready, "Ready count mismatch")
+			}
+		})
+	}
+}
+
+// TestInternalReconcile_PauseOrchestration_MatchingHash verifies that when orchestration is paused
+// and the live Deployment's hash matches the expected spec, the condition reports PausedNoChangesMessage.
+// This uses a two-pass approach: the first pass (unpause) creates the Deployment with the correct
+// template hash; the second pass (paused) compares against it.
+func TestInternalReconcile_PauseOrchestration_MatchingHash(t *testing.T) {
+	scheme.SetupScheme()
+
+	k8sClient := k8s.NewFakeClient(newSecret(), newElasticsearch())
+	newReconciler := func() *AgentPolicyReconciler {
+		return &AgentPolicyReconciler{
+			Client:           k8sClient,
+			esClientProvider: newFakeESClientProvider().Provider,
+			accessReviewer:   &fakeAccessReviewer{allowed: true},
+			recorder:         toolsevents.NewFakeRecorder(10),
+			params:           operator.Parameters{Dialer: &fakeDialer{}},
+			dynamicWatches:   watches.NewDynamicWatches(),
+		}
+	}
+	ctx := t.Context()
+
+	// Pass 1: reconcile without pause annotation so the Deployment is created with the correct hash.
+	policyNoAnnotation := newAutoOpsAgentPolicy()
+	state1 := newState(policyNoAnnotation)
+	newReconciler().internalReconcile(ctx, policyNoAnnotation, reconciler.NewResult(ctx), state1)
+
+	// Pass 2: reconcile with pause annotation; the existing Deployment should match.
+	policyPaused := newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		if a.Annotations == nil {
+			a.Annotations = make(map[string]string)
+		}
+		a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+	})
+	state2 := newState(policyPaused)
+	newReconciler().internalReconcile(ctx, policyPaused, reconciler.NewResult(ctx), state2)
+
+	idx := state2.status.Conditions.Index(commonv1.OrchestrationPaused)
+	require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition after paused reconcile")
+	cond := state2.status.Conditions[idx]
+	assert.Equal(t, corev1.ConditionTrue, cond.Status)
+	assert.Equal(t, common.PausedNoChangesMessage, cond.Message)
+}
+
+// TestState_SetOrchestrationPaused and TestState_MaybeResetOrchestrationPaused test the
+// aggregate condition helpers directly against a State struct.
+func TestState_SetOrchestrationPaused(t *testing.T) {
+	tests := []struct {
+		name           string
+		pendingChanges bool
+		wantMsg        string
+	}{
+		{
+			name:           "no pending changes",
+			pendingChanges: false,
+			wantMsg:        common.PausedNoChangesMessage,
+		},
+		{
+			name:           "with pending changes",
+			pendingChanges: true,
+			wantMsg:        common.PausedWithPendingChangesMessage,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := newState(newAutoOpsAgentPolicy())
+			state.SetOrchestrationPaused(tt.pendingChanges)
+
+			idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, idx, 0)
+			cond := state.status.Conditions[idx]
+			assert.Equal(t, corev1.ConditionTrue, cond.Status)
+			assert.Equal(t, tt.wantMsg, cond.Message)
+		})
+	}
+
+	t.Run("calling twice keeps single condition entry", func(t *testing.T) {
+		state := newState(newAutoOpsAgentPolicy())
+		state.SetOrchestrationPaused(false)
+		state.SetOrchestrationPaused(true) // second call overwrites
+		count := 0
+		for _, c := range state.status.Conditions {
+			if c.Type == commonv1.OrchestrationPaused {
+				count++
+			}
+		}
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("LastTransitionTime preserved when status and message unchanged", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{
+				Type:               commonv1.OrchestrationPaused,
+				Status:             corev1.ConditionTrue,
+				Message:            common.PausedNoChangesMessage,
+				LastTransitionTime: metav1.Unix(1000, 0),
+			},
+		}
+		state := newState(policy)
+		state.SetOrchestrationPaused(false) // same status+message as existing condition
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		assert.Equal(t, metav1.Unix(1000, 0), state.status.Conditions[idx].LastTransitionTime,
+			"LastTransitionTime should be preserved when status and message are unchanged")
+	})
+}
+
+func TestState_MaybeResetOrchestrationPaused(t *testing.T) {
+	t.Run("no-op when condition is absent", func(t *testing.T) {
+		state := newState(newAutoOpsAgentPolicy())
+		state.MaybeResetOrchestrationPaused()
+		assert.Empty(t, state.status.Conditions)
+	})
+
+	t.Run("no-op when condition is already False", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionFalse, Message: common.PausedOrchestrationResumed},
+		}
+		state := newState(policy)
+		state.MaybeResetOrchestrationPaused()
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		assert.Equal(t, corev1.ConditionFalse, state.status.Conditions[idx].Status)
+	})
+
+	t.Run("flips True → False with resume message", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionTrue, Message: common.PausedNoChangesMessage},
+		}
+		state := newState(policy)
+		state.MaybeResetOrchestrationPaused()
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		require.GreaterOrEqual(t, idx, 0)
+		cond := state.status.Conditions[idx]
+		assert.Equal(t, corev1.ConditionFalse, cond.Status)
+		assert.Equal(t, common.PausedOrchestrationResumed, cond.Message)
+	})
+}
+
+// Ensure fakeESClientProvider and fakeDialer are available from reconcile_test.go / controller_test.go.
+var _ commonesclient.Provider = newFakeESClientProvider().Provider

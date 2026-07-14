@@ -115,6 +115,9 @@ type AutoOpsAgentPolicyStatus struct {
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the deployment.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 
 	// Details contains lightweight per-resource details.
 	Details map[string]AutoOpsResourceStatus `json:"details,omitempty"`
@@ -167,6 +170,21 @@ func (p PolicyPhase) NeedsRequeue() bool {
 	default:
 		return false
 	}
+}
+
+// MergeConditions provides a nil-safe way to merge the AutoOpsAgentPolicyStatus's Conditions with the new Condition(s).
+func (p *AutoOpsAgentPolicy) MergeConditions(conditions ...commonv1.Condition) {
+	p.Status.Conditions = p.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this AutoOpsAgentPolicy's AutoOpsAgentPolicyStatus Conditions.
+func (p *AutoOpsAgentPolicy) Conditions() commonv1.Conditions {
+	return p.Status.Conditions
+}
+
+// GetObservedGeneration returns the observed generation from the AutoOpsAgentPolicy status.
+func (p *AutoOpsAgentPolicy) GetObservedGeneration() int64 {
+	return p.Status.ObservedGeneration
 }
 
 func (p PolicyPhase) Priority() int {
