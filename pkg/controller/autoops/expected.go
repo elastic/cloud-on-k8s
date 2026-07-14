@@ -33,7 +33,9 @@ import (
 )
 
 const (
-	autoOpsAgentType         = "autoops-agent"
+	// TypeLabelValue is the type label value for AutoOps Agent resources.
+	TypeLabelValue           = "autoops-agent"
+	autoOpsAgentType         = TypeLabelValue
 	configVolumeName         = "config-volume"
 	configVolumePath         = "/mnt/config"
 	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"

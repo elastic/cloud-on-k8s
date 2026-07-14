@@ -4,7 +4,7 @@ steps:
   - label: "{{ .ShortFailuresCount }} failure(s)"
     command: exit {{ .ShortFailuresCount }}
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:26b3e09171626fbbf480f3cd31d5c3be2aff2417fd49de3371f361654e7b9fee
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:d8437a42fb013b0c099216130c976aaa411d1e5602ee56d19964b13da9b8dca8
       memory: "2G"
 
   # notify e2e tests failures for the main branch and tags
@@ -13,7 +13,7 @@ steps:
     if: build.branch == "main" || build.tag != null
     command: echo "notify"
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:26b3e09171626fbbf480f3cd31d5c3be2aff2417fd49de3371f361654e7b9fee
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:d8437a42fb013b0c099216130c976aaa411d1e5602ee56d19964b13da9b8dca8
       memory: "2G"
 
     notify:

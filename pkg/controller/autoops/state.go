@@ -9,9 +9,12 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 )
 
@@ -115,6 +118,40 @@ func (s *State) ResourceError(es esv1.Elasticsearch, message string, err error) 
 		Phase: autoopsv1alpha1.ErrorResourcePhase,
 		Error: fmt.Sprintf("%s: %s", message, err),
 	}
+}
+
+// SetOrchestrationPaused writes OrchestrationPaused=True on the accumulated status.
+// pendingChanges indicates whether any per-cluster Deployment hash differs from what is live.
+func (s *State) SetOrchestrationPaused(pendingChanges bool) {
+	msg := common.PausedNoChangesMessage
+	if pendingChanges {
+		msg = common.PausedWithPendingChangesMessage
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
+			events.EventActionReconciliation, msg)
+	}
+	s.status.Conditions = s.status.Conditions.MergeWith(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Message:            msg,
+	})
+}
+
+// MaybeResetOrchestrationPaused flips OrchestrationPaused to False (and emits a Normal event) when it
+// previously was True; it is a no-op when the condition is absent or already False.
+func (s *State) MaybeResetOrchestrationPaused() {
+	idx := s.status.Conditions.Index(commonv1.OrchestrationPaused)
+	if idx < 0 || s.status.Conditions[idx].Status != corev1.ConditionTrue {
+		return
+	}
+	s.status.Conditions = s.status.Conditions.MergeWith(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+		Message:            common.PausedOrchestrationResumed,
+	})
+	s.AddEvent(corev1.EventTypeNormal, events.EventReasonResumed,
+		events.EventActionOrchestrationResumed, common.PausedOrchestrationResumed)
 }
 
 func (s *State) esResourceID(es esv1.Elasticsearch) string {

@@ -15,11 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1b1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -30,6 +32,7 @@ import (
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	agentlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	apmlabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	beatcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -45,6 +48,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
+	testautoops "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/enterprisesearch"
@@ -78,6 +82,85 @@ func TestPauseOrchestration_Beat(t *testing.T) {
 
 func TestPauseOrchestration_Logstash(t *testing.T) {
 	testSequenceForTypes(t, lslabels.TypeLabelValue)
+}
+
+// TestPauseOrchestration_AutoOps tests the pause-orchestration annotation for AutoOpsAgentPolicy.
+// It uses a dedicated sequence that does NOT pause the underlying Elasticsearch cluster, avoiding
+// the ES readiness gate that would otherwise prevent AutoOps from computing pending Deployment changes.
+func TestPauseOrchestration_AutoOps(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	namespace := test.Ctx().ManagedNamespace(0)
+
+	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext().
+		WithLabel("autoops", "enabled")
+	esWithLicense := test.LicenseTestBuilder(esInitial)
+
+	mockURL := testautoops.CloudConnectedAPIMockURL()
+
+	aoInitial := testautoops.NewBuilder(testName(autoops.TypeLabelValue)).
+		WithNamespace(esInitial.Namespace()).
+		WithNamespaceSelector(metav1.LabelSelector{
+			MatchLabels: map[string]string{"kubernetes.io/metadata.name": esInitial.Namespace()},
+		}).
+		WithCloudConnectedAPIURL(mockURL).
+		WithAutoOpsOTelURL(mockURL)
+
+	// Phase 1: pause, no spec changes yet
+	aoEnabled := aoInitial.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&aoInitial)
+
+	// Phase 2: update resources while paused (values differ from the 400Mi/200m defaults so the template hash changes)
+	aoUpdated := aoEnabled.DeepCopy().WithResources(corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+		},
+	}).WithMutatedFrom(&aoEnabled)
+
+	// Phase 3: resume
+	aoDisabled := aoUpdated.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&aoUpdated)
+
+	// Phase 4: re-pause (no new changes since phase 3)
+	aoReenabled := aoDisabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "true").WithMutatedFrom(&aoDisabled)
+
+	// Phase 6: re-disable
+	aoRedisabled := aoReenabled.DeepCopy().WithAnnotation(common.PauseOrchestrationAnnotation, "false").WithMutatedFrom(&aoReenabled)
+
+	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.
+			// Initial: verify annotation absent, policy ready
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoInitial, false)).
+			// Phase 1: pause with no pending changes
+			WithSteps(aoEnabled.UpgradeTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoEnabled, false)).
+			// Phase 2: change resources while paused; verify change is held
+			WithSteps(aoUpdated.UpgradeTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoUpdated, true)).
+			WithSteps(test.CheckTestSteps(aoEnabled, k)).
+			// Phase 3: resume; verify resources applied
+			WithSteps(aoDisabled.UpgradeTestSteps(k)).
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoDisabled, true)).
+			WithSteps(test.CheckTestSteps(aoDisabled, k)).
+			// Phase 4: re-pause
+			WithSteps(aoReenabled.MutationTestSteps(k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoReenabled, false)).
+			// Phase 5: delete pod while paused; verify pod recovers
+			WithStep(deletePod(t, k, namespace, aoReenabled)).
+			WithSteps(test.CheckTestSteps(aoReenabled, k)).
+			WithStep(verifyPauseOrchestrationEnabled(t, k, namespace, aoReenabled, false)).
+			// Phase 6: re-disable
+			WithSteps(aoRedisabled.UpgradeTestSteps(k)).
+			WithSteps(test.CheckTestSteps(aoRedisabled, k)).
+			WithSteps(verifyPauseOrchestrationDisabled(t, k, namespace, aoRedisabled, true))
+	}, esWithLicense, aoInitial).RunSequential(t)
 }
 
 func testSequenceForTypes(t *testing.T, typ ...string) {
@@ -392,6 +475,8 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 		return &beatv1b1.Beat{}
 	case lslabels.TypeLabelValue:
 		return &logstashv1alpha1.Logstash{}
+	case autoops.TypeLabelValue:
+		return &autoopsv1alpha1.AutoOpsAgentPolicy{}
 	default:
 		t.Fatalf("unknown type: %s", typ)
 	}
@@ -400,7 +485,7 @@ func objectForType(t *testing.T, typ string) k8sclient.Object {
 
 func typeForBuilder(t *testing.T, fullName string) string {
 	t.Helper()
-	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, lslabels.TypeLabelValue} {
+	for _, typ := range []string{label.Type, kblabel.Type, apmlabel.Type, eprlabel.Type, emslabels.Type, entlabel.Type, autoops.TypeLabelValue, agentlabel.TypeLabelValue, beatcommon.TypeLabelValue, lslabels.TypeLabelValue} {
 		if strings.Contains(fullName, typ) {
 			return typ
 		}

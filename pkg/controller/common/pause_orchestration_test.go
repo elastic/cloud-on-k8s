@@ -262,7 +262,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	}
 }
 
-func Test_hasPendingChanges(t *testing.T) {
+func TestHasPendingChanges(t *testing.T) {
 	originalDeployment := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
@@ -407,7 +407,7 @@ func Test_hasPendingChanges(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		hasChanged := hasPendingChanges(tt.expectedObject, tt.existing)
+		hasChanged := HasPendingChanges(tt.expectedObject, tt.existing)
 		assert.Equal(t, tt.expectHasChanged, hasChanged)
 	}
 }

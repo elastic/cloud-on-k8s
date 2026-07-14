@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -289,7 +291,23 @@ func (b Builder) forEachAutoOpsDeployment(k *test.K8sClient, fn func(deployment 
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+	return test.StepList{
+		{
+			Name: "Updating the AutoOpsAgentPolicy spec should succeed",
+			Test: test.Eventually(func() error {
+				var policy autoopsv1alpha1.AutoOpsAgentPolicy
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.AutoOpsAgentPolicy), &policy); err != nil {
+					return err
+				}
+				if policy.Annotations == nil {
+					policy.Annotations = make(map[string]string)
+				}
+				maps.Copy(policy.Annotations, b.AutoOpsAgentPolicy.Annotations)
+				policy.Spec = b.AutoOpsAgentPolicy.Spec
+				return k.Client.Update(context.Background(), &policy)
+			}),
+		},
+	}
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -339,7 +357,14 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+	var generationBeforeMutation, observedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.AutoOpsAgentPolicy, k, &generationBeforeMutation, &observedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.AutoOpsAgentPolicy, k, isMutated, generationBeforeMutation, observedGenerationBeforeMutation))
 }
 
 // checkMatchingESClustersReachable verifies that every ES cluster that this policy will monitor has
