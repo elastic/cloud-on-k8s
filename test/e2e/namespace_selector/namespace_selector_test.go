@@ -320,16 +320,15 @@ func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDe
 	})
 }
 
-func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, d time.Duration) func(*testing.T) {
+// waitForOperatorRestart waits for the operator to restart by checking restart count of pod. [chaosSleepDuration] is used
+// only when chaos job is deployed.
+func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, chaosSleepDuration time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
 		test.Eventually(func() error {
 			if test.Ctx().DeployChaosJob {
 				// In chaos mode restart counting is unreliable, so we cannot wait for a restart-count increment.
 				// Instead just wait and hope the ECK operator has restarted.
-				select {
-				case <-time.After(d):
-				case <-t.Context().Done():
-				}
+				time.Sleep(chaosSleepDuration)
 				return nil
 			}
 
