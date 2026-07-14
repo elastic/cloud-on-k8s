@@ -147,7 +147,7 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 					Namespace: tt.args.autoops.Namespace,
 				},
 				Data: map[string]string{
-					autoOpsESConfigFileName: configData,
+					autoopsv1alpha1.ConfigFileName: configData,
 				},
 			}
 

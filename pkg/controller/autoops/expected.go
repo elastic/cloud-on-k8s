@@ -111,7 +111,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
 	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoopsv1alpha1.AutoOpsAgentContainerName).
-		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
+		WithArgs("--config", path.Join(configVolumePath, autoopsv1alpha1.ConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
@@ -190,7 +190,7 @@ func buildConfigHash(
 ) (string, error) {
 	configHash := fnv.New32a()
 
-	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
+	if configData, ok := configMap.Data[autoopsv1alpha1.ConfigFileName]; ok {
 		_, _ = configHash.Write([]byte(configData))
 	}
 

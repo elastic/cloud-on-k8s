@@ -172,7 +172,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 						Namespace: "ns-1",
 					},
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{
@@ -220,7 +220,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 						Namespace: "ns-1",
 					},
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{
@@ -308,7 +308,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 						Namespace: "ns-1",
 					},
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{

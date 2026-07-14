@@ -204,7 +204,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 			continue
 		}
 
-		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
+		configMap, err := r.ReconcileAutoOpsESConfigMap(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES config map")
 			state.ResourceError(es, "Failed to reconcile AutoOps ES config map", err)

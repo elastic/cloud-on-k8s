@@ -69,6 +69,30 @@ spec:
                       This field cannot be used in combination with `name`.
                     type: string
                 type: object
+              config:
+                description: |-
+                  Config holds additional OpenTelemetry collector configuration for the AutoOps agent.
+                  User-supplied settings are merged between the operator baseline defaults and the
+                  operator-owned mandatory settings, which always take final precedence. This allows
+                  tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,
+                  or defining additional exporters and pipelines. Supplying at least one autoops_es
+                  module replaces the operator's built-in modules entirely, giving full control over
+                  which metricsets are collected and at what period. Elasticsearch connection details
+                  (hosts, SSL), OTLP endpoint and authorization, and the healthcheck extension are
+                  always injected by the operator and cannot be overridden.
+                  At most one of [`config`, `configRef`] can be specified.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              configRef:
+                description: |-
+                  ConfigRef references a Kubernetes Secret holding the AutoOps agent configuration
+                  under the `autoops_es.yml` key. Applies the same merge semantics as `config`.
+                  At most one of [`config`, `configRef`] can be specified.
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                type: object
               image:
                 description: Image is the AutoOps Agent Docker image to deploy.
                 type: string
