@@ -338,7 +338,7 @@ func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, d time.Durat
 				return err
 			}
 			if newCount <= *restartCount {
-				return fmt.Errorf("waiting for operator restart after namespace-selector config change (current restarts: %d)", newCount)
+				return fmt.Errorf("waiting for operator restart after (current restarts: %d)", newCount)
 			}
 			return nil
 		})(t)
