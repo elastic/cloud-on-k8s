@@ -7,7 +7,6 @@
 package namespace_selector
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -64,29 +63,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 	var restartCount int32
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
-	t.Cleanup(func() {
-		// cleanup namespaces labels
-		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, ns1, ns2); err != nil {
-			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
-		}
-
-		// restore original config
-		if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
-			t.Logf("WARNING: failed to restore operator config: %v", err)
-			return
-		}
-
-		test.Eventually(func() error {
-			newCount, err := helper.OperatorRestartCount(k)
-			if err != nil {
-				return err
-			}
-			if newCount <= restartCount {
-				return errors.New("waiting to restart after config restore")
-			}
-			return nil
-		})(t)
-	})
+	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, &restartCount, ns1, ns2)
 
 	test.StepList{}.
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
@@ -119,16 +96,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 		}).
 		WithStep(test.Step{
 			Name: "wait for operator restart with new namespace-selector config",
-			Test: test.Eventually(func() error {
-				newCount, err := helper.OperatorRestartCount(k)
-				if err != nil {
-					return err
-				}
-				if newCount <= restartCount {
-					return fmt.Errorf("waiting for operator restart after namespace-selector config change (current restarts: %d)", newCount)
-				}
-				return nil
-			}),
+			Test: waitForOperatorRestart(k, &restartCount, 30*time.Second),
 		}).
 		WithStep(test.Step{
 			Name: "record post-restart count as the no-restart baseline",
@@ -219,29 +187,7 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 	var restartCount int32
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
-	t.Cleanup(func() {
-		// cleanup namespaces labels
-		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, eckVisibleLabel, esNamespace, kbNamespace); err != nil {
-			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
-		}
-
-		// restore original config
-		if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
-			t.Logf("WARNING: failed to restore operator config: %v", err)
-			return
-		}
-
-		test.Eventually(func() error {
-			newCount, err := helper.OperatorRestartCount(k)
-			if err != nil {
-				return err
-			}
-			if newCount <= restartCount {
-				return errors.New("waiting to restart after config restore")
-			}
-			return nil
-		})(t)
-	})
+	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, &restartCount, esNamespace, kbNamespace)
 
 	// kbAssociationStatusIs returns a step waiting for the Kibana Elasticsearch association
 	// status to reach the expected value.
@@ -296,16 +242,7 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 		}).
 		WithStep(test.Step{
 			Name: "wait for operator restart with new namespace-selector config",
-			Test: test.Eventually(func() error {
-				newCount, err := helper.OperatorRestartCount(k)
-				if err != nil {
-					return err
-				}
-				if newCount <= restartCount {
-					return fmt.Errorf("waiting for operator restart after namespace-selector config change (current restarts: %d)", newCount)
-				}
-				return nil
-			}),
+			Test: waitForOperatorRestart(k, &restartCount, 30*time.Second),
 		}).
 		WithStep(test.Step{
 			Name: "record post-restart count as the no-restart baseline",
@@ -353,4 +290,57 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 		WithSteps(esBuilder.DeletionTestSteps(k)).
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
 		RunSequential(t)
+}
+
+// registerNamespaceSelectorCleanup registers a t.Cleanup that restores the namespace labels and operator
+// config on test exit, even on test failure. It removes `labelToDelete` from the given namespaces, restores
+// originalConfig and waits for the operator to restart to pick up the restored config. restartCount is
+// dereferenced at cleanup time, so it must point to the latest recorded pre-restore restart count.
+func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDelete string, originalConfig map[string]any, restartCount *int32, namespaces ...string) {
+	t.Helper()
+	t.Cleanup(func() {
+		// restore original config
+		test.Eventually(func() error {
+			if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
+				t.Logf("WARNING: failed to restore operator config: %v", err)
+				return err
+			}
+			return nil
+		})(t)
+
+		// Ensure that the operator restarts.
+		waitForOperatorRestart(k, restartCount, 1*time.Minute)(t)
+
+		// Clean up the namespace labels only after the operator config has been successfully restored,
+		// so the operator is back to its original (non namespace-selector) configuration before the
+		// labels these tests rely on are removed.
+		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, labelToDelete, namespaces...); err != nil {
+			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
+		}
+	})
+}
+
+func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, d time.Duration) func(*testing.T) {
+	return func(t *testing.T) {
+		test.Eventually(func() error {
+			if test.Ctx().DeployChaosJob {
+				// In chaos mode restart counting is unreliable, so we cannot wait for a restart-count increment.
+				// Instead just wait and hope the ECK operator has restarted.
+				select {
+				case <-time.After(d):
+				case <-t.Context().Done():
+				}
+				return nil
+			}
+
+			newCount, err := helper.OperatorRestartCount(k)
+			if err != nil {
+				return err
+			}
+			if newCount <= *restartCount {
+				return fmt.Errorf("waiting for operator restart after namespace-selector config change (current restarts: %d)", newCount)
+			}
+			return nil
+		})(t)
+	}
 }
