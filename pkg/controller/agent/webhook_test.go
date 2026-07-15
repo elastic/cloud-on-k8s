@@ -203,6 +203,72 @@ func Test_webhookValidator_validate(t *testing.T) {
 			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
 		},
 		{
+			name: "client auth enabled, version 8.19.18 (below boundary), with enterprise license",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.19.18",
+					Mode:               agentv1alpha1.AgentFleetMode,
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{
+								Authentication: true,
+							},
+						},
+					},
+				},
+			},
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: true},
+			wantErr:    true,
+			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
+		},
+		{
+			name: "client auth enabled, version 9.3.7 (below boundary), with enterprise license",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "9.3.7",
+					Mode:               agentv1alpha1.AgentFleetMode,
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{
+								Authentication: true,
+							},
+						},
+					},
+				},
+			},
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: true},
+			wantErr:    true,
+			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
+		},
+		{
+			name: "client auth enabled, version 9.4.3 (below boundary), with enterprise license",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "9.4.3",
+					Mode:               agentv1alpha1.AgentFleetMode,
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{
+								Authentication: true,
+							},
+						},
+					},
+				},
+			},
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: true},
+			wantErr:    true,
+			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
+		},
+		{
 			name: "client auth enabled, supported version, without enterprise license",
 			agent: &agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
