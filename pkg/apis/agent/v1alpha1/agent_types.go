@@ -88,7 +88,7 @@ type AgentSpec struct {
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
 	// Set tls.client.authentication to true to require connecting Elastic Agents to present a client
-	// certificate (requires an Enterprise license and Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+).
+	// certificate (requires an Enterprise license and Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+).
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
@@ -250,11 +250,11 @@ func FleetServerClientAuthSupported(v semver.Version) bool {
 	v = version.WithoutPre(v)
 	switch {
 	case v.Major == 8 && v.Minor == 19:
-		return v.GTE(version.From(8, 19, 17))
+		return v.GTE(version.From(8, 19, 19))
 	case v.Major == 9 && v.Minor == 3:
-		return v.GTE(version.From(9, 3, 6))
+		return v.GTE(version.From(9, 3, 8))
 	case v.Major == 9 && v.Minor == 4:
-		return v.GTE(version.From(9, 4, 3))
+		return v.GTE(version.From(9, 4, 4))
 	default:
 		return v.GTE(version.From(9, 5, 0))
 	}

@@ -178,7 +178,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 			},
 			checker:    license.MockLicenseChecker{EnterpriseEnabled: false},
 			wantErr:    true,
-			errMessage: "client certificate authentication requires Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
+			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
 		},
 		{
 			name: "client auth enabled, unsupported version, with enterprise license",
@@ -200,7 +200,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 			},
 			checker:    license.MockLicenseChecker{EnterpriseEnabled: true},
 			wantErr:    true,
-			errMessage: "client certificate authentication requires Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
+			errMessage: "client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
 		},
 		{
 			name: "client auth enabled, supported version, without enterprise license",
