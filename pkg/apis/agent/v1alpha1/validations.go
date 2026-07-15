@@ -339,7 +339,7 @@ func checkClientAuthentication(a *Agent) field.ErrorList {
 			field.Invalid(
 				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
 				true,
-				"client certificate authentication requires Elastic Agent 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+",
+				"client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
 			),
 		}
 	}
