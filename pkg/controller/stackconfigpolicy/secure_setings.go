@@ -98,7 +98,9 @@ func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource
 	// govern this resource (DoesPolicyMatchObject rejects all others), so restrict
 	// the list to those two namespaces instead of fetching cluster-wide.
 	namespacesToCheck := []string{resource.GetNamespace()}
-	if operatorNamespace != "" && operatorNamespace != resource.GetNamespace() {
+	if operatorNamespace == "" {
+		ulog.FromContext(ctx).Info("StackConfigPolicies in the operator namespace will not be evaluated for secure settings sources because the operator namespace is empty")
+	} else if operatorNamespace != resource.GetNamespace() {
 		namespacesToCheck = append(namespacesToCheck, operatorNamespace)
 	}
 
