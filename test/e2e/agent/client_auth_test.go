@@ -531,7 +531,7 @@ func fleetConfigWithOutputsForKibanaAndPolicies(
 }
 
 // skipIfFleetServerClientAuthNotSupported skips the test if the current stack version does not
-// support Fleet Server client certificate authentication (requires 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+).
+// support Fleet Server client certificate authentication (requires 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+).
 func skipIfFleetServerClientAuthNotSupported(t *testing.T) {
 	t.Helper()
 	v, err := version.Parse(test.Ctx().ElasticStackVersion)
@@ -539,6 +539,6 @@ func skipIfFleetServerClientAuthNotSupported(t *testing.T) {
 		t.Fatalf("failed to parse stack version %q: %v", test.Ctx().ElasticStackVersion, err)
 	}
 	if !agentv1alpha1.FleetServerClientAuthSupported(v) {
-		t.Skipf("skipping Fleet Server client authentication test: requires 8.19.17+, 9.3.6+, 9.4.3+, or 9.5.0+, got %s", v)
+		t.Skipf("skipping Fleet Server client authentication test: requires 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+, got %s", v)
 	}
 }
