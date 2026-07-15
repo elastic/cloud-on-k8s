@@ -240,7 +240,7 @@ func Test_allowedSourceKeys(t *testing.T) {
 	policy := &policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "scp", Namespace: "ns"},
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret"}}, //nolint:staticcheck
+			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				SecureSettings: []commonv1.SecretSource{{SecretName: "es-secret"}},
 			},
@@ -258,12 +258,12 @@ func Test_allowedSourceKeys(t *testing.T) {
 		{
 			name:         "Elasticsearch includes both Spec.Elasticsearch.SecureSettings and deprecated Spec.SecureSettings",
 			resourceKind: esv1.Kind,
-			wantKeys:     []types.NamespacedName{{"ns", "es-secret"}, {"ns", "deprecated-secret"}},
+			wantKeys:     []types.NamespacedName{{Namespace: "ns", Name: "es-secret"}, {Namespace: "ns", Name: "deprecated-secret"}},
 		},
 		{
 			name:         "Kibana includes only Spec.Kibana.SecureSettings",
 			resourceKind: kbv1.Kind,
-			wantKeys:     []types.NamespacedName{{"ns", "kb-secret"}},
+			wantKeys:     []types.NamespacedName{{Namespace: "ns", Name: "kb-secret"}},
 		},
 		{
 			name:         "unknown kind returns empty set",
