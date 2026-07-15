@@ -28,7 +28,7 @@ func mapsContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequirem
 
 func buildMapsPodTemplate(t *testing.T, ems emsv1alpha1.ElasticMapsServer) corev1.PodTemplateSpec {
 	t.Helper()
-	got, err := newPodSpec(ems, "test-hash", metadata.Metadata{}, false)
+	got, err := newPodSpec(ems, "test-hash", metadata.Metadata{}, false, "")
 	require.NoError(t, err)
 	return got
 }

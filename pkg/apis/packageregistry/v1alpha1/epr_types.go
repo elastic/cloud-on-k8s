@@ -95,6 +95,12 @@ func (m *PackageRegistry) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Elastic Package Registry Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (m *PackageRegistry) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(m.Annotations)
+}
+
 // GetObservedGeneration will return the observedGeneration from the Elastic Package Registry status.
 func (m *PackageRegistry) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration

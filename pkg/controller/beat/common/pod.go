@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -152,6 +153,8 @@ func buildPodTemplate(
 		initContainers = append(initContainers, keystoreResources.InitContainer)
 	}
 
+	commonnodelabels.MaybeWriteNodeLabelsHashInput(configHash, &params.Beat)
+
 	if monitoring.IsLogsDefined(&params.Beat) {
 		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version, meta)
 		if err != nil {
@@ -222,8 +225,13 @@ func buildPodTemplate(
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithInitContainers(initContainers...).
-		WithInitContainerDefaults().
 		WithContainers(sideCars...)
+
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &params.Beat, params.OperatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	builder = builder.WithInitContainerDefaults()
 
 	// If logs monitoring is enabled, remove the "-e" argument from the main container
 	// if it exists, and do not include the "-e" startup option for the Beat so that

@@ -142,7 +142,7 @@ func TestPackageRegistryResources(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			pod, err := newPodSpec(tt.epr, "test-hash", metadata.Metadata{}, false)
+			pod, err := newPodSpec(tt.epr, "test-hash", metadata.Metadata{}, false, "")
 			require.NoError(t, err)
 			res, ok := eprContainerResources(pod)
 			require.True(t, ok, "EPR container not found")

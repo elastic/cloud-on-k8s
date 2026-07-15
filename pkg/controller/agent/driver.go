@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -198,7 +199,14 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
-	return reconcilePodVehicle(params, podTemplate)
+	podVehicleResults, status := reconcilePodVehicle(params, podTemplate)
+	results.WithResults(podVehicleResults)
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(nodelabels.AnnotatePods(params.Context, params.Client, &params.Agent))
+
+	return results, status
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {

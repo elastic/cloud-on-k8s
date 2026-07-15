@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -191,7 +192,8 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta)
+	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath,
+		params.SetDefaultSecurityContext, params.OperatorImage, params.OperatorNamespace, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -211,6 +213,10 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 	state.Kibana.Status.DeploymentStatus = deploymentStatus
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(nodelabels.AnnotatePods(ctx, d.K8sClient(), kb))
 
 	return results
 }
@@ -238,7 +244,16 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool, operatorNamespace string, meta metadata.Metadata) (deployment.Params, error) {
+func (d *driver) deploymentParams(
+	ctx context.Context,
+	kb *kbv1.Kibana,
+	policyAnnotations map[string]string,
+	basePath string,
+	setDefaultSecurityContext bool,
+	operatorImage string,
+	operatorNamespace string,
+	meta metadata.Metadata,
+) (deployment.Params, error) {
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -261,7 +276,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext, meta)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext, operatorImage, meta)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -278,6 +293,10 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	if err := commonassociation.WriteAssocsToConfigHash(d.client, kb.GetAssociations(), configHash); err != nil {
 		return deployment.Params{}, err
 	}
+
+	// Changes to the downward-node-labels annotation must roll the Kibana Pods so the new annotations
+	// are re-applied on scheduling.
+	nodelabels.MaybeWriteNodeLabelsHashInput(configHash, kb)
 
 	if kb.Spec.HTTP.TLS.Enabled() {
 		// fetch the secret to calculate the checksum

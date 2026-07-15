@@ -279,7 +279,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			es: Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						DownwardNodeLabelsAnnotation: " , , ",
+						commonv1.DownwardNodeLabelsAnnotation: " , , ",
 					},
 				},
 			},
@@ -290,7 +290,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			es: Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
+						commonv1.DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
 					},
 				},
 			},
@@ -331,7 +331,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			es: Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						DownwardNodeLabelsAnnotation: "custom.io/rack,topology.kubernetes.io/zone",
+						commonv1.DownwardNodeLabelsAnnotation: "custom.io/rack,topology.kubernetes.io/zone",
 					},
 				},
 				Spec: ElasticsearchSpec{
@@ -358,7 +358,7 @@ func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
 			es: Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						DownwardNodeLabelsAnnotation: DefaultZoneAwarenessTopologyKey,
+						commonv1.DownwardNodeLabelsAnnotation: DefaultZoneAwarenessTopologyKey,
 					},
 				},
 				Spec: ElasticsearchSpec{

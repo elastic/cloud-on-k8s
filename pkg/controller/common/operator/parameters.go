@@ -12,9 +12,9 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonpassword "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
-	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
@@ -24,7 +24,11 @@ type Parameters struct {
 	// ElasticsearchObservationInterval is the interval between (asynchronous) observations of Elasticsearch health.
 	ElasticsearchObservationInterval time.Duration
 	// ExposedNodeLabels holds regular expressions of node labels which are allowed to be automatically set as annotations on Elasticsearch Pods.
-	ExposedNodeLabels esvalidation.NodeLabels
+	ExposedNodeLabels commonnodelabels.NodeLabels
+	// OperatorImage is the operator's own container image. It is read from the
+	// OPERATOR_IMAGE environment variable (injected by the Helm chart / OLM CSV),
+	// or can be overridden via --operator-image.
+	OperatorImage string
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
 	// OperatorInfo is information about the operator

@@ -161,6 +161,25 @@ func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {
 	return b
 }
 
+// WithContainerEnvVars merges the given env vars into the named container in the pod template.
+// If no container with that name exists in the spec, one is appended.
+func (b Builder) WithContainerEnvVars(containerName string, envVars ...corev1.EnvVar) Builder {
+	containers := b.ApmServer.Spec.PodTemplate.Spec.Containers
+	for i, c := range containers {
+		if c.Name == containerName {
+			containers[i].Env = append(containers[i].Env, envVars...)
+			b.ApmServer.Spec.PodTemplate.Spec.Containers = containers
+			return b
+		}
+	}
+	containers = append(containers, corev1.Container{
+		Name: containerName,
+		Env:  envVars,
+	})
+	b.ApmServer.Spec.PodTemplate.Spec.Containers = containers
+	return b
+}
+
 func (b Builder) WithLabel(key, value string) Builder {
 	if b.ApmServer.Labels == nil {
 		b.ApmServer.Labels = make(map[string]string)

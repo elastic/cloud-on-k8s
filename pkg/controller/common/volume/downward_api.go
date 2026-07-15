@@ -5,14 +5,21 @@
 package volume
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	DownwardAPIVolumeName = "downward-api"
+	DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
+	LabelsFile            = "labels"
+	AnnotationsFile       = "annotations"
 )
 
 var downwardAPIVolumeMount = corev1.VolumeMount{
-	Name:      volume.DownwardAPIVolumeName,
-	MountPath: volume.DownwardAPIMountPath,
+	Name:      DownwardAPIVolumeName,
+	MountPath: DownwardAPIMountPath,
 	ReadOnly:  true,
 }
 
@@ -29,17 +36,17 @@ func (d DownwardAPI) WithAnnotations(withAnnotations bool) DownwardAPI {
 var _ VolumeLike = DownwardAPI{}
 
 func (DownwardAPI) Name() string {
-	return volume.DownwardAPIVolumeName
+	return DownwardAPIVolumeName
 }
 
 func (d DownwardAPI) Volume() corev1.Volume {
 	downwardAPIVolume := corev1.Volume{
-		Name: volume.DownwardAPIVolumeName,
+		Name: DownwardAPIVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{
 					{
-						Path: volume.LabelsFile,
+						Path: LabelsFile,
 						FieldRef: &corev1.ObjectFieldSelector{
 							FieldPath: "metadata.labels",
 						},
@@ -52,7 +59,7 @@ func (d DownwardAPI) Volume() corev1.Volume {
 		downwardAPIVolume.VolumeSource.DownwardAPI.Items = append(
 			downwardAPIVolume.VolumeSource.DownwardAPI.Items,
 			corev1.DownwardAPIVolumeFile{
-				Path: volume.AnnotationsFile,
+				Path: AnnotationsFile,
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "metadata.annotations",
 				},
@@ -64,4 +71,10 @@ func (d DownwardAPI) Volume() corev1.Volume {
 
 func (DownwardAPI) VolumeMount() corev1.VolumeMount {
 	return downwardAPIVolumeMount
+}
+
+// AnnotationsFilePath returns the absolute path of the file exposing the Pod annotations within the
+// downward API volume mount. It is only populated when the volume is built WithAnnotations(true).
+func (DownwardAPI) AnnotationsFilePath() string {
+	return fmt.Sprintf("%s/%s", DownwardAPIMountPath, AnnotationsFile)
 }

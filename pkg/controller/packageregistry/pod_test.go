@@ -9,8 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 )
@@ -151,7 +153,7 @@ func TestNewPodSpec(t *testing.T) {
 					"test-label": "test-value",
 				},
 			}
-			podSpec, err := newPodSpec(tt.epr, "test-config-hash", md, true)
+			podSpec, err := newPodSpec(tt.epr, "test-config-hash", md, true, "")
 			require.NoError(t, err)
 			require.Len(t, podSpec.Spec.Containers, 1)
 			container := podSpec.Spec.Containers[0]
@@ -164,4 +166,34 @@ func TestNewPodSpec(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewPodSpec_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	epr := eprv1alpha1.PackageRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-epr",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: eprv1alpha1.PackageRegistrySpec{Version: "9.0.0"},
+	}
+
+	got, err := newPodSpec(epr, "hash", metadata.Metadata{}, false, operatorImage)
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
 }

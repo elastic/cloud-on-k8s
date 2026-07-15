@@ -87,6 +87,8 @@ spec:
               value: {{ $value }}
             {{- end }}
             {{- end }}
+            - name: OPERATOR_IMAGE
+              value: {{ include "eck-operator.imageReference" . | quote }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

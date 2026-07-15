@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -209,6 +210,10 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 	vols = append(vols, caAssocVols...)
 
+	// Changes to the downward-node-labels annotation must roll the Agent Pods so the new annotations
+	// are re-applied on scheduling.
+	commonnodelabels.MaybeWriteNodeLabelsHashInput(configHash, &params.Agent)
+
 	podMeta := params.Meta.Merge(metadata.Metadata{
 		Labels:      map[string]string{VersionLabelName: spec.Version},
 		Annotations: map[string]string{ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32())},
@@ -227,7 +232,12 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			}},
 		)
 
-	return builder.PodTemplate, nil
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &params.Agent, params.OperatorParams.OperatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	return builder.WithInitContainerDefaults().PodTemplate, nil
 }
 
 func fleetConfigPath(v version.Version) string {
