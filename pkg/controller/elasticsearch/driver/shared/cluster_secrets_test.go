@@ -86,7 +86,7 @@ func TestBuildClusterSecrets(t *testing.T) {
 			dw := watches.NewDynamicWatches()
 			recorder := &toolsevents.FakeRecorder{}
 
-			result, err := BuildClusterSecrets(context.Background(), c, recorder, dw, es)
+			result, err := BuildClusterSecrets(context.Background(), c, recorder, dw, es, "")
 			require.NoError(t, err)
 			require.NotNil(t, result)
 

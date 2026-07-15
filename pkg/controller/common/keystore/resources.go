@@ -66,11 +66,12 @@ func ReconcileResources(
 	hasKeystore HasKeystore,
 	namer name.Namer,
 	meta metadata.Metadata,
+	operatorNamespace string,
 	initContainerParams InitContainerParameters,
 	additionalSources ...commonv1.NamespacedSecretSource,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, hash, err := secureSettingsVolume(ctx, r, hasKeystore, meta, namer, additionalSources...)
+	secretVolume, hash, err := secureSettingsVolume(ctx, r, hasKeystore, meta, namer, operatorNamespace, additionalSources...)
 	if err != nil {
 		return nil, err
 	}

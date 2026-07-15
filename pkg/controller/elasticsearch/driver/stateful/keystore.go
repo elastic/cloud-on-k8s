@@ -55,6 +55,7 @@ func (d *Driver) reconcileKeystore(ctx context.Context, meta metadata.Metadata) 
 		&d.ES,
 		esv1.ESNamer,
 		meta,
+		d.OperatorParameters.OperatorNamespace,
 		keystoreParams,
 		remoteClusterAPIKeys...,
 	)
@@ -106,7 +107,7 @@ func reconcileManagedKeystorePasswordSecret(
 // For all other cases the standard keystore init container path is used.
 func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata) (*keystore.Resources, error) {
 	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) && d.ES.HasFileBasedSecureSettingsAnnotation() {
-		clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES)
+		clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES, d.OperatorParameters.OperatorNamespace)
 		if err != nil {
 			return nil, err
 		}
