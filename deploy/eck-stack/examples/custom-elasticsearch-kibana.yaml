@@ -6,7 +6,7 @@ eck-elasticsearch:
 
   # Version of Elasticsearch.
   #
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
 
   nodeSets:
   - name: default
@@ -35,16 +35,16 @@ eck-kibana:
   # Name of the Kibana resource.
   #
   fullnameOverride: quickstart
-  
+
   # Version of Kibana.
   #
-  version: 9.5.0-SNAPSHOT
-  
+  version: 9.6.0-SNAPSHOT
+
   spec:
     # Count of Kibana replicas to create.
     #
     count: 1
-  
+
     # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
     #
     elasticsearchRef:
@@ -55,7 +55,7 @@ eck-kibana:
         spec:
           # Type of service to deploy for Kibana.
           # This deploys a load balancer in a cloud service provider, where supported.
-          # 
+          #
           type: LoadBalancer
       # tls:
       #   selfSignedCertificate:

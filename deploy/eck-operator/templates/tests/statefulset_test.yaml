@@ -48,13 +48,13 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi-fips:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator-ubi-fips:3.6.0-SNAPSHOT"
   - it: ECK image, no fips, no ubi, default tag from chart appVersion
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator:3.6.0-SNAPSHOT"
   - it: ECK image, fips, no ubi, default tag from chart appVersion
     set:
       image.fips: true
@@ -62,7 +62,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-fips:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator-fips:3.6.0-SNAPSHOT"
   - it: ECK image, no fips, ubi, default tag from chart appVersion
     set:
       config.ubiOnly: true
@@ -70,7 +70,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator-ubi:3.6.0-SNAPSHOT"
   - it: ECK image, explicit tag + null digest should omit digest
     set:
       image.tag: "2.16.1"
@@ -87,7 +87,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator:3.6.0-SNAPSHOT"
   - it: ECK image, fips + ubi, explicit tag + digest
     set:
       config.ubiOnly: true
@@ -137,7 +137,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi-fips:3.5.0-SNAPSHOT@sha256:abc123"
+          value: "docker.elastic.co/eck/eck-operator-ubi-fips:3.6.0-SNAPSHOT@sha256:abc123"
   - it: ECK image, no fips, no ubi, default tag + digest
     set:
       image.digest: "sha256:abc123"
@@ -145,7 +145,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator:3.5.0-SNAPSHOT@sha256:abc123"
+          value: "docker.elastic.co/eck/eck-operator:3.6.0-SNAPSHOT@sha256:abc123"
   - it: ECK image, fips, no ubi, default tag + digest
     set:
       image.fips: true
@@ -154,7 +154,7 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-fips:3.5.0-SNAPSHOT@sha256:abc123"
+          value: "docker.elastic.co/eck/eck-operator-fips:3.6.0-SNAPSHOT@sha256:abc123"
   - it: ECK image, no fips, ubi, default tag + digest
     set:
       config.ubiOnly: true
@@ -163,13 +163,13 @@ tests:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator-ubi:3.5.0-SNAPSHOT@sha256:abc123"
+          value: "docker.elastic.co/eck/eck-operator-ubi:3.6.0-SNAPSHOT@sha256:abc123"
   - it: ECK image, digest omitted by default (null) should produce tag-only reference
     asserts:
       - template: statefulset.yaml
         equal:
           path: spec.template.spec.containers[0].image
-          value: "docker.elastic.co/eck/eck-operator:3.5.0-SNAPSHOT"
+          value: "docker.elastic.co/eck/eck-operator:3.6.0-SNAPSHOT"
   - it: ECK image, invalid digest format should fail with descriptive error
     set:
       image.digest: "notasha256digest"
@@ -222,8 +222,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 3.5.0-SNAPSHOT
-            helm.sh/chart: eck-operator-3.5.0-SNAPSHOT
+            app.kubernetes.io/version: 3.6.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.6.0-SNAPSHOT
             key2: value2
       - template: statefulset.yaml
         equal:
@@ -232,8 +232,8 @@ tests:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: elastic-operator
-            app.kubernetes.io/version: 3.5.0-SNAPSHOT
-            helm.sh/chart: eck-operator-3.5.0-SNAPSHOT
+            app.kubernetes.io/version: 3.6.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.6.0-SNAPSHOT
             key3: value3
   - it: should use the specified webhook secret name
     set:

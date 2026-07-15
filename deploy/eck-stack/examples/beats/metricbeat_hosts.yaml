@@ -7,7 +7,7 @@ eck-elasticsearch:
 
   # Version of Elasticsearch.
   #
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
 
   nodeSets:
   - name: default
@@ -38,16 +38,16 @@ eck-kibana:
   # Name of the Kibana resource.
   #
   fullnameOverride: quickstart
-  
+
   # Version of Kibana.
   #
-  version: 9.5.0-SNAPSHOT
-  
+  version: 9.6.0-SNAPSHOT
+
   spec:
     # Count of Kibana replicas to create.
     #
     count: 1
-  
+
     # Reference to ECK-managed Elasticsearch resource, ideally from {{ "elasticsearch.fullname" }}
     #
     elasticsearchRef:
@@ -57,13 +57,13 @@ eck-beats:
   enabled: true
   name: metricbeat
   type: metricbeat
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   elasticsearchRef:
     name: quickstart
   kibanaRef:
     name: quickstart
   config:
-    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
+    # Since filebeat is used in the default values, this needs to be removed with an empty list.
     filebeat.inputs: []
     metricbeat:
       autodiscover:
@@ -157,7 +157,7 @@ eck-beats:
         - hostPath:
             path: /proc
           name: proc
-  
+
   clusterRole:
     # permissions needed for metricbeat
     # source: https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-kubernetes.html
@@ -210,10 +210,10 @@ eck-beats:
       - /metrics
       verbs:
       - get
-  
+
   serviceAccount:
     name: metricbeat
-  
+
   clusterRoleBinding:
     name: metricbeat
     subjects:

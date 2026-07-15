@@ -46,3 +46,12 @@ pull_request_rules:
     actions:
       backport:
         branches: ["3.4"]
+
+  # Backports merged PRs labeled "backport-v3.5" to the 3.5 release branch.
+  - name: backport patches to 3.5 branch
+    conditions:
+      - merged
+      - label=backport-v3.5
+    actions:
+      backport:
+        branches: ["3.5"]
