@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -130,6 +131,7 @@ func NewPodTemplateSpec(
 	volumes []volume.VolumeLike,
 	basePath string,
 	setDefaultSecurityContext bool,
+	operatorImage string,
 	meta metadata.Metadata,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
@@ -209,6 +211,11 @@ func NewPodTemplateSpec(
 	}
 
 	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath, meta)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &kb, operatorImage)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

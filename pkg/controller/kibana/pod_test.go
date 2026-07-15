@@ -564,7 +564,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md)
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, "", md)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
@@ -728,7 +728,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, nil, []commonvolume.VolumeLike{}, bp, true, md)
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, nil, []commonvolume.VolumeLike{}, bp, true, "", md)
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
@@ -797,4 +797,35 @@ func assertEnvValue(t *testing.T, container *corev1.Container, envName, expected
 		}
 	}
 	assert.True(t, found, message)
+}
+
+func TestNewPodTemplateSpec_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	kb := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-kb",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: kbv1.KibanaSpec{Version: "8.0.0"},
+	}
+	md := metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+	got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), kb, nil, []commonvolume.VolumeLike{}, "", false, operatorImage, md)
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
 }

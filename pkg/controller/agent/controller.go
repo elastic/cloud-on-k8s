@@ -231,9 +231,8 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
 	defer tracing.Span(&ctx)()
-
-	// Run create validations only as update validations require old object which we don't have here.
-	warnings, err := agentv1alpha1.Validate(&agent, nil)
+	// Run create validations only: update validations require the old object which the reconciler does not have.
+	warnings, err := validateAgent(ctx, &agent, nil, r.licenseChecker, r.ExposedNodeLabels)
 	if err != nil {
 		logconf.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
