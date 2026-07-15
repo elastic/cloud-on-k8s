@@ -92,6 +92,12 @@ func TestPauseOrchestration_AutoOps(t *testing.T) {
 		t.SkipNow()
 	}
 
+	v := version.MustParse(test.Ctx().ElasticStackVersion)
+	if v.LT(version.SupportedAutoOpsAgentEnterpriseVersions.Min) {
+		t.Skipf("Skipping test: version %s below minimum %s",
+			test.Ctx().ElasticStackVersion, version.SupportedAutoOpsAgentEnterpriseVersions.Min)
+	}
+
 	namespace := test.Ctx().ManagedNamespace(0)
 
 	esInitial := elasticsearch.NewBuilder(testName(label.Type)).
