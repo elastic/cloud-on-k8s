@@ -50,6 +50,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		as,
 		Namer,
 		meta,
+		r.OperatorNamespace,
 		initContainerParameters,
 	)
 	if err != nil {

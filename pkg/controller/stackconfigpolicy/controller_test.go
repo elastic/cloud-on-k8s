@@ -255,7 +255,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	}}
 
 	kibanaConfigSecretFixture := MkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
-	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns")
+	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns", "shared-secret")
 
 	type args struct {
 		client           k8s.Client

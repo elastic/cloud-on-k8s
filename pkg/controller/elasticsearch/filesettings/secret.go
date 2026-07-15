@@ -67,7 +67,8 @@ func getSecureSettings(settingsSecret corev1.Secret) ([]commonv1.NamespacedSecre
 	return secretSources, nil
 }
 
-// GetSecureSettingsSecretSources gets SecureSettings Secret sources for a given Elastic resource.
+// GetSecureSettingsSecretSources returns the raw unvalidated secure settings sources stored in the annotation
+// of the ES file-settings secret.
 func GetSecureSettingsSecretSources(ctx context.Context, c k8s.Client, resource metav1.Object) ([]commonv1.NamespacedSecretSource, error) {
 	var secret corev1.Secret
 	err := c.Get(ctx, types.NamespacedName{Namespace: resource.GetNamespace(), Name: esv1.FileSettingsSecretName(resource.GetName())}, &secret)
