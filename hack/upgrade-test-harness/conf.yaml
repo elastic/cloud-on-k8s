@@ -84,5 +84,5 @@ testParams:
     operatorVersion: 3.4.1
     stackVersion: 9.4.2
   - name: upcoming
-    operatorVersion: 3.5.0-SNAPSHOT
+    operatorVersion: 3.5.0
     stackVersion: 9.5.0-SNAPSHOT
