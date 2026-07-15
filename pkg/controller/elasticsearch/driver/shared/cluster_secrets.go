@@ -38,7 +38,7 @@ func BuildClusterSecrets(
 	}
 	secretSources = append(secretSources, remoteClusterAPIKeys...)
 
-	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, c, &es, "Elasticsearch", operatorNamespace)
+	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, c, &es, esv1.Kind, operatorNamespace)
 	if err != nil {
 		return nil, err
 	}

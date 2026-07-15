@@ -12,10 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -28,7 +29,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 		operatorNamespace string
 	}
 
-	kibana := &kibanav1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test-kb-ns"}}
+	kibana := &kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test-kb-ns"}}
 
 	// Policy config secret whose annotation references a secret in the Kibana's own namespace.
 	kibanaConfigSameNs := MkKibanaConfigSecret("test-kb-ns", "test-policy", "test-policy-ns", "")
@@ -93,7 +94,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: source declared by governing SCP in resource namespace is allowed",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigSameNs, sameNsSCP),
 				operatorNamespace: "operator-ns",
 			},
@@ -103,7 +104,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: source rejected when no governing SCP declares it",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigSameNs),
 				operatorNamespace: "operator-ns",
 			},
@@ -113,7 +114,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: source in operator namespace allowed when operator SCP declares it",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigOpNs, operatorSCP),
 				operatorNamespace: "operator-ns",
 			},
@@ -123,7 +124,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: source in operator namespace rejected when no operator SCP is active",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigOpNs),
 				operatorNamespace: "operator-ns",
 			},
@@ -133,7 +134,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: source with correct namespace but undeclared secret name is rejected",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigOpNsWrongName, operatorSCP),
 				operatorNamespace: "operator-ns",
 			},
@@ -143,7 +144,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: cross-namespace source is always rejected",
 			args: args{
 				resource:          kibana,
-				resourceKind:      "Kibana",
+				resourceKind:      kbv1.Kind,
 				client:            k8s.NewFakeClient(kibanaConfigCrossNs),
 				operatorNamespace: "operator-ns",
 			},
@@ -153,7 +154,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Elasticsearch: source declared by governing SCP is allowed",
 			args: args{
 				resource:          &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "test-es-ns"}},
-				resourceKind:      "Elasticsearch",
+				resourceKind:      esv1.Kind,
 				client:            k8s.NewFakeClient(elasticsearchSecret, esSCP),
 				operatorNamespace: "operator-ns",
 			},
@@ -163,7 +164,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Elasticsearch: source rejected when no governing SCP declares it",
 			args: args{
 				resource:          &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "test-es-ns"}},
-				resourceKind:      "Elasticsearch",
+				resourceKind:      esv1.Kind,
 				client:            k8s.NewFakeClient(elasticsearchSecret),
 				operatorNamespace: "operator-ns",
 			},
@@ -176,7 +177,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			name: "Kibana: two SCPs with diverging Entries — all annotation entries with authorised secret pass",
 			args: args{
 				resource:     kibana,
-				resourceKind: "Kibana",
+				resourceKind: kbv1.Kind,
 				client: k8s.NewFakeClient(
 					func() *corev1.Secret {
 						s := MkKibanaConfigSecret("test-kb-ns", "test-policy", "test-policy-ns", "")
@@ -231,6 +232,53 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			got, err := GetSecureSettingsSecretSourcesForResources(context.Background(), tt.args.client, tt.args.resource, tt.args.resourceKind, tt.args.operatorNamespace)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_allowedSourceKeys(t *testing.T) {
+	policy := &policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: "scp", Namespace: "ns"},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret"}}, //nolint:staticcheck
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecureSettings: []commonv1.SecretSource{{SecretName: "es-secret"}},
+			},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				SecureSettings: []commonv1.SecretSource{{SecretName: "kb-secret"}},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		resourceKind string
+		wantKeys     []types.NamespacedName
+	}{
+		{
+			name:         "Elasticsearch includes both Spec.Elasticsearch.SecureSettings and deprecated Spec.SecureSettings",
+			resourceKind: esv1.Kind,
+			wantKeys:     []types.NamespacedName{{"ns", "es-secret"}, {"ns", "deprecated-secret"}},
+		},
+		{
+			name:         "Kibana includes only Spec.Kibana.SecureSettings",
+			resourceKind: kbv1.Kind,
+			wantKeys:     []types.NamespacedName{{"ns", "kb-secret"}},
+		},
+		{
+			name:         "unknown kind returns empty set",
+			resourceKind: "Beat",
+			wantKeys:     []types.NamespacedName{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := allowedSourceKeys(policy, tt.resourceKind)
+			require.Len(t, got, len(tt.wantKeys))
+			for _, k := range tt.wantKeys {
+				require.Contains(t, got, k)
+			}
 		})
 	}
 }
