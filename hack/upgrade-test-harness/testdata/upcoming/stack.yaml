@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: es
 spec:
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   nodeSets:
   - name: default
     count: 3
@@ -23,7 +23,7 @@ kind: Kibana
 metadata:
   name: kb
 spec:
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -33,7 +33,7 @@ kind: ApmServer
 metadata:
   name: apm
 spec:
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   count: 1
   elasticsearchRef:
     name: es
@@ -44,7 +44,7 @@ metadata:
   name: heartbeat
 spec:
   type: heartbeat
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   elasticsearchRef:
     name: es
   config:
@@ -68,20 +68,20 @@ metadata:
   name: ls
 spec:
   count: 1
-  version: 9.5.0-SNAPSHOT
+  version: 9.6.0-SNAPSHOT
   elasticsearchRefs:
     - clusterName: production
       name: es
   pipelines:
     - pipeline.id: main
       config.string: |
-        input { exec { command => 'uptime' interval => 10 } } 
-        output { 
+        input { exec { command => 'uptime' interval => 10 } }
+        output {
           elasticsearch {
             hosts => [ "${PRODUCTION_ES_HOSTS}" ]
             ssl_enabled => true
             ssl_certificate_authorities => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
             user => "${PRODUCTION_ES_USER}"
             password => "${PRODUCTION_ES_PASSWORD}"
-          } 
+          }
         }

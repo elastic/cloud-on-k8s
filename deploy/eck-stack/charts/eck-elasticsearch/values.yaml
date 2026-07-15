@@ -18,12 +18,12 @@
 
 # Version of Elasticsearch.
 #
-version: 9.5.0-SNAPSHOT
+version: 9.6.0-SNAPSHOT
 
 # Elasticsearch Docker image to deploy.
 # Supports both tag and digest formats.
-# image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0-SNAPSHOT
-# image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.6.0-SNAPSHOT
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.6.0-SNAPSHOT@sha256:<digest>
 # image: docker.elastic.co/elasticsearch/elasticsearch@sha256:<digest>
 
 # Labels that will be applied to Elasticsearch.
@@ -348,7 +348,7 @@ ingress:
   enabled: false
 
   # Annotations that will be applied to the Ingress resource. Note that some ingress controllers are controlled via annotations.
-  # 
+  #
   # Nginx Annotations: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
   #
   # Common annotations:
