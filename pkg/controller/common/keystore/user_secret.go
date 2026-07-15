@@ -46,6 +46,7 @@ func secureSettingsVolume(
 	hasKeystore HasKeystore,
 	meta metadata.Metadata,
 	namer name.Namer,
+	operatorNamespace string,
 	additionalSources ...commonv1.NamespacedSecretSource,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
@@ -56,7 +57,7 @@ func secureSettingsVolume(
 	// Additional sources, introduced to load remote cluster keys.
 	secretSources = append(secretSources, additionalSources...)
 	// user-provided Secrets referenced in a StackConfigPolicy that configures the resource
-	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind)
+	policySecretSources, err := stackconfigpolicy.GetSecureSettingsSecretSourcesForResources(ctx, r.K8sClient(), hasKeystore, hasKeystore.GetObjectKind().GroupVersionKind().Kind, operatorNamespace)
 	if err != nil {
 		return nil, "", pkgerrors.Wrap(err, "fail to get secure settings secret sources")
 	}
