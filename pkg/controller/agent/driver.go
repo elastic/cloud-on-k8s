@@ -154,6 +154,15 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		if clientAuthWarning != "" {
 			k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, clientAuthWarning)
 		}
+
+		// Version gate: block pod reconciliation when Fleet Server cannot present client certs to ES.
+		if clientAuthRequired && params.AgentVersion.LT(agentv1alpha1.FleetServerESClientAuthMinVersion) {
+			k8s.EmitEventf(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
+				"Elasticsearch mTLS support requires version 8.13.0+")
+			params.Status.Health = agentv1alpha1.AgentRedHealth
+			return results, params.Status
+		}
+
 		clientCertResults := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
 		results = results.WithResults(clientCertResults)
 		if results.HasError() {
