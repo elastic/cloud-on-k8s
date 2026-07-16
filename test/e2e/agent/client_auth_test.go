@@ -134,6 +134,7 @@ func TestClientAuthRequiredTransition_FleetAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerESClientAuthNotSupported(t)
 
 	name := "test-fa-mtls-trans"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -201,6 +202,7 @@ func TestClientAuthRequiredCustomCertificate_FleetAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
 	}
+	skipIfFleetServerESClientAuthNotSupported(t)
 
 	name := "test-fa-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
@@ -528,6 +530,19 @@ func fleetConfigWithOutputsForKibanaAndPolicies(
 	}
 
 	return cfg
+}
+
+// skipIfFleetServerESClientAuthNotSupported skips the test if the current stack version does not
+// support Fleet Server presenting client certificates to Elasticsearch (requires 8.13.0+).
+func skipIfFleetServerESClientAuthNotSupported(t *testing.T) {
+	t.Helper()
+	v, err := version.Parse(test.Ctx().ElasticStackVersion)
+	if err != nil {
+		t.Fatalf("failed to parse stack version %q: %v", test.Ctx().ElasticStackVersion, err)
+	}
+	if v.LT(agentv1alpha1.FleetServerESClientAuthMinVersion) {
+		t.Skipf("skipping Fleet Server ES mTLS test: requires Elastic Agent 8.13.0+, got %s", v)
+	}
 }
 
 // skipIfFleetServerClientAuthNotSupported skips the test if the current stack version does not

@@ -244,6 +244,12 @@ const (
 // Elastic Agent advanced configuration is documented here: https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
 var FleetAdvancedConfigMinVersion = semver.MustParse("8.13.0")
 
+// FleetServerESClientAuthMinVersion is the minimum Elastic Agent version that supports presenting
+// a client certificate to Elasticsearch when running as Fleet Server. The FLEET_SERVER_ES_CERT and
+// FLEET_SERVER_ES_CERT_KEY environment variables were introduced in elastic-agent 8.13.0:
+// https://github.com/elastic/elastic-agent/commit/075a642b
+var FleetServerESClientAuthMinVersion = semver.MustParse("8.13.0")
+
 // FleetServerClientAuthSupported reports whether v supports Fleet Server client certificate
 // authentication.
 func FleetServerClientAuthSupported(v semver.Version) bool {

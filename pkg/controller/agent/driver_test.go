@@ -11,11 +11,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -23,7 +27,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -347,6 +353,107 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 			} else {
 				require.True(t, apierrors.IsNotFound(err), "trust bundle secret should not exist")
 			}
+		})
+	}
+}
+
+func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
+	scheme.SetupScheme()
+	certRotation := certificates.RotationParams{Validity: 24 * time.Hour, RotateBefore: time.Hour}
+
+	readyDeployment := func(version string) []client.Object {
+		return []client.Object{
+			&appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "fleet-server-agent", Namespace: "test"},
+				Status:     appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fleet-server-pod",
+					Namespace: "test",
+					Labels:    map[string]string{NameLabelName: "fleet-server", VersionLabelName: version},
+				},
+				Status: corev1.PodStatus{Phase: corev1.PodRunning},
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		agentVersion string
+		clientAuth   bool
+		extraObjs    []client.Object
+		wantWarning  bool
+		wantHealth   agentv1alpha1.AgentHealth
+	}{
+		{
+			name:         "client auth required, version not supported",
+			agentVersion: "8.12.0",
+			clientAuth:   true,
+			wantWarning:  true,
+			wantHealth:   agentv1alpha1.AgentRedHealth,
+		},
+		{
+			name:         "client auth required, exact minimum supported version",
+			agentVersion: "8.13.0",
+			clientAuth:   true,
+			extraObjs:    readyDeployment("8.13.0"),
+			wantHealth:   agentv1alpha1.AgentGreenHealth,
+		},
+		{
+			name:         "client auth not required, version not supported",
+			agentVersion: "8.12.0",
+			clientAuth:   false,
+			extraObjs:    readyDeployment("8.12.0"),
+			wantHealth:   agentv1alpha1.AgentGreenHealth,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			agentObj := &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "fleet-server", Namespace: "test"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            tt.agentVersion,
+					FleetServerEnabled: true,
+					Mode:               agentv1alpha1.AgentFleetMode,
+					Deployment:         &agentv1alpha1.DeploymentSpec{},
+				},
+			}
+			agentObj.Spec.HTTP.TLS.Client.Authentication = tt.clientAuth
+
+			agentVersion := version.MustParse(tt.agentVersion)
+			recorder := toolsevents.NewFakeRecorder(10)
+			objects := make([]client.Object, 1, 1+len(tt.extraObjs))
+			objects[0] = agentObj
+			objects = append(objects, tt.extraObjs...)
+			fakeClient := k8s.NewFakeClient(objects...)
+
+			_, status := internalReconcile(Params{
+				Context:        t.Context(),
+				Client:         fakeClient,
+				Watches:        watches.NewDynamicWatches(),
+				EventRecorder:  recorder,
+				Agent:          *agentObj,
+				AgentVersion:   agentVersion,
+				Status:         agentv1alpha1.AgentStatus{},
+				LicenseChecker: commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
+				OperatorParams: operator.Parameters{
+					CACertRotation: certRotation,
+					CertRotation:   certRotation,
+				},
+			})
+
+			close(recorder.Events)
+			hasWarning := false
+			for e := range recorder.Events {
+				if e != "" {
+					hasWarning = true
+					break
+				}
+			}
+
+			assert.Equal(t, tt.wantHealth, status.Health, "unexpected health status")
+			assert.Equal(t, tt.wantWarning, hasWarning, "unexpected warning event presence")
 		})
 	}
 }
