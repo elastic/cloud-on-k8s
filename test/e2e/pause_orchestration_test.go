@@ -528,7 +528,8 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 	phase2 []test.Builder,
 	phase3 []test.Builder,
 	phase4 []test.Builder,
-	phase6 []test.Builder) {
+	phase6 []test.Builder,
+) {
 	t.Helper()
 
 	testTypes := make(map[string]struct{})
@@ -653,10 +654,7 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 
 	// Phase 2: update topology of each application
 	phase2Builder := newPhaseBuilder(testTypes)
-	esUpdated := esEnabled.DeepCopy().WithESMasterNodes(1, corev1.ResourceRequirements{
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("1Gi"),
-		}}).
+	esUpdated := esEnabled.DeepCopy().WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
 		WithMutatedFrom(&esEnabled)
 	phase2Builder.AddBuilder(esUpdated)
