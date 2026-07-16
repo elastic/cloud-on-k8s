@@ -148,7 +148,7 @@ func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, upd
 			steps = steps.WithSteps(b.UpgradeTestSteps(k))
 		}
 		// wait until they're all upgraded, while ensuring the upgrade order is respected
-		return steps.WithStep(test.Step{
+		steps = steps.WithStep(test.Step{
 			Name: "Check all resources are eventually upgraded in the right order",
 			Test: test.UntilSuccess(func() error {
 				// retrieve the version from the status of all resources
@@ -167,6 +167,17 @@ func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, upd
 				return nil
 			}, timeout),
 		})
+
+		// Wait for all ES pods to be Running and Ready before deletion begins. Without this, a pod
+		// that is still Pending (e.g. after a transient disk-pressure taint during the upgrade) can
+		// cause the StatefulSet controller to recreate a PVC after ECK has stopped reconciling owner
+		// refs, leaving an orphaned PVC that causes "PVCs should eventually be removed" to time out.
+		for _, b := range updatedBuilders {
+			if esBuilder, ok := b.(elasticsearch.Builder); ok {
+				steps = steps.WithStep(elasticsearch.CheckExpectedPodsEventuallyReady(esBuilder, k))
+			}
+		}
+		return steps
 	}
 
 	test.Sequence(nil, versionUpgrade, initialBuilders...).RunSequential(t)
