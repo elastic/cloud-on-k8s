@@ -558,10 +558,10 @@ func pauseOrchestrationBuilders(t *testing.T, optionalTypes ...string) (
 		WithElasticsearchRef(esRef).
 		WithRestrictedSecurityContext()
 	if _, testEPR := testTypes[eprlabel.Type]; testEPR {
-		kbInitial.WithPackageRegistryRef(eprInitial.Ref())
+		kbInitial = kbInitial.WithPackageRegistryRef(eprInitial.Ref())
 	}
 	if _, testAPM := testTypes[apmlabel.Type]; testAPM {
-		kbInitial.WithAPMIntegration()
+		kbInitial = kbInitial.WithAPMIntegration()
 	}
 	kbRef := commonv1.ObjectSelector{Namespace: kbInitial.Kibana.Namespace, Name: kbInitial.Kibana.Name}
 	initialBuilder.AddBuilder(kbInitial)
