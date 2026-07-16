@@ -23,7 +23,7 @@ spec:
   version: 9.4.3
   nodeSets:
   - name: default
-    count: 1
+    count: 2
     resources:
       requests:
         memory: 4Gi
