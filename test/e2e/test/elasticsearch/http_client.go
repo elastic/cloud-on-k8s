@@ -39,33 +39,38 @@ func (p *potentialNetworkError) Unwrap() error {
 func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
 	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {
-		return nil, err
+		return nil, classifyK8sClientError(err)
 	}
 	user := client.BasicAuth{Name: esuser.ElasticUserName, Password: password}
 	client, err := NewElasticsearchClientWithUser(es, k, user)
 	if err != nil {
-		// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
-		// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
-		// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
-		// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
-		// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
-		switch err.(type) { //nolint:errorlint
-		case *k8serrors.StatusError:
-			// Transient API server errors (500, 503, 504, 429) are infrastructure-level
-			// failures, treat them the same as network errors.
-			if k8serrors.IsInternalError(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsServiceUnavailable(err) ||
-				k8serrors.IsTooManyRequests(err) || k8serrors.IsTimeout(err) {
-				return nil, &potentialNetworkError{err: err}
-			}
-			return nil, err
-		case *k8serrors.UnexpectedObjectError:
-			return nil, err
-		default:
-			// likely a network error, can be acceptable as a transient state depending on the check
-			return nil, &potentialNetworkError{err: err}
-		}
+		return nil, classifyK8sClientError(err)
 	}
 	return client, nil
+}
+
+// classifyK8sClientError classifies errors from Kubernetes API calls made during ES client construction.
+// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
+// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
+// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
+// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
+// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
+func classifyK8sClientError(err error) error {
+	switch err.(type) { //nolint:errorlint
+	case *k8serrors.StatusError:
+		// Transient API server errors (500, 503, 504, 429) are infrastructure-level
+		// failures, treat them the same as network errors.
+		if k8serrors.IsInternalError(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsServiceUnavailable(err) ||
+			k8serrors.IsTooManyRequests(err) || k8serrors.IsTimeout(err) {
+			return &potentialNetworkError{err: err}
+		}
+		return err
+	case *k8serrors.UnexpectedObjectError:
+		return err
+	default:
+		// likely a network error, can be acceptable as a transient state depending on the check
+		return &potentialNetworkError{err: err}
+	}
 }
 
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
