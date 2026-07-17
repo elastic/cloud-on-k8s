@@ -129,7 +129,7 @@ spec:
         secretName: elasticsearch-es-http-certs-cm
   nodeSets:
   - name: default
-    count: 1
+    count: 2
     config:
       node.store.allow_mmap: false
       xpack.security.http.ssl.client_authentication: optional
