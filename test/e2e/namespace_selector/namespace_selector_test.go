@@ -173,7 +173,7 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 
 	esBuilder := elasticsearch.NewBuilder("ns-sel-assoc").
 		WithNamespace(esNamespace).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder("ns-sel-assoc").
 		WithNamespace(kbNamespace).
 		WithElasticsearchRef(esBuilder.Ref()).
