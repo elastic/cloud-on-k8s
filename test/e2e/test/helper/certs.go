@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"testing"
 	"time"
@@ -50,6 +51,17 @@ func GenerateSelfSignedClientCertPKCS8(t *testing.T, cn string) (certPEM, keyPEM
 
 	certPEM = generateSelfSignedCert(t, cn, x509.SHA256WithRSA, privateKey)
 	return certPEM, keyPEM
+}
+
+// PKCS8KeyEndsWithWhitespaceByte reports whether the last byte of the DER payload inside keyPEM is an ASCII
+// whitespace character.
+func PKCS8KeyEndsWithWhitespaceByte(keyPEM []byte) (bool, error) {
+	block, _ := pem.Decode(keyPEM)
+	if block == nil || len(block.Bytes) == 0 {
+		return false, errors.New("empty decoded block")
+	}
+	last := block.Bytes[len(block.Bytes)-1]
+	return last == '\t' || last == '\n' || last == '\v' || last == '\f' || last == '\r' || last == ' ', nil
 }
 
 // generateSelfSignedCert creates a self-signed client certificate using the given key and signature algorithm.
