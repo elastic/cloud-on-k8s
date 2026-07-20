@@ -43,7 +43,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/magiconair/properties](https://github.com/magiconair/properties) | v1.8.10 | BSD-2-Clause |
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
-| [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.23.2 | Apache-2.0 |
+| [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.24.0 | Apache-2.0 |
 | [github.com/prometheus/common](https://github.com/prometheus/common) | v0.70.0 | Apache-2.0 |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
@@ -174,7 +174,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/huandu/xstrings](https://github.com/huandu/xstrings) | v1.5.0 | MIT |
 | [github.com/inconshreveable/mousetrap](https://github.com/inconshreveable/mousetrap) | v1.1.0 | Apache-2.0 |
 | [github.com/json-iterator/go](https://github.com/json-iterator/go) | v1.1.12 | MIT |
-| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.18.6 | Apache-2.0 |
+| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.19.0 | Apache-2.0 |
 | [github.com/kr/pretty](https://github.com/kr/pretty) | v0.3.1 | MIT |
 | [github.com/kr/text](https://github.com/kr/text) | v0.2.0 | MIT |
 | [github.com/kylelemons/godebug](https://github.com/kylelemons/godebug) | v1.1.0 | Apache-2.0 |
@@ -201,7 +201,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/planetscale/vtprotobuf](https://github.com/planetscale/vtprotobuf) | v0.6.1-0.20240319094008-0393e58bdf10 | BSD-3-Clause |
 | [github.com/prashantv/gostub](https://github.com/prashantv/gostub) | v1.1.0 | MIT |
 | [github.com/prometheus/client_model](https://github.com/prometheus/client_model) | v0.6.2 | Apache-2.0 |
-| [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.21.0 | Apache-2.0 |
+| [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.21.1 | Apache-2.0 |
 | [github.com/rogpeppe/go-internal](https://github.com/rogpeppe/go-internal) | v1.14.1 | BSD-3-Clause |
 | [github.com/ryanuber/go-glob](https://github.com/ryanuber/go-glob) | v1.0.0 | MIT |
 | [github.com/sagikazarmark/locafero](https://github.com/sagikazarmark/locafero) | v0.11.0 | MIT |
