@@ -38,7 +38,6 @@ func TestPKCS8KeyEndsWithWhitespaceByte(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
-
 }
 
 func TestPKCS8KeyEndsWithWhitespaceByte_InvalidPEM(t *testing.T) {
