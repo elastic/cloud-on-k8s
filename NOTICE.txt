@@ -986,11 +986,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/crede
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/s3
-Version : v1.105.1
-Time    : 2026-07-13T18:16:38Z
+Version : v1.105.2
+Time    : 2026-07-16T18:16:22Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.105.1/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.105.2/LICENSE.txt:
 
 
                                  Apache License
@@ -5223,11 +5223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/api
-Version : v0.288.0
-Time    : 2026-07-09T18:55:08Z
+Version : v0.289.0
+Time    : 2026-07-16T17:58:31Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.288.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.289.0/LICENSE:
 
 Copyright (c) 2011 Google Inc. All rights reserved.
 
@@ -20050,11 +20050,11 @@ Contents of probable licence file $GOMODCACHE/github.com/google/s2a-go@v0.1.9/LI
 
 --------------------------------------------------------------------------------
 Module  : github.com/googleapis/enterprise-certificate-proxy
-Version : v0.3.17
+Version : v0.3.18
 Time    : 2026-06-23T18:57:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/googleapis/enterprise-certificate-proxy@v0.3.17/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/googleapis/enterprise-certificate-proxy@v0.3.18/LICENSE:
 
 
                                  Apache License
@@ -31036,11 +31036,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.56.0
-Time    : 2026-06-09T16:58:42Z
+Version : v0.57.0
+Time    : 2026-07-08T21:02:14Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.56.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.57.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -32074,11 +32074,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googlea
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/rpc
-Version : v0.0.0-20260630182238-925bb5da69e7
-Time    : 2026-06-30T18:22:38Z
+Version : v0.0.0-20260706201446-f0a921348800
+Time    : 2026-07-06T20:14:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260630182238-925bb5da69e7/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/rpc@v0.0.0-20260706201446-f0a921348800/LICENSE:
 
 
                                  Apache License
