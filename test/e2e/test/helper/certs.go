@@ -61,7 +61,7 @@ func PKCS8KeyEndsWithWhitespaceByte(keyPEM []byte) (bool, error) {
 		return false, errors.New("empty decoded block")
 	}
 	last := block.Bytes[len(block.Bytes)-1]
-	return last == '\t' || last == '\n' || last == '\v' || last == '\f' || last == '\r' || last == ' ', nil
+	return last == 0x00 || last == '\t' || last == '\n' || last == '\v' || last == '\f' || last == '\r' || last == ' ', nil
 }
 
 // generateSelfSignedCert creates a self-signed client certificate using the given key and signature algorithm.
