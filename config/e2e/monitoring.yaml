@@ -395,55 +395,79 @@ kind: ClusterRole
 metadata:
   name: e2e-agent
 rules:
-  - apiGroups: [""] # "" indicates the core API group
-    resources:
-      - namespaces
-      - pods
-      - nodes
-      - nodes/metrics
-      - nodes/proxy
-      - nodes/stats
-      - events
-    verbs:
-      - get
-      - watch
-      - list
-  - apiGroups: ["events.k8s.io"]
-    resources:
-      - events
-    verbs:
-      - get
-      - watch
-      - list
-  - apiGroups: ["batch"]
-    resources:
-      - jobs
-    verbs:
-      - "get"
-      - "list"
-      - "watch"
-  - apiGroups: ["apps"]
-    resources:
-      - deployments
-      - replicasets
-      - statefulsets
-    verbs:
-      - get
-      - list
-      - watch
-  - nonResourceURLs:
-      - /metrics
-    verbs:
-      - get
-      - watch
-      - list
-  - apiGroups: ["coordination.k8s.io"]
-    resources:
-      - leases
-    verbs:
-      - get
-      - create
-      - update
+- apiGroups: [""]
+  resources:
+    - nodes
+    - nodes/metrics
+    - nodes/proxy
+    - nodes/stats
+    - namespaces
+    - pods
+    - services
+    - configmaps
+    - events
+    - persistentvolumes
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["events.k8s.io"]
+  resources:
+    - events
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+    - leases
+  verbs:
+    - get
+    - create
+    - update
+- nonResourceURLs:
+    - /metrics
+  verbs:
+    - get
+    - watch
+    - list
+- nonResourceURLs:
+    - /healthz
+    - /healthz/*
+    - /livez
+    - /livez/*
+    - /metrics/slis
+    - /readyz
+    - /readyz/*
+  verbs:
+    - get
+- apiGroups: ["apps"]
+  resources:
+    - replicasets
+    - deployments
+    - daemonsets
+    - statefulsets
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+    - cronjobs
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - storageclasses
+  verbs:
+    - get
+    - list
+    - watch
 ---
 apiVersion: v1
 kind: ServiceAccount

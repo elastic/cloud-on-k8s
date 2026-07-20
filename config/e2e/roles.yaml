@@ -83,10 +83,27 @@ kind: ClusterRole
 metadata:
   name: elastic-agent-fleet
 rules:
-- apiGroups: [""] # "" indicates the core API group
+- apiGroups: [""]
   resources:
+  - nodes
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
   - namespaces
   - pods
+  - services
+  - configmaps
+  - events
+  - persistentvolumes
+  - persistentvolumeclaims
+  - persistentvolumeclaims/status
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["events.k8s.io"]
+  resources:
+  - events
   verbs:
   - get
   - watch
@@ -99,36 +116,43 @@ rules:
   - create
   - update
 - nonResourceURLs:
-  - "/metrics"
+  - /metrics
   verbs:
   - get
   - watch
   - list
-- apiGroups:
-  - apps
+- nonResourceURLs:
+  - /healthz
+  - /healthz/*
+  - /livez
+  - /livez/*
+  - /metrics/slis
+  - /readyz
+  - /readyz/*
+  verbs:
+  - get
+- apiGroups: ["apps"]
   resources:
   - replicasets
+  - deployments
+  - daemonsets
+  - statefulsets
   verbs:
   - get
   - list
   - watch
-- apiGroups:
-  - ""
+- apiGroups: ["batch"]
   resources:
-  - nodes
-  - nodes/metrics
-  - nodes/proxy
-  - nodes/stats
-  - events
+  - jobs
+  - cronjobs
   verbs:
   - get
-  - watch
   - list
-- apiGroups:
-  - events.k8s.io
+  - watch
+- apiGroups: ["storage.k8s.io"]
   resources:
-  - events
+  - storageclasses
   verbs:
   - get
-  - watch
   - list
+  - watch
