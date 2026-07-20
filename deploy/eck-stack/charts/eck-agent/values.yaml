@@ -194,23 +194,29 @@ clusterRole:
   rules:
   - apiGroups: [""]
     resources:
-    - pods
     - nodes
+    - nodes/metrics
+    - nodes/proxy
+    - nodes/stats
     - namespaces
-    - events
+    - pods
     - services
     - configmaps
+    - events
+    - persistentvolumes
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
     verbs:
     - get
     - watch
     - list
   - apiGroups: ["events.k8s.io"]
     resources:
-    - events
+      - events
     verbs:
-    - get
-    - watch
-    - list
+      - get
+      - watch
+      - list
   - apiGroups: ["coordination.k8s.io"]
     resources:
     - leases
@@ -219,54 +225,46 @@ clusterRole:
     - create
     - update
   - nonResourceURLs:
-    - "/metrics"
+    - /metrics
     verbs:
     - get
-  - apiGroups: ["extensions"]
-    resources:
-      - replicasets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "apps"
-    resources:
-    - statefulsets
-    - deployments
-    - replicasets
-    - daemonsets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - ""
-    resources:
-    - nodes/stats
-    verbs:
-    - get
+    - watch
+    - list
   - nonResourceURLs:
-    - "/metrics"
+    - /healthz
+    - /healthz/*
+    - /livez
+    - /livez/*
+    - /metrics/slis
+    - /readyz
+    - /readyz/*
     verbs:
     - get
-  - apiGroups:
-    - "batch"
+  - apiGroups: ["apps"]
+    resources:
+    - replicasets
+    - deployments
+    - daemonsets
+    - statefulsets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups: ["batch"]
     resources:
     - jobs
     - cronjobs
     verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "storage.k8s.io"
+    - get
+    - list
+    - watch
+  - apiGroups: ["storage.k8s.io"]
     resources:
     - storageclasses
     verbs:
-    - "get"
-    - "list"
-    - "watch"
+    - get
+    - list
+    - watch
 
 # extraObjects allows injecting additional Kubernetes resources into the chart.
 # These resources will be created/deleted alongside the chart release.

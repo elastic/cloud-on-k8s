@@ -128,59 +128,64 @@ kind: ClusterRole
 metadata:
   name: elastic-agent
 rules:
-- apiGroups: [""] # "" indicates the core API group
+- apiGroups: [""]
   resources:
-  - namespaces
-  - pods
   - nodes
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
+  - namespaces
+  - pods
+  - services
+  - configmaps
   - events
   - persistentvolumes
   - persistentvolumeclaims
+  - persistentvolumeclaims/status
   verbs:
   - get
   - watch
   - list
 - apiGroups: ["events.k8s.io"]
   resources:
-  - events
+    - events
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
   verbs:
   - get
-  - watch
-  - list
+  - create
+  - update
 - nonResourceURLs:
   - /metrics
   verbs:
   - get
   - watch
   - list
-- apiGroups: ["coordination.k8s.io"]
-  resources:
-    - leases
+- nonResourceURLs:
+  - /healthz
+  - /healthz/*
+  - /livez
+  - /livez/*
+  - /metrics/slis
+  - /readyz
+  - /readyz/*
   verbs:
-    - get
-    - create
-    - update
+  - get
 - apiGroups: ["apps"]
   resources:
   - replicasets
+  - deployments
+  - daemonsets
+  - statefulsets
   verbs:
   - get
   - list
   - watch
-- apiGroups:
-  - "apps"
-  resources:
-  - statefulsets
-  - deployments
-  - replicasets
-  - daemonsets
-  verbs:
-  - "get"
-  - "list"
-  - "watch"
 - apiGroups: ["batch"]
   resources:
   - jobs
@@ -189,14 +194,13 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - "storage.k8s.io"
+- apiGroups: ["storage.k8s.io"]
   resources:
   - storageclasses
   verbs:
-  - "get"
-  - "list"
-  - "watch"
+  - get
+  - list
+  - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
