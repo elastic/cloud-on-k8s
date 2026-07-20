@@ -387,65 +387,77 @@ metadata:
 rules:
 - apiGroups: [""]
   resources:
-  - namespaces
-  - persistentvolumes
-  - persistentvolumeclaims
-  - pods
-  - nodes
-  - nodes/metrics
-  - nodes/proxy
-  - nodes/stats
-  - services
-  - events
+    - nodes
+    - nodes/metrics
+    - nodes/proxy
+    - nodes/stats
+    - namespaces
+    - pods
+    - services
+    - configmaps
+    - events
+    - persistentvolumes
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
   verbs:
-  - get
-  - watch
-  - list
+    - get
+    - watch
+    - list
 - apiGroups: ["events.k8s.io"]
   resources:
-  - events
+    - events
   verbs:
-  - get
-  - watch
-  - list
-- nonResourceURLs:
-  - /metrics
-  verbs:
-  - get
-  - watch
-  - list
+    - get
+    - watch
+    - list
 - apiGroups: ["coordination.k8s.io"]
   resources:
-  - leases
+    - leases
   verbs:
-  - get
-  - create
-  - update
+    - get
+    - create
+    - update
+- nonResourceURLs:
+    - /metrics
+  verbs:
+    - get
+    - watch
+    - list
+- nonResourceURLs:
+    - /healthz
+    - /healthz/*
+    - /livez
+    - /livez/*
+    - /metrics/slis
+    - /readyz
+    - /readyz/*
+  verbs:
+    - get
 - apiGroups: ["apps"]
   resources:
-  - deployments
-  - statefulsets
-  - daemonsets
-  - replicasets
+    - replicasets
+    - deployments
+    - daemonsets
+    - statefulsets
   verbs:
-  - get
-  - list
-  - watch
+    - get
+    - list
+    - watch
 - apiGroups: ["batch"]
   resources:
-  - cronjobs
-  - jobs
+    - jobs
+    - cronjobs
   verbs:
-  - get
-  - list
-  - watch
+    - get
+    - list
+    - watch
 - apiGroups: ["storage.k8s.io"]
   resources:
-  - storageclasses
+    - storageclasses
   verbs:
-  - get
-  - list
-  - watch
+    - get
+    - list
+    - watch
 ---
 apiVersion: v1
 kind: ServiceAccount

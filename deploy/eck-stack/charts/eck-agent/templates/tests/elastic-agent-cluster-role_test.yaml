@@ -19,12 +19,18 @@ tests:
       - equal:
           path: rules[0].resources
           value:
-          - pods
           - nodes
+          - nodes/metrics
+          - nodes/proxy
+          - nodes/stats
           - namespaces
-          - events
+          - pods
           - services
           - configmaps
+          - events
+          - persistentvolumes
+          - persistentvolumeclaims
+          - persistentvolumeclaims/status
       - equal:
           path: rules[0].verbs
           value:
@@ -74,29 +80,32 @@ tests:
           path: rules[3].verbs
           value:
           - get
+          - watch
+          - list
       - equal:
-          path: rules[4].apiGroups[0]
-          value: "extensions"
-      - equal:
-          path: rules[4].resources
+          path: rules[4].nonResourceURLs
           value:
-          - replicasets
+          - /healthz
+          - /healthz/*
+          - /livez
+          - /livez/*
+          - /metrics/slis
+          - /readyz
+          - /readyz/*
       - equal:
           path: rules[4].verbs
           value:
           - get
-          - list
-          - watch
       - equal:
           path: rules[5].apiGroups[0]
           value: apps
       - equal:
           path: rules[5].resources
           value:
-          - statefulsets
-          - deployments
           - replicasets
+          - deployments
           - daemonsets
+          - statefulsets
       - equal:
           path: rules[5].verbs
           value:
@@ -105,25 +114,27 @@ tests:
           - watch
       - equal:
           path: rules[6].apiGroups[0]
-          value: ""
-      - equal:
-          path: rules[6].resources
-          value:
-          - nodes/stats
-      - equal:
-          path: rules[6].verbs
-          value:
-          - get
-      - equal:
-          path: rules[8].apiGroups[0]
           value: batch
       - equal:
-          path: rules[8].resources
+          path: rules[6].resources
           value:
           - jobs
           - cronjobs
       - equal:
-          path: rules[8].verbs
+          path: rules[6].verbs
+          value:
+          - get
+          - list
+          - watch
+      - equal:
+          path: rules[7].apiGroups[0]
+          value: storage.k8s.io
+      - equal:
+          path: rules[7].resources
+          value:
+          - storageclasses
+      - equal:
+          path: rules[7].verbs
           value:
           - get
           - list
