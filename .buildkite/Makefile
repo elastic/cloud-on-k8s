@@ -5,7 +5,7 @@
 # This Makefile is used to run the buildkite agent in virtual machines when Docker access is required.
 
 # If you change the CI_IMAGE format, make sure the regex in .github/renovate.json still matches.
-CI_IMAGE               ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:d8437a42fb013b0c099216130c976aaa411d1e5602ee56d19964b13da9b8dca8
+CI_IMAGE               ?= docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:1d41d937393794f1b55b5beb14d8040905cb3963efb7da05e2781d4aaef591f7
 ROOT_DIR               := $(CURDIR)/..
 GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
 export VAULT_ROOT_PATH = secret/ci/elastic-cloud-on-k8s
