@@ -11,11 +11,15 @@ import (
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	entcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -46,7 +50,43 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	esWithLicense := test.LicenseTestBuilder(esBuilder)
 	esWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
 		// 1 client certificate; enterprise-search
-		return test.StepList{clientauth.CheckClientCertificatesCountStep(k, namespace, esBuilder.Elasticsearch.Name, 1)}
+		return test.StepList{
+			clientauth.CheckClientCertificatesCountStep(k, namespace, esBuilder.Elasticsearch.Name, 1),
+			{
+				// Delete the Enterprise Search client cert secret if its PKCS#8 key's last DER
+				// byte falls in the ASCII whitespace range. Enterprise Search would crash on
+				// startup with an InvalidKeySpecException due to the Manticore strip() bug
+				// (https://github.com/elastic/search-team/issues/15173). Deleting forces the
+				// operator to regenerate; ENT's CheckPods step waits for the pod to come up
+				// with the new key.
+				Name: "Delete Enterprise Search client certificate secret if PKCS#8 key last DER byte is ASCII whitespace",
+				Test: test.Eventually(func() error {
+					var secretList corev1.SecretList
+					if err := k.Client.List(t.Context(), &secretList,
+						k8sclient.InNamespace(namespace),
+						k8sclient.MatchingLabels{
+							labels.ClientCertificateLabelName:       "true",
+							entcontroller.EntESAssociationLabelName: entBuilder.EnterpriseSearch.Name,
+						},
+					); err != nil {
+						return err
+					}
+					if len(secretList.Items) != 1 {
+						return fmt.Errorf("expected at most 1 Enterprise Search client cert secret, got %d", len(secretList.Items))
+					}
+					secret := secretList.Items[0]
+					whitespaceByteAtEnd, err := helper.PKCS8KeyEndsWithWhitespaceByte(secret.Data[certificates.KeyFileName])
+					if err != nil {
+						return err
+					}
+					if whitespaceByteAtEnd {
+						_ = k.Client.Delete(t.Context(), &secret)
+						return fmt.Errorf("client cert secret %s has trailing whitespace byte; deleted to force regeneration", secret.Name)
+					}
+					return nil
+				}),
+			},
+		}
 	}
 
 	// Transition ES to client auth disabled.
@@ -109,7 +149,22 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 		WithClientCertificateSecret(userCertSecretName).
 		WithNodeCount(1)
 
-	certPEM, keyPEM := helper.GenerateSelfSignedClientCertPKCS8(t, name)
+	var certPEM, keyPEM []byte
+	test.Eventually(func() error {
+		certPEM, keyPEM = helper.GenerateSelfSignedClientCertPKCS8(t, name)
+		whitespaceByteAtEnd, err := helper.PKCS8KeyEndsWithWhitespaceByte(keyPEM)
+		if err != nil {
+			return err
+		}
+		if whitespaceByteAtEnd {
+			// Regenerate the Enterprise Search client user cert secret if its PKCS#8 key's last DER
+			// byte falls in the ASCII whitespace range. Enterprise Search would crash on
+			// startup with an InvalidKeySpecException due to the Manticore strip() bug
+			// (https://github.com/elastic/search-team/issues/15173).
+			return fmt.Errorf("regenerating client cert: PKCS#8 key ends with ASCII whitespace byte")
+		}
+		return nil
+	})(t)
 
 	entWrapped := test.WrappedBuilder{
 		BuildingThis: entBuilder,
