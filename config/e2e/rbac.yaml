@@ -105,6 +105,7 @@ rules:
       - endpoints
       - secrets
       - persistentvolumeclaims
+      - persistentvolumeclaims/status
       - configmaps
       - events
       - serviceaccounts
@@ -208,6 +209,16 @@ rules:
     - get
     - list
     - watch
+  - nonResourceURLs:
+    - /healthz
+    - /healthz/*
+    - /livez
+    - /livez/*
+    - /metrics/slis
+    - /readyz
+    - /readyz/*
+    verbs:
+    - get
     # for Elastic Agent in Fleet mode
   - apiGroups:
     - "coordination.k8s.io"
