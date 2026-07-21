@@ -44,7 +44,7 @@ func UpdateOperatorConfig(k k8s.Client, f func(map[string]any)) error {
 	return k.Update(context.Background(), cm)
 }
 
-func SetOperatorConfig(k k8s.Client, cnf map[string]any) error {
+func SetOperatorConfig(ctx context.Context, k k8s.Client, cnf map[string]any) error {
 	cm, _, err := getOperatorConfig(k)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func SetOperatorConfig(k k8s.Client, cnf map[string]any) error {
 		return err
 	}
 	cm.Data["eck.yaml"] = string(bytes)
-	return k.Update(context.Background(), cm)
+	return k.Update(ctx, cm)
 }
 
 // GetOperatorConfig returns the operator configuration (the eck.yaml entry of the operator
