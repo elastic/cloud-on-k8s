@@ -644,6 +644,30 @@ func Test_applyEnvVars(t *testing.T) {
 		URL:            "kb-url",
 	})
 
+	// agent3 is a fleet-server agent using service-account-token auth (the recommended mode).
+	agent3 := agent
+	agent3.Spec.ElasticsearchRefs = []agentv1alpha1.Output{
+		{
+			ElasticsearchSelector: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"},
+			},
+			OutputName: "default",
+		},
+	}
+	agent3.Spec.FleetServerEnabled = true
+	agent3.Spec.FleetServerRef = commonv1.FleetServerSelector{}
+	agent3.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:   "es-sa-secret-name",
+		AuthSecretKey:    "token",
+		URL:              "es-url",
+		IsServiceAccount: true,
+	})
+	agent3.GetAssociations()[1].SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "kb-secret-name",
+		AuthSecretKey:  "kb-user",
+		URL:            "kb-url",
+	})
+
 	podTemplateBuilderWithFleetTokenSet := generateBuilder()
 	podTemplateBuilderWithFleetTokenSet = podTemplateBuilderWithFleetTokenSet.WithEnv(corev1.EnvVar{Name: "FLEET_ENROLLMENT_TOKEN", Value: "custom"})
 
@@ -831,6 +855,59 @@ func Test_applyEnvVars(t *testing.T) {
 				"FLEET_ENROLLMENT_TOKEN":              []byte("test-token"),
 				"FLEET_SERVER_ELASTICSEARCH_USERNAME": []byte("es-user"),
 				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": []byte("es-password"),
+			},
+		},
+		{
+			name: "fleet server agent, service-account-token auth: token must be stored in secret and referenced via secretKeyRef",
+			params: Params{
+				Context: context.Background(),
+				Agent:   agent3,
+				Client: k8s.NewFakeClient(
+					&corev1.Service{
+						ObjectMeta: metav1.ObjectMeta{Name: "agent-agent-http", Namespace: "default"},
+						Spec: corev1.ServiceSpec{
+							Ports: []corev1.ServicePort{
+								{Name: "https", Port: 8220},
+							},
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Name: "es-sa-secret-name", Namespace: "default"},
+						Data: map[string][]byte{
+							"token": []byte("my-service-account-token"),
+						},
+					},
+				),
+			},
+			fleetCerts:         fleetCertsFixture,
+			fleetToken:         testToken,
+			podTemplateBuilder: generateBuilder(),
+			wantContainer: corev1.Container{
+				Name: "agent",
+				Env: []corev1.EnvVar{
+					{Name: "FLEET_CA", Value: "/usr/share/fleet-server/config/http-certs/ca.crt"},
+					{Name: "FLEET_ENROLL", Value: "true"},
+					{Name: "FLEET_ENROLLMENT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_ENROLLMENT_TOKEN",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_CERT", Value: "/usr/share/fleet-server/config/http-certs/tls.crt"},
+					{Name: "FLEET_SERVER_CERT_KEY", Value: "/usr/share/fleet-server/config/http-certs/tls.key"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_HOST", Value: "es-url"},
+					{Name: "FLEET_SERVER_ENABLE", Value: "true"},
+					{Name: "FLEET_SERVER_POLICY_ID", Value: "policy-id"},
+					{Name: "FLEET_SERVER_SERVICE_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_SERVER_SERVICE_TOKEN",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_URL", Value: "https://agent-agent-http.default.svc:8220"},
+				},
+			},
+			wantSecretData: map[string][]byte{
+				"FLEET_ENROLLMENT_TOKEN":     []byte("test-token"),
+				"FLEET_SERVER_SERVICE_TOKEN": []byte("my-service-account-token"),
 			},
 		},
 	} {

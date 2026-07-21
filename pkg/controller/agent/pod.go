@@ -156,6 +156,7 @@ var (
 		FleetEnrollmentToken:             {},
 		FleetServerElasticsearchUsername: {},
 		FleetServerElasticsearchPassword: {},
+		FleetServerServiceToken:          {},
 	}
 )
 
