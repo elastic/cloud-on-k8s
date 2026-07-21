@@ -7,14 +7,15 @@
 package namespace_selector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -300,22 +301,25 @@ func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDe
 	t.Helper()
 	t.Cleanup(func() {
 		// restore original config
+		logf.Log.Info("Restoring operator config")
 		test.Eventually(func() error {
-			if err := helper.SetOperatorConfig(k.Client, originalConfig); err != nil {
-				t.Logf("WARNING: failed to restore operator config: %v", err)
+			if err := helper.SetOperatorConfig(context.Background(), k.Client, originalConfig); err != nil {
+				logf.Log.Error(err, "failed to restore operator config, retrying...")
 				return err
 			}
+			logf.Log.Info("operator config was restored")
 			return nil
 		})(t)
 
 		// Ensure that the operator restarts.
+		logf.Log.Info("Waiting for operator restart after config change")
 		waitForOperatorRestart(k, restartCount, 1*time.Minute)(t)
 
 		// Clean up the namespace labels only after the operator config has been successfully restored,
 		// so the operator is back to its original (non namespace-selector) configuration before the
 		// labels these tests rely on are removed.
-		if err := helper.DeleteNamespaceLabel(t.Context(), k.Client, labelToDelete, namespaces...); err != nil {
-			t.Logf("WARNING: failed to delete namespaces labels: %s", err.Error())
+		if err := helper.DeleteNamespaceLabel(context.Background(), k.Client, labelToDelete, namespaces...); err != nil {
+			logf.Log.Error(err, "failed to delete namespaces labels")
 		}
 	})
 }
@@ -324,22 +328,26 @@ func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDe
 // only when chaos job is deployed.
 func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, chaosSleepDuration time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
-		test.Eventually(func() error {
-			if test.Ctx().DeployChaosJob {
-				// In chaos mode restart counting is unreliable, so we cannot wait for a restart-count increment.
-				// Instead just wait and hope the ECK operator has restarted.
-				time.Sleep(chaosSleepDuration)
-				return nil
-			}
+		test.UntilSuccess(
+			func() error {
+				if test.Ctx().DeployChaosJob {
+					// In chaos mode restart counting is unreliable, so we cannot wait for a restart-count increment.
+					// Instead just wait and hope the ECK operator has restarted.
+					time.Sleep(chaosSleepDuration)
+					return nil
+				}
 
-			newCount, err := helper.OperatorRestartCount(k)
-			if err != nil {
-				return err
-			}
-			if newCount <= *restartCount {
-				return fmt.Errorf("waiting for operator restart after (current restarts: %d)", newCount)
-			}
-			return nil
-		})(t)
+				newCount, err := helper.OperatorRestartCount(k)
+				if err != nil {
+					return err
+				}
+				if newCount <= *restartCount {
+					return fmt.Errorf("waiting for operator restart after (current restarts: %d)", newCount)
+				}
+				return nil
+			},
+			// kubelet ConfigMap propagation + file watcher poll (15s) + pod recreation
+			3*time.Minute,
+		)(t)
 	}
 }
