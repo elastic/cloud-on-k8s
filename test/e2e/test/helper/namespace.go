@@ -19,7 +19,7 @@ import (
 // SetNamespaceLabel sets the given label on the namespace identified by name.
 func SetNamespaceLabel(ctx context.Context, k k8s.Client, name, key, value string) error {
 	var ns corev1.Namespace
-	if err := k.Get(context.Background(), types.NamespacedName{Name: name}, &ns); err != nil {
+	if err := k.Get(ctx, types.NamespacedName{Name: name}, &ns); err != nil {
 		return err
 	}
 	if ns.Labels == nil {
@@ -33,9 +33,9 @@ func DeleteNamespaceLabel(ctx context.Context, k k8s.Client, labelName string, n
 	errs := make([]error, 0, len(namespacesNames))
 	for _, nsName := range namespacesNames {
 		var ns corev1.Namespace
-		if err := k.Get(context.Background(), types.NamespacedName{Name: nsName}, &ns); err == nil {
+		if err := k.Get(ctx, types.NamespacedName{Name: nsName}, &ns); err == nil {
 			delete(ns.Labels, labelName)
-			errs = append(errs, k.Update(context.Background(), &ns))
+			errs = append(errs, k.Update(ctx, &ns))
 		}
 	}
 
