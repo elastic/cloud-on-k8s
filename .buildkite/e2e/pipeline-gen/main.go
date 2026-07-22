@@ -131,7 +131,6 @@ func main() {
 
 	// build a flat list of the tests to run
 	tests := make([]TestsSuiteRun, 0)
-	cleanup := false
 	for i := range groups {
 		if groups[i].Mixed == nil {
 			groups[i].Mixed = []Env{{}}
@@ -141,7 +140,6 @@ func main() {
 			handleErr("Failed to create tests suite", err)
 
 			tests = append(tests, ts)
-			cleanup = cleanup || ts.Cleanup
 		}
 	}
 
@@ -160,7 +158,6 @@ func main() {
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]any{
-		"Cleanup":                cleanup,
 		"Tests":                  tests,
 		"K8sInDockerMachineType": K8sInDockerMachineType,
 	})

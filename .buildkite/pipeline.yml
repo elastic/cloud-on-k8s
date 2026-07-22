@@ -65,7 +65,7 @@ steps:
   - group: build operator
     key: "operator-image-build"
     steps:
-      - label: ":buildkite:"
+      - label: ":buildkite: generate image build steps"
         key: "operator-image-build-step"
         agents:
           image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.0@sha256:b59bd1dea06b89a7e5767724bebba04f73ccb21b05b0f028efe40aa701b55621"
@@ -92,7 +92,7 @@ steps:
   - group: build e2e-tests
     key: "e2e-tests-image-build"
     steps:
-      - label: ":buildkite:"
+      - label: ":buildkite: generate image build steps"
         agents:
           image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.0@sha256:b59bd1dea06b89a7e5767724bebba04f73ccb21b05b0f028efe40aa701b55621"
         commands: make -C /agent generate-docker-images
@@ -105,7 +105,7 @@ steps:
   # step to run e2e-tests for PR are inlined for speed
 
   # for commits in all branches (PR, release) except main
-  - label: ":buildkite:"
+  - label: ":buildkite: upload e2e smoke pipeline"
     if: |
         ( build.branch != "main" )
         && build.env("GITHUB_PR_TRIGGER_COMMENT") !~ /^buildkite test this -[fm]/
@@ -129,7 +129,7 @@ steps:
       memory: "2G"
 
   # for PR comment
-  - label: ":buildkite:"
+  - label: ":buildkite: upload e2e pipeline (PR comment)"
     if: build.env("GITHUB_PR_TRIGGER_COMMENT") =~ /^buildkite test this -[fm]/
     command: |
       set -euo pipefail
@@ -142,7 +142,7 @@ steps:
       memory: "2G"
 
   # for the main branch (merge and nightly) and tags
-  - label: ":buildkite:"
+  - label: ":buildkite: upload e2e pipeline (main/tag)"
     command: buildkite-agent pipeline upload .buildkite/pipeline-e2e-tests.yml
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
@@ -151,7 +151,7 @@ steps:
   # ----------
 
   # scan the operator image(s) for CVEs
-  - label: ":buildkite:"
+  - label: ":buildkite: upload cve scans pipeline"
     if: |  # merge-xyz, tag-bc, tag-final or nightly-main
       build.branch =~ /^[0-9]*\.[0-9]*\$/
       || build.tag != null
@@ -181,7 +181,7 @@ steps:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
       memory: "256Mi"
 
-  - label: ":buildkite:"
+  - label: ":buildkite: upload release pipeline"
     depends_on:
       - "operator-image-build"
     command: buildkite-agent pipeline upload .buildkite/pipeline-release.yml

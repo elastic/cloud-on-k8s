@@ -6,107 +6,111 @@ steps:
 
 {{- range $test := .Tests }}
 
-  {{- if $test.RemoteKubeconfig }}
-
-  # create k8s cluster
-  - label: ":k8s: {{ $test.Name }}"
-    key: "e2e-cluster-{{ $test.SlugName }}"
-
-    env:
-      {{- range $key, $val := $test.Env }}
-      {{$key}}: "{{$val}}"
-      {{- end }}
-
-    commands:
-      - .buildkite/scripts/test/set-deployer-config.sh
-      {{- if $test.Dind }}
-      - make -C .buildkite TARGET="run-deployer" ci
-      {{- else }}
-      - make run-deployer
-      {{- end }}
-
-    agents:
-      {{- if $test.Dind }}
-      provider: "gcp"
-      image: "family/core-ubuntu-2204"
-      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
-      machineType: "{{ $.K8sInDockerMachineType }}"
-      {{- end }}
-      {{- else }}
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
-      memory: "5G"
-      {{- end }}
-
-  {{- end }}
-
-  # create k8s cluster and run e2e tests, or just run e2e tests (if RemoteKubeconfig)
-  {{- if $test.RemoteKubeconfig }}
-  - label: ":go: {{ $test.Name }}"
-  {{- else }}
-  - label: ":k8s: :go: {{ $test.Name }}"
-  {{- end }}
-    key: "e2e-{{ $test.SlugName }}"
-
-    {{- if $test.RemoteKubeconfig }}
-    depends_on:
-      - "e2e-cluster-{{ $test.SlugName }}"
-      # let's be optimistic and run the tests without dependency on the images build
-    {{- end }}
-
-    env:
-      {{- range $key, $val := $test.Env }}
-      {{$key}}: "{{$val}}"
-      {{- end }}
-
-    commands:
-      {{- range $key, $val := $test.Env }}
-      - echo "{{$key}}={{$val}}" >> .env
-      {{- end }}
-
-      - .buildkite/scripts/test/set-deployer-config.sh
-
-      {{- $deployerCommand := "run-deployer" }}
-      {{- if $test.RemoteKubeconfig }}
-        {{- $deployerCommand = "set-kubeconfig" }}
-      {{- end }}
-
-      {{- if $test.Dind }}
-      - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
-      {{- else }}
-      - make {{ $deployerCommand }} e2e-run
-      {{- end }}
-
-    agents:
-      {{- if $test.Dind }}
-      provider: "gcp"
-      image: "family/core-ubuntu-2204"
-      {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
-      machineType: "{{ $.K8sInDockerMachineType }}"
-      diskSizeGb: 200
-      {{- end }}
-      {{- else }}
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
-      memory: "4G"
-      {{- end }}
-
-    artifact_paths:
-      - e2e-tests-*.json
-      - "eck-diagnostic*.zip"
-
-{{- end }}
-
-{{- if .Cleanup }}
-
-  - group: ":broom:"
+  # self-contained suite: create k8s cluster, run e2e tests, delete k8s cluster
+  - group: "{{ $test.Name }}"
     steps:
 
-{{- end }}
+    {{- if $test.RemoteKubeconfig }}
 
-{{- range $test := .Tests }}
+      # create k8s cluster
+      - label: ":k8s: create cluster {{ $test.Name }}"
+        key: "e2e-cluster-{{ $test.SlugName }}"
+
+        # allow re-running from the UI even after it passed
+        retry:
+          manual:
+            permit_on_passed: true
+
+        env:
+          {{- range $key, $val := $test.Env }}
+          {{$key}}: "{{$val}}"
+          {{- end }}
+
+        commands:
+          - .buildkite/scripts/test/set-deployer-config.sh
+          {{- if $test.Dind }}
+          - make -C .buildkite TARGET="run-deployer" ci
+          {{- else }}
+          - make run-deployer
+          {{- end }}
+
+        agents:
+          {{- if $test.Dind }}
+          provider: "gcp"
+          image: "family/core-ubuntu-2204"
+          {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
+          machineType: "{{ $.K8sInDockerMachineType }}"
+          {{- end }}
+          {{- else }}
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
+          memory: "5G"
+          {{- end }}
+
+    {{- end }}
+
+      # create k8s cluster and run e2e tests, or just run e2e tests (if RemoteKubeconfig)
+      {{- if $test.RemoteKubeconfig }}
+      - label: ":go: run e2e tests {{ $test.Name }}"
+      {{- else }}
+      - label: ":k8s: :go: run e2e tests {{ $test.Name }}"
+      {{- end }}
+        key: "e2e-{{ $test.SlugName }}"
+
+        # allow re-running from the UI even after it passed
+        retry:
+          manual:
+            permit_on_passed: true
+
+        {{- if $test.RemoteKubeconfig }}
+        depends_on:
+          - "e2e-cluster-{{ $test.SlugName }}"
+          # let's be optimistic and run the tests without dependency on the images build
+        {{- end }}
+
+        env:
+          {{- range $key, $val := $test.Env }}
+          {{$key}}: "{{$val}}"
+          {{- end }}
+
+        commands:
+          {{- range $key, $val := $test.Env }}
+          - echo "{{$key}}={{$val}}" >> .env
+          {{- end }}
+
+          - .buildkite/scripts/test/set-deployer-config.sh
+
+          {{- $deployerCommand := "run-deployer" }}
+          {{- if $test.RemoteKubeconfig }}
+            {{- $deployerCommand = "set-kubeconfig" }}
+          {{- end }}
+
+          {{- if $test.Dind }}
+          - make -C .buildkite TARGET="{{ $deployerCommand }} e2e-run" ci
+          {{- else }}
+          - make {{ $deployerCommand }} e2e-run
+          {{- end }}
+
+        agents:
+          {{- if $test.Dind }}
+          provider: "gcp"
+          image: "family/core-ubuntu-2204"
+          {{- if or (eq $test.Provider "kind") (eq $test.Provider "k3d") }}
+          machineType: "{{ $.K8sInDockerMachineType }}"
+          diskSizeGb: 200
+          {{- end }}
+          {{- else }}
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
+          memory: "4G"
+          {{- end }}
+
+        artifact_paths:
+          - e2e-tests-*.json
+          - "eck-diagnostic*.zip"
+
     {{- if $test.Cleanup }}
 
       # delete k8s cluster
-      - label: ":broom: {{ $test.Name }}"
+      - label: ":broom: cleanup {{ $test.Name }}"
         depends_on:
           - step: "e2e-{{ $test.SlugName }}"
             allow_failure: true
@@ -116,6 +120,10 @@ steps:
           {{- end }}
           DEPLOYER_OPERATION: delete
         soft_fail: true
+        # allow re-running from the UI even after it passed
+        retry:
+          manual:
+            permit_on_passed: true
         commands:
           - .buildkite/scripts/test/set-deployer-config.sh
         {{- if not $test.Dind }}
@@ -131,6 +139,7 @@ steps:
         {{- end }}
 
     {{- end }}
+
 {{- end }}
 
   - label: "aggregate tests-results"
@@ -139,6 +148,10 @@ steps:
       - step: "e2e-{{ $test.SlugName }}"
         allow_failure: true
       {{- end }}
+    # allow recalculating the results after retrying one or more suites
+    retry:
+      manual:
+        permit_on_passed: true
     command: .buildkite/scripts/test/report-tests-results.sh
     artifact_paths:
       - ".buildkite/e2e/reporter/*.md"
