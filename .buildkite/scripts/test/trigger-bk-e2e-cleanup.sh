@@ -13,7 +13,7 @@ set -eu
 : "$BK_TOKEN"
 : "$GH_USERNAME"
 
-curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-e2e-cluster-cleanup/builds" -XPOST \
+curl "https://api.buildkite.com/v2/organizations/elastic/pipelines/cloud-on-k8s-operator-e2e-clusters-cleanup/builds" -XPOST \
     -H "Authorization: Bearer $BK_TOKEN" -d '
 {
     "commit": "HEAD",
