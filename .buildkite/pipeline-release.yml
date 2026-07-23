@@ -10,7 +10,7 @@ steps:
         commands:
           - .buildkite/scripts/release/k8s-manifests.sh
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:1faa746580da83750c129c62f1a7a9e1c7ebccb5526f4bbf4bcd0fc05a997699
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb
           memory: "2G"
 
       - label: "copy images to dockerhub"
