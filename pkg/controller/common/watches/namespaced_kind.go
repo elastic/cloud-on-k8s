@@ -6,6 +6,7 @@ package watches
 
 import (
 	"context"
+	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +35,16 @@ func NamespacedKind[T client.Object](
 	h handler.TypedEventHandler[T, reconcile.Request],
 	preds ...predicate.TypedPredicate[T],
 ) source.SyncingSource {
+	if m.PreRegisterInformerCache() {
+		// Pre-register the informer so it is included in the cache's WaitForCacheSync check,
+		// preventing the trivially-true empty-tracker problem. This must be called before
+		// mgr.Start(): until the cache starts, ip.started is false inside GetInformer's Get
+		// path and the WaitForCacheSync block (which would block on ctx.Done()) is never
+		// reached, so context.Background() is safe — the context is not consulted.
+		if _, err := c.GetInformer(context.Background(), obj); err != nil {
+			ulog.Log.Error(err, "Failed to pre-register informer", "type", fmt.Sprintf("%T", obj))
+		}
+	}
 	if !m.SelectorEnabled() {
 		return source.Kind(c, obj, h, preds...) //nolint:forbidigo //NamespacedKind is the drop-in wrapper around source.Kind; it must call it directly.
 	}

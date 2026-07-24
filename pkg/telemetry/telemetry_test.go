@@ -987,7 +987,7 @@ func mustLabelSelector(t *testing.T, matchLabels map[string]string) labels.Selec
 // cache that lists the given namespaces, so MatchingNamespaces reflects their labels.
 func matcherObserving(t *testing.T, sel labels.Selector, operatorNS string, nss ...corev1.Namespace) *nsmatch.NamespaceMatcher {
 	t.Helper()
-	m := nsmatch.NewNamespaceMatcher(sel, operatorNS)
+	m := nsmatch.NewNamespaceMatcher(sel, operatorNS, false)
 	mc := cachemock.NewCache(t)
 	mc.OnListSetNamespaceList(nss...).Return(nil)
 	m.SetCache(mc)
@@ -1017,7 +1017,7 @@ func TestGetNamespaces(t *testing.T) {
 				t.Helper()
 				return Reporter{
 					managedNamespaces: managed,
-					namespaceMatcher:  nsmatch.NewNamespaceMatcher(nil, "elastic-system"),
+					namespaceMatcher:  nsmatch.NewNamespaceMatcher(nil, "elastic-system", false),
 				}
 			},
 			wantNSes: managed,

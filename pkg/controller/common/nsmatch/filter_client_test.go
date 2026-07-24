@@ -60,7 +60,7 @@ func makeFilterClient(t *testing.T, delegate client.Client, sel labels.Selector,
 		Return(nil).
 		Maybe()
 
-	nfn := NewNamespaceMatcher(sel, testOperatorNS)
+	nfn := NewNamespaceMatcher(sel, testOperatorNS, false)
 	nfn.SetCache(mc)
 	return NewFilterClient(delegate, nfn)
 }
@@ -99,7 +99,7 @@ func TestFilterClientList(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("delegate error is propagated without filtering", func(t *testing.T) {
-		fc := NewFilterClient(fakeClientListErr(errors.New("api server unavailable")), NewNamespaceMatcher(sel, testOperatorNS))
+		fc := NewFilterClient(fakeClientListErr(errors.New("api server unavailable")), NewNamespaceMatcher(sel, testOperatorNS, false))
 		require.Error(t, fc.List(t.Context(), &corev1.PodList{}))
 	})
 
@@ -111,7 +111,7 @@ func TestFilterClientList(t *testing.T) {
 	})
 
 	t.Run("selector disabled: all items returned unfiltered", func(t *testing.T) {
-		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "ns-a"), pod("b", "ns-b")).Build(), NewNamespaceMatcher(nil, testOperatorNS))
+		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "ns-a"), pod("b", "ns-b")).Build(), NewNamespaceMatcher(nil, testOperatorNS, false))
 		list := &corev1.PodList{}
 		require.NoError(t, fc.List(t.Context(), list))
 		assert.Len(t, list.Items, 2)
@@ -178,7 +178,7 @@ func TestFilterClientList(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnGetSetNamespace(nil).Return(cacheErr).Once()
 
-		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn := NewNamespaceMatcher(sel, testOperatorNS, false)
 		nfn.SetCache(mc)
 		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "dev-ns")).Build(), nfn)
 
@@ -198,7 +198,7 @@ func TestFilterClientList(t *testing.T) {
 
 		mc.OnGetNamepsace("ns-1").Once()
 
-		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn := NewNamespaceMatcher(sel, testOperatorNS, false)
 		nfn.SetCache(mc)
 		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("a", "ns-1"), pod("b", "bad-ns")).Build(), nfn)
 
@@ -213,7 +213,7 @@ func TestFilterClientGet(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("delegate error is propagated without filtering", func(t *testing.T) {
-		fc := NewFilterClient(fakeClientGetErr(errors.New("api server unavailable")), NewNamespaceMatcher(sel, testOperatorNS))
+		fc := NewFilterClient(fakeClientGetErr(errors.New("api server unavailable")), NewNamespaceMatcher(sel, testOperatorNS, false))
 		// testOperatorNS short-circuits the selector check, so the request reaches
 		// the delegate without ever consulting the (unset) cache.
 		require.Error(t, fc.Get(t.Context(), client.ObjectKey{Name: "my-pod", Namespace: testOperatorNS}, &corev1.Pod{}))
@@ -227,7 +227,7 @@ func TestFilterClientGet(t *testing.T) {
 	})
 
 	t.Run("selector disabled: object returned unfiltered", func(t *testing.T) {
-		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("my-pod", "dev-ns")).Build(), NewNamespaceMatcher(nil, testOperatorNS))
+		fc := NewFilterClient(fake.NewClientBuilder().WithObjects(pod("my-pod", "dev-ns")).Build(), NewNamespaceMatcher(nil, testOperatorNS, false))
 		obj := &corev1.Pod{}
 		require.NoError(t, fc.Get(t.Context(), types.NamespacedName{Name: "my-pod", Namespace: "dev-ns"}, obj))
 		assert.Equal(t, "dev-ns", obj.Namespace)
@@ -286,7 +286,7 @@ func TestFilterClientGet(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnGetSetNamespace(nil).Return(cacheErr)
 
-		nfn := NewNamespaceMatcher(sel, testOperatorNS)
+		nfn := NewNamespaceMatcher(sel, testOperatorNS, false)
 		nfn.SetCache(mc)
 		fc := NewFilterClient(delegate, nfn)
 

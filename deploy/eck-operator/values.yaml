@@ -170,6 +170,42 @@ webhook:
   # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
   certsSecret: ""
 
+# probes configures the health and readiness probes for the operator pod.
+probes:
+  # enable controls whether startup, readiness, and liveness probes are added to the
+  # operator pod. When enabled, pod readiness is gated on the cache being fully synced
+  # before the operator serves webhook requests. Set to false to opt out.
+  enable: true
+  # port is the port for the /healthz and /readyz HTTP endpoints.
+  port: 8081
+  # startup configures the startupProbe, which gates the other probes until the operator
+  # has passed readyz for the first time. The default allows up to 5 minutes
+  # (failureThreshold * periodSeconds) for the cache to sync on startup.
+  startup:
+    # failureThreshold is the number of consecutive failures before the pod is restarted.
+    failureThreshold: 30
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 10
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  # readiness configures the readinessProbe. A failing readiness probe removes the pod
+  # from Service endpoints without restarting it.
+  readiness:
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 10
+    # failureThreshold is the number of consecutive failures before the pod is marked unready.
+    failureThreshold: 3
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  # liveness configures the livenessProbe. A failing liveness probe triggers a pod restart.
+  liveness:
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 20
+    # failureThreshold is the number of consecutive failures before the pod is restarted.
+    failureThreshold: 3
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
 # If hostNetwork is enabled, dnsPolicy defaults to ClusterFirstWithHostNet unless explicitly set.
