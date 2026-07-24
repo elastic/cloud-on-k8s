@@ -15,18 +15,20 @@ import (
 )
 
 type NamespaceMatcher struct {
-	selector                labels.Selector
-	alwaysManagedNamespaces map[string]struct{} // namespaces excluded from label-selector evaluation.
-	cache                   cache.Cache
+	selector                 labels.Selector
+	alwaysManagedNamespaces  map[string]struct{} // namespaces excluded from label-selector evaluation.
+	cache                    cache.Cache
+	preRegisterInformerCache bool
 }
 
-func NewNamespaceMatcher(sel labels.Selector, operatorNS string) *NamespaceMatcher {
+func NewNamespaceMatcher(sel labels.Selector, operatorNS string, preRegisterInformerCache bool) *NamespaceMatcher {
 	return &NamespaceMatcher{
 		selector: sel,
 		alwaysManagedNamespaces: map[string]struct{}{
 			"":         {},
 			operatorNS: {},
 		},
+		preRegisterInformerCache: preRegisterInformerCache,
 	}
 }
 
@@ -99,4 +101,11 @@ func (m *NamespaceMatcher) MatchingNamespaces(ctx context.Context) ([]string, er
 	}
 
 	return names, nil
+}
+
+func (m *NamespaceMatcher) PreRegisterInformerCache() bool {
+	if m == nil {
+		return false
+	}
+	return m.preRegisterInformerCache
 }

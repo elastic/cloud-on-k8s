@@ -83,7 +83,7 @@ func TestCrossNamespaceAssociationAndNamespaceScopeOut(t *testing.T) {
 	ctx := context.Background()
 
 	selector := labels.SelectorFromSet(labels.Set{scopeLabelName: scopeLabelValue})
-	matcher := nsmatch.NewNamespaceMatcher(selector, operatorNamespace)
+	matcher := nsmatch.NewNamespaceMatcher(selector, operatorNamespace, false)
 	params := operator.Parameters{
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "3.5.0"}},

@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // WatchNamespaceScopeChange registers a direct watch on Namespace objects
@@ -36,6 +37,18 @@ func WatchNamespaceScopeChange(
 ) error {
 	if !matcher.SelectorEnabled() {
 		return nil
+	}
+
+	if matcher.PreRegisterInformerCache() {
+		// Pre-register the informer so it is included in the cache's WaitForCacheSync check,
+		// preventing the trivially-true empty-tracker problem (see
+		// https://github.com/kubernetes-sigs/controller-runtime/blob/efff3590e02a2a27059a57a9535e87d829c3cc77/pkg/manager/internal.go#L446).
+		// This must be called before mgr.Start(): until the cache starts, ip.started is false
+		// inside GetInformer's Get path and the WaitForCacheSync block (which would block on ctx.Done())
+		// is never reached, so context.Background() is safe — the context is not consulted.
+		if _, err := ch.GetInformer(context.Background(), &corev1.Namespace{}); err != nil {
+			ulog.Log.Error(err, "Failed to pre-register informer", "type", "namespace")
+		}
 	}
 
 	return c.Watch(source.Kind( //nolint:forbidigo // Watch all namespaces to cover the off-boarding cases.

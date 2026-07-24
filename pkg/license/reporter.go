@@ -51,10 +51,15 @@ func (r ResourceReporter) Start(ctx context.Context, refreshPeriod time.Duration
 	}
 
 	ticker := time.NewTicker(refreshPeriod)
-	for range ticker.C {
-		err := r.Report(ctx)
-		if err != nil {
-			log.Error(err, "Failed to report licensing information")
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if err := r.Report(ctx); err != nil {
+				log.Error(err, "Failed to report licensing information")
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }

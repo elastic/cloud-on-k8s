@@ -26,12 +26,12 @@ func TestNamespaceMatcherSelectorEnabled(t *testing.T) {
 	})
 
 	t.Run("nil selector: disabled", func(t *testing.T) {
-		m := NewNamespaceMatcher(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS, false)
 		assert.False(t, m.SelectorEnabled())
 	})
 
 	t.Run("selector set: enabled", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		assert.True(t, m.SelectorEnabled())
 	})
 }
@@ -40,14 +40,14 @@ func TestNamespaceMatcherNamespaceNameMatches(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("selector disabled: always matches without consulting the cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS, false)
 		matches, err := m.NamespaceNameMatches(t.Context(), "any-ns")
 		require.NoError(t, err)
 		assert.True(t, matches)
 	})
 
 	t.Run("empty namespace: always matches without consulting the cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(cachemock.NewCache(t)) // no expectations set: a Get call would fail the test
 		matches, err := m.NamespaceNameMatches(t.Context(), "")
 		require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestNamespaceMatcherNamespaceNameMatches(t *testing.T) {
 	})
 
 	t.Run("operator namespace: always matches without consulting the cache", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(cachemock.NewCache(t)) // no expectations set: a Get call would fail the test
 		matches, err := m.NamespaceNameMatches(t.Context(), testOperatorNS)
 		require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestNamespaceMatcherNamespaceNameMatches(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(cacheErr)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		matches, err := m.NamespaceNameMatches(t.Context(), "dev-ns")
 		require.ErrorIs(t, err, cacheErr)
@@ -78,7 +78,7 @@ func TestNamespaceMatcherNamespaceNameMatches(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnGetSetNamespace(map[string]string{"env": "prod"}).Return(nil)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		matches, err := m.NamespaceNameMatches(t.Context(), "prod-ns")
 		require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestNamespaceMatcherNamespaceNameMatches(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnGetSetNamespace(map[string]string{"env": "dev"}).Return(nil)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		matches, err := m.NamespaceNameMatches(t.Context(), "dev-ns")
 		require.NoError(t, err)
@@ -101,25 +101,25 @@ func TestNamespaceMatcherNamespaceMatches(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("selector disabled: always matches", func(t *testing.T) {
-		m := NewNamespaceMatcher(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS, false)
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns"}}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("always-managed namespace: matches regardless of labels", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testOperatorNS}}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("labels satisfy the selector: matches", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-ns", Labels: map[string]string{"env": "prod"}}}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("labels do not satisfy the selector: does not match", func(t *testing.T) {
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}}
 		assert.False(t, m.NamespaceMatches(ns))
 	})
@@ -129,7 +129,7 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 	sel := mustSelector(t, map[string]string{"env": "prod"})
 
 	t.Run("selector disabled: no namespaces, cache not consulted", func(t *testing.T) {
-		m := NewNamespaceMatcher(nil, testOperatorNS)
+		m := NewNamespaceMatcher(nil, testOperatorNS, false)
 		m.SetCache(cachemock.NewCache(t)) // no expectations set: a List call would fail the test
 		names, err := m.MatchingNamespaces(t.Context())
 		require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnListSetNamespaceList().Return(listErr)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespaces(t.Context())
 		require.ErrorIs(t, err, listErr)
@@ -156,7 +156,7 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testOperatorNS}},
 		).Return(nil)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespaces(t.Context())
 		require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}},
 		).Return(nil)
 
-		m := NewNamespaceMatcher(sel, testOperatorNS)
+		m := NewNamespaceMatcher(sel, testOperatorNS, false)
 		m.SetCache(mc)
 		names, err := m.MatchingNamespaces(t.Context())
 		require.NoError(t, err)

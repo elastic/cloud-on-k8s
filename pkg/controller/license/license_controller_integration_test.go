@@ -46,7 +46,7 @@ func TestReconcile(t *testing.T) {
 		r := &ReconcileLicenses{
 			Client: mgr.GetClient(),
 			Parameters: operator.Parameters{
-				NamespaceMatcher: nsmatch.NewNamespaceMatcher(nil, "elastic-system"),
+				NamespaceMatcher: nsmatch.NewNamespaceMatcher(nil, "elastic-system", false),
 			},
 			checker: license.MockLicenseChecker{EnterpriseEnabled: true},
 		}

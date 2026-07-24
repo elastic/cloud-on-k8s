@@ -68,6 +68,10 @@ data:
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
     {{- end }}
+    {{- if .Values.probes.enable }}
+    probes-port: :{{ .Values.probes.port }}
+    {{- end }}
+    enable-probes: {{ .Values.probes.enable }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
     {{- end }}

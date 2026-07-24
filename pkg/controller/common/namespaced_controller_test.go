@@ -83,7 +83,7 @@ func testMatcher(t *testing.T, matched ...string) *nsmatch.NamespaceMatcher {
 		Return(nil).
 		Maybe()
 
-	m := nsmatch.NewNamespaceMatcher(sel, testOperatorNS)
+	m := nsmatch.NewNamespaceMatcher(sel, testOperatorNS, false)
 	m.SetCache(mc)
 	return m
 }
@@ -206,7 +206,7 @@ func Test_namespacedReconcilerWrapper_Reconcile_cacheError(t *testing.T) {
 	mc := cachemock.NewCache(t)
 	mc.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("cache error"))
 
-	matcher := nsmatch.NewNamespaceMatcher(sel, testOperatorNS)
+	matcher := nsmatch.NewNamespaceMatcher(sel, testOperatorNS, false)
 	matcher.SetCache(mc)
 
 	inner := &fakeNamespacedReconciler{}
