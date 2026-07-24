@@ -9,10 +9,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
 	"path"
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -23,6 +25,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -2120,4 +2123,52 @@ func generateBuilder() *defaults.PodTemplateBuilder {
 func generatePodSpec(f func(spec corev1.PodSpec) corev1.PodSpec) corev1.PodSpec {
 	builder := generateBuilder()
 	return f(builder.PodTemplate.Spec)
+}
+
+func TestBuildPodTemplate_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-agent",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:   "8.0.0",
+			DaemonSet: &agentv1alpha1.DaemonSetSpec{},
+		},
+	}
+	configSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ConfigSecretName(agent.Name),
+			Namespace: agent.Namespace,
+		},
+	}
+	params := Params{
+		Context:      context.Background(),
+		Client:       k8s.NewFakeClient(&configSecret),
+		Agent:        agent,
+		AgentVersion: version.MustParse(agent.Spec.Version),
+		OperatorParams: operator.Parameters{
+			OperatorImage: operatorImage,
+		},
+	}
+
+	got, err := buildPodTemplate(params, nil, EnrollmentAPIKey{}, fnv.New32a(), "", false)
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
 }

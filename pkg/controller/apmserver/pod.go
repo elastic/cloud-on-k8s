@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -95,6 +96,7 @@ type PodSpecParams struct {
 	TokenSecret  corev1.Secret
 	ConfigSecret corev1.Secret
 
+	OperatorImage     string
 	keystoreResources *keystore.Resources
 }
 
@@ -160,6 +162,11 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 		return corev1.PodTemplateSpec{}, err
 	}
 	builder = withHTTPCertsVolume(builder, *as)
+
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, as, p.OperatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
 
 	if setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{

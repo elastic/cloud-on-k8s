@@ -663,3 +663,45 @@ func Test_runningAsRoot(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildPodTemplate_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	beat := beatv1beta1.Beat{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-beat",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: beatv1beta1.BeatSpec{
+			Type:       "filebeat",
+			Version:    "8.0.0",
+			Deployment: &beatv1beta1.DeploymentSpec{},
+		},
+	}
+	params := DriverParams{
+		Context:       context.Background(),
+		Client:        k8s.NewFakeClient(),
+		Watches:       watches.NewDynamicWatches(),
+		Beat:          beat,
+		OperatorImage: operatorImage,
+	}
+	meta := metadata.Propagate(&params.Beat, metadata.Metadata{Labels: params.Beat.GetIdentityLabels()})
+
+	got, err := buildPodTemplate(params, "beats/filebeat", newHash("test"), meta)
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
+}

@@ -71,6 +71,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
@@ -82,7 +83,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
-	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/license"
@@ -253,7 +253,12 @@ func Command() *cobra.Command {
 	cmd.Flags().StringSlice(
 		operator.ExposedNodeLabels,
 		[]string{},
-		"Comma separated list of node labels which are allowed to be copied as annotations on Elasticsearch Pods, empty by default",
+		"Comma separated list of node labels which are allowed to be copied as annotations on Pods (supported for Elasticsearch, Kibana, APM Server, Logstash, Beats, Agent, Elastic Maps Server, and Package Registry), empty by default",
+	)
+	cmd.Flags().String(
+		operator.OperatorImageFlag,
+		"",
+		"Operator container image used by the wait-for-annotations init container; falls back to the OPERATOR_IMAGE environment variable when empty",
 	)
 	cmd.Flags().Int(
 		operator.PasswordHashCacheSize,
@@ -736,9 +741,19 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
+	operatorImage := viper.GetString(operator.OperatorImageFlag)
+	if operatorImage == "" {
+		if img, imgErr := about.GetOperatorImageFromEnv(); imgErr != nil {
+			log.Info("Unable to auto-detect operator image; the wait-for-annotations init container will not be used "+
+				"unless --operator-image is set", "error", imgErr)
+		} else {
+			operatorImage = img
+		}
+	}
+
 	log.Info("Setting up controllers")
 
-	exposedNodeLabels, err := esvalidation.NewExposedNodeLabels(viper.GetStringSlice(operator.ExposedNodeLabels))
+	exposedNodeLabels, err := commonnodelabels.NewExposedNodeLabels(viper.GetStringSlice(operator.ExposedNodeLabels))
 	if err != nil {
 		log.Error(err, "Failed to parse exposed node labels")
 		return err
@@ -776,6 +791,7 @@ func startOperator(ctx context.Context) error {
 		ElasticsearchObservationInterval: viper.GetDuration(operator.ElasticsearchObservationIntervalFlag),
 		ExposedNodeLabels:                exposedNodeLabels,
 		IPFamily:                         ipFamily,
+		OperatorImage:                    operatorImage,
 		OperatorNamespace:                operatorNamespace,
 		OperatorInfo:                     operatorInfo,
 		GlobalCA:                         ca,

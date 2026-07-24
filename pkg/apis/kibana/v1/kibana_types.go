@@ -150,6 +150,12 @@ func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Kibana Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (k *Kibana) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(k.Annotations)
+}
+
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
 	return k.Spec.SecureSettings
 }

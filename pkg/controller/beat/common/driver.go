@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -40,8 +41,9 @@ type DriverParams struct {
 	EventRecorder toolsevents.EventRecorder
 	Watches       watches.DynamicWatches
 
-	Status *beatv1beta1.BeatStatus
-	Beat   beatv1beta1.Beat
+	Status        *beatv1beta1.BeatStatus
+	Beat          beatv1beta1.Beat
+	OperatorImage string
 }
 
 func (dp DriverParams) K8sClient() k8s.Client {
@@ -114,5 +116,10 @@ func Reconcile(
 	var reconcileResults *reconciler.Results
 	reconcileResults, params.Status = reconcilePodVehicle(podTemplate, params, meta)
 	results.WithResults(reconcileResults)
+
+	// Patch the Pods to add the expected node labels as annotations. Record the error, if any, but do not stop the
+	// reconciliation loop as we don't want to prevent other updates from being applied.
+	results.WithResults(commonnodelabels.AnnotatePods(params.Context, params.Client, &params.Beat))
+
 	return results, params.Status
 }

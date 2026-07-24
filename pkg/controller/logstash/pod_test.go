@@ -413,3 +413,47 @@ func GetDefaultAPIServer() configs.APIServer {
 		Password:         "",
 	}
 }
+
+func TestBuildPodTemplate_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	ls := logstashv1alpha1.Logstash{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ls",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: logstashv1alpha1.LogstashSpec{Version: "8.0.0"},
+	}
+	httpCertsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ls-ls-http-certs-internal",
+			Namespace: "default",
+		},
+	}
+	params := Params{
+		Context:  context.Background(),
+		Client:   k8s.NewFakeClient(&httpCertsSecret),
+		Logstash: ls,
+		OperatorParams: operator.Parameters{
+			OperatorImage: operatorImage,
+		},
+	}
+
+	got, err := buildPodTemplate(params, fnv.New32a())
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
+}

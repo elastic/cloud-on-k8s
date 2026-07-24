@@ -257,6 +257,21 @@ tests:
         equal:
           path: spec.template.spec.containers[0].env[2].value
           value: my-webhook-server-cert
+  - it: OPERATOR_IMAGE env var should be set to the operator image reference
+    # env[2] is OPERATOR_IMAGE when webhook.enabled=false and no extra env/tracing:
+    # env[0]=OPERATOR_NAMESPACE, env[1]=POD_IP, env[2]=OPERATOR_IMAGE
+    set:
+      image.tag: "3.5.0"
+      webhook.enabled: false
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[2].name
+          value: OPERATOR_IMAGE
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[2].value
+          value: "docker.elastic.co/eck/eck-operator:3.5.0"
   - it: should set dnsPolicy to ClusterFirstWithHostNet when hostNetwork is enabled
     set:
       hostNetwork: true

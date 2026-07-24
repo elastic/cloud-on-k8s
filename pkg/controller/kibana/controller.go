@@ -217,7 +217,7 @@ func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := kbv1.Validate(kb, nil)
+	warnings, err := validateKibana(kb, nil, r.params.ExposedNodeLabels)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, err.Error())

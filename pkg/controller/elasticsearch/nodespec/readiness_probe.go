@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
@@ -61,7 +62,7 @@ function fail {
   exit 1
 }
 
-labels="` + volume.DownwardAPIMountPath + "/" + volume.LabelsFile + `"
+labels="` + commonvolume.DownwardAPIMountPath + "/" + commonvolume.LabelsFile + `"
 
 version=""
 if [[ -f "${labels}" ]]; then

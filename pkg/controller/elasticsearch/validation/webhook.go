@@ -15,6 +15,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -30,7 +31,7 @@ const (
 var eslog = ulog.Log.WithName("es-validation")
 
 // RegisterWebhook registers the Elasticsearch validating webhook.
-func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels NodeLabels, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
+func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLabels commonnodelabels.NodeLabels, licenseChecker license.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
 	inner := &validator{
 		client:               mgr.GetClient(),
 		validateStorageClass: validateStorageClass,
@@ -48,7 +49,7 @@ func RegisterWebhook(mgr ctrl.Manager, validateStorageClass bool, exposedNodeLab
 type validator struct {
 	client               k8s.Client
 	validateStorageClass bool
-	exposedNodeLabels    NodeLabels
+	exposedNodeLabels    commonnodelabels.NodeLabels
 	licenseChecker       license.Checker
 }
 
@@ -85,7 +86,7 @@ func (v *validator) ValidateDelete(_ context.Context, _ *esv1.Elasticsearch) (ad
 }
 
 // ValidateElasticsearch validates an Elasticsearch instance against a set of validation funcs returning warnings and an error if validation fails.
-func ValidateElasticsearch(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels NodeLabels) (admission.Warnings, error) {
+func ValidateElasticsearch(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, checker license.Checker, exposedNodeLabels commonnodelabels.NodeLabels) (admission.Warnings, error) {
 	if err := runChecks(es, validations(ctx, checker, exposedNodeLabels)); err != nil {
 		return nil, err
 	}

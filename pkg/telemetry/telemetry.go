@@ -30,6 +30,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -138,6 +139,7 @@ func (r *Reporter) getResourceStats(ctx context.Context, namespaces []string) (m
 		entStats,
 		agentStats,
 		mapsStats,
+		eprStats,
 		scpStats,
 		logstashStats,
 		aopStats,
@@ -321,14 +323,22 @@ func isManagedByHelm(labels map[string]string) bool {
 			strings.HasPrefix(val, "eck-enterprise-search-") ||
 			strings.HasPrefix(val, "eck-fleet-server-") ||
 			strings.HasPrefix(val, "eck-kibana-") ||
-			strings.HasPrefix(val, "eck-logstash-")
+			strings.HasPrefix(val, "eck-logstash-") ||
+			strings.HasPrefix(val, "eck-package-registry-")
 	}
 
 	return false
 }
 
 func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0, helmManagedResourceCount: 0}
+	stats := struct {
+		HelmManagedResourceCount int32                    `json:"helm_resource_count"`
+		PodCount                 int32                    `json:"pod_count"`
+		ResourceCount            int32                    `json:"resource_count"`
+		DownwardNodeLabels       *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 
 	var kbList kbv1.KibanaList
 	for _, ns := range managedNamespaces {
@@ -337,23 +347,35 @@ func kbStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 		}
 
 		for _, kb := range kbList.Items {
-			stats[resourceCount]++
-			stats[podCount] += kb.Status.AvailableNodes
-
+			stats.ResourceCount++
+			stats.PodCount += kb.Status.AvailableNodes
 			if isManagedByHelm(kb.Labels) {
-				stats[helmManagedResourceCount]++
+				stats.HelmManagedResourceCount++
 			}
+			if labels := kb.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 		}
 	}
 	return "kibanas", stats, nil
 }
 
 func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
-	stats := map[string]int32{
-		resourceCount:            0,
-		podCount:                 0,
-		helmManagedResourceCount: 0,
-	}
+	stats := struct {
+		HelmManagedResourceCount int32                    `json:"helm_resource_count"`
+		PodCount                 int32                    `json:"pod_count"`
+		ResourceCount            int32                    `json:"resource_count"`
+		DownwardNodeLabels       *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
@@ -362,11 +384,21 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 		}
 
 		for _, apm := range apmList.Items {
-			stats[resourceCount]++
-			stats[podCount] += apm.Status.AvailableNodes
+			stats.ResourceCount++
+			stats.PodCount += apm.Status.AvailableNodes
 			if isManagedByHelm(apm.Labels) {
-				stats[helmManagedResourceCount]++
+				stats.HelmManagedResourceCount++
 			}
+			if labels := apm.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 		}
 	}
 	return "apms", stats, nil
@@ -384,7 +416,10 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 		stats[typeToName(typ)] = 0
 	}
 
+	var resourcesWithDownwardLabels int32
 	var beatList beatv1beta1.BeatList
+	distinctNodeLabels := set.Make()
+
 	for _, ns := range managedNamespaces {
 		if err := k8sClient.List(context.Background(), &beatList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
@@ -397,10 +432,27 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 			if isManagedByHelm(beat.Labels) {
 				stats[helmManagedResourceCount]++
 			}
+			if labels := beat.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
 		}
 	}
 
-	return "beats", stats, nil
+	if resourcesWithDownwardLabels == 0 {
+		return "beats", stats, nil
+	}
+
+	ret := make(map[string]any, len(stats)+1)
+	for k, v := range stats {
+		ret[k] = v
+	}
+	ret["downward_node_labels"] = map[string]any{
+		"resource_count":             resourcesWithDownwardLabels,
+		"distinct_node_labels_count": distinctNodeLabels.Count(),
+	}
+
+	return "beats", ret, nil
 }
 
 func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
@@ -428,15 +480,17 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 }
 
 func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
-	multipleRefsKey := "multiple_refs"
-	fleetModeKey := "fleet_mode"
-	fleetServerKey := "fleet_server"
-	stats := map[string]int32{
-		resourceCount:            0,
-		podCount:                 0,
-		multipleRefsKey:          0,
-		helmManagedResourceCount: 0,
-	}
+	stats := struct {
+		FleetMode                int32                    `json:"fleet_mode,omitempty"`
+		FleetServer              int32                    `json:"fleet_server,omitempty"`
+		HelmManagedResourceCount int32                    `json:"helm_resource_count"`
+		MultipleRefs             int32                    `json:"multiple_refs"`
+		PodCount                 int32                    `json:"pod_count"`
+		ResourceCount            int32                    `json:"resource_count"`
+		DownwardNodeLabels       *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 
 	var agentList agentv1alpha1.AgentList
 	for _, ns := range managedNamespaces {
@@ -445,43 +499,49 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, 
 		}
 
 		for _, agent := range agentList.Items {
-			stats[resourceCount]++
-			stats[podCount] += agent.Status.AvailableNodes
+			stats.ResourceCount++
+			stats.PodCount += agent.Status.AvailableNodes
 			if len(agent.Spec.ElasticsearchRefs) > 1 {
-				stats[multipleRefsKey]++
+				stats.MultipleRefs++
 			}
 			if agent.Spec.FleetModeEnabled() {
-				stats[fleetModeKey]++
+				stats.FleetMode++
 			}
 			if agent.Spec.FleetServerEnabled {
-				stats[fleetServerKey]++
+				stats.FleetServer++
 			}
 			if isManagedByHelm(agent.Labels) {
-				stats[helmManagedResourceCount]++
+				stats.HelmManagedResourceCount++
 			}
+			if labels := agent.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 		}
 	}
 	return "agents", stats, nil
 }
 
 func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
-	const (
-		pipelineCount               = "pipeline_count"
-		pipelineRefCount            = "pipeline_ref_count"
-		serviceCount                = "service_count"
-		stackMonitoringLogsCount    = "stack_monitoring_logs_count"
-		stackMonitoringMetricsCount = "stack_monitoring_metrics_count"
-	)
-	stats := map[string]int32{
-		resourceCount:               0,
-		podCount:                    0,
-		stackMonitoringLogsCount:    0,
-		stackMonitoringMetricsCount: 0,
-		serviceCount:                0,
-		pipelineCount:               0,
-		pipelineRefCount:            0,
-		helmManagedResourceCount:    0,
-	}
+	stats := struct {
+		HelmManagedResourceCount    int32                    `json:"helm_resource_count"`
+		PipelineCount               int32                    `json:"pipeline_count"`
+		PipelineRefCount            int32                    `json:"pipeline_ref_count"`
+		PodCount                    int32                    `json:"pod_count"`
+		ResourceCount               int32                    `json:"resource_count"`
+		ServiceCount                int32                    `json:"service_count"`
+		StackMonitoringLogsCount    int32                    `json:"stack_monitoring_logs_count"`
+		StackMonitoringMetricsCount int32                    `json:"stack_monitoring_metrics_count"`
+		DownwardNodeLabels          *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 
 	var logstashList logstashv1alpha1.LogstashList
 	for _, ns := range managedNamespaces {
@@ -490,29 +550,45 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 		}
 
 		for _, ls := range logstashList.Items {
-			stats[resourceCount]++
-			stats[serviceCount] += int32(len(ls.Spec.Services)) //nolint:gosec // G115: service count cannot realistically overflow int32
-			stats[podCount] += ls.Status.AvailableNodes
-			stats[pipelineCount] += int32(len(ls.Spec.Pipelines)) //nolint:gosec // G115: pipeline count cannot realistically overflow int32
+			stats.ResourceCount++
+			stats.ServiceCount += int32(len(ls.Spec.Services)) //nolint:gosec // G115
+			stats.PodCount += ls.Status.AvailableNodes
+			stats.PipelineCount += int32(len(ls.Spec.Pipelines)) //nolint:gosec // G115
 			if ls.Spec.PipelinesRef != nil {
-				stats[pipelineRefCount]++
+				stats.PipelineRefCount++
 			}
 			if monitoring.IsLogsDefined(&ls) {
-				stats[stackMonitoringLogsCount]++
+				stats.StackMonitoringLogsCount++
 			}
 			if monitoring.IsMetricsDefined(&ls) {
-				stats[stackMonitoringMetricsCount]++
+				stats.StackMonitoringMetricsCount++
 			}
 			if isManagedByHelm(ls.Labels) {
-				stats[helmManagedResourceCount]++
+				stats.HelmManagedResourceCount++
 			}
+			if labels := ls.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 		}
 	}
 	return "logstashes", stats, nil
 }
 
 func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
-	stats := map[string]int32{resourceCount: 0, podCount: 0}
+	stats := struct {
+		PodCount           int32                    `json:"pod_count"`
+		ResourceCount      int32                    `json:"resource_count"`
+		DownwardNodeLabels *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
 
 	var mapsList mapsv1alpha1.ElasticMapsServerList
 	for _, ns := range managedNamespaces {
@@ -521,11 +597,58 @@ func mapsStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 		}
 
 		for _, maps := range mapsList.Items {
-			stats[resourceCount]++
-			stats[podCount] += maps.Status.AvailableNodes
+			stats.ResourceCount++
+			stats.PodCount += maps.Status.AvailableNodes
+			if labels := maps.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 		}
 	}
 	return "maps", stats, nil
+}
+
+func eprStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, error) {
+	stats := struct {
+		HelmManagedResourceCount int32                    `json:"helm_resource_count"`
+		PodCount                 int32                    `json:"pod_count"`
+		ResourceCount            int32                    `json:"resource_count"`
+		DownwardNodeLabels       *downwardNodeLabelsStats `json:"downward_node_labels,omitempty"`
+	}{}
+	distinctNodeLabels := set.Make()
+	var resourcesWithDownwardLabels int32
+
+	var eprList eprv1alpha1.PackageRegistryList
+	for _, ns := range managedNamespaces {
+		if err := k8sClient.List(context.Background(), &eprList, client.InNamespace(ns)); err != nil {
+			return "", nil, err
+		}
+
+		for _, epr := range eprList.Items {
+			stats.ResourceCount++
+			stats.PodCount += epr.Status.AvailableNodes
+			if isManagedByHelm(epr.Labels) {
+				stats.HelmManagedResourceCount++
+			}
+			if labels := epr.DownwardNodeLabels(); len(labels) > 0 {
+				resourcesWithDownwardLabels++
+				distinctNodeLabels.MergeWith(set.Make(labels...))
+			}
+		}
+	}
+	if resourcesWithDownwardLabels > 0 {
+		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
+			ResourceCount:           resourcesWithDownwardLabels,
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
+		}
+	}
+	return "packageregistries", stats, nil
 }
 
 // stackConfigPolicyStats models StackConfigPolicy resources usage statistics.
