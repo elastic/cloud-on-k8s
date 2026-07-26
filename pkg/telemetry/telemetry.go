@@ -99,8 +99,14 @@ type Reporter struct {
 func (r *Reporter) Start(ctx context.Context) {
 	ctx = ulog.InitInContext(ctx, "telemetry")
 	ticker := time.NewTicker(r.telemetryInterval)
-	for range ticker.C {
-		r.report(ctx)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			r.report(ctx)
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

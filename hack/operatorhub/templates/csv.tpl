@@ -369,9 +369,33 @@ spec:
                     cpu: 100m
                     memory: 150Mi
                 ports:
+                - containerPort: 8081
+                  name: health-probe
+                  protocol: TCP
                 - containerPort: 9443
                   name: https-webhook
                   protocol: TCP
+                startupProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  failureThreshold: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  failureThreshold: 3
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  failureThreshold: 3
+                  periodSeconds: 20
+                  timeoutSeconds: 3
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:

@@ -299,3 +299,125 @@ tests:
         equal:
           path: spec.template.spec.dnsConfig.nameservers
           value: "1.2.3.4"
+  - it: should render probes with default values when probes are enabled
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            httpGet:
+              path: /readyz
+              port: 8081
+            failureThreshold: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /readyz
+              port: 8081
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /healthz
+              port: 8081
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 3
+      - template: statefulset.yaml
+        contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8081
+            name: health-probe
+            protocol: TCP
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "enable-probes: true"
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "probes-port: :8081"
+  - it: should omit probes when probes.enable is false
+    set:
+      probes.enable: false
+    asserts:
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].startupProbe
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "enable-probes: false"
+      - template: configmap.yaml
+        notMatchRegex:
+          path: data["eck.yaml"]
+          pattern: "probes-port:"
+  - it: should use custom probe tuning values
+    set:
+      probes.port: 9090
+      probes.startup.failureThreshold: 60
+      probes.startup.periodSeconds: 5
+      probes.startup.timeoutSeconds: 2
+      probes.readiness.periodSeconds: 15
+      probes.readiness.failureThreshold: 5
+      probes.readiness.timeoutSeconds: 5
+      probes.liveness.periodSeconds: 30
+      probes.liveness.failureThreshold: 6
+      probes.liveness.timeoutSeconds: 4
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            httpGet:
+              path: /readyz
+              port: 9090
+            failureThreshold: 60
+            periodSeconds: 5
+            timeoutSeconds: 2
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /readyz
+              port: 9090
+            periodSeconds: 15
+            failureThreshold: 5
+            timeoutSeconds: 5
+      - template: statefulset.yaml
+        equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /healthz
+              port: 9090
+            periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 4
+      - template: statefulset.yaml
+        contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 9090
+            name: health-probe
+            protocol: TCP
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "probes-port: :9090"
