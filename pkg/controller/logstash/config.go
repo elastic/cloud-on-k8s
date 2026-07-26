@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
@@ -89,6 +90,11 @@ func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) 
 		return nil, err
 	}
 
+	v, err := version.Parse(params.Logstash.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := defaultConfig()
 	tls := tlsConfig(useTLS)
 
@@ -97,7 +103,36 @@ func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) 
 		return nil, err
 	}
 
+	if shouldInjectSSLReload(v, cfg) {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"ssl.reload.automatic": true,
+		})); err != nil {
+			return nil, err
+		}
+	}
+
 	return cfg, nil
+}
+
+// shouldInjectSSLReload reports whether ECK should add ssl.reload.automatic: true to the
+// generated logstash.yml (elastic/logstash#18978). It returns true when all of the
+// following hold:
+//   - Logstash >= 9.5.0 (the version that introduced the setting).
+//   - The user has not already set ssl.reload.automatic; an explicit value takes precedence.
+//   - Injection is safe: config.reload.automatic is literally "true", or
+//     xpack.management.enabled is literally "true" (CPM mode permits ssl reload regardless
+//     of config.reload.automatic). Unresolvable env-var references are skipped.
+func shouldInjectSSLReload(v version.Version, cfg *settings.CanonicalConfig) bool {
+	if !v.GTE(logstashv1alpha1.MinSSLReloadVersion) {
+		return false
+	}
+	sslReload, _ := cfg.String("ssl.reload.automatic")
+	if sslReload != "" {
+		return false
+	}
+	configReload, _ := cfg.String("config.reload.automatic")
+	xpackMgmt, _ := cfg.String("xpack.management.enabled")
+	return configReload == "true" || xpackMgmt == "true"
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
@@ -110,14 +145,14 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 }
 
 func defaultConfig() *settings.CanonicalConfig {
-	settingsMap := map[string]any{
+	// ssl.reload.automatic is added post-merge in buildConfig, after the effective
+	// value of config.reload.automatic is known (so env-var references are visible).
+	return settings.MustCanonicalConfig(map[string]any{
 		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
-		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default
+		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default.
 		"config.reload.automatic": true,
-	}
-
-	return settings.MustCanonicalConfig(settingsMap)
+	})
 }
 
 func tlsConfig(useTLS bool) *settings.CanonicalConfig {

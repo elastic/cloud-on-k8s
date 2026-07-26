@@ -37,7 +37,7 @@ func Test_newConfig(t *testing.T) {
 			name: "no user config",
 			args: args{
 				runtimeObjs: nil,
-				logstash:    v1alpha1.Logstash{},
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.4.0"}},
 			},
 			want: `api:
     http:
@@ -54,14 +54,184 @@ config:
 			wantErr: false,
 		},
 		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0-SNAPSHOT",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0-SNAPSHOT"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user sets config.reload.automatic=false",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when config.reload.automatic is an env-var reference",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": "${CONFIG_RELOAD_AUTOMATIC:false}",
+						}},
+					},
+				},
+			},
+			// ECK cannot resolve env-var references; to avoid a Logstash BootstrapCheckError
+			// we leave ssl.reload.automatic unset rather than risking the fatal combination.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: ${CONFIG_RELOAD_AUTOMATIC:false}
+`,
+			wantErr: false,
+		},
+		{
+			name: "explicit user ssl.reload.automatic=false is preserved",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic set when xpack.management.enabled=true even if config.reload.automatic=false",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic":  false,
+							"xpack.management.enabled": true,
+						}},
+					},
+				},
+			},
+			// In CPM mode Logstash allows ssl.reload.automatic=true regardless of config.reload.automatic.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+ssl:
+    reload:
+        automatic: true
+xpack:
+    management:
+        enabled: true
+`,
+			wantErr: false,
+		},
+		{
 			name: "inline user config",
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
-					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]any{
-						"log.level":                 "debug",
-						"api.ssl.keystore.password": "Str0ngP@ssw0rd",
-					}}},
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"log.level":                 "debug",
+							"api.ssl.keystore.password": "Str0ngP@ssw0rd",
+						}},
+					},
 				},
 			},
 			want: `api:
@@ -84,7 +254,7 @@ log:
 			name: "with configRef",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
-				logstash:    logstashWithConfigRef("cfg", nil),
+				logstash:    logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -108,7 +278,7 @@ log:
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
 					"log.level": "warn",
-				}}),
+				}}, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -129,7 +299,7 @@ log:
 		{
 			name: "non existing configRef",
 			args: args{
-				logstash: logstashWithConfigRef("cfg", nil),
+				logstash: logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			wantErr: true,
 		},
@@ -139,6 +309,7 @@ log:
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
 						Config: &commonv1.Config{Data: map[string]any{
 							"api.ssl.enabled": "false",
 						}},
@@ -206,15 +377,17 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	}
 }
 
-func logstashWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.Logstash {
+func logstashWithConfigRef(name string, cfg *commonv1.Config, ver string) v1alpha1.Logstash {
 	return v1alpha1.Logstash{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ls",
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.LogstashSpec{
+			Version:   ver,
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}},
+		},
 	}
 }
 
@@ -347,7 +520,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]any{}},
+						Version: "9.4.0",
+						Config:  &commonv1.Config{Data: map[string]any{}},
 					},
 				},
 			},
@@ -366,7 +540,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -416,7 +591,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: secureSecretName,
@@ -459,7 +635,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -496,7 +673,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -533,7 +711,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{{Name: "logstash"}},

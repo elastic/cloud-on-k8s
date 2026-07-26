@@ -33,7 +33,7 @@ func GenerateSelfSignedClientCert(t *testing.T, cn string) (certPEM, keyPEM []by
 	require.NoError(t, err)
 	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 
-	certPEM = generateSelfSignedCert(t, cn, x509.ECDSAWithSHA256, privateKey)
+	certPEM = generateSelfSignedCert(t, cn, x509.ECDSAWithSHA256, privateKey, x509.ExtKeyUsageClientAuth)
 	return certPEM, keyPEM
 }
 
@@ -49,7 +49,7 @@ func GenerateSelfSignedClientCertPKCS8(t *testing.T, cn string) (certPEM, keyPEM
 	require.NoError(t, err)
 	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 
-	certPEM = generateSelfSignedCert(t, cn, x509.SHA256WithRSA, privateKey)
+	certPEM = generateSelfSignedCert(t, cn, x509.SHA256WithRSA, privateKey, x509.ExtKeyUsageClientAuth)
 	return certPEM, keyPEM
 }
 
@@ -64,8 +64,24 @@ func PKCS8KeyEndsWithWhitespaceByte(keyPEM []byte) (bool, error) {
 	return last == 0x00 || last == '\t' || last == '\n' || last == '\v' || last == '\f' || last == '\r' || last == ' ', nil
 }
 
-// generateSelfSignedCert creates a self-signed client certificate using the given key and signature algorithm.
-func generateSelfSignedCert(t *testing.T, cn string, sigAlg x509.SignatureAlgorithm, key crypto.Signer) []byte {
+// GenerateSelfSignedServerCert generates a self-signed server certificate using ECDSA
+// and returns PEM-encoded cert and key.
+func GenerateSelfSignedServerCert(t *testing.T, cn string) (certPEM, keyPEM []byte) {
+	t.Helper()
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
+	require.NoError(t, err)
+
+	keyDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	require.NoError(t, err)
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
+
+	certPEM = generateSelfSignedCert(t, cn, x509.ECDSAWithSHA256, privateKey, x509.ExtKeyUsageServerAuth)
+	return certPEM, keyPEM
+}
+
+// generateSelfSignedCert creates a self-signed certificate using the given key, signature algorithm, and extended key usages.
+func generateSelfSignedCert(t *testing.T, cn string, sigAlg x509.SignatureAlgorithm, key crypto.Signer, extKeyUsage ...x509.ExtKeyUsage) []byte {
 	t.Helper()
 
 	serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
@@ -80,7 +96,7 @@ func generateSelfSignedCert(t *testing.T, cn string, sigAlg x509.SignatureAlgori
 		NotBefore:          time.Now().Add(-10 * time.Minute),
 		NotAfter:           time.Now().Add(24 * time.Hour),
 		KeyUsage:           x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		ExtKeyUsage:        extKeyUsage,
 		SignatureAlgorithm: sigAlg,
 	}
 
