@@ -9,6 +9,58 @@ mapped_pages:
 
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.5.0 [elastic-cloud-kubernetes-350-release-notes]
+
+### Release Highlights
+
+TODO
+
+### Features and enhancements [elastic-cloud-kubernetes-340-features-and-enhancements]
+
+- TODO
+
+### Fixes [elastic-cloud-kubernetes-340-fixes]
+
+- TODO
+
+### Documentation improvements [elastic-cloud-kubernetes-340-documentation-improvements]
+
+- TODO
+
+:::{dropdown} Updated dependencies
+
+- Go 1.26.4 => 1.26.5
+- cloud.google.com/go/auth v0.20.0 => v0.22.0
+- cloud.google.com/go/storage v1.62.0 => v1.63.1
+- github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4 => v1.8.0
+- github.com/aws/aws-sdk-go-v2 v1.41.5 => v1.42.1
+- github.com/aws/aws-sdk-go-v2/credentials v1.19.14 => v1.19.29
+- github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0 => v1.105.1
+- github.com/gkampitakis/go-snaps v0.5.21 => v0.5.23
+- github.com/google/go-containerregistry v0.21.4 => v0.21.7
+- github.com/prometheus/common v0.67.5 => v0.70.0
+- go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.6 => v2.7.12
+- go.elastic.co/apm/module/apmhttp/v2 v2.7.6 => v2.7.12
+- go.elastic.co/apm/module/apmzap/v2 v2.7.6 => v2.7.12
+- go.elastic.co/apm/v2 v2.7.6 => v2.7.12
+- go.uber.org/zap v1.27.1 => v1.28.0
+- golang.org/x/crypto v0.53.0 => v0.54.0
+- golang.org/x/mod v0.36.0 => v0.37.0
+- golang.org/x/sync v0.21.0 => v0.22.0
+- golang.org/x/sys v0.46.0 => v0.47.0
+- golang.org/x/term v0.44.0 => v0.45.0
+- golang.org/x/text v0.38.0 => v0.40.0
+- golang.org/x/tools v0.45.0 => v0.47.0
+- google.golang.org/api v0.274.0 => v0.288.0
+- google.golang.org/grpc v1.81.1 => v1.82.0
+- k8s.io/api v0.35.3 => v0.36.2
+- k8s.io/apimachinery v0.35.3 => v0.36.2
+- k8s.io/client-go v0.35.3 => v0.36.2
+- sigs.k8s.io/controller-runtime v0.23.3 => v0.24.1
+- sigs.k8s.io/controller-tools v0.20.1 => v0.21.0
+
+:::
+
 ## 3.4.1 [elastic-cloud-kubernetes-341-release-notes]
 
 :::{dropdown} Updated dependencies
