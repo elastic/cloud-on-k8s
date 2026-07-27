@@ -93,7 +93,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.57.0 | Apache-2.0 |
 | [github.com/Masterminds/goutils](https://github.com/Masterminds/goutils) | v1.1.1 | Apache-2.0 |
 | [github.com/Masterminds/semver/v3](https://github.com/Masterminds/semver) | v3.4.0 | MIT |
-| [github.com/antlr4-go/antlr/v4](https://github.com/antlr4-go/antlr) | v4.13.0 | BSD-3-Clause |
+| [github.com/antlr4-go/antlr/v4](https://github.com/antlr4-go/antlr) | v4.13.1 | BSD-3-Clause |
 | [github.com/armon/go-radix](https://github.com/armon/go-radix) | v1.0.0 | MIT |
 | [github.com/armon/go-socks5](https://github.com/armon/go-socks5) | v0.0.0-20160902184237-e75332964ef5 | MIT |
 | [github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream](https://github.com/aws/aws-sdk-go-v2) | v1.7.14 | Apache-2.0 |
@@ -152,7 +152,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.19.2 | MIT |
 | [github.com/golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) | v5.3.1 | MIT |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
-| [github.com/google/cel-go](https://github.com/google/cel-go) | v0.26.0 | Apache-2.0 |
+| [github.com/google/cel-go](https://github.com/google/cel-go) | v0.29.0 | Apache-2.0 |
 | [github.com/google/gnostic-models](https://github.com/google/gnostic-models) | v0.7.1 | Apache-2.0 |
 | [github.com/google/gofuzz](https://github.com/google/gofuzz) | v1.2.0 | Apache-2.0 |
 | [github.com/google/martian/v3](https://github.com/google/martian) | v3.3.3 | Apache-2.0 |
@@ -212,7 +212,6 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/spf13/afero](https://github.com/spf13/afero) | v1.15.0 | Apache-2.0 |
 | [github.com/spf13/cast](https://github.com/spf13/cast) | v1.10.0 | MIT |
 | [github.com/spiffe/go-spiffe/v2](https://github.com/spiffe/go-spiffe) | v2.6.0 | Apache-2.0 |
-| [github.com/stoewer/go-strcase](https://github.com/stoewer/go-strcase) | v1.3.0 | MIT |
 | [github.com/stretchr/objx](https://github.com/stretchr/objx) | v0.5.2 | MIT |
 | [github.com/subosito/gotenv](https://github.com/subosito/gotenv) | v1.6.0 | MIT |
 | [github.com/tidwall/gjson](https://github.com/tidwall/gjson) | v1.19.0 | MIT |
