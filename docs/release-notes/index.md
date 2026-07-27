@@ -15,17 +15,65 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 TODO
 
-### Features and enhancements [elastic-cloud-kubernetes-340-features-and-enhancements]
+### Features and enhancements [elastic-cloud-kubernetes-350-features-and-enhancements]
 
-- TODO
+- Implement Logstash support for presenting client certificates to {{es}} [#9308](https://github.com/elastic/cloud-on-k8s/pull/9308)
+- Implement Beats support for presenting client certificates to {{es}} [#9306](https://github.com/elastic/cloud-on-k8s/pull/9306)
+- Implement Enterprise Search support for presenting client certificates to {{es}} [#9332](https://github.com/elastic/cloud-on-k8s/pull/9332)
+- Implement APM Server support for presenting client certificates to {{es}} [#9307](https://github.com/elastic/cloud-on-k8s/pull/9307)
+- Implement Elastic Maps Server support for presenting client certificates to {{es}} [#9331](https://github.com/elastic/cloud-on-k8s/pull/9331)
+- Implement ECK monitoring support for presenting client certificates to {{es}} [#9334](https://github.com/elastic/cloud-on-k8s/pull/9334)
+- Implement Fleet Server and Elastic Agent support for presenting client certificates to {{es}} [#9234](https://github.com/elastic/cloud-on-k8s/pull/9234)
+- Implement AutoOps agent support for presenting client certificates to {{es}} [#9333](https://github.com/elastic/cloud-on-k8s/pull/9333)
+- Present client certificate in legacy {{es}} readiness probe when client authentication is enabled [#9375](https://github.com/elastic/cloud-on-k8s/pull/9375)
+- Implement mTLS support for Fleet Server and Elastic Agent connections [#9399](https://github.com/elastic/cloud-on-k8s/pull/9399)
+- Version-gate Fleet Server mTLS support [#9486](https://github.com/elastic/cloud-on-k8s/pull/9486)
+- Add `pause-orchestration` annotation support for {{es}} [#9330](https://github.com/elastic/cloud-on-k8s/pull/9330)
+- Update `annotator.sh` script for the `eck.k8s.elastic.co/pause-orchestration` annotation [#9354](https://github.com/elastic/cloud-on-k8s/pull/9354)
+- Add `pause-orchestration` annotation support for stateless resources, Elastic Agent, and Beats [#9417](https://github.com/elastic/cloud-on-k8s/pull/9417)
+- Add webhook validation for the `pause-orchestration` annotation [#9474](https://github.com/elastic/cloud-on-k8s/pull/9474)
+- Add `pause-orchestration` annotation support for Logstash [#9484](https://github.com/elastic/cloud-on-k8s/pull/9484)
+- Add `pause-orchestration` annotation support for AutoOps [#9477](https://github.com/elastic/cloud-on-k8s/pull/9477)
+- Reduce operator memory footprint by configuring cache to only watch ECK-labelled resources [#9339](https://github.com/elastic/cloud-on-k8s/pull/9339)
+- Introduce `--label-based-discovery` flag to narrow cache for Secrets, Services, and ConfigMaps [#9359](https://github.com/elastic/cloud-on-k8s/pull/9359)
+- Add secure file settings support for stateless {{es}} [#9309](https://github.com/elastic/cloud-on-k8s/pull/9309)
+- Simplified container resources spec for all ECK CRDs [#9346](https://github.com/elastic/cloud-on-k8s/pull/9346)
+- Add logs-elastic* index privileges to stack monitoring role [#9353](https://github.com/elastic/cloud-on-k8s/pull/9353)
+- [AutoOps] Add `sending_queue` configuration to configmap [#9391](https://github.com/elastic/cloud-on-k8s/pull/9391)
+- Allow overriding AutoOps agent collector configuration via `spec.config`/`spec.configRef` [#9507](https://github.com/elastic/cloud-on-k8s/pull/9507)
+- Add support for {{product.kibana}} Spaces in Fleet integration policies [#9410](https://github.com/elastic/cloud-on-k8s/pull/9410)
+- Publish `olm.skipRange` to support sparse and air-gapped OLM catalogs [#9451](https://github.com/elastic/cloud-on-k8s/pull/9451)
+- Support {{es}} role definitions in StackConfigPolicy [#9442](https://github.com/elastic/cloud-on-k8s/pull/9442)
+- Introduce dynamic substitution variables for StackConfigPolicy [#9541](https://github.com/elastic/cloud-on-k8s/pull/9541)
+- Validate secure settings sources against active StackConfigPolicies [#9593](https://github.com/elastic/cloud-on-k8s/pull/9593)
+- {{product.kibana}} readiness probes use status API [#9468](https://github.com/elastic/cloud-on-k8s/pull/9468)
+- Add map support for `extraObjects` in Helm charts [#9478](https://github.com/elastic/cloud-on-k8s/pull/9478)
+- Opt-in support for file-based cluster settings enabling hot-reload of secure settings without pod restarts [#9458](https://github.com/elastic/cloud-on-k8s/pull/9458)
+- Switch to Go native FIPS with a static binary [#9538](https://github.com/elastic/cloud-on-k8s/pull/9538)
+- Dynamic namespaces: label-selector-based namespace scoping (Enterprise feature) [#9569](https://github.com/elastic/cloud-on-k8s/pull/9569)
+- Relax custom CA secret parsing to support cert-manager secrets [#9574](https://github.com/elastic/cloud-on-k8s/pull/9574)
+- Batch {{es}} keystore add-file invocations [#9440](https://github.com/elastic/cloud-on-k8s/pull/9440)
+- Move Condition types from `common/v1alpha1` to `common/v1` [#9408](https://github.com/elastic/cloud-on-k8s/pull/9408)
+- Bump minimum supported OpenShift version to v4.14 [#9423](https://github.com/elastic/cloud-on-k8s/pull/9423)
 
-### Fixes [elastic-cloud-kubernetes-340-fixes]
+### Fixes [elastic-cloud-kubernetes-350-fixes]
 
-- TODO
+- Fix `expectDesiredNodesAPI` to also check `nodeSet.Resources` shorthand [#9402](https://github.com/elastic/cloud-on-k8s/pull/9402)
+- Fix secure settings annotation lost on file-settings Secret re-save [#9422](https://github.com/elastic/cloud-on-k8s/pull/9422)
+- Fix dynamic watch leak on AutoOps resource selector change [#9434](https://github.com/elastic/cloud-on-k8s/pull/9434)
+- Fix unexpected pod restarts by scoping template hash computation to Spec [#9437](https://github.com/elastic/cloud-on-k8s/pull/9437)
+- AutoOps: prefer `ca.crt` over `tls.crt` for {{es}} TLS verification [#9463](https://github.com/elastic/cloud-on-k8s/pull/9463)
+- Fix Logstash ignoring `set-default-security-context` operator flag [#9551](https://github.com/elastic/cloud-on-k8s/pull/9551)
+- Clean up service-account-token secrets on association Unbind [#9562](https://github.com/elastic/cloud-on-k8s/pull/9562)
+- Verify owner references when building client cert trust bundle [#9561](https://github.com/elastic/cloud-on-k8s/pull/9561)
+- Add missing RBAC for Kubernetes metricsets in agent ClusterRoles [#9612](https://github.com/elastic/cloud-on-k8s/pull/9612)
+- Store `FLEET_SERVER_SERVICE_TOKEN` in Secret instead of plaintext pod env var [#9626](https://github.com/elastic/cloud-on-k8s/pull/9626)
+- Gate Fleet Server minimum version to 8.13.0 for {{es}} mTLS support [#9598](https://github.com/elastic/cloud-on-k8s/pull/9598)
 
-### Documentation improvements [elastic-cloud-kubernetes-340-documentation-improvements]
+### Documentation improvements [elastic-cloud-kubernetes-350-documentation-improvements]
 
-- TODO
+- Add auto section contents to reference sections, add redirect from old API page [#9426](https://github.com/elastic/cloud-on-k8s/pull/9426)
+- Fix the documentation link on OperatorHub [#9420](https://github.com/elastic/cloud-on-k8s/pull/9420)
 
 :::{dropdown} Updated dependencies
 
