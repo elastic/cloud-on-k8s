@@ -55,7 +55,6 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Implement ECK monitoring support for presenting client certificates to {{es}} [#9334](https://github.com/elastic/cloud-on-k8s/pull/9334)
 - Implement Fleet Server and Elastic Agent support for presenting client certificates to {{es}} [#9234](https://github.com/elastic/cloud-on-k8s/pull/9234)
 - Implement AutoOps agent support for presenting client certificates to {{es}} [#9333](https://github.com/elastic/cloud-on-k8s/pull/9333)
-- Present client certificate in legacy {{es}} readiness probe when client authentication is enabled [#9375](https://github.com/elastic/cloud-on-k8s/pull/9375)
 - Implement mTLS support for Fleet Server and Elastic Agent connections [#9399](https://github.com/elastic/cloud-on-k8s/pull/9399)
 - Version-gate Fleet Server mTLS support [#9486](https://github.com/elastic/cloud-on-k8s/pull/9486)
 - Add `pause-orchestration` annotation support for {{es}} [#9330](https://github.com/elastic/cloud-on-k8s/pull/9330)
@@ -66,9 +65,7 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Add `pause-orchestration` annotation support for AutoOps [#9477](https://github.com/elastic/cloud-on-k8s/pull/9477)
 - Reduce operator memory footprint by configuring cache to only watch ECK-labelled resources [#9339](https://github.com/elastic/cloud-on-k8s/pull/9339)
 - Introduce `--label-based-discovery` flag to narrow cache for Secrets, Services, and ConfigMaps [#9359](https://github.com/elastic/cloud-on-k8s/pull/9359)
-- Add secure file settings support for stateless {{es}} [#9309](https://github.com/elastic/cloud-on-k8s/pull/9309)
 - Simplified container resources spec for all ECK CRDs [#9346](https://github.com/elastic/cloud-on-k8s/pull/9346)
-- Add logs-elastic* index privileges to stack monitoring role [#9353](https://github.com/elastic/cloud-on-k8s/pull/9353)
 - [AutoOps] Add `sending_queue` configuration to configmap [#9391](https://github.com/elastic/cloud-on-k8s/pull/9391)
 - Allow overriding AutoOps agent collector configuration via `spec.config`/`spec.configRef` [#9507](https://github.com/elastic/cloud-on-k8s/pull/9507)
 - Add support for {{product.kibana}} Spaces in Fleet integration policies [#9410](https://github.com/elastic/cloud-on-k8s/pull/9410)
@@ -84,12 +81,9 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Relax custom CA secret parsing to support cert-manager secrets [#9574](https://github.com/elastic/cloud-on-k8s/pull/9574)
 - Batch {{es}} keystore add-file invocations [#9440](https://github.com/elastic/cloud-on-k8s/pull/9440)
 - Move Condition types from `common/v1alpha1` to `common/v1` [#9408](https://github.com/elastic/cloud-on-k8s/pull/9408)
-- Bump minimum supported OpenShift version to v4.14 [#9423](https://github.com/elastic/cloud-on-k8s/pull/9423)
 
 ### Fixes [elastic-cloud-kubernetes-350-fixes]
 
-- Fix `expectDesiredNodesAPI` to also check `nodeSet.Resources` shorthand [#9402](https://github.com/elastic/cloud-on-k8s/pull/9402)
-- Fix secure settings annotation lost on file-settings Secret re-save [#9422](https://github.com/elastic/cloud-on-k8s/pull/9422)
 - Fix dynamic watch leak on AutoOps resource selector change [#9434](https://github.com/elastic/cloud-on-k8s/pull/9434)
 - Fix unexpected pod restarts by scoping template hash computation to Spec [#9437](https://github.com/elastic/cloud-on-k8s/pull/9437)
 - AutoOps: prefer `ca.crt` over `tls.crt` for {{es}} TLS verification [#9463](https://github.com/elastic/cloud-on-k8s/pull/9463)
