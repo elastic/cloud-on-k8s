@@ -67,7 +67,6 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Reduce operator memory footprint by configuring cache to only watch ECK-labelled resources [#9339](https://github.com/elastic/cloud-on-k8s/pull/9339)
 - Introduce `--label-based-discovery` flag to narrow cache for Secrets, Services, and ConfigMaps [#9359](https://github.com/elastic/cloud-on-k8s/pull/9359)
 - Simplified container resources spec for all ECK CRDs [#9346](https://github.com/elastic/cloud-on-k8s/pull/9346)
-- [AutoOps] Add `sending_queue` configuration to configmap [#9391](https://github.com/elastic/cloud-on-k8s/pull/9391)
 - Allow overriding AutoOps agent collector configuration via `spec.config`/`spec.configRef` [#9507](https://github.com/elastic/cloud-on-k8s/pull/9507)
 - Add support for {{product.kibana}} Spaces in Fleet integration policies [#9410](https://github.com/elastic/cloud-on-k8s/pull/9410)
 - Publish `olm.skipRange` to support sparse and air-gapped OLM catalogs [#9451](https://github.com/elastic/cloud-on-k8s/pull/9451)
@@ -98,7 +97,6 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 ### Documentation improvements [elastic-cloud-kubernetes-350-documentation-improvements]
 
 - Add auto section contents to reference sections, add redirect from old API page [#9426](https://github.com/elastic/cloud-on-k8s/pull/9426)
-- Fix the documentation link on OperatorHub [#9420](https://github.com/elastic/cloud-on-k8s/pull/9420)
 
 :::{dropdown} Updated dependencies
 
