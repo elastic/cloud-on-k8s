@@ -45,7 +45,7 @@ The new `variablesFrom` field in `StackConfigPolicy` lets you load key-value pai
 
 #### Reduced operator memory footprint
 
-ECK 3.5 ships two complementary improvements to reduce the operator's memory usage in large clusters. The controller-runtime cache is now automatically scoped to only watch core workload resources (Pods, StatefulSets, Deployments, DaemonSets, PodDisruptionBudgets) that carry the ECK type label, avoiding the cost of caching unrelated workloads running in the same cluster. An additional opt-in flag, `--label-based-discovery`, further narrows the cache for Secrets, Services, and ConfigMaps to those explicitly labelled with `eck.k8s.elastic.co/watched=true`, which significantly reduces memory and API server load in clusters with large numbers of user-managed resources of those types.
+ECK 3.5 ships two complementary improvements to reduce the operator's memory usage in large clusters. The controller-runtime cache is now automatically scoped to only watch core workload resources (Pods, StatefulSets, Deployments, DaemonSets, PodDisruptionBudgets) that carry the ECK type label, avoiding the cost of caching unrelated workloads running in the same cluster. An additional opt-in flag, `--restrict-watched-resources`, further narrows the cache for Secrets, Services, and ConfigMaps to those explicitly labelled with `eck.k8s.elastic.co/watched=true`, which significantly reduces memory and API server load in clusters with large numbers of user-managed resources of those types.
 
 ### Features and enhancements [elastic-cloud-kubernetes-350-features-and-enhancements]
 
@@ -67,7 +67,7 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Add `pause-orchestration` annotation support for Logstash [#9484](https://github.com/elastic/cloud-on-k8s/pull/9484)
 - Add `pause-orchestration` annotation support for AutoOps [#9477](https://github.com/elastic/cloud-on-k8s/pull/9477)
 - Reduce operator memory footprint by configuring cache to only watch ECK-labelled resources [#9339](https://github.com/elastic/cloud-on-k8s/pull/9339)
-- Introduce `--label-based-discovery` flag to narrow cache for Secrets, Services, and ConfigMaps [#9359](https://github.com/elastic/cloud-on-k8s/pull/9359)
+- Introduce `--restrict-watched-resources` flag to narrow cache for Secrets, Services, and ConfigMaps [#9359](https://github.com/elastic/cloud-on-k8s/pull/9359)
 - Simplified container resources spec for all ECK CRDs [#9346](https://github.com/elastic/cloud-on-k8s/pull/9346)
 - Allow overriding AutoOps agent collector configuration via `spec.config`/`spec.configRef` [#9507](https://github.com/elastic/cloud-on-k8s/pull/9507)
 - Add support for {{product.kibana}} Spaces in Fleet integration policies [#9410](https://github.com/elastic/cloud-on-k8s/pull/9410)
@@ -94,10 +94,6 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Add missing RBAC for Kubernetes metricsets in agent ClusterRoles [#9612](https://github.com/elastic/cloud-on-k8s/pull/9612)
 - Store `FLEET_SERVER_SERVICE_TOKEN` in Secret instead of plaintext pod env var [#9626](https://github.com/elastic/cloud-on-k8s/pull/9626)
 - Gate Fleet Server minimum version to 8.13.0 for {{es}} mTLS support [#9598](https://github.com/elastic/cloud-on-k8s/pull/9598)
-
-### Documentation improvements [elastic-cloud-kubernetes-350-documentation-improvements]
-
-- Add auto section contents to reference sections, add redirect from old API page [#9426](https://github.com/elastic/cloud-on-k8s/pull/9426)
 
 :::{dropdown} Updated dependencies
 
