@@ -23,11 +23,9 @@ ECK now supports a `eck.k8s.elastic.co/pause-orchestration` annotation that temp
 
 #### Mutual TLS expansion across all Stack components
 
-ECK 3.4 introduced {{es}} client certificate authentication with support for {{product.kibana}} only, and promised that support for the remaining components would follow. ECK 3.5 delivers on that: all remaining Stack components that connect to {{es}} — APM Server, Beats, Enterprise Search, Elastic Maps Server, Logstash, Elastic Agent (standalone), and Fleet Server — now automatically receive ECK-managed client certificates and present them when connecting to {{es}}. For fleet-managed agents, Fleet Server propagates the client certificate information to all connected agents automatically, with no additional configuration required.
+All Stack components that connect to {{es}} — APM Server, Beats, Enterprise Search, Elastic Maps Server, Logstash, Elastic Agent (standalone), and Fleet Server — now automatically receive ECK-managed client certificates and present them when connecting to {{es}}. For fleet-managed agents, Fleet Server propagates the client certificate information to all connected agents automatically, with no additional configuration required. For more details, refer to the [{{es}} client certificate authentication documentation](docs-content://deploy-manage/security/k8s-es-client-certificate-auth.md).
 
-ECK 3.5 also introduces a second, independent mTLS capability: Fleet Server can now be configured to require client certificates from connecting Elastic Agents, enforcing mutual TLS on the Fleet Server to Elastic Agent connection. This is an Enterprise feature and requires Fleet Server version 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+.
-
-For more details, refer to the [{{es}} client certificate authentication documentation](docs-content://deploy-manage/security/k8s-es-client-certificate-auth.md) and the [Fleet Server client certificate authentication documentation](docs-content://deploy-manage/security/k8s-fleet-server-client-certificate-auth.md).
+Beyond securing connections to {{es}}, Fleet Server can also be configured to require client certificates from the Elastic Agents connecting to it. This is an Enterprise feature. For more details, refer to the [Fleet Server client certificate authentication documentation](docs-content://deploy-manage/security/k8s-fleet-server-client-certificate-auth.md).
 
 #### AutoOps agent collector configuration
 
