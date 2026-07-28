@@ -51,9 +51,9 @@ func main() {
 	cmd.Flags().StringVar(&opts.confFile, "conf-file", "conf.yaml", "Path to the file containing test params")
 	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v170", "Release to start with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
-	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
-	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")
-	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 15*time.Minute, "Time limit for retries")
+	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 120, "Number of retries")
+	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 10*time.Second, "Delay between retries")
+	cmd.Flags().DurationVar(&opts.retryTimeout, "retry-timeout", 30*time.Minute, "Time limit for retries")
 	cmd.Flags().BoolVar(&opts.skipCleanup, "skip-cleanup", false, "Skip cleaning up after test run")
 	cmd.Flags().StringVar(&opts.toRelease, "to-release", "upcoming", "Release to finish with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.upcomingReleaseCRDs, "upcoming-release-crds", "../../config/crds.yaml", "YAML file for installing the CRDs for the upcoming release")
@@ -160,7 +160,7 @@ func setupUpcomingRelease(installYAML, targetYAML string) error {
 
 	outFile := fmt.Sprintf("testdata/upcoming/%s.yaml", targetYAML)
 
-	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to open %s for writing: %w", outFile, err)
 	}

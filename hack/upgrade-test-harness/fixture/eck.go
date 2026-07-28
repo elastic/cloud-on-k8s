@@ -31,6 +31,7 @@ const (
 	beatName          = "heartbeat"
 	entName           = "ent"
 	logstashName      = "ls"
+	registryName      = "registry"
 	wantHealth        = "green"
 )
 
@@ -244,7 +245,12 @@ func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, erro
 			return nil, fmt.Errorf("pod image did not have a tag")
 		}
 
-		v, err := semver.Parse(imageParts[1])
+		// PackageRegistry images use a "lite-X.Y.Z" tag format; strip any non-numeric prefix.
+		tag := imageParts[1]
+		if idx := strings.IndexFunc(tag, func(r rune) bool { return r >= '0' && r <= '9' }); idx > 0 {
+			tag = tag[idx:]
+		}
+		v, err := semver.Parse(tag)
 		if err != nil {
 			return nil, err
 		}
@@ -270,6 +276,8 @@ func labelSelectorFor(kind string) (string, error) {
 		return "beat.k8s.elastic.co/name=" + beatName, nil
 	case "logstash":
 		return "logstash.k8s.elastic.co/name=" + logstashName, nil
+	case "packageregistry":
+		return "packageregistry.k8s.elastic.co/name=" + registryName, nil
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)
