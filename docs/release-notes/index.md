@@ -71,7 +71,6 @@ ECK 3.5 ships two complementary improvements to reduce the operator's memory usa
 - Simplified container resources spec for all ECK CRDs [#9346](https://github.com/elastic/cloud-on-k8s/pull/9346)
 - Allow overriding AutoOps agent collector configuration via `spec.config`/`spec.configRef` [#9507](https://github.com/elastic/cloud-on-k8s/pull/9507)
 - Add support for {{product.kibana}} Spaces in Fleet integration policies [#9410](https://github.com/elastic/cloud-on-k8s/pull/9410)
-- Publish `olm.skipRange` to support sparse and air-gapped OLM catalogs [#9451](https://github.com/elastic/cloud-on-k8s/pull/9451)
 - Support {{es}} role definitions in StackConfigPolicy [#9442](https://github.com/elastic/cloud-on-k8s/pull/9442)
 - Introduce dynamic substitution variables for StackConfigPolicy [#9541](https://github.com/elastic/cloud-on-k8s/pull/9541)
 - Validate secure settings sources against active StackConfigPolicies [#9593](https://github.com/elastic/cloud-on-k8s/pull/9593)
