@@ -35,9 +35,13 @@ The `AutoOpsAgentPolicy` resource now exposes `spec.config` and `spec.configRef`
 
 For {{es}} 9.5 and later, ECK now supports an opt-in file-based delivery mechanism for `spec.secureSettings` that eliminates the rolling restart previously required on every secret update. Enable it by adding the `eck.k8s.elastic.co/file-based-secure-settings: "true"` annotation to your {{es}} resource; ECK then writes secrets directly into the {{es}} file-based settings path and {{es}} reloads them in place. For more details, refer to the [secure settings documentation](docs-content://deploy-manage/security/k8s-secure-settings.md#k8s-es-secure-settings-hot-reload).
 
-#### StackConfigPolicy enhancements
+#### {{es}} role definitions in StackConfigPolicy
 
-ECK 3.5 adds two new capabilities to `StackConfigPolicy`. The new `securityRoles` field lets you define custom {{es}} roles declaratively within a policy and apply them consistently across all targeted clusters; ECK merges the definitions into the `roles.yml` file mounted on each {{es}} pod and {{es}} hot-reloads them without a pod restart. The new `variablesFrom` field lets you load key-value pairs from ConfigMaps and Secrets as substitution variables, referenced as `${VAR}` or `${VAR:-default}` expressions in the policy's `elasticsearch` and `kibana` fields, so a single policy definition can be reused across environments with different values. ECK watches all referenced sources and reconciles automatically when they change. For more details, refer to the [StackConfigPolicy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies.md).
+The new `securityRoles` field in `StackConfigPolicy` lets you define custom {{es}} roles declaratively within a policy and apply them consistently across all targeted clusters. ECK merges the definitions into the `roles.yml` file mounted on each {{es}} pod and {{es}} hot-reloads them without a pod restart. For more details, refer to the [StackConfigPolicy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies.md#k8s-stack-config-policy-specifics-security-roles).
+
+#### Dynamic substitution variables in StackConfigPolicy
+
+The new `variablesFrom` field in `StackConfigPolicy` lets you load key-value pairs from ConfigMaps and Secrets as substitution variables, referenced as `${VAR}` or `${VAR:-default}` expressions in the policy's `elasticsearch` and `kibana` fields, so a single policy definition can be reused across environments with different values. ECK watches all referenced sources and reconciles automatically when they change. For more details, refer to the [StackConfigPolicy documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/elastic-stack-configuration-policies.md#k8s-stack-config-policy-variable-substitution).
 
 #### Reduced operator memory footprint
 
