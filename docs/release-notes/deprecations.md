@@ -22,7 +22,7 @@ Review the deprecated functionality for Elastic Cloud on Kubernetes. While depre
 ::::{dropdown} The `eck.k8s.elastic.co/managed` annotation is deprecated in favor of `eck.k8s.elastic.co/pause-orchestration`
 The `eck.k8s.elastic.co/managed` annotation is deprecated as of 3.5.0 and will be removed in a future release.
 **Impact**<br> The annotation continues to work in 3.5.0, but support will be dropped in a future release.
-**Action**<br> Replace any usage of `eck.k8s.elastic.co/managed` with `eck.k8s.elastic.co/pause-orchestration`. The annotation accepts the same values and has the same effect.
+**Action**<br> Replace any usage of `eck.k8s.elastic.co/managed: "false"` with `eck.k8s.elastic.co/pause-orchestration: "true"`. Unlike `managed: "false"`, which stops all reconciliation entirely, `pause-orchestration: "true"` is a safer replacement that keeps essential housekeeping running (certificate rotation, services, users, and health monitoring) while pausing spec-driven orchestration.
 ::::
 
 ## 3.4.1 [elastic-cloud-kubernetes-341-deprecations]
