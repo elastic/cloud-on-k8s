@@ -24,7 +24,7 @@ import (
 const sampleFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
 // TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
-func TestSmoke(t *testing.T) {
+func TestSmokeLite(t *testing.T) {
 	runStatefulSmoke(t)
 }
 

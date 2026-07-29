@@ -29,12 +29,37 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
+func isSmokeSample(sampleFile string) bool {
+	s, _ := strings.CutPrefix("../../", sampleFile)
+	switch s {
+	case
+		"config/samples/apm/apm_es_kibana.yaml",
+		"config/samples/elasticsearch/elasticsearch.yaml",
+		"config/samples/logstash/logstash_es.yaml",
+		"config/samples/logstash/logstash_pv.yaml",
+		"config/samples/logstash/logstash_stackmonitor.yaml":
+		return true
+	}
+	return false
+}
+
+func TestSmoke_Samples(t *testing.T) {
+	testSamples(t, isSmokeSample)
+}
+
 func TestSamples(t *testing.T) {
+	testSamples(t, func(_ string) bool { return true })
+}
+
+func testSamples(t *testing.T, shouldRun func(sampleName string) bool) {
 	sampleFiles, err := filepath.Glob("../../config/samples/*/*.yaml")
 	require.NoError(t, err, "Failed to find samples")
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
+		if !shouldRun(sample) {
+			continue
+		}
 		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {
