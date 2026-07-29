@@ -1,0 +1,26 @@
+= Remote Clusters (Cross-Cluster Search)
+
+This recipe demonstrates how to configure two Elasticsearch clusters in separate namespaces as remote clusters, enabling link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-cross-cluster-search.html[Cross-Cluster Search (CCS)] between them using API key-based authentication.
+
+IMPORTANT: This recipe is for illustration purposes only and should not be considered production-ready.
+
+CAUTION: This recipe uses the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+== Recipe
+
+The manifest deploys:
+
+- `cluster2` in `ns2`: the remote cluster, with `spec.remoteClusterServer.enabled: true` to enable the remote cluster server endpoint required for API key-based access.
+- `cluster1` in `ns1`: the local cluster, configured with a `remoteClusters` entry pointing to `cluster2` via an `elasticsearchRef`. An API key scoped to the `kibana_sample_data_ecommerce` index is created automatically by ECK.
+- A Kibana instance in each namespace connected to its respective cluster.
+
+[source,sh]
+----
+kubectl apply -f elasticsearch.yaml
+----
+
+Once running, cross-cluster search queries issued from `cluster1` can reference indices on `cluster2` using the `to-ns2-cluster2:<index>` notation.
+
+NOTE: The sample query in this recipe targets the Kibana sample ecommerce data. Load it via *Home > Try sample data* in the `cluster2` Kibana instance before running cross-cluster queries.
+
+See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-remote-clusters.html[ECK remote clusters documentation] for more information.
