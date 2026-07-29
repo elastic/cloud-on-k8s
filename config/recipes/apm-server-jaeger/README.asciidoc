@@ -17,11 +17,11 @@ Jaeger clients can be pointed at the APM Server's gRPC port (`14250`) and traces
 
 == Connecting Jaeger clients
 
-Obtain the APM Server's external address:
+The Service defaults to `ClusterIP`. To reach the APM Server from outside the cluster, use port-forward:
 
 [source,sh]
 ----
-kubectl get service apm-server-quickstart-apm-http
+kubectl port-forward service/apm-server-quickstart-apm-http 14250:14250
 ----
 
-Configure your Jaeger exporter to send to `<EXTERNAL_IP>:14250` using gRPC. For OpenTelemetry-based exporters using the Jaeger exporter, set `OTEL_EXPORTER_JAEGER_ENDPOINT` accordingly.
+Then point your Jaeger client at `localhost:14250` using gRPC. Alternatively, expose the Service as a `LoadBalancer` by adding `spec.http.service.spec.type: LoadBalancer` to the manifest.
