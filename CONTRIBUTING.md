@@ -61,6 +61,8 @@ There are 4 test suites:
 
   A faster option is to run the operator and tests locally, with `make run` in one shell and `make e2e-local TESTS_MATCH= TestMetricbeatStackMonitoringRecipe` in another, though this does not exercise all of the same configuration (permissions etc.) that will be used in CI, so is not as thorough.
 
+  Test cases prefixed with `TestSmoke_` are part of the smoke suite and run automatically on every merge to main across all supported cloud providers.
+
 - **Helm chart tests** - allows us to test helm charts. To run helm chart tests, you can use `make helm-test` command.
 
 #### Pull Request validation
