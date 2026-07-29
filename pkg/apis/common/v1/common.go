@@ -598,6 +598,17 @@ type ConfigSource struct {
 	SecretRef `json:",inline"`
 }
 
+// ConfigMapOrSecretSource references configuration stored in either a Kubernetes Secret or a ConfigMap.
+// At most one of [secretName, configMapName] might be specified.
+type ConfigMapOrSecretSource struct {
+	// SecretRef references a Kubernetes Secret in the same namespace.
+	// +kubebuilder:validation:Optional
+	SecretRef `json:",inline"`
+	// ConfigMapRef references a Kubernetes ConfigMap in the same namespace.
+	// +kubebuilder:validation:Optional
+	ConfigMapRef `json:",inline"`
+}
+
 // HasObservedGeneration allows a return of any object's observed generation.
 // +kubebuilder:object:generate=false
 type HasObservedGeneration interface {

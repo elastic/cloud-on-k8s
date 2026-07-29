@@ -10782,10 +10782,12 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               pipelinesRef:
                 description: |-
-                  PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+                  PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.
                   Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
-                  can be specified.
+                  can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
                 properties:
+                  configMapName:
+                    type: string
                   secretName:
                     description: SecretName is the name of the secret.
                     type: string

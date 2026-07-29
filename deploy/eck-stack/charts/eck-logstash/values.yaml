@@ -89,11 +89,16 @@ monitoring: {}
 #
 pipelines: []
 
-# Reference a pipelines configuration in a Secret.
+# Reference a pipelines configuration in a Secret or a ConfigMap.
+# Use secretName for sensitive pipeline definitions, configMapName for non-sensitive ones.
+# At most one of [secretName, configMapName] may be set.
 # ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-pipelines
 #
 # pipelinesRef:
 #   secretName: ''
+#
+# pipelinesRef:
+#   configMapName: ''
 
 # volumeClaimTemplates
 # ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-volume-claim-settings

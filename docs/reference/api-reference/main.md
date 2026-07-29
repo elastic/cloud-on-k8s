@@ -560,11 +560,28 @@ Config represents untyped YAML configuration.
 
 
 
+### ConfigMapOrSecretSource  [#configmaporsecretsource]
+
+ConfigMapOrSecretSource references configuration stored in either a Kubernetes Secret or a ConfigMap.
+At most one of [secretName, configMapName] might be specified.
+
+:::{admonition} Appears In:
+* [LogstashSpec](#logstashspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`secretName`* __string__ | SecretName is the name of the secret. |
+| *`configMapName`* __string__ |  |
+
+
 ### ConfigMapRef  [#configmapref]
 
 ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 
 :::{admonition} Appears In:
+* [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [TransportTLSOptions](#transporttlsoptions)
 
 :::
@@ -857,6 +874,7 @@ PodTemplate are preserved as-is.
 SecretRef is a reference to a secret that exists in the same namespace.
 
 :::{admonition} Appears In:
+* [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [ConfigSource](#configsource)
 * [FileRealmSource](#filerealmsource)
 * [RoleSource](#rolesource)
@@ -2104,7 +2122,7 @@ LogstashSpec defines the desired state of Logstash
 | *`config`* __[Config](#config)__ | Config holds the Logstash configuration. At most one of [`Config`, `ConfigRef`] can be specified. |
 | *`configRef`* __[ConfigSource](#configsource)__ | ConfigRef contains a reference to an existing Kubernetes Secret holding the Logstash configuration.<br>Logstash settings must be specified as yaml, under a single "logstash.yml" entry. At most one of [`Config`, `ConfigRef`]<br>can be specified. |
 | *`pipelines`* __[Config](#config) array__ | Pipelines holds the Logstash Pipelines. At most one of [`Pipelines`, `PipelinesRef`] can be specified. |
-| *`pipelinesRef`* __[ConfigSource](#configsource)__ | PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.<br>Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]<br>can be specified. |
+| *`pipelinesRef`* __[ConfigMapOrSecretSource](#configmaporsecretsource)__ | PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.<br>Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]<br>can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set. |
 | *`services`* __[LogstashService](#logstashservice) array__ | Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the<br>rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to<br>be opened up for other services: Beats, TCP, UDP, etc, inputs. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Logstash.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
 | *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these<br>values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash<br>container. To set resources on other containers, use the PodTemplate. |
