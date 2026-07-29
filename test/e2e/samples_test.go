@@ -35,7 +35,6 @@ func isSmokeSample(sampleFile string) bool {
 	case
 		"config/samples/apm/apm_es_kibana.yaml",
 		"config/samples/elasticsearch/elasticsearch.yaml",
-		"config/samples/logstash/logstash_es.yaml",
 		"config/samples/logstash/logstash_pv.yaml",
 		"config/samples/logstash/logstash_stackmonitor.yaml":
 		return true
