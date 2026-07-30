@@ -178,8 +178,8 @@ probes:
   # has passed readyz for the first time. The default allows up to 5 minutes
   # (failureThreshold * periodSeconds) for the cache to sync on startup.
   startup:
-    # enable controls whether the startupProbe is added to the operator pod. Set to false to opt out.
-    enable: true
+    # enabled controls whether the startupProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
     # failureThreshold is the number of consecutive failures before the pod is restarted.
     failureThreshold: 30
     # periodSeconds is how often (in seconds) to perform the probe.
@@ -189,8 +189,8 @@ probes:
   # readiness configures the readinessProbe. A failing readiness probe removes the pod
   # from Service endpoints without restarting it.
   readiness:
-    # enable controls whether the readinessProbe is added to the operator pod. Set to false to opt out.
-    enable: true
+    # enabled controls whether the readinessProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
     # periodSeconds is how often (in seconds) to perform the probe.
     periodSeconds: 10
     # failureThreshold is the number of consecutive failures before the pod is marked unready.
@@ -199,8 +199,8 @@ probes:
     timeoutSeconds: 3
   # liveness configures the livenessProbe. A failing liveness probe triggers a pod restart.
   liveness:
-    # enable controls whether the livenessProbe is added to the operator pod. Set to false to opt out.
-    enable: true
+    # enabled controls whether the livenessProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
     # periodSeconds is how often (in seconds) to perform the probe.
     periodSeconds: 20
     # failureThreshold is the number of consecutive failures before the pod is restarted.

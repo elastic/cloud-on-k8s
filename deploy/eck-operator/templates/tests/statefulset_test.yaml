@@ -348,9 +348,9 @@ tests:
           pattern: "probes-port: :8081"
   - it: should omit all probes when all probe enables are false
     set:
-      probes.startup.enable: false
-      probes.readiness.enable: false
-      probes.liveness.enable: false
+      probes.startup.enabled: false
+      probes.readiness.enabled: false
+      probes.liveness.enabled: false
     asserts:
       - template: statefulset.yaml
         notExists:
@@ -378,7 +378,7 @@ tests:
           pattern: "probes-port:"
   - it: should omit only the startup probe when startup.enable is false
     set:
-      probes.startup.enable: false
+      probes.startup.enabled: false
     asserts:
       - template: statefulset.yaml
         notExists:
@@ -398,7 +398,7 @@ tests:
             protocol: TCP
   - it: should omit only the readiness probe when readiness.enable is false
     set:
-      probes.readiness.enable: false
+      probes.readiness.enabled: false
     asserts:
       - template: statefulset.yaml
         exists:
@@ -418,7 +418,7 @@ tests:
             protocol: TCP
   - it: should omit only the liveness probe when liveness.enable is false
     set:
-      probes.liveness.enable: false
+      probes.liveness.enabled: false
     asserts:
       - template: statefulset.yaml
         exists:

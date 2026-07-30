@@ -68,7 +68,7 @@ data:
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
     {{- end }}
-    {{- $probesEnable := or .Values.probes.readiness.enable .Values.probes.liveness.enable .Values.probes.startup.enable }}
+    {{- $probesEnable := or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
     {{- if $probesEnable }}
     probes-port: :{{ .Values.probes.port }}
     {{- end }}

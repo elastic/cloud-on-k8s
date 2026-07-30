@@ -91,7 +91,7 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- $probesEnable := or .Values.probes.readiness.enable .Values.probes.liveness.enable .Values.probes.startup.enable }}
+          {{- $probesEnable := or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
           {{- if or .Values.webhook.enabled (gt $metricsPort 0) $probesEnable }}
           ports:
             {{- if $probesEnable }}
@@ -110,7 +110,7 @@ spec:
               protocol: TCP
             {{- end }}
           {{- end }}
-          {{- if .Values.probes.startup.enable }}
+          {{- if .Values.probes.startup.enabled }}
           startupProbe:
             httpGet:
               path: /readyz
@@ -119,7 +119,7 @@ spec:
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
           {{- end }}
-          {{- if .Values.probes.readiness.enable }}
+          {{- if .Values.probes.readiness.enabled }}
           readinessProbe:
             httpGet:
               path: /readyz
@@ -128,7 +128,7 @@ spec:
             failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
           {{- end }}
-          {{- if .Values.probes.liveness.enable }}
+          {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
             httpGet:
               path: /healthz
