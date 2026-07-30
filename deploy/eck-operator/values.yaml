@@ -172,16 +172,14 @@ webhook:
 
 # probes configures the health and readiness probes for the operator pod.
 probes:
-  # enable controls whether startup, readiness, and liveness probes are added to the
-  # operator pod. When enabled, pod readiness is gated on the cache being fully synced
-  # before the operator serves webhook requests. Set to false to opt out.
-  enable: true
   # port is the port for the /healthz and /readyz HTTP endpoints.
   port: 8081
   # startup configures the startupProbe, which gates the other probes until the operator
   # has passed readyz for the first time. The default allows up to 5 minutes
   # (failureThreshold * periodSeconds) for the cache to sync on startup.
   startup:
+    # enable controls whether the startupProbe is added to the operator pod. Set to false to opt out.
+    enable: true
     # failureThreshold is the number of consecutive failures before the pod is restarted.
     failureThreshold: 30
     # periodSeconds is how often (in seconds) to perform the probe.
@@ -191,14 +189,18 @@ probes:
   # readiness configures the readinessProbe. A failing readiness probe removes the pod
   # from Service endpoints without restarting it.
   readiness:
+    # enable controls whether the readinessProbe is added to the operator pod. Set to false to opt out.
+    enable: true
     # periodSeconds is how often (in seconds) to perform the probe.
     periodSeconds: 10
     # failureThreshold is the number of consecutive failures before the pod is marked unready.
-    failureThreshold: 3
+    failureThreshold: 1
     # timeoutSeconds is the number of seconds after which the probe times out.
     timeoutSeconds: 3
   # liveness configures the livenessProbe. A failing liveness probe triggers a pod restart.
   liveness:
+    # enable controls whether the livenessProbe is added to the operator pod. Set to false to opt out.
+    enable: true
     # periodSeconds is how often (in seconds) to perform the probe.
     periodSeconds: 20
     # failureThreshold is the number of consecutive failures before the pod is restarted.

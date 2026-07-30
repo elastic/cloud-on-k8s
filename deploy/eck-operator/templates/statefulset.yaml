@@ -91,9 +91,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or .Values.webhook.enabled (gt $metricsPort 0) .Values.probes.enable }}
+          {{- $probesEnable := or .Values.probes.readiness.enable .Values.probes.liveness.enable .Values.probes.startup.enable }}
+          {{- if or .Values.webhook.enabled (gt $metricsPort 0) $probesEnable }}
           ports:
-            {{- if .Values.probes.enable }}
+            {{- if $probesEnable }}
             - containerPort: {{ .Values.probes.port }}
               name: health-probe
               protocol: TCP
@@ -109,7 +110,7 @@ spec:
               protocol: TCP
             {{- end }}
           {{- end }}
-          {{- if .Values.probes.enable }}
+          {{- if .Values.probes.startup.enable }}
           startupProbe:
             httpGet:
               path: /readyz
@@ -117,6 +118,8 @@ spec:
             failureThreshold: {{ .Values.probes.startup.failureThreshold }}
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enable }}
           readinessProbe:
             httpGet:
               path: /readyz
@@ -124,6 +127,8 @@ spec:
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
             failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enable }}
           livenessProbe:
             httpGet:
               path: /healthz

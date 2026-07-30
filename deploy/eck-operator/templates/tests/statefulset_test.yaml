@@ -319,7 +319,7 @@ tests:
               path: /readyz
               port: 8081
             periodSeconds: 10
-            failureThreshold: 3
+            failureThreshold: 1
             timeoutSeconds: 3
       - template: statefulset.yaml
         equal:
@@ -346,9 +346,11 @@ tests:
         matchRegex:
           path: data["eck.yaml"]
           pattern: "probes-port: :8081"
-  - it: should omit probes when probes.enable is false
+  - it: should omit all probes when all probe enables are false
     set:
-      probes.enable: false
+      probes.startup.enable: false
+      probes.readiness.enable: false
+      probes.liveness.enable: false
     asserts:
       - template: statefulset.yaml
         notExists:
@@ -359,6 +361,13 @@ tests:
       - template: statefulset.yaml
         notExists:
           path: spec.template.spec.containers[0].livenessProbe
+      - template: statefulset.yaml
+        notContains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8081
+            name: health-probe
+            protocol: TCP
       - template: configmap.yaml
         matchRegex:
           path: data["eck.yaml"]
@@ -367,6 +376,66 @@ tests:
         notMatchRegex:
           path: data["eck.yaml"]
           pattern: "probes-port:"
+  - it: should omit only the startup probe when startup.enable is false
+    set:
+      probes.startup.enable: false
+    asserts:
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].startupProbe
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - template: statefulset.yaml
+        contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8081
+            name: health-probe
+            protocol: TCP
+  - it: should omit only the readiness probe when readiness.enable is false
+    set:
+      probes.readiness.enable: false
+    asserts:
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].startupProbe
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - template: statefulset.yaml
+        contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8081
+            name: health-probe
+            protocol: TCP
+  - it: should omit only the liveness probe when liveness.enable is false
+    set:
+      probes.liveness.enable: false
+    asserts:
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].startupProbe
+      - template: statefulset.yaml
+        exists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - template: statefulset.yaml
+        notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - template: statefulset.yaml
+        contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8081
+            name: health-probe
+            protocol: TCP
   - it: should use custom probe tuning values
     set:
       probes.port: 9090
