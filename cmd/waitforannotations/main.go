@@ -81,6 +81,9 @@ func doRun(ctx context.Context) error {
 	}
 	timeout := viper.GetDuration(TimeoutFlag)
 	pollInterval := viper.GetDuration(PollIntervalFlag)
+	if pollInterval <= 0 {
+		return fmt.Errorf("--%s must be a positive duration, got %s", PollIntervalFlag, pollInterval)
+	}
 
 	fmt.Printf("Waiting for annotations %v in %s\n", annotations, file)
 
