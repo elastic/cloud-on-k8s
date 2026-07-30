@@ -9,6 +9,7 @@ package e2e
 import (
 	"bufio"
 	"os"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -74,4 +75,17 @@ func runStatefulSmoke(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
+}
+
+func isSmokeSample(sampleFile string) bool {
+	s, _ := strings.CutPrefix(sampleFile, "../../")
+	switch s {
+	case
+		"config/samples/apm/apm_es_kibana.yaml",
+		"config/samples/elasticsearch/elasticsearch.yaml",
+		"config/samples/logstash/logstash_pv.yaml",
+		"config/samples/logstash/logstash_stackmonitor.yaml":
+		return true
+	}
+	return false
 }

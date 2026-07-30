@@ -29,19 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-func isSmokeSample(sampleFile string) bool {
-	s, _ := strings.CutPrefix("../../", sampleFile)
-	switch s {
-	case
-		"config/samples/apm/apm_es_kibana.yaml",
-		"config/samples/elasticsearch/elasticsearch.yaml",
-		"config/samples/logstash/logstash_pv.yaml",
-		"config/samples/logstash/logstash_stackmonitor.yaml":
-		return true
-	}
-	return false
-}
-
 func TestSmoke_Samples(t *testing.T) {
 	testSamples(t, isSmokeSample)
 }
