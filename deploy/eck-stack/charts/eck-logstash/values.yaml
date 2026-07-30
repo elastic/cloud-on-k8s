@@ -95,10 +95,9 @@ pipelines: []
 # ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-logstash-pipelines
 #
 # pipelinesRef:
+#   # Exactly one of these may be set:
 #   secretName: ''
-#
-# pipelinesRef:
-#   configMapName: ''
+#   # configMapName: ''
 
 # volumeClaimTemplates
 # ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configuration-logstash#k8s-volume-claim-settings

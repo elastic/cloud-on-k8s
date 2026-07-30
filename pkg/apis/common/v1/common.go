@@ -56,6 +56,7 @@ func (ds DeploymentStatus) IsDegraded(prev DeploymentStatus) bool {
 
 // ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 type ConfigMapRef struct {
+	// ConfigMapName is the name of the config map.
 	ConfigMapName string `json:"configMapName,omitempty"`
 }
 

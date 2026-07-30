@@ -10813,6 +10813,7 @@ spec:
                           trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
                         properties:
                           configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       otherNameSuffix:

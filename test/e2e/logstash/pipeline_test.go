@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret.
+// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yml from Secret.
 func TestPipelineConfigRefLogstash(t *testing.T) {
 	secretName := "ls-generator-pipeline"
 
@@ -82,7 +82,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 	test.Sequence(before, steps, b).RunSequential(t)
 }
 
-// TestPipelineConfigMapRefLogstash PipelineRef should be able to take pipelines.yaml from a ConfigMap.
+// TestPipelineConfigMapRefLogstash PipelineRef should be able to take pipelines.yml from a ConfigMap.
 func TestPipelineConfigMapRefLogstash(t *testing.T) {
 	cmName := "ls-generator-pipeline-cm"
 

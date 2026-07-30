@@ -6608,6 +6608,7 @@ spec:
                           trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
                         properties:
                           configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       otherNameSuffix:
@@ -10787,6 +10788,7 @@ spec:
                   can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
                 properties:
                   configMapName:
+                    description: ConfigMapName is the name of the config map.
                     type: string
                   secretName:
                     description: SecretName is the name of the secret.

@@ -573,7 +573,7 @@ At most one of [secretName, configMapName] might be specified.
 | Field | Description |
 | --- | --- |
 | *`secretName`* __string__ | SecretName is the name of the secret. |
-| *`configMapName`* __string__ |  |
+| *`configMapName`* __string__ | ConfigMapName is the name of the config map. |
 
 
 ### ConfigMapRef  [#configmapref]
@@ -588,7 +588,7 @@ ConfigMapRef is a reference to a config map that exists in the same namespace as
 
 | Field | Description |
 | --- | --- |
-| *`configMapName`* __string__ |  |
+| *`configMapName`* __string__ | ConfigMapName is the name of the config map. |
 
 
 ### ConfigSource  [#configsource]
