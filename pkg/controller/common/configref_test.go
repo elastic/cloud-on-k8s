@@ -368,6 +368,18 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 			wantSecretWatches: []string{wantSecretWatch},
 			wantCMWatches:     []string{},
 		},
+		{
+			name: "both secretName and configMapName set: error",
+			ref: &commonv1.ConfigMapOrSecretSource{
+				SecretRef:    commonv1.SecretRef{SecretName: "my-secret"},
+				ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+			},
+			configMapWatchName: cmWatchName,
+			runtimeObjs:        []client.Object{},
+			wantErr:            true,
+			wantSecretWatches:  []string{wantSecretWatch},
+			wantCMWatches:      []string{wantCMWatch},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
