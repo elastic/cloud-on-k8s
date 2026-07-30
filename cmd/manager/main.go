@@ -242,7 +242,7 @@ func Command() *cobra.Command {
 		"Enable health and readiness probes. When enabled, the operator gates pod readiness on the cache being fully synced.",
 	)
 	cmd.Flags().String(
-		operator.ProbesPortFlag,
+		operator.ProbesBindAddressFlag,
 		":8081",
 		"The address the health probe endpoint binds to.",
 	)
@@ -599,7 +599,7 @@ func startOperator(ctx context.Context) error {
 
 	probesEnabled := viper.GetBool(operator.EnableProbesFlag)
 	if probesEnabled {
-		opts.HealthProbeBindAddress = viper.GetString(operator.ProbesPortFlag)
+		opts.HealthProbeBindAddress = viper.GetString(operator.ProbesBindAddressFlag)
 	}
 
 	// configure the manager cache based on the number of managed namespaces

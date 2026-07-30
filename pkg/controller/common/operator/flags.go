@@ -25,7 +25,7 @@ const (
 	EnableLeaderElection                 = "enable-leader-election"
 	EnableTracingFlag                    = "enable-tracing"
 	EnableWebhookFlag                    = "enable-webhook"
-	ProbesPortFlag                       = "probes-port"
+	ProbesBindAddressFlag                = "probes-bind-address"
 	EnforceRBACOnRefsFlag                = "enforce-rbac-on-refs"
 	ExposedNodeLabels                    = "exposed-node-labels"
 	PasswordLengthFlag                   = "password-length"

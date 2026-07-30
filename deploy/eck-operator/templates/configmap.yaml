@@ -70,7 +70,7 @@ data:
     {{- end }}
     {{- $probesEnable := or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
     {{- if $probesEnable }}
-    probes-port: :{{ .Values.probes.port }}
+    probes-bind-address: :{{ .Values.probes.port }}
     {{- end }}
     enable-probes: {{ $probesEnable }}
     {{- with .Values.managedNamespaces }}

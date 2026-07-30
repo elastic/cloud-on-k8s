@@ -16,7 +16,7 @@ disable-telemetry: false
 distribution-channel: image
 validate-storage-class: true
 enable-webhook: false
-probes-port: :8081
+probes-bind-address: :8081
 enable-probes: true
 operator-namespace: elastic-system
 enable-leader-election: true
