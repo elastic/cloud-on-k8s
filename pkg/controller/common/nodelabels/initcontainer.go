@@ -33,7 +33,7 @@ func DownwardAPIVolume() commonvolume.DownwardAPI {
 func WaitForAnnotationsInitContainer(operatorImage string, expectedAnnotations []string) (corev1.Container, error) {
 	if operatorImage == "" {
 		return corev1.Container{}, errors.New("operator image is required to build the wait-for-annotations init container; " +
-			"set --operator-image or ensure the operator can introspect its own Pod")
+			"set the OPERATOR_IMAGE env var or --operator-image flag")
 	}
 
 	cmd := []string{
