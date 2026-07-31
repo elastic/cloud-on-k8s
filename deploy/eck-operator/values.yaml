@@ -194,7 +194,7 @@ probes:
     # periodSeconds is how often (in seconds) to perform the probe.
     periodSeconds: 10
     # failureThreshold is the number of consecutive failures before the pod is marked unready.
-    failureThreshold: 1
+    failureThreshold: 3
     # timeoutSeconds is the number of seconds after which the probe times out.
     timeoutSeconds: 3
   # liveness configures the livenessProbe. A failing liveness probe triggers a pod restart.

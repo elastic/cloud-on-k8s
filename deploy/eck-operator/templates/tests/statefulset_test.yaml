@@ -319,7 +319,7 @@ tests:
               path: /readyz
               port: 8081
             periodSeconds: 10
-            failureThreshold: 1
+            failureThreshold: 3
             timeoutSeconds: 3
       - template: statefulset.yaml
         equal:
