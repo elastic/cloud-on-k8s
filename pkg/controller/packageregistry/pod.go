@@ -103,15 +103,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		WithDockerImage(epr.Spec.Image, container.ImageRepository(container.PackageRegistryImage, v)).
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
-		WithEnv(eprVars...).
-		WithContainersSecurityContext(corev1.SecurityContext{
-			AllowPrivilegeEscalation: new(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-			RunAsNonRoot: runAsNonRoot,
-			Privileged:   new(false),
-		})
+		WithEnv(eprVars...)
 
 	if setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
@@ -133,7 +125,15 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	return builder.WithInitContainerDefaults().PodTemplate, nil
+	// WithContainersSecurityContext must be called after all containers and init containers have been added.
+	return builder.WithInitContainerDefaults().WithContainersSecurityContext(corev1.SecurityContext{
+		AllowPrivilegeEscalation: new(false),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		RunAsNonRoot: runAsNonRoot,
+		Privileged:   new(false),
+	}).PodTemplate, nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.PackageRegistry) *defaults.PodTemplateBuilder {

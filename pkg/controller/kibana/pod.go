@@ -179,8 +179,7 @@ func NewPodTemplateSpec(
 	// root filesystem on restart.
 	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	if canEnableSecurityContext {
-		builder.WithContainersSecurityContext(defaultSecurityContext).
-			WithPodSecurityContext(defaultPodSecurityContext).
+		builder.WithPodSecurityContext(defaultPodSecurityContext).
 			WithVolumes(LogsVolume.Volume()).WithVolumeMounts(LogsVolume.VolumeMount()).
 			WithVolumes(TempVolume.Volume()).WithVolumeMounts(TempVolume.VolumeMount())
 	}
@@ -220,7 +219,12 @@ func NewPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	return builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate, nil
+	// WithContainersSecurityContext must be called after all containers and init containers have been added.
+	result := builder.WithInitContainerDefaults(additionalInitEnvVars...)
+	if canEnableSecurityContext {
+		result = result.WithContainersSecurityContext(defaultSecurityContext)
+	}
+	return result.PodTemplate, nil
 }
 
 // getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container spec.

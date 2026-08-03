@@ -813,19 +813,37 @@ func TestNewPodTemplateSpec_DownwardNodeLabels(t *testing.T) {
 	}
 	md := metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 
-	got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), kb, nil, []commonvolume.VolumeLike{}, "", false, operatorImage, md)
-	require.NoError(t, err)
-
-	var waitInit *corev1.Container
-	for i := range got.Spec.InitContainers {
-		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
-			waitInit = &got.Spec.InitContainers[i]
-			break
-		}
+	tests := []struct {
+		name                      string
+		setDefaultSecurityContext bool
+	}{
+		{name: "without security context", setDefaultSecurityContext: false},
+		{name: "with security context", setDefaultSecurityContext: true},
 	}
-	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
-	assert.Equal(t, operatorImage, waitInit.Image)
-	require.GreaterOrEqual(t, len(waitInit.Command), 2)
-	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
-	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), kb, nil, []commonvolume.VolumeLike{}, "", tt.setDefaultSecurityContext, operatorImage, md)
+			require.NoError(t, err)
+
+			var waitInit *corev1.Container
+			for i := range got.Spec.InitContainers {
+				if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+					waitInit = &got.Spec.InitContainers[i]
+					break
+				}
+			}
+			require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+			assert.Equal(t, operatorImage, waitInit.Image)
+			require.GreaterOrEqual(t, len(waitInit.Command), 2)
+			assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+			assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
+			if tt.setDefaultSecurityContext {
+				require.NotNil(t, waitInit.SecurityContext, "wait-for-node-labels init container must have a SecurityContext")
+				assert.Equal(t, new(false), waitInit.SecurityContext.AllowPrivilegeEscalation)
+				require.NotNil(t, waitInit.SecurityContext.Capabilities)
+				assert.Equal(t, []corev1.Capability{"ALL"}, waitInit.SecurityContext.Capabilities.Drop)
+			}
+		})
+	}
 }
