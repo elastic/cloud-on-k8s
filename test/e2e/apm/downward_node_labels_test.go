@@ -16,7 +16,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
@@ -71,7 +71,7 @@ func TestDownwardNodeLabels(t *testing.T) {
 						return fmt.Errorf("no pods found")
 					}
 					for _, pod := range pods {
-						ic, found := findInitContainerByName(pod, commonnodelabels.WaitForAnnotationsContainerName)
+						ic, found := findInitContainerByName(pod, initcontainer.ContainerName)
 						if !found {
 							return fmt.Errorf("wait-for-annotations init container not found in pod %s", pod.Name)
 						}
@@ -81,7 +81,7 @@ func TestDownwardNodeLabels(t *testing.T) {
 						}
 						var icStatus *corev1.ContainerStatus
 						for i := range pod.Status.InitContainerStatuses {
-							if pod.Status.InitContainerStatuses[i].Name == commonnodelabels.WaitForAnnotationsContainerName {
+							if pod.Status.InitContainerStatuses[i].Name == initcontainer.ContainerName {
 								icStatus = &pod.Status.InitContainerStatuses[i]
 								break
 							}

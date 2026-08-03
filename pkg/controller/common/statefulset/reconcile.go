@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -117,9 +118,13 @@ func IsSteady(s appsv1.StatefulSet) bool {
 }
 
 // WithTemplateHash returns a new StatefulSet with a hash of its template to ease comparisons.
+// The wait-for-annotations init container image is normalized before hashing so that routine
+// operator image changes (e.g. patch upgrades) do not roll managed Pods.
 func WithTemplateHash(d appsv1.StatefulSet) appsv1.StatefulSet {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
+	specForHash := dCopy.Spec
+	specForHash.Template = initcontainer.NormalizeTemplateForHash(specForHash.Template)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, specForHash)
 	return dCopy
 }
 

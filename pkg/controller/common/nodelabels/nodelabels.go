@@ -7,21 +7,23 @@ package nodelabels
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
-
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -86,11 +88,38 @@ func MaybeAddWaitForAnnotationsInitContainer(builder *defaults.PodTemplateBuilde
 	if err != nil {
 		return builder, err
 	}
+
+	// Record the hash identity before merging the ECK-built init container so that
+	// NormalizeTemplateForHash can later distinguish ECK-managed images (stable across
+	// operator upgrades) from user-supplied overrides (must participate in the hash).
+	// This annotation is ECK-owned and written after user metadata merging so that a
+	// user value cannot interfere with update detection.
+	identity := initContainerHashIdentity(builder.PodTemplate)
+	if builder.PodTemplate.Annotations == nil {
+		builder.PodTemplate.Annotations = map[string]string{}
+	}
+	builder.PodTemplate.Annotations[initcontainer.HashAnnotation] = identity
+
 	builder = builder.
 		WithVolumes(downwardAPIVolume.Volume()).
 		WithVolumeMounts(downwardAPIVolume.VolumeMount()).
 		WithInitContainers(waitInit)
 	return builder, nil
+}
+
+// initContainerHashIdentity returns the identity string to record in initcontainer.HashAnnotation.
+// If the pod template already contains a container named initcontainer.ContainerName with a non-empty
+// image, the user explicitly supplied it. Its image participates in the workload hash via the
+// pod spec directly (NormalizeTemplateForHash leaves it untouched), so the annotation only needs
+// to mark it as user-supplied ("user"). Otherwise ECK provides the image and operator
+// patch-upgrades must not roll pods ("managed:<version>").
+func initContainerHashIdentity(template corev1.PodTemplateSpec) string {
+	for _, c := range template.Spec.InitContainers {
+		if c.Name == initcontainer.ContainerName && c.Image != "" {
+			return "user"
+		}
+	}
+	return "managed:" + initcontainer.HashVersion
 }
 
 func annotatePod(ctx context.Context, c k8s.Client, pod corev1.Pod, expectedLabels []string, resourceName string) error {
@@ -123,7 +152,7 @@ func annotatePod(ctx context.Context, c k8s.Client, pod corev1.Pod, expectedLabe
 	if err != nil {
 		return err
 	}
-	if err := c.Patch(ctx, &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !errors.IsNotFound(err) {
+	if err := c.Patch(ctx, &pod, client.RawPatch(types.StrategicMergePatchType, mergePatch)); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil
@@ -165,4 +194,43 @@ func getPodAnnotations(pod *corev1.Pod, expectedAnnotations []string, nodeLabels
 		)
 	}
 	return podAnnotations, nil
+}
+
+// DownwardAPIVolume returns the downward API volume that exposes the Pod annotations file
+// under the path polled by the wait-for-annotations init container.
+func DownwardAPIVolume() commonvolume.DownwardAPI {
+	return commonvolume.DownwardAPI{}.WithAnnotations(true)
+}
+
+// WaitForAnnotationsInitContainer builds an init container that blocks until the operator
+// has patched all expectedAnnotations onto the Pod's metadata.annotations. It runs the
+// operator binary's "wait-for-annotations" subcommand using the operator's own image,
+// which removes any dependency on the stack/component image having a shell or grep.
+//
+// operatorImage must be non-empty; an error is returned otherwise so callers fail loudly
+// rather than silently falling back to the stack image via PodTemplateBuilder.WithInitContainerDefaults.
+// Callers must also add the volume returned by DownwardAPIVolume to the Pod.
+func WaitForAnnotationsInitContainer(operatorImage string, expectedAnnotations []string) (corev1.Container, error) {
+	if operatorImage == "" {
+		return corev1.Container{}, errors.New("operator image is required to build the wait-for-annotations init container; " +
+			"set the OPERATOR_IMAGE env var or --operator-image flag")
+	}
+
+	cmd := []string{
+		"/elastic-operator",
+		"wait-for-annotations",
+		"--file=" + DownwardAPIVolume().AnnotationsFilePath(),
+	}
+	for _, a := range expectedAnnotations {
+		cmd = append(cmd, "--annotation="+a)
+	}
+
+	return corev1.Container{
+		Name:    initcontainer.ContainerName,
+		Image:   operatorImage,
+		Command: cmd,
+		VolumeMounts: []corev1.VolumeMount{
+			DownwardAPIVolume().VolumeMount(),
+		},
+	}, nil
 }

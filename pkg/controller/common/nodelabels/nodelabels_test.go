@@ -6,6 +6,7 @@ package nodelabels
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
+
+const testOperatorImage = "docker.elastic.co/eck/eck-operator:test"
 
 // fakeTarget is a test implementation of AnnotationTarget.
 type fakeTarget struct {
@@ -29,8 +33,6 @@ func (f *fakeTarget) DownwardNodeLabels() []string         { return f.labels }
 func (f *fakeTarget) GetIdentityLabels() map[string]string { return f.selector }
 
 func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
-	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
-
 	newTarget := func(labels ...string) *fakeTarget {
 		return &fakeTarget{
 			Pod:    &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"}},
@@ -42,18 +44,18 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		builder       *defaults.PodTemplateBuilder
-		target        *fakeTarget
-		operatorImage string
-		wantErr       bool
-		assertions    func(t *testing.T, got *defaults.PodTemplateBuilder)
+		name              string
+		builder           *defaults.PodTemplateBuilder
+		target            *fakeTarget
+		testOperatorImage string
+		wantErr           bool
+		assertions        func(t *testing.T, got *defaults.PodTemplateBuilder)
 	}{
 		{
-			name:          "no downward node labels: no-op",
-			builder:       newBuilder(),
-			target:        newTarget(),
-			operatorImage: operatorImage,
+			name:              "no downward node labels: no-op",
+			builder:           newBuilder(),
+			target:            newTarget(),
+			testOperatorImage: testOperatorImage,
 			assertions: func(t *testing.T, got *defaults.PodTemplateBuilder) {
 				t.Helper()
 				assert.Empty(t, got.PodTemplate.Spec.InitContainers)
@@ -61,23 +63,23 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 			},
 		},
 		{
-			name:          "labels set but empty operator image: error",
-			builder:       newBuilder(),
-			target:        newTarget("topology.kubernetes.io/zone"),
-			operatorImage: "",
-			wantErr:       true,
+			name:              "labels set but empty operator image: error",
+			builder:           newBuilder(),
+			target:            newTarget("topology.kubernetes.io/zone"),
+			testOperatorImage: "",
+			wantErr:           true,
 		},
 		{
-			name:          "single annotation: init container, volume, and main container mount added",
-			builder:       newBuilder(),
-			target:        newTarget("topology.kubernetes.io/zone"),
-			operatorImage: operatorImage,
+			name:              "single annotation: init container, volume, and main container mount added",
+			builder:           newBuilder(),
+			target:            newTarget("topology.kubernetes.io/zone"),
+			testOperatorImage: testOperatorImage,
 			assertions: func(t *testing.T, got *defaults.PodTemplateBuilder) {
 				t.Helper()
 				require.Len(t, got.PodTemplate.Spec.InitContainers, 1)
 				ic := got.PodTemplate.Spec.InitContainers[0]
 				assert.Equal(t, "elastic-internal-wait-for-node-labels", ic.Name)
-				assert.Equal(t, operatorImage, ic.Image)
+				assert.Equal(t, testOperatorImage, ic.Image)
 				require.GreaterOrEqual(t, len(ic.Command), 2)
 				assert.Equal(t, "/elastic-operator", ic.Command[0])
 				assert.Equal(t, "wait-for-annotations", ic.Command[1])
@@ -93,26 +95,58 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 					}
 				}
 				assert.True(t, hasMount, "main container should have the downward-api volume mounted")
+				// ECK-managed: annotation must record the managed identity so NormalizeTemplateForHash
+				// can suppress operator-image changes from affecting the workload hash.
+				assert.Equal(t,
+					"managed:"+initcontainer.HashVersion,
+					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
+				)
 			},
 		},
 		{
-			name:          "multiple annotations: one --annotation flag per label",
-			builder:       newBuilder(),
-			target:        newTarget("topology.kubernetes.io/zone", "topology.kubernetes.io/region"),
-			operatorImage: operatorImage,
+			name:              "multiple annotations: one --annotation flag per label",
+			builder:           newBuilder(),
+			target:            newTarget("topology.kubernetes.io/zone", "topology.kubernetes.io/region"),
+			testOperatorImage: testOperatorImage,
 			assertions: func(t *testing.T, got *defaults.PodTemplateBuilder) {
 				t.Helper()
 				require.Len(t, got.PodTemplate.Spec.InitContainers, 1)
 				cmd := got.PodTemplate.Spec.InitContainers[0].Command
 				assert.Contains(t, cmd, "--annotation=topology.kubernetes.io/zone")
 				assert.Contains(t, cmd, "--annotation=topology.kubernetes.io/region")
+				assert.Equal(t,
+					"managed:"+initcontainer.HashVersion,
+					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
+				)
+			},
+		},
+		{
+			name: "user-overridden init container image: annotation records user identity",
+			builder: func() *defaults.PodTemplateBuilder {
+				base := corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							{Name: initcontainer.ContainerName, Image: "my-custom-init-contianer:1.0"},
+						},
+					},
+				}
+				return defaults.NewPodTemplateBuilder(base, "main")
+			}(),
+			target:            newTarget("topology.kubernetes.io/zone"),
+			testOperatorImage: testOperatorImage,
+			assertions: func(t *testing.T, got *defaults.PodTemplateBuilder) {
+				t.Helper()
+				assert.Equal(t,
+					"user",
+					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
+				)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MaybeAddWaitForAnnotationsInitContainer(tt.builder, tt.target, tt.operatorImage)
+			got, err := MaybeAddWaitForAnnotationsInitContainer(tt.builder, tt.target, tt.testOperatorImage)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -240,4 +274,72 @@ func TestAnnotatePods(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWaitForAnnotationsInitContainer(t *testing.T) {
+	tests := []struct {
+		name          string
+		operatorImage string
+		annotations   []string
+		wantErr       bool
+		check         func(t *testing.T, c corev1.Container)
+	}{
+		{
+			name:          "builds container with correct name, image, command and volume mount",
+			operatorImage: testOperatorImage,
+			annotations:   []string{"topology.kubernetes.io/zone", "topology.kubernetes.io/region"},
+			check: func(t *testing.T, c corev1.Container) {
+				t.Helper()
+				assert.Equal(t, initcontainer.ContainerName, c.Name)
+				assert.Equal(t, testOperatorImage, c.Image)
+
+				require.Len(t, c.VolumeMounts, 1)
+				assert.Equal(t, "downward-api", c.VolumeMounts[0].Name)
+				assert.Equal(t, "/mnt/elastic-internal/downward-api", c.VolumeMounts[0].MountPath)
+				assert.True(t, c.VolumeMounts[0].ReadOnly)
+
+				// Command must be the operator subcommand invocation, not a shell script.
+				require.GreaterOrEqual(t, len(c.Command), 4)
+				assert.Equal(t, "/elastic-operator", c.Command[0])
+				assert.Equal(t, "wait-for-annotations", c.Command[1])
+				assert.Equal(t, "--file=/mnt/elastic-internal/downward-api/annotations", c.Command[2])
+				joined := strings.Join(c.Command, " ")
+				assert.Contains(t, joined, "--annotation=topology.kubernetes.io/zone")
+				assert.Contains(t, joined, "--annotation=topology.kubernetes.io/region")
+
+				// Resources and Env are left unset so they are inherited via WithInitContainerDefaults.
+				assert.Empty(t, c.Resources.Limits)
+				assert.Empty(t, c.Resources.Requests)
+				assert.Empty(t, c.Env)
+			},
+		},
+		{
+			name:          "empty operator image returns error",
+			operatorImage: "",
+			annotations:   []string{"topology.kubernetes.io/zone"},
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := WaitForAnnotationsInitContainer(tt.operatorImage, tt.annotations)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			tt.check(t, c)
+		})
+	}
+}
+
+func TestDownwardAPIVolume_IncludesAnnotations(t *testing.T) {
+	v := DownwardAPIVolume().Volume()
+	require.NotNil(t, v.VolumeSource.DownwardAPI)
+	paths := make([]string, 0, len(v.VolumeSource.DownwardAPI.Items))
+	for _, item := range v.VolumeSource.DownwardAPI.Items {
+		paths = append(paths, item.Path)
+	}
+	assert.Contains(t, strings.Join(paths, ","), "annotations")
 }
