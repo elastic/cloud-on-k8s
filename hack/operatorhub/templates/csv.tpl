@@ -361,6 +361,8 @@ spec:
                       fieldPath: metadata.annotations['olm.operatorNamespace']
                 - name: OPERATOR_IMAGE
                   value: {{ .OperatorRepo }}{{ .Tag }}
+                - name: CACHE_STARTUP_TIMEOUT
+                  value: "5m"
                 resources:
                   limits:
                     cpu: 1

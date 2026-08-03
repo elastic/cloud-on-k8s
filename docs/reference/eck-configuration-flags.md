@@ -16,6 +16,7 @@ The following table lists and describes all the available configuration flags fo
 | `ca-cert-rotate-before` | `24h` | Duration representing how long before expiration CA certificates should be re-issued. |
 | `ca-cert-validity` | `8760h` | Duration representing the validity period of a generated CA certificate. |
 | `ca-dir` | `""` | Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation and validity options. |
+| `cache-startup-timeout` | `0` | Maximum time to wait for the Kubernetes informer cache to sync on startup. If the cache does not sync within this duration the operator exits, allowing Kubernetes to restart the pod. Set to `0` to wait indefinitely. |
 | `cert-rotate-before` | `24h` | Duration representing how long before expiration TLS certificates should be re-issued. |
 | `cert-validity` | `8760h` | Duration representing the validity period of a generated TLS certificate. |
 | `config` | `""` | Path to a file containing the operator configuration. |

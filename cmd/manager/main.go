@@ -246,6 +246,11 @@ func Command() *cobra.Command {
 		":8081",
 		"The address the health probe endpoint binds to.",
 	)
+	cmd.Flags().Duration(
+		operator.CacheStartupTimeoutFlag,
+		0,
+		"Maximum time to wait for the Kubernetes informer cache to sync on startup. If the cache does not sync within this duration the operator exits, allowing Kubernetes to restart the pod. Set to 0 to wait indefinitely.",
+	)
 	cmd.Flags().Bool(
 		operator.EnableLeaderElection,
 		true,
@@ -705,8 +710,13 @@ func startOperator(ctx context.Context) error {
 
 	namespaceMatcher.SetCache(mgr.GetCache())
 
+	startupCh := make(chan struct{})
+	if err := mgr.Add(&startupRunnable{cache: mgr.GetCache(), readyCh: startupCh}); err != nil {
+		return fmt.Errorf("failed to register cache readiness runnable: %w", err)
+	}
+
 	if probesEnabled {
-		if err := setupProbes(mgr, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
+		if err := setupProbes(mgr, startupCh, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
 			return err
 		}
 	}
@@ -858,15 +868,47 @@ func startOperator(ctx context.Context) error {
 		return fmt.Errorf("failed to add async tasks runnable: %w", err)
 	}
 
+	errCh := make(chan error, 1)
+	if cacheStartupTimeout := viper.GetDuration(operator.CacheStartupTimeoutFlag); cacheStartupTimeout > 0 {
+		go func() {
+			log.Info("Setting up cache startup timeout", "timeout", cacheStartupTimeout.String())
+			start := time.Now()
+			select {
+			case <-time.After(cacheStartupTimeout):
+				// No point in cancelling the context here as mgr.Start can end up permanently stuck in an
+				// internal runnableGroup loop before the cache syncs;
+				// Look https://github.com/kubernetes-sigs/controller-runtime/pull/3440
+				err := errors.New("cache did not start in time")
+				log.Error(err, "Failed to start cache", "timeout", cacheStartupTimeout.String(),
+					"elapsed", time.Since(start).String())
+				errCh <- err
+			case <-ctx.Done():
+			case <-startupCh:
+				log.Info("Cache started in time", "elapsed", time.Since(start).String())
+			}
+		}()
+	} else {
+		log.Info("Cache startup timeout disabled")
+	}
+
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		return fmt.Errorf("error running manager: %w", err)
+	go func() {
+		errCh <- mgr.Start(ctx)
+	}()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		return nil
 	}
-	return nil
 }
 
 func readOptionalCA(caDir string) (*certificates.CA, error) {
@@ -876,19 +918,19 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 	return certificates.BuildCAFromFile(caDir)
 }
 
-// cacheReadyRunnable closes readyCh once the cache is fully synced.
+// startupRunnable closes startupCh once the controller-runtime manager has completed its initial cache sync.
 // NeedLeaderElection() = false ensures it runs on every replica, including
 // non-leaders that serve webhook requests. Cache dependencies used before
 // leader election are registered before mgr.Start(), so WaitForCacheSync checks
 // real informers rather than returning trivially true on an empty tracker.
-type cacheReadyRunnable struct {
+type startupRunnable struct {
 	cache   cache.Cache
 	readyCh chan struct{}
 }
 
-func (r *cacheReadyRunnable) NeedLeaderElection() bool { return false }
+func (r *startupRunnable) NeedLeaderElection() bool { return false }
 
-func (r *cacheReadyRunnable) Start(ctx context.Context) error {
+func (r *startupRunnable) Start(ctx context.Context) error {
 	if r.cache.WaitForCacheSync(ctx) {
 		close(r.readyCh)
 	}

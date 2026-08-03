@@ -95,26 +95,23 @@ func (m *probeTestManager) GetWebhookServer() crwebhook.Server {
 func TestSetupProbes(t *testing.T) {
 	setupErr := errors.New("setup error")
 	tests := []struct {
-		name              string
-		webhookEnabled    bool
-		configure         func(*probeTestManager)
-		wantErrContains   string
-		wantHealthChecks  []string
-		wantReadyChecks   []string
-		wantRunnableCount int
+		name             string
+		webhookEnabled   bool
+		configure        func(*probeTestManager)
+		wantErrContains  string
+		wantHealthChecks []string
+		wantReadyChecks  []string
 	}{
 		{
-			name:              "registers cache and health checks",
-			wantHealthChecks:  []string{"healthz"},
-			wantReadyChecks:   []string{"cache"},
-			wantRunnableCount: 1,
+			name:             "registers cache and health checks",
+			wantHealthChecks: []string{"healthz"},
+			wantReadyChecks:  []string{"cache"},
 		},
 		{
-			name:              "registers webhook check when enabled",
-			webhookEnabled:    true,
-			wantHealthChecks:  []string{"healthz"},
-			wantReadyChecks:   []string{"cache", "webhook"},
-			wantRunnableCount: 1,
+			name:             "registers webhook check when enabled",
+			webhookEnabled:   true,
+			wantHealthChecks: []string{"healthz"},
+			wantReadyChecks:  []string{"cache", "webhook"},
 		},
 		{
 			name: "propagates health check registration error",
@@ -132,24 +129,14 @@ func TestSetupProbes(t *testing.T) {
 			wantHealthChecks: []string{"healthz"},
 		},
 		{
-			name: "propagates runnable registration error",
-			configure: func(m *probeTestManager) {
-				m.addErr = setupErr
-			},
-			wantErrContains:  "failed to register cache readiness runnable",
-			wantHealthChecks: []string{"healthz"},
-			wantReadyChecks:  []string{"cache"},
-		},
-		{
 			name:           "propagates webhook check registration error",
 			webhookEnabled: true,
 			configure: func(m *probeTestManager) {
 				m.readyErrors["webhook"] = setupErr
 			},
-			wantErrContains:   "failed to set up webhook readiness check",
-			wantHealthChecks:  []string{"healthz"},
-			wantReadyChecks:   []string{"cache"},
-			wantRunnableCount: 1,
+			wantErrContains:  "failed to set up webhook readiness check",
+			wantHealthChecks: []string{"healthz"},
+			wantReadyChecks:  []string{"cache"},
 		},
 	}
 
@@ -160,7 +147,8 @@ func TestSetupProbes(t *testing.T) {
 				tt.configure(mgr)
 			}
 
-			err := setupProbes(mgr, tt.webhookEnabled)
+			startupCh := make(chan struct{})
+			err := setupProbes(mgr, startupCh, tt.webhookEnabled)
 
 			if tt.wantErrContains == "" {
 				require.NoError(t, err)
@@ -170,7 +158,7 @@ func TestSetupProbes(t *testing.T) {
 			}
 			require.ElementsMatch(t, tt.wantHealthChecks, mapKeys(mgr.healthChecks))
 			require.ElementsMatch(t, tt.wantReadyChecks, mapKeys(mgr.readyChecks))
-			require.Len(t, mgr.runnables, tt.wantRunnableCount)
+			require.Empty(t, mgr.runnables)
 		})
 	}
 }
@@ -194,12 +182,11 @@ func TestCacheReadinessProbe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mgr := newProbeTestManager()
-			mgr.cache = &probeTestCache{synced: tt.cacheSync}
-			require.NoError(t, setupProbes(mgr, false))
-			require.Len(t, mgr.runnables, 1)
+			startupCh := make(chan struct{})
+			require.NoError(t, setupProbes(mgr, startupCh, false))
+			require.Empty(t, mgr.runnables)
 
-			runnable, ok := mgr.runnables[0].(*cacheReadyRunnable)
-			require.True(t, ok)
+			runnable := &startupRunnable{cache: &probeTestCache{synced: tt.cacheSync}, readyCh: startupCh}
 			require.False(t, runnable.NeedLeaderElection())
 			require.NoError(t, runnable.Start(t.Context()))
 
