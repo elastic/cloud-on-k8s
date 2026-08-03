@@ -51,22 +51,34 @@ func (v *webhookValidator) validate(ctx context.Context, a *agentv1alpha1.Agent,
 	return validateAgent(ctx, a, old, v.licenseChecker, v.exposedNodeLabels)
 }
 
-// validateAgent runs all Agent validations together with the operator's exposed-node-labels policy
-// check. Both the validating webhook and the reconciler call it so the same rules are enforced
-// through a single function, regardless of whether the webhook is enabled.
+// licenseValidationError signals a license-only validation failure so callers can
+// distinguish it from other validation errors and handle it accordingly.
+type licenseValidationError struct {
+	wrapped error
+}
+
+func (e *licenseValidationError) Error() string { return e.wrapped.Error() }
+func (e *licenseValidationError) Unwrap() error { return e.wrapped }
+
+// validateAgent runs Agent validations and the operator's exposed-node-labels policy check.
+// Both the validating webhook and the reconciler call it so the same rules are enforced through a
+// single function, regardless of whether the webhook is enabled.
 func validateAgent(ctx context.Context, a *agentv1alpha1.Agent, old *agentv1alpha1.Agent, checker commonlicense.Checker, exposedNodeLabels commonnodelabels.NodeLabels) (admission.Warnings, error) {
 	warnings, err := agentv1alpha1.Validate(a, old)
 	if err != nil {
 		return warnings, err
 	}
-	var errs field.ErrorList
-	errs = append(errs, validClientAuthentication(ctx, a, checker)...)
-	errs = append(errs, commonnodelabels.ValidateAnnotation(a.Annotations, exposedNodeLabels)...)
-	if len(errs) > 0 {
-		return warnings, apierrors.NewInvalid(
-			schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind},
-			a.Name, errs,
-		)
+
+	gk := schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind}
+	licenseErrs := validClientAuthentication(ctx, a, checker)
+	if otherErrs := commonnodelabels.ValidateAnnotation(a.Annotations, exposedNodeLabels); len(otherErrs) > 0 {
+		// Hard failure: combine all errors so the caller sees the full picture.
+		return warnings, apierrors.NewInvalid(gk, a.Name, append(licenseErrs, otherErrs...))
+	}
+	if len(licenseErrs) > 0 {
+		// License-only failure: return as a soft error so the caller
+		// a warning event and continue; the webhook promotes it to a hard rejection.
+		return warnings, &licenseValidationError{apierrors.NewInvalid(gk, a.Name, licenseErrs)}
 	}
 	return warnings, nil
 }
