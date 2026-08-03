@@ -25,15 +25,22 @@ func setupProbes(mgr manager.Manager, startupCh <-chan struct{}, webhookEnabled 
 		return fmt.Errorf("failed to set up health check: %w", err)
 	}
 	if err := mgr.AddReadyzCheck("cache", func(req *http.Request) error {
-		// Wait 1 second, we want to return a feedback to the kubelet in timely fashion.
-		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+		// Wait 2 second, we want to return a feedback to the kubelet in timely fashion.
+		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 		defer cancel()
+
+		// wait for cache to be started first (signaled by closed startupCh)
 		select {
 		case <-startupCh:
-			return nil
 		case <-ctx.Done():
 			return errors.New("cache not started yet")
 		}
+
+		// check that every registered informer is synced
+		if !mgr.GetCache().WaitForCacheSync(ctx) {
+			return errors.New("cache not synced")
+		}
+		return nil
 	}); err != nil {
 		return fmt.Errorf("failed to set up cache readiness check: %w", err)
 	}

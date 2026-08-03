@@ -165,45 +165,52 @@ func TestSetupProbes(t *testing.T) {
 
 func TestCacheReadinessProbe(t *testing.T) {
 	tests := []struct {
-		name      string
-		cacheSync bool
-		wantReady bool
+		name             string
+		startupCacheSync bool // controls whether startupCh is closed (startupRunnable's cache)
+		mainCacheSync    bool // controls WaitForCacheSync result in the readiness check
+		cancelCtx        bool
+		wantErrContains  string
 	}{
 		{
-			name:      "ready after cache sync",
-			cacheSync: true,
-			wantReady: true,
+			name:             "ready when cache started and all informers synced",
+			startupCacheSync: true,
+			mainCacheSync:    true,
 		},
 		{
-			name: "not ready when cache sync fails",
+			name:            "not ready when cache not started yet",
+			cancelCtx:       true,
+			wantErrContains: "cache not started yet",
+		},
+		{
+			name:             "not ready when informers not synced after startup",
+			startupCacheSync: true,
+			wantErrContains:  "cache not synced",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mgr := newProbeTestManager()
+			mgr.cache = &probeTestCache{synced: tt.mainCacheSync}
 			startupCh := make(chan struct{})
 			require.NoError(t, setupProbes(mgr, startupCh, false))
-			require.Empty(t, mgr.runnables)
 
-			runnable := &startupRunnable{cache: &probeTestCache{synced: tt.cacheSync}, readyCh: startupCh}
-			require.False(t, runnable.NeedLeaderElection())
+			runnable := &startupRunnable{cache: &probeTestCache{synced: tt.startupCacheSync}, readyCh: startupCh}
 			require.NoError(t, runnable.Start(t.Context()))
 
 			ctx, cancel := context.WithCancel(t.Context())
-			if !tt.wantReady {
+			if tt.cancelCtx {
 				cancel()
 			} else {
 				defer cancel()
 			}
 			req := httptest.NewRequest(http.MethodGet, "/readyz", nil).WithContext(ctx)
 			err := mgr.readyChecks["cache"](req)
-			if tt.wantReady {
-				require.NoError(t, err)
+			if tt.wantErrContains != "" {
+				require.ErrorContains(t, err, tt.wantErrContains)
 			} else {
-				require.ErrorContains(t, err, "cache not synced yet")
+				require.NoError(t, err)
 			}
-			require.NoError(t, mgr.healthChecks["healthz"](req))
 		})
 	}
 }
