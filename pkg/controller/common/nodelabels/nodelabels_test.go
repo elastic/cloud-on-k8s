@@ -126,7 +126,7 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 				base := corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						InitContainers: []corev1.Container{
-							{Name: initcontainer.ContainerName, Image: "my-custom-init-contianer:1.0"},
+							{Name: initcontainer.ContainerName, Image: "my-custom-init-container:1.0"},
 						},
 					},
 				}
