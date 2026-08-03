@@ -45,7 +45,6 @@ const (
 	unsupportedClientAuthenticationMsg       = "HTTP client authentication mode \"required\" is not supported when set via nodeSet configuration; use spec.http.tls.client.authentication (enterprise license) instead"
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
-	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 	inconsistentFIPSModeWarningMsg           = "xpack.security.fips_mode.enabled is not consistent across all NodeSets; FIPS mode should be uniform across the cluster"
 	fipsManagedKeystoreUnsupportedWarningMsg = "FIPS mode is enabled in NodeSet configuration but Elasticsearch version is below 9.4.0; the operator cannot manage the keystore password automatically."
@@ -125,7 +124,7 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels commonnodela
 				field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
 					topologyKey,
-					notAllowedNodesLabelMsg,
+					commonnodelabels.NotAllowedNodesLabelMsg,
 				),
 			)
 		}
