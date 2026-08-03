@@ -87,10 +87,12 @@ func ParseConfigMapOrSecretRefToConfig(
 	var secretNames []string
 	var configMapNsns []types.NamespacedName
 	if ref != nil {
-		if ref.SecretName != "" {
+		switch {
+		case ref.SecretName != "" && ref.ConfigMapName != "":
+			return nil, fmt.Errorf("cannot specify both secret and configMap at the same time")
+		case ref.SecretName != "":
 			secretNames = []string{ref.SecretName}
-		}
-		if ref.ConfigMapName != "" {
+		case ref.ConfigMapName != "":
 			configMapNsns = []types.NamespacedName{{Namespace: namespace, Name: ref.ConfigMapName}}
 		}
 	}
@@ -112,8 +114,6 @@ func ParseConfigMapOrSecretRefToConfig(
 	var parseEventAction, source string
 
 	switch {
-	case len(secretNames) > 0 && len(configMapNsns) > 0:
-		return nil, fmt.Errorf("cannot specify both secret and configMap at the same time")
 	case len(secretNames) > 0:
 		var secret corev1.Secret
 		if err := driver.K8sClient().Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: ref.SecretName}, &secret); err != nil {
