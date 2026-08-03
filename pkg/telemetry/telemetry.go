@@ -447,9 +447,9 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 	for k, v := range stats {
 		ret[k] = v
 	}
-	ret["downward_node_labels"] = map[string]any{
-		"resource_count":             resourcesWithDownwardLabels,
-		"distinct_node_labels_count": distinctNodeLabels.Count(),
+	ret["downward_node_labels"] = &downwardNodeLabelsStats{
+		ResourceCount:           resourcesWithDownwardLabels,
+		DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115
 	}
 
 	return "beats", ret, nil
