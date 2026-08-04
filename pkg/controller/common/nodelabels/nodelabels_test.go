@@ -98,7 +98,7 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 				// ECK-managed: annotation must record the managed identity so NormalizeTemplateForHash
 				// can suppress operator-image changes from affecting the workload hash.
 				assert.Equal(t,
-					"managed:"+initcontainer.HashVersion,
+					initcontainer.ManagedHashAnnotationValue,
 					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
 				)
 			},
@@ -115,13 +115,13 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 				assert.Contains(t, cmd, "--annotation=topology.kubernetes.io/zone")
 				assert.Contains(t, cmd, "--annotation=topology.kubernetes.io/region")
 				assert.Equal(t,
-					"managed:"+initcontainer.HashVersion,
+					initcontainer.ManagedHashAnnotationValue,
 					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
 				)
 			},
 		},
 		{
-			name: "user-overridden init container image: annotation records user identity",
+			name: "user-overridden init container image: managed annotation is absent",
 			builder: func() *defaults.PodTemplateBuilder {
 				base := corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
@@ -136,10 +136,8 @@ func TestMaybeAddWaitForAnnotationsInitContainer(t *testing.T) {
 			testOperatorImage: testOperatorImage,
 			assertions: func(t *testing.T, got *defaults.PodTemplateBuilder) {
 				t.Helper()
-				assert.Equal(t,
-					"user",
-					got.PodTemplate.Annotations[initcontainer.HashAnnotation],
-				)
+				_, present := got.PodTemplate.Annotations[initcontainer.HashAnnotation]
+				assert.False(t, present, "managed annotation must not be set when the user supplies the init container image")
 			},
 		},
 	}

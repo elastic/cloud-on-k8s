@@ -89,37 +89,15 @@ func MaybeAddWaitForAnnotationsInitContainer(builder *defaults.PodTemplateBuilde
 		return builder, err
 	}
 
-	// Record the hash identity before merging the ECK-built init container so that
-	// NormalizeTemplateForHash can later distinguish ECK-managed images (stable across
-	// operator upgrades) from user-supplied overrides (must participate in the hash).
-	// This annotation is ECK-owned and written after user metadata merging so that a
-	// user value cannot interfere with update detection.
-	identity := initContainerHashIdentity(builder.PodTemplate)
-	if builder.PodTemplate.Annotations == nil {
-		builder.PodTemplate.Annotations = map[string]string{}
-	}
-	builder.PodTemplate.Annotations[initcontainer.HashAnnotation] = identity
+	// ECK-owned annotation: written after user metadata merging so a user-supplied value
+	// cannot interfere with update detection.
+	initcontainer.SetHashAnnotation(&builder.PodTemplate)
 
 	builder = builder.
 		WithVolumes(downwardAPIVolume.Volume()).
 		WithVolumeMounts(downwardAPIVolume.VolumeMount()).
 		WithInitContainers(waitInit)
 	return builder, nil
-}
-
-// initContainerHashIdentity returns the identity string to record in initcontainer.HashAnnotation.
-// If the pod template already contains a container named initcontainer.ContainerName with a non-empty
-// image, the user explicitly supplied it. Its image participates in the workload hash via the
-// pod spec directly (NormalizeTemplateForHash leaves it untouched), so the annotation only needs
-// to mark it as user-supplied ("user"). Otherwise ECK provides the image and operator
-// patch-upgrades must not roll pods ("managed:<version>").
-func initContainerHashIdentity(template corev1.PodTemplateSpec) string {
-	for _, c := range template.Spec.InitContainers {
-		if c.Name == initcontainer.ContainerName && c.Image != "" {
-			return "user"
-		}
-	}
-	return "managed:" + initcontainer.HashVersion
 }
 
 func annotatePod(ctx context.Context, c k8s.Client, pod corev1.Pod, expectedLabels []string, resourceName string) error {
