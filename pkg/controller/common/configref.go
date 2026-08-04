@@ -83,28 +83,35 @@ func ParseConfigMapOrSecretRefToConfig(
 	namespace := resourceMeta.GetNamespace()
 	resourceNsn := types.NamespacedName{Namespace: namespace, Name: resourceMeta.GetName()}
 
-	// Derive sources once; these slices drive both watch management and fetch dispatch.
-	var secretNames []string
-	var configMapNsns []types.NamespacedName
+	var secretNsn *types.NamespacedName
+	var configMapNsn *types.NamespacedName
 	if ref != nil {
 		switch {
 		case ref.SecretName != "" && ref.ConfigMapName != "":
 			return nil, fmt.Errorf("cannot specify both secret and configMap at the same time")
 		case ref.SecretName != "":
-			secretNames = []string{ref.SecretName}
+			secretNsn = &types.NamespacedName{Namespace: namespace, Name: ref.SecretName}
 		case ref.ConfigMapName != "":
-			configMapNsns = []types.NamespacedName{{Namespace: namespace, Name: ref.ConfigMapName}}
+			configMapNsn = &types.NamespacedName{Namespace: namespace, Name: ref.ConfigMapName}
 		}
 	}
 
 	// Watches are registered before fetching so that a missing object is still watched
 	// and triggers reconciliation once it is created.
 	if secretWatchName != nil {
+		var secretNames []string
+		if secretNsn != nil {
+			secretNames = append(secretNames, secretNsn.Name)
+		}
 		if err := watches.WatchUserProvidedSecrets(resourceNsn, driver.DynamicWatches(), secretWatchName(resourceNsn), secretNames); err != nil {
 			return nil, err
 		}
 	}
 	if configMapWatchName != nil {
+		var configMapNsns []types.NamespacedName
+		if configMapNsn != nil {
+			configMapNsns = append(configMapNsns, *configMapNsn)
+		}
 		if err := watches.WatchUserProvidedConfigMaps(resourceNsn, driver.DynamicWatches(), configMapWatchName(resourceNsn), configMapNsns); err != nil {
 			return nil, err
 		}
@@ -114,9 +121,9 @@ func ParseConfigMapOrSecretRefToConfig(
 	var parseEventAction, source string
 
 	switch {
-	case len(secretNames) > 0:
+	case secretNsn != nil:
 		var secret corev1.Secret
-		if err := driver.K8sClient().Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: ref.SecretName}, &secret); err != nil {
+		if err := driver.K8sClient().Get(context.Background(), *secretNsn, &secret); err != nil {
 			return nil, err
 		}
 		d, exists := secret.Data[key]
@@ -126,9 +133,9 @@ func ParseConfigMapOrSecretRefToConfig(
 			return nil, errors.New(msg)
 		}
 		data, parseEventAction, source = d, events.EventActionParseSecret, fmt.Sprintf("%s secret %s/%s", refName, namespace, ref.SecretName)
-	case len(configMapNsns) > 0:
+	case configMapNsn != nil:
 		var cm corev1.ConfigMap
-		if err := driver.K8sClient().Get(context.Background(), configMapNsns[0], &cm); err != nil {
+		if err := driver.K8sClient().Get(context.Background(), *configMapNsn, &cm); err != nil {
 			return nil, err
 		}
 		d, exists := cm.Data[key]
