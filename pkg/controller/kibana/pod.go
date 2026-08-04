@@ -209,20 +209,21 @@ func NewPodTemplateSpec(
 		}
 	}
 
-	builder, err = stackmon.WithMonitoring(ctx, client, builder, kb, basePath, meta)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
-	}
-
 	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &kb, operatorImage)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	// WithContainersSecurityContext must be called after all containers and init containers have been added.
+	// WithContainersSecurityContext must be called after all init containers have been added but before
+	// stackmon.WithMonitoring, so that monitoring sidecar containers are not included (matching ES behavior).
 	result := builder.WithInitContainerDefaults(additionalInitEnvVars...)
 	if canEnableSecurityContext {
 		result = result.WithContainersSecurityContext(defaultSecurityContext)
+	}
+
+	result, err = stackmon.WithMonitoring(ctx, client, result, kb, basePath, meta)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
 	}
 	return result.PodTemplate, nil
 }

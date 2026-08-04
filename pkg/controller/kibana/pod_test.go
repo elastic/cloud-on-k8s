@@ -21,6 +21,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
@@ -775,6 +776,90 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.kb), tc.want)
 		})
+	}
+}
+
+// TestMonitoringSidecarsSecurityContext verifies that stackmon sidecar containers (metricbeat,
+// filebeat) never receive the default hardened SecurityContext. WithContainersSecurityContext
+// must be called before stackmon.WithMonitoring so that sidecars are added after the call and
+// thus keep a nil SecurityContext — matching Elasticsearch's behavior. If this ordering is
+// accidentally reversed, existing Kibana pods with monitoring enabled would roll on upgrade
+// even when the downward-node-labels feature is not in use.
+func TestMonitoringSidecarsSecurityContext(t *testing.T) {
+	const (
+		kbName      = "sample"
+		kbNamespace = "aerospace"
+	)
+
+	metricsAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "sample-observability-monitoring-beat-es-mon-user",
+		AuthSecretKey:  "aerospace-sample-observability-monitoring-beat-es-mon-user",
+		CACertProvided: true,
+		CASecretName:   "sample-es-monitoring-observability-monitoring-ca",
+		URL:            "https://monitoring-es-http.observability.svc:9200",
+		Version:        "9.5.0",
+	}
+	logsAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "sample-observability-logs-beat-es-mon-user",
+		AuthSecretKey:  "aerospace-sample-observability-logs-beat-es-mon-user",
+		CACertProvided: true,
+		CASecretName:   "sample-es-logs-observability-logs-ca",
+		URL:            "https://logs-es-http.observability.svc:9200",
+		Version:        "9.5.0",
+	}
+
+	fakeClient := k8s.NewFakeClient(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "sample-es-internal-users", Namespace: kbNamespace},
+			Data:       map[string][]byte{"elastic-internal-monitoring": []byte("pass")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: metricsAssocConf.AuthSecretName, Namespace: kbNamespace},
+			Data:       map[string][]byte{metricsAssocConf.AuthSecretKey: []byte("pass")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: logsAssocConf.AuthSecretName, Namespace: kbNamespace},
+			Data:       map[string][]byte{logsAssocConf.AuthSecretKey: []byte("pass")},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "sample-kb-http-certs-public", Namespace: kbNamespace},
+			Data:       map[string][]byte{"tls.crt": []byte("cert"), "ca.crt": []byte("ca")},
+		},
+	)
+
+	kb := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Name: kbName, Namespace: kbNamespace},
+		Spec: kbv1.KibanaSpec{
+			Version: "9.5.0",
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "sample", Namespace: kbNamespace},
+			},
+			Monitoring: commonv1.Monitoring{
+				Metrics: commonv1.MetricsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring", Namespace: "observability"}},
+				},
+				Logs: commonv1.LogsMonitoring{
+					ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}},
+				},
+			},
+		},
+	}
+	monitoring.GetMetricsAssociation(&kb)[0].SetAssociationConf(&metricsAssocConf)
+	monitoring.GetLogsAssociation(&kb)[0].SetAssociationConf(&logsAssocConf)
+
+	md := metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+	got, err := NewPodTemplateSpec(context.Background(), fakeClient, kb, nil, []commonvolume.VolumeLike{}, "", true, "", md)
+	require.NoError(t, err)
+
+	// There must be sidecar containers (metricbeat + filebeat) in addition to the main one.
+	require.Greater(t, len(got.Spec.Containers), 1, "expected monitoring sidecar containers")
+
+	for _, c := range got.Spec.Containers {
+		if c.Name == kbv1.KibanaContainerName {
+			assert.NotNil(t, c.SecurityContext, "kibana container must have the default security context")
+		} else {
+			assert.Nil(t, c.SecurityContext, "monitoring sidecar %q must not inherit the default security context", c.Name)
+		}
 	}
 }
 
