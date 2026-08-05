@@ -4,7 +4,7 @@ metadata:
   name: logstash-sample
 spec:
   count: 1
-  version: 9.4.3
+  version: 9.5.0
   config:
     queue.type: persisted
   pipelines:
