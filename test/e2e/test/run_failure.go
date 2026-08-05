@@ -62,7 +62,6 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 // KillNodeSteps returns failure steps that delete one matching pod and wait for that exact pod to be gone or replaced.
 func KillNodeSteps(podMatch func(p corev1.Pod) bool, opts ...client.ListOption) StepsFunc {
 	var killedPod corev1.Pod
-	//nolint:thelper
 	return func(k *K8sClient) StepList {
 		return StepList{
 			{
