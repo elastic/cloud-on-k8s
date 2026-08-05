@@ -514,7 +514,7 @@ spec:
         # Rename the fields "error" to "error.message" and "source" to "event.source"
         # This is to avoid a conflict with the ECS "error" and "source" documents.
         "co.elastic.logs/raw": "[{\"type\":\"filestream\",\"enabled\":true,\"id\":\"eck-container-logs-${data.kubernetes.container.id}\",\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"parsers\":[{\"container\":{}},{\"ndjson\":{\"keys_under_root\":true}}],\"prospector.scanner.symlinks\":true,\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
-        "checksum/config": 06de2e57e1b889f467b43a06a8ad78649c7d98e833c50a2c3f55c760d5da0d4c
+        "checksum/config": 5027298236799b417f92da297081b2d756f21ef9b917d064750a2396226d8052
       labels:
         control-plane: elastic-operator
     spec:
@@ -524,7 +524,7 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - image: "docker.elastic.co/eck-snapshots/eck-operator:3.5.0-bc7"
+      - image: "docker.elastic.co/eck/eck-operator:3.5.0"
         imagePullPolicy: IfNotPresent
         name: manager
         args:

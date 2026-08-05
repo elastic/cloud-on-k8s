@@ -16,7 +16,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 ---
 # Source: eck-operator/templates/webhook.yaml
 apiVersion: v1
@@ -26,7 +26,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 ---
 # Source: eck-operator/templates/configmap.yaml
 apiVersion: v1
@@ -36,7 +36,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 data:
   eck.yaml: |-
     log-verbosity: 0
@@ -71,7 +71,7 @@ metadata:
   name: elastic-operator
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups:
   - "authorization.k8s.io"
@@ -330,7 +330,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups: ["elasticsearch.k8s.elastic.co"]
   resources: ["elasticsearches"]
@@ -375,7 +375,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups: ["elasticsearch.k8s.elastic.co"]
   resources: ["elasticsearches"]
@@ -418,7 +418,7 @@ metadata:
   name: elastic-operator
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -436,7 +436,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 spec:
   ports:
   - name: https
@@ -453,7 +453,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 spec:
   selector:
     matchLabels:
@@ -476,7 +476,7 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - image: "docker.elastic.co/eck-dev/eck-operator-mmontgomery:3.3.0-SNAPSHOT-906c863a"
+      - image: "docker.elastic.co/eck/eck-operator:3.3.0"
         imagePullPolicy: IfNotPresent
         name: manager
         args:
@@ -534,7 +534,7 @@ metadata:
   name: elastic-webhook.k8s.elastic.co
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 webhooks:
 - clientConfig:
     service:
