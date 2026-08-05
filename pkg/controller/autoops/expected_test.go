@@ -253,7 +253,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 					Containers: []corev1.Container{
 						{
 							Name:  autoOpsAgentType,
-							Image: fmt.Sprintf("docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:%s", v.String()),
+							Image: fmt.Sprintf("docker.elastic.co/elastic-agent/elastic-otel-collector:%s", v.String()),
 							Args: []string{
 								"--config",
 								"/mnt/config/autoops_es.yml",
