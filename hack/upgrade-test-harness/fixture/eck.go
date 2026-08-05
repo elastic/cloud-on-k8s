@@ -104,7 +104,7 @@ func TestDeployResources(param TestParam) *Fixture {
 	return &Fixture{
 		Name: param.Suffixed("TestDeployResources"),
 		Steps: []*TestStep{
-			noRetry(param.Suffixed("DeployResources"), applyManifests(param.Path("stack.yaml"))),
+			retryRetriable(param.Suffixed("DeployResources"), applyManifests(param.Path("stack.yaml"))),
 		},
 	}
 }

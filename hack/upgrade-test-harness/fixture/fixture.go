@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -116,9 +117,20 @@ func retryRetriable(name string, action func(*TestContext) error) *TestStep {
 		Name:   name,
 		Action: action,
 		Retriable: func(err error) bool {
-			return errors.Is(err, ErrRetry) || apierrors.IsNotFound(err) || apierrors.IsConflict(err)
+			return errors.Is(err, ErrRetry) || apierrors.IsNotFound(err) || apierrors.IsConflict(err) || containsNoMatchError(err)
 		},
 	}
+}
+
+// containsNoMatchError reports whether err is or contains a REST mapper "no kind/resource match" error.
+// This arises on a fresh cluster when CRDs are applied but not yet established in the API server.
+//
+// errors.Is with a zero-value sentinel is safe here because NoKindMatchError and NoResourceMatchError
+// both implement Is(error) bool with type-only matching. utilerrors.Aggregate also implements
+// Is(error) bool by visiting each contained error, so errors.Is traverses the aggregate without
+// any manual iteration.
+func containsNoMatchError(err error) bool {
+	return errors.Is(err, &apimeta.NoKindMatchError{}) || errors.Is(err, &apimeta.NoResourceMatchError{})
 }
 
 // retryOnConflict is a convenience function to create a test step that is retried if there was a conflict.
