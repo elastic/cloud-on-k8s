@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,22 +59,46 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 	steps.RunSequential(t)
 }
 
+// KillNodeSteps returns failure steps that delete one matching pod and wait for that exact pod to be gone or replaced.
 func KillNodeSteps(podMatch func(p corev1.Pod) bool, opts ...client.ListOption) StepsFunc {
 	var killedPod corev1.Pod
-	//nolint:thelper
 	return func(k *K8sClient) StepList {
 		return StepList{
 			{
 				Name: "Kill a node",
-				Test: func(t *testing.T) {
-					pods, err := k.GetPods(opts...)
-					require.NoError(t, err)
-					var found bool
-					killedPod, found = GetFirstPodMatching(pods, podMatch)
-					require.True(t, found)
-					err = k.DeletePod(killedPod)
-					require.NoError(t, err)
-				},
+				Test: Eventually(func() error {
+					if killedPod.Name == "" {
+						pods, err := k.GetPods(opts...)
+						if err != nil {
+							return err
+						}
+						var found bool
+						killedPod, found = GetFirstPodMatching(pods, podMatch)
+						if !found {
+							return fmt.Errorf("no matching pod found")
+						}
+					}
+
+					pod, err := k.GetPod(killedPod.Namespace, killedPod.Name)
+					if apierrors.IsNotFound(err) {
+						return nil
+					}
+					if err != nil {
+						return err
+					}
+					// A different UID means the original pod was already deleted and replaced.
+					if pod.UID != killedPod.UID {
+						return nil
+					}
+
+					if err := k.DeletePod(pod); err != nil {
+						if apierrors.IsNotFound(err) {
+							return nil
+						}
+						return err
+					}
+					return nil
+				}),
 			},
 			{
 				Name: "Wait for pod to be deleted",
