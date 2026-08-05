@@ -38,5 +38,9 @@ Adding a new release
 - Create a directory under `testdata` following the existing naming convention.
 - Add the `crds.yaml` as `crds.yaml` to the release directory.
 - Add the `operator.yaml` as `install.yaml` to the release directory.
+
+  NOTE: To download already published manifests (`crds.yaml` and `install.yaml`) for a release, use `download-manifests.sh <version like 3.5.0>`.
 - Add resource definitions to a file named `stack.yaml` in the release directory. Resource names must match the name of the release.
 - Update `conf.yaml` and add the new release to the correct position in the `testParam` list.
+
+
