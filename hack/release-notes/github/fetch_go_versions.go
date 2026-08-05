@@ -6,6 +6,7 @@ package github
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,11 +16,11 @@ import (
 )
 
 // fetchFile fetches the content of a file from a GitHub repository at a specific branch.
-func fetchFile(repoName, branch, path string) (string, error) {
+func fetchFile(ctx context.Context, repoName, branch, path string) (string, error) {
 	client := mkClient()
 	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s?ref=%s", repoName, path, branch)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", err
 	}
@@ -92,23 +93,21 @@ const (
 	dockerFile = "build/Dockerfile"
 )
 
-var (
-	GoVersion = regexp.MustCompile(`go:([0-9]+\.[0-9]+\.[0-9]+)`)
-)
+var GoVersion = regexp.MustCompile(`go:([0-9]+\.[0-9]+\.[0-9]+)`)
 
-func GoDiff(repo, oldVersion, newVersion string) []string {
+func GoDiff(ctx context.Context, repo, oldVersion, newVersion string) []string {
 	// Get Go versions
-	dockerFile, err := fetchFile(repo, "v"+newVersion, dockerFile)
+	dockerFile, err := fetchFile(ctx, repo, "v"+newVersion, dockerFile)
 	if err != nil {
 		panic(err)
 	}
 	newGoVersion := GoVersionFromDockerfile(dockerFile)
 
-	baseContent, err := fetchFile(repo, "v"+oldVersion, goMod)
+	baseContent, err := fetchFile(ctx, repo, "v"+oldVersion, goMod)
 	if err != nil {
 		panic(err)
 	}
-	headContent, err := fetchFile(repo, "v"+newVersion, goMod)
+	headContent, err := fetchFile(ctx, repo, "v"+newVersion, goMod)
 	if err != nil {
 		panic(err)
 	}

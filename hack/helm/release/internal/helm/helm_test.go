@@ -101,7 +101,7 @@ func Test_readCharts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir, err := os.MkdirTemp(os.TempDir(), "readCharts")
 			if err != nil {
-				t.Errorf(fmt.Sprintf("failed making temporary directory: %s", err))
+				t.Error("%s", fmt.Sprintf("failed making temporary directory: %s", err))
 				return
 			}
 			defer os.RemoveAll(dir)
