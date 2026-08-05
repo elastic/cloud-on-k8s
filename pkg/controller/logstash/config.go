@@ -80,6 +80,15 @@ func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*sett
 
 	_, _ = configHash.Write(cfgBytes)
 
+	// include resolved credentials so that pods rotate when the backing Secret or ConfigMap changes;
+	// length-prefixed to avoid boundary ambiguity (e.g. ("a","bc") vs ("ab","c"))
+	if apiServerConfig.UsesBasicAuth() {
+		_, _ = fmt.Fprintf(configHash, "%d:%s%d:%s",
+			len(apiServerConfig.Username), apiServerConfig.Username,
+			len(apiServerConfig.Password), apiServerConfig.Password,
+		)
+	}
+
 	return cfg, apiServerConfig, nil
 }
 
