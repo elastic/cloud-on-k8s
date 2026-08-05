@@ -167,7 +167,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			name: "pipelines absent, pipelinesRef present",
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
-					PipelinesRef: &commonv1.ConfigSource{},
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{},
 				},
 			},
 			wantErr: false,
@@ -184,7 +184,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
 					Pipelines:    []commonv1.Config{},
-					PipelinesRef: &commonv1.ConfigSource{},
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{},
 				},
 			},
 			wantErr: true,
@@ -194,6 +194,59 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkSinglePipelineSource(&tc.logstash)
+			assert.Equal(t, tc.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkPipelinesRefSource(t *testing.T) {
+	tests := []struct {
+		name     string
+		logstash lsv1alpha1.Logstash
+		wantErr  bool
+	}{
+		{
+			name:    "nil pipelinesRef",
+			wantErr: false,
+		},
+		{
+			name: "secretName only",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						SecretRef: commonv1.SecretRef{SecretName: "my-secret"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "configMapName only",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both secretName and configMapName",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						SecretRef:    commonv1.SecretRef{SecretName: "my-secret"},
+						ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkPipelinesRefSource(&tc.logstash)
 			assert.Equal(t, tc.wantErr, len(got) > 0)
 		})
 	}

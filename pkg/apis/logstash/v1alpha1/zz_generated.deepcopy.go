@@ -188,7 +188,7 @@ func (in *LogstashSpec) DeepCopyInto(out *LogstashSpec) {
 	}
 	if in.PipelinesRef != nil {
 		in, out := &in.PipelinesRef, &out.PipelinesRef
-		*out = new(v1.ConfigSource)
+		*out = new(v1.ConfigMapOrSecretSource)
 		**out = **in
 	}
 	if in.Services != nil {

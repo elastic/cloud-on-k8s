@@ -55,6 +55,27 @@ func ParseConfigRefToConfig(
 	configRefWatchName func(types.NamespacedName) string,
 	configOptions []ucfg.Option,
 ) (*ucfg.Config, error) {
+	var ref *commonv1.ConfigMapOrSecretSource
+	if configRef != nil {
+		ref = &commonv1.ConfigMapOrSecretSource{SecretRef: configRef.SecretRef}
+	}
+	return ParseConfigMapOrSecretRefToConfig(driver, resource, ref, secretKey, "configRef", configRefWatchName, nil, configOptions)
+}
+
+// ParseConfigMapOrSecretRefToConfig retrieves config from either a Secret or ConfigMap referenced in ref,
+// manages dynamic watches for both sources, and parses the content into ucfg.Config.
+// refName is used in error/event messages (e.g. "configRef", "pipelinesRef").
+// configMapWatchName may be nil when ConfigMap sources are not supported by the caller.
+func ParseConfigMapOrSecretRefToConfig(
+	driver driver.Interface,
+	resource runtime.Object,
+	ref *commonv1.ConfigMapOrSecretSource,
+	key string,
+	refName string,
+	secretWatchName func(types.NamespacedName) string,
+	configMapWatchName func(types.NamespacedName) string,
+	configOptions []ucfg.Option,
+) (*ucfg.Config, error) {
 	resourceMeta, err := meta.Accessor(resource)
 	if err != nil {
 		return nil, err
@@ -62,37 +83,76 @@ func ParseConfigRefToConfig(
 	namespace := resourceMeta.GetNamespace()
 	resourceNsn := types.NamespacedName{Namespace: namespace, Name: resourceMeta.GetName()}
 
-	// ensure watches match the referenced secret
-	var secretNames []string
-	if configRef != nil && configRef.SecretName != "" {
-		secretNames = append(secretNames, configRef.SecretName)
-	}
-	if err := watches.WatchUserProvidedSecrets(resourceNsn, driver.DynamicWatches(), configRefWatchName(resourceNsn), secretNames); err != nil {
-		return nil, err
+	var secretNsn *types.NamespacedName
+	var configMapNsn *types.NamespacedName
+	if ref != nil {
+		switch {
+		case ref.SecretName != "" && ref.ConfigMapName != "":
+			return nil, fmt.Errorf("cannot specify both secret and configMap at the same time")
+		case ref.SecretName != "":
+			secretNsn = &types.NamespacedName{Namespace: namespace, Name: ref.SecretName}
+		case ref.ConfigMapName != "":
+			configMapNsn = &types.NamespacedName{Namespace: namespace, Name: ref.ConfigMapName}
+		}
 	}
 
-	if len(secretNames) == 0 {
-		// no secret referenced, nothing to do
+	// Watches are registered before fetching so that a missing object is still watched
+	// and triggers reconciliation once it is created.
+	if secretWatchName != nil {
+		var secretNames []string
+		if secretNsn != nil {
+			secretNames = append(secretNames, secretNsn.Name)
+		}
+		if err := watches.WatchUserProvidedSecrets(resourceNsn, driver.DynamicWatches(), secretWatchName(resourceNsn), secretNames); err != nil {
+			return nil, err
+		}
+	}
+	if configMapWatchName != nil {
+		var configMapNsns []types.NamespacedName
+		if configMapNsn != nil {
+			configMapNsns = append(configMapNsns, *configMapNsn)
+		}
+		if err := watches.WatchUserProvidedConfigMaps(resourceNsn, driver.DynamicWatches(), configMapWatchName(resourceNsn), configMapNsns); err != nil {
+			return nil, err
+		}
+	}
+
+	var data []byte
+	var parseEventAction, source string
+
+	switch {
+	case secretNsn != nil:
+		var secret corev1.Secret
+		if err := driver.K8sClient().Get(context.Background(), *secretNsn, &secret); err != nil {
+			return nil, err
+		}
+		d, exists := secret.Data[key]
+		if !exists {
+			msg := fmt.Sprintf("unable to retrieve %s secret %s/%s: missing key %s", refName, namespace, ref.SecretName, key)
+			k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, msg)
+			return nil, errors.New(msg)
+		}
+		data, parseEventAction, source = d, events.EventActionParseSecret, fmt.Sprintf("%s secret %s/%s", refName, namespace, ref.SecretName)
+	case configMapNsn != nil:
+		var cm corev1.ConfigMap
+		if err := driver.K8sClient().Get(context.Background(), *configMapNsn, &cm); err != nil {
+			return nil, err
+		}
+		d, exists := cm.Data[key]
+		if !exists {
+			msg := fmt.Sprintf("unable to retrieve %s configmap %s/%s: missing key %s", refName, namespace, ref.ConfigMapName, key)
+			k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetConfigMap, msg)
+			return nil, errors.New(msg)
+		}
+		data, parseEventAction, source = []byte(d), events.EventActionParseConfigMap, fmt.Sprintf("%s configmap %s/%s", refName, namespace, ref.ConfigMapName)
+	default:
 		return nil, nil
 	}
 
-	var secret corev1.Secret
-	if err := driver.K8sClient().Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: configRef.SecretName}, &secret); err != nil {
-		// the secret may not exist (yet) in the cache, let's explicitly error out and retry later
-		return nil, err
-	}
-	data, exists := secret.Data[secretKey]
-	if !exists {
-		msg := fmt.Sprintf("unable to retrieve configRef secret %s/%s: missing key %s", namespace, configRef.SecretName, secretKey)
-		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, msg)
-		return nil, errors.New(msg)
-	}
-
 	parsed, err := uyaml.NewConfig(data, configOptions...)
-
 	if err != nil {
-		msg := fmt.Sprintf("unable to parse %s in configRef secret %s/%s", secretKey, namespace, configRef.SecretName)
-		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionParseSecret, msg)
+		msg := fmt.Sprintf("unable to parse %s in %s", key, source)
+		k8s.EmitEvent(driver.Recorder(), resource, corev1.EventTypeWarning, events.EventReasonUnexpected, parseEventAction, msg)
 		return nil, errors.Wrap(err, msg)
 	}
 	return parsed, nil

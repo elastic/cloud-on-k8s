@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yaml from Secret.
+// TestPipelineConfigRefLogstash PipelineRef should be able to take pipelines.yml from Secret.
 func TestPipelineConfigRefLogstash(t *testing.T) {
 	secretName := "ls-generator-pipeline"
 
@@ -49,7 +49,7 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 	name := "test-pipeline-ref"
 	b := logstash.NewBuilder(name).
 		WithNodeCount(1).
-		WithPipelinesConfigRef(commonv1.ConfigSource{
+		WithPipelinesConfigRef(commonv1.ConfigMapOrSecretSource{
 			SecretRef: commonv1.SecretRef{
 				SecretName: secretName,
 			},
@@ -74,6 +74,71 @@ func TestPipelineConfigRefLogstash(t *testing.T) {
 				Name: "Delete pipeline secret",
 				Test: test.Eventually(func() error {
 					return k.DeleteSecrets(pipelineSecret)
+				}),
+			},
+		}
+	})
+
+	test.Sequence(before, steps, b).RunSequential(t)
+}
+
+// TestPipelineConfigMapRefLogstash PipelineRef should be able to take pipelines.yml from a ConfigMap.
+func TestPipelineConfigMapRefLogstash(t *testing.T) {
+	cmName := "ls-generator-pipeline-cm"
+
+	pipelineCM := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cmName,
+			Namespace: test.Ctx().ManagedNamespace(0),
+		},
+		Data: map[string]string{
+			"pipelines.yml": `
+- pipeline.id: generator
+  pipeline.workers: 1
+  queue.drain: false
+  config.string: input { generator {} } filter { sleep { time => 10 } } output { stdout { codec => dots } }
+- pipeline.id: main
+  config.string: input { stdin{} } output { stdout{} }`,
+		},
+	}
+
+	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.WithStep(test.Step{
+			Name: "Create pipeline configmap",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdate(&pipelineCM)
+			}),
+		})
+	})
+
+	name := "test-pipeline-cm-ref"
+	b := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithPipelinesConfigRef(commonv1.ConfigMapOrSecretSource{
+			ConfigMapRef: commonv1.ConfigMapRef{
+				ConfigMapName: cmName,
+			},
+		})
+
+	steps := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			b.CheckMetricsRequest(k,
+				logstash.Request{
+					Name: "pipeline [generator]",
+					Path: "/_node/pipelines/generator",
+				},
+				logstash.Want{
+					Match: map[string]string{
+						"pipelines.generator.workers": "1",
+					},
+					MatchFunc: map[string]func(string) bool{
+						"status": isGreenOrYellow,
+					},
+				}),
+			test.Step{
+				Name: "Delete pipeline configmap",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(t.Context(), &pipelineCM)
 				}),
 			},
 		}
