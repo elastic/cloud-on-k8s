@@ -43,6 +43,14 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration 
 
 Deploys a single-instance Elastic Agent Deployment in Fleet mode with the APM integration enabled. The APM server listens on port 8200 inside the agent pod and is exposed to the cluster via a dedicated Kubernetes Service. A secret token is pre-configured in the Fleet agent policy to authenticate APM agents. Kibana is configured to send its own telemetry to the APM endpoint.
 
+Before deploying, replace the placeholder value `my-apm-secret-token` in the `apm-secret-token` Secret with a secret of your choice.
+
+To rotate the token: patch the Secret with the new value, then manually restart Kibana (ECK does not roll Kibana when a referenced Secret changes). On restart, Fleet force-updates the stored agent policy with the new token. Update any APM agents or clients to match.
+
+NOTE: The `frozen: true` flag is accepted by all Kibana versions that support Fleet pre-configuration. On Kibana >= 9.2.0 it additionally causes Fleet to force-update the stored policy value on every Kibana restart, keeping it in sync after a token rotation (https://github.com/elastic/kibana/pull/235306). On older versions the field has no effect: the stored policy silently retains the old token after a rotation and must be updated manually.
+
+NOTE: The APM secret token travels between Kibana and the APM endpoint over plain HTTP within the cluster network.
+
 ===== Synthetic monitoring - `synthetic-monitoring.yaml`
 
 Deploys an Fleet-enrolled Elastic Agent that can be used as for link:https://www.elastic.co/guide/en/observability/current/monitor-uptime-synthetics.html[Synthetic monitoring]. This Elastic Agent uses the `elastic-agent-complete` image. The agent policy still needs to be link:https://www.elastic.co/guide/en/observability/current/synthetics-private-location.html#synthetics-private-location-add[registered as private location] in Kibana.
