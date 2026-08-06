@@ -89,9 +89,10 @@ spec:
           # token is injected via the APM_SECRET_TOKEN env var instead (see podTemplate above).
           - name: secret_token
             value: "${APM_SECRET_TOKEN}"
-            # frozen: true causes Fleet to force-update this var on every Kibana restart,
-            # ensuring the stored policy value stays in sync after a token rotation.
-            # Requires Kibana >= 9.2.0 (https://github.com/elastic/kibana/pull/235306).
+            # frozen: true is accepted by all Kibana versions that support Fleet pre-configuration.
+            # On Kibana >= 9.2.0 it additionally causes Fleet to force-update this var on every
+            # Kibana restart, keeping the stored policy in sync after a token rotation
+            # (https://github.com/elastic/kibana/pull/235306).
             frozen: true
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
@@ -151,7 +152,6 @@ spec:
         containers:
         - name: agent
           ports:
-          # Expose the APM port so that the Service below can route traffic to it.
           - name: apm
             containerPort: 8200
             protocol: TCP
