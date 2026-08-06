@@ -1,3 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: apm-secret-token
+stringData:
+  # Change this value before deploying to production.
+  token: "my-apm-secret-token"
+---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
@@ -7,9 +15,30 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        env:
+        # The token is injected from the apm-secret-token Secret and interpolated
+        # into kibana.yml via ${APM_SECRET_TOKEN} for both the Kibana APM agent
+        # and the Fleet pre-configuration below.
+        - name: APM_SECRET_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: apm-secret-token
+              key: token
   config:
+    # Send Kibana's own telemetry to the Fleet-managed APM endpoint.
+    elastic.apm.active: true
+    elastic.apm.serverUrl: "http://apm.default.svc:8200"
+    elastic.apm.secretToken: "${APM_SECRET_TOKEN}"
+
+    # Fleet configuration: point agents to Elasticsearch and the Fleet Server.
     xpack.fleet.agents.elasticsearch.hosts: ["https://elasticsearch-es-http.default.svc:9200"]
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+
+    # Pre-install the packages used by the agent policies below.
     xpack.fleet.packages:
     - name: system
       version: latest
@@ -46,15 +75,24 @@ spec:
         id: system-1
         package:
           name: system
-      - package:
+      # APM integration: listens on 0.0.0.0:8200 inside the agent pod.
+      - name: apm-1
+        package:
           name: apm
-        name: apm-1
         inputs:
         - type: apm
           enabled: true
           vars:
           - name: host
-            value: 0.0.0.0:8200    
+            value: 0.0.0.0:8200
+          # Fleet pre-configuration does not support Kibana keystore values, so the
+          # token is injected via the APM_SECRET_TOKEN env var instead (see podTemplate above).
+          - name: secret_token
+            value: "${APM_SECRET_TOKEN}"
+            # frozen: true causes Fleet to force-update this var on every Kibana restart,
+            # ensuring the stored policy value stays in sync after a token rotation.
+            # Requires Kibana >= 9.2.0 (https://github.com/elastic/kibana/pull/235306).
+            frozen: true
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
@@ -63,10 +101,12 @@ metadata:
 spec:
   version: 9.4.3
   nodeSets:
-  - name: default
-    count: 3
-    config:
-      node.store.allow_mmap: false
+    - name: default
+      count: 3
+      config:
+        # This setting could have performance implications for production clusters.
+        # See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
+        node.store.allow_mmap: false
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -92,13 +132,13 @@ spec:
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
-metadata: 
+metadata:
   name: elastic-agent
 spec:
   version: 9.4.3
   kibanaRef:
     name: kibana
-  fleetServerRef: 
+  fleetServerRef:
     name: fleet-server
   mode: fleet
   policyID: eck-agent
@@ -108,6 +148,13 @@ spec:
       spec:
         securityContext:
           runAsUser: 0
+        containers:
+        - name: agent
+          ports:
+          # Expose the APM port so that the Service below can route traffic to it.
+          - name: apm
+            containerPort: 8200
+            protocol: TCP
 ---
 apiVersion: v1
 kind: Service
@@ -117,8 +164,10 @@ spec:
   selector:
     agent.k8s.elastic.co/name: elastic-agent
   ports:
-  - protocol: TCP
+  - name: apm
+    protocol: TCP
     port: 8200
+    targetPort: 8200
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -136,18 +185,18 @@ rules:
   - list
 - apiGroups: ["apps"]
   resources:
-    - replicasets
+  - replicasets
   verbs:
-    - get
-    - watch
-    - list
+  - get
+  - watch
+  - list
 - apiGroups: ["batch"]
   resources:
-    - jobs
+  - jobs
   verbs:
-    - get
-    - watch
-    - list
+  - get
+  - watch
+  - list
 - apiGroups: ["coordination.k8s.io"]
   resources:
   - leases

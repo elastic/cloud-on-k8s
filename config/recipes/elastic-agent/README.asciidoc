@@ -41,7 +41,7 @@ Deploys Elastic Agent as a DaemonSet in Fleet mode with Custom Logs integration 
 
 ===== APM integration - `fleet-apm-integration.yaml`
 
-Deploys single instance Elastic Agent Deployment in Fleet mode with APM integration enabled.
+Deploys a single-instance Elastic Agent Deployment in Fleet mode with the APM integration enabled. The APM server listens on port 8200 inside the agent pod and is exposed to the cluster via a dedicated Kubernetes Service. A secret token is pre-configured in the Fleet agent policy to authenticate APM agents. Kibana is configured to send its own telemetry to the APM endpoint.
 
 ===== Synthetic monitoring - `synthetic-monitoring.yaml`
 
