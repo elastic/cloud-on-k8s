@@ -402,6 +402,17 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *corev1.Service:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
+			for _, labelKey := range []string{
+				"agent.k8s.elastic.co/name",
+				"beat.k8s.elastic.co/name",
+				"logstash.k8s.elastic.co/name",
+				"apm.k8s.elastic.co/name",
+				"enterprisesearch.k8s.elastic.co/name",
+			} {
+				if v, ok := decodedObj.Spec.Selector[labelKey]; ok {
+					decodedObj.Spec.Selector[labelKey] = v + "-" + suffix
+				}
+			}
 		case *appsv1.DaemonSet:
 			name := decodedObj.Name + "-" + suffix
 			decodedObj.Namespace = namespace
