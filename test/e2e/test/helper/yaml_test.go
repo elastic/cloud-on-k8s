@@ -91,7 +91,9 @@ func TestTweakEnvSecretRefs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tweakEnvSecretRefs(&tc.podSpec, "abc", fileSecrets)
 
-			allContainers := append(tc.podSpec.InitContainers, tc.podSpec.Containers...)
+			allContainers := make([]corev1.Container, 0, len(tc.podSpec.InitContainers)+len(tc.podSpec.Containers))
+			allContainers = append(allContainers, tc.podSpec.InitContainers...)
+			allContainers = append(allContainers, tc.podSpec.Containers...)
 
 			for _, c := range allContainers {
 				for _, env := range c.Env {

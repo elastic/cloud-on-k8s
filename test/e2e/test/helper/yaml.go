@@ -523,10 +523,10 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	data := config.Data
 
-	apmServerUrlKey := "elastic.apm.serverUrl"
-	if untypedURL, ok := data[apmServerUrlKey]; ok {
+	apmServerURLKey := "elastic.apm.serverUrl"
+	if untypedURL, ok := data[apmServerURLKey]; ok {
 		if url, ok := untypedURL.(string); ok {
-			data[apmServerUrlKey] = strings.ReplaceAll(
+			data[apmServerURLKey] = strings.ReplaceAll(
 				url,
 				"apm.default",
 				fmt.Sprintf("apm-%s.%s", suffix, namespace),
