@@ -162,9 +162,12 @@ func applyManifests(path string) func(*TestContext) error {
 			return err
 		}
 
-		ctx.AddCleanupFunc(deleteResources(manifests))
+		err = ctx.CreateOrUpdate(manifests)
+		if err == nil {
+			ctx.AddCleanupFunc(deleteResources(manifests))
+		}
 
-		return ctx.CreateOrUpdate(manifests)
+		return err
 	}
 }
 
