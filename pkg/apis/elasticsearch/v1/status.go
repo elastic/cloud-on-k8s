@@ -67,10 +67,14 @@ type ElasticsearchStatus struct {
 
 	// +optional
 	// Conditions holds the current service state of an Elasticsearch cluster.
-	// ResourcesAwareManagement reports whether Desired Nodes is published
-	// (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html);
-	// when False, Desired Nodes is cleared and Elasticsearch has no intended topology from the operator,
-	// but the Elasticsearch resource is still reconciled.
+	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
+	// for the Elasticsearch Desired Nodes API
+	// (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html).
+	// True means resources were calculated and the operator will attempt to publish Desired Nodes when
+	// Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
+	// then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
+	// resource calculation, not whether a Desired Nodes API call has already succeeded. The Elasticsearch
+	// resource is still reconciled.
 	Conditions commonv1.Conditions `json:"conditions"`
 
 	// +optional
@@ -110,13 +114,16 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 const (
 	ElasticsearchIsReachable commonv1.ConditionType = "ElasticsearchIsReachable"
 	ReconciliationComplete   commonv1.ConditionType = "ReconciliationComplete"
-	// ResourcesAwareManagement reports whether the operator is publishing the intended cluster topology
-	// (CPU, memory, and storage for every expected node) to Elasticsearch through the Desired Nodes API
+	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage for every
+	// expected Elasticsearch node for use with the Desired Nodes API
 	// (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html).
-	// True means Desired Nodes is kept up to date with that topology.
-	// False means the operator could not determine a complete resource picture for at least one NodeSet,
-	// so it clears Desired Nodes and does not publish an incomplete topology. Elasticsearch then has no
-	// Desired Nodes information for topology-aware decisions. The Elasticsearch resource is still reconciled.
+	// True means those resources were calculated successfully; the operator then attempts to publish
+	// Desired Nodes when Elasticsearch is reachable.
+	// False means resources could not be determined for at least one NodeSet; the operator then attempts
+	// to clear Desired Nodes when Elasticsearch is reachable so an incomplete topology is not kept.
+	// The condition reflects resource calculation, not whether a Desired Nodes API call has already
+	// succeeded (publishing or clearing may be deferred if Elasticsearch is unreachable or the call fails).
+	// The Elasticsearch resource is still reconciled.
 	// Computing resources requires, for each NodeSet's elasticsearch container: a non-zero CPU request
 	// and/or limit; a non-zero memory limit (if a memory request is set it must equal the limit); and
 	// path.data as a single string path mounted by a volume that matches a PersistentVolumeClaim in the
