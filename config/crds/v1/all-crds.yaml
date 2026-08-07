@@ -6691,8 +6691,12 @@ spec:
                 format: int32
                 type: integer
               conditions:
-                description: Conditions holds the current service state of an Elasticsearch
-                  cluster.
+                description: |-
+                  Conditions holds the current service state of an Elasticsearch cluster.
+                  ResourcesAwareManagement reports whether Desired Nodes is published
+                  (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html);
+                  when False, Desired Nodes is cleared and Elasticsearch has no intended topology from the operator,
+                  but the Elasticsearch resource is still reconciled.
                 items:
                   description: Condition represents the ECK resource's condition.
                   properties:

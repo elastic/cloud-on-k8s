@@ -1359,7 +1359,7 @@ ElasticsearchStatus represents the observed state of Elasticsearch.
 | *`version`* __string__ | Version of the stack resource currently running. During version upgrades, multiple versions may run<br>in parallel: this value specifies the lowest version currently running. |
 | *`health`* __[ElasticsearchHealth](#elasticsearchhealth)__ |  |
 | *`phase`* __[ElasticsearchOrchestrationPhase](#elasticsearchorchestrationphase)__ |  |
-| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster. |
+| *`conditions`* __[Conditions](#conditions)__ | Conditions holds the current service state of an Elasticsearch cluster.<br>ResourcesAwareManagement reports whether Desired Nodes is published<br>(https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html);<br>when False, Desired Nodes is cleared and Elasticsearch has no intended topology from the operator,<br>but the Elasticsearch resource is still reconciled. |
 | *`inProgressOperations`* __[InProgressOperations](#inprogressoperations)__ | InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.<br>**This API is in technical preview and may be changed or removed in a future release.** |
 | *`observedGeneration`* __integer__ | ObservedGeneration is the most recent generation observed for this Elasticsearch cluster.<br>It corresponds to the metadata generation, which is updated on mutation by the API Server.<br>If the generation observed in status diverges from the generation in metadata, the Elasticsearch<br>controller has not yet processed the changes contained in the Elasticsearch specification. |
 
