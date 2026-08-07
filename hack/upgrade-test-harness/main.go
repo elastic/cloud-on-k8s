@@ -49,7 +49,7 @@ func main() {
 	}
 
 	cmd.Flags().StringVar(&opts.confFile, "conf-file", "conf.yaml", "Path to the file containing test params")
-	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v170", "Release to start with (a directory with this value must exist in testdata/)")
+	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v191", "Release to start with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
 	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
 	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")

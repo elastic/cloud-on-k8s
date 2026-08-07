@@ -8,7 +8,7 @@ Usage
 -----
 
 ```
-go run main.go --from-release=alpha --to-release=upcoming
+go run main.go --from-release=v191 --to-release=upcoming
 ```
 
 CAUTION: Running the test harness could wipe out existing CRDs and operator deployments. It should ideally be run on a fresh, non-production cluster.
@@ -16,13 +16,13 @@ CAUTION: Running the test harness could wipe out existing CRDs and operator depl
 ```
 Flags:
       --conf-file string                   Path to the file containing test params (default "conf.yaml")
-      --from-release string                Release to start with (alpha, beta, v101, v112, upcoming) (default "alpha")
+      --from-release string                Release to start with (a directory with this value must exist in testdata/) (default "v191")
       --log-level string                   Log level (DEBUG, INFO, WARN, ERROR) (default "INFO")
-      --retry-count uint                   Number of retries (default 5)
-      --retry-delay duration               Delay between retries (default 30s)
-      --retry-timeout duration             Time limit for retries (default 5m0s)
+      --retry-count uint                   Number of retries (default 60)
+      --retry-delay duration               Delay between retries (default 5s)
+      --retry-timeout duration             Time limit for retries (default 15m0s)
       --skip-cleanup                       Skip cleaning up after test run
-      --to-release string                  Release to finish with (alpha, beta, v101, v112, upcoming) (default "upcoming")
+      --to-release string                  Release to finish with (a directory with this value must exist in testdata/) (default "upcoming")
       --upcoming-release-crds string       YAML file for installing the CRDs for the upcoming release (default "../../config/crds.yaml")
       --upcoming-release-operator string   YAML file for installing the operator for the upcoming release (default "../../config/operator.yaml")
 
@@ -42,5 +42,3 @@ Adding a new release
   NOTE: To download already published manifests (`crds.yaml` and `install.yaml`) for a release, use `download-manifests.sh <version like 3.5.0>`.
 - Add resource definitions to a file named `stack.yaml` in the release directory. Resource names must match the name of the release.
 - Update `conf.yaml` and add the new release to the correct position in the `testParam` list.
-
-
