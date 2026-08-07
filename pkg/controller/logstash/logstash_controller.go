@@ -210,6 +210,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Logstash:       logstash,
+		Version:        logstashVersion,
 		Status:         status,
 		OperatorParams: r.Parameters,
 		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),

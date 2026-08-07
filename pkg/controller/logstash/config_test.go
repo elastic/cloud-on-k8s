@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -156,6 +157,36 @@ config:
 			wantErr: false,
 		},
 		{
+			name: "explicit user ssl.reload.automatic=true on Logstash < 9.5.0 is passed through untouched",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
 			name: "explicit user ssl.reload.automatic=false is preserved",
 			args: args{
 				runtimeObjs: nil,
@@ -186,7 +217,7 @@ ssl:
 			wantErr: false,
 		},
 		{
-			name: "ssl.reload.automatic set when xpack.management.enabled=true even if config.reload.automatic=false",
+			name: "ssl.reload.automatic not set when user sets xpack.management.enabled=true",
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
@@ -199,7 +230,7 @@ ssl:
 					},
 				},
 			},
-			// In CPM mode Logstash allows ssl.reload.automatic=true regardless of config.reload.automatic.
+			// xpack.management.enabled is a user-owned setting; ECK does not inject ssl.reload.automatic.
 			want: `api:
     http:
         host: 0.0.0.0
@@ -211,12 +242,103 @@ ssl:
 config:
     reload:
         automatic: false
-ssl:
-    reload:
-        automatic: true
 xpack:
     management:
         enabled: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when CONFIG_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "CONFIG_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			// env2yaml would rewrite config.reload.automatic to ${CONFIG_RELOAD_AUTOMATIC} at
+			// startup; if that resolves to false, Logstash's BootstrapCheck::SslReload raises.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when SSL_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "SSL_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user explicitly sets config.reload.automatic=true",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			// The user explicitly owns config.reload.automatic; ECK does not inject ssl.reload.automatic.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
 `,
 			wantErr: false,
 		},
@@ -269,6 +391,26 @@ config:
         automatic: true
 log:
     level: debug
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when config.reload.automatic=false supplied via configRef",
+			args: args{
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("config.reload.automatic: false"))},
+				logstash:    logstashWithConfigRef("cfg", nil, "9.5.0"),
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
 `,
 			wantErr: false,
 		},
@@ -337,12 +479,15 @@ config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			v, err := version.Parse(tt.args.logstash.Spec.Version)
+			require.NoError(t, err)
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
+				Version:       v,
 			}
 
 			got, err := buildConfig(params, tt.args.logstash.APIServerTLSOptions().Enabled())
