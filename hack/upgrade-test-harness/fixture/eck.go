@@ -25,15 +25,18 @@ import (
 const (
 	operatorNamespace = "elastic-system"
 	operatorSTS       = "elastic-operator"
-	esName            = "es"
-	kbName            = "kb"
-	apmName           = "apm"
-	beatName          = "heartbeat"
-	entName           = "ent"
-	logstashName      = "ls"
-	registryName      = "registry"
 	wantHealth        = "green"
 )
+
+var labelKeyByKind = map[string]string{
+	"elasticsearch":    "elasticsearch.k8s.elastic.co/cluster-name",
+	"kibana":           "kibana.k8s.elastic.co/name",
+	"apmserver":        "apm.k8s.elastic.co/name",
+	"enterprisesearch": "enterprisesearch.k8s.elastic.co/name",
+	"beat":             "beat.k8s.elastic.co/name",
+	"logstash":         "logstash.k8s.elastic.co/name",
+	"packageregistry":  "packageregistry.k8s.elastic.co/name",
+}
 
 // TestParam holds parameters for a test.
 type TestParam struct {
@@ -217,7 +220,7 @@ func getStatus(ctx *TestContext, kind, name string) (status, error) {
 	// version is tricky we cannot use spec.version as that does not necessarily reflect the actually deployed version
 	// .status.version is ideal but only exists since 1.3. Version labels on Pods were also not consistently used in earlier
 	// operator versions. Therefore we are just parsing the Docker image tag as a proxy of the running versions
-	minVersion, err := getMinVersionFromPods(ctx, kind)
+	minVersion, err := getMinVersionFromPods(ctx, kind, name)
 	if err != nil || minVersion == nil {
 		return s, err
 	}
@@ -226,8 +229,8 @@ func getStatus(ctx *TestContext, kind, name string) (status, error) {
 	return s, nil
 }
 
-func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, error) {
-	selector, err := labelSelectorFor(kind)
+func getMinVersionFromPods(ctx *TestContext, kind, name string) (*semver.Version, error) {
+	selector, err := labelSelectorFor(kind, name)
 	if err != nil {
 		return nil, err
 	}
@@ -264,33 +267,20 @@ func parseImageTag(tag string) (semver.Version, error) {
 	return semver.Parse(tag)
 }
 
-func labelSelectorFor(kind string) (string, error) {
-	switch kind {
-	case "elasticsearch":
-		return "elasticsearch.k8s.elastic.co/cluster-name=" + esName, nil
-	case "kibana":
-		return "kibana.k8s.elastic.co/name=" + kbName, nil
-	case "apmserver":
-		return "apm.k8s.elastic.co/name=" + apmName, nil
-	case "enterprisesearch":
-		return "enterprisesearch.k8s.elastic.co/name=" + entName, nil
-	case "beat":
-		return "beat.k8s.elastic.co/name=" + beatName, nil
-	case "logstash":
-		return "logstash.k8s.elastic.co/name=" + logstashName, nil
-	case "packageregistry":
-		return "packageregistry.k8s.elastic.co/name=" + registryName, nil
+func labelSelectorFor(kind, name string) (string, error) {
+	key, ok := labelKeyByKind[kind]
+	if !ok {
+		return "", fmt.Errorf("%s is not a supported kind", kind)
 	}
-
-	return "", fmt.Errorf("%s is not a supported kind", kind)
+	return key + "=" + name, nil
 }
 
 // TestScaleElasticsearch is the fixture for scaling an Elasticsearch resource.
-func TestScaleElasticsearch(param TestParam, count int) *Fixture {
+func TestScaleElasticsearch(esName string, param TestParam, count int) *Fixture {
 	return &Fixture{
 		Name: param.Suffixed("TestScaleElasticsearch"),
 		Steps: []*TestStep{
-			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(param, int64(count))),
+			retryRetriable(param.Suffixed("ScaleElasticsearch"), scaleElasticsearch(esName, int64(count))),
 			pause(30 * time.Second),
 			retryRetriable(param.Suffixed("CheckElasticsearchStatus"),
 				checkStatus("elasticsearch", esName, status{health: wantHealth, nodes: int64(count), version: param.StackVersion})),
@@ -298,9 +288,9 @@ func TestScaleElasticsearch(param TestParam, count int) *Fixture {
 	}
 }
 
-func scaleElasticsearch(param TestParam, count int64) func(*TestContext) error {
+func scaleElasticsearch(name string, count int64) func(*TestContext) error {
 	return func(ctx *TestContext) error {
-		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", esName)
+		resources := ctx.GetResources(ctx.Namespace(), "elasticsearch", name)
 
 		dynamicClient, err := ctx.DynamicClient()
 		if err != nil {
