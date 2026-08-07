@@ -6,6 +6,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -231,13 +232,14 @@ func (r *ReconcileAgent) doReconcile(ctx context.Context, agent agentv1alpha1.Ag
 
 func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent) error {
 	defer tracing.Span(&ctx)()
-
-	// Run create validations only as update validations require old object which we don't have here.
-	warnings, err := agentv1alpha1.Validate(&agent, nil)
+	// Run create validations only: update validations require the old object which the reconciler does not have.
+	warnings, err := validateAgent(ctx, &agent, nil, r.licenseChecker, r.ExposedNodeLabels)
 	if err != nil {
-		logconf.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, &agent, events.EventReasonValidation, events.EventActionValidation, err.Error())
-		return tracing.CaptureError(ctx, err)
+		if _, ok := errors.AsType[*licenseValidationError](err); !ok {
+			logconf.FromContext(ctx).Error(err, "Validation failed")
+			return tracing.CaptureError(ctx, err)
+		}
 	}
 	for _, warning := range warnings {
 		k8s.EmitEvent(r.recorder, &agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)

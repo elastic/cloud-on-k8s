@@ -276,7 +276,7 @@ config:
   # disableConfigWatch specifies whether the operator watches the configuration file for changes.
   disableConfigWatch: false
 
-  # exposedNodeLabels is an array of regular expressions of node labels which are allowed to be copied as annotations on Elasticsearch Pods.
+  # exposedNodeLabels is an array of regular expressions of node labels which are allowed to be copied as annotations on Pods (supported for Elasticsearch, Kibana, APM Server, Logstash, Beats, Agent, Elastic Maps Server, and Package Registry).
   exposedNodeLabels:
     ["topology.kubernetes.io/.*", "failure-domain.beta.kubernetes.io/.*"]
 

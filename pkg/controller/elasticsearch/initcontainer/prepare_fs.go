@@ -116,9 +116,9 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	)
 	if len(nodeLabelsAsAnnotations) > 0 {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      esvolume.DownwardAPIVolumeName,
+			Name:      volume.DownwardAPIVolumeName,
 			ReadOnly:  true,
-			MountPath: esvolume.DownwardAPIMountPath,
+			MountPath: volume.DownwardAPIMountPath,
 		})
 	}
 	container := corev1.Container{

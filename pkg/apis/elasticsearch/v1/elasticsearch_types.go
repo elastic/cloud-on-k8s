@@ -32,8 +32,6 @@ const (
 	//     annotations:
 	//       eck.k8s.elastic.co/disable-upgrade-predicates="if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas"
 	DisableUpgradePredicatesAnnotation = "eck.k8s.elastic.co/disable-upgrade-predicates"
-	// DownwardNodeLabelsAnnotation holds an optional list of expected node labels to be set as annotations on the Elasticsearch Pods.
-	DownwardNodeLabelsAnnotation = "eck.k8s.elastic.co/downward-node-labels"
 	// SuspendAnnotation allows users to annotate the Elasticsearch resource with the names of Pods they want to suspend
 	// for debugging purposes.
 	SuspendAnnotation = "eck.k8s.elastic.co/suspend"
@@ -561,20 +559,12 @@ type Elasticsearch struct {
 
 // downwardNodeLabelsAnnotationValue returns the raw downward node labels annotation value.
 func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
-	return es.Annotations[DownwardNodeLabelsAnnotation]
+	return es.Annotations[commonv1.DownwardNodeLabelsAnnotation]
 }
 
 // ParseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
 func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
-	labels := set.Make()
-	for label := range strings.SplitSeq(annotationValue, ",") {
-		label = strings.TrimSpace(label)
-		if label == "" {
-			continue
-		}
-		labels.Add(label)
-	}
-	return labels
+	return set.Make(commonv1.ParseDownwardNodeLabels(annotationValue)...)
 }
 
 // DownwardNodeLabels returns the expected node labels to be copied as annotations on the Elasticsearch Pods.

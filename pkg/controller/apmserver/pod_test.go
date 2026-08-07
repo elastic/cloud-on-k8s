@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -153,6 +154,40 @@ func TestNewPodSpec(t *testing.T) {
 			assert.Empty(t, diff)
 		})
 	}
+}
+
+func TestNewPodSpec_DownwardNodeLabels(t *testing.T) {
+	const operatorImage = "docker.elastic.co/eck/eck-operator:test"
+	as := apmv1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-apm",
+			Namespace: "default",
+			Annotations: map[string]string{
+				commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+			},
+		},
+		Spec: apmv1.ApmServerSpec{Version: "8.0.0"},
+	}
+	p := PodSpecParams{
+		Version:       as.Spec.Version,
+		OperatorImage: operatorImage,
+	}
+
+	got, err := newPodSpec(k8s.NewFakeClient(&testHTTPCertsInternalSecret), &as, p, metadata.Metadata{}, false)
+	require.NoError(t, err)
+
+	var waitInit *corev1.Container
+	for i := range got.Spec.InitContainers {
+		if got.Spec.InitContainers[i].Name == "elastic-internal-wait-for-node-labels" {
+			waitInit = &got.Spec.InitContainers[i]
+			break
+		}
+	}
+	require.NotNil(t, waitInit, "wait-for-node-labels init container not found")
+	assert.Equal(t, operatorImage, waitInit.Image)
+	require.GreaterOrEqual(t, len(waitInit.Command), 2)
+	assert.Equal(t, "/elastic-operator", waitInit.Command[0])
+	assert.Equal(t, "wait-for-annotations", waitInit.Command[1])
 }
 
 func Test_getDefaultContainerPorts(t *testing.T) {

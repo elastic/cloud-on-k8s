@@ -607,7 +607,7 @@ func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+						commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
 					},
 				},
 			},
@@ -618,7 +618,7 @@ func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/region",
+						commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/region",
 					},
 				},
 				Spec: esv1.ElasticsearchSpec{
@@ -637,7 +637,7 @@ func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+						commonv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
 					},
 				},
 				Spec: esv1.ElasticsearchSpec{

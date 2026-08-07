@@ -29,7 +29,7 @@ The following table lists and describes all the available configuration flags fo
 | `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://reference/configuration.md) for details. |
 | `enable-webhook` | `false` | Enables a validating webhook server in the operator process. |
 | `enforce-rbac-on-refs` | `false` | Enables restrictions on cross-namespace resource association through RBAC. |
-| `exposed-node-labels` | `""` | List of Kubernetes node labels which are allowed to be copied as annotations on the Elasticsearch Pods. Check [Topology spread constraints and availability zone awareness](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-availability-zone-awareness) for more details. |
+| `exposed-node-labels` | `""` | Comma-separated list of Kubernetes node labels which are allowed to be copied as annotations on Pods (supported for Elasticsearch, Kibana, APM Server, Logstash, Beats, Agent, Elastic Maps Server, and Package Registry). Check [Topology spread constraints and availability zone awareness](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-availability-zone-awareness) for more details. |
 | `ip-family` | `""` | Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect) |
 | `kube-client-qps` | `0` | Set the maximum number of queries per second to the Kubernetes API. Default value is inherited from the [Go client](https://github.com/kubernetes/client-go/blob/e6538dd42b4fe55b6c754e41c66b43133ba41a59/rest/config.go#L44). |
 | `kube-client-timeout` | `60s` | Set the request timeout for Kubernetes API calls made by the operator. |
@@ -41,6 +41,7 @@ The following table lists and describes all the available configuration flags fo
 | `metrics-port` | `0` | Prometheus metrics port. Set to 0 to disable the metrics endpoint. |
 | `metrics-secure` | `false` | Enables TLS for the metrics server. Only effective combined with metrics-port. |
 | `namespaces` | `""` | Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified. |
+| `operator-image` | `""` | Operator container image used by the wait-for-annotations init container. Falls back to the `OPERATOR_IMAGE` environment variable when empty. |
 | `operator-namespace` | `""` | Namespace the operator runs in. Required. |
 | `password-hash-cache-size` | `5 x max-concurrent-reconciles` | Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value. |
 | `password-length` | `24` | Length of generated file-based passwords (enterprise-only feature) |
