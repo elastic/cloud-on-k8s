@@ -309,7 +309,6 @@ func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) erro
 		h.print("deleted", info.Object)
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -320,7 +319,7 @@ func (h *Kubectl) Delete(resources *resource.Result, timeout time.Duration) erro
 		DynamicClient:  dynamicClient,
 		Timeout:        timeout,
 		Printer:        printers.NewDiscardingPrinter(),
-		ConditionFn:    cmdwait.IsDeleted,
+		ConditionFn:    []cmdwait.ConditionFunc{cmdwait.IsDeleted},
 		IOStreams:      genericclioptions.IOStreams{Out: h.out, ErrOut: h.errOut},
 	}
 
