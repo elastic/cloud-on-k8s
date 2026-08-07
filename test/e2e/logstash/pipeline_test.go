@@ -259,8 +259,8 @@ func TestLogstashTLSCertReload(t *testing.T) {
 	certSecretName := name + "-srv-cert"
 	certMountPath := "/mnt/certs"
 
-	cert1, key1 := helper.GenerateSelfSignedServerCert(t, name)
-	cert2, key2 := helper.GenerateSelfSignedServerCert(t, name)
+	cert1, key1 := helper.GenerateSelfSignedServerCertPKCS8(t, name)
+	cert2, key2 := helper.GenerateSelfSignedServerCertPKCS8(t, name)
 
 	certSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

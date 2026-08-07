@@ -64,9 +64,10 @@ func PKCS8KeyEndsWithWhitespaceByte(keyPEM []byte) (bool, error) {
 	return last == 0x00 || last == '\t' || last == '\n' || last == '\v' || last == '\f' || last == '\r' || last == ' ', nil
 }
 
-// GenerateSelfSignedServerCert generates a self-signed server certificate using ECDSA
-// and returns PEM-encoded cert and key.
-func GenerateSelfSignedServerCert(t *testing.T, cn string) (certPEM, keyPEM []byte) {
+// GenerateSelfSignedServerCertPKCS8 generates a self-signed server certificate using ECDSA
+// and returns PEM-encoded cert and key. The key is PKCS#8-encoded ("PRIVATE KEY" PEM type)
+// as required by the Logstash Beats input.
+func GenerateSelfSignedServerCertPKCS8(t *testing.T, cn string) (certPEM, keyPEM []byte) {
 	t.Helper()
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
