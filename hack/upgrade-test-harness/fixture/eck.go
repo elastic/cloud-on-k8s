@@ -145,6 +145,11 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 			return nil, err
 		}
 
+		if r.Spec.Version != "" && r.Spec.Version != param.StackVersion {
+			return nil, fmt.Errorf("%s %q: spec.version %q does not match conf.yaml stackVersion %q",
+				r.Kind, r.Metadata.Name, r.Spec.Version, param.StackVersion)
+		}
+
 		var wantNodes int64 = 1
 		if r.Kind == "Elasticsearch" {
 			wantNodes = 3
@@ -175,6 +180,9 @@ type Resource struct {
 	Metadata struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
+	Spec struct {
+		Version string `yaml:"version"`
+	} `yaml:"spec"`
 }
 
 func checkStatus(kind, name string, want status) func(*TestContext) error {
