@@ -23,6 +23,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	logstashcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
@@ -249,8 +250,8 @@ func TestLogstashPipelineReload(t *testing.T) {
 // config.reload.automatic=true (always set by ECK).
 func TestLogstashTLSCertReload(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
-	if v.LT(version.MinFor(9, 5, 0)) {
-		t.Skipf("ssl.reload.automatic requires Logstash >= 9.5.0, got %s", v)
+	if v.LT(logstashcontroller.MinSSLReloadVersion) {
+		t.Skipf("ssl.reload.automatic requires Logstash >= %s, got %s", logstashcontroller.MinSSLReloadVersion.String(), v)
 	}
 
 	name := "test-ls-tls-rl"

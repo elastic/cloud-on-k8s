@@ -13,12 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
-
-// MinSSLReloadVersion is the minimum Logstash version that supports ssl.reload.automatic
-// (elastic/logstash#18978, merged in 9.5.0).
-var MinSSLReloadVersion = version.MinFor(9, 5, 0)
 
 type LogstashHealth string
 

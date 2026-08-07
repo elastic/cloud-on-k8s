@@ -23,9 +23,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
+
+// MinSSLReloadVersion is the minimum Logstash version that supports ssl.reload.automatic
+// (elastic/logstash#18978, merged in 9.5.0).
+var MinSSLReloadVersion = version.MinFor(9, 5, 0)
 
 const (
 	ConfigFileName         = "logstash.yml"
@@ -119,7 +124,7 @@ func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) 
 //   - The user has not set config.reload.automatic, ssl.reload.automatic, or
 //     xpack.management.enabled in their config or via the corresponding env vars.
 func shouldInjectSSLReload(params Params, userCfg *settings.CanonicalConfig) bool {
-	if !params.Version.GTE(logstashv1alpha1.MinSSLReloadVersion) {
+	if !params.Version.GTE(MinSSLReloadVersion) {
 		return false
 	}
 
