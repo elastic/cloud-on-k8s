@@ -65,7 +65,8 @@ func TestInstallOperator(param TestParam, isUpgrade bool) *Fixture {
 
 	return &Fixture{
 		Name: param.Suffixed("TestInstallOperator"),
-		Steps: append(testSteps,
+		Steps: append(
+			testSteps,
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
 			pause(5*time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),
@@ -245,12 +246,7 @@ func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, erro
 			return nil, fmt.Errorf("pod image did not have a tag")
 		}
 
-		// PackageRegistry images use a "lite-X.Y.Z" tag format; strip any non-numeric prefix.
-		tag := imageParts[1]
-		if idx := strings.IndexFunc(tag, func(r rune) bool { return r >= '0' && r <= '9' }); idx > 0 {
-			tag = tag[idx:]
-		}
-		v, err := semver.Parse(tag)
+		v, err := parseImageTag(imageParts[1])
 		if err != nil {
 			return nil, err
 		}
@@ -260,6 +256,12 @@ func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, erro
 		}
 	}
 	return minVersion, nil
+}
+
+func parseImageTag(tag string) (semver.Version, error) {
+	// PackageRegistry images use a "lite-X.Y.Z" tag format; strip any non-numeric prefix.
+	tag = strings.TrimPrefix(tag, "lite-")
+	return semver.Parse(tag)
 }
 
 func labelSelectorFor(kind string) (string, error) {
