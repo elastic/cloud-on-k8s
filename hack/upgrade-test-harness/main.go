@@ -135,7 +135,7 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	// try to scale the last deployed release
 	if prevTestParam != nil {
-		return fixture.TestScaleElasticsearch(*prevTestParam, 5).Execute(ctx)
+		return fixture.TestScaleElasticsearch("es", *prevTestParam, 5).Execute(ctx)
 	}
 
 	return nil
