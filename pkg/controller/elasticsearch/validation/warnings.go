@@ -15,7 +15,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -31,6 +30,7 @@ const (
 
 var warnings = []validation{
 	deprecatedStackVersionWarning,
+	shorthandResourcesOverrideWarning,
 	validZoneAwarenessAffinityWarnings,
 	managedFalseDeprecationWarning,
 }
@@ -51,22 +51,14 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 // PodTemplate values are silently shadowed; the warning prompts the user to
 // pick one source of truth.
 //
-// NodeSets driven by an autoscaling policy are skipped. There the shorthand is written by the
-// autoscaling controller rather than by the user, so the overlap is expected rather than a
-// mistake, and warning about it on every single apply would be noise the user cannot act on
-// without disabling autoscaling.
-func shorthandResourcesOverrideWarning(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (field.ErrorList, error) {
-	autoscaled, err := autoscaledNodeSets(ctx, c, es)
-	if err != nil {
-		return nil, err
-	}
-
+// NodeSets driven by an autoscaling policy are warned about too, even though the shorthand there is
+// written by the autoscaling controller rather than the user. The overlap is exactly the case the
+// autoscaling contract asks users to avoid, the shadowed values are the user's own, and removing
+// them from the manifest resolves it without turning autoscaling off.
+func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
 	var out field.ErrorList
 	for i := range es.Spec.NodeSets {
 		nodeSet := es.Spec.NodeSets[i]
-		if _, isAutoscaled := autoscaled[nodeSet.Name]; isAutoscaled {
-			continue
-		}
 		warning := commonv1.PodTemplateResourcesOverrideWarning(
 			fmt.Sprintf("spec.nodeSets[%d].resources", i),
 			fmt.Sprintf("spec.nodeSets[%d].podTemplate", i),
@@ -83,39 +75,7 @@ func shorthandResourcesOverrideWarning(ctx context.Context, c k8s.Client, es esv
 			warning,
 		))
 	}
-	return out, nil
-}
-
-// autoscaledNodeSets returns the names of the NodeSets driven by an autoscaling policy, or an empty
-// set when the cluster has no ElasticsearchAutoscaler attached.
-func autoscaledNodeSets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (map[string]struct{}, error) {
-	names := map[string]struct{}{}
-
-	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, c, es)
-	if err != nil || autoscalingResource == nil {
-		return names, err
-	}
-	policies, err := autoscalingResource.GetAutoscalingPolicySpecs()
-	if err != nil {
-		return nil, err
-	}
-	// Unreachable in practice: ValidateElasticsearch runs the blocking checks, supportedVersion
-	// included, before it reaches any warning.
-	v, err := commonversion.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, nodeSet := range es.Spec.NodeSets {
-		spec, err := nodeSet.GetAutoscalingSpecFor(v, policies)
-		if err != nil {
-			return nil, err
-		}
-		if spec != nil {
-			names[nodeSet.Name] = struct{}{}
-		}
-	}
-	return names, nil
+	return out
 }
 
 // managedFalseDeprecationWarning returns a field error when the deprecated eck.k8s.elastic.co/managed annotation is used.
