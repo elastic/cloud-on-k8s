@@ -10,6 +10,7 @@ import (
 	"go.elastic.co/apm/v2"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -86,9 +87,5 @@ func annotateWithUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.E
 		"es_name", cluster.Name,
 		"uuid", uuid,
 	)
-	if cluster.Annotations == nil {
-		cluster.Annotations = make(map[string]string)
-	}
-	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(ctx, cluster)
+	return annotation.PatchAnnotations(ctx, k8sClient, cluster, map[string]string{ClusterUUIDAnnotationName: uuid})
 }

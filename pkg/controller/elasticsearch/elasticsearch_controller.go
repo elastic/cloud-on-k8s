@@ -26,6 +26,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -365,8 +366,9 @@ func (r *ReconcileElasticsearch) annotateResource(
 		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
 		return nil
 	}
-	es.SetAnnotations(expected)
-	return r.Update(ctx, &es)
+	// Patch rather than Update: this runs on every reconcile, and a full-object Update would make
+	// the operator the owner of every spec field the request adds, spec.nodeSets included.
+	return annotation.PatchAnnotations(ctx, r.Client, &es, newAnnotations)
 }
 
 // OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource

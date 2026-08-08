@@ -11,6 +11,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -86,8 +87,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 		"es_name", es.Name,
 	)
 	// remove the annotation to indicate we're done with zen2 bootstrapping
-	delete(es.Annotations, InitialMasterNodesAnnotation)
-	return false, k8sClient.Update(ctx, &es)
+	return false, annotation.PatchAnnotations(ctx, k8sClient, &es, nil, InitialMasterNodesAnnotation)
 }
 
 // patchInitialMasterNodesConfig mutates the configuration of master nodes
@@ -121,9 +121,7 @@ func getInitialMasterNodesAnnotation(es esv1.Elasticsearch) []string {
 // setInitialMasterNodesAnnotation sets initialMasterNodesAnnotation on the given es resource to initialMasterNodes,
 // and updates the es resource in the apiserver.
 func setInitialMasterNodesAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, initialMasterNodes []string) error {
-	if es.Annotations == nil {
-		es.Annotations = map[string]string{}
-	}
-	es.Annotations[InitialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
-	return k8sClient.Update(ctx, &es)
+	return annotation.PatchAnnotations(ctx, k8sClient, &es, map[string]string{
+		InitialMasterNodesAnnotation: strings.Join(initialMasterNodes, ","),
+	})
 }

@@ -533,6 +533,10 @@ func trackUpdateCalls(c client.Client) *trackUpdateCallsClient {
 	return &trackUpdateCallsClient{Client: c}
 }
 
+// trackUpdateCallsClient counts writes to the API server. Annotation writes go through Patch
+// rather than Update so that they do not claim ownership of unrelated spec fields under
+// Server-Side Apply, so both verbs count towards the same total: what the tests care about is
+// whether a write happened at all, not which verb carried it.
 type trackUpdateCallsClient struct {
 	client.Client
 	updateCallCount int
@@ -541,4 +545,9 @@ type trackUpdateCallsClient struct {
 func (t *trackUpdateCallsClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	t.updateCallCount++
 	return t.Client.Update(ctx, obj, opts...)
+}
+
+func (t *trackUpdateCallsClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	t.updateCallCount++
+	return t.Client.Patch(ctx, obj, patch, opts...)
 }
