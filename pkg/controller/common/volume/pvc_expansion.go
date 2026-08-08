@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	// Aliased because "annotation" is used as a local variable name in this file.
+	annotationpatch "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -136,12 +138,16 @@ func annotateForRecreation(
 	}
 	ownerKind := gvk.Kind
 
-	err = setAnnotation(owner, getRecreateStatefulSetAnnotationKey(ownerKind, actualSset.Name), string(asJSON))
-	if err != nil {
-		return err
-	}
-
-	return k8sClient.Update(ctx, owner)
+	// Patch rather than Update: a full-object write would make the operator the owner of every
+	// field it adds, and marshalling a resource emits all fields that lack omitempty as empty
+	// objects. That claimed unrelated spec fields on the owner, which broke `helm upgrade` under
+	// Server-Side Apply. See annotationpatch.PatchAnnotations.
+	//
+	// The owner is deliberately not mutated beforehand: PatchAnnotations diffs against the object's
+	// current annotations to decide what to send, so pre-applying the change would make it a no-op.
+	// The server response is written back into owner, so the caller's copy still ends up current.
+	key := getRecreateStatefulSetAnnotationKey(ownerKind, actualSset.Name)
+	return annotationpatch.PatchAnnotations(ctx, k8sClient, owner, map[string]string{key: string(asJSON)})
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
@@ -221,13 +227,9 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner clien
 			if err := removePodOwner(ctx, k8sClient, owner, ownerKind, existing); err != nil {
 				return recreations, err
 			}
-			// remove the annotation
-			err := deleteAnnotation(owner, annotation)
-			if err != nil {
-				return recreations, err
-			}
-
-			if err := k8sClient.Update(ctx, owner); err != nil {
+			// remove the annotation. As above, owner is not mutated first: PatchAnnotations needs
+			// to see the key still present to emit the removal.
+			if err := annotationpatch.PatchAnnotations(ctx, k8sClient, owner, nil, annotation); err != nil {
 				return recreations, err
 			}
 			// one less recreation
@@ -335,44 +337,6 @@ func namespacedNameFromObject(owner client.Object) types.NamespacedName {
 		namespace = "-"
 	}
 	return types.NamespacedName{Name: name, Namespace: namespace}
-}
-
-func setAnnotation(owner client.Object, annotationKey string, annotationValue string) error {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(owner)
-
-	if err != nil {
-		return err
-	}
-	if annotations == nil {
-		annotations = make(map[string]string, 1)
-	}
-	annotations[annotationKey] = annotationValue
-	err = accessor.SetAnnotations(owner, annotations)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func deleteAnnotation(owner client.Object, annotation string) error {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(owner)
-
-	if err != nil {
-		return err
-	}
-
-	if annotations == nil {
-		annotations = make(map[string]string, 1)
-	}
-	delete(annotations, annotation)
-	err = accessor.SetAnnotations(owner, annotations)
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
