@@ -100,6 +100,11 @@ func BuildStatefulSet(
 		esvolume.DefaultVolumeClaimTemplates...,
 	)
 
+	// Apply the storage shorthand on top, so that the size can be changed (by the autoscaling
+	// controller, or by hand) without writing into VolumeClaimTemplates. That keeps the claim, and
+	// with it the storage class and access modes, owned solely by whoever declares it.
+	nodeSet.VolumeClaimTemplates = esvolume.ApplyStorageOverride(nodeSet.VolumeClaimTemplates, nodeSet.Resources.Storage)
+
 	// build pod template
 	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue, clientAuthRequired)
 	if err != nil {

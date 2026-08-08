@@ -405,7 +405,7 @@ func Test_shorthandResourcesOverrideWarning(t *testing.T) {
 	nodeSet := func(name string, shorthand commonv1.Resources, containerName string, containerResources corev1.ResourceRequirements) esv1.NodeSet {
 		return esv1.NodeSet{
 			Name:      name,
-			Resources: shorthand,
+			Resources: esv1.NodeSetResources{Resources: shorthand},
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{

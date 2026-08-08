@@ -94,7 +94,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("1500m")),
 						Memory: new(resource.MustParse("4Gi")),
@@ -103,7 +103,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("4Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -135,7 +135,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerWithPodResources),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("8Gi")),
@@ -144,7 +144,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("8Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -190,11 +190,11 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						},
 					},
 				}),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("1500m")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -214,14 +214,14 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("250m")),
 					},
 					Limits: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("1")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -241,11 +241,11 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("4Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -263,12 +263,12 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("1")),
 						Memory: new(resource.MustParse("3Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -285,14 +285,14 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("6Gi")),
 					},
 					Requests: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("6Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -360,14 +360,14 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
 			},
 		},
-		Resources: commonv1.Resources{
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 			Requests: commonv1.ResourceAllocations{
 				CPU: new(resource.MustParse("1")),
 			},
 			Limits: commonv1.ResourceAllocations{
 				CPU: new(resource.MustParse("2")),
 			},
-		},
+		}},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 	}
 	es := testElasticsearchForNodeSet(nodeSet)
@@ -405,7 +405,7 @@ func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T)
 				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
 			},
 		},
-		Resources: commonv1.Resources{
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 			Requests: commonv1.ResourceAllocations{
 				CPU:    new(resource.MustParse("1")),
 				Memory: new(resource.MustParse("4Gi")),
@@ -414,7 +414,7 @@ func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T)
 				CPU:    new(resource.MustParse("2")),
 				Memory: new(resource.MustParse("4Gi")),
 			},
-		},
+		}},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 	}
 	es := testElasticsearchForNodeSet(nodeSet)
@@ -457,14 +457,14 @@ func TestNodeSetResources_BuildStatefulSet_nil_existing_statefulsets(t *testing.
 				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
 			},
 		},
-		Resources: commonv1.Resources{
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 			Limits: commonv1.ResourceAllocations{
 				Memory: new(resource.MustParse("3Gi")),
 			},
 			Requests: commonv1.ResourceAllocations{
 				Memory: new(resource.MustParse("3Gi")),
 			},
-		},
+		}},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 	}
 	es := testElasticsearchForNodeSet(nodeSet)

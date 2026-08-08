@@ -58,7 +58,7 @@ func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
 			fmt.Sprintf("spec.nodeSets[%d].resources", i),
 			fmt.Sprintf("spec.nodeSets[%d].podTemplate", i),
 			esv1.ElasticsearchContainerName,
-			nodeSet.Resources,
+			nodeSet.Resources.ContainerResources(),
 			nodeSet.PodTemplate,
 		)
 		if warning == "" {

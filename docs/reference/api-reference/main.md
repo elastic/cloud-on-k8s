@@ -858,7 +858,6 @@ PodTemplate are preserved as-is.
 * [KibanaSpec](#kibanaspec)
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
-* [NodeSet](#nodeset)
 * [PackageRegistrySpec](#packageregistryspec)
 
 :::
@@ -1332,7 +1331,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`remoteClusterServer`* __[RemoteClusterServer](#remoteclusterserver)__ | RemoteClusterServer specifies if the remote cluster server should be enabled.<br>This must be enabled if this cluster is a remote cluster which is expected to be accessed using API key authentication. |
 | *`http`* __[HTTPConfigWithClientOptions](#httpconfigwithclientoptions)__ | HTTP holds HTTP layer settings for Elasticsearch. |
 | *`transport`* __[TransportConfig](#transportconfig)__ | Transport holds transport layer settings for Elasticsearch. |
-| *`nodeSets`* __[NodeSet](#nodeset) array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. |
+| *`nodeSets`* __[NodeSet](#nodeset) array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.<br>The list is keyed by nodeSet name so that Server-Side Apply tracks field ownership per nodeSet<br>and per field. Without this the list would default to atomic, and any write by the operator<br>(for example the autoscaling controller updating a node count) would claim ownership of the<br>whole nodeSets tree, conflicting with tools such as Helm that manage the rest of the spec. |
 | *`updateStrategy`* __[UpdateStrategy](#updatestrategy)__ | UpdateStrategy specifies how updates to the cluster should be performed. |
 | *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
 | *`auth`* __[Auth](#auth)__ | Auth contains user authentication and authorization security settings for Elasticsearch. |
@@ -1456,7 +1455,6 @@ NodeSet is the specification for a group of Elasticsearch nodes sharing the same
 | *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting. |
 | *`config`* __[Config](#config)__ | Config holds the Elasticsearch configuration. |
 | *`count`* __integer__ | Count of Elasticsearch nodes to deploy.<br>If the node set is managed by an autoscaling policy the initial value is automatically set by the autoscaling controller. |
-| *`resources`* __[Resources](#resources)__ | Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field. |
 | *`zoneAwareness`* __[ZoneAwareness](#zoneawareness)__ | ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet. |
 | *`volumeClaimTemplates`* __[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#persistentvolumeclaim-v1-core) array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.<br>Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.<br>Items defined here take precedence over any default claims added by the operator with the same name. |

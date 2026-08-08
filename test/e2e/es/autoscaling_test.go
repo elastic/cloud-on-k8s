@@ -222,11 +222,11 @@ func newNodeSet(name string, roles []string, count int32, limits corev1.Resource
 // newNodeSetResources maps CPU and memory limits to NodeSet shorthand resources.
 // This mirrors autoscaling reconciliation, which now writes recommendations into
 // spec.nodeSets[].resources instead of only mutating the PodTemplate container resources.
-func newNodeSetResources(limits corev1.ResourceList) commonv1.Resources {
-	resources := commonv1.Resources{
+func newNodeSetResources(limits corev1.ResourceList) esv1.NodeSetResources {
+	resources := esv1.NodeSetResources{Resources: commonv1.Resources{
 		Requests: commonv1.ResourceAllocations{},
 		Limits:   commonv1.ResourceAllocations{},
-	}
+	}}
 
 	if memory, exists := limits[corev1.ResourceMemory]; exists {
 		memoryReq := memory
@@ -268,7 +268,7 @@ func checkNodeSetResourcesStep(k8sClient *test.K8sClient, expectedBuilder *elast
 				if actualNodeSet == nil {
 					return fmt.Errorf("expected NodeSet %q was not found in Elasticsearch spec", expectedNodeSet.Name)
 				}
-				if err := ensureNodeSetResourcesMatchExpected(expectedNodeSet.Resources, actualNodeSet.Resources); err != nil {
+				if err := ensureNodeSetResourcesMatchExpected(expectedNodeSet.Resources.ContainerResources(), actualNodeSet.Resources.ContainerResources()); err != nil {
 					return fmt.Errorf("NodeSet %q resources mismatch: %w", expectedNodeSet.Name, err)
 				}
 			}
@@ -300,7 +300,7 @@ func checkAutoscaledPodsResourcesStep(k8sClient *test.K8sClient, expectedBuilder
 				if _, shouldCheck := nodeSetsToCheck[nodeSet.Name]; !shouldCheck || nodeSet.Count == 0 {
 					continue
 				}
-				if err := ensureCPUAndMemorySet(nodeSet.Name, nodeSet.Resources); err != nil {
+				if err := ensureCPUAndMemorySet(nodeSet.Name, nodeSet.Resources.ContainerResources()); err != nil {
 					return err
 				}
 

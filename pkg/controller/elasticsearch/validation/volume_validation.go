@@ -143,7 +143,12 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
-		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
+		// The StatefulSet claims already carry the effective size, storage shorthand included, so
+		// the proposed claims have to be resolved the same way. Otherwise a user who moves the size
+		// from volumeClaimTemplates to spec.nodeSets[].resources.storage looks like they are
+		// requesting a decrease to nothing.
+		proposedClaims := volume.ApplyStorageOverride(proposedNodeSet.VolumeClaimTemplates, proposedNodeSet.Resources.Storage)
+		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedClaims, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				proposedNodeSet.VolumeClaimTemplates,
