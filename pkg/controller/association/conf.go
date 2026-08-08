@@ -14,11 +14,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -201,60 +201,32 @@ func RemoveObsoleteAssociationConfs(
 	associated commonv1.Associated,
 	associationConfAnnotationNameBase string,
 ) error {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
-
 	expected := make(map[string]bool)
 	for _, association := range associated.GetAssociations() {
 		expected[association.AssociationConfAnnotationName()] = true
 	}
 
-	modified := false
-	for key := range annotations {
+	var toRemove []string
+	for key := range associated.GetAnnotations() {
 		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
-			delete(annotations, key)
-			modified = true
+			toRemove = append(toRemove, key)
 		}
 	}
 
-	if !modified {
-		return nil
-	}
-
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	// See annotation.PatchAnnotations: annotation-only merge patch, no-op when already clean.
+	return annotation.PatchAnnotations(ctx, client, associated, nil, toRemove...)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
 func RemoveAssociationConf(ctx context.Context, client k8s.Client, association commonv1.Association) error {
-	associated := association.Associated()
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
-
-	if len(annotations) == 0 {
-		return nil
-	}
-
-	annotationName := association.AssociationConfAnnotationName()
-	if _, exists := annotations[annotationName]; !exists {
-		return nil
-	}
-
-	delete(annotations, annotationName)
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	// See annotation.PatchAnnotations: annotation-only merge patch, no-op when already absent.
+	return annotation.PatchAnnotations(
+		ctx,
+		client,
+		association.Associated(),
+		nil,
+		association.AssociationConfAnnotationName(),
+	)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
@@ -264,32 +236,22 @@ func UpdateAssociationConf(
 	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
 ) error {
-	accessor := meta.NewAccessor()
-
-	obj := association.Associated()
-	annotations, err := accessor.Annotations(obj)
-	if err != nil {
-		return err
-	}
-
-	// serialize the config and update the object
 	serializedConf, err := json.Marshal(wantConf)
 	if err != nil {
 		return errors.Wrapf(err, "failed to serialize configuration")
 	}
 
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	annotationName := association.AssociationConfAnnotationName()
-	annotations[annotationName] = unsafeBytesToString(serializedConf)
-	if err := accessor.SetAnnotations(obj, annotations); err != nil {
-		return err
-	}
-
-	// persist the changes
-	return client.Update(ctx, obj)
+	// See annotation.PatchAnnotations: annotation-only merge patch. The associated object is not
+	// mutated beforehand; PatchAnnotations diffs against the current annotations and is a no-op
+	// when the value already matches.
+	return annotation.PatchAnnotations(
+		ctx,
+		client,
+		association.Associated(),
+		map[string]string{
+			association.AssociationConfAnnotationName(): unsafeBytesToString(serializedConf),
+		},
+	)
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.
