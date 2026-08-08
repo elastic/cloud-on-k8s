@@ -4,6 +4,8 @@
 
 package configs
 
+import "strings"
+
 // APIServer hold the resolved api.* config
 type APIServer struct {
 	SSLEnabled       string
@@ -21,4 +23,8 @@ func (server APIServer) UseTLS() bool {
 		return false
 	}
 	return false
+}
+
+func (server APIServer) UsesBasicAuth() bool {
+	return strings.EqualFold(server.AuthType, "basic")
 }

@@ -6,9 +6,7 @@ package logstash
 
 import (
 	"context"
-	"encoding/base64"
 	"hash/fnv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -251,7 +249,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with basic auth set, readiness probe creates Authorization header",
+			name: "with basic auth set, readiness probe uses TCP socket",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: meta,
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -259,14 +257,14 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				}},
 			apiServerConfig: GetAPIServerWithAuth(),
 			assertions: func(pod corev1.PodTemplateSpec) {
-				authHeader := GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.HTTPHeaders[0]
-				b, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader.Value, "Basic "))
-				assert.Equal(t, "Authorization", authHeader.Name)
-				assert.Equal(t, "logstash:whatever", string(b))
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.NotNil(t, probe.TCPSocket, "TCP socket probe must be set when basic auth is enabled")
+				assert.Nil(t, probe.HTTPGet, "HTTP probe must not be used when basic auth is enabled")
+				assert.Nil(t, probe.Exec, "exec probe must not be used when basic auth is enabled")
 			},
 		},
 		{
-			name: "with tls set, readiness probe use https protocol",
+			name: "with tls and basic auth set, readiness probe uses TCP socket",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: meta,
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -276,7 +274,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, UseTLSEnv))
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, APIKeystorePassEnv))
-				assert.Equal(t, corev1.URISchemeHTTPS, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Scheme)
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.NotNil(t, probe.TCPSocket)
+				assert.Nil(t, probe.HTTPGet)
 			},
 		},
 		{
