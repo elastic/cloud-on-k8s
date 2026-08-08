@@ -169,10 +169,19 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 }
 
 // claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
+//
+// A claim may legitimately carry no resource requests at all: that is what a nodeSet looks like once
+// the storage size moves to spec.nodeSets[].resources.storage and the claim is left declaring only
+// the storage class and access modes. Normalising a nil map to an explicit empty storage request is
+// also what makes such a claim compare equal to the same claim with a size, which is the point of
+// this function.
 func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
 		result = append(result, patchedClaim)
 	}
