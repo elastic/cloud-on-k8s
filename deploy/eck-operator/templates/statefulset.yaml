@@ -91,8 +91,14 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or .Values.webhook.enabled (gt $metricsPort 0) }}
+          {{- $probesEnable := or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
+          {{- if or .Values.webhook.enabled (gt $metricsPort 0) $probesEnable }}
           ports:
+            {{- if $probesEnable }}
+            - containerPort: {{ .Values.probes.port }}
+              name: health-probe
+              protocol: TCP
+            {{- end }}
             {{- if (gt $metricsPort 0) }}
             - containerPort: {{ $metricsPort }}
               name: metrics
@@ -103,6 +109,33 @@ spec:
               name: https-webhook
               protocol: TCP
             {{- end }}
+          {{- end }}
+          {{- if .Values.probes.startup.enabled }}
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.probes.port }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.probes.port }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.probes.port }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
           {{- end }}
           volumeMounts:
             - mountPath: "/conf"

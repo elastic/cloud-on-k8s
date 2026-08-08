@@ -14,14 +14,20 @@ import (
 
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
@@ -77,7 +83,11 @@ func setupWebhook(
 	exposedNodeLabels esvalidation.NodeLabels,
 	managedNamespaces []string,
 	tracer *apm.Tracer,
-) {
+) error {
+	if err := registerWebhookInformers(ctx, mgr.GetCache(), params.ValidateStorageClass, params.NamespaceMatcher); err != nil {
+		return err
+	}
+
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, params.NamespaceMatcher, clientset, tracer); err != nil {
@@ -134,6 +144,33 @@ func setupWebhook(
 		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
 		os.Exit(1)
 	}
+	return nil
+}
+
+func registerWebhookInformers(ctx context.Context, informerCache cache.Cache, validateStorageClass bool, matcher *nsmatch.NamespaceMatcher) error {
+	// Webhook validation performs these reads through the cache-backed client
+	// before leader election. Register only those dependencies so non-leader
+	// replicas have these caches synced before acquiring leader election.
+	objects := []client.Object{
+		&corev1.Secret{},
+		&corev1.ConfigMap{},
+		&corev1.Pod{},
+		&appsv1.StatefulSet{},
+		&esv1.Elasticsearch{},
+		&esav1alpha1.ElasticsearchAutoscaler{},
+	}
+	if validateStorageClass {
+		objects = append(objects, &storagev1.StorageClass{})
+	}
+	if matcher.SelectorEnabled() {
+		objects = append(objects, &corev1.Namespace{})
+	}
+	for _, obj := range objects {
+		if _, err := informerCache.GetInformer(ctx, obj); err != nil {
+			return fmt.Errorf("pre-register webhook informer for %T: %w", obj, err)
+		}
+	}
+	return nil
 }
 
 func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, m *nsmatch.NamespaceMatcher, clientset kubernetes.Interface, tracer *apm.Tracer) error {
