@@ -102,6 +102,15 @@ func ValidateElasticsearch(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	for _, fieldErr := range fipsWarns {
 		admWarnings = append(admWarnings, fieldErr.Detail)
 	}
+	// Needs the client to tell which NodeSets an autoscaling policy drives, so it cannot live in
+	// the client-less `warnings` list above.
+	shorthandWarns, err := shorthandResourcesOverrideWarning(ctx, c, es)
+	if err != nil {
+		return nil, err
+	}
+	for _, fieldErr := range shorthandWarns {
+		admWarnings = append(admWarnings, fieldErr.Detail)
+	}
 	if w := validateRestartAllocationDelayWarnings(es); w != "" {
 		admWarnings = append(admWarnings, w)
 	}

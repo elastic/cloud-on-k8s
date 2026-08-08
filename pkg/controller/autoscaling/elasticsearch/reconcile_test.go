@@ -309,22 +309,16 @@ func TestReconcileElasticsearch(t *testing.T) {
 					"volumeClaimTemplates must be left untouched by the autoscaling controller")
 			}
 
+			// The pod template is the user's to own. The autoscaling controller must not touch it:
+			// writing there would claim podTemplate.spec.containers, an atomic list under
+			// preserve-unknown-fields, and break `helm upgrade` for whoever declared it. The
+			// shorthand already wins at pod build time via WithResourcesAndOverrides, so any
+			// CPU/memory left in the pod template is shadowed rather than applied.
+			initialMainContainer := getMainContainer(tt.initialES.Spec.NodeSets[0])
 			mainContainer := getMainContainer(nodeSet)
 			require.NotNil(t, mainContainer)
-			_, hasCPURequest := mainContainer.Resources.Requests[corev1.ResourceCPU]
-			_, hasMemRequest := mainContainer.Resources.Requests[corev1.ResourceMemory]
-			_, hasCPULimit := mainContainer.Resources.Limits[corev1.ResourceCPU]
-			_, hasMemLimit := mainContainer.Resources.Limits[corev1.ResourceMemory]
-			assert.False(t, hasCPURequest, "pod template main container CPU request must be stripped")
-			assert.False(t, hasMemRequest, "pod template main container memory request must be stripped")
-			assert.False(t, hasCPULimit, "pod template main container CPU limit must be stripped")
-			assert.False(t, hasMemLimit, "pod template main container memory limit must be stripped")
-			if tt.wantPodTemplateRequestsNil {
-				assert.Nil(t, mainContainer.Resources.Requests, "expected requests map to be nil after stripping all keys")
-			}
-			if tt.wantPodTemplateLimitsNil {
-				assert.Nil(t, mainContainer.Resources.Limits, "expected limits map to be nil after stripping all keys")
-			}
+			assert.Equal(t, initialMainContainer.Resources, mainContainer.Resources,
+				"pod template main container resources must be left untouched")
 			if tt.wantPodTemplateExtraRequestKey != "" {
 				got, ok := mainContainer.Resources.Requests[tt.wantPodTemplateExtraRequestKey]
 				require.True(t, ok, "expected non-CPU/memory request key %q to be preserved", tt.wantPodTemplateExtraRequestKey)
@@ -400,17 +394,18 @@ func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testin
 	assertQuantityPointerEqual(t, "2000m", nodeSet.Resources.Limits.CPU)
 	assertQuantityPointerEqual(t, "3Gi", nodeSet.Resources.Limits.Memory)
 
-	// PodTemplate CPU/memory entries left by the previous operator must be removed so the shorthand stays
-	// the single source of truth and the validating webhook stops emitting an admission warning every
-	// reconcile. Effective container resources are unchanged because WithResourcesAndOverrides applies the
-	// new shorthand at pod-template-build time, so this does not trigger a rolling restart on its own.
+	// CPU/memory left in the PodTemplate by a previous operator version stays exactly where the user
+	// put it. Removing it would mean writing to podTemplate.spec.containers, an atomic list under
+	// preserve-unknown-fields, which claims the whole list from whoever declared it and breaks
+	// `helm upgrade`. Nothing is lost by leaving it: WithResourcesAndOverrides applies the shorthand
+	// on top at pod-build time, so the shorthand is what actually reaches the container.
 	mainContainer := getMainContainer(nodeSet)
 	require.NotNil(t, mainContainer)
-	assert.Nil(t, mainContainer.Resources.Requests, "expected requests to be nil after stripping cpu/memory")
-	assert.Nil(t, mainContainer.Resources.Limits, "expected limits to be nil after stripping cpu/memory")
+	assert.Equal(t, "500m", mainContainer.Resources.Requests.Cpu().String(), "pod template must be left untouched")
+	assert.Equal(t, "1Gi", mainContainer.Resources.Requests.Memory().String(), "pod template must be left untouched")
 
-	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream Update
-	// calls from persistently dirtying the Elasticsearch custom resource.
+	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream
+	// writes from persistently dirtying the Elasticsearch custom resource.
 	before := es.DeepCopy()
 	reconcileElasticsearch(logr.Discard(), &es, next)
 	assert.Equal(t, before.Spec, es.Spec)

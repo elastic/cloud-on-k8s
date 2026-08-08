@@ -40,7 +40,12 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-              resources: {}
+              resources:
+                limits:
+                  memory: 2Gi
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
       volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data
@@ -69,7 +74,12 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-              resources: {}
+              resources:
+                limits:
+                  memory: 2Gi
+                requests:
+                  cpu: "2"
+                  memory: 1Gi
       volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data
@@ -98,7 +108,12 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-              resources: {}
+              resources:
+                limits:
+                  memory: 2Gi
+                requests:
+                  cpu: "2"
+                  memory: 2Gi
       volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data

@@ -5,16 +5,21 @@
 package validation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_noUnsupportedSettings(t *testing.T) {
@@ -533,11 +538,65 @@ func Test_shorthandResourcesOverrideWarning(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualWarnings := shorthandResourcesOverrideWarning(tt.es)
+			// No ElasticsearchAutoscaler in the fake client, so no NodeSet is skipped.
+			actualWarnings, err := shorthandResourcesOverrideWarning(context.Background(), k8s.NewFakeClient(), tt.es)
+			require.NoError(t, err)
 			require.Len(t, actualWarnings, tt.warnings)
 			for _, w := range actualWarnings {
 				assert.Contains(t, w.Detail, "overrides")
 			}
 		})
+	}
+}
+
+// Test_shorthandResourcesOverrideWarning_autoscaled checks that the warning is suppressed for
+// NodeSets an autoscaling policy drives. There the shorthand is written by the operator, so the
+// overlap with the pod template is expected and the user cannot act on it.
+func Test_shorthandResourcesOverrideWarning_autoscaled(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.16.0",
+			// Policies target roles, not NodeSet names, so the two NodeSets differ by role.
+			NodeSets: []esv1.NodeSet{
+				nodeSetWithShorthandAndContainer("autoscaled", "data", cpu),
+				nodeSetWithShorthandAndContainer("manual", "master", cpu),
+			},
+		},
+	}
+	esa := &v1alpha1.ElasticsearchAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{Name: "esa", Namespace: "ns"},
+		Spec: v1alpha1.ElasticsearchAutoscalerSpec{
+			ElasticsearchRef: v1alpha1.ElasticsearchRef{Name: "es"},
+			AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{{
+				NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
+					Name:              "autoscaled",
+					AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
+				},
+				AutoscalingResources: commonv1alpha1.AutoscalingResources{
+					NodeCountRange: commonv1alpha1.CountRange{Min: 1, Max: 3},
+				},
+			}},
+		},
+	}
+
+	got, err := shorthandResourcesOverrideWarning(context.Background(), k8s.NewFakeClient(esa), es)
+	require.NoError(t, err)
+	require.Len(t, got, 1, "only the non-autoscaled NodeSet should warn")
+	assert.Contains(t, got[0].Field, "nodeSets[1]")
+}
+
+func nodeSetWithShorthandAndContainer(name, role string, cpu resource.Quantity) esv1.NodeSet {
+	return esv1.NodeSet{
+		Name:   name,
+		Config: &commonv1.Config{Data: map[string]any{"node.roles": []string{role}}},
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
+			Requests: commonv1.ResourceAllocations{CPU: &cpu},
+		}},
+		PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+			Name:      esv1.ElasticsearchContainerName,
+			Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+		}}}},
 	}
 }

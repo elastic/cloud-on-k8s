@@ -41,7 +41,12 @@ spec:
         spec:
           containers:
             - name: elasticsearch
-              resources: {}
+              resources:
+                limits:
+                  memory: "3520439718"
+                requests:
+                  cpu: "2"
+                  memory: "3520439718"
       volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data
