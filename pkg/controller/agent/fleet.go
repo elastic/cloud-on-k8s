@@ -25,6 +25,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -370,13 +371,13 @@ FindOrCreate:
 		return EnrollmentAPIKey{}, err
 	}
 
-	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it  on the top level
-	if agent.Annotations == nil {
-		agent.Annotations = map[string]string{}
-	}
-	agent.Annotations[FleetTokenAnnotation] = key.ID
-	err = params.Client.Update(ctx, &agent)
-	if err != nil {
+	// Annotation-only merge patch: a full-object Update would claim Agent spec ownership under SSA.
+	// Agent is deliberately not mutated beforehand; PatchAnnotations diffs against current annotations.
+	// This potentially creates conflicts; we could introduce reconciler state similar to the ES
+	// controller and handle it on the top level.
+	if err := annotation.PatchAnnotations(ctx, params.Client, &agent, map[string]string{
+		FleetTokenAnnotation: key.ID,
+	}); err != nil {
 		return EnrollmentAPIKey{}, err
 	}
 	return key, nil
