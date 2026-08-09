@@ -5,7 +5,6 @@
 package waitforannotations
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -84,7 +83,7 @@ func TestDoRun_Timeout(t *testing.T) {
 
 	setViperFlags(t, f, []string{"topology.kubernetes.io/zone"}, 50*time.Millisecond, 10*time.Millisecond)
 
-	err := doRun(context.Background())
+	err := doRun(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")
 }
@@ -95,14 +94,14 @@ func TestDoRun_Success(t *testing.T) {
 
 	setViperFlags(t, f, []string{"topology.kubernetes.io/zone"}, 0, 10*time.Millisecond)
 
-	err := doRun(context.Background())
+	err := doRun(t.Context())
 	require.NoError(t, err)
 }
 
 func TestDoRun_MissingFile(t *testing.T) {
 	setViperFlags(t, "", []string{"topology.kubernetes.io/zone"}, 0, 10*time.Millisecond)
 
-	err := doRun(context.Background())
+	err := doRun(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), FileFlag)
 }
@@ -111,7 +110,20 @@ func TestDoRun_MissingAnnotation(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "annotations")
 	setViperFlags(t, f, nil, 0, 10*time.Millisecond)
 
-	err := doRun(context.Background())
+	err := doRun(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), AnnotationFlag)
+}
+
+func TestDoRun_InvalidPollInterval(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "annotations")
+	require.NoError(t, os.WriteFile(f, []byte(""), 0o600))
+
+	for _, interval := range []time.Duration{0, -1 * time.Second} {
+		setViperFlags(t, f, []string{"topology.kubernetes.io/zone"}, 0, interval)
+
+		err := doRun(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), PollIntervalFlag)
+	}
 }

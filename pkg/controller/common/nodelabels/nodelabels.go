@@ -158,6 +158,7 @@ func getPodAnnotations(pod *corev1.Pod, expectedAnnotations []string, nodeLabels
 			missingLabels = append(missingLabels, expectedAnnotation)
 			continue
 		}
+		// Check if the annotation is already set
 		if _, alreadyExists := pod.Annotations[expectedAnnotation]; alreadyExists {
 			continue
 		}
