@@ -6,6 +6,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 
 	v1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,12 +84,29 @@ func (v1w *v1webhookHandler) services() Services {
 }
 
 func (v1w *v1webhookHandler) updateCABundle(caCert []byte) error {
-	for i := range v1w.webhookConfiguration.Webhooks {
-		v1w.webhookConfiguration.Webhooks[i].ClientConfig.CABundle = caCert
+	// Strategic merge patch keyed by webhook name: only clientConfig.caBundle is written.
+	// A full-object Update would claim Helm-owned fields (rules, failurePolicy, selectors, …).
+	webhooks := make([]map[string]any, 0, len(v1w.webhookConfiguration.Webhooks))
+	for _, wh := range v1w.webhookConfiguration.Webhooks {
+		webhooks = append(webhooks, map[string]any{
+			"name": wh.Name,
+			"clientConfig": map[string]any{
+				"caBundle": caCert,
+			},
+		})
 	}
-	_, err := v1w.clientset.
+	patch, err := json.Marshal(map[string]any{"webhooks": webhooks})
+	if err != nil {
+		return err
+	}
+
+	updated, err := v1w.clientset.
 		AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Update(v1w.ctx, v1w.webhookConfiguration, metav1.UpdateOptions{})
-	return err
+		Patch(v1w.ctx, v1w.webhookConfiguration.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return err
+	}
+	v1w.webhookConfiguration = updated
+	return nil
 }
