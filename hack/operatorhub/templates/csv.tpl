@@ -373,14 +373,18 @@ spec:
                   name: https-webhook
                   protocol: TCP
               terminationGracePeriodSeconds: 10
+{{- if .OperatorPermissions }}
       permissions:
       - rules:
-{{ .OperatorPermissions | indent 8 -}}
+        {{- .OperatorPermissions | nindent 8 }}
         serviceAccountName: elastic-operator
+{{- end }}
+{{- if .OperatorClusterPermissions }}
       clusterPermissions:
       - rules:
-{{ .OperatorClusterPermissions | indent 8 -}}
+        {{- .OperatorClusterPermissions | nindent 8 }}
         serviceAccountName: elastic-operator
+{{- end }}
     strategy: deployment
   installModes:
   - supported: true

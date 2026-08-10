@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,9 +60,10 @@ const (
 var (
 	errNotFound = errors.New("not found")
 
-	// knownResources is an exhaustive map of every resource the elastic-operator ClusterRole grants,
-	// keyed by GroupResource. true = cluster-scoped (goes into OLM clusterPermissions),
-	// false = namespaced (goes into OLM permissions).
+	// knownResources maps built-in Kubernetes GroupResources to their scope:
+	// true = cluster-scoped (OLM clusterPermissions), false = namespaced (OLM permissions).
+	// ECK CRD resources are derived at runtime from the parsed CRD manifests; only stable
+	// built-in resources that are not discoverable from the manifests belong here.
 	knownResources = map[schema.GroupResource]bool{
 		// cluster-scoped
 		{Resource: "namespaces"}: true,
@@ -87,43 +89,6 @@ var (
 		{Group: "events.k8s.io", Resource: "events"}: false,
 		// namespaced - policy
 		{Group: "policy", Resource: "poddisruptionbudgets"}: false,
-		// namespaced - ECK CRDs
-		{Group: "elasticsearch.k8s.elastic.co", Resource: "elasticsearches"}:                    false,
-		{Group: "elasticsearch.k8s.elastic.co", Resource: "elasticsearches/status"}:             false,
-		{Group: "elasticsearch.k8s.elastic.co", Resource: "elasticsearches/finalizers"}:         false,
-		{Group: "autoscaling.k8s.elastic.co", Resource: "elasticsearchautoscalers"}:             false,
-		{Group: "autoscaling.k8s.elastic.co", Resource: "elasticsearchautoscalers/status"}:      false,
-		{Group: "autoscaling.k8s.elastic.co", Resource: "elasticsearchautoscalers/finalizers"}:  false,
-		{Group: "kibana.k8s.elastic.co", Resource: "kibanas"}:                                   false,
-		{Group: "kibana.k8s.elastic.co", Resource: "kibanas/status"}:                            false,
-		{Group: "kibana.k8s.elastic.co", Resource: "kibanas/finalizers"}:                        false,
-		{Group: "apm.k8s.elastic.co", Resource: "apmservers"}:                                   false,
-		{Group: "apm.k8s.elastic.co", Resource: "apmservers/status"}:                            false,
-		{Group: "apm.k8s.elastic.co", Resource: "apmservers/finalizers"}:                        false,
-		{Group: "enterprisesearch.k8s.elastic.co", Resource: "enterprisesearches"}:              false,
-		{Group: "enterprisesearch.k8s.elastic.co", Resource: "enterprisesearches/status"}:       false,
-		{Group: "enterprisesearch.k8s.elastic.co", Resource: "enterprisesearches/finalizers"}:   false,
-		{Group: "beat.k8s.elastic.co", Resource: "beats"}:                                       false,
-		{Group: "beat.k8s.elastic.co", Resource: "beats/status"}:                                false,
-		{Group: "beat.k8s.elastic.co", Resource: "beats/finalizers"}:                            false,
-		{Group: "agent.k8s.elastic.co", Resource: "agents"}:                                     false,
-		{Group: "agent.k8s.elastic.co", Resource: "agents/status"}:                              false,
-		{Group: "agent.k8s.elastic.co", Resource: "agents/finalizers"}:                          false,
-		{Group: "maps.k8s.elastic.co", Resource: "elasticmapsservers"}:                          false,
-		{Group: "maps.k8s.elastic.co", Resource: "elasticmapsservers/status"}:                   false,
-		{Group: "maps.k8s.elastic.co", Resource: "elasticmapsservers/finalizers"}:               false,
-		{Group: "stackconfigpolicy.k8s.elastic.co", Resource: "stackconfigpolicies"}:            false,
-		{Group: "stackconfigpolicy.k8s.elastic.co", Resource: "stackconfigpolicies/status"}:     false,
-		{Group: "stackconfigpolicy.k8s.elastic.co", Resource: "stackconfigpolicies/finalizers"}: false,
-		{Group: "logstash.k8s.elastic.co", Resource: "logstashes"}:                              false,
-		{Group: "logstash.k8s.elastic.co", Resource: "logstashes/status"}:                       false,
-		{Group: "logstash.k8s.elastic.co", Resource: "logstashes/finalizers"}:                   false,
-		{Group: "autoops.k8s.elastic.co", Resource: "autoopsagentpolicies"}:                     false,
-		{Group: "autoops.k8s.elastic.co", Resource: "autoopsagentpolicies/status"}:              false,
-		{Group: "autoops.k8s.elastic.co", Resource: "autoopsagentpolicies/finalizers"}:          false,
-		{Group: "packageregistry.k8s.elastic.co", Resource: "packageregistries"}:                false,
-		{Group: "packageregistry.k8s.elastic.co", Resource: "packageregistries/status"}:         false,
-		{Group: "packageregistry.k8s.elastic.co", Resource: "packageregistries/finalizers"}:     false,
 	}
 )
 
@@ -339,8 +304,10 @@ func makeRequest(url string) (io.Reader, error) {
 type CRD struct {
 	Name        string
 	Group       string
+	Plural      string
 	Kind        string
 	Version     string
+	Scope       apiextv1.ResourceScope
 	DisplayName string
 	Description string
 	Def         []byte
@@ -408,19 +375,27 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 
 		switch obj := runtimeObj.(type) {
 		case *apiextv1beta1.CustomResourceDefinition:
+			version := obj.Spec.Version //nolint:staticcheck // deprecated but present in older manifests
+			if len(obj.Spec.Versions) > 0 {
+				version = obj.Spec.Versions[0].Name
+			}
 			parts.crds[obj.Name] = &CRD{
 				Name:    obj.Name,
 				Group:   obj.Spec.Group,
+				Plural:  obj.Spec.Names.Plural,
 				Kind:    obj.Spec.Names.Kind,
-				Version: obj.Spec.Version,
+				Version: version,
+				Scope:   apiextv1.ResourceScope(obj.Spec.Scope),
 				Def:     yamlBytes,
 			}
 		case *apiextv1.CustomResourceDefinition:
 			parts.crds[obj.Name] = &CRD{
 				Name:    obj.Name,
 				Group:   obj.Spec.Group,
+				Plural:  obj.Spec.Names.Plural,
 				Kind:    obj.Spec.Names.Kind,
 				Version: obj.Spec.Versions[0].Name,
+				Scope:   obj.Spec.Scope,
 				Def:     yamlBytes,
 			}
 		case *rbacv1.ClusterRole:
@@ -502,17 +477,32 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		return nil, fmt.Errorf("newVersion in config file appears to be invalid [%s]", conf.NewVersion)
 	}
 
-	permissions, clusterPermissions, err := splitRBACRules(extracts.operatorRBAC)
+	// allScopes starts from the static built-in map and is extended with CRD-derived scopes
+	// so that splitRBACRules works from a single authoritative source.
+	allScopes := make(map[schema.GroupResource]bool, len(knownResources)+len(extracts.crds))
+	maps.Copy(allScopes, knownResources)
+	for _, crd := range extracts.crds {
+		allScopes[schema.GroupResource{Group: crd.Group, Resource: crd.Plural}] = crd.Scope == apiextv1.ClusterScoped
+	}
+
+	permissions, clusterPermissions, err := splitRBACRules(extracts.operatorRBAC, allScopes)
 	if err != nil {
 		return nil, fmt.Errorf("while splitting operator RBAC rules: %w", err)
 	}
-	permissionsYAML, err := gyaml.Marshal(permissions)
-	if err != nil {
-		return nil, fmt.Errorf("while marshaling namespaced operator RBAC rules: %w", err)
+
+	var permissionsYAML []byte
+	if len(permissions) > 0 {
+		permissionsYAML, err = gyaml.Marshal(permissions)
+		if err != nil {
+			return nil, fmt.Errorf("while marshaling namespaced operator RBAC rules: %w", err)
+		}
 	}
-	clusterPermissionsYAML, err := gyaml.Marshal(clusterPermissions)
-	if err != nil {
-		return nil, fmt.Errorf("while marshaling cluster-scoped operator RBAC rules: %w", err)
+	var clusterPermissionsYAML []byte
+	if len(clusterPermissions) > 0 {
+		clusterPermissionsYAML, err = gyaml.Marshal(clusterPermissions)
+		if err != nil {
+			return nil, fmt.Errorf("while marshaling cluster-scoped operator RBAC rules: %w", err)
+		}
 	}
 
 	var additionalArgs []string
@@ -555,15 +545,24 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 // splitRBACRules separates the operator's namespaced and cluster-scoped permissions
 // for the OLM CSV. OLM renders permissions as Roles for namespace-scoped install
 // modes, while clusterPermissions are rendered as ClusterRoles.
-// Returns an error if any resource is not listed in knownResources — add it there first.
-func splitRBACRules(rules []rbacv1.PolicyRule) ([]rbacv1.PolicyRule, []rbacv1.PolicyRule, error) {
+// Returns an error if any resource is not found in scopeMap.
+func splitRBACRules(rules []rbacv1.PolicyRule, resourceScopeMap map[schema.GroupResource]bool) ([]rbacv1.PolicyRule, []rbacv1.PolicyRule, error) {
 	var permissions []rbacv1.PolicyRule
 	var clusterPermissions []rbacv1.PolicyRule
 	var unknown []string
 
 	for _, rule := range rules {
 		if len(rule.NonResourceURLs) > 0 {
-			clusterPermissions = append(clusterPermissions, rule)
+			if len(rule.Resources) > 0 {
+				return nil, nil, fmt.Errorf("invalid rule: NonResourceURLs and Resources are mutually exclusive: %v", rule)
+			}
+			clusterPermissions = append(clusterPermissions, *rule.DeepCopy())
+			continue
+		}
+		if len(rule.APIGroups) == 0 {
+			for _, resource := range rule.Resources {
+				unknown = append(unknown, schema.GroupResource{Resource: resource}.String())
+			}
 			continue
 		}
 
@@ -571,13 +570,15 @@ func splitRBACRules(rules []rbacv1.PolicyRule) ([]rbacv1.PolicyRule, []rbacv1.Po
 			var namespacedResources []string
 			var clusterResources []string
 			for _, resource := range rule.Resources {
-				groupResource := schema.GroupResource{Group: apiGroup, Resource: resource}
-				isCluster, ok := knownResources[groupResource]
-				if !ok {
-					unknown = append(unknown, groupResource.String())
+				// A subresource's scope equals its parent's scope; strip before lookup.
+				base, _, _ := strings.Cut(resource, "/")
+				groupResource := schema.GroupResource{Group: apiGroup, Resource: base}
+				clusterScoped, exists := resourceScopeMap[groupResource]
+				if !exists {
+					unknown = append(unknown, schema.GroupResource{Group: apiGroup, Resource: resource}.String())
 					continue
 				}
-				if isCluster {
+				if clusterScoped {
 					clusterResources = append(clusterResources, resource)
 				} else {
 					namespacedResources = append(namespacedResources, resource)
@@ -600,7 +601,7 @@ func splitRBACRules(rules []rbacv1.PolicyRule) ([]rbacv1.PolicyRule, []rbacv1.Po
 	}
 
 	if len(unknown) > 0 {
-		return nil, nil, fmt.Errorf("unknown resource scope for %v: add to knownResources in operatorhub.go", unknown)
+		return nil, nil, fmt.Errorf("unknown resource scope for %v: add a CRD to config/crds.yaml or add the built-in resource to knownResources in operatorhub.go", unknown)
 	}
 	return permissions, clusterPermissions, nil
 }
