@@ -122,7 +122,7 @@ func TestUpdateSettings(t *testing.T) {
 		name                                  string
 		args                                  args
 		wantAnnotation                        string
-		wantKubernetesAPIUpdateCalled         int
+		wantKubernetesAPIPatchCalled          int
 		wantRequeue                           bool
 		wantErr                               bool
 		wantGetRemoteClusterSettingsCalled    bool
@@ -141,7 +141,7 @@ func TestUpdateSettings(t *testing.T) {
 				),
 			},
 			wantRequeue:                           false,
-			wantKubernetesAPIUpdateCalled:         0,
+			wantKubernetesAPIPatchCalled:          0,
 			wantGetRemoteClusterSettingsCalled:    false,
 			wantUpdateRemoteClusterSettingsCalled: false,
 		},
@@ -156,7 +156,7 @@ func TestUpdateSettings(t *testing.T) {
 					map[string]string{"foo": "bar", ManagedRemoteClustersAnnotationName: ""},
 				),
 			},
-			wantKubernetesAPIUpdateCalled:         1, // Annotation should be removed
+			wantKubernetesAPIPatchCalled:          1, // Annotation should be removed
 			wantRequeue:                           false,
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: false,
@@ -172,7 +172,7 @@ func TestUpdateSettings(t *testing.T) {
 					map[string]string{ManagedRemoteClustersAnnotationName: "ns2-es2"},
 				),
 			},
-			wantKubernetesAPIUpdateCalled:         1,
+			wantKubernetesAPIPatchCalled:          1,
 			wantRequeue:                           false,
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: false,
@@ -193,7 +193,7 @@ func TestUpdateSettings(t *testing.T) {
 				),
 			},
 			wantAnnotation:                        "ns2-es2",
-			wantKubernetesAPIUpdateCalled:         1,
+			wantKubernetesAPIPatchCalled:          1,
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantSettings: esclient.RemoteClustersSettings{
@@ -225,7 +225,7 @@ func TestUpdateSettings(t *testing.T) {
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantAnnotation:                        "ns1-es2",
-			wantKubernetesAPIUpdateCalled:         1,
+			wantKubernetesAPIPatchCalled:          1,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -266,7 +266,7 @@ func TestUpdateSettings(t *testing.T) {
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantAnnotation:                        "ns2-es2",
-			wantKubernetesAPIUpdateCalled:         0,
+			wantKubernetesAPIPatchCalled:          0,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -306,7 +306,7 @@ func TestUpdateSettings(t *testing.T) {
 			},
 			wantRequeue:                           false,
 			wantAnnotation:                        "ns2-es2",
-			wantKubernetesAPIUpdateCalled:         1,
+			wantKubernetesAPIPatchCalled:          1,
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantSettings: esclient.RemoteClustersSettings{
@@ -352,7 +352,7 @@ func TestUpdateSettings(t *testing.T) {
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantAnnotation:                        "ns1-es2,ns1-es3",
-			wantKubernetesAPIUpdateCalled:         1, // Add ns1-es3
+			wantKubernetesAPIPatchCalled:          1, // Add ns1-es3
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -476,7 +476,7 @@ func TestUpdateSettings(t *testing.T) {
 			wantGetRemoteClusterSettingsCalled:    true,
 			wantUpdateRemoteClusterSettingsCalled: true,
 			wantAnnotation:                        "ns1-es2,ns1-es4,ns1-es5",
-			wantKubernetesAPIUpdateCalled:         1,
+			wantKubernetesAPIPatchCalled:          1,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -492,7 +492,7 @@ func TestUpdateSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := trackUpdateCalls(k8s.NewFakeClient(tt.args.es))
+			client := trackPatchCalls(k8s.NewFakeClient(tt.args.es))
 			shouldRequeue, err := UpdateSettings(
 				context.Background(),
 				client,
@@ -515,7 +515,7 @@ func TestUpdateSettings(t *testing.T) {
 				assert.False(t, annotationExists)
 			}
 
-			assert.Equal(t, tt.wantKubernetesAPIUpdateCalled, client.updateCallCount, "Kubernetes API Update call count mismatch")
+			assert.Equal(t, tt.wantKubernetesAPIPatchCalled, client.patchCallCount, "Kubernetes API Patch call count mismatch")
 
 			// Check the requeue result
 			assert.Equal(t, tt.wantRequeue, shouldRequeue)
@@ -529,16 +529,16 @@ func TestUpdateSettings(t *testing.T) {
 	}
 }
 
-func trackUpdateCalls(c client.Client) *trackUpdateCallsClient {
-	return &trackUpdateCallsClient{Client: c}
+func trackPatchCalls(c client.Client) *trackPatchCallsClient {
+	return &trackPatchCallsClient{Client: c}
 }
 
-type trackUpdateCallsClient struct {
+type trackPatchCallsClient struct {
 	client.Client
-	updateCallCount int
+	patchCallCount int
 }
 
-func (t *trackUpdateCallsClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	t.updateCallCount++
-	return t.Client.Update(ctx, obj, opts...)
+func (t *trackPatchCallsClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	t.patchCallCount++
+	return t.Client.Patch(ctx, obj, patch, opts...)
 }

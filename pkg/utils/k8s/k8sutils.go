@@ -6,7 +6,9 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"maps"
 	"net"
 
 	corev1 "k8s.io/api/core/v1"
@@ -341,4 +343,56 @@ func NamespaceFilterFunc(
 	}
 
 	return namespaces.Has, nil // Return the Has method directly
+}
+
+// PatchObjectAnnotations applies mutateAnnotationsFn to obj, then sends a JSON merge patch containing
+// only the resulting annotations diff (additions, changes and removals), instead of diffing the whole
+// object. mutateAnnotationsFn is expected to mutate obj's annotations in place (e.g. via obj.GetAnnotations()
+// and obj.SetAnnotations()); it is a no-op to mutate any other field of obj, since only the annotations are
+// compared before and after. If the resulting annotations are unchanged, no patch request is sent.
+// The resourceVersion read from obj before mutation is embedded in the patch so that
+// the optimistic-concurrency guarantee is maintained. Callers must ensure obj has been fetched from
+// the API server (i.e. has a populated ResourceVersion) before calling this function; passing an
+// object that was only constructed locally will embed an empty resourceVersion and the
+// optimistic-concurrency guarantee will not hold.
+func PatchObjectAnnotations(ctx context.Context, k8sClient Client, obj client.Object, mutateAnnotationsFn func()) error {
+	if mutateAnnotationsFn == nil {
+		return nil
+	}
+
+	resourceVersion := obj.GetResourceVersion()
+
+	var origAnnotations map[string]string
+	if objAnnotation := obj.GetAnnotations(); objAnnotation != nil {
+		origAnnotations = maps.Clone(objAnnotation)
+	} else {
+		origAnnotations = map[string]string{}
+	}
+
+	mutateAnnotationsFn()
+
+	mutatedAnnotations := obj.GetAnnotations()
+	diff := make(map[string]any)
+	for k := range origAnnotations {
+		if _, ok := mutatedAnnotations[k]; !ok {
+			diff[k] = nil
+		}
+	}
+	for k, v := range mutatedAnnotations {
+		if ov, ok := origAnnotations[k]; !ok || ov != v {
+			diff[k] = v
+		}
+	}
+	if len(diff) == 0 {
+		return nil
+	}
+
+	data, err := json.Marshal(map[string]any{"metadata": map[string]any{
+		"resourceVersion": resourceVersion,
+		"annotations":     diff,
+	}})
+	if err != nil {
+		return err
+	}
+	return k8sClient.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
 }

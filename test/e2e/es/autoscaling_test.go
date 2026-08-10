@@ -67,6 +67,7 @@ func TestAutoscaling(t *testing.T) {
 		// Add a ml tier, node count is initially set to 0, it will be updated by the autoscaling controller.
 		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC)).
 		WithRestrictedSecurityContext().
+		WithSkipSpecOwnership().
 		WithExpectedNodeSets(
 			// master has no autoscaling policy — NodeSet.Resources is not managed by the autoscaler and stays empty.
 			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),

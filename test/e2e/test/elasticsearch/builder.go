@@ -57,6 +57,8 @@ type Builder struct {
 	GlobalCA bool
 
 	mutationToleratedChecksFailureCount int
+
+	skipSpecOwnership bool
 }
 
 func (b Builder) ResourceName() string {
@@ -76,6 +78,7 @@ func (b Builder) DeepCopy() *Builder {
 	}
 	builderCopy.GlobalCA = b.GlobalCA
 	builderCopy.mutationToleratedChecksFailureCount = b.mutationToleratedChecksFailureCount
+	builderCopy.skipSpecOwnership = b.skipSpecOwnership
 	return &builderCopy
 }
 
@@ -228,6 +231,11 @@ func (b Builder) WithCustomHTTPCerts(name string) Builder {
 
 func (b Builder) WithClientAuthenticationRequired() Builder {
 	b.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
+func (b Builder) WithSkipSpecOwnership() Builder {
+	b.skipSpecOwnership = true
 	return b
 }
 

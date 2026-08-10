@@ -365,8 +365,9 @@ func (r *ReconcileElasticsearch) annotateResource(
 		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
 		return nil
 	}
-	es.SetAnnotations(expected)
-	return r.Update(ctx, &es)
+	return k8s.PatchObjectAnnotations(ctx, r.Client, &es, func() {
+		es.SetAnnotations(expected)
+	})
 }
 
 // OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource

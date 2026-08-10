@@ -6,9 +6,9 @@ package finalizer
 
 import (
 	"context"
+	"errors"
 	"regexp"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -18,16 +18,19 @@ var finalizersRegExp = regexp.MustCompile(`^finalizer\.(.*)\.k8s.elastic.co\/(.*
 
 // RemoveAll removes all existing Elastic Finalizers on an Object
 func RemoveAll(ctx context.Context, c k8s.Client, obj client.Object) error {
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	if len(accessor.GetFinalizers()) == 0 {
+	if len(obj.GetFinalizers()) == 0 {
 		return nil
 	}
-	filterFinalizers := filterFinalizers(accessor.GetFinalizers())
-	accessor.SetFinalizers(filterFinalizers)
-	return c.Update(ctx, obj)
+	filtered := filterFinalizers(obj.GetFinalizers())
+	if len(filtered) == len(obj.GetFinalizers()) {
+		return nil
+	}
+	base, ok := obj.DeepCopyObject().(client.Object)
+	if !ok {
+		return errors.New("failed to convert deep copy to client.Object")
+	}
+	obj.SetFinalizers(filtered)
+	return c.Patch(ctx, obj, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
 }
 
 // filterFinalizers removes Elastic finalizers

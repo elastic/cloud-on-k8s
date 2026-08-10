@@ -587,6 +587,7 @@ func startOperator(ctx context.Context) error {
 		LeaderElectionID:           LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
+		Client:                     client.Options{FieldOwner: about.FieldOwner},
 	}
 
 	// configure the manager cache based on the number of managed namespaces

@@ -6,11 +6,13 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 
@@ -61,17 +63,28 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 			return err
 		}
 
-		// update server secret
-		webhookServerSecret.Data = map[string][]byte{
-			certificates.CertFileName: newCertificates.serverCert,
-			certificates.KeyFileName:  newCertificates.serverKey,
+		// patch only the cert data and the single ECK-owned label, leaving everything else
+		// on the Secret (Helm-managed labels, annotations, etc.) untouched. The resourceVersion
+		// is embedded so the patch is rejected on conflict. JSON Merge Patch merges nested
+		// maps, so unlisted Helm-owned labels are preserved server-side; omitting them from
+		// the patch body prevents the API server from attributing their field ownership to
+		// the operator's field manager, which would cause Helm SSA Apply conflicts on upgrade.
+		patch, err := json.Marshal(map[string]any{
+			"data": map[string][]byte{
+				certificates.CertFileName: newCertificates.serverCert,
+				certificates.KeyFileName:  newCertificates.serverKey,
+			},
+			"metadata": map[string]any{
+				"resourceVersion": webhookServerSecret.ResourceVersion,
+				"labels": map[string]string{
+					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+				},
+			},
+		})
+		if err != nil {
+			return err
 		}
-		if webhookServerSecret.Labels == nil {
-			webhookServerSecret.Labels = make(map[string]string)
-		}
-		webhookServerSecret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
-
-		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(ctx, webhookServerSecret, metav1.UpdateOptions{}); err != nil {
+		if _, err := clientset.CoreV1().Secrets(w.Namespace).Patch(ctx, w.SecretName, types.MergePatchType, patch, metav1.PatchOptions{}); err != nil {
 			return err
 		}
 		updateOperatorPods(ctx, clientset, w.Namespace)
@@ -98,17 +111,25 @@ func updateOperatorPods(ctx context.Context, clientset kubernetes.Interface, ope
 // updateOperatorPod updates a specific annotation on a single pod to speed up secret propagation.
 func updateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes.Interface) {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// Fetch the last the version of the Pod
+		// Fetch the latest version of the Pod for its resourceVersion.
 		pod, err := clientset.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		// Update the annotation
-		if pod.Annotations == nil {
-			pod.Annotations = map[string]string{}
+		// Patch only the annotation, leaving all other fields (spec, labels, etc.) that
+		// are owned by the Deployment/ReplicaSet controller or by Helm untouched.
+		patch, err := json.Marshal(map[string]any{
+			"metadata": map[string]any{
+				"resourceVersion": pod.ResourceVersion,
+				"annotations": map[string]any{
+					annotation.UpdateAnnotation: time.Now().Format(time.RFC3339Nano),
+				},
+			},
+		})
+		if err != nil {
+			return err
 		}
-		pod.Annotations[annotation.UpdateAnnotation] = time.Now().Format(time.RFC3339Nano)
-		_, err = clientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+		_, err = clientset.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.MergePatchType, patch, metav1.PatchOptions{})
 		return err
 	})
 	if err != nil {

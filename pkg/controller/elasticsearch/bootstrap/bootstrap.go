@@ -86,9 +86,10 @@ func annotateWithUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.E
 		"es_name", cluster.Name,
 		"uuid", uuid,
 	)
-	if cluster.Annotations == nil {
-		cluster.Annotations = make(map[string]string)
-	}
-	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
-	return k8sClient.Update(ctx, cluster)
+	return k8s.PatchObjectAnnotations(ctx, k8sClient, cluster, func() {
+		if cluster.Annotations == nil {
+			cluster.Annotations = make(map[string]string)
+		}
+		cluster.Annotations[ClusterUUIDAnnotationName] = uuid
+	})
 }

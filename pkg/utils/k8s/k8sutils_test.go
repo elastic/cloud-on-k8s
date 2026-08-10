@@ -6,6 +6,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"net"
 	"reflect"
 	"testing"
@@ -594,4 +595,183 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPatchObjectAnnotations(t *testing.T) {
+	tests := []struct {
+		name               string
+		initialAnnotations map[string]string
+		mutateFn           func(obj *corev1.ConfigMap)
+		failingClientErr   error
+		wantErr            bool
+		wantAnnotations    map[string]string
+		wantNoPatchCall    bool
+	}{
+		{
+			name:               "add annotation to object with no annotations",
+			initialAnnotations: nil,
+			mutateFn: func(obj *corev1.ConfigMap) {
+				if obj.Annotations == nil {
+					obj.Annotations = map[string]string{}
+				}
+				obj.Annotations["new"] = "value"
+			},
+			wantAnnotations: map[string]string{"new": "value"},
+		},
+		{
+			name:               "add annotation to object with existing annotations",
+			initialAnnotations: map[string]string{"keep": "same"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				obj.Annotations["new"] = "value"
+			},
+			wantAnnotations: map[string]string{"keep": "same", "new": "value"},
+		},
+		{
+			name:               "change value of an existing annotation",
+			initialAnnotations: map[string]string{"key": "old"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				obj.Annotations["key"] = "new"
+			},
+			wantAnnotations: map[string]string{"key": "new"},
+		},
+		{
+			name:               "remove one annotation, keep the others",
+			initialAnnotations: map[string]string{"keep": "same", "remove": "gone"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				delete(obj.Annotations, "remove")
+			},
+			wantAnnotations: map[string]string{"keep": "same"},
+		},
+		{
+			name:               "remove all annotations",
+			initialAnnotations: map[string]string{"a": "1", "b": "2"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				delete(obj.Annotations, "a")
+				delete(obj.Annotations, "b")
+			},
+			wantAnnotations: nil, // an emptied annotations map round-trips as nil due to the omitempty json tag
+		},
+		{
+			name:               "add, change and remove combined in a single call",
+			initialAnnotations: map[string]string{"unchanged": "1", "changed": "old", "removed": "x"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				obj.Annotations["changed"] = "new"
+				delete(obj.Annotations, "removed")
+				obj.Annotations["added"] = "y"
+			},
+			wantAnnotations: map[string]string{"unchanged": "1", "changed": "new", "added": "y"},
+		},
+		{
+			name:               "adding a key with an empty string value is treated as a change",
+			initialAnnotations: nil,
+			mutateFn: func(obj *corev1.ConfigMap) {
+				if obj.Annotations == nil {
+					obj.Annotations = map[string]string{}
+				}
+				obj.Annotations["blank"] = ""
+			},
+			wantAnnotations: map[string]string{"blank": ""},
+		},
+		{
+			name:               "mutateAnnotationsFn that changes nothing does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			mutateFn:           func(*corev1.ConfigMap) {},
+			wantAnnotations:    map[string]string{"key": "value"},
+			wantNoPatchCall:    true,
+		},
+		{
+			name:               "re-setting an annotation to its current value does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			mutateFn: func(obj *corev1.ConfigMap) {
+				obj.Annotations["key"] = "value"
+			},
+			wantAnnotations: map[string]string{"key": "value"},
+			wantNoPatchCall: true,
+		},
+		{
+			name:               "nil mutateAnnotationsFn does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			wantAnnotations:    map[string]string{"key": "value"},
+			wantNoPatchCall:    true,
+		},
+		{
+			name:               "client error is propagated",
+			initialAnnotations: nil,
+			mutateFn: func(obj *corev1.ConfigMap) {
+				if obj.Annotations == nil {
+					obj.Annotations = map[string]string{}
+				}
+				obj.Annotations["new"] = "value"
+			},
+			failingClientErr: errors.New("boom"),
+			wantErr:          true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Annotations: tc.initialAnnotations},
+			}
+
+			var c Client
+			if tc.failingClientErr != nil {
+				c = NewFailingClient(tc.failingClientErr)
+			} else {
+				c = NewFakeClient(obj)
+			}
+
+			var beforeResourceVersion string
+			if tc.wantNoPatchCall {
+				fetched := &corev1.ConfigMap{}
+				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, fetched))
+				beforeResourceVersion = fetched.ResourceVersion
+			}
+
+			var mutateAnnotationsFn func()
+			if tc.mutateFn != nil {
+				mutateAnnotationsFn = func() { tc.mutateFn(obj) }
+			}
+
+			err := PatchObjectAnnotations(context.Background(), c, obj, mutateAnnotationsFn)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			fetched := &corev1.ConfigMap{}
+			require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, fetched))
+			assert.Equal(t, tc.wantAnnotations, fetched.Annotations)
+
+			if tc.wantNoPatchCall {
+				assert.Equal(t, beforeResourceVersion, fetched.ResourceVersion, "expected no patch request to be issued")
+			}
+		})
+	}
+}
+
+func TestPatchObjectAnnotationsOptimisticLock(t *testing.T) {
+	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"}}
+	c := NewFakeClient(cm)
+
+	stale := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: "test", Namespace: "ns"}, stale))
+
+	// Someone else changes the object first, bumping its resourceVersion.
+	live := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(context.Background(), types.NamespacedName{Name: "test", Namespace: "ns"}, live))
+	live.Labels = map[string]string{"someone-else": "true"}
+	require.NoError(t, c.Update(context.Background(), live))
+
+	// Patching using the object fetched before that change must be rejected, since the
+	// resourceVersion PatchObjectAnnotations embeds no longer matches what's stored.
+	err := PatchObjectAnnotations(context.Background(), c, stale, func() {
+		if stale.Annotations == nil {
+			stale.Annotations = map[string]string{}
+		}
+		stale.Annotations["foo"] = "bar"
+	})
+	require.Error(t, err)
 }

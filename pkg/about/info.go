@@ -24,6 +24,11 @@ const (
 	UUIDCfgMapName = "elastic-operator-uuid"
 	// UUIDCfgMapName is used for the operator UUID inside a config map.
 	UUIDCfgMapKey = "uuid"
+
+	// FieldOwner is the field manager name used by the operator for all Kubernetes write operations.
+	// It matches the binary name so it is consistent with the User-Agent-derived name the API server
+	// would assign when no explicit field manager is provided.
+	FieldOwner = "elastic-operator"
 )
 
 // lookup of valid distribution channels

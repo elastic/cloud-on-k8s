@@ -202,6 +202,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+		test.CheckSpecNotOwnedByOperator(&b.Agent, k),
 	}
 }
 

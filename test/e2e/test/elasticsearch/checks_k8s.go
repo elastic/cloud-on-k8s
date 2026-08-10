@@ -40,7 +40,7 @@ const (
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{
+	steps := test.StepList{
 		CheckHTTPCertificateAuthority(b, k),
 		CheckTransportCertificateAuthority(b, k),
 		CheckExpectedPodsEventuallyReady(b, k),
@@ -55,6 +55,10 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckContainerSecurityContext(b.Elasticsearch, k),
 		CheckClusterUUIDAnnotation(b.Elasticsearch, k),
 	}
+	if !b.skipSpecOwnership {
+		steps = append(steps, test.CheckSpecNotOwnedByOperator(&b.Elasticsearch, k))
+	}
+	return steps
 }
 
 // CheckHTTPCertificateAuthority checks that the CA is fully setup (CA cert + private key)
