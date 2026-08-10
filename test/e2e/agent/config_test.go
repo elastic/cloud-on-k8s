@@ -188,7 +188,6 @@ func TestFleetMode(t *testing.T) {
 		WithNodeCount(1)
 
 	t.Run("Fleet in same namespace as Agent", func(t *testing.T) {
-
 		fleetServerBuilder := agent.NewBuilder(name + "-fs").
 			WithNamespace(agentNS).
 			WithRoles(agent.AgentFleetModeRoleName).
@@ -216,7 +215,6 @@ func TestFleetMode(t *testing.T) {
 	})
 
 	t.Run("Fleet in different namespace than Agent", func(t *testing.T) {
-
 		fleetServerBuilder := agent.NewBuilder(name + "-fs").
 			WithNamespace(fleetNS).
 			WithRoles(agent.AgentFleetModeRoleName).
@@ -281,7 +279,6 @@ func TestFleetModeAdvancedConfig(t *testing.T) {
 	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentFleetModeAdvancedConfig, E2EAgentFleetModeHostPathPodTemplate)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, fleetServerBuilder, agentBuilder).RunSequential(t)
-
 }
 
 func fleetConfigForKibana(t *testing.T, agentVersion string, esRef v1.ObjectSelector, fsRef v1.ObjectSelector, tlsEnabled bool) map[string]interface{} {
