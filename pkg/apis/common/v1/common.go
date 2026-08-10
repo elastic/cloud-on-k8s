@@ -56,6 +56,7 @@ func (ds DeploymentStatus) IsDegraded(prev DeploymentStatus) bool {
 
 // ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 type ConfigMapRef struct {
+	// ConfigMapName is the name of the config map.
 	ConfigMapName string `json:"configMapName,omitempty"`
 }
 
@@ -596,6 +597,17 @@ type ConfigSource struct {
 	//    email.account.email_defaults.from: my@email.com
 	// ---
 	SecretRef `json:",inline"`
+}
+
+// ConfigMapOrSecretSource references configuration stored in either a Kubernetes Secret or a ConfigMap.
+// At most one of [secretName, configMapName] might be specified.
+type ConfigMapOrSecretSource struct {
+	// SecretRef references a Kubernetes Secret in the same namespace.
+	// +kubebuilder:validation:Optional
+	SecretRef `json:",inline"`
+	// ConfigMapRef references a Kubernetes ConfigMap in the same namespace.
+	// +kubebuilder:validation:Optional
+	ConfigMapRef `json:",inline"`
 }
 
 // HasObservedGeneration allows a return of any object's observed generation.

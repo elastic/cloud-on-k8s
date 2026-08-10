@@ -12,9 +12,22 @@ steps:
           .buildkite/scripts/build/set-images.sh
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat <<DEF | ./pipeline-gen | buildkite-agent pipeline upload
-          - label: gke/all
+          - label: gke/TestSmoke
             fixed:
               E2E_PROVIDER: gke
+              TESTS_MATCH: TestSmoke
+          - label: kind/TestSmoke
+            fixed:
+              E2E_PROVIDER: kind
+              TESTS_MATCH: TestSmoke
+          - label: aks/TestSmoke
+            fixed:
+              E2E_PROVIDER: aks
+              TESTS_MATCH: TestSmoke
+          - label: eks/TestSmoke
+            fixed:
+              E2E_PROVIDER: eks
+              TESTS_MATCH: TestSmoke
           DEF
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:8aeecfdfe9b9d178a6087e5158946cc5d1ca2b3a15f24c2579a9730f30caa1bb

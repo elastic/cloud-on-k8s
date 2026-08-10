@@ -88,7 +88,7 @@ func TestFilebeatAutodiscoverByMetadataRecipe(t *testing.T) {
 	runBeatRecipe(t, "filebeat_autodiscover_by_metadata.yaml", customize, podLabel, podBad)
 }
 
-func TestMetricbeatHostsRecipe(t *testing.T) {
+func TestSmoke_MetricbeatHostsRecipe(t *testing.T) {
 	customize := func(builder beat.Builder) beat.Builder {
 		return builder.
 			WithESValidations(
@@ -195,7 +195,6 @@ func TestHeartbeatEsKbHealthRecipe(t *testing.T) {
 }
 
 func TestAuditbeatHostsRecipe(t *testing.T) {
-
 	if test.Ctx().Provider == "kind" || test.Ctx().Provider == "k3d" || test.Ctx().Provider == "eks-arm" || test.Ctx().HasTag(test.ArchARMTag) {
 		// Skipping test because recipe relies on syscall audit rules unavailable on arm64
 		// Also: both kind and k3d do not support configuring required settings

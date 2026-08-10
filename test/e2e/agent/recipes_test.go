@@ -53,7 +53,7 @@ func TestSystemIntegrationRecipe(t *testing.T) {
 	runAgentRecipe(t, "system-integration.yaml", customize)
 }
 
-func TestKubernetesIntegrationRecipe(t *testing.T) {
+func TestSmoke_KubernetesIntegrationRecipe(t *testing.T) {
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	customize := func(builder agent.Builder) agent.Builder {
 		if !skipAgentInternalLogsValidation(v) {
@@ -114,7 +114,7 @@ func TestMultiOutputRecipe(t *testing.T) {
 	runAgentRecipe(t, "multi-output.yaml", customize)
 }
 
-func TestFleetKubernetesIntegrationRecipe(t *testing.T) {
+func TestSmoke_FleetKubernetesIntegrationRecipe(t *testing.T) {
 	customize := func(builder agent.Builder) agent.Builder {
 		if !builder.Agent.Spec.FleetServerEnabled {
 			return builder
@@ -165,7 +165,7 @@ func TestFleetKubernetesNonRootIntegrationRecipe(t *testing.T) {
 	}
 
 	if (v.GE(version.MinFor(9, 0, 1)) && v.LE(version.MinFor(9, 0, 4))) ||
-		(v.EQ(version.From(9, 1, 0))) {
+		v.EQ(version.From(9, 1, 0)) {
 		t.Skipf("Skipped as version %s is affected by https://github.com/elastic/kibana/pull/230211", v)
 	}
 

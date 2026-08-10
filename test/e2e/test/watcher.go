@@ -112,7 +112,16 @@ func NewVersionWatcher(versionLabel string, opts ...client.ListOption) Watcher {
 			if pods, err := k.GetPods(opts...); err != nil {
 				t.Logf("failed to list pods: %v", err)
 			} else {
-				podObservations = append(podObservations, pods)
+				// Exclude Terminating pods: Kubernetes keeps them in the API throughout
+				// their grace period, so a List can return old-version Terminating pods
+				// alongside new-version pods, causing a false multi-version observation.
+				activePods := make([]v1.Pod, 0, len(pods))
+				for _, p := range pods {
+					if p.DeletionTimestamp == nil {
+						activePods = append(activePods, p)
+					}
+				}
+				podObservations = append(podObservations, activePods)
 			}
 		},
 		func(k *K8sClient, t *testing.T) { //nolint:thelper
@@ -121,5 +130,6 @@ func NewVersionWatcher(versionLabel string, opts ...client.ListOption) Watcher {
 					assert.Equal(t, pods[i-1].Labels[versionLabel], pods[i].Labels[versionLabel])
 				}
 			}
-		})
+		},
+	)
 }

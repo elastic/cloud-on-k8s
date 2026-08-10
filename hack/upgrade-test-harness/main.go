@@ -49,7 +49,7 @@ func main() {
 	}
 
 	cmd.Flags().StringVar(&opts.confFile, "conf-file", "conf.yaml", "Path to the file containing test params")
-	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v170", "Release to start with (a directory with this value must exist in testdata/)")
+	cmd.Flags().StringVar(&opts.fromRelease, "from-release", "v191", "Release to start with (a directory with this value must exist in testdata/)")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", "INFO", "Log level (DEBUG, INFO, WARN, ERROR)")
 	cmd.Flags().UintVar(&opts.retryCount, "retry-count", 60, "Number of retries")
 	cmd.Flags().DurationVar(&opts.retryDelay, "retry-delay", 5*time.Second, "Delay between retries")
@@ -160,7 +160,7 @@ func setupUpcomingRelease(installYAML, targetYAML string) error {
 
 	outFile := fmt.Sprintf("testdata/upcoming/%s.yaml", targetYAML)
 
-	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open %s for writing: %w", outFile, err)
 	}

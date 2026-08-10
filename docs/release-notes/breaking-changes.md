@@ -7,12 +7,22 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 
 % ## Next version [elastic-cloud-kubernetes-nextversion-breaking-changes]
 
-% ::::{dropdown} Title of breaking change 
+% ::::{dropdown} Title of breaking change
 % Description of the breaking change.
 % For more information, check [PR #](PR link).
 % **Impact**<br> Impact of the breaking change.
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
+
+## 3.5.0 [elastic-cloud-kubernetes-350-breaking-changes]
+
+::::{dropdown} Rolling restart of Fleet-server pods during operator upgrade
+ECK 3.5.0 includes changes that modify the Fleet-server pod spec, triggering a restart of all Fleet-server pods during the operator upgrade.
+
+**Impact**<br> All Fleet-server pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that Fleet-server pods will restart during the upgrade.
+::::
 
 ## 3.4.1 [elastic-cloud-kubernetes-341-breaking-changes]
 

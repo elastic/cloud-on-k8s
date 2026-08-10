@@ -33,9 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-var (
-	updatedVersion = test.LatestReleasedVersion8x
-)
+var updatedVersion = test.LatestReleasedVersion8x
 
 func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Builder, []test.Builder, StackResourceVersions) {
 	// Single-node ES clusters cannot be green with APM indices (see https://github.com/elastic/apm-server/issues/414).
@@ -134,7 +132,6 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 // runVersionUpgradeOrdering deploys the entire stack, with resources associated together.
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, updatedBuilders []test.Builder, stackVersions StackResourceVersions) {
-
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
 	// - Kibana + Enterprise Search deployments upgrade
@@ -214,7 +211,6 @@ func (s StackResourceVersions) IsValid() bool {
 		// ES >= EnterpriseSearch
 		s.Elasticsearch.GTE(s.EnterpriseSearch) &&
 		isLogstashValid
-
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {
