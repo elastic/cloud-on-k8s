@@ -25,7 +25,7 @@ func setupProbes(mgr manager.Manager, startupCh <-chan struct{}, webhookEnabled 
 		return fmt.Errorf("failed to set up health check: %w", err)
 	}
 	if err := mgr.AddReadyzCheck("cache", func(req *http.Request) error {
-		// Wait 2 second, we want to return a feedback to the kubelet in timely fashion.
+		// Wait 2 seconds, we want to return a feedback to the kubelet in timely fashion.
 		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 		defer cancel()
 
