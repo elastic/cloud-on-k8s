@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -22,9 +23,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
 )
+
+// MinSSLReloadVersion is the minimum Logstash version that supports ssl.reload.automatic
+// (elastic/logstash#18978, merged in 9.5.0).
+var MinSSLReloadVersion = version.MinFor(9, 5, 0)
 
 const (
 	ConfigFileName         = "logstash.yml"
@@ -88,6 +94,9 @@ func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) 
 	if err != nil {
 		return nil, err
 	}
+	if userProvidedCfg == nil {
+		userProvidedCfg = settings.NewCanonicalConfig()
+	}
 
 	cfg := defaultConfig()
 	tls := tlsConfig(useTLS)
@@ -97,7 +106,47 @@ func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) 
 		return nil, err
 	}
 
+	if shouldInjectSSLReload(params, userProvidedCfg) {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"ssl.reload.automatic": true,
+		})); err != nil {
+			return nil, err
+		}
+	}
+
 	return cfg, nil
+}
+
+// shouldInjectSSLReload reports whether ECK should add ssl.reload.automatic: true to the
+// generated logstash.yml (elastic/logstash#18978). It returns true when all of the
+// following hold:
+//   - Logstash >= 9.5.0 (the version that introduced the setting).
+//   - The user has not set config.reload.automatic, ssl.reload.automatic, or
+//     xpack.management.enabled in their config or via the corresponding env vars.
+func shouldInjectSSLReload(params Params, userCfg *settings.CanonicalConfig) bool {
+	if !params.Version.GTE(MinSSLReloadVersion) {
+		return false
+	}
+
+	envNames := sets.New[string]()
+	c := pod.ContainerByName(params.Logstash.Spec.PodTemplate.Spec, logstashv1alpha1.LogstashContainerName)
+	if c != nil {
+		for _, e := range c.Env {
+			envNames.Insert(e.Name)
+		}
+	}
+
+	// Whitelist: inject only when neither reload setting is touched by the user.
+	xpackMgmt, _ := userCfg.String("xpack.management.enabled")
+	if xpackMgmt != "" || envNames.Has("XPACK_MANAGEMENT_ENABLED") {
+		return false
+	}
+	configReload, _ := userCfg.String("config.reload.automatic")
+	if configReload != "" || envNames.Has("CONFIG_RELOAD_AUTOMATIC") {
+		return false
+	}
+	sslReload, _ := userCfg.String("ssl.reload.automatic")
+	return sslReload == "" && !envNames.Has("SSL_RELOAD_AUTOMATIC")
 }
 
 // getUserConfig extracts the config either from the spec `config` field or from the Secret referenced by spec
@@ -110,14 +159,13 @@ func getUserConfig(params Params) (*settings.CanonicalConfig, error) {
 }
 
 func defaultConfig() *settings.CanonicalConfig {
-	settingsMap := map[string]any{
+	// ssl.reload.automatic is conditionally added post-merge in buildConfig.
+	return settings.MustCanonicalConfig(map[string]any{
 		// Set 'api.http.host' by default to `0.0.0.0` for readiness probe to work.
 		"api.http.host": "0.0.0.0",
-		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default
+		// Set `config.reload.automatic` to `true` to enable pipeline reloads by default.
 		"config.reload.automatic": true,
-	}
-
-	return settings.MustCanonicalConfig(settingsMap)
+	})
 }
 
 func tlsConfig(useTLS bool) *settings.CanonicalConfig {

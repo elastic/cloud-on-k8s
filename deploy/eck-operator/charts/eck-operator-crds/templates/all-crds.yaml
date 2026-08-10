@@ -6657,6 +6657,7 @@ spec:
                           trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
                         properties:
                           configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       otherNameSuffix:
@@ -6739,8 +6740,15 @@ spec:
                 format: int32
                 type: integer
               conditions:
-                description: Conditions holds the current service state of an Elasticsearch
-                  cluster.
+                description: |-
+                  Conditions holds the current service state of an Elasticsearch cluster.
+                  ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
+                  for the Elasticsearch Desired Nodes API. Present only for Elasticsearch 8.3 and later.
+                  True means resources were calculated and the operator will attempt to publish Desired Nodes when
+                  Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
+                  then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
+                  resource calculation, not whether a Desired Nodes API call has already succeeded. The Elasticsearch
+                  resource is still reconciled.
                 items:
                   description: Condition represents the ECK resource's condition.
                   properties:
@@ -10852,10 +10860,13 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               pipelinesRef:
                 description: |-
-                  PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+                  PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.
                   Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
-                  can be specified.
+                  can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
                 properties:
+                  configMapName:
+                    description: ConfigMapName is the name of the config map.
+                    type: string
                   secretName:
                     description: SecretName is the name of the secret.
                     type: string

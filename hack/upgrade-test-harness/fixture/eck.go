@@ -31,6 +31,7 @@ const (
 	beatName          = "heartbeat"
 	entName           = "ent"
 	logstashName      = "ls"
+	registryName      = "registry"
 	wantHealth        = "green"
 )
 
@@ -64,7 +65,8 @@ func TestInstallOperator(param TestParam, isUpgrade bool) *Fixture {
 
 	return &Fixture{
 		Name: param.Suffixed("TestInstallOperator"),
-		Steps: append(testSteps,
+		Steps: append(
+			testSteps,
 			noRetry(param.Suffixed("InstallOperator"), applyManifests(param.Path("install.yaml"))),
 			pause(5*time.Second),
 			retryRetriable("CheckOperatorIsReady", checkOperatorIsReady),
@@ -103,7 +105,7 @@ func TestDeployResources(param TestParam) *Fixture {
 	return &Fixture{
 		Name: param.Suffixed("TestDeployResources"),
 		Steps: []*TestStep{
-			noRetry(param.Suffixed("DeployResources"), applyManifests(param.Path("stack.yaml"))),
+			retryRetriable(param.Suffixed("DeployResources"), applyManifests(param.Path("stack.yaml"))),
 		},
 	}
 }
@@ -244,7 +246,7 @@ func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, erro
 			return nil, fmt.Errorf("pod image did not have a tag")
 		}
 
-		v, err := semver.Parse(imageParts[1])
+		v, err := parseImageTag(imageParts[1])
 		if err != nil {
 			return nil, err
 		}
@@ -254,6 +256,12 @@ func getMinVersionFromPods(ctx *TestContext, kind string) (*semver.Version, erro
 		}
 	}
 	return minVersion, nil
+}
+
+func parseImageTag(tag string) (semver.Version, error) {
+	// PackageRegistry images use a "lite-X.Y.Z" tag format; strip any non-numeric prefix.
+	tag = strings.TrimPrefix(tag, "lite-")
+	return semver.Parse(tag)
 }
 
 func labelSelectorFor(kind string) (string, error) {
@@ -270,6 +278,8 @@ func labelSelectorFor(kind string) (string, error) {
 		return "beat.k8s.elastic.co/name=" + beatName, nil
 	case "logstash":
 		return "logstash.k8s.elastic.co/name=" + logstashName, nil
+	case "packageregistry":
+		return "packageregistry.k8s.elastic.co/name=" + registryName, nil
 	}
 
 	return "", fmt.Errorf("%s is not a supported kind", kind)

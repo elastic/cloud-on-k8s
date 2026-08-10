@@ -360,10 +360,13 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			v, err := version.Parse(tt.logstash.Spec.Version)
+			require.NoError(t, err)
 			params := Params{
 				Context:         context.Background(),
 				Client:          k8s.NewFakeClient(&testHTTPCertsInternalSecret),
 				Logstash:        tt.logstash,
+				Version:         v,
 				APIServerConfig: tt.apiServerConfig,
 				OperatorParams:  operator.Parameters{SetDefaultSecurityContext: tt.setDefaultSecurityContext},
 			}

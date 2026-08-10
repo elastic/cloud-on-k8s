@@ -24,7 +24,7 @@ func Test_buildPipeline(t *testing.T) {
 	for _, tt := range []struct {
 		name         string
 		pipelines    []commonv1.Config
-		pipelinesRef *commonv1.ConfigSource
+		pipelinesRef *commonv1.ConfigMapOrSecretSource
 		client       k8s.Client
 		want         *pipelines.Config
 		wantErr      bool
@@ -42,7 +42,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "pipelinesref populated - no secret",
-			pipelinesRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline",
 				},
@@ -53,7 +53,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "pipelinesref populated - no secret key",
-			pipelinesRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline",
 				},
@@ -68,7 +68,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "pipelinesref populated - malformed config",
-			pipelinesRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline-2",
 				},
@@ -84,7 +84,7 @@ func Test_buildPipeline(t *testing.T) {
 		},
 		{
 			name: "pipelinesref populated",
-			pipelinesRef: &commonv1.ConfigSource{
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
 				SecretRef: commonv1.SecretRef{
 					SecretName: "my-secret-pipeline-2",
 				},

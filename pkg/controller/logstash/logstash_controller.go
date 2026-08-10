@@ -112,7 +112,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch dynamically referenced ConfigMaps (pipelinesRef configmap path)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcileLogstash)(nil)
@@ -210,6 +214,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Logstash:       logstash,
+		Version:        logstashVersion,
 		Status:         status,
 		OperatorParams: r.Parameters,
 		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),
@@ -237,7 +242,8 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 func (r *ReconcileLogstash) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.RefWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.SecretRefWatchName(obj))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(pipelines.ConfigMapRefWatchName(obj))
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {

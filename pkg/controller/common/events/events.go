@@ -67,6 +67,10 @@ const (
 	EventActionGetSecret = "GetSecret"
 	// EventActionParseSecret describes the parse secret step the controller was taking when the event was triggered.
 	EventActionParseSecret = "ParseSecret"
+	// EventActionGetConfigMap describes the get configmap step the controller was taking when the event was triggered.
+	EventActionGetConfigMap = "GetConfigMap"
+	// EventActionParseConfigMap describes the parse configmap step the controller was taking when the event was triggered.
+	EventActionParseConfigMap = "ParseConfigMap"
 	// EventActionShutdown describes the shutdown step the controller was taking when the event was triggered.
 	EventActionShutdown = "Shutdown"
 	// EventActionUpscale describes the upscale step the controller was taking when the event was triggered.

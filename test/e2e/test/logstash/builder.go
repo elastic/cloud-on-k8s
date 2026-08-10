@@ -135,7 +135,7 @@ func (b Builder) WithPipelines(pipelines []commonv1.Config) Builder {
 	return b
 }
 
-func (b Builder) WithPipelinesConfigRef(ref commonv1.ConfigSource) Builder {
+func (b Builder) WithPipelinesConfigRef(ref commonv1.ConfigMapOrSecretSource) Builder {
 	b.Logstash.Spec.PipelinesRef = &ref
 	return b
 }

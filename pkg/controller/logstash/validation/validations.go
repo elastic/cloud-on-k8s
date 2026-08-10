@@ -48,6 +48,7 @@ func validations() []validation {
 		checkESRefsNamed,
 		checkAssociations,
 		checkSinglePipelineSource,
+		checkPipelinesRefSource,
 		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
 	}
 }
@@ -100,6 +101,21 @@ func checkSinglePipelineSource(a *lsv1alpha1.Logstash) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
+	if a.Spec.PipelinesRef == nil {
+		return nil
+	}
+	ref := a.Spec.PipelinesRef
+	if ref.SecretName != "" && ref.ConfigMapName != "" {
+		msg := "Specify at most one of [`secretName`, `configMapName`] in pipelinesRef, not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef").Child("secretName"), msg),
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef").Child("configMapName"), msg),
+		}
+	}
 	return nil
 }
 
