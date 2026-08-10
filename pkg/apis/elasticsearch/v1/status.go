@@ -68,8 +68,7 @@ type ElasticsearchStatus struct {
 	// +optional
 	// Conditions holds the current service state of an Elasticsearch cluster.
 	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
-	// for the Elasticsearch Desired Nodes API
-	// (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html).
+	// for the Elasticsearch Desired Nodes API. Present only for Elasticsearch 8.3 and later.
 	// True means resources were calculated and the operator will attempt to publish Desired Nodes when
 	// Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
 	// then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
@@ -115,8 +114,8 @@ const (
 	ElasticsearchIsReachable commonv1.ConditionType = "ElasticsearchIsReachable"
 	ReconciliationComplete   commonv1.ConditionType = "ReconciliationComplete"
 	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage for every
-	// expected Elasticsearch node for use with the Desired Nodes API
-	// (https://www.elastic.co/guide/en/elasticsearch/reference/current/update-desired-nodes.html).
+	// expected Elasticsearch node for use with the Desired Nodes API.
+	// Present only for Elasticsearch 8.3 and later; on earlier versions the condition is absent.
 	// True means those resources were calculated successfully; the operator then attempts to publish
 	// Desired Nodes when Elasticsearch is reachable.
 	// False means resources could not be determined for at least one NodeSet; the operator then attempts
