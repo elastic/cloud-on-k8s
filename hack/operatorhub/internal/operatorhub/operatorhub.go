@@ -560,6 +560,9 @@ func splitRBACRules(rules []rbacv1.PolicyRule, resourceScopeMap map[schema.Group
 			continue
 		}
 		if len(rule.APIGroups) == 0 {
+			if len(rule.Resources) > 0 {
+				return nil, nil, fmt.Errorf("invalid rule: APIGroups must be set when Resources is specified: %v", rule)
+			}
 			for _, resource := range rule.Resources {
 				unknown = append(unknown, schema.GroupResource{Resource: resource}.String())
 			}
