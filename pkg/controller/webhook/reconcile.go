@@ -47,53 +47,62 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		return err
 	}
 
-	// check if we need to renew the certificates used in the resources
-	if w.shouldRenewCertificates(ctx, webhookServerSecret, webhookConfiguration.webhooks()) {
-		ulog.FromContext(ctx).Info(
-			"Creating new webhook certificates",
-			"webhook", w.Name,
-			"secret_namespace", webhookServerSecret.Namespace,
-			"secret_name", webhookServerSecret.Name,
-		)
-		newCertificates, err := w.newCertificates(webhookConfiguration.services())
-		if err != nil {
-			return err
-		}
-		// update the webhook configuration
-		if err := webhookConfiguration.updateCABundle(newCertificates.caCert); err != nil {
-			return err
-		}
+	if !w.shouldRenewCertificates(ctx, webhookServerSecret, webhookConfiguration.webhooks()) {
+		return nil
+	}
+	return w.renewCertificates(ctx, clientset, webhookServerSecret, webhookConfiguration)
+}
 
-		// Metadata+data merge patch: only the TLS material and the watched-resources label are
-		// written. Sending the full live labels map keeps Helm-managed labels; a full-object
-		// Update would strip them and claim ownership of every other Secret field under SSA.
-		labels := maps.Clone(webhookServerSecret.Labels)
-		if labels == nil {
-			labels = make(map[string]string)
-		}
-		labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
-
-		patch, err := json.Marshal(map[string]any{
-			"metadata": map[string]any{
-				"labels":          labels,
-				"resourceVersion": webhookServerSecret.ResourceVersion,
-			},
-			"data": map[string][]byte{
-				certificates.CertFileName: newCertificates.serverCert,
-				certificates.KeyFileName:  newCertificates.serverKey,
-			},
-		})
-		if err != nil {
-			return err
-		}
-		if _, err := clientset.CoreV1().Secrets(w.Namespace).Patch(
-			ctx, webhookServerSecret.Name, types.MergePatchType, patch, metav1.PatchOptions{},
-		); err != nil {
-			return err
-		}
-		updateOperatorPods(ctx, clientset, w.Namespace)
+// renewCertificates creates a new CA/server cert pair, patches caBundle on the
+// ValidatingWebhookConfiguration, and patches the webhook server Secret.
+func (w *Params) renewCertificates(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	webhookServerSecret *corev1.Secret,
+	webhookConfiguration AdmissionControllerInterface,
+) error {
+	ulog.FromContext(ctx).Info(
+		"Creating new webhook certificates",
+		"webhook", w.Name,
+		"secret_namespace", webhookServerSecret.Namespace,
+		"secret_name", webhookServerSecret.Name,
+	)
+	newCertificates, err := w.newCertificates(webhookConfiguration.services())
+	if err != nil {
+		return err
+	}
+	if err := webhookConfiguration.updateCABundle(newCertificates.caCert); err != nil {
+		return err
 	}
 
+	// Metadata+data merge patch: only the TLS material and the watched-resources label are
+	// written. Sending the full live labels map keeps Helm-managed labels; a full-object
+	// Update would strip them and claim ownership of every other Secret field under SSA.
+	labels := maps.Clone(webhookServerSecret.Labels)
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"labels":          labels,
+			"resourceVersion": webhookServerSecret.ResourceVersion,
+		},
+		"data": map[string][]byte{
+			certificates.CertFileName: newCertificates.serverCert,
+			certificates.KeyFileName:  newCertificates.serverKey,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := clientset.CoreV1().Secrets(w.Namespace).Patch(
+		ctx, webhookServerSecret.Name, types.MergePatchType, patch, metav1.PatchOptions{},
+	); err != nil {
+		return err
+	}
+	updateOperatorPods(ctx, clientset, w.Namespace)
 	return nil
 }
 
