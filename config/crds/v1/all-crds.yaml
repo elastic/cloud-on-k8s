@@ -6691,8 +6691,15 @@ spec:
                 format: int32
                 type: integer
               conditions:
-                description: Conditions holds the current service state of an Elasticsearch
-                  cluster.
+                description: |-
+                  Conditions holds the current service state of an Elasticsearch cluster.
+                  ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
+                  for the Elasticsearch Desired Nodes API. Present only for Elasticsearch 8.3 and later.
+                  True means resources were calculated and the operator will attempt to publish Desired Nodes when
+                  Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
+                  then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
+                  resource calculation, not whether a Desired Nodes API call has already succeeded. The Elasticsearch
+                  resource is still reconciled.
                 items:
                   description: Condition represents the ECK resource's condition.
                   properties:
