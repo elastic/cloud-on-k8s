@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -37,8 +38,296 @@ func Test_newConfig(t *testing.T) {
 			name: "no user config",
 			args: args{
 				runtimeObjs: nil,
-				logstash:    v1alpha1.Logstash{},
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.4.0"}},
 			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0-SNAPSHOT",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0-SNAPSHOT"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user sets config.reload.automatic=false",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when config.reload.automatic is an env-var reference",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": "${CONFIG_RELOAD_AUTOMATIC:false}",
+						}},
+					},
+				},
+			},
+			// ECK cannot resolve env-var references; to avoid a Logstash BootstrapCheckError
+			// we leave ssl.reload.automatic unset rather than risking the fatal combination.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: ${CONFIG_RELOAD_AUTOMATIC:false}
+`,
+			wantErr: false,
+		},
+		{
+			name: "explicit user ssl.reload.automatic=true on Logstash < 9.5.0 is passed through untouched",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "explicit user ssl.reload.automatic=false is preserved",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user sets xpack.management.enabled=true",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic":  false,
+							"xpack.management.enabled": true,
+						}},
+					},
+				},
+			},
+			// xpack.management.enabled is a user-owned setting; ECK does not inject ssl.reload.automatic.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+xpack:
+    management:
+        enabled: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when CONFIG_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "CONFIG_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			// env2yaml would rewrite config.reload.automatic to ${CONFIG_RELOAD_AUTOMATIC} at
+			// startup; if that resolves to false, Logstash's BootstrapCheck::SslReload raises.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when SSL_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "SSL_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user explicitly sets config.reload.automatic=true",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			// The user explicitly owns config.reload.automatic; ECK does not inject ssl.reload.automatic.
 			want: `api:
     http:
         host: 0.0.0.0
@@ -58,10 +347,13 @@ config:
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
-					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]any{
-						"log.level":                 "debug",
-						"api.ssl.keystore.password": "Str0ngP@ssw0rd",
-					}}},
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"log.level":                 "debug",
+							"api.ssl.keystore.password": "Str0ngP@ssw0rd",
+						}},
+					},
 				},
 			},
 			want: `api:
@@ -84,7 +376,7 @@ log:
 			name: "with configRef",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
-				logstash:    logstashWithConfigRef("cfg", nil),
+				logstash:    logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -103,12 +395,32 @@ log:
 			wantErr: false,
 		},
 		{
+			name: "ssl.reload.automatic not set when config.reload.automatic=false supplied via configRef",
+			args: args{
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("config.reload.automatic: false"))},
+				logstash:    logstashWithConfigRef("cfg", nil, "9.5.0"),
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
 			name: "config takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
 					"log.level": "warn",
-				}}),
+				}}, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -129,7 +441,7 @@ log:
 		{
 			name: "non existing configRef",
 			args: args{
-				logstash: logstashWithConfigRef("cfg", nil),
+				logstash: logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			wantErr: true,
 		},
@@ -139,6 +451,7 @@ log:
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
 						Config: &commonv1.Config{Data: map[string]any{
 							"api.ssl.enabled": "false",
 						}},
@@ -166,12 +479,15 @@ config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			v, err := version.Parse(tt.args.logstash.Spec.Version)
+			require.NoError(t, err)
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
+				Version:       v,
 			}
 
 			got, err := buildConfig(params, tt.args.logstash.APIServerTLSOptions().Enabled())
@@ -206,15 +522,17 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	}
 }
 
-func logstashWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.Logstash {
+func logstashWithConfigRef(name string, cfg *commonv1.Config, ver string) v1alpha1.Logstash {
 	return v1alpha1.Logstash{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ls",
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.LogstashSpec{
+			Version:   ver,
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}},
+		},
 	}
 }
 
@@ -347,7 +665,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]any{}},
+						Version: "9.4.0",
+						Config:  &commonv1.Config{Data: map[string]any{}},
 					},
 				},
 			},
@@ -366,7 +685,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -416,7 +736,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: secureSecretName,
@@ -459,7 +780,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -496,7 +818,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -533,7 +856,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{{Name: "logstash"}},

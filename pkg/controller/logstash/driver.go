@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
@@ -46,6 +47,7 @@ type Params struct {
 	Watches       watches.DynamicWatches
 
 	Logstash logstashv1alpha1.Logstash
+	Version  version.Version
 	Status   logstashv1alpha1.LogstashStatus
 
 	OperatorParams    operator.Parameters

@@ -24,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/volume"
@@ -105,11 +104,6 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 			WithInitContainers(params.KeystoreResources.InitContainer)
 	}
 
-	v, err := version.Parse(spec.Version)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err // error unlikely and should have been caught during validation
-	}
-
 	labels := maps.Merge(params.Logstash.GetPodIdentityLabels(), map[string]string{VersionLabelName: spec.Version})
 	podMetadata := params.Meta.Merge(metadata.Metadata{
 		Labels:      labels,
@@ -119,7 +113,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithResourcesAndOverrides(DefaultResources, spec.Resources).
 		WithLabels(podMetadata.Labels).
 		WithAnnotations(podMetadata.Annotations).
-		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, v)).
+		WithDockerImage(spec.Image, container.ImageRepository(container.LogstashImage, params.Version)).
 		WithAutomountServiceAccountToken().
 		WithPorts(ports).
 		WithReadinessProbe(readinessProbe(params)).

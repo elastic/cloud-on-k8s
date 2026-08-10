@@ -68,11 +68,11 @@ type LogstashSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Pipelines []commonv1.Config `json:"pipelines,omitempty"`
 
-	// PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+	// PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.
 	// Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
-	// can be specified.
+	// can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
 	// +kubebuilder:validation:Optional
-	PipelinesRef *commonv1.ConfigSource `json:"pipelinesRef,omitempty"`
+	PipelinesRef *commonv1.ConfigMapOrSecretSource `json:"pipelinesRef,omitempty"`
 
 	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
 	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
