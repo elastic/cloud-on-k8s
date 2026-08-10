@@ -381,7 +381,7 @@ spec:
                   httpGet:
                     path: /readyz
                     port: 8081
-                  failureThreshold: 1
+                  failureThreshold: 3
                   periodSeconds: 10
                   timeoutSeconds: 3
               terminationGracePeriodSeconds: 10
