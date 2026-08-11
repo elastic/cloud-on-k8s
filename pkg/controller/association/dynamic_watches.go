@@ -125,11 +125,13 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 					return nil, err
 				}
 				// Watch the source secrets
-				toWatch = append(toWatch, secs...)
+				for _, sec := range secs {
+					toWatch = append(toWatch, sec.SourceNamespacedName)
+				}
 				// Also watch the target secrets
 				for _, sec := range secs {
 					toWatch = append(toWatch, types.NamespacedName{
-						Name:      sec.Name,
+						Name:      sec.SourceNamespacedName.Name,
 						Namespace: association.GetNamespace(),
 					})
 				}

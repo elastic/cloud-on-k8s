@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -62,7 +63,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 // additionalSecrets returns secrets from the Fleet Server's Elasticsearch association that
 // need to be copied into the fleet-managed agent's namespace: the CA secret (when present)
 // and the client certificate secret (when the user has provided one on the Fleet Server's ES ref).
-func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]association.AdditionalSecret, error) {
 	log := ulog.FromContext(ctx)
 	associated := assoc.Associated()
 	var agent agentv1alpha1.Agent
@@ -100,19 +101,29 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		return nil, nil
 	}
 
-	secrets := make([]types.NamespacedName, 0, 2)
+	secrets := make([]association.AdditionalSecret, 0, 2)
 	if conf.CACertProvided {
 		log.V(1).Info("additional secret because CA provided")
-		secrets = append(secrets, types.NamespacedName{
-			Namespace: fleetServer.Namespace,
-			Name:      conf.CASecretName,
+		// Always restrict the copy to ca.crt. For external ES references, CASecretName ==
+		// AuthSecretName, so the source secret also contains url/username/password — filtering
+		// to ca.crt prevents credential leakage. For managed refs the CA secret also contains
+		// tls.crt; agents only need ca.crt for TLS verification, so the narrower copy is correct
+		// in both cases.
+		secrets = append(secrets, association.AdditionalSecret{
+			SourceNamespacedName: types.NamespacedName{
+				Namespace: fleetServer.Namespace,
+				Name:      conf.CASecretName,
+			},
+			Keys: []string{certificates.CAFileName},
 		})
 	}
 	if conf.ClientCertIsConfigured() && esRef.GetClientCertificateSecretName() != "" {
 		log.V(1).Info("additional secret because user client certificate is provided")
-		secrets = append(secrets, types.NamespacedName{
-			Namespace: fleetServer.Namespace,
-			Name:      conf.GetClientCertSecretName(),
+		secrets = append(secrets, association.AdditionalSecret{
+			SourceNamespacedName: types.NamespacedName{
+				Namespace: fleetServer.Namespace,
+				Name:      conf.GetClientCertSecretName(),
+			},
 		})
 	}
 	return secrets, nil

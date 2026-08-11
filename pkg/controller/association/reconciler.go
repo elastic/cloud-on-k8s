@@ -42,6 +42,14 @@ import (
 
 var defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 
+// AdditionalSecret is a secret to be copied into an associated resource's namespace.
+type AdditionalSecret struct {
+	// SourceNamespacedName is the namespace/name of the secret to copy from (in the referenced resource's namespace).
+	SourceNamespacedName types.NamespacedName
+	// Keys is an optional list of data keys to include in the copy; all keys are copied when empty.
+	Keys []string
+}
+
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
 type AssociationInfo struct { //nolint:revive
 	// AssociationType identifies the type of the resource for association (eg. kibana for APM to Kibana association,
@@ -66,8 +74,8 @@ type AssociationInfo struct { //nolint:revive
 
 	// AdditionalSecrets are additional secrets to copy from an association's namespace to the associated resource namespace.
 	// Currently this is only used for copying the CA from an Elasticsearch association to the same namespace as
-	// an Agent referencing a Fleet Server.
-	AdditionalSecrets func(context.Context, k8s.Client, commonv1.Association) ([]types.NamespacedName, error)
+	// an Agent referencing a Fleet Server. See AdditionalSecret.Keys for per-secret key filtering.
+	AdditionalSecrets func(context.Context, k8s.Client, commonv1.Association) ([]AdditionalSecret, error)
 	// Labels are labels set on all resources created for association purpose. Note that some resources will be also
 	// labelled with AssociationResourceNameLabelName and AssociationResourceNamespaceLabelName in addition to any
 	// labels provided here.
@@ -297,7 +305,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			return commonv1.AssociationPending, results.WithError(err) // maybe not created yet
 		}
 		for _, sec := range additionalSecrets {
-			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec); err != nil {
+			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec.SourceNamespacedName, sec.Keys); err != nil {
 				return commonv1.AssociationPending, results.WithError(err)
 			}
 		}

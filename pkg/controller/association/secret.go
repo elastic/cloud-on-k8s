@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash"
+	"maps"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
@@ -223,28 +224,48 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
-// copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
-func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
+// copySecret hashes the source secret data (restricted to keys when non-empty) and, when
+// targetNamespace differs from the source namespace, reconciles a copy of the secret there.
+// The hash is always written so that AdditionalSecretsHash reflects CA cert changes even
+// when source and target share a namespace.
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName, keys []string) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
 	}
-	// update the hash if there are additional secrets event if
-	// they are in the same namespace to ensure that the pods are
-	// rotated when the original CA secret is updated.
-	commonhash.WriteHashObject(secHash, original.Data)
+
+	data := original.Data
+	if len(keys) > 0 {
+		data = make(map[string][]byte, len(keys))
+		for _, k := range keys {
+			if v, ok := original.Data[k]; ok {
+				data[k] = v
+			}
+		}
+	}
+
+	// Hash only the data that will be copied. Hashing original.Data when keys is set
+	// would cause AdditionalSecretsHash to change on credential rotations even though
+	// the CA cert (the only field that actually reaches pods) has not changed.
+	commonhash.WriteHashObject(secHash, data)
 	if targetNamespace == original.Namespace {
 		return nil
 	}
+
+	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret
+	// manifest as base64, which would re-expose any credential fields that were filtered
+	// out of Data. Drop it from the copy unconditionally.
+	annotations := maps.Clone(original.Annotations)
+	delete(annotations, corev1.LastAppliedConfigAnnotation)
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        original.Name,
 			Namespace:   targetNamespace,
 			Labels:      original.Labels,
-			Annotations: original.Annotations,
+			Annotations: annotations,
 		},
-		Data: original.Data,
+		Data: data,
 		Type: original.Type,
 	}
 
