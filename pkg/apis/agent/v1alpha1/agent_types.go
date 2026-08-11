@@ -130,6 +130,14 @@ type AgentSpec struct {
 type Output struct {
 	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	OutputName                     string `json:"outputName,omitempty"`
+	// ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that
+	// ECK creates for this output. Defaults to the ECK-managed eck_agent_user_role when not set.
+	// The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role
+	// created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.
+	// Multiple roles may be provided as a comma-separated list.
+	// Only effective for standalone Agents referencing an ECK-managed Elasticsearch cluster by name.
+	// +kubebuilder:validation:Optional
+	ElasticsearchRole string `json:"elasticsearchRole,omitempty"`
 }
 
 type DaemonSetSpec struct {
@@ -308,8 +316,9 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
-			Agent: a,
-			ref:   ref.WithDefaultNamespace(a.Namespace),
+			Agent:    a,
+			ref:      ref.WithDefaultNamespace(a.Namespace),
+			userRole: ref.ElasticsearchRole,
 		})
 	}
 
@@ -408,6 +417,8 @@ type AgentESAssociation struct {
 	*Agent
 	// ref is the Elasticsearch selector used in Association
 	ref commonv1.ElasticsearchSelector
+	// userRole is the optional per-ref role override from Output.ElasticsearchRole.
+	userRole string
 }
 
 var _ commonv1.Association = (*AgentESAssociation)(nil)
@@ -459,6 +470,11 @@ func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, err
 func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
 	return true
 }
+
+// UserRoleOverride implements commonv1.AssociationWithUserRoleOverride.
+func (aea *AgentESAssociation) UserRoleOverride() string { return aea.userRole }
+
+var _ commonv1.AssociationWithUserRoleOverride = (*AgentESAssociation)(nil)
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.esAssocConfs == nil {
