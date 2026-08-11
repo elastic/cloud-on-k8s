@@ -451,6 +451,11 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		return commonv1.AssociationFailed, results.WithError(err)
 	}
+	if withOverride, ok := association.(commonv1.AssociationWithUserRoleOverride); ok {
+		if override := withOverride.UserRoleOverride(); override != "" {
+			userRole = override
+		}
+	}
 
 	if err := reconcileEsUserSecret(
 		ctx,

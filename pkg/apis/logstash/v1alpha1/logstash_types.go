@@ -137,6 +137,14 @@ type ElasticsearchCluster struct {
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
 	// configuration files, and will be used to identify "named clusters" in Logstash
 	ClusterName string `json:"clusterName,omitempty"`
+	// ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that
+	// ECK creates for this cluster reference. Defaults to the ECK-managed eck_logstash_user_role when not set.
+	// The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role
+	// created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.
+	// Multiple roles may be provided as a comma-separated list.
+	// Only effective when referencing an ECK-managed Elasticsearch cluster by name.
+	// +kubebuilder:validation:Optional
+	ElasticsearchRole string `json:"elasticsearchRole,omitempty"`
 }
 
 // LogstashStatus defines the observed state of Logstash
@@ -351,6 +359,13 @@ func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.Association
 func (lses *LogstashESAssociation) SupportsAuthAPIKey() bool {
 	return false
 }
+
+// UserRoleOverride implements commonv1.AssociationWithUserRoleOverride.
+func (lses *LogstashESAssociation) UserRoleOverride() string {
+	return lses.ElasticsearchCluster.ElasticsearchRole
+}
+
+var _ commonv1.AssociationWithUserRoleOverride = (*LogstashESAssociation)(nil)
 
 func (lses *LogstashESAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())

@@ -143,6 +143,7 @@ AgentSpec defines the desired state of the Agent
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`outputName`* __string__ |  |
+| *`elasticsearchRole`* __string__ | ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that<br>ECK creates for this output. Defaults to the ECK-managed eck_agent_user_role when not set.<br>The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role<br>created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.<br>Multiple roles may be provided as a comma-separated list.<br>Only effective for standalone Agents referencing an ECK-managed Elasticsearch cluster by name. |
 
 
 ### StatefulSetSpec  [#statefulsetspec]
@@ -468,6 +469,8 @@ BeatSpec defines the desired state of a Beat.
 ## common.k8s.elastic.co/v1 [#commonk8selasticcov1]
 
 Package v1 contains API schema definitions for common types used by all resources.
+
+
 
 
 
@@ -2060,6 +2063,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
+| *`elasticsearchRole`* __string__ | ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that<br>ECK creates for this cluster reference. Defaults to the ECK-managed eck_logstash_user_role when not set.<br>The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role<br>created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.<br>Multiple roles may be provided as a comma-separated list.<br>Only effective when referencing an ECK-managed Elasticsearch cluster by name. |
 
 
 ### Logstash  [#logstash]

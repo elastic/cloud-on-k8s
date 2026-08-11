@@ -245,16 +245,16 @@ func Test_aggregateRoles(t *testing.T) {
 			es:           sampleEsWithAuth,
 			makeClient:   func() k8s.Client { return k8s.NewFakeClient(sampleUserProvidedRolesSecret...) },
 			policyRoles:  nil,
-			wantLen:      57,
-			wantContains: []string{ProbeUserRole, ClusterManageRole, "role1", "role2"},
+			wantLen:      58,
+			wantContains: []string{ProbeUserRole, ClusterManageRole, AgentUserRole, "role1", "role2"},
 		},
 		{
 			name:         "empty SCP roles is equivalent to nil",
 			es:           sampleEsWithAuth,
 			makeClient:   func() k8s.Client { return k8s.NewFakeClient(sampleUserProvidedRolesSecret...) },
 			policyRoles:  map[string]any{},
-			wantLen:      57,
-			wantContains: []string{ProbeUserRole, "role1", "role2"},
+			wantLen:      58,
+			wantContains: []string{ProbeUserRole, AgentUserRole, "role1", "role2"},
 		},
 		{
 			name:       "with SCP roles - SCP role is added",
@@ -269,8 +269,8 @@ func Test_aggregateRoles(t *testing.T) {
 					}},
 				},
 			},
-			// 55 predefined + 2 user-provided + 1 SCP role
-			wantLen:      58,
+			// 56 predefined + 2 user-provided + 1 SCP role
+			wantLen:      59,
 			wantContains: []string{"scp_monitoring_role", "role1", "role2"},
 		},
 		{

@@ -46,6 +46,7 @@ func validations() []validation {
 		checkSupportedVersion,
 		checkSingleConfigSource,
 		checkESRefsNamed,
+		checkESRefsRole,
 		checkAssociations,
 		checkSinglePipelineSource,
 		checkPipelinesRefSource,
@@ -117,6 +118,22 @@ func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+func checkESRefsRole(l *lsv1alpha1.Logstash) field.ErrorList {
+	var errs field.ErrorList
+	for i, ref := range l.Spec.ElasticsearchRefs {
+		if ref.ElasticsearchRole == "" {
+			continue
+		}
+		if ref.SecretName != "" {
+			errs = append(errs, field.Forbidden(
+				field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("elasticsearchRole"),
+				"elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references",
+			))
+		}
+	}
+	return errs
 }
 
 func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
