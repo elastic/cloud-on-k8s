@@ -146,8 +146,8 @@ func createResourcesTestSteps(param TestParam) ([]*TestStep, error) {
 		}
 
 		if r.Spec.Version != "" && r.Spec.Version != param.StackVersion {
-			return nil, fmt.Errorf("%s %q: spec.version %q does not match conf.yaml stackVersion %q",
-				r.Kind, r.Metadata.Name, r.Spec.Version, param.StackVersion)
+			return nil, fmt.Errorf("%s %q: spec.version %q does not match stackVersion %q configured for release %q",
+				r.Kind, r.Metadata.Name, r.Spec.Version, param.StackVersion, param.Name)
 		}
 
 		var wantNodes int64 = 1
@@ -284,7 +284,7 @@ func labelSelectorFor(kind, name string) (string, error) {
 }
 
 // TestScaleElasticsearch is the fixture for scaling an Elasticsearch resource.
-func TestScaleElasticsearch(esName string, param TestParam, count int) *Fixture {
+func TestScaleElasticsearch(param TestParam, esName string, count int) *Fixture {
 	return &Fixture{
 		Name: param.Suffixed("TestScaleElasticsearch"),
 		Steps: []*TestStep{
