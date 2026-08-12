@@ -1141,7 +1141,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		AssociationResourceNameLabelName:      "agent.k8s.elastic.co/name",
 		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
 		ElasticsearchUserCreation:             nil,
-		AdditionalSecrets: func(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]types.NamespacedName, error) {
+		AdditionalSecrets: func(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]AdditionalSecret, error) {
 			associated := assoc.Associated()
 			var agent agentv1alpha1.Agent
 			nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
@@ -1174,9 +1174,12 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			if conf == nil || !conf.CACertProvided {
 				return nil, nil
 			}
-			return []types.NamespacedName{{
-				Namespace: fleetServer.Namespace,
-				Name:      conf.CASecretName,
+			return []AdditionalSecret{{
+				Source: types.NamespacedName{
+					Namespace: fleetServer.Namespace,
+					Name:      conf.CASecretName,
+				},
+				Keys: []string{"ca.crt"},
 			}}, nil
 		},
 	}
@@ -1346,7 +1349,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			false,
 			false,
 			true,
-			"ca.crt", "tls.crt",
+			"ca.crt",
 		),
 	}
 

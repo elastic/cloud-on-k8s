@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -223,16 +224,32 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
-// copySecret will copy the source secret to the target namespace adding labels from the associated object to ensure garbage collection happens.
-func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName) error {
+// copySecret hashes the source secret data (restricted to keys when non-empty) and, when
+// targetNamespace differs from the source namespace, reconciles a copy of the secret there.
+// The hash is always written so that AdditionalSecretsHash reflects CA cert changes even
+// when source and target share a namespace.
+func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName, keys []string) error {
 	var original corev1.Secret
 	if err := client.Get(ctx, source, &original); err != nil {
 		return err
 	}
-	// update the hash if there are additional secrets event if
-	// they are in the same namespace to ensure that the pods are
-	// rotated when the original CA secret is updated.
-	commonhash.WriteHashObject(secHash, original.Data)
+
+	data := original.Data
+	if len(keys) > 0 {
+		data = make(map[string][]byte, len(keys))
+		for _, k := range keys {
+			if v, ok := original.Data[k]; ok {
+				data[k] = v
+			} else {
+				ulog.FromContext(ctx).V(1).Info("requested key not found in source secret", "key", k, "secret_name", source.Name, "secret_namespace", source.Namespace)
+			}
+		}
+	}
+
+	// Hash only the data that will be copied. Hashing original.Data when keys is set
+	// would cause AdditionalSecretsHash to change on credential rotations even though
+	// the CA cert (the only field that actually reaches pods) has not changed.
+	commonhash.WriteHashObject(secHash, data)
 	if targetNamespace == original.Namespace {
 		return nil
 	}
@@ -244,10 +261,13 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targe
 			Labels:      original.Labels,
 			Annotations: original.Annotations,
 		},
-		Data: original.Data,
+		Data: data,
 		Type: original.Type,
 	}
 
-	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil)
+	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret
+	// manifest as base64, which would re-expose any credential fields that were filtered
+	// out of Data. Always drop it unconditionally.
+	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil, reconciler.WithAnnotationsToRemove(corev1.LastAppliedConfigAnnotation))
 	return err
 }
