@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 const (
@@ -240,6 +241,8 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targe
 		for _, k := range keys {
 			if v, ok := original.Data[k]; ok {
 				data[k] = v
+			} else {
+				ulog.FromContext(ctx).V(1).Info("requested key not found in source secret", "key", k, "secret_name", source.Name, "secret_namespace", source.Namespace)
 			}
 		}
 	}
