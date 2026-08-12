@@ -812,7 +812,7 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+					hasPrivResp, err := elasticsearch.HasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [
 							{"names": ["logs-test"], "privileges": ["read"]},
@@ -886,7 +886,7 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+					hasPrivResp, err := elasticsearch.HasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [{"names": ["logs-test"], "privileges": ["read"]}]
 					}`)
@@ -915,34 +915,6 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 	test.Sequence(before, steps, esWithLicense).RunSequential(t)
 }
 
-type HasPrivilegesResponse struct {
-	Username        string                     `json:"username"`
-	HasAllRequested bool                       `json:"has_all_requested"`
-	Cluster         map[string]bool            `json:"cluster"`
-	Index           map[string]map[string]bool `json:"index"`
-}
-
-func hasPrivilegesAs(ctx context.Context, esClient client.Client, runAsUser string, body string) (HasPrivilegesResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", strings.NewReader(body))
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	req.Header.Set("es-security-runas-user", runAsUser)
-	resp, err := esClient.Request(ctx, req)
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	defer resp.Body.Close()
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	var hasPrivResp HasPrivilegesResponse
-	if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
-		return HasPrivilegesResponse{}, fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
-	}
-	return hasPrivResp, nil
-}
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
 	var items map[string]any

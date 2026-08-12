@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	user "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
@@ -46,7 +49,8 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					k.Client,
 					test.Ctx(),
 					run.TestNameLabel,
-					b.Agent.Labels[run.TestNameLabel])
+					b.Agent.Labels[run.TestNameLabel],
+				)
 			}),
 			Skip: func() bool {
 				return test.Ctx().Local
@@ -225,6 +229,61 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		test.Step{
+			Name: "Standalone Agent ES user should have eck_agent_user_role",
+			Skip: func() bool {
+				if b.Agent.Spec.FleetModeEnabled() || len(b.Agent.Spec.ElasticsearchRefs) == 0 {
+					return true
+				}
+				for _, ref := range b.Agent.Spec.ElasticsearchRefs {
+					if ref.ElasticsearchRole != "" {
+						return true
+					}
+				}
+				return false
+			},
+			Test: test.Eventually(func() error {
+				for _, assoc := range b.Agent.GetAssociations() {
+					esAssoc, is := assoc.(*agentv1alpha1.AgentESAssociation)
+					if !is {
+						continue
+					}
+
+					var es esv1.Elasticsearch
+					if err := k.Client.Get(context.Background(), esAssoc.AssociationRef().NamespacedName(), &es); err != nil {
+						return fmt.Errorf("elastic CR cannot be fetched: %w", err)
+					}
+					esClient, err := elasticsearch.NewElasticsearchClient(es, k)
+					if err != nil {
+						return fmt.Errorf("elastic client for %s cannot be created: %w", es.Name, err)
+					}
+					username := association.ElasticsearchUserName(esAssoc, "agent-user")
+
+					// File realm users are not visible via /_security/user; use _has_privileges
+					// with es-security-runas-user to check actual privileges as the agent user.
+					// The test ES client (elastic superuser) has run_as:['*'] so it can impersonate any realm.
+					privResp, err := elasticsearch.HasPrivilegesAs(context.Background(), esClient, username,
+						`{"cluster":["monitor"]}`)
+					if err != nil {
+						return fmt.Errorf("has privileges call for %s in ES %s: %w", username, es.Name, err)
+					}
+					if !privResp.Cluster["monitor"] {
+						return fmt.Errorf("agent user %s should have cluster:monitor", username)
+					}
+
+					auth, err := elasticsearch.Authenticate(context.Background(), esClient, username)
+					if err != nil {
+						return fmt.Errorf("authenticate call for %s in ES %s: %w", username, es.Name, err)
+					}
+					if !auth.Enabled || !slices.Contains(auth.Roles, user.AgentUserRole) {
+						return fmt.Errorf("agent user %s should not have the role %s", username, user.AgentUserRole)
+					}
+					return nil
+
+				}
+				return nil
+			}),
+		},
+		test.Step{
 			Name: "ES data should pass validations",
 			Test: test.Eventually(func() error {
 				for i, validation := range b.Validations {
@@ -285,7 +344,8 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				}
 				return nil
 			}),
-		}}
+		},
+	}
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {

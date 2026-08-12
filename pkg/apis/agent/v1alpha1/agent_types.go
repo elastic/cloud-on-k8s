@@ -313,7 +313,8 @@ var _ commonv1.Associated = (*Agent)(nil)
 var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 func (a *Agent) GetAssociations() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
+	associations := make([]commonv1.Association, 0, len(a.Spec.ElasticsearchRefs))
+
 	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
 			Agent:    a,
