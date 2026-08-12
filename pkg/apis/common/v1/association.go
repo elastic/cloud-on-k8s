@@ -234,7 +234,7 @@ type AssociationWithUserRoleOverride interface {
 func FormatNameWithID(template string, id string) string {
 	if id != SingletonAssociationID {
 		// we want names to be changed for any id but SingletonAssociationID
-		id = fmt.Sprintf("-%s", id)
+		id = "-" + id
 	}
 
 	return fmt.Sprintf(template, id)
