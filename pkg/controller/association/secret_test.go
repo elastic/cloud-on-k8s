@@ -231,6 +231,7 @@ func TestCopySecret(t *testing.T) {
 	for _, tt := range []struct {
 		name                string
 		srcSecret           *corev1.Secret
+		existingTarget      *corev1.Secret
 		keys                []string
 		wantKeys            []string
 		wantMissKeys        []string
@@ -244,6 +245,14 @@ func TestCopySecret(t *testing.T) {
 			srcSecret: externalESSecret,
 			keys:      nil,
 			wantKeys:  []string{"ca.crt", "url", "username", "password"},
+		},
+		{
+			name:                "no filter: last-applied-configuration stripped",
+			srcSecret:           secretWithLastApplied,
+			keys:                nil,
+			wantKeys:            []string{"ca.crt", "url", "username", "password"},
+			wantMissAnnotations: []string{corev1.LastAppliedConfigAnnotation},
+			wantAnnotations:     map[string]string{"other-annotation": "keep-me"},
 		},
 		{
 			name:         "ca.crt filter: only ca.crt copied, credentials absent",
@@ -264,7 +273,7 @@ func TestCopySecret(t *testing.T) {
 			wantHash:     &hashCAFilter,
 		},
 		{
-			name:         "absent key in filter is silently skipped",
+			name:         "absent key in filter is skipped with a debug log",
 			srcSecret:    externalESSecret,
 			keys:         []string{"ca.crt", "nonexistent-key"},
 			wantKeys:     []string{"ca.crt"},
@@ -280,9 +289,31 @@ func TestCopySecret(t *testing.T) {
 			wantMissAnnotations: []string{corev1.LastAppliedConfigAnnotation},
 			wantAnnotations:     map[string]string{"other-annotation": "keep-me"},
 		},
+		{
+			name:      "last-applied-configuration removed from pre-existing copy on upgrade",
+			srcSecret: externalESSecret,
+			existingTarget: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "dst-ns",
+					Name:      srcNSN.Name,
+					Annotations: map[string]string{
+						corev1.LastAppliedConfigAnnotation: `{"data":{"password":"czNjcjN0","username":"ZWxhc3RpYw=="}}`,
+					},
+				},
+				Data: map[string][]byte{"ca.crt": []byte("CACERT")},
+			},
+			keys:                []string{"ca.crt"},
+			wantKeys:            []string{"ca.crt"},
+			wantMissAnnotations: []string{corev1.LastAppliedConfigAnnotation},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := k8s.NewFakeClient(tt.srcSecret)
+			var fakeClient k8s.Client
+			if tt.existingTarget != nil {
+				fakeClient = k8s.NewFakeClient(tt.srcSecret, tt.existingTarget)
+			} else {
+				fakeClient = k8s.NewFakeClient(tt.srcSecret)
+			}
 			h := fnv.New32a()
 			require.NoError(t, copySecret(context.Background(), fakeClient, h, "dst-ns", srcNSN, tt.keys))
 

@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash"
-	"maps"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
@@ -255,23 +254,20 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targe
 		return nil
 	}
 
-	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret
-	// manifest as base64, which would re-expose any credential fields that were filtered
-	// out of Data. Drop it from the copy unconditionally.
-	annotations := maps.Clone(original.Annotations)
-	delete(annotations, corev1.LastAppliedConfigAnnotation)
-
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        original.Name,
 			Namespace:   targetNamespace,
 			Labels:      original.Labels,
-			Annotations: annotations,
+			Annotations: original.Annotations,
 		},
 		Data: data,
 		Type: original.Type,
 	}
 
-	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil)
+	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret
+	// manifest as base64, which would re-expose any credential fields that were filtered
+	// out of Data. Always drop it unconditionally.
+	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil, reconciler.WithAnnotationsToRemove(corev1.LastAppliedConfigAnnotation))
 	return err
 }

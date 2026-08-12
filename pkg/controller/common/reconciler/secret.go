@@ -41,6 +41,59 @@ func WithPostUpdate(f func()) func(p *Params) {
 	}
 }
 
+// WithAnnotationsToRemove returns a ReconcileSecret option that actively removes the listed annotation
+// keys from both newly created and pre-existing secrets:
+//   - PreCreate strips the keys from expected.Annotations before the object is written, so a
+//     brand-new secret never contains them even when the source carries them.
+//   - NeedsUpdate triggers an update when any listed key is present on an already-existing secret.
+//   - UpdateReconciled deletes the keys from the reconciled object after the annotation merge, so
+//     that pre-existing copies (created before this safeguard) are cleaned up on the next
+//     reconciliation. Simply omitting a key from expected.Annotations is insufficient because
+//     ReconcileSecret merges rather than replaces existing annotations.
+func WithAnnotationsToRemove(keys ...string) func(p *Params) {
+	return func(p *Params) {
+		prevNeedsUpdate := p.NeedsUpdate
+		prevUpdateReconciled := p.UpdateReconciled
+		prevPreCreate := p.PreCreate
+		p.PreCreate = func() error {
+			if prevPreCreate != nil {
+				if err := prevPreCreate(); err != nil {
+					return err
+				}
+			}
+
+			expectedAnnotations := p.Expected.GetAnnotations()
+			for _, k := range keys {
+				delete(expectedAnnotations, k)
+			}
+			p.Expected.SetAnnotations(expectedAnnotations)
+			return nil
+		}
+		p.NeedsUpdate = func() bool {
+			if prevNeedsUpdate != nil && prevNeedsUpdate() {
+				return true
+			}
+			annotations := p.Reconciled.GetAnnotations()
+			for _, k := range keys {
+				if _, found := annotations[k]; found {
+					return true
+				}
+			}
+			return false
+		}
+		p.UpdateReconciled = func() {
+			if prevUpdateReconciled != nil {
+				prevUpdateReconciled()
+			}
+			annotations := p.Reconciled.GetAnnotations()
+			for _, k := range keys {
+				delete(annotations, k)
+			}
+			p.Reconciled.SetAnnotations(annotations)
+		}
+	}
+}
+
 // ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
 func ReconcileSecret(ctx context.Context, c k8s.Client, expected corev1.Secret, owner client.Object, opts ...func(*Params)) (corev1.Secret, error) {

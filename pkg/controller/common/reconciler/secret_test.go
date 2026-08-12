@@ -136,6 +136,81 @@ func TestReconcileSecret(t *testing.T) {
 	}
 }
 
+func TestWithAnnotationsToRemove(t *testing.T) {
+	for _, tt := range []struct {
+		name            string
+		existing        *corev1.Secret
+		expected        *corev1.Secret
+		keysToRemove    []string
+		wantAnnotations map[string]string
+	}{
+		{
+			name: "annotation removed from pre-existing secret",
+			existing: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			expected:     createSecret("s", sampleData, nil, nil),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+		},
+		{
+			name: "no spurious update when annotation is absent from pre-existing secret",
+			existing: createSecret("s", sampleData, nil, map[string]string{
+				"keep": "keep-me",
+			}),
+			expected:     createSecret("s", sampleData, nil, nil),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+		},
+		{
+			name:            "new secret created without the listed annotation",
+			existing:        nil,
+			expected:        createSecret("s", sampleData, nil, nil),
+			keysToRemove:    []string{"to-remove"},
+			wantAnnotations: nil,
+		},
+		{
+			name:     "annotation stripped from expected before create",
+			existing: nil,
+			expected: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+		},
+		{
+			name:            "multiple keys removed in one call",
+			existing:        createSecret("s", sampleData, nil, map[string]string{"a": "1", "b": "2", "c": "3"}),
+			expected:        createSecret("s", sampleData, nil, nil),
+			keysToRemove:    []string{"a", "b"},
+			wantAnnotations: map[string]string{"c": "3"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var c k8s.Client
+			if tt.existing != nil {
+				c = k8s.NewFakeClient(tt.existing)
+			} else {
+				c = k8s.NewFakeClient()
+			}
+			_, err := ReconcileSecret(t.Context(), c, *tt.expected, nil, WithAnnotationsToRemove(tt.keysToRemove...))
+			require.NoError(t, err)
+
+			var got corev1.Secret
+			require.NoError(t, c.Get(t.Context(), k8s.ExtractNamespacedName(tt.expected), &got))
+			assert.Equal(t, tt.wantAnnotations, got.Annotations)
+		})
+	}
+}
+
 func concatMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 	newMap := map[string]string{}
 	maps.Merge(newMap, m1)
