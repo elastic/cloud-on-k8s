@@ -110,7 +110,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		// tls.crt; agents only need ca.crt for TLS verification, so the narrower copy is correct
 		// in both cases.
 		secrets = append(secrets, association.AdditionalSecret{
-			SourceNamespacedName: types.NamespacedName{
+			Source: types.NamespacedName{
 				Namespace: fleetServer.Namespace,
 				Name:      conf.CASecretName,
 			},
@@ -120,7 +120,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 	if conf.ClientCertIsConfigured() && esRef.GetClientCertificateSecretName() != "" {
 		log.V(1).Info("additional secret because user client certificate is provided")
 		secrets = append(secrets, association.AdditionalSecret{
-			SourceNamespacedName: types.NamespacedName{
+			Source: types.NamespacedName{
 				Namespace: fleetServer.Namespace,
 				Name:      conf.GetClientCertSecretName(),
 			},

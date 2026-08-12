@@ -44,8 +44,8 @@ var defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 
 // AdditionalSecret is a secret to be copied into an associated resource's namespace.
 type AdditionalSecret struct {
-	// SourceNamespacedName is the namespace/name of the secret to copy from (in the referenced resource's namespace).
-	SourceNamespacedName types.NamespacedName
+	// Source is the namespace/name of the secret to copy from (in the referenced resource's namespace).
+	Source types.NamespacedName
 	// Keys is an optional list of data keys to include in the copy; all keys are copied when empty.
 	Keys []string
 }
@@ -305,7 +305,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 			return commonv1.AssociationPending, results.WithError(err) // maybe not created yet
 		}
 		for _, sec := range additionalSecrets {
-			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec.SourceNamespacedName, sec.Keys); err != nil {
+			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec.Source, sec.Keys); err != nil {
 				return commonv1.AssociationPending, results.WithError(err)
 			}
 		}

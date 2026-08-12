@@ -153,7 +153,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{SourceNamespacedName: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
 			},
 		},
 		{
@@ -190,8 +190,8 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{SourceNamespacedName: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
-				{SourceNamespacedName: types.NamespacedName{Namespace: "fs-ns", Name: "copied-user-cert"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "copied-user-cert"}},
 			},
 		},
 		{
@@ -225,7 +225,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{SourceNamespacedName: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
 			},
 		},
 	} {

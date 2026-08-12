@@ -1175,7 +1175,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, nil
 			}
 			return []AdditionalSecret{{
-				SourceNamespacedName: types.NamespacedName{
+				Source: types.NamespacedName{
 					Namespace: fleetServer.Namespace,
 					Name:      conf.CASecretName,
 				},
