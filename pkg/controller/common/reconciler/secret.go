@@ -45,7 +45,10 @@ func WithPostUpdate(f func()) func(p *Params) {
 // keys from both newly created and pre-existing secrets:
 //   - PreCreate strips the keys from expected.Annotations before the object is written, so a
 //     brand-new secret never contains them even when the source carries them.
-//   - NeedsUpdate triggers an update when any listed key is present on an already-existing secret.
+//   - NeedsUpdate strips the keys from expected.Annotations before any update check so that
+//     their presence in the source does not cause update churn (the base check treats a key
+//     present in expected but absent from reconciled as a diff). It also triggers an update when
+//     any listed key is found on an already-existing secret.
 //   - UpdateReconciled deletes the keys from the reconciled object after the annotation merge, so
 //     that pre-existing copies (created before this safeguard) are cleaned up on the next
 //     reconciliation. Simply omitting a key from expected.Annotations is insufficient because
@@ -61,7 +64,6 @@ func WithAnnotationsToRemove(keys ...string) func(p *Params) {
 					return err
 				}
 			}
-
 			expectedAnnotations := p.Expected.GetAnnotations()
 			for _, k := range keys {
 				delete(expectedAnnotations, k)
@@ -70,6 +72,11 @@ func WithAnnotationsToRemove(keys ...string) func(p *Params) {
 			return nil
 		}
 		p.NeedsUpdate = func() bool {
+			expectedAnnotations := p.Expected.GetAnnotations()
+			for _, k := range keys {
+				delete(expectedAnnotations, k)
+			}
+			p.Expected.SetAnnotations(expectedAnnotations)
 			if prevNeedsUpdate != nil && prevNeedsUpdate() {
 				return true
 			}

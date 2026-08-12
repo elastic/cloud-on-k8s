@@ -139,11 +139,11 @@ func TestReconcileSecret(t *testing.T) {
 
 func TestWithAnnotationsToRemove(t *testing.T) {
 	for _, tt := range []struct {
-		name            string
-		existing        *corev1.Secret
-		expected        *corev1.Secret
-		keysToRemove    []string
-		wantAnnotations map[string]string
+		name             string
+		existing         *corev1.Secret
+		expected         *corev1.Secret
+		keysToRemove     []string
+		wantAnnotations  map[string]string
 		wantUpdateCalled bool
 	}{
 		{
@@ -160,10 +160,22 @@ func TestWithAnnotationsToRemove(t *testing.T) {
 			wantUpdateCalled: true,
 		},
 		{
-			// The pre-existing secret already has the RestrictWatchedResources label that
-			// ReconcileSecret always adds, so the only reason an update could fire is the
-			// WithAnnotationsToRemove NeedsUpdate check. Since "to-remove" is absent from
-			// the existing secret's annotations, no update should be triggered.
+			name: "no spurious update when annotation is in expected but already absent from reconciled",
+			existing: createSecret("s", sampleData,
+				map[string]string{commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue},
+				map[string]string{"keep": "keep-me"},
+			),
+			expected: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+			wantUpdateCalled: false,
+		},
+		{
 			name: "no spurious update when annotation is absent from pre-existing secret",
 			existing: createSecret("s", sampleData,
 				map[string]string{commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue},
@@ -196,11 +208,11 @@ func TestWithAnnotationsToRemove(t *testing.T) {
 			},
 		},
 		{
-			name:            "multiple keys removed in one call",
-			existing:        createSecret("s", sampleData, nil, map[string]string{"a": "1", "b": "2", "c": "3"}),
-			expected:        createSecret("s", sampleData, nil, nil),
-			keysToRemove:    []string{"a", "b"},
-			wantAnnotations: map[string]string{"c": "3"},
+			name:             "multiple keys removed in one call",
+			existing:         createSecret("s", sampleData, nil, map[string]string{"a": "1", "b": "2", "c": "3"}),
+			expected:         createSecret("s", sampleData, nil, nil),
+			keysToRemove:     []string{"a", "b"},
+			wantAnnotations:  map[string]string{"c": "3"},
 			wantUpdateCalled: true,
 		},
 	} {
