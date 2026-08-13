@@ -5,7 +5,6 @@
 package operatorhub
 
 import (
-	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,7 +13,6 @@ import (
 
 	gyaml "github.com/ghodss/yaml"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -164,12 +162,7 @@ func TestSplitRBACRulesAgainstRealOperatorRBAC(t *testing.T) {
 		t.Fatalf("extracting CRD YAML parts: %v", err)
 	}
 
-	// Build the same combined scope map the production code uses.
-	allScopes := make(map[schema.GroupResource]bool, len(knownResources)+len(crdExtracts.crds))
-	maps.Copy(allScopes, knownResources)
-	for _, crd := range crdExtracts.crds {
-		allScopes[schema.GroupResource{Group: crd.Group, Resource: crd.Plural}] = crd.Scope == apiextv1.ClusterScoped
-	}
+	allScopes := resourceScopes(crdExtracts.crds)
 
 	operatorYAML := filepath.Join("..", "..", "..", "..", "config", "operator.yaml")
 	f, err := os.Open(operatorYAML)

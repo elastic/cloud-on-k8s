@@ -477,13 +477,7 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		return nil, fmt.Errorf("newVersion in config file appears to be invalid [%s]", conf.NewVersion)
 	}
 
-	// allScopes starts from the static built-in map and is extended with CRD-derived scopes
-	// so that splitRBACRules works from a single authoritative source.
-	allScopes := make(map[schema.GroupResource]bool, len(knownResources)+len(extracts.crds))
-	maps.Copy(allScopes, knownResources)
-	for _, crd := range extracts.crds {
-		allScopes[schema.GroupResource{Group: crd.Group, Resource: crd.Plural}] = crd.Scope == apiextv1.ClusterScoped
-	}
+	allScopes := resourceScopes(extracts.crds)
 
 	permissions, clusterPermissions, err := splitRBACRules(extracts.operatorRBAC, allScopes)
 	if err != nil {
@@ -540,6 +534,17 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		UbiOnly:                      conf.Packages[packageIndex].UbiOnly,
 		MinSupportedOpenShiftVersion: conf.Packages[packageIndex].MinSupportedOpenShiftVersion,
 	}, nil
+}
+
+// resourceScopes returns the scope of every resource the generator can classify:
+// the static built-in map plus scopes derived from the parsed CRD manifests.
+func resourceScopes(crds map[string]*CRD) map[schema.GroupResource]bool {
+	scopes := make(map[schema.GroupResource]bool, len(knownResources)+len(crds))
+	maps.Copy(scopes, knownResources)
+	for _, crd := range crds {
+		scopes[schema.GroupResource{Group: crd.Group, Resource: crd.Plural}] = crd.Scope == apiextv1.ClusterScoped
+	}
+	return scopes
 }
 
 // splitRBACRules separates the operator's namespaced and cluster-scoped permissions
