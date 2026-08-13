@@ -137,12 +137,11 @@ type ElasticsearchCluster struct {
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
 	// configuration files, and will be used to identify "named clusters" in Logstash
 	ClusterName string `json:"clusterName,omitempty"`
-	// ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that
-	// ECK creates for this cluster reference. Defaults to the ECK-managed eck_logstash_user_role when not set.
-	// The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role
-	// created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.
-	// Multiple roles may be provided as a comma-separated list.
-	// Only effective when referencing an ECK-managed Elasticsearch cluster by name.
+	// ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user
+	// for this cluster reference. Defaults to eck_logstash_user_role. The role must already exist in
+	// the target cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles
+	// can be provided as a comma-separated list.
+	// Only valid for named (non-secretName) Elasticsearch references.
 	// +kubebuilder:validation:Optional
 	ElasticsearchRole string `json:"elasticsearchRole,omitempty"`
 }

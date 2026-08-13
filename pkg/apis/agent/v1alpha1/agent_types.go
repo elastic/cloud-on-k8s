@@ -130,12 +130,11 @@ type AgentSpec struct {
 type Output struct {
 	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	OutputName                     string `json:"outputName,omitempty"`
-	// ElasticsearchRole is the name of the Elasticsearch role assigned to the file-realm user that
-	// ECK creates for this output. Defaults to the ECK-managed eck_agent_user_role when not set.
-	// The role must exist in the target Elasticsearch cluster: either a built-in role, a custom role
-	// created via the Elasticsearch resource's spec.auth.roles, or the ES Role Management APIs.
-	// Multiple roles may be provided as a comma-separated list.
-	// Only effective for standalone Agents referencing an ECK-managed Elasticsearch cluster by name.
+	// ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user
+	// for this output. Defaults to eck_agent_user_role. The role must already exist in the target
+	// cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles can be
+	// provided as a comma-separated list.
+	// Only valid for standalone Agents with a named (non-secretName) Elasticsearch reference.
 	// +kubebuilder:validation:Optional
 	ElasticsearchRole string `json:"elasticsearchRole,omitempty"`
 }
