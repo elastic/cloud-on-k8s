@@ -187,6 +187,8 @@ func TestSplitRBACRulesAgainstRealOperatorRBAC(t *testing.T) {
 	// Assert that the exact set of cluster-scoped Group/Resource pairs lands in clusterPermissions.
 	// A resource mis-categorised as namespaced (the bug #9654 described) would be absent here,
 	// turning this into a regression guard for the split itself, not just for a missing map entry.
+	// When a genuinely new cluster-scoped built-in resource is added to knownResources and the
+	// ClusterRole, update this list too — it is a second site that must stay in sync.
 	wantClusterResources := map[schema.GroupResource]struct{}{
 		{Resource: "namespaces"}: {},
 		{Resource: "nodes"}:      {},
