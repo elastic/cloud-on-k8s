@@ -376,13 +376,13 @@ spec:
 {{- if .OperatorPermissions }}
       permissions:
       - rules:
-        {{- .OperatorPermissions | nindent 8 }}
+        {{- .OperatorPermissions | trim | nindent 8 }}
         serviceAccountName: elastic-operator
 {{- end }}
 {{- if .OperatorClusterPermissions }}
       clusterPermissions:
       - rules:
-        {{- .OperatorClusterPermissions | nindent 8 }}
+        {{- .OperatorClusterPermissions | trim | nindent 8 }}
         serviceAccountName: elastic-operator
 {{- end }}
     strategy: deployment
