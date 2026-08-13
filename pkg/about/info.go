@@ -26,8 +26,8 @@ const (
 	UUIDCfgMapKey = "uuid"
 
 	// FieldOwner is the field manager name used by the operator for all Kubernetes write operations.
-	// It matches the binary name so it is consistent with the User-Agent-derived name the API server
-	// would assign when no explicit field manager is provided.
+	// The value matches the historical User-Agent-derived name ("elastic-operator") so that existing
+	// managedFields records attributed to that name are not abandoned on upgrade.
 	FieldOwner = "elastic-operator"
 )
 

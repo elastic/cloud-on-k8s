@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 )
 
 type webhook struct {
@@ -109,6 +111,7 @@ func (v1w *v1webhookHandler) updateCABundle(caCert []byte) error {
 	_, err = v1w.clientset.
 		AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Patch(v1w.ctx, v1w.webhookConfiguration.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+		Patch(v1w.ctx, v1w.webhookConfiguration.Name, types.StrategicMergePatchType, patch,
+			metav1.PatchOptions{FieldManager: about.FieldOwner})
 	return err
 }

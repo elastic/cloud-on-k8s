@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -84,7 +85,8 @@ func (w *Params) ReconcileResources(ctx context.Context, clientset kubernetes.In
 		if err != nil {
 			return err
 		}
-		if _, err := clientset.CoreV1().Secrets(w.Namespace).Patch(ctx, w.SecretName, types.MergePatchType, patch, metav1.PatchOptions{}); err != nil {
+		if _, err := clientset.CoreV1().Secrets(w.Namespace).Patch(ctx, w.SecretName, types.MergePatchType, patch,
+			metav1.PatchOptions{FieldManager: about.FieldOwner}); err != nil {
 			return err
 		}
 		updateOperatorPods(ctx, clientset, w.Namespace)
@@ -129,7 +131,8 @@ func updateOperatorPod(ctx context.Context, pod corev1.Pod, clientset kubernetes
 		if err != nil {
 			return err
 		}
-		_, err = clientset.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+		_, err = clientset.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.MergePatchType, patch,
+			metav1.PatchOptions{FieldManager: about.FieldOwner})
 		return err
 	})
 	if err != nil {
