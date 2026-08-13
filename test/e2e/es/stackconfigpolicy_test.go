@@ -38,10 +38,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
-var (
-	//go:embed fixtures/stackconfigpolicy_esConfig.yaml
-	esConfig string
-)
+//go:embed fixtures/stackconfigpolicy_esConfig.yaml
+var esConfig string
 
 // TestStackConfigPolicy tests the StackConfigPolicy feature.
 func TestStackConfigPolicy(t *testing.T) {
@@ -229,7 +227,8 @@ func TestStackConfigPolicy(t *testing.T) {
 						Type: "gcs",
 						Settings: SnapshotRepositorySettings{
 							Bucket:   "my-bucket",
-							BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name())},
+							BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name()),
+						},
 					}
 					if !reflect.DeepEqual(actualRepo, expectedRepo) {
 						act, err := json.Marshal(actualRepo)
@@ -914,7 +913,6 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 
 	test.Sequence(before, steps, esWithLicense).RunSequential(t)
 }
-
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
 	var items map[string]any

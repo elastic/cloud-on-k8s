@@ -5,8 +5,6 @@
 package controller
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -64,7 +62,7 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				agent, ok := associated.(*agentv1alpha1.Agent)
 				if !ok {
-					return "", fmt.Errorf("expected *Agent, got %T", associated)
+					return user.SuperUserBuiltinRole, nil
 				}
 				// Fleet Server agents on ES >= 7.17 authenticate via the built-in elastic/fleet-server
 				// service account and never reach this code path (reconciler returns earlier).

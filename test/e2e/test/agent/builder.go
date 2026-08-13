@@ -626,6 +626,14 @@ func ToOutput(selector commonv1.ObjectSelector, outputName string) agentv1alpha1
 	}
 }
 
+func ToOutputWithRole(selector commonv1.ObjectSelector, outputName, role string) agentv1alpha1.Output {
+	return agentv1alpha1.Output{
+		ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: selector},
+		OutputName:            outputName,
+		ElasticsearchRole:     role,
+	}
+}
+
 func ToOutputWithClientCert(selector commonv1.ObjectSelector, clientCertSecretName, outputName string) agentv1alpha1.Output {
 	return agentv1alpha1.Output{
 		ElasticsearchSelector: commonv1.ElasticsearchSelector{

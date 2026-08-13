@@ -219,6 +219,7 @@ func (l *Logstash) ElasticsearchRefs() []commonv1.ElasticsearchSelector {
 	}
 	return refs
 }
+
 func (l *Logstash) ServiceAccountName() string {
 	return l.Spec.ServiceAccountName
 }
@@ -245,12 +246,10 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 	)
 
 	for _, ref := range l.Spec.ElasticsearchRefs {
+		ref.ElasticsearchSelector = ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace)
 		associations = append(associations, &LogstashESAssociation{
-			Logstash: l,
-			ElasticsearchCluster: ElasticsearchCluster{
-				ElasticsearchSelector: ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace),
-				ClusterName:           ref.ClusterName,
-			},
+			Logstash:             l,
+			ElasticsearchCluster: ref,
 		})
 	}
 
