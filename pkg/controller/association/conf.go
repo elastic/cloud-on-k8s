@@ -218,13 +218,7 @@ func RemoveObsoleteAssociationConfs(
 		return nil
 	}
 
-	return k8s.PatchObjectAnnotations(ctx, client, associated, func() {
-		annotations := associated.GetAnnotations()
-		for _, key := range toDelete {
-			delete(annotations, key)
-		}
-		associated.SetAnnotations(annotations)
-	})
+	return k8s.PatchAnnotations(ctx, client, associated, nil, toDelete...)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
@@ -241,11 +235,7 @@ func RemoveAssociationConf(ctx context.Context, client k8s.Client, association c
 		return nil
 	}
 
-	return k8s.PatchObjectAnnotations(ctx, client, associated, func() {
-		annotations := associated.GetAnnotations()
-		delete(annotations, annotationName)
-		associated.SetAnnotations(annotations)
-	})
+	return k8s.PatchAnnotations(ctx, client, associated, nil, annotationName)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
@@ -262,14 +252,7 @@ func UpdateAssociationConf(
 	}
 
 	obj := association.Associated()
-	return k8s.PatchObjectAnnotations(ctx, client, obj, func() {
-		annotations := obj.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string)
-		}
-		annotations[association.AssociationConfAnnotationName()] = unsafeBytesToString(serializedConf)
-		obj.SetAnnotations(annotations)
-	})
+	return k8s.PatchAnnotations(ctx, client, obj, map[string]string{association.AssociationConfAnnotationName(): unsafeBytesToString(serializedConf)})
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.

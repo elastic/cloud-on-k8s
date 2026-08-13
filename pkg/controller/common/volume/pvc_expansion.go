@@ -136,14 +136,7 @@ func annotateForRecreation(
 	}
 	ownerKind := gvk.Kind
 
-	return k8s.PatchObjectAnnotations(ctx, k8sClient, owner, func() {
-		annotations := owner.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string, 1)
-		}
-		annotations[getRecreateStatefulSetAnnotationKey(ownerKind, actualSset.Name)] = string(asJSON)
-		owner.SetAnnotations(annotations)
-	})
+	return k8s.PatchAnnotations(ctx, k8sClient, owner, map[string]string{getRecreateStatefulSetAnnotationKey(ownerKind, actualSset.Name): string(asJSON)})
 }
 
 // needsRecreate returns true if the StatefulSet needs to be re-created to account for volume expansion.
@@ -224,11 +217,7 @@ func RecreateStatefulSets(ctx context.Context, k8sClient k8s.Client, owner clien
 				return recreations, err
 			}
 			// remove the annotation
-			err := k8s.PatchObjectAnnotations(ctx, k8sClient, owner, func() {
-				annotations := owner.GetAnnotations()
-				delete(annotations, annotation)
-				owner.SetAnnotations(annotations)
-			})
+			err := k8s.PatchAnnotations(ctx, k8sClient, owner, nil, annotation)
 			if err != nil {
 				return recreations, err
 			}

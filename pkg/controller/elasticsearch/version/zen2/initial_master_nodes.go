@@ -86,9 +86,7 @@ func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es
 		"es_name", es.Name,
 	)
 	// remove the annotation to indicate we're done with zen2 bootstrapping
-	return false, k8s.PatchObjectAnnotations(ctx, k8sClient, &es, func() {
-		delete(es.Annotations, InitialMasterNodesAnnotation)
-	})
+	return false, k8s.PatchAnnotations(ctx, k8sClient, &es, nil, InitialMasterNodesAnnotation)
 }
 
 // patchInitialMasterNodesConfig mutates the configuration of master nodes
@@ -122,10 +120,5 @@ func getInitialMasterNodesAnnotation(es esv1.Elasticsearch) []string {
 // setInitialMasterNodesAnnotation sets initialMasterNodesAnnotation on the given es resource to initialMasterNodes,
 // and updates the es resource in the apiserver.
 func setInitialMasterNodesAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, initialMasterNodes []string) error {
-	return k8s.PatchObjectAnnotations(ctx, k8sClient, &es, func() {
-		if es.Annotations == nil {
-			es.Annotations = map[string]string{}
-		}
-		es.Annotations[InitialMasterNodesAnnotation] = strings.Join(initialMasterNodes, ",")
-	})
+	return k8s.PatchAnnotations(ctx, k8sClient, &es, map[string]string{InitialMasterNodesAnnotation: strings.Join(initialMasterNodes, ",")})
 }

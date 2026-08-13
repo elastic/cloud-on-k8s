@@ -8,8 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"net"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -345,54 +345,50 @@ func NamespaceFilterFunc(
 	return namespaces.Has, nil // Return the Has method directly
 }
 
-// PatchObjectAnnotations applies mutateAnnotationsFn to obj, then sends a JSON merge patch containing
-// only the resulting annotations diff (additions, changes and removals), instead of diffing the whole
-// object. mutateAnnotationsFn is expected to mutate obj's annotations in place (e.g. via obj.GetAnnotations()
-// and obj.SetAnnotations()); it is a no-op to mutate any other field of obj, since only the annotations are
-// compared before and after. If the resulting annotations are unchanged, no patch request is sent.
-// The resourceVersion read from obj before mutation is embedded in the patch so that
-// the optimistic-concurrency guarantee is maintained. Callers must ensure obj has been fetched from
-// the API server (i.e. has a populated ResourceVersion) before calling this function; passing an
-// object that was only constructed locally will embed an empty resourceVersion and the
-// optimistic-concurrency guarantee will not hold.
-func PatchObjectAnnotations(ctx context.Context, k8sClient Client, obj client.Object, mutateAnnotationsFn func()) error {
-	if mutateAnnotationsFn == nil {
-		return nil
-	}
-
-	resourceVersion := obj.GetResourceVersion()
-
-	var origAnnotations map[string]string
-	if objAnnotation := obj.GetAnnotations(); objAnnotation != nil {
-		origAnnotations = maps.Clone(objAnnotation)
-	} else {
-		origAnnotations = map[string]string{}
-	}
-
-	mutateAnnotationsFn()
-
-	mutatedAnnotations := obj.GetAnnotations()
+// PatchAnnotations sends a JSON merge patch that upserts the keys in upsert and sets the keys
+// in remove to null (which deletes them). Only keys whose values actually differ from obj's
+// current annotations are included in the patch; if there is no diff, no request is sent.
+// The resourceVersion read from obj is embedded in the patch to maintain the
+// optimistic-concurrency guarantee.
+func PatchAnnotations(ctx context.Context, c Client, obj client.Object, upsert map[string]string, remove ...string) error {
+	orig := obj.GetAnnotations()
 	diff := make(map[string]any)
-	for k := range origAnnotations {
-		if _, ok := mutatedAnnotations[k]; !ok {
-			diff[k] = nil
+	for k, v := range upsert {
+		if ov, ok := orig[k]; !ok || ov != v {
+			diff[k] = v
 		}
 	}
-	for k, v := range mutatedAnnotations {
-		if ov, ok := origAnnotations[k]; !ok || ov != v {
-			diff[k] = v
+	for _, k := range remove {
+		if _, ok := orig[k]; ok {
+			diff[k] = nil
 		}
 	}
 	if len(diff) == 0 {
 		return nil
 	}
-
 	data, err := json.Marshal(map[string]any{"metadata": map[string]any{
-		"resourceVersion": resourceVersion,
+		"resourceVersion": obj.GetResourceVersion(),
 		"annotations":     diff,
 	}})
 	if err != nil {
 		return err
 	}
-	return k8sClient.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
+}
+
+// PatchObjectFinalizers sends a JSON merge patch replacing the finalizers list with finalizers.
+// If the list is unchanged, no request is sent. The resourceVersion read from obj is embedded
+// in the patch to maintain the optimistic-concurrency guarantee.
+func PatchObjectFinalizers(ctx context.Context, c Client, obj client.Object, finalizers []string) error {
+	if slices.Equal(obj.GetFinalizers(), finalizers) {
+		return nil
+	}
+	data, err := json.Marshal(map[string]any{"metadata": map[string]any{
+		"resourceVersion": obj.GetResourceVersion(),
+		"finalizers":      finalizers,
+	}})
+	if err != nil {
+		return err
+	}
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
 }

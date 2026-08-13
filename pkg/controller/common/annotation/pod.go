@@ -52,12 +52,7 @@ func MarkPodAsUpdated(
 		"pod_name", pod.Name,
 	)
 	ts := time.Now().Format(time.RFC3339Nano) // nano should be enough to avoid collisions and keep it readable by a human.
-	if err := k8s.PatchObjectAnnotations(ctx, c, &pod, func() {
-		if pod.Annotations == nil {
-			pod.Annotations = map[string]string{}
-		}
-		pod.Annotations[UpdateAnnotation] = ts
-	}); err != nil {
+	if err := k8s.PatchAnnotations(ctx, c, &pod, map[string]string{UpdateAnnotation: ts}); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)

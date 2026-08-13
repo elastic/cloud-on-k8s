@@ -6,7 +6,6 @@ package finalizer
 
 import (
 	"context"
-	"errors"
 	"regexp"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,16 +20,7 @@ func RemoveAll(ctx context.Context, c k8s.Client, obj client.Object) error {
 	if len(obj.GetFinalizers()) == 0 {
 		return nil
 	}
-	filtered := filterFinalizers(obj.GetFinalizers())
-	if len(filtered) == len(obj.GetFinalizers()) {
-		return nil
-	}
-	base, ok := obj.DeepCopyObject().(client.Object)
-	if !ok {
-		return errors.New("failed to convert deep copy to client.Object")
-	}
-	obj.SetFinalizers(filtered)
-	return c.Patch(ctx, obj, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
+	return k8s.PatchObjectFinalizers(ctx, c, obj, filterFinalizers(obj.GetFinalizers()))
 }
 
 // filterFinalizers removes Elastic finalizers

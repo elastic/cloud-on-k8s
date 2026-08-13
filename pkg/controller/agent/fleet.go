@@ -370,12 +370,7 @@ FindOrCreate:
 		return EnrollmentAPIKey{}, err
 	}
 
-	err = k8s.PatchObjectAnnotations(ctx, params.Client, &agent, func() {
-		if agent.Annotations == nil {
-			agent.Annotations = map[string]string{}
-		}
-		agent.Annotations[FleetTokenAnnotation] = key.ID
-	})
+	err = k8s.PatchAnnotations(ctx, params.Client, &agent, map[string]string{FleetTokenAnnotation: key.ID})
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
