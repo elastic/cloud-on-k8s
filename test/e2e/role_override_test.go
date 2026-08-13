@@ -100,7 +100,7 @@ func verifyUserWithSuperUserRole(ctx context.Context, k *test.K8sClient, esBuild
 		return fmt.Errorf("authenticate call for %s in ES %s: %w", username, esBuilder.Elasticsearch.Name, err)
 	}
 	if !auth.Enabled || !slices.Contains(auth.Roles, user.SuperUserBuiltinRole) {
-		return fmt.Errorf("agent user %s should not have the role %s", username, user.SuperUserBuiltinRole)
+		return fmt.Errorf("agent user %s should have the role %s", username, user.SuperUserBuiltinRole)
 	}
 	return nil
 }

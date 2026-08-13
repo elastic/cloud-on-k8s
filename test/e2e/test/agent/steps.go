@@ -275,9 +275,8 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 						return fmt.Errorf("authenticate call for %s in ES %s: %w", username, es.Name, err)
 					}
 					if !auth.Enabled || !slices.Contains(auth.Roles, user.AgentUserRole) {
-						return fmt.Errorf("agent user %s should not have the role %s", username, user.AgentUserRole)
+						return fmt.Errorf("agent user %s should have the role %s", username, user.AgentUserRole)
 					}
-					return nil
 				}
 				return nil
 			}),
