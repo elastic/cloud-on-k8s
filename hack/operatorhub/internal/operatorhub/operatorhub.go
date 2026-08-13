@@ -576,7 +576,7 @@ func splitRBACRules(rules []rbacv1.PolicyRule, resourceScopeMap map[schema.Group
 				groupResource := schema.GroupResource{Group: apiGroup, Resource: base}
 				clusterScoped, exists := resourceScopeMap[groupResource]
 				if !exists {
-					unknown = append(unknown, schema.GroupResource{Group: apiGroup, Resource: resource}.String())
+					unknown = append(unknown, groupResource.String())
 					continue
 				}
 				if clusterScoped {
