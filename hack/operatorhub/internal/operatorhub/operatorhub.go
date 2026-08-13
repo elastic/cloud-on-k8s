@@ -375,16 +375,12 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 
 		switch obj := runtimeObj.(type) {
 		case *apiextv1beta1.CustomResourceDefinition:
-			version := obj.Spec.Version //nolint:staticcheck // deprecated but present in older manifests
-			if len(obj.Spec.Versions) > 0 {
-				version = obj.Spec.Versions[0].Name
-			}
 			parts.crds[obj.Name] = &CRD{
 				Name:    obj.Name,
 				Group:   obj.Spec.Group,
 				Plural:  obj.Spec.Names.Plural,
 				Kind:    obj.Spec.Names.Kind,
-				Version: version,
+				Version: obj.Spec.Versions[0].Name,
 				Scope:   apiextv1.ResourceScope(obj.Spec.Scope),
 				Def:     yamlBytes,
 			}
