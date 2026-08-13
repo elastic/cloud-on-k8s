@@ -153,7 +153,7 @@ func TestSplitRBACRulesAgainstRealOperatorRBAC(t *testing.T) {
 	crdsYAML := filepath.Join("..", "..", "..", "..", "config", "crds.yaml")
 	crdsFile, err := os.Open(crdsYAML)
 	if err != nil {
-		t.Fatalf("opening %s: %v", crdsYAML, err)
+		t.Fatalf("opening %s: %v (run 'make operatorhub-unit-tests' from the repo root, or 'make generate-manifests' first)", crdsYAML, err)
 	}
 	defer crdsFile.Close()
 
@@ -167,7 +167,7 @@ func TestSplitRBACRulesAgainstRealOperatorRBAC(t *testing.T) {
 	operatorYAML := filepath.Join("..", "..", "..", "..", "config", "operator.yaml")
 	f, err := os.Open(operatorYAML)
 	if err != nil {
-		t.Fatalf("opening %s: %v", operatorYAML, err)
+		t.Fatalf("opening %s: %v (run 'make operatorhub-unit-tests' from the repo root, or 'make generate-manifests' first)", operatorYAML, err)
 	}
 	defer f.Close()
 
