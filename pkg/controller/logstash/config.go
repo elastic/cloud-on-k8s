@@ -40,26 +40,26 @@ const (
 	APIKeystorePassEnv     = "API_KEYSTORE_PASS" // #nosec G101
 )
 
-func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*settings.CanonicalConfig, configs.APIServer, error) {
+func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (configs.APIServer, error) {
 	defer tracing.Span(&params.Context)()
 
 	cfg, err := buildConfig(params, svcUseTLS)
 	if err != nil {
-		return nil, configs.APIServer{}, err
+		return configs.APIServer{}, err
 	}
 
 	apiServerConfig, err := resolveAPIServerConfig(cfg, params)
 	if err != nil {
-		return nil, configs.APIServer{}, err
+		return configs.APIServer{}, err
 	}
 
 	if err = checkTLSConfig(apiServerConfig, svcUseTLS); err != nil {
-		return nil, configs.APIServer{}, err
+		return configs.APIServer{}, err
 	}
 
 	cfgBytes, err := cfg.Render()
 	if err != nil {
-		return nil, configs.APIServer{}, err
+		return configs.APIServer{}, err
 	}
 
 	expected := corev1.Secret{
@@ -81,12 +81,21 @@ func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (*sett
 	}
 
 	if _, err = reconciler.ReconcileSecret(params.Context, params.Client, expected, &params.Logstash); err != nil {
-		return nil, configs.APIServer{}, err
+		return configs.APIServer{}, err
 	}
 
 	_, _ = configHash.Write(cfgBytes)
 
-	return cfg, apiServerConfig, nil
+	// include resolved credentials so that pods rotate when the backing Secret or ConfigMap changes;
+	// length-prefixed to avoid boundary ambiguity (e.g. ("a","bc") vs ("ab","c"))
+	if apiServerConfig.UsesBasicAuth() {
+		_, _ = fmt.Fprintf(configHash, "%d:%s%d:%s",
+			len(apiServerConfig.Username), apiServerConfig.Username,
+			len(apiServerConfig.Password), apiServerConfig.Password,
+		)
+	}
+
+	return apiServerConfig, nil
 }
 
 func buildConfig(params Params, useTLS bool) (*settings.CanonicalConfig, error) {
