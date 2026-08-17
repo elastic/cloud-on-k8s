@@ -257,7 +257,8 @@ var (
 					Privileges: []string{"auto_configure", "create_doc"},
 				},
 				{
-					// Catch-all: allows create_doc to pre-existing custom indices without granting auto_configure on *.
+					// Catch-all for custom indices not covered by the data stream patterns above.
+					// Kept as a separate entry so privileges can be adjusted independently per pattern.
 					Names:      []string{"*"},
 					Privileges: []string{"auto_configure", "create_doc"},
 				},
