@@ -442,6 +442,117 @@ func Test_amendBuilderForFleetMode(t *testing.T) {
 			}),
 		},
 		{
+			name: "running elastic agent, with fleet server, with es CA: single CA mount",
+			params: func() Params {
+				agent := agentv1alpha1.Agent{
+					ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+					Spec: agentv1alpha1.AgentSpec{
+						FleetServerEnabled: true,
+						ElasticsearchRefs: []agentv1alpha1.Output{{
+							ElasticsearchSelector: commonv1.ElasticsearchSelector{
+								ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "es-ns"},
+							},
+						}},
+					},
+				}
+				agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName: "es-auth-secret",
+					AuthSecretKey:  "user",
+					URL:            "https://es-es-http.es-ns.svc:9200",
+					CACertProvided: true,
+					CASecretName:   "es-es-ca",
+				})
+				return Params{
+					Context:      context.Background(),
+					AgentVersion: version.MinFor(9, 0, 0),
+					Agent:        agent,
+					Client: k8s.NewFakeClient(
+						&corev1.Service{
+							ObjectMeta: metav1.ObjectMeta{Name: "agent-agent-http", Namespace: "default"},
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{{Name: "https", Port: 8220}},
+							},
+						},
+						&corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "es-auth-secret", Namespace: "default"},
+							Data:       map[string][]byte{"user": []byte("password")},
+						},
+					),
+				}
+			}(),
+			fleetCerts: fleetCertsFixture,
+			wantPodSpec: generatePodSpec(func(ps corev1.PodSpec) corev1.PodSpec {
+				f := false
+				ps.Volumes = []corev1.Volume{
+					{
+						Name: "elasticsearch-certs",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "es-es-ca",
+								Optional:   &optional,
+							},
+						},
+					},
+					{
+						Name: "fleet-certs",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "fleet-certs-secret-name",
+								Optional:   &optional,
+							},
+						},
+					},
+				}
+				ps.Containers[0].VolumeMounts = []corev1.VolumeMount{
+					{
+						Name:      "elasticsearch-certs",
+						ReadOnly:  true,
+						MountPath: "/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs",
+					},
+					{
+						Name:      "fleet-certs",
+						ReadOnly:  true,
+						MountPath: "/usr/share/fleet-server/config/http-certs",
+					},
+				}
+				ps.Containers[0].Ports = []corev1.ContainerPort{
+					{Name: "https", ContainerPort: 8220, Protocol: corev1.ProtocolTCP},
+				}
+				ps.Containers[0].Env = []corev1.EnvVar{
+					{Name: "FLEET_CA", Value: "/usr/share/fleet-server/config/http-certs/ca.crt"},
+					{Name: "FLEET_SERVER_CERT", Value: "/usr/share/fleet-server/config/http-certs/tls.crt"},
+					{Name: "FLEET_SERVER_CERT_KEY", Value: "/usr/share/fleet-server/config/http-certs/tls.key"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_CA", Value: "/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_HOST", Value: "https://es-es-http.es-ns.svc:9200"},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_SERVER_ELASTICSEARCH_PASSWORD",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_ELASTICSEARCH_USERNAME", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "agent-agent-envvars"},
+						Key:                  "FLEET_SERVER_ELASTICSEARCH_USERNAME",
+						Optional:             &f,
+					}}},
+					{Name: "FLEET_SERVER_ENABLE", Value: "true"},
+					{Name: "FLEET_URL", Value: "https://agent-agent-http.default.svc:8220"},
+					{Name: "STATE_PATH", Value: "/usr/share/elastic-agent/state"},
+					{Name: "CONFIG_PATH", Value: "/usr/share/elastic-agent/state"},
+				}
+				ps.Containers[0].Resources = corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("200m"),
+					},
+				}
+				return ps
+			}),
+		},
+		{
 			name: "running elastic agent, with fleet server, with client auth required",
 			params: Params{
 				AgentVersion: version.MinFor(9, 0, 0),
@@ -934,10 +1045,10 @@ func Test_applyEnvVars(t *testing.T) {
 func Test_getVolumesFromAssociations(t *testing.T) {
 	// Note: we use setAssocConfs to set the AssociationConfs which are normally set in the reconciliation loop.
 	for _, tt := range []struct {
-		name                   string
-		params                 Params
-		setAssocConfs          func(assocs []commonv1.Association)
-		wantAssociationsLength int
+		name                              string
+		params                            Params
+		setAssocConfs                     func(assocs []commonv1.Association)
+		wantVolumesFromAssociationsLength int
 	}{
 		{
 			name: "fleet mode enabled, kb ref, fleet ref",
@@ -969,7 +1080,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "elasticsearch-es-ca",
 				})
 			},
-			wantAssociationsLength: 2,
+			wantVolumesFromAssociationsLength: 2,
 		},
 		{
 			name: "fleet mode enabled, kb no tls ref, fleet ref",
@@ -990,7 +1101,30 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
-			wantAssociationsLength: 1,
+			wantVolumesFromAssociationsLength: 1,
+		},
+		{
+			name: "fleet mode enabled, fleet server ref with CA and mTLS",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:           agentv1alpha1.AgentFleetMode,
+						KibanaRef:      commonv1.ObjectSelector{Name: "kibana"},
+						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet"}},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					// No CASecretName (Kibana)
+				})
+				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "fleet-agent-http-certs-public",
+					ClientCertSecretName: "fleet-client-cert",
+				})
+			},
+			// Fleet Server CA (1) + Fleet Server client cert for mTLS (1) = 2
+			wantVolumesFromAssociationsLength: 2,
 		},
 		{
 			name: "fleet mode enabled, es ref with client cert",
@@ -1022,15 +1156,99 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				})
 			},
 			// 1 CA vol for ES + 1 client cert vol for ES + 1 CA vol for Fleet Server = 3
-			wantAssociationsLength: 3,
+			wantVolumesFromAssociationsLength: 3,
+		},
+		{
+			name: "fleet server enabled, es ref with CA only",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:               agentv1alpha1.AgentFleetMode,
+						FleetServerEnabled: true,
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+								},
+								OutputName: "default",
+							},
+						},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName: "elasticsearch-es-ca",
+				})
+			},
+			// ES association skipped: applyRelatedEsAssoc mounts it as a plain secret volume.
+			wantVolumesFromAssociationsLength: 0,
+		},
+		{
+			name: "fleet server enabled, es ref with CA and client cert",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:               agentv1alpha1.AgentFleetMode,
+						FleetServerEnabled: true,
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+								},
+								OutputName: "default",
+							},
+						},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-ca",
+					ClientCertSecretName: "es-client-cert",
+				})
+			},
+			// ES association skipped: applyRelatedEsAssoc mounts both CA and client cert.
+			wantVolumesFromAssociationsLength: 0,
+		},
+		{
+			name: "fleet server enabled, es ref with CA and client cert, kb ref",
+			params: Params{
+				Agent: agentv1alpha1.Agent{
+					Spec: agentv1alpha1.AgentSpec{
+						Mode:               agentv1alpha1.AgentFleetMode,
+						FleetServerEnabled: true,
+						KibanaRef:          commonv1.ObjectSelector{Name: "kibana"},
+						ElasticsearchRefs: []agentv1alpha1.Output{
+							{
+								ElasticsearchSelector: commonv1.ElasticsearchSelector{
+									ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
+								},
+								OutputName: "default",
+							},
+						},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName: "kibana-kb-http-certs-public",
+				})
+				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-ca",
+					ClientCertSecretName: "es-client-cert",
+				})
+			},
+			// Kibana skipped (not pod-mounted); ES skipped (applyRelatedEsAssoc handles it).
+			wantVolumesFromAssociationsLength: 0,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			assocs := tt.params.Agent.GetAssociations()
 			tt.setAssocConfs(assocs)
-			associations, err := getVolumesFromAssociations(assocs)
+			associations, err := getVolumesFromAssociations(assocs, tt.params.Agent.Spec.FleetServerEnabled)
 			require.NoError(t, err)
-			require.Equal(t, tt.wantAssociationsLength, len(associations))
+			require.Equal(t, tt.wantVolumesFromAssociationsLength, len(associations))
 		})
 	}
 }
@@ -1968,8 +2186,8 @@ func Test_getFleetSetupFleetServerEnvVars(t *testing.T) {
 				"FLEET_SERVER_ELASTICSEARCH_USERNAME": "user",
 				"FLEET_SERVER_ELASTICSEARCH_PASSWORD": "password",
 				"FLEET_SERVER_ELASTICSEARCH_CA":       "/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt",
-				FleetServerESCert:                     path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.CertFileName),
-				FleetServerESCertKey:                  path.Join("/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs", certificates.KeyFileName),
+				FleetServerESCert:                     path.Join(FleetManagedAgentClientCertDir, certificates.CertFileName),
+				FleetServerESCertKey:                  path.Join(FleetManagedAgentClientCertDir, certificates.KeyFileName),
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -2109,6 +2327,50 @@ func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
 			}
 			got := fleetManagedAgentESClientCertSecretName(tt.params)
 			require.Equal(t, tt.wantSecretName, got)
+		})
+	}
+}
+
+func Test_shouldSkipVolumeMount(t *testing.T) {
+	for _, tt := range []struct {
+		name               string
+		assocType          commonv1.AssociationType
+		fleetServerEnabled bool
+		want               bool
+	}{
+		{
+			name:               "kibana is always skipped",
+			assocType:          commonv1.KibanaAssociationType,
+			fleetServerEnabled: false,
+			want:               true,
+		},
+		{
+			name:               "kibana is skipped even when fleet server enabled",
+			assocType:          commonv1.KibanaAssociationType,
+			fleetServerEnabled: true,
+			want:               true,
+		},
+		{
+			name:               "elasticsearch skipped when fleet server enabled",
+			assocType:          commonv1.ElasticsearchAssociationType,
+			fleetServerEnabled: true,
+			want:               true,
+		},
+		{
+			name:               "elasticsearch mounted when fleet server disabled",
+			assocType:          commonv1.ElasticsearchAssociationType,
+			fleetServerEnabled: false,
+			want:               false,
+		},
+		{
+			name:               "fleet server association always mounted",
+			assocType:          commonv1.FleetServerAssociationType,
+			fleetServerEnabled: false,
+			want:               false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, shouldSkipVolumeMount(tt.assocType, tt.fleetServerEnabled))
 		})
 	}
 }
