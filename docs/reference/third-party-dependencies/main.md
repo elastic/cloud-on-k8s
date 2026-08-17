@@ -48,7 +48,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
-| [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.11.1 | MIT |
+| [github.com/stretchr/testify](https://github.com/stretchr/testify) | v1.12.0 | MIT |
 | [go.elastic.co/apm/module/apmelasticsearch/v2](https://go.elastic.co/apm/module/apmelasticsearch/v2) | v2.7.12 | Apache-2.0 |
 | [go.elastic.co/apm/module/apmhttp/v2](https://go.elastic.co/apm/module/apmhttp/v2) | v2.7.12 | Apache-2.0 |
 | [go.elastic.co/apm/module/apmzap/v2](https://go.elastic.co/apm/module/apmzap/v2) | v2.7.12 | Apache-2.0 |
@@ -212,7 +212,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/spf13/afero](https://github.com/spf13/afero) | v1.15.0 | Apache-2.0 |
 | [github.com/spf13/cast](https://github.com/spf13/cast) | v1.10.0 | MIT |
 | [github.com/spiffe/go-spiffe/v2](https://github.com/spiffe/go-spiffe) | v2.7.0 | Apache-2.0 |
-| [github.com/stretchr/objx](https://github.com/stretchr/objx) | v0.5.2 | MIT |
+| [github.com/stretchr/objx](https://github.com/stretchr/objx) | v0.5.3 | MIT |
 | [github.com/subosito/gotenv](https://github.com/subosito/gotenv) | v1.6.0 | MIT |
 | [github.com/tidwall/gjson](https://github.com/tidwall/gjson) | v1.19.0 | MIT |
 | [github.com/tidwall/match](https://github.com/tidwall/match) | v1.1.1 | MIT |
