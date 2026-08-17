@@ -158,18 +158,20 @@ func TestLogstash_GetAssociations(t *testing.T) {
 				a0, ok := ca[0].(commonv1.AssociationWithUserRoleOverride)
 				require.True(t, ok)
 				require.Equal(t, "custom_role", a0.UserRoleOverride())
-				require.Equal(t, "default", a0.GetNamespace())
+				require.Equal(t, "default", a0.AssociationRef().GetNamespace())
 				a1, ok := ca[1].(commonv1.AssociationWithUserRoleOverride)
 				require.True(t, ok)
 				require.Equal(t, "", a1.UserRoleOverride())
-				require.Equal(t, "default", a1.GetNamespace())
+				require.Equal(t, "default", a1.AssociationRef().GetNamespace())
 			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			ls := Logstash{ObjectMeta: v1.ObjectMeta{Namespace: defaultNamespace}, Spec: LogstashSpec{ElasticsearchRefs: tt.refs}}
-			associations := ls.GetAssociations()
-			tt.assertAssociations(t, associations)
+			ls := Logstash{
+				ObjectMeta: v1.ObjectMeta{Namespace: defaultNamespace},
+				Spec:       LogstashSpec{ElasticsearchRefs: tt.refs},
+			}
+			tt.assertAssociations(t, ls.GetAssociations())
 		})
 	}
 }
