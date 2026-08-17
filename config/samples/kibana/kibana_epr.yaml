@@ -3,7 +3,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 9.5.0
+  version: 9.5.1
   nodeSets:
   - name: default
     count: 2
@@ -15,7 +15,7 @@ kind: PackageRegistry
 metadata:
   name: epr-sample
 spec:
-  version: 9.5.0
+  version: 9.5.1
   count: 1
 ---
 apiVersion: kibana.k8s.elastic.co/v1
@@ -23,7 +23,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 9.5.0
+  version: 9.5.1
   count: 1
   elasticsearchRef:
     name: elasticsearch-sample
