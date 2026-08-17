@@ -1103,3 +1103,136 @@ func Test_checkNoDowngrade(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkESRefsRole(t *testing.T) {
+	roleField := func(i int) *field.Path {
+		return field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("elasticsearchRole")
+	}
+
+	tests := []struct {
+		name string
+		a    *Agent
+		want field.ErrorList
+	}{
+		{
+			name: "no refs: OK",
+			a:    &Agent{Spec: AgentSpec{Mode: AgentStandaloneMode}},
+			want: nil,
+		},
+		{
+			name: "ref without role: OK",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}}},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "named ref with role in standalone mode: OK",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "secretName ref with role: forbidden",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+		{
+			name: "role in fleet mode: forbidden",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentFleetMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(0), "elasticsearchRole can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
+			},
+		},
+		{
+			name: "secretName ref with role in fleet mode: both errors",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentFleetMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(roleField(0), "elasticsearchRole can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
+			},
+		},
+		{
+			name: "multiple refs, only one with role: only that ref errors",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
+						OutputName:            "first",
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						OutputName:            "second",
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+		{
+			name: "multiple refs, both with roles, one valid one invalid: only invalid errors",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
+						OutputName:            "first",
+						ElasticsearchRole:     "valid_role",
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						OutputName:            "second",
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, checkESRefsRole(tt.a))
+		})
+	}
+}
