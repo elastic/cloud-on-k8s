@@ -842,19 +842,29 @@ func startOperator(ctx context.Context) error {
 		return fmt.Errorf("failed to add license check runnable: %w", err)
 	}
 
-	if err := mgr.Add(&asyncTasksRunnable{
+	if err := mgr.Add(&gcRunnable{
 		mgr:               mgr,
 		cfg:               cfg,
 		managedNamespaces: managedNamespaces,
 		operatorNamespace: operatorNamespace,
 		namespaceMatcher:  namespaceMatcher,
 		operatorInfo:      operatorInfo,
-		disableTelemetry:  viper.GetBool(operator.DisableTelemetryFlag),
-		telemetryInterval: viper.GetDuration(operator.TelemetryIntervalFlag),
 		tracer:            tracer,
 		dialer:            dialer,
 	}); err != nil {
 		return fmt.Errorf("failed to add async tasks runnable: %w", err)
+	}
+
+	reporter := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer, licensing.ResourceReporterFrequency)
+	if err := mgr.Add(reporter); err != nil {
+		return fmt.Errorf("failed to add license reporter runnable: %w", err)
+	}
+
+	if !viper.GetBool(operator.DisableTelemetryFlag) {
+		tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, viper.GetDuration(operator.TelemetryIntervalFlag), tracer)
+		if err := mgr.Add(&tr); err != nil {
+			return fmt.Errorf("failed to add telemetry runnable: %w", err)
+		}
 	}
 
 	errCh := make(chan error, 1)
@@ -907,46 +917,27 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 	return certificates.BuildCAFromFile(caDir)
 }
 
-// asyncTasksRunnable runs post-election tasks as a proper manager Runnable.
-// NeedLeaderElection() = true means controller-runtime calls Start only after both
-// cache sync and leader election complete, removing the need for manual
-// WaitForCacheSync and time.Sleep waits.
-type asyncTasksRunnable struct {
+// gcRunnable garbage-collects orphaned resources once after leader election completes.
+type gcRunnable struct {
 	mgr               manager.Manager
 	cfg               *rest.Config
 	managedNamespaces []string
 	operatorNamespace string
 	namespaceMatcher  *nsmatch.NamespaceMatcher
 	operatorInfo      about.OperatorInfo
-	disableTelemetry  bool
-	telemetryInterval time.Duration
 	tracer            *apm.Tracer
 	dialer            net.Dialer
 }
 
-func (r *asyncTasksRunnable) NeedLeaderElection() bool { return true }
+func (r *gcRunnable) NeedLeaderElection() bool { return true }
 
-func (r *asyncTasksRunnable) Start(ctx context.Context) error {
-	// NeedLeaderElection() = true of asyncTasksRunnable means controller-runtime only calls this Start
-	// after leader election is won, so no explicit leader-election wait is needed here.
+func (r *gcRunnable) Start(ctx context.Context) error {
 	metrics.Leader.WithLabelValues(string(r.operatorInfo.OperatorUUID), r.operatorNamespace).Set(1)
 
 	// The manager's Caches group has already synced before the LeaderElection
 	// group starts, and informers registered later are covered because cached
 	// reads block on their own informer inside Informers.Get, so no explicit
 	// cache wait is needed here.
-
-	go func() {
-		reporter := licensing.NewResourceReporter(r.mgr.GetClient(), r.operatorNamespace, r.tracer)
-		reporter.Start(ctx, licensing.ResourceReporterFrequency)
-	}()
-
-	if !r.disableTelemetry {
-		go func() {
-			tr := telemetry.NewReporter(r.operatorInfo, r.mgr.GetClient(), r.operatorNamespace, r.managedNamespaces, r.namespaceMatcher, r.telemetryInterval, r.tracer)
-			tr.Start(ctx)
-		}()
-	}
 
 	namespaces := r.managedNamespaces
 	if r.namespaceMatcher.SelectorEnabled() {
@@ -959,8 +950,8 @@ func (r *asyncTasksRunnable) Start(ctx context.Context) error {
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
 	gcCtx := tracing.NewContextTransaction(ctx, r.tracer, tracing.RunOnceTxType, "garbage-collection", nil)
-	defer tracing.EndContextTransaction(gcCtx)
 	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
+	defer tracing.EndContextTransaction(gcCtx)
 	if err := garbageCollectUsers(gcCtx, r.cfg, namespaces); err != nil {
 		return fmt.Errorf("user garbage collection failed: %w", err)
 	}

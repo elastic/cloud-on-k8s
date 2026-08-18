@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -86,6 +87,8 @@ func NewReporter(
 	}
 }
 
+var _ manager.Runnable = (*Reporter)(nil)
+
 type Reporter struct {
 	operatorInfo      about.OperatorInfo
 	client            k8s.Client
@@ -96,7 +99,9 @@ type Reporter struct {
 	tracer            *apm.Tracer
 }
 
-func (r *Reporter) Start(ctx context.Context) {
+func (r *Reporter) NeedLeaderElection() bool { return true }
+
+func (r *Reporter) Start(ctx context.Context) error {
 	ctx = ulog.InitInContext(ctx, "telemetry")
 	ticker := time.NewTicker(r.telemetryInterval)
 	defer ticker.Stop()
@@ -105,7 +110,7 @@ func (r *Reporter) Start(ctx context.Context) {
 		case <-ticker.C:
 			r.report(ctx)
 		case <-ctx.Done():
-			return
+			return nil
 		}
 	}
 }
