@@ -50,6 +50,11 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 }
 
 //nolint:thelper
+func TestRunnableLeaderElection(t *testing.T) {
+	assert.True(t, (&gcRunnable{}).NeedLeaderElection(), "gcRunnable must only run on the leader")
+	assert.False(t, (&licenseCheckRunnable{}).NeedLeaderElection(), "licenseCheckRunnable must run on every replica")
+}
+
 func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {

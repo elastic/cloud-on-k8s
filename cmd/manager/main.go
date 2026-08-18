@@ -705,7 +705,11 @@ func startOperator(ctx context.Context) error {
 	namespaceMatcher.SetCache(mgr.GetCache())
 
 	if probesEnabled {
-		if err := setupProbes(mgr, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
+		readyCh := make(chan struct{})
+		if err := mgr.Add(&cacheReadyRunnable{readyCh: readyCh}); err != nil {
+			return fmt.Errorf("failed to add cache ready runnable: %w", err)
+		}
+		if err := setupProbes(mgr, readyCh, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
 			return err
 		}
 	}
@@ -867,7 +871,7 @@ func startOperator(ctx context.Context) error {
 		}
 	}
 
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2) // two possible senders: cache timeout + mgr.Start
 	if cacheStartupTimeout := viper.GetDuration(operator.CacheStartupTimeoutFlag); cacheStartupTimeout > 0 {
 		go func() {
 			log.Info("Setting up cache startup timeout", "timeout", cacheStartupTimeout.String())
@@ -917,6 +921,8 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 	return certificates.BuildCAFromFile(caDir)
 }
 
+var _ manager.LeaderElectionRunnable = (*gcRunnable)(nil)
+
 // gcRunnable garbage-collects orphaned resources once after leader election completes.
 type gcRunnable struct {
 	mgr               manager.Manager
@@ -963,6 +969,8 @@ func (r *gcRunnable) Start(ctx context.Context) error {
 	}
 	return nil
 }
+
+var _ manager.LeaderElectionRunnable = (*licenseCheckRunnable)(nil)
 
 // licenseCheckRunnable validates the operator license key on all pods once the cache is synced.
 // NeedLeaderElection() = false ensures it runs on every replica, not only the elected leader.

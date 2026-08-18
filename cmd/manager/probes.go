@@ -9,29 +9,40 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+var _ manager.LeaderElectionRunnable = (*cacheReadyRunnable)(nil)
+
+// cacheReadyRunnable signals via readyCh that all pre-registered informers have synced.
+// Informers are pre-registered in registerWebhookInformers and newLicenseCheckRunnable.
+// NeedLeaderElection=false ensures it runs on every replica, including non-leaders that serve webhook traffic.
+type cacheReadyRunnable struct{ readyCh chan struct{} }
+
+func (r *cacheReadyRunnable) NeedLeaderElection() bool { return false }
+
+func (r *cacheReadyRunnable) Start(_ context.Context) error {
+	close(r.readyCh)
+	return nil
+}
+
 // setupProbes configures the manager's liveness and readiness checks.
 // Liveness reports whether the process can serve requests. Readiness is delayed
-// until the local cache has synced and, when enabled, the webhook server has
-// started. Cache readiness runs on every replica because non-leaders may serve
-// webhook requests.
-func setupProbes(mgr manager.Manager, webhookEnabled bool) error {
+// until cacheReady is closed (signaled by cacheReadyRunnable) and, when enabled,
+// the webhook server has started.
+func setupProbes(mgr manager.Manager, cacheReady <-chan struct{}, webhookEnabled bool) error {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to set up health check: %w", err)
 	}
-	if err := mgr.AddReadyzCheck("cache", func(req *http.Request) error {
-		// Wait 2 seconds, we want to return a feedback to the kubelet in timely fashion.
-		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
-		defer cancel()
-		if !mgr.GetCache().WaitForCacheSync(ctx) {
+	if err := mgr.AddReadyzCheck("cache", func(_ *http.Request) error {
+		select {
+		case <-cacheReady:
+			return nil
+		default:
 			return errors.New("cache not synced")
 		}
-		return nil
 	}); err != nil {
 		return fmt.Errorf("failed to set up cache readiness check: %w", err)
 	}

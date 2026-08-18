@@ -5,27 +5,17 @@
 package manager
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 )
-
-type probeTestCache struct {
-	cache.Cache
-	synced bool
-}
-
-func (c *probeTestCache) WaitForCacheSync(context.Context) bool {
-	return c.synced
-}
 
 type probeTestWebhook struct {
 	crwebhook.Server
@@ -41,7 +31,6 @@ type probeTestManager struct {
 	healthChecks map[string]healthz.Checker
 	readyChecks  map[string]healthz.Checker
 	runnables    []ctrlmanager.Runnable
-	cache        cache.Cache
 	webhook      crwebhook.Server
 	healthErr    error
 	readyErrors  map[string]error
@@ -53,7 +42,6 @@ func newProbeTestManager() *probeTestManager {
 		healthChecks: make(map[string]healthz.Checker),
 		readyChecks:  make(map[string]healthz.Checker),
 		readyErrors:  make(map[string]error),
-		cache:        &probeTestCache{synced: true},
 		webhook: &probeTestWebhook{
 			checker: healthz.Ping,
 		},
@@ -84,12 +72,27 @@ func (m *probeTestManager) Add(runnable ctrlmanager.Runnable) error {
 	return nil
 }
 
-func (m *probeTestManager) GetCache() cache.Cache {
-	return m.cache
-}
-
 func (m *probeTestManager) GetWebhookServer() crwebhook.Server {
 	return m.webhook
+}
+
+func closedCh() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
+func TestCacheReadyRunnable(t *testing.T) {
+	r := &cacheReadyRunnable{readyCh: make(chan struct{})}
+	assert.False(t, r.NeedLeaderElection(), "must run on every replica, not only the leader")
+
+	require.NoError(t, r.Start(t.Context()))
+
+	select {
+	case <-r.readyCh:
+	default:
+		t.Fatal("readyCh should be closed after Start")
+	}
 }
 
 func TestSetupProbes(t *testing.T) {
@@ -147,7 +150,7 @@ func TestSetupProbes(t *testing.T) {
 				tt.configure(mgr)
 			}
 
-			err := setupProbes(mgr, tt.webhookEnabled)
+			err := setupProbes(mgr, closedCh(), tt.webhookEnabled)
 
 			if tt.wantErrContains == "" {
 				require.NoError(t, err)
@@ -165,38 +168,31 @@ func TestSetupProbes(t *testing.T) {
 func TestCacheReadinessProbe(t *testing.T) {
 	tests := []struct {
 		name            string
-		cacheSync       bool
-		cancelCtx       bool
+		cacheReady      bool
 		wantErrContains string
 	}{
 		{
-			name:      "ready when cache synced",
-			cacheSync: true,
+			name:       "ready when channel is closed",
+			cacheReady: true,
 		},
 		{
-			name:            "not ready when cache not synced",
-			wantErrContains: "cache not synced",
-		},
-		{
-			name:            "not ready when context cancelled",
-			cancelCtx:       true,
+			name:            "not ready when channel is open",
 			wantErrContains: "cache not synced",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mgr := newProbeTestManager()
-			mgr.cache = &probeTestCache{synced: tt.cacheSync}
-			require.NoError(t, setupProbes(mgr, false))
-
-			ctx, cancel := context.WithCancel(t.Context())
-			if tt.cancelCtx {
-				cancel()
+			var ch <-chan struct{}
+			if tt.cacheReady {
+				ch = closedCh()
 			} else {
-				defer cancel()
+				ch = make(chan struct{})
 			}
-			req := httptest.NewRequest(http.MethodGet, "/readyz", nil).WithContext(ctx)
+			mgr := newProbeTestManager()
+			require.NoError(t, setupProbes(mgr, ch, false))
+
+			req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 			err := mgr.readyChecks["cache"](req)
 			if tt.wantErrContains != "" {
 				require.ErrorContains(t, err, tt.wantErrContains)

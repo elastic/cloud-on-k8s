@@ -16,7 +16,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-var _ manager.Runnable = ResourceReporter{}
+var _ manager.LeaderElectionRunnable = ResourceReporter{}
 
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter
 const ResourceReporterFrequency = 2 * time.Minute

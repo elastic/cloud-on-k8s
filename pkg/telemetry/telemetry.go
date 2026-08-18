@@ -87,7 +87,7 @@ func NewReporter(
 	}
 }
 
-var _ manager.Runnable = (*Reporter)(nil)
+var _ manager.LeaderElectionRunnable = (*Reporter)(nil)
 
 type Reporter struct {
 	operatorInfo      about.OperatorInfo

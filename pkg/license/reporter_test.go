@@ -277,8 +277,10 @@ func Test_Start(t *testing.T) {
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
+	reporter := NewResourceReporter(k8sClient, operatorNs, nil, refreshPeriod)
+	assert.True(t, reporter.NeedLeaderElection(), "ResourceReporter must only run on the leader")
 	go func() {
-		_ = NewResourceReporter(k8sClient, operatorNs, nil, refreshPeriod).Start(context.Background())
+		_ = reporter.Start(context.Background())
 	}()
 
 	// check that the licensing config map exists
