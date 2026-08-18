@@ -24,12 +24,12 @@ func mergeKubeconfig(kubeConfig string) error {
 	}
 	// 2. is there any existing kubeconfig?
 	hostKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) {
+	if _, err := os.Stat(hostKubeconfig); os.IsNotExist(err) { //nolint:gosec
 		// if no just copy it over
 		return copyFile(kubeConfig, hostKubeconfig)
 	}
 	// 3. merge and write back atomically.
-	log.Printf("Merging kubeconfig %s into %s", kubeConfig, hostKubeconfig)
+	log.Printf("Merging kubeconfig %s into %s", kubeConfig, hostKubeconfig) //nolint:gosec
 	return mergeKubeconfigFiles(kubeConfig, hostKubeconfig)
 }
 
@@ -58,18 +58,18 @@ func mergeKubeconfigFiles(newPath, existingPath string) error {
 		return err
 	}
 	if _, err := tmp.Write(data); err != nil {
-		os.Remove(tmp.Name())
+		os.Remove(tmp.Name()) //nolint:gosec
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmp.Name())
+		os.Remove(tmp.Name()) //nolint:gosec
 		return err
 	}
-	if err := os.Chmod(tmp.Name(), 0600); err != nil {
-		os.Remove(tmp.Name())
+	if err := os.Chmod(tmp.Name(), 0600); err != nil { //nolint:gosec
+		os.Remove(tmp.Name()) //nolint:gosec
 		return err
 	}
-	return os.Rename(tmp.Name(), existingPath)
+	return os.Rename(tmp.Name(), existingPath) //nolint:gosec
 }
 
 func removeKubeconfig(context, clusterName, userName string) error {
@@ -99,7 +99,7 @@ func removeKubeconfig(context, clusterName, userName string) error {
 }
 
 func copyFile(src, tgt string) error {
-	if err := os.MkdirAll(filepath.Dir(tgt), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(tgt), os.ModePerm); err != nil { //nolint:gosec
 		return err
 	}
 	cmd := fmt.Sprintf("cp %s %s", src, tgt)

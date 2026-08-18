@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"slices"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
@@ -47,8 +48,8 @@ func unmountedClaims(ns esv1.NodeSet) []corev1.PersistentVolumeClaim {
 	templates := ns.VolumeClaimTemplates
 	for _, c := range ns.PodTemplate.Spec.Containers {
 		for _, vm := range c.VolumeMounts {
-			for i := len(templates) - 1; i >= 0; i-- {
-				if templates[i].Name == vm.Name {
+			for i, template := range slices.Backward(templates) {
+				if template.Name == vm.Name {
 					templates = append(templates[:i], templates[i+1:]...)
 				}
 			}

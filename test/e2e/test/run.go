@@ -4,7 +4,10 @@
 
 package test
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func shouldSkipTest(builders ...Builder) bool {
 	for _, b := range builders {
@@ -50,8 +53,8 @@ func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	// Trigger something
 	steps = steps.WithSteps(f(k))
 
-	for idx := len(builders) - 1; idx >= 0; idx-- {
-		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
+	for _, builder := range slices.Backward(builders) {
+		steps = steps.WithSteps(builder.DeletionTestSteps(k))
 	}
 
 	return steps
@@ -80,8 +83,8 @@ func BeforeAfterSequence(before StepsFunc, after StepsFunc, builders ...Builder)
 	for _, b := range builders {
 		steps = steps.WithSteps(CheckTestSteps(b, k))
 	}
-	for idx := len(builders) - 1; idx >= 0; idx-- {
-		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
+	for _, builder := range slices.Backward(builders) {
+		steps = steps.WithSteps(builder.DeletionTestSteps(k))
 	}
 
 	if after != nil {

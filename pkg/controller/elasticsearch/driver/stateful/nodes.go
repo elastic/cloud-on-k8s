@@ -113,8 +113,7 @@ func (d *Driver) reconcileNodeSpecs(
 	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
 		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionUpscale, fmt.Sprintf("Failed to apply spec change: %v", err))
-		var podTemplateErr *sset.PodTemplateError
-		if errors.As(err, &podTemplateErr) {
+		if _, ok := errors.AsType[*sset.PodTemplateError](err); ok {
 			// An error has been detected in one of the pod templates, let's update the phase to "invalid"
 			reconcileState.UpdateElasticsearchInvalidWithEvent(events.EventActionUpscale, err.Error())
 		}

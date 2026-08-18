@@ -29,7 +29,7 @@ func NewHTTPClient(caCerts []*x509.Certificate) *http.Client {
 		certPool.AddCert(c)
 	}
 
-	transport.TLSClientConfig = &tls.Config{ //nolint:gosec
+	transport.TLSClientConfig = &tls.Config{
 		RootCAs: certPool,
 	}
 	client.Transport = &transport

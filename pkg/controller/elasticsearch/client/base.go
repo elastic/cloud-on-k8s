@@ -84,7 +84,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 		"es_name", c.es.Name,
 		"client_cert", c.clientCert != nil,
 	)
-	response, err := c.HTTP.Do(withContext)
+	response, err := c.HTTP.Do(withContext) //nolint:gosec
 	if err != nil {
 		return response, newDecoratedHTTPError(request, err)
 	}

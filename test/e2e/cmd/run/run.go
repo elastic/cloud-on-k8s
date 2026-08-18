@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"text/template"
@@ -832,8 +833,7 @@ func (h *helper) runCleanup() {
 	}
 
 	// run the cleanup functions in the reverse order they were added
-	for i := len(h.cleanupFuncs) - 1; i >= 0; i-- {
-		cf := h.cleanupFuncs[i]
+	for _, cf := range slices.Backward(h.cleanupFuncs) {
 		cf()
 	}
 }

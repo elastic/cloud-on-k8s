@@ -101,8 +101,8 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 }
 
 func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList {
-	var errs field.ErrorList
 	unsupported := config.HasKeys(esv1.UnsupportedSettings)
+	errs := make(field.ErrorList, 0, len(unsupported))
 	for _, setting := range unsupported {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
 	}
@@ -225,11 +225,13 @@ func collectFIPSState(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) 
 //   - NotIn on the topology key may make pods unschedulable depending on actual node
 //     labels, but cannot be fully validated without cluster topology knowledge.
 func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
-	var warnings field.ErrorList
-	for _, ref := range findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpDoesNotExist) {
+	doesNotExist := findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpDoesNotExist)
+	notIn := findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpNotIn)
+	warnings := make(field.ErrorList, 0, len(doesNotExist)+len(notIn))
+	for _, ref := range doesNotExist {
 		warnings = append(warnings, field.Invalid(ref.path, ref.topologyKey, zoneAwarenessAffinityDoesNotExistWarningMsg))
 	}
-	for _, ref := range findNodeSelectorExpressionsForZoneAwarenessTopologyKey(es, corev1.NodeSelectorOpNotIn) {
+	for _, ref := range notIn {
 		warnings = append(warnings, field.Invalid(ref.path, ref.topologyKey, zoneAwarenessAffinityNotInWarningMsg))
 	}
 	return warnings

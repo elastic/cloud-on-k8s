@@ -192,7 +192,7 @@ func TestCacheReadinessProbe(t *testing.T) {
 			mgr := newProbeTestManager()
 			require.NoError(t, setupProbes(mgr, ch, false))
 
-			req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/readyz", nil)
 			err := mgr.readyChecks["cache"](req)
 			if tt.wantErrContains != "" {
 				require.ErrorContains(t, err, tt.wantErrContains)

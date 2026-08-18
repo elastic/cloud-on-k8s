@@ -163,7 +163,6 @@ func getDashboardCheck(esBuilder elasticsearch.Builder, kbBuilder kibana.Builder
 						if dashboards.Total != 0 && !expectDashboards {
 							return fmt.Errorf("expected no %s dashboards, but found some", beat)
 						}
-
 					}
 					return nil
 				}),

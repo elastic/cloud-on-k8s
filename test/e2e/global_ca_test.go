@@ -33,7 +33,6 @@ import (
 )
 
 func TestGlobalCA(t *testing.T) {
-
 	// Skip if it is the resilience pipeline because the ChaosJob can prevent
 	// assert_operator_has_been_restarted_once_more to pass when it deletes an operator Pod
 	// exactly on restart.
@@ -128,7 +127,6 @@ func TestGlobalCA(t *testing.T) {
 							return fmt.Errorf("operator restart count was %d but expected at least %d", newCount, restartCount+1)
 						}
 						return nil
-
 					}),
 				},
 			}

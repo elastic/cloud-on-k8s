@@ -5,6 +5,7 @@
 package test
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -32,8 +33,8 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 	}
 
 	// Delete using the original builder (so that we can use it as a mutation builder as well)
-	for idx := len(creationBuilders) - 1; idx >= 0; idx-- {
-		steps = steps.WithSteps(creationBuilders[idx].DeletionTestSteps(k))
+	for _, creationBuilder := range slices.Backward(creationBuilders) {
+		steps = steps.WithSteps(creationBuilder.DeletionTestSteps(k))
 	}
 
 	steps.RunSequential(t)
@@ -70,8 +71,8 @@ func RunMutationsWhileWatching(t *testing.T, creationBuilders []Builder, mutatio
 	}
 
 	// Delete using the original builder (so that we can use it as a mutation builder as well)
-	for idx := len(creationBuilders) - 1; idx >= 0; idx-- {
-		steps = steps.WithSteps(creationBuilders[idx].DeletionTestSteps(k))
+	for _, creationBuilder := range slices.Backward(creationBuilders) {
+		steps = steps.WithSteps(creationBuilder.DeletionTestSteps(k))
 	}
 
 	steps.RunSequential(t)

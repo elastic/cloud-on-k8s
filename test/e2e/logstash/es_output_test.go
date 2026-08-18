@@ -20,7 +20,6 @@ import (
 
 // TestLogstashEsOutput Logstash ingest events to Elasticsearch. Metrics should have `events.out` > 0.
 func TestLogstashEsOutput(t *testing.T) {
-
 	es := elasticsearch.NewBuilderWithoutSuffix("test-es").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
