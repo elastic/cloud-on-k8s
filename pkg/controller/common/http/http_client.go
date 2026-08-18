@@ -46,7 +46,7 @@ func ClientWithCert(dialer net.Dialer, caCerts []*x509.Certificate, clientCert *
 			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
 			InsecureSkipVerify: true, //nolint:gosec
-			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error { //nolint:gosec
 				return errors.New("tls: verify peer certificate not setup")
 			},
 		},
@@ -66,7 +66,7 @@ func ClientWithCert(dialer net.Dialer, caCerts []*x509.Certificate, clientCert *
 		transportConfig.TLSClientConfig.Certificates = []tls.Certificate{*clientCert}
 	}
 
-	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error { //nolint:gosec
 		if verifiedChains != nil {
 			return errors.New("tls: non-nil verifiedChains argument breaks crypto/tls.Config.VerifyPeerCertificate contract")
 		}

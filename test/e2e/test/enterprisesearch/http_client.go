@@ -72,7 +72,7 @@ func (e EnterpriseSearchClient) doRequest(request *http.Request) ([]byte, error)
 	ctx, cancel := context.WithTimeout(context.Background(), ReqTimeout)
 	defer cancel()
 
-	resp, err := e.httpClient.Do(request.WithContext(ctx))
+	resp, err := e.httpClient.Do(request.WithContext(ctx)) //nolint:gosec
 	if err != nil {
 		return nil, err
 	}

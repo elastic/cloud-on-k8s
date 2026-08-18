@@ -17,39 +17,40 @@ import (
 )
 
 func TestResults(t *testing.T) {
+	requeueResult := reconcile.Result{Requeue: true} //nolint:staticcheck // keep testing deprecated Requeue field support
 	args := []struct {
 		kind   resultKind
 		result reconcile.Result
 	}{
-		{kind: noqueueKind, result: reconcile.Result{}},                                               // 0
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2
-		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 3
+		{kind: noqueueKind, result: reconcile.Result{}},                                // 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2
+		{kind: genericKind, result: requeueResult},                                     // 3
 	}
 
 	wantRes := []struct {
 		kind   resultKind
 		result reconcile.Result
 	}{
-		{kind: noqueueKind, result: reconcile.Result{}},                                               // 0 & 0
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 0 & 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 0 & 2
-		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 0 & 3
+		{kind: noqueueKind, result: reconcile.Result{}},                                // 0 & 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 0 & 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 0 & 2
+		{kind: genericKind, result: requeueResult},                                     // 0 & 3
 
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 0
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 1
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 2
-		{kind: genericKind, result: reconcile.Result{Requeue: true}},                   // 1 & 3
+		{kind: genericKind, result: requeueResult},                                     // 1 & 3
 
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2 & 0
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 2 & 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2 & 2
-		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 2 & 3
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2 & 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 2 & 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2 & 2
+		{kind: genericKind, result: requeueResult},                                     // 2 & 3
 
-		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 0
-		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 1
-		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 2
-		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 3
+		{kind: genericKind, result: requeueResult}, // 3 & 0
+		{kind: genericKind, result: requeueResult}, // 3 & 1
+		{kind: genericKind, result: requeueResult}, // 3 & 2
+		{kind: genericKind, result: requeueResult}, // 3 & 3
 	}
 
 	for i, arg := range args {
@@ -91,6 +92,7 @@ func TestResults(t *testing.T) {
 }
 
 func TestResultsAggregate(t *testing.T) {
+	requeueResult := reconcile.Result{Requeue: true} //nolint:staticcheck // keep testing deprecated Requeue field support
 	testCases := []struct {
 		name    string
 		results *Results
@@ -103,8 +105,8 @@ func TestResultsAggregate(t *testing.T) {
 		},
 		{
 			name:    "generic result",
-			results: &Results{currResult: ReconciliationState{Result: reconcile.Result{Requeue: true}}, currKind: genericKind},
-			want:    reconcile.Result{Requeue: true},
+			results: &Results{currResult: ReconciliationState{Result: requeueResult}, currKind: genericKind},
+			want:    requeueResult,
 		},
 		{
 			name:    "specific result",
@@ -173,8 +175,7 @@ func TestResults_IsReconciled(t *testing.T) {
 			name: "Forced requeue",
 			results: (&Results{}).
 				WithResult(reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 0,
+					Requeue: true, //nolint:staticcheck // testing deprecated Requeue field is still handled
 				}).
 				WithReconciliationState(RequeueAfter(time.Duration(84)).ReconciliationComplete()),
 			wantReconciled: false,
@@ -232,21 +233,21 @@ func TestResults_WithRequeue(t *testing.T) {
 			args: args{
 				requeueAfter: nil,
 			},
-			want: reconcile.Result{Requeue: false, RequeueAfter: 10 * time.Second},
+			want: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
 			name: "0s requeue is forced to default requeue",
 			args: args{
 				requeueAfter: []time.Duration{0},
 			},
-			want: reconcile.Result{Requeue: false, RequeueAfter: 10 * time.Second},
+			want: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
 			name: "custom requeue",
 			args: args{
 				requeueAfter: []time.Duration{15 * time.Second},
 			},
-			want: reconcile.Result{Requeue: false, RequeueAfter: 15 * time.Second},
+			want: reconcile.Result{RequeueAfter: 15 * time.Second},
 		},
 	}
 	for _, tt := range tests {

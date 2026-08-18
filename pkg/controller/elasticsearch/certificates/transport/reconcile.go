@@ -149,7 +149,7 @@ func reconcileNodeSetTransportCertificatesSecrets(
 		}
 
 		// get the pod name from the secret key name (the first segment before the ".")
-		podNameForKey := strings.SplitN(secretDataKey, ".", 2)[0]
+		podNameForKey, _, _ := strings.Cut(secretDataKey, ".")
 
 		if _, ok := podsByName[podNameForKey]; !ok {
 			// pod no longer exists, so the element is safe to delete.

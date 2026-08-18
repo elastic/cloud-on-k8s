@@ -112,7 +112,6 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 		})
 	}
-
 }
 
 func TestHeartbeatConfig(t *testing.T) {

@@ -126,7 +126,7 @@ func (c *CanonicalConfig) String(key string) (string, error) {
 }
 
 func (c *CanonicalConfig) UnpackChild(key string, cfg any) error {
-	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
+	if reflect.ValueOf(cfg).Kind() != reflect.Pointer {
 		panic("UnpackChild expects a struct pointer as argument")
 	}
 
@@ -140,7 +140,7 @@ func (c *CanonicalConfig) UnpackChild(key string, cfg any) error {
 
 // Unpack returns a typed config given a struct pointer.
 func (c *CanonicalConfig) Unpack(cfg any) error {
-	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
+	if reflect.ValueOf(cfg).Kind() != reflect.Pointer {
 		panic("Unpack expects a struct pointer as argument")
 	}
 	return c.asUCfg().Unpack(cfg, Options...)

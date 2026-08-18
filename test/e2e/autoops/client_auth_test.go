@@ -11,6 +11,9 @@ import (
 	"fmt"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -18,8 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/autoops"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // TestClientAuthRequiredTransition tests that when an Elasticsearch cluster has client authentication enabled,

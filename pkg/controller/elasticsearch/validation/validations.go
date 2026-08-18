@@ -445,7 +445,6 @@ func validSanIP(es esv1.Elasticsearch) field.ErrorList {
 }
 
 func checkNodeSetNameUniqueness(es esv1.Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
 	nodeSets := es.Spec.NodeSets
 	names := make(map[string]struct{})
 	duplicates := make(map[string]struct{})
@@ -455,6 +454,7 @@ func checkNodeSetNameUniqueness(es esv1.Elasticsearch) field.ErrorList {
 		}
 		names[nodeSet.Name] = struct{}{}
 	}
+	errs := make(field.ErrorList, 0, len(duplicates))
 	for _, dupe := range duplicates {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), dupe, duplicateNodeSets))
 	}
