@@ -91,8 +91,7 @@ func setupWebhook(
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, params.NamespaceMatcher, clientset, tracer); err != nil {
-			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
+			return fmt.Errorf("failed to setup webhook certificates: %w", err)
 		}
 	}
 
@@ -142,7 +141,7 @@ func setupWebhook(
 	})
 	if err != nil {
 		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
-		os.Exit(1)
+		return fmt.Errorf("timeout waiting for webhook certificate at %s: %w", keyPath, err)
 	}
 	return nil
 }
