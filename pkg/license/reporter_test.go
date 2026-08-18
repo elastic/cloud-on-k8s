@@ -277,7 +277,9 @@ func Test_Start(t *testing.T) {
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
-	go NewResourceReporter(k8sClient, operatorNs, nil, refreshPeriod).Start(context.Background())
+	go func() {
+		_ = NewResourceReporter(k8sClient, operatorNs, nil, refreshPeriod).Start(context.Background())
+	}()
 
 	// check that the licensing config map exists
 	assert.Eventually(t, func() bool {
