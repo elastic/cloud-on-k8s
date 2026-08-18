@@ -6,6 +6,7 @@ package logstash
 
 import (
 	"context"
+	"hash/fnv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -907,6 +908,90 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 			assert.Equal(t, tt.want.AuthType, got.AuthType)
 			assert.Equal(t, tt.want.Username, got.Username)
 			assert.Equal(t, tt.want.Password, got.Password)
+		})
+	}
+}
+
+// Test_reconcileConfig_credentialHash verifies that reconcileConfig includes the resolved
+// credentials in the config hash so pods roll on credential rotation. Credentials are
+// injected via pod env vars so they appear as ${VAR} in cfgBytes — the hash difference
+// comes solely from the credential-hashing block, not from the raw config bytes.
+func Test_reconcileConfig_credentialHash(t *testing.T) {
+	buildHash := func(t *testing.T, username, password string) uint32 {
+		t.Helper()
+		h := fnv.New32a()
+		params := Params{
+			Context:       context.Background(),
+			Client:        k8s.NewFakeClient(),
+			EventRecorder: toolsevents.NewFakeRecorder(10),
+			Watches:       watches.NewDynamicWatches(),
+			Logstash: v1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{Name: "ls", Namespace: "ns"},
+				Spec: v1alpha1.LogstashSpec{
+					Config: &commonv1.Config{Data: map[string]any{
+						"api.auth.type":           "basic",
+						"api.auth.basic.username": "${API_USERNAME}",
+						"api.auth.basic.password": "${API_PASSWORD}",
+					}},
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name: "logstash",
+								Env: []corev1.EnvVar{
+									{Name: "API_USERNAME", Value: username},
+									{Name: "API_PASSWORD", Value: password},
+								},
+							}},
+						},
+					},
+				},
+			},
+		}
+		_, err := reconcileConfig(params, false, h)
+		require.NoError(t, err)
+		return h.Sum32()
+	}
+
+	tests := []struct {
+		name      string
+		username1 string
+		password1 string
+		username2 string
+		password2 string
+		wantEqual bool
+	}{
+		{
+			name:      "same credentials produce the same hash",
+			username1: "user", password1: "pass",
+			username2: "user", password2: "pass",
+			wantEqual: true,
+		},
+		{
+			name:      "different password changes the hash",
+			username1: "user", password1: "pass1",
+			username2: "user", password2: "pass2",
+		},
+		{
+			name:      "different username changes the hash",
+			username1: "user1", password1: "pass",
+			username2: "user2", password2: "pass",
+		},
+		{
+			name:      "boundary collision is avoided: (a,bc) vs (ab,c)",
+			username1: "a", password1: "bc",
+			username2: "ab", password2: "c",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h1 := buildHash(t, tt.username1, tt.password1)
+			h2 := buildHash(t, tt.username2, tt.password2)
+			if tt.wantEqual {
+				assert.Equal(t, h1, h2)
+			} else {
+				assert.NotEqual(t, h1, h2)
+			}
 		})
 	}
 }

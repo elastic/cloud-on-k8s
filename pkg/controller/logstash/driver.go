@@ -127,7 +127,7 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 
 	configHash := fnv.New32a()
 
-	if _, params.APIServerConfig, err = reconcileConfig(params, apiSvcTLS.Enabled(), configHash); err != nil {
+	if params.APIServerConfig, err = reconcileConfig(params, apiSvcTLS.Enabled(), configHash); err != nil {
 		return results.WithError(err), params.Status
 	}
 

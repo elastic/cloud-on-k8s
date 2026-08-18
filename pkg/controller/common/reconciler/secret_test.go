@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -132,6 +133,108 @@ func TestReconcileSecret(t *testing.T) {
 				require.Equal(t, tt.want.Annotations, secret.Annotations)
 				require.Equal(t, tt.want.Labels, secret.Labels)
 			}
+		})
+	}
+}
+
+func TestWithAnnotationsToRemove(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		existing         *corev1.Secret
+		expected         *corev1.Secret
+		keysToRemove     []string
+		wantAnnotations  map[string]string
+		wantUpdateCalled bool
+	}{
+		{
+			name: "annotation removed from pre-existing secret",
+			existing: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			expected:     createSecret("s", sampleData, nil, nil),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+			wantUpdateCalled: true,
+		},
+		{
+			name: "no spurious update when annotation is in expected but already absent from reconciled",
+			existing: createSecret("s", sampleData,
+				map[string]string{commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue},
+				map[string]string{"keep": "keep-me"},
+			),
+			expected: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+			wantUpdateCalled: false,
+		},
+		{
+			name: "no spurious update when annotation is absent from pre-existing secret",
+			existing: createSecret("s", sampleData,
+				map[string]string{commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue},
+				map[string]string{"keep": "keep-me"},
+			),
+			expected:     createSecret("s", sampleData, nil, nil),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+			wantUpdateCalled: false,
+		},
+		{
+			name:            "new secret created without the listed annotation",
+			existing:        nil,
+			expected:        createSecret("s", sampleData, nil, nil),
+			keysToRemove:    []string{"to-remove"},
+			wantAnnotations: nil,
+		},
+		{
+			name:     "annotation stripped from expected before create",
+			existing: nil,
+			expected: createSecret("s", sampleData, nil, map[string]string{
+				"to-remove": "leaked-value",
+				"keep":      "keep-me",
+			}),
+			keysToRemove: []string{"to-remove"},
+			wantAnnotations: map[string]string{
+				"keep": "keep-me",
+			},
+		},
+		{
+			name:             "multiple keys removed in one call",
+			existing:         createSecret("s", sampleData, nil, map[string]string{"a": "1", "b": "2", "c": "3"}),
+			expected:         createSecret("s", sampleData, nil, nil),
+			keysToRemove:     []string{"a", "b"},
+			wantAnnotations:  map[string]string{"c": "3"},
+			wantUpdateCalled: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			updateCalled := 0
+			builder := k8s.NewFakeClientBuilder()
+			if tt.existing != nil {
+				builder = k8s.NewFakeClientBuilder(tt.existing)
+			}
+			c := builder.WithInterceptorFuncs(interceptor.Funcs{
+				Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+					updateCalled++
+					return cl.Update(ctx, obj, opts...)
+				},
+			}).Build()
+			_, err := ReconcileSecret(t.Context(), c, *tt.expected, nil, WithAnnotationsToRemove(tt.keysToRemove...))
+			require.NoError(t, err)
+
+			var got corev1.Secret
+			require.NoError(t, c.Get(t.Context(), k8s.ExtractNamespacedName(tt.expected), &got))
+			assert.Equal(t, tt.wantAnnotations, got.Annotations)
+			assert.Equal(t, tt.wantUpdateCalled, updateCalled > 0, "unexpected Update call count: %d", updateCalled)
 		})
 	}
 }

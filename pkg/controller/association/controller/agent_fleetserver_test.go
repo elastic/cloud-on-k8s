@@ -18,6 +18,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
@@ -93,7 +94,7 @@ func TestAdditionalSecrets(t *testing.T) {
 		agent       *agentv1alpha1.Agent
 		fleetServer *agentv1alpha1.Agent
 		assoc       commonv1.Association
-		wantSecrets []types.NamespacedName
+		wantSecrets []association.AdditionalSecret
 		wantErr     bool
 	}{
 		{
@@ -151,8 +152,8 @@ func TestAdditionalSecrets(t *testing.T) {
 					},
 				},
 			},
-			wantSecrets: []types.NamespacedName{
-				{Namespace: "fs-ns", Name: "fleet1-es-ca"},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
 			},
 		},
 		{
@@ -188,9 +189,9 @@ func TestAdditionalSecrets(t *testing.T) {
 					},
 				},
 			},
-			wantSecrets: []types.NamespacedName{
-				{Namespace: "fs-ns", Name: "fleet1-es-ca"},
-				{Namespace: "fs-ns", Name: "copied-user-cert"},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "copied-user-cert"}},
 			},
 		},
 		{
@@ -223,8 +224,8 @@ func TestAdditionalSecrets(t *testing.T) {
 					},
 				},
 			},
-			wantSecrets: []types.NamespacedName{
-				{Namespace: "fs-ns", Name: "fleet1-es-ca"},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
 			},
 		},
 	} {
