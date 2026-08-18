@@ -20,7 +20,7 @@ import (
 // until the local cache has synced and, when enabled, the webhook server has
 // started. Cache readiness runs on every replica because non-leaders may serve
 // webhook requests.
-func setupProbes(mgr manager.Manager, startupCh <-chan struct{}, webhookEnabled bool) error {
+func setupProbes(mgr manager.Manager, webhookEnabled bool) error {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to set up health check: %w", err)
 	}
@@ -28,15 +28,6 @@ func setupProbes(mgr manager.Manager, startupCh <-chan struct{}, webhookEnabled 
 		// Wait 2 seconds, we want to return a feedback to the kubelet in timely fashion.
 		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
 		defer cancel()
-
-		// wait for cache to be started first (signaled by closed startupCh)
-		select {
-		case <-startupCh:
-		case <-ctx.Done():
-			return errors.New("cache not started yet")
-		}
-
-		// check that every registered informer is synced
 		if !mgr.GetCache().WaitForCacheSync(ctx) {
 			return errors.New("cache not synced")
 		}

@@ -147,8 +147,7 @@ func TestSetupProbes(t *testing.T) {
 				tt.configure(mgr)
 			}
 
-			startupCh := make(chan struct{})
-			err := setupProbes(mgr, startupCh, tt.webhookEnabled)
+			err := setupProbes(mgr, tt.webhookEnabled)
 
 			if tt.wantErrContains == "" {
 				require.NoError(t, err)
@@ -165,38 +164,31 @@ func TestSetupProbes(t *testing.T) {
 
 func TestCacheReadinessProbe(t *testing.T) {
 	tests := []struct {
-		name             string
-		startupCacheSync bool // controls whether startupCh is closed (startupRunnable's cache)
-		mainCacheSync    bool // controls WaitForCacheSync result in the readiness check
-		cancelCtx        bool
-		wantErrContains  string
+		name            string
+		cacheSync       bool
+		cancelCtx       bool
+		wantErrContains string
 	}{
 		{
-			name:             "ready when cache started and all informers synced",
-			startupCacheSync: true,
-			mainCacheSync:    true,
+			name:      "ready when cache synced",
+			cacheSync: true,
 		},
 		{
-			name:            "not ready when cache not started yet",
+			name:            "not ready when cache not synced",
+			wantErrContains: "cache not synced",
+		},
+		{
+			name:            "not ready when context cancelled",
 			cancelCtx:       true,
-			wantErrContains: "cache not started yet",
-		},
-		{
-			name:             "not ready when informers not synced after startup",
-			startupCacheSync: true,
-			wantErrContains:  "cache not synced",
+			wantErrContains: "cache not synced",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mgr := newProbeTestManager()
-			mgr.cache = &probeTestCache{synced: tt.mainCacheSync}
-			startupCh := make(chan struct{})
-			require.NoError(t, setupProbes(mgr, startupCh, false))
-
-			runnable := &startupRunnable{cache: &probeTestCache{synced: tt.startupCacheSync}, readyCh: startupCh}
-			require.NoError(t, runnable.Start(t.Context()))
+			mgr.cache = &probeTestCache{synced: tt.cacheSync}
+			require.NoError(t, setupProbes(mgr, false))
 
 			ctx, cancel := context.WithCancel(t.Context())
 			if tt.cancelCtx {
