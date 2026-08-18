@@ -234,17 +234,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				if b.Agent.Spec.FleetModeEnabled() || len(b.Agent.Spec.ElasticsearchRefs) == 0 {
 					return true
 				}
-				for _, ref := range b.Agent.Spec.ElasticsearchRefs {
-					if ref.ElasticsearchRole != "" {
-						return true
-					}
-				}
 				return false
 			},
 			Test: test.Eventually(func() error {
 				for _, assoc := range b.Agent.GetAssociations() {
 					esAssoc, is := assoc.(*agentv1alpha1.AgentESAssociation)
 					if !is {
+						continue
+					}
+					if esAssoc.UserRoleOverride() != "" {
 						continue
 					}
 
