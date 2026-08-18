@@ -95,7 +95,7 @@ func verifyUserWithSuperUserRole(ctx context.Context, k *test.K8sClient, esBuild
 		return fmt.Errorf("user %s: cluster:manage=false, expected superuser role override", username)
 	}
 
-	auth, err := elasticsearch.Authenticate(context.Background(), esClient, username)
+	auth, err := elasticsearch.Authenticate(ctx, esClient, username)
 	if err != nil {
 		return fmt.Errorf("authenticate call for %s in ES %s: %w", username, esBuilder.Elasticsearch.Name, err)
 	}
