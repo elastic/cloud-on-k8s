@@ -852,7 +852,7 @@ func startOperator(ctx context.Context) error {
 		tracer:            tracer,
 		dialer:            dialer,
 	}); err != nil {
-		return fmt.Errorf("failed to add async tasks runnable: %w", err)
+		return fmt.Errorf("failed to add garbage collection runnable: %w", err)
 	}
 
 	reporter := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer, licensing.ResourceReporterFrequency)
