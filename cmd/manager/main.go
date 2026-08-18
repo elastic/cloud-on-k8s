@@ -236,15 +236,10 @@ func Command() *cobra.Command {
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
-	cmd.Flags().Bool(
-		operator.EnableProbesFlag,
-		true,
-		"Enable health and readiness probes. When enabled, the operator gates pod readiness on the cache being fully synced.",
-	)
 	cmd.Flags().String(
 		operator.ProbesBindAddressFlag,
 		":8081",
-		"The address the health probe endpoint binds to.",
+		`The address the health probe endpoints (/healthz, /readyz) bind to. Set to "" or "0" to disable probes entirely.`,
 	)
 	cmd.Flags().Duration(
 		operator.CacheStartupTimeoutFlag,
@@ -602,10 +597,9 @@ func startOperator(ctx context.Context) error {
 		Logger:                     log.WithName("eck-operator"),
 	}
 
-	probesEnabled := viper.GetBool(operator.EnableProbesFlag)
-	if probesEnabled {
-		opts.HealthProbeBindAddress = viper.GetString(operator.ProbesBindAddressFlag)
-	}
+	probesAddr := viper.GetString(operator.ProbesBindAddressFlag)
+	opts.HealthProbeBindAddress = probesAddr
+	probesEnabled := probesAddr != "" && probesAddr != "0"
 
 	// configure the manager cache based on the number of managed namespaces
 	var managedNamespaces []string

@@ -68,11 +68,11 @@ data:
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
     {{- end }}
-    {{- $probesEnable := or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
-    {{- if $probesEnable }}
+    {{- if or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
     probes-bind-address: :{{ .Values.probes.port }}
+    {{- else }}
+    probes-bind-address: "0"
     {{- end }}
-    enable-probes: {{ $probesEnable }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
     {{- end }}

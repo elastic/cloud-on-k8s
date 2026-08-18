@@ -341,10 +341,6 @@ tests:
       - template: configmap.yaml
         matchRegex:
           path: data["eck.yaml"]
-          pattern: "enable-probes: true"
-      - template: configmap.yaml
-        matchRegex:
-          path: data["eck.yaml"]
           pattern: "probes-bind-address: :8081"
   - it: should omit all probes when all probe enables are false
     set:
@@ -371,11 +367,7 @@ tests:
       - template: configmap.yaml
         matchRegex:
           path: data["eck.yaml"]
-          pattern: "enable-probes: false"
-      - template: configmap.yaml
-        notMatchRegex:
-          path: data["eck.yaml"]
-          pattern: "probes-bind-address:"
+          pattern: 'probes-bind-address: "0"'
   - it: should omit only the startup probe when startup.enable is false
     set:
       probes.startup.enabled: false

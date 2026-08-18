@@ -146,7 +146,7 @@ To generate configuration based on yet unreleased YAML manifests:
 
 *IMPORTANT: The operator deployment spec is different from the spec in `operator.yaml` and cannot be automatically extracted from it. Therefore, the deployment spec is hardcoded into the template and should be checked with each new release to ensure that it is still correct.*
 
-*IMPORTANT: The generated `clusterserviceversion.yaml` hardcodes a `readinessProbe` on port 8081. Setting `ENABLE_PROBES=false` or overriding `PROBES_BIND_ADDRESS` to a different port via `Subscription.spec.config.env`, or shadowing the `eck.yaml` ConfigMap to disable probes or change the bind address, will cause the operator pod to be permanently not ready.*
+*IMPORTANT: The generated `clusterserviceversion.yaml` hardcodes a `readinessProbe` on port 8081. Overriding `PROBES_BIND_ADDRESS` to a different port or to `"0"` via `Subscription.spec.config.env`, or shadowing the `eck.yaml` ConfigMap to change the bind address, will cause the operator pod to be permanently not ready.*
 
 ## Bundle Command
 

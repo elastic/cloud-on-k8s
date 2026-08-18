@@ -27,7 +27,6 @@ The following table lists and describes all the available configuration flags fo
 | `disable-telemetry` | `false` | Disable periodically updating ECK telemetry data for Kibana to consume. |
 | `elasticsearch-client-timeout` | `180s` | Default timeout for requests made by the Elasticsearch client. |
 | `enable-leader-election` | `true` | Enable leader election. Must be set to true if using multiple replicas of the operator |
-| `enable-probes` | `true` | Enable health (`/healthz`) and readiness (`/readyz`) probe endpoints. When enabled, pod readiness is gated on the informer cache being fully synced before the operator serves webhook requests. Set to `false` to opt out. |
 | `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://reference/configuration.md) for details. |
 | `enable-webhook` | `false` | Enables a validating webhook server in the operator process. |
 | `enforce-rbac-on-refs` | `false` | Enables restrictions on cross-namespace resource association through RBAC. |
@@ -46,7 +45,7 @@ The following table lists and describes all the available configuration flags fo
 | `operator-namespace` | `""` | Namespace the operator runs in. Required. |
 | `password-hash-cache-size` | `5 x max-concurrent-reconciles` | Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value. |
 | `password-length` | `24` | Length of generated file-based passwords (enterprise-only feature) |
-| `probes-bind-address` | `:8081` | The address the health probe endpoints (`/healthz`, `/readyz`) bind to. Only effective when `enable-probes` is `true`. |
+| `probes-bind-address` | `:8081` | The address the health probe endpoints (`/healthz`, `/readyz`) bind to. Pod readiness is gated on the informer cache being fully synced. Set to `""` or `"0"` to disable probes entirely. |
 | `restrict-watched-resources` | `false` | Restrict resource watching (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When deactivated (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
 | `set-default-security-context` | `auto-detect` | Enables adding a default Pod Security Context to Elasticsearch Pods in Elasticsearch `8.0.0` and later. `fsGroup` is set to `1000` by default to match Elasticsearch container default UID. This behavior might not be appropriate for OpenShift and PSP-secured Kubernetes clusters, so it can be disabled. |
 | `ubi-only` | `false` | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with `--container-suffix` flag. |

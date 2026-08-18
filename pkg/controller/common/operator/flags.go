@@ -22,7 +22,6 @@ const (
 	ElasticsearchClientTimeout           = "elasticsearch-client-timeout"
 	ElasticsearchObservationIntervalFlag = "elasticsearch-observation-interval"
 	CacheStartupTimeoutFlag              = "cache-startup-timeout"
-	EnableProbesFlag                     = "enable-probes"
 	EnableLeaderElection                 = "enable-leader-election"
 	EnableTracingFlag                    = "enable-tracing"
 	EnableWebhookFlag                    = "enable-webhook"
