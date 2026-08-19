@@ -170,6 +170,44 @@ webhook:
   # secret specifies the Kubernetes secret to be mounted into the path designated by the certsDir value to be used for webhook certificates.
   certsSecret: ""
 
+# probes configures the health and readiness probes for the operator pod.
+probes:
+  # port is the port for the /healthz and /readyz HTTP endpoints.
+  port: 8081
+  # startup configures the startupProbe, which gates the other probes until the operator
+  # has passed readyz for the first time. The default allows up to 5 minutes
+  # (failureThreshold * periodSeconds) for the cache to sync on startup.
+  startup:
+    # enabled controls whether the startupProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
+    # failureThreshold is the number of consecutive failures before the pod is restarted.
+    failureThreshold: 30
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 10
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  # readiness configures the readinessProbe. A failing readiness probe removes the pod
+  # from Service endpoints without restarting it.
+  readiness:
+    # enabled controls whether the readinessProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 10
+    # failureThreshold is the number of consecutive failures before the pod is marked unready.
+    failureThreshold: 3
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  # liveness configures the livenessProbe. A failing liveness probe triggers a pod restart.
+  liveness:
+    # enabled controls whether the livenessProbe is added to the operator pod. Set to false to opt out.
+    enabled: true
+    # periodSeconds is how often (in seconds) to perform the probe.
+    periodSeconds: 20
+    # failureThreshold is the number of consecutive failures before the pod is restarted.
+    failureThreshold: 3
+    # timeoutSeconds is the number of seconds after which the probe times out.
+    timeoutSeconds: 3
+
 # hostNetwork allows a Pod to use the Node network namespace.
 # This is required to allow for communication with the kube API when using some alternate CNIs in conjunction with webhook enabled.
 # If hostNetwork is enabled, dnsPolicy defaults to ClusterFirstWithHostNet unless explicitly set.
@@ -296,6 +334,13 @@ config:
 
   # elasticsearchClientTimeout sets the request timeout for Elasticsearch API calls made by the operator.
   elasticsearchClientTimeout: 180s
+
+  # cacheStartupTimeout sets the maximum time the operator will wait for the Kubernetes informer cache
+  # to sync on startup. If the cache does not sync within this duration the operator exits, allowing
+  # Kubernetes to restart the pod. Set to "" or omit to wait indefinitely (the default).
+  # When probes.startup.enabled is false this is the only restart mechanism available on cache
+  # sync failure, so setting an explicit value is recommended in that case (e.g. "5m").
+  cacheStartupTimeout: ""
 
   # policies contains policies for the operator, currently only password generation policies are supported.
   policies: {}

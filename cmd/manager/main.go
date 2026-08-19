@@ -236,6 +236,16 @@ func Command() *cobra.Command {
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
+	cmd.Flags().String(
+		operator.ProbesBindAddressFlag,
+		":8081",
+		`The address the health probe endpoints (/healthz, /readyz) bind to. Set to "" or "0" to disable probes entirely.`,
+	)
+	cmd.Flags().Duration(
+		operator.CacheStartupTimeoutFlag,
+		0,
+		"Maximum time to wait for the Kubernetes informer cache to sync on startup. If the cache does not sync within this duration the operator exits, allowing Kubernetes to restart the pod. Set to 0 to wait indefinitely.",
+	)
 	cmd.Flags().Bool(
 		operator.EnableLeaderElection,
 		true,
@@ -426,18 +436,16 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	// start the operator in a goroutine
 	go func() {
-		err := startOperator(ctx)
-		if err != nil {
-			log.Error(err, "Operator stopped with error")
-		}
-		errChan <- err
+		errChan <- startOperator(ctx)
 	}()
 
 	// watch for events
 	for {
 		select {
-		case err := <-errChan: // operator failed
-			log.Error(err, "Shutting down due to error")
+		case err := <-errChan: // operator stopped
+			if err != nil {
+				log.Error(err, "Shutting down due to error")
+			}
 			return err
 		case <-ctx.Done(): // signal received
 			log.Info("Shutting down due to signal")
@@ -589,6 +597,10 @@ func startOperator(ctx context.Context) error {
 		Logger:                     log.WithName("eck-operator"),
 	}
 
+	probesAddr := viper.GetString(operator.ProbesBindAddressFlag)
+	opts.HealthProbeBindAddress = probesAddr
+	probesEnabled := probesAddr != "" && probesAddr != "0"
+
 	// configure the manager cache based on the number of managed namespaces
 	var managedNamespaces []string
 	// do not use viper.GetStringSlice here as it suffers from https://github.com/spf13/viper/issues/380
@@ -691,6 +703,16 @@ func startOperator(ctx context.Context) error {
 	}
 
 	namespaceMatcher.SetCache(mgr.GetCache())
+
+	if probesEnabled {
+		readyCh := make(chan struct{})
+		if err := mgr.Add(&cacheReadyRunnable{readyCh: readyCh}); err != nil {
+			return fmt.Errorf("failed to add cache ready runnable: %w", err)
+		}
+		if err := setupProbes(mgr, readyCh, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
+			return err
+		}
+	}
 
 	// Retrieve globally shared CA if any
 	ca, err := readOptionalCA(viper.GetString(operator.CADirFlag))
@@ -797,7 +819,9 @@ func startOperator(ctx context.Context) error {
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		if err := setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer); err != nil {
+			return err
+		}
 	}
 
 	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
@@ -813,46 +837,80 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
-	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, namespaceMatcher, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
+	licenseRunnable, err := newLicenseCheckRunnable(ctx, mgr, operatorNamespace)
+	if err != nil {
+		return err
+	}
+
+	if err := mgr.Add(licenseRunnable); err != nil {
+		return fmt.Errorf("failed to add license check runnable: %w", err)
+	}
+
+	if err := mgr.Add(&gcRunnable{
+		mgr:               mgr,
+		cfg:               cfg,
+		managedNamespaces: managedNamespaces,
+		operatorNamespace: operatorNamespace,
+		namespaceMatcher:  namespaceMatcher,
+		operatorInfo:      operatorInfo,
+		tracer:            tracer,
+		dialer:            dialer,
+	}); err != nil {
+		return fmt.Errorf("failed to add garbage collection runnable: %w", err)
+	}
+
+	reporter := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer, licensing.ResourceReporterFrequency)
+	if err := mgr.Add(reporter); err != nil {
+		return fmt.Errorf("failed to add license reporter runnable: %w", err)
+	}
+
+	if !viper.GetBool(operator.DisableTelemetryFlag) {
+		tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, viper.GetDuration(operator.TelemetryIntervalFlag), tracer)
+		if err := mgr.Add(&tr); err != nil {
+			return fmt.Errorf("failed to add telemetry runnable: %w", err)
+		}
+	}
+
+	errCh := make(chan error, 2) // two possible senders: cache timeout + mgr.Start
+	if cacheStartupTimeout := viper.GetDuration(operator.CacheStartupTimeoutFlag); cacheStartupTimeout > 0 {
+		go func() {
+			log.Info("Setting up cache startup timeout", "timeout", cacheStartupTimeout.String())
+			start := time.Now()
+			tctx, cancel := context.WithTimeout(ctx, cacheStartupTimeout)
+			defer cancel()
+			switch {
+			case mgr.GetCache().WaitForCacheSync(tctx):
+				log.Info("Cache started in time", "elapsed", time.Since(start).String())
+			case ctx.Err() != nil:
+				// context canceled due to shutdown, not a timeout
+			default:
+				err := errors.New("cache did not start in time")
+				log.Error(err, "Failed to start cache", "timeout", cacheStartupTimeout.String(),
+					"elapsed", time.Since(start).String())
+				errCh <- err
+			}
+		}()
+	} else {
+		log.Info("Cache startup timeout disabled")
+	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	exitOnErr := make(chan error)
-
-	// start the manager
 	go func() {
-		if err := mgr.Start(ctx); err != nil {
-			log.Error(err, "Failed to start the controller manager")
-			exitOnErr <- err
-		}
+		errCh <- mgr.Start(ctx)
 	}()
 
-	// check operator license key
-	go func() {
-		mgr.GetCache().WaitForCacheSync(ctx)
-
-		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-		licenseType, err := lc.ValidOperatorLicenseKeyType(ctx)
-		if err != nil {
-			log.Error(err, "Failed to validate operator license key")
-			exitOnErr <- err
-		} else {
-			log.Info("Operator license key validated", "license_type", licenseType)
-		}
-	}()
-
-	for {
-		select {
-		case err = <-exitOnErr:
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
 			return err
-		case <-ctx.Done():
-			return nil
 		}
+		return nil
+	case <-ctx.Done():
+		return nil
 	}
 }
 
@@ -863,67 +921,90 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 	return certificates.BuildCAFromFile(caDir)
 }
 
-// asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(
-	ctx context.Context,
-	mgr manager.Manager,
-	cfg *rest.Config,
-	managedNamespaces []string,
-	operatorNamespace string,
-	namespaceMatcher *nsmatch.NamespaceMatcher,
-	operatorInfo about.OperatorInfo,
-	disableTelemetry bool,
-	telemetryInterval time.Duration,
-	tracer *apm.Tracer,
-	dialer net.Dialer,
-) {
-	<-mgr.Elected() // wait for this operator instance to be elected
+var _ manager.LeaderElectionRunnable = (*gcRunnable)(nil)
 
-	// Report this instance as elected through Prometheus
-	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
+// gcRunnable garbage-collects orphaned resources once after leader election completes.
+type gcRunnable struct {
+	mgr               manager.Manager
+	cfg               *rest.Config
+	managedNamespaces []string
+	operatorNamespace string
+	namespaceMatcher  *nsmatch.NamespaceMatcher
+	operatorInfo      about.OperatorInfo
+	tracer            *apm.Tracer
+	dialer            net.Dialer
+}
 
-	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-	mgr.GetCache().WaitForCacheSync(ctx) // wait until k8s client cache is initialized
+func (r *gcRunnable) NeedLeaderElection() bool { return true }
 
-	// Start the resource reporter
-	go func() {
-		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer)
-		r.Start(ctx, licensing.ResourceReporterFrequency)
-	}()
+func (r *gcRunnable) Start(ctx context.Context) error {
+	metrics.Leader.WithLabelValues(string(r.operatorInfo.OperatorUUID), r.operatorNamespace).Set(1)
 
-	if !disableTelemetry {
-		// Start the telemetry reporter
-		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, telemetryInterval, tracer)
-			tr.Start(ctx)
-		}()
-	}
+	// The manager's Caches group has already synced before the LeaderElection
+	// group starts, and informers registered later are covered because cached
+	// reads block on their own informer inside Informers.Get, so no explicit
+	// cache wait is needed here.
 
-	namespaces := managedNamespaces
-	if namespaceMatcher.SelectorEnabled() {
-		nsp, err := namespaceMatcher.MatchingNamespaces(ctx)
+	namespaces := r.managedNamespaces
+	if r.namespaceMatcher.SelectorEnabled() {
+		nsp, err := r.namespaceMatcher.MatchingNamespaces(ctx)
 		if err != nil {
-			log.Error(err, "exiting due to unrecoverable error while fetching the namespaces")
-			os.Exit(1)
+			return fmt.Errorf("failed to fetch managed namespaces for garbage collection: %w", err)
 		}
 		namespaces = nsp
 	}
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
-	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
+	gcCtx := tracing.NewContextTransaction(ctx, r.tracer, tracing.RunOnceTxType, "garbage-collection", nil)
 	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
-	err := garbageCollectUsers(gcCtx, cfg, namespaces)
-	if err != nil {
-		log.Error(err, "exiting due to unrecoverable error")
-		os.Exit(1)
+	defer tracing.EndContextTransaction(gcCtx)
+	if err := garbageCollectUsers(gcCtx, r.cfg, namespaces); err != nil {
+		return fmt.Errorf("user garbage collection failed: %w", err)
 	}
 	// - soft-owned secrets
-	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
+	garbageCollectSoftOwnedSecrets(gcCtx, r.mgr.GetClient())
 	// - autoops orphaned resources (API key secrets without owner references)
-	if err := garbageCollectAutoOpsResources(gcCtx, mgr.GetClient(), dialer); err != nil {
+	if err := garbageCollectAutoOpsResources(gcCtx, r.mgr.GetClient(), r.dialer); err != nil {
 		log.Error(err, "AutoOps garbage collection failed, will be attempted again at next operator restart")
 	}
-	tracing.EndContextTransaction(gcCtx)
+	return nil
+}
+
+var _ manager.LeaderElectionRunnable = (*licenseCheckRunnable)(nil)
+
+// licenseCheckRunnable validates the operator license key on all pods once the cache is synced.
+// NeedLeaderElection() = false ensures it runs on every replica, not only the elected leader.
+type licenseCheckRunnable struct {
+	client            k8s.Client
+	operatorNamespace string
+}
+
+func newLicenseCheckRunnable(
+	ctx context.Context,
+	mgr manager.Manager,
+	operatorNamespace string,
+) (*licenseCheckRunnable, error) {
+	// The license check reads Secrets before leader election, so ensure its
+	// informer is available before the manager starts.
+	if _, err := mgr.GetCache().GetInformer(ctx, &corev1.Secret{}); err != nil {
+		return nil, fmt.Errorf("pre-register informer for license check %T: %w", &corev1.Secret{}, err)
+	}
+	return &licenseCheckRunnable{
+		client:            mgr.GetClient(),
+		operatorNamespace: operatorNamespace,
+	}, nil
+}
+
+func (r *licenseCheckRunnable) NeedLeaderElection() bool { return false }
+
+func (r *licenseCheckRunnable) Start(ctx context.Context) error {
+	lc := commonlicense.NewLicenseChecker(r.client, r.operatorNamespace)
+	licenseType, err := lc.ValidOperatorLicenseKeyType(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to validate operator license key: %w", err)
+	}
+	log.Info("Operator license key validated", "license_type", licenseType)
+	return nil
 }
 
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:

@@ -16,6 +16,7 @@ disable-telemetry: false
 distribution-channel: image
 validate-storage-class: true
 enable-webhook: false
+probes-bind-address: :8081
 operator-namespace: elastic-system
 enable-leader-election: true
 elasticsearch-observation-interval: 10s
