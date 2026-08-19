@@ -47,6 +47,9 @@ data:
     kube-client-qps: {{ int . }}
     {{- end }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    {{- with .Values.config.cacheStartupTimeout }}
+    cache-startup-timeout: {{ . }}
+    {{- end }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
     distribution-channel: {{ .Values.telemetry.distributionChannel }}
     {{- with .Values.telemetry.interval }}

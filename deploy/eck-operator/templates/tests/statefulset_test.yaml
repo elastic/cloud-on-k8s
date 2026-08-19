@@ -482,3 +482,17 @@ tests:
         matchRegex:
           path: data["eck.yaml"]
           pattern: "probes-bind-address: :9090"
+  - it: should render cache-startup-timeout when config.cacheStartupTimeout is set
+    set:
+      config.cacheStartupTimeout: 5m
+    asserts:
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "cache-startup-timeout: 5m"
+  - it: should omit cache-startup-timeout when config.cacheStartupTimeout is empty
+    asserts:
+      - template: configmap.yaml
+        notMatchRegex:
+          path: data["eck.yaml"]
+          pattern: "cache-startup-timeout"
