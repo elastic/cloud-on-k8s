@@ -6,6 +6,7 @@ package name
 
 import (
 	"fmt"
+	"hash/fnv"
 	"os"
 	"strings"
 	"unicode/utf8"
@@ -22,6 +23,8 @@ const (
 	MaxResourceNameLength = 36
 	// MaxSuffixLength is the max allowed suffix length that will keep a name within K8S label length restrictions.
 	MaxSuffixLength = validation.LabelValueMaxLength - MaxResourceNameLength
+	// dnsLabelHashLen is the hex width of the FNV-32a suffix appended to truncated DNS labels.
+	dnsLabelHashLen = 8
 )
 
 // nameLengthError is an error type for names exceeding the allowed length.
@@ -119,6 +122,28 @@ func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) 
 	}
 
 	return stringsutil.Concat(ownerName, suffix), err
+}
+
+// DNSLabel returns a Kubernetes DNS label (max 63 characters). Names that
+// already fit are returned unchanged. Longer names are truncated and given a
+// stable FNV-32a hash suffix of the original name so truncated values stay
+// unique and deterministic across reconciliations.
+func DNSLabel(value string) string {
+	maxLen := validation.DNS1123LabelMaxLength
+	if len(value) <= maxLen {
+		return value
+	}
+
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(value))
+	hash := fmt.Sprintf("%0*x", dnsLabelHashLen, h.Sum32())
+
+	prefixLen := maxLen - 1 - len(hash)
+	prefix := strings.TrimRight(truncate(value, prefixLen), "-")
+	if prefix == "" {
+		prefix = "n"
+	}
+	return prefix + "-" + hash
 }
 
 func truncate(s string, length int) string {

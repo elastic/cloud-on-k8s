@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -89,7 +90,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			caCertVolumeName(es),
 			fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
 		)
 		volumes = append(volumes, caVolume.Volume())
@@ -101,7 +102,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
 		clientCertVolume := volume.NewSecretVolumeWithMountPath(
 			clientCertSecretName,
-			fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			clientCertVolumeName(es),
 			fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
 		)
 		volumes = append(volumes, clientCertVolume.Volume())
@@ -157,6 +158,14 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		Replicas:             1,
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil
+}
+
+func caCertVolumeName(es esv1.Elasticsearch) string {
+	return name.DNSLabel(fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace))
+}
+
+func clientCertVolumeName(es esv1.Elasticsearch) string {
+	return name.DNSLabel(fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace))
 }
 
 // readinessProbe is the readiness probe for the AutoOps Agent container
