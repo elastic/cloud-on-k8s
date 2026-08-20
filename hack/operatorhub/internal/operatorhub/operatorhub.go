@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/kubectl/pkg/scheme"
 
@@ -57,6 +59,37 @@ const (
 
 var (
 	errNotFound = errors.New("not found")
+
+	// knownResources maps built-in Kubernetes GroupResources to their scope:
+	// true = cluster-scoped (OLM clusterPermissions), false = namespaced (OLM permissions).
+	// ECK CRD resources are derived at runtime from the parsed CRD manifests; only stable
+	// built-in resources that are not discoverable from the manifests belong here.
+	knownResources = map[schema.GroupResource]bool{
+		// cluster-scoped
+		{Resource: "namespaces"}: true,
+		{Resource: "nodes"}:      true,
+		{Group: "admissionregistration.k8s.io", Resource: "validatingwebhookconfigurations"}: true,
+		{Group: "authorization.k8s.io", Resource: "subjectaccessreviews"}:                    true,
+		{Group: "storage.k8s.io", Resource: "storageclasses"}:                                true,
+		// namespaced - core
+		{Resource: "configmaps"}:             false,
+		{Resource: "endpoints"}:              false,
+		{Resource: "events"}:                 false,
+		{Resource: "persistentvolumeclaims"}: false,
+		{Resource: "pods"}:                   false,
+		{Resource: "secrets"}:                false,
+		{Resource: "services"}:               false,
+		// namespaced - apps
+		{Group: "apps", Resource: "daemonsets"}:   false,
+		{Group: "apps", Resource: "deployments"}:  false,
+		{Group: "apps", Resource: "statefulsets"}: false,
+		// namespaced - coordination.k8s.io
+		{Group: "coordination.k8s.io", Resource: "leases"}: false,
+		// namespaced - events.k8s.io
+		{Group: "events.k8s.io", Resource: "events"}: false,
+		// namespaced - policy
+		{Group: "policy", Resource: "poddisruptionbudgets"}: false,
+	}
 )
 
 // GenerateConfig is the configuration for the generate operation
@@ -271,8 +304,10 @@ func makeRequest(url string) (io.Reader, error) {
 type CRD struct {
 	Name        string
 	Group       string
+	Plural      string
 	Kind        string
 	Version     string
+	Scope       apiextv1.ResourceScope
 	DisplayName string
 	Description string
 	Def         []byte
@@ -343,16 +378,20 @@ func extractYAMLParts(stream io.Reader) (*yamlExtracts, error) {
 			parts.crds[obj.Name] = &CRD{
 				Name:    obj.Name,
 				Group:   obj.Spec.Group,
+				Plural:  obj.Spec.Names.Plural,
 				Kind:    obj.Spec.Names.Kind,
-				Version: obj.Spec.Version,
+				Version: obj.Spec.Versions[0].Name,
+				Scope:   apiextv1.ResourceScope(obj.Spec.Scope),
 				Def:     yamlBytes,
 			}
 		case *apiextv1.CustomResourceDefinition:
 			parts.crds[obj.Name] = &CRD{
 				Name:    obj.Name,
 				Group:   obj.Spec.Group,
+				Plural:  obj.Spec.Names.Plural,
 				Kind:    obj.Spec.Names.Kind,
 				Version: obj.Spec.Versions[0].Name,
+				Scope:   obj.Spec.Scope,
 				Def:     yamlBytes,
 			}
 		case *rbacv1.ClusterRole:
@@ -379,7 +418,8 @@ type RenderParams struct {
 	SkipRange                    string
 	StackVersion                 string
 	OperatorRepo                 string
-	OperatorRBAC                 string
+	OperatorPermissions          string
+	OperatorClusterPermissions   string
 	AdditionalArgs               []string
 	CRDList                      []*CRD
 	OperatorWebhooks             string
@@ -433,9 +473,26 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		return nil, fmt.Errorf("newVersion in config file appears to be invalid [%s]", conf.NewVersion)
 	}
 
-	rbac, err := gyaml.Marshal(extracts.operatorRBAC)
+	allScopes := resourceScopes(extracts.crds)
+
+	permissions, clusterPermissions, err := splitRBACRules(extracts.operatorRBAC, allScopes)
 	if err != nil {
-		return nil, fmt.Errorf("while marshaling operator RBAC rules: %w", err)
+		return nil, fmt.Errorf("while splitting operator RBAC rules: %w", err)
+	}
+
+	var permissionsYAML []byte
+	if len(permissions) > 0 {
+		permissionsYAML, err = gyaml.Marshal(permissions)
+		if err != nil {
+			return nil, fmt.Errorf("while marshaling namespaced operator RBAC rules: %w", err)
+		}
+	}
+	var clusterPermissionsYAML []byte
+	if len(clusterPermissions) > 0 {
+		clusterPermissionsYAML, err = gyaml.Marshal(clusterPermissions)
+		if err != nil {
+			return nil, fmt.Errorf("while marshaling cluster-scoped operator RBAC rules: %w", err)
+		}
 	}
 
 	var additionalArgs []string
@@ -466,12 +523,88 @@ func buildRenderParams(conf *flags.Config, packageIndex int, extracts *yamlExtra
 		AdditionalArgs:               additionalArgs,
 		CRDList:                      crdList,
 		OperatorWebhooks:             string(webhooks),
-		OperatorRBAC:                 string(rbac),
+		OperatorPermissions:          string(permissionsYAML),
+		OperatorClusterPermissions:   string(clusterPermissionsYAML),
 		PackageName:                  conf.Packages[packageIndex].PackageName,
 		Tag:                          tag,
 		UbiOnly:                      conf.Packages[packageIndex].UbiOnly,
 		MinSupportedOpenShiftVersion: conf.Packages[packageIndex].MinSupportedOpenShiftVersion,
 	}, nil
+}
+
+// resourceScopes returns the scope of every resource the generator can classify:
+// the static built-in map plus scopes derived from the parsed CRD manifests.
+func resourceScopes(crds map[string]*CRD) map[schema.GroupResource]bool {
+	scopes := make(map[schema.GroupResource]bool, len(knownResources)+len(crds))
+	maps.Copy(scopes, knownResources)
+	for _, crd := range crds {
+		scopes[schema.GroupResource{Group: crd.Group, Resource: crd.Plural}] = crd.Scope == apiextv1.ClusterScoped
+	}
+	return scopes
+}
+
+// splitRBACRules separates the operator's namespaced and cluster-scoped permissions
+// for the OLM CSV. OLM renders permissions as Roles for namespace-scoped install
+// modes, while clusterPermissions are rendered as ClusterRoles.
+// Returns an error if any resource is not found in scopeMap.
+func splitRBACRules(rules []rbacv1.PolicyRule, resourceScopeMap map[schema.GroupResource]bool) ([]rbacv1.PolicyRule, []rbacv1.PolicyRule, error) {
+	var permissions []rbacv1.PolicyRule
+	var clusterPermissions []rbacv1.PolicyRule
+	var unknown []string
+
+	for _, rule := range rules {
+		if len(rule.NonResourceURLs) > 0 {
+			if len(rule.Resources) > 0 {
+				return nil, nil, fmt.Errorf("invalid rule: NonResourceURLs and Resources are mutually exclusive: %v", rule)
+			}
+			clusterPermissions = append(clusterPermissions, *rule.DeepCopy())
+			continue
+		}
+		if len(rule.APIGroups) == 0 {
+			if len(rule.Resources) > 0 {
+				return nil, nil, fmt.Errorf("invalid rule: APIGroups must be set when Resources is specified: %v", rule)
+			}
+			continue
+		}
+
+		for _, apiGroup := range rule.APIGroups {
+			var namespacedResources []string
+			var clusterResources []string
+			for _, resource := range rule.Resources {
+				// A subresource's scope equals its parent's scope; strip before lookup.
+				base, _, _ := strings.Cut(resource, "/")
+				groupResource := schema.GroupResource{Group: apiGroup, Resource: base}
+				clusterScoped, exists := resourceScopeMap[groupResource]
+				if !exists {
+					unknown = append(unknown, groupResource.String())
+					continue
+				}
+				if clusterScoped {
+					clusterResources = append(clusterResources, resource)
+				} else {
+					namespacedResources = append(namespacedResources, resource)
+				}
+			}
+
+			if len(namespacedResources) > 0 {
+				namespacedRule := rule.DeepCopy()
+				namespacedRule.APIGroups = []string{apiGroup}
+				namespacedRule.Resources = namespacedResources
+				permissions = append(permissions, *namespacedRule)
+			}
+			if len(clusterResources) > 0 {
+				clusterRule := rule.DeepCopy()
+				clusterRule.APIGroups = []string{apiGroup}
+				clusterRule.Resources = clusterResources
+				clusterPermissions = append(clusterPermissions, *clusterRule)
+			}
+		}
+	}
+
+	if len(unknown) > 0 {
+		return nil, nil, fmt.Errorf("unknown resource scope for %v: add a CRD to config/crds.yaml or add the built-in resource to knownResources in operatorhub.go", unknown)
+	}
+	return permissions, clusterPermissions, nil
 }
 
 // validatingWebhookConfigurationToWebhookDefinition converts a standard validating webhook configuration resource

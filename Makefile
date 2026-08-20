@@ -180,6 +180,9 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+operatorhub-unit-tests: generate-manifests
+	cd hack/operatorhub && go test -count=1 ./... -cover $(TEST_OPTS)
+
 helm-test:
 	@hack/helm/test.sh
 

@@ -385,10 +385,18 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 3
               terminationGracePeriodSeconds: 10
+{{- if .OperatorPermissions }}
       permissions:
       - rules:
-{{ .OperatorRBAC | indent 8 -}}
+        {{- .OperatorPermissions | trim | nindent 8 }}
         serviceAccountName: elastic-operator
+{{- end }}
+{{- if .OperatorClusterPermissions }}
+      clusterPermissions:
+      - rules:
+        {{- .OperatorClusterPermissions | trim | nindent 8 }}
+        serviceAccountName: elastic-operator
+{{- end }}
     strategy: deployment
   installModes:
   - supported: true
