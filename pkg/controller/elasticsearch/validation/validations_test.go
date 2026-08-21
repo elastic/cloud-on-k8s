@@ -19,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -589,13 +590,13 @@ func Test_validNodeLabels(t *testing.T) {
 			args: args{
 				proposed: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+						Annotations: map[string]string{commonv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
 					},
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*"},
 			},
 			expectedFields: []string{
-				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation).String(),
+				field.NewPath("metadata").Child("annotations", commonv1.DownwardNodeLabelsAnnotation).String(),
 			},
 		},
 		{
@@ -603,7 +604,7 @@ func Test_validNodeLabels(t *testing.T) {
 			args: args{
 				proposed: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{esv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
+						Annotations: map[string]string{commonv1.DownwardNodeLabelsAnnotation: "failure-domain.beta.kubernetes.io/zone"},
 					},
 				},
 				exposedNodeLabels: []string{"topology.kubernetes.io/*", "failure-domain.beta.kubernetes.io/*"},
@@ -699,7 +700,7 @@ func Test_validNodeLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exposedNodeLabels, err := NewExposedNodeLabels(tt.args.exposedNodeLabels)
+			exposedNodeLabels, err := commonnodelabels.NewExposedNodeLabels(tt.args.exposedNodeLabels)
 			assert.NoError(t, err)
 			actual := validNodeLabels(tt.args.proposed, exposedNodeLabels)
 			actualFields := make([]string, len(actual))

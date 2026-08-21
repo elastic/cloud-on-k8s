@@ -41,6 +41,7 @@ const (
 	MetricsCertDirFlag                   = "metrics-cert-dir"
 	NamespacesFlag                       = "namespaces"
 	NamespaceSelectorFlag                = "namespace-selector"
+	OperatorImageFlag                    = "operator-image"
 	OperatorNamespaceFlag                = "operator-namespace"
 	SetDefaultSecurityContextFlag        = "set-default-security-context"
 	TelemetryIntervalFlag                = "telemetry-interval"

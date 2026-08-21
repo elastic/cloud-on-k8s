@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -66,7 +67,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
+func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool, operatorImage string) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -102,16 +103,7 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 		WithDockerImage(epr.Spec.Image, container.ImageRepository(container.PackageRegistryImage, v)).
 		WithReadinessProbe(readinessProbe(epr.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
-		WithInitContainerDefaults().
-		WithEnv(eprVars...).
-		WithContainersSecurityContext(corev1.SecurityContext{
-			AllowPrivilegeEscalation: new(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-			},
-			RunAsNonRoot: runAsNonRoot,
-			Privileged:   new(false),
-		})
+		WithEnv(eprVars...)
 
 	if setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
@@ -128,7 +120,20 @@ func newPodSpec(epr eprv1alpha1.PackageRegistry, configHash string, meta metadat
 	// Add HTTP certificates volume if TLS is enabled
 	builder = withHTTPCertsVolume(builder, epr)
 
-	return builder.PodTemplate, nil
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &epr, operatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	// WithContainersSecurityContext must be called after all containers and init containers have been added.
+	return builder.WithInitContainerDefaults().WithContainersSecurityContext(corev1.SecurityContext{
+		AllowPrivilegeEscalation: new(false),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+		},
+		RunAsNonRoot: runAsNonRoot,
+		Privileged:   new(false),
+	}).PodTemplate, nil
 }
 
 func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, epr eprv1alpha1.PackageRegistry) *defaults.PodTemplateBuilder {

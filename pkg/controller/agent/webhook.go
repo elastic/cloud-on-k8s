@@ -15,14 +15,15 @@ import (
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // RegisterWebhook registers the Agent validating webhook with license-aware validation.
-func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
-	inner := &webhookValidator{licenseChecker: checker}
+func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, exposedNodeLabels commonnodelabels.NodeLabels, managedNamespaces []string, matcher *nsmatch.NamespaceMatcher) {
+	inner := &webhookValidator{licenseChecker: checker, exposedNodeLabels: exposedNodeLabels}
 	v := commonwebhook.NewResourceValidator[*agentv1alpha1.Agent](checker, managedNamespaces, inner).WithNamespaceMatcher(matcher)
 	wh := admission.WithValidator[*agentv1alpha1.Agent](mgr.GetScheme(), v)
 	mgr.GetWebhookServer().Register(agentv1alpha1.WebhookPath, wh)
@@ -30,7 +31,8 @@ func RegisterWebhook(mgr ctrl.Manager, checker commonlicense.Checker, managedNam
 }
 
 type webhookValidator struct {
-	licenseChecker commonlicense.Checker
+	licenseChecker    commonlicense.Checker
+	exposedNodeLabels commonnodelabels.NodeLabels
 }
 
 func (v *webhookValidator) ValidateCreate(ctx context.Context, obj *agentv1alpha1.Agent) (admission.Warnings, error) {
@@ -46,15 +48,37 @@ func (v *webhookValidator) ValidateDelete(_ context.Context, _ *agentv1alpha1.Ag
 }
 
 func (v *webhookValidator) validate(ctx context.Context, a *agentv1alpha1.Agent, old *agentv1alpha1.Agent) (admission.Warnings, error) {
+	return validateAgent(ctx, a, old, v.licenseChecker, v.exposedNodeLabels)
+}
+
+// licenseValidationError signals a license-only validation failure so callers can
+// distinguish it from other validation errors and handle it accordingly.
+type licenseValidationError struct {
+	wrapped error
+}
+
+func (e *licenseValidationError) Error() string { return e.wrapped.Error() }
+func (e *licenseValidationError) Unwrap() error { return e.wrapped }
+
+// validateAgent runs Agent validations and the operator's exposed-node-labels policy check.
+// Both the validating webhook and the reconciler call it so the same rules are enforced through a
+// single function, regardless of whether the webhook is enabled.
+func validateAgent(ctx context.Context, a *agentv1alpha1.Agent, old *agentv1alpha1.Agent, checker commonlicense.Checker, exposedNodeLabels commonnodelabels.NodeLabels) (admission.Warnings, error) {
 	warnings, err := agentv1alpha1.Validate(a, old)
 	if err != nil {
 		return warnings, err
 	}
-	if errs := validClientAuthentication(ctx, a, v.licenseChecker); len(errs) > 0 {
-		return warnings, apierrors.NewInvalid(
-			schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind},
-			a.Name, errs,
-		)
+
+	gk := schema.GroupKind{Group: agentv1alpha1.GroupVersion.Group, Kind: agentv1alpha1.Kind}
+	licenseErrs := validClientAuthentication(ctx, a, checker)
+	if otherErrs := commonnodelabels.ValidateAnnotation(a.Annotations, exposedNodeLabels); len(otherErrs) > 0 {
+		// Hard failure: combine all errors so the caller sees the full picture.
+		return warnings, apierrors.NewInvalid(gk, a.Name, append(licenseErrs, otherErrs...))
+	}
+	if len(licenseErrs) > 0 {
+		// License-only failure: return as a soft error so the caller
+		// a warning event and continue; the webhook promotes it to a hard rejection.
+		return warnings, &licenseValidationError{apierrors.NewInvalid(gk, a.Name, licenseErrs)}
 	}
 	return warnings, nil
 }

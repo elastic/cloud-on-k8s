@@ -553,6 +553,10 @@ func TestNewReporter(t *testing.T) {
     maps:
       pod_count: 1
       resource_count: 1
+    packageregistries:
+      helm_resource_count: 0
+      pod_count: 0
+      resource_count: 0
     stackconfigpolicies:
       configured_resources_count: 15
       resource_count: 2
@@ -662,6 +666,10 @@ func TestNewReporter(t *testing.T) {
     maps:
       pod_count: 1
       resource_count: 1
+    packageregistries:
+      helm_resource_count: 0
+      pod_count: 0
+      resource_count: 0
     stackconfigpolicies:
       configured_resources_count: 10
       resource_count: 1
@@ -820,7 +828,7 @@ func TestReporter_report(t *testing.T) {
 							Namespace: testNS,
 							Name:      "node-labels1",
 							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
+								commonv1.DownwardNodeLabelsAnnotation: "ns/label1",
 							},
 						},
 						Status: esv1.ElasticsearchStatus{
@@ -860,7 +868,7 @@ func TestReporter_report(t *testing.T) {
 							Namespace: testNS,
 							Name:      "node-labels1",
 							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
+								commonv1.DownwardNodeLabelsAnnotation: "ns/label1",
 							},
 						},
 						Status: esv1.ElasticsearchStatus{
@@ -872,7 +880,7 @@ func TestReporter_report(t *testing.T) {
 							Namespace: testNS,
 							Name:      "node-labels2",
 							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label2,ns/label1,ns/label3",
+								commonv1.DownwardNodeLabelsAnnotation: "ns/label2,ns/label1,ns/label3",
 							},
 						},
 						Status: esv1.ElasticsearchStatus{

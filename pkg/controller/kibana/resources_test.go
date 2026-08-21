@@ -46,6 +46,7 @@ func buildKibanaPodTemplate(t *testing.T, kb kbv1.Kibana) corev1.PodTemplateSpec
 		[]commonvolume.VolumeLike{},
 		"",
 		false,
+		"",
 		metadata.Metadata{},
 	)
 	require.NoError(t, err)

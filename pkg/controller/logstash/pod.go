@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/network"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/stackmon"
@@ -85,6 +86,10 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		return corev1.PodTemplateSpec{}, err
 	}
 
+	// Changes to the downward-node-labels annotation must roll the Logstash Pods so the new annotations
+	// are re-applied on scheduling.
+	commonnodelabels.MaybeWriteNodeLabelsHashInput(configHash, &params.Logstash)
+
 	annotations := map[string]string{
 		ConfigHashAnnotationName: fmt.Sprint(configHash.Sum32()),
 	}
@@ -113,12 +118,18 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 		WithEnv(envs...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
-		WithInitContainers(initConfigContainer(params)).
-		WithInitContainerDefaults()
+		WithInitContainers(initConfigContainer(params))
 
 	if params.OperatorParams.SetDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(DefaultSecurityContext)
 	}
+
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &params.Logstash, params.OperatorParams.OperatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder = builder.WithInitContainerDefaults()
 
 	builder, err = stackmon.WithMonitoring(params.Context, params.Client, builder, params.Logstash, params.APIServerConfig, params.Meta)
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
@@ -58,7 +59,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	}
 }
 
-func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metadata.Metadata, setDefaultSecurityContext bool, operatorImage string) (corev1.PodTemplateSpec, error) {
 	// ensure the Pod gets rotated on config change
 	podMeta := meta.Merge(metadata.Metadata{Annotations: map[string]string{configHashAnnotationName: configHash}})
 
@@ -82,8 +83,7 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 		WithReadinessProbe(readinessProbe(ems.Spec.HTTP.TLS.Enabled())).
 		WithPorts(defaultContainerPorts).
 		WithVolumes(cfgVolume.Volume(), logsVolume.Volume()).
-		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount()).
-		WithInitContainerDefaults()
+		WithVolumeMounts(cfgVolume.VolumeMount(), logsVolume.VolumeMount())
 
 	if setDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
@@ -114,6 +114,13 @@ func newPodSpec(ems emsv1alpha1.ElasticMapsServer, configHash string, meta metad
 		return corev1.PodTemplateSpec{}, err
 	}
 	builder = withHTTPCertsVolume(builder, ems)
+
+	builder, err = commonnodelabels.MaybeAddWaitForAnnotationsInitContainer(builder, &ems, operatorImage)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder = builder.WithInitContainerDefaults()
 
 	esAssocConf, err := ems.AssociationConf()
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -238,7 +239,7 @@ func RenderPreStopHookScript(svcURL string) (string, error) {
 		// script propagation delays. But it is not a legitimate production use case as users are not expected to change
 		// protocol on production systems
 		"ServiceURL":             svcURL,
-		"LabelsFile":             filepath.Join(volume.DownwardAPIMountPath, volume.LabelsFile),
+		"LabelsFile":             filepath.Join(commonvolume.DownwardAPIMountPath, commonvolume.LabelsFile),
 		"VersionLabelName":       label.VersionLabelName,
 		"InternalClientCertPath": filepath.Join(volume.InternalClientCertMountPath, certificates.CertFileName),
 		"InternalClientKeyPath":  filepath.Join(volume.InternalClientCertMountPath, certificates.KeyFileName),
