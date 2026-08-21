@@ -5,9 +5,11 @@
 package name
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func TestNamer_WithDefaultSuffixes(t *testing.T) {
@@ -138,4 +140,46 @@ func TestNamerSafeSuffixErrors(t *testing.T) {
 			require.Equal(t, tc.wantName, haveName)
 		})
 	}
+}
+
+func TestDNSLabel(t *testing.T) {
+	exactly63 := strings.Repeat("a", validation.DNS1123LabelMaxLength)
+	exactly64 := strings.Repeat("a", validation.DNS1123LabelMaxLength+1)
+	// Truncation lands on a hyphen so the helper must strip it to stay a DNS label.
+	hyphenAtBoundary := strings.Repeat("a", 53) + "-" + strings.Repeat("b", 20)
+	customerCA := "es-ca-elasticsearch-aws-nonprod-monitoring-apl-ops-intelligence-monitoring"
+	otherCA := "es-ca-elasticsearch-aws-nonprod-monitoring-apl-ops-intelligence-monitorinx"
+
+	tests := []struct {
+		name      string
+		input     string
+		wantSame  bool
+		wantTrunc bool
+	}{
+		{name: "short name is unchanged", input: "es-ca-es-cluster-default", wantSame: true},
+		{name: "63 character name is unchanged", input: exactly63, wantSame: true},
+		{name: "64 character name is truncated with hash", input: exactly64, wantTrunc: true},
+		{name: "customer reproduction is truncated with hash", input: customerCA, wantTrunc: true},
+		{name: "truncation point on hyphen still yields a valid label", input: hyphenAtBoundary, wantTrunc: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DNSLabel(tt.input)
+			require.LessOrEqual(t, len(got), validation.DNS1123LabelMaxLength)
+			require.Empty(t, validation.IsDNS1123Label(got), got)
+			require.Equal(t, got, DNSLabel(tt.input), "must be deterministic")
+			if tt.wantSame {
+				require.Equal(t, tt.input, got)
+			}
+			if tt.wantTrunc {
+				require.NotEqual(t, tt.input, got)
+				require.Regexp(t, `-[0-9a-f]{8}$`, got)
+			}
+		})
+	}
+
+	t.Run("nearby long names do not collide", func(t *testing.T) {
+		require.NotEqual(t, DNSLabel(customerCA), DNSLabel(otherCA))
+	})
 }
