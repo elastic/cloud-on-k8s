@@ -47,7 +47,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
-		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
 			ElasticsearchRef: getElasticsearchFromKibana,
 			UserSecretSuffix: "apm-kb-user",
 			ESUserRole: func(_ commonv1.Associated) (string, error) {

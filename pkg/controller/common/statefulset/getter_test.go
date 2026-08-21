@@ -67,7 +67,7 @@ func TestRetrieveActualPVCs(t *testing.T) {
 			},
 		},
 	}
-	pvcs := []corev1.PersistentVolumeClaim{
+	pvcs := []corev1.PersistentVolumeClaim{ //nolint:prealloc
 		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}},
 		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-0"}},
 		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-1"}},

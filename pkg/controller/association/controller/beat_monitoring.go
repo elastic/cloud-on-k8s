@@ -44,7 +44,7 @@ func AddBeatMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, 
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
-		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
 			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
 				return true, association.AssociationRef(), nil
 			},

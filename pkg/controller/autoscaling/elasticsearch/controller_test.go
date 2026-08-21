@@ -223,10 +223,7 @@ func TestReconcile(t *testing.T) {
 			args: args{
 				manifestsDir: "",
 			},
-			want: reconcile.Result{
-				Requeue:      false,
-				RequeueAfter: 0,
-			},
+			want:       reconcile.Result{},
 			wantEvents: []string{},
 		},
 		{

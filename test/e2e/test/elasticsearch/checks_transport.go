@@ -51,7 +51,7 @@ func CheckTransportCACertificate(es esv1.Elasticsearch, ca *x509.Certificate) er
 		InsecureSkipVerify: true, //nolint:gosec
 	}
 	var correctCertsPresented bool
-	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+	config.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error { //nolint:gosec
 		// we are not interested in a valid TLS handshake but only in the CA certs presented by the remote side
 		// therefore we only verify the peer certificate chain against our expected CA cert. We cannot rely on
 		// tls.ConnectionState because it is only populated with the peer certificates after a successful handshake

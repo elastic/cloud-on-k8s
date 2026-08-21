@@ -204,8 +204,17 @@ integration-xml: setup-envtest clean
 	done; \
 	exit $$exit_code
 
-lint:
-	GOGC=40 golangci-lint run --verbose
+GOLANGCI_LINT_CUSTOM := ./bin/golangci-lint-custom
+
+# .SECONDEXPANSION is a global GNU Make directive that enables $$(…) in
+# prerequisite lists to be evaluated lazily (when the target is considered)
+# rather than at parse time. It applies to all rules that follow in this file.
+.SECONDEXPANSION:
+$(GOLANGCI_LINT_CUSTOM): .custom-gcl.yml hack/linters/ssacrdlint/go.mod hack/linters/ssacrdlint/go.sum $$(shell find hack/linters/ssacrdlint -name "*.go")
+	golangci-lint custom
+
+lint: $(GOLANGCI_LINT_CUSTOM)
+	GOGC=40 $(GOLANGCI_LINT_CUSTOM) run --verbose
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh
