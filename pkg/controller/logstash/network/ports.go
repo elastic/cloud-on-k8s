@@ -6,5 +6,5 @@ package network
 
 const (
 	// HTTPPort is the (default) API port used by Logstash
-	HTTPPort = 9600
+	HTTPPort = int32(9600)
 )

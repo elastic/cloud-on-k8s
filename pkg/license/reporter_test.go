@@ -37,7 +37,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -80,7 +80,7 @@ func TestGet(t *testing.T) {
 				}},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -122,7 +122,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&es), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -150,7 +150,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 
 		want := LicensingInfo{
@@ -192,7 +192,7 @@ func TestGet(t *testing.T) {
 			},
 		}
 
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
 			memoryUsage: memoryUsage{
@@ -230,7 +230,7 @@ func TestGet(t *testing.T) {
 				},
 			},
 		}
-		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil).Get(context.Background())
+		have, err := NewResourceReporter(k8s.NewFakeClient(&kb), operatorNs, nil, 0).Get(context.Background())
 		require.NoError(t, err)
 		want := LicensingInfo{
 			memoryUsage: memoryUsage{
@@ -277,7 +277,11 @@ func Test_Start(t *testing.T) {
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
-	go NewResourceReporter(k8sClient, operatorNs, nil).Start(context.Background(), refreshPeriod)
+	reporter := NewResourceReporter(k8sClient, operatorNs, nil, refreshPeriod)
+	assert.True(t, reporter.NeedLeaderElection(), "ResourceReporter must only run on the leader")
+	go func() {
+		_ = reporter.Start(context.Background())
+	}()
 
 	// check that the licensing config map exists
 	assert.Eventually(t, func() bool {

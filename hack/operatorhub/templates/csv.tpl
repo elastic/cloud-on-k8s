@@ -361,6 +361,8 @@ spec:
                       fieldPath: metadata.annotations['olm.operatorNamespace']
                 - name: OPERATOR_IMAGE
                   value: {{ .OperatorRepo }}{{ .Tag }}
+                - name: CACHE_STARTUP_TIMEOUT
+                  value: "5m"
                 resources:
                   limits:
                     cpu: 1
@@ -369,14 +371,32 @@ spec:
                     cpu: 100m
                     memory: 150Mi
                 ports:
+                - containerPort: 8081
+                  name: health-probe
+                  protocol: TCP
                 - containerPort: 9443
                   name: https-webhook
                   protocol: TCP
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  failureThreshold: 3
+                  periodSeconds: 10
+                  timeoutSeconds: 3
               terminationGracePeriodSeconds: 10
+{{- if .OperatorPermissions }}
       permissions:
       - rules:
-{{ .OperatorRBAC | indent 8 -}}
+        {{- .OperatorPermissions | trim | nindent 8 }}
         serviceAccountName: elastic-operator
+{{- end }}
+{{- if .OperatorClusterPermissions }}
+      clusterPermissions:
+      - rules:
+        {{- .OperatorClusterPermissions | trim | nindent 8 }}
+        serviceAccountName: elastic-operator
+{{- end }}
     strategy: deployment
   installModes:
   - supported: true

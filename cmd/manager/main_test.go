@@ -49,13 +49,17 @@ func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.
 	}
 }
 
-//nolint:thelper
+func TestRunnableLeaderElection(t *testing.T) {
+	assert.True(t, (&gcRunnable{}).NeedLeaderElection(), "gcRunnable must only run on the leader")
+	assert.False(t, (&licenseCheckRunnable{}).NeedLeaderElection(), "licenseCheckRunnable must run on every replica")
+}
+
 func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {
 		name        string
 		runtimeObjs []client.Object
-		assert      func(c k8s.Client, t *testing.T)
+		assert      func(t *testing.T, c k8s.Client)
 	}{
 		{
 			name: "don't gc secrets owned by a different Kind of resource",
@@ -63,7 +67,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing another resource (a Secret) that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "a-secret", "Secret"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
@@ -77,7 +82,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// es + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &esv1.Elasticsearch{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -89,7 +95,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing ES that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -103,7 +110,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// kibana + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &kbv1.Kibana{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -115,7 +123,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing Kibana that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -129,7 +138,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// ApmServer + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &apmv1.ApmServer{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -141,7 +151,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing ApmServer that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -155,7 +166,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// EnterpriseSearch + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1.EnterpriseSearch{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -167,7 +179,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing EnterpriseSearch that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -181,7 +194,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// Beat + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &beatv1beta1.Beat{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -193,7 +207,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing Beat that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -203,7 +218,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjs...)
 			garbageCollectSoftOwnedSecrets(context.Background(), c)
-			tt.assert(c, t)
+			tt.assert(t, c)
 		})
 	}
 }

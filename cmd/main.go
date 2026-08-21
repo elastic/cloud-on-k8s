@@ -5,6 +5,8 @@
 package main
 
 import (
+	"os"
+
 	// By default this sets `GOMEMLIMIT` to 90% of cgroup's memory limit.
 	_ "github.com/KimMachineGun/automemlimit"
 	"github.com/spf13/cobra"
@@ -31,5 +33,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolVar(&dev.Enabled, "development", false, "turns on development mode")
 	_ = rootCmd.PersistentFlags().MarkHidden("development")
 
-	_ = rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

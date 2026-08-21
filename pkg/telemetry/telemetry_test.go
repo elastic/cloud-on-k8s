@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -479,6 +480,7 @@ func TestNewReporter(t *testing.T) {
 
 		// We only want the reporter to handle the managed namespaces, in this test only ns1 and ns2 are managed.
 		r := NewReporter(testOperatorInfo, client, operatorNamespace, []string{fx.Kibana1.Namespace, fx.Kibana2.Namespace}, nil, 1*time.Hour, nil)
+		assert.True(t, r.NeedLeaderElection(), "Reporter must only run on the leader")
 		r.report(context.Background())
 
 		wantData := map[string][]byte{
@@ -593,6 +595,7 @@ func TestNewReporter(t *testing.T) {
 			nsLabelled("ns3", map[string]string{"env": "prod1"}),
 		)
 		r := NewReporter(testOperatorInfo, client, operatorNamespace, nil, nm, 1*time.Hour, nil)
+		assert.True(t, r.NeedLeaderElection(), "Reporter must only run on the leader")
 		r.report(context.Background())
 
 		wantData := map[string][]byte{

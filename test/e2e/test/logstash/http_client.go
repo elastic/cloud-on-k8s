@@ -38,7 +38,7 @@ func DoRequest(client *http.Client, logstash v1alpha1.Logstash, method, path str
 	var port = network.HTTPPort
 	for _, service := range logstash.Spec.Services {
 		if service.Name == ls.LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
-			port = int(service.Service.Spec.Ports[0].Port)
+			port = service.Service.Spec.Ports[0].Port
 		}
 	}
 

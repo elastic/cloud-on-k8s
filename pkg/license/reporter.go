@@ -10,24 +10,32 @@ import (
 
 	"go.elastic.co/apm/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
+var _ manager.LeaderElectionRunnable = ResourceReporter{}
+
 // ResourceReporterFrequency defines the reporting frequency of the resource reporter
 const ResourceReporterFrequency = 2 * time.Minute
 
 // ResourceReporter aggregates resources of all Elastic components managed by the operator
-// and reports them in a config map in the form of licensing information
+// and reports them in a config map in the form of licensing information. It satisfies
+// manager.LeaderElectionRunnable.
 type ResourceReporter struct {
 	aggregator        aggregator
 	licensingResolver LicensingResolver
 	tracer            *apm.Tracer
+	refreshPeriod     time.Duration
 }
 
-// NewResourceReporter returns a new ResourceReporter
-func NewResourceReporter(c client.Client, operatorNs string, tracer *apm.Tracer) ResourceReporter {
+// NewResourceReporter returns a new ResourceReporter. A non-positive refreshPeriod defaults to ResourceReporterFrequency.
+func NewResourceReporter(c client.Client, operatorNs string, tracer *apm.Tracer, refreshPeriod time.Duration) ResourceReporter {
+	if refreshPeriod <= 0 {
+		refreshPeriod = ResourceReporterFrequency
+	}
 	return ResourceReporter{
 		aggregator: aggregator{
 			client: c,
@@ -36,25 +44,32 @@ func NewResourceReporter(c client.Client, operatorNs string, tracer *apm.Tracer)
 			client:     c,
 			operatorNs: operatorNs,
 		},
-		tracer: tracer,
+		tracer:        tracer,
+		refreshPeriod: refreshPeriod,
 	}
 }
 
+func (r ResourceReporter) NeedLeaderElection() bool { return true }
+
 // Start starts to report the licensing information repeatedly at regular intervals
-func (r ResourceReporter) Start(ctx context.Context, refreshPeriod time.Duration) {
+func (r ResourceReporter) Start(ctx context.Context) error {
 	ctx = ulog.InitInContext(ctx, "resource-reporter")
 	log := ulog.FromContext(ctx)
 	// report once as soon as possible to not wait the first tick
-	err := r.Report(ctx)
-	if err != nil {
+	if err := r.Report(ctx); err != nil {
 		log.Error(err, "Failed to report licensing information")
 	}
 
-	ticker := time.NewTicker(refreshPeriod)
-	for range ticker.C {
-		err := r.Report(ctx)
-		if err != nil {
-			log.Error(err, "Failed to report licensing information")
+	ticker := time.NewTicker(r.refreshPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if err := r.Report(ctx); err != nil {
+				log.Error(err, "Failed to report licensing information")
+			}
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }

@@ -6,14 +6,14 @@ managedNamespaces: [{{ .E2ENamespace }}]
 
 image:
   repository: docker.elastic.co/eck/eck-operator
-  tag: 3.4.0
+  tag: 3.5.0
 
 podAnnotations:
   co.elastic.metrics/metricsets: collector
   co.elastic.metrics/module: prometheus
   co.elastic.metrics/hosts: '${data.host}:9090'
   co.elastic.metrics/period: 10s
-    
+
 telemetry:
   disabled: true
 

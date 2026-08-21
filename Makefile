@@ -180,6 +180,9 @@ unit: clean
 unit-xml: clean
 	ECK_TEST_LOG_LEVEL=$(LOG_VERBOSITY) gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
+operatorhub-unit-tests: generate-manifests
+	cd hack/operatorhub && go test -count=1 ./... -cover $(TEST_OPTS)
+
 helm-test:
 	@hack/helm/test.sh
 
@@ -463,7 +466,7 @@ drivah-build-e2e:
 
 # -- run
 
-E2E_STACK_VERSION          ?= 9.4.3
+E2E_STACK_VERSION          ?= 9.5.1
 # regexp to filter tests to run
 export TESTS_MATCH         ?= ^Test
 export E2E_JSON            ?= false

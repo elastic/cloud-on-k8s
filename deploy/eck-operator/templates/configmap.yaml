@@ -47,6 +47,9 @@ data:
     kube-client-qps: {{ int . }}
     {{- end }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    {{- with .Values.config.cacheStartupTimeout }}
+    cache-startup-timeout: {{ . }}
+    {{- end }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
     distribution-channel: {{ .Values.telemetry.distributionChannel }}
     {{- with .Values.telemetry.interval }}
@@ -67,6 +70,11 @@ data:
     webhook-cert-dir: {{ .Values.webhook.certsDir }}
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
+    {{- end }}
+    {{- if or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
+    probes-bind-address: :{{ .Values.probes.port }}
+    {{- else }}
+    probes-bind-address: "0"
     {{- end }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]

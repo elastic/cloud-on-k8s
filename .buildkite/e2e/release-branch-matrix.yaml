@@ -21,15 +21,16 @@
     - E2E_STACK_VERSION: "8.15.5"
     - E2E_STACK_VERSION: "8.16.6"
     - E2E_STACK_VERSION: "8.17.10"
-    - E2E_STACK_VERSION: "8.18.8"
-    - E2E_STACK_VERSION: "8.19.18"
-    - E2E_STACK_VERSION: "9.0.8"
-    - E2E_STACK_VERSION: "9.1.10"
-    - E2E_STACK_VERSION: "9.2.8"
-    - E2E_STACK_VERSION: "9.3.7"
-    # current stack version 9.4.3 is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.19.19-SNAPSHOT"
-    - E2E_STACK_VERSION: "9.5.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "8.18.8"  # eol (all versions above)
+    - E2E_STACK_VERSION: "8.19.20"
+    # - E2E_STACK_VERSION: "8.19.21-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.0.8"   # eol
+    - E2E_STACK_VERSION: "9.1.10"  # eol
+    - E2E_STACK_VERSION: "9.2.8"   # eol
+    - E2E_STACK_VERSION: "9.3.8"
+    - E2E_STACK_VERSION: "9.4.5"
+    # current stack version 9.5.1 is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
 - label: kind
   fixed:
@@ -68,9 +69,9 @@
     E2E_PROVIDER: ocp
   mixed:
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
-      E2E_STACK_VERSION: "9.3.7"
+      E2E_STACK_VERSION: "9.4.5"
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
-      E2E_STACK_VERSION: "9.4.3"
+      E2E_STACK_VERSION: "9.5.1"
 
 - label: eks-arm
   fixed:

@@ -5,10 +5,8 @@
 package logstash
 
 import (
-	"encoding/base64"
 	"fmt"
 	"hash"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -143,23 +141,21 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 
 func getDefaultContainerPorts() []corev1.ContainerPort {
 	return []corev1.ContainerPort{
-		{Name: "http", ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP},
+		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 	}
 }
 
-// readinessProbe is the readiness probe for the Logstash container
+// readinessProbe is the readiness probe for the Logstash container.
+// When basic auth is enabled, a TCPSocket probe is used to avoid embedding credentials in the Pod spec.
+// Note that TCP probes only verify that the port accepts connections (they do not validate TLS handshakes or HTTP responses).
 func readinessProbe(params Params) corev1.Probe {
 	logstash := params.Logstash
+	cfg := params.APIServerConfig
 
-	var scheme = corev1.URISchemeHTTP
-	if params.APIServerConfig.UseTLS() {
-		scheme = corev1.URISchemeHTTPS
-	}
-
-	var port = network.HTTPPort
+	port := network.HTTPPort
 	for _, service := range logstash.Spec.Services {
 		if service.Name == LogstashAPIServiceName && len(service.Service.Spec.Ports) > 0 {
-			port = int(service.Service.Spec.Ports[0].Port)
+			port = service.Service.Spec.Ports[0].Port
 		}
 	}
 
@@ -169,30 +165,30 @@ func readinessProbe(params Params) corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:        intstr.FromInt(port),
-				Path:        "/",
-				Scheme:      scheme,
-				HTTPHeaders: getHTTPHeaders(params),
+	}
+
+	if cfg.UsesBasicAuth() {
+		probe.ProbeHandler = corev1.ProbeHandler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt32(port),
 			},
+		}
+		return probe
+	}
+
+	scheme := corev1.URISchemeHTTP
+	if cfg.UseTLS() {
+		scheme = corev1.URISchemeHTTPS
+	}
+
+	probe.ProbeHandler = corev1.ProbeHandler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt32(port),
+			Path:   "/",
+			Scheme: scheme,
 		},
 	}
 	return probe
-}
-
-// getHTTPHeaders when api.auth.type is set, take api.auth.basic.username and api.auth.basic.password from logstash.yml
-// to build Authorization header
-func getHTTPHeaders(params Params) []corev1.HTTPHeader {
-	if strings.ToLower(params.APIServerConfig.AuthType) != "basic" {
-		return nil
-	}
-
-	usernamePassword := fmt.Sprintf("%s:%s", params.APIServerConfig.Username, params.APIServerConfig.Password)
-	encodedUsernamePassword := base64.StdEncoding.EncodeToString([]byte(usernamePassword))
-	authHeader := corev1.HTTPHeader{Name: "Authorization", Value: fmt.Sprintf("Basic %s", encodedUsernamePassword)}
-
-	return []corev1.HTTPHeader{authHeader}
 }
 
 func getEsAssociations(params Params) []commonv1.Association {
