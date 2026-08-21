@@ -143,6 +143,7 @@ AgentSpec defines the desired state of the Agent
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`outputName`* __string__ |  |
+| *`elasticsearchRole`* __string__ | ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user<br>for this output. Defaults to eck_agent_user_role. The role must already exist in the target<br>cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles can be<br>provided as a comma-separated list.<br>Only valid for standalone Agents with a named (non-secretName) Elasticsearch reference. |
 
 
 ### StatefulSetSpec  [#statefulsetspec]
@@ -468,6 +469,8 @@ BeatSpec defines the desired state of a Beat.
 ## common.k8s.elastic.co/v1 [#commonk8selasticcov1]
 
 Package v1 contains API schema definitions for common types used by all resources.
+
+
 
 
 
@@ -2060,6 +2063,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
+| *`elasticsearchRole`* __string__ | ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user<br>for this cluster reference. Defaults to eck_logstash_user_role. The role must already exist in<br>the target cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles<br>can be provided as a comma-separated list.<br>Only valid for named (non-secretName) Elasticsearch references. |
 
 
 ### Logstash  [#logstash]

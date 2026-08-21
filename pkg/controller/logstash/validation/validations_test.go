@@ -501,3 +501,107 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkESRefsRole(t *testing.T) {
+	roleField := func(i int) *field.Path {
+		return field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("elasticsearchRole")
+	}
+
+	tests := []struct {
+		name string
+		l    *lsv1alpha1.Logstash
+		want field.ErrorList
+	}{
+		{
+			name: "no refs: OK",
+			l:    &lsv1alpha1.Logstash{},
+			want: nil,
+		},
+		{
+			name: "ref without role: OK",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+					},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "named ref with role: OK",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "secretName ref with role: forbidden",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ClusterName:           "ext",
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+		{
+			name: "multiple refs, only one with secretName and role: only that ref errors",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
+						ClusterName:           "first",
+						ElasticsearchRole:     "valid_role",
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ClusterName:           "second",
+						ElasticsearchRole:     "custom_role",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+		{
+			name: "multiple refs with secretName and role: both error",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-a"}},
+						ClusterName:           "first",
+						ElasticsearchRole:     "role_a",
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-b"}},
+						ClusterName:           "second",
+						ElasticsearchRole:     "role_b",
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, checkESRefsRole(tt.l))
+		})
+	}
+}

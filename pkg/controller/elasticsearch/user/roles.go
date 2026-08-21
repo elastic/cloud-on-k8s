@@ -55,6 +55,9 @@ const (
 
 	LogstashUserRole = "eck_logstash_user_role"
 
+	// AgentUserRole is the role used by standalone Elastic Agents to connect to Elasticsearch.
+	AgentUserRole = "eck_agent_user_role"
+
 	// V70 indicates version 7.0
 	V70 = "v70"
 
@@ -242,6 +245,22 @@ var (
 					Application: "kibana-.kibana",
 					Resources:   []string{"*"},
 					Privileges:  []string{"feature_fleet.all", "feature_fleetv2.all"},
+				},
+			},
+		},
+		AgentUserRole: esclient.Role{
+			Cluster: []string{"monitor", "manage_ingest_pipelines"},
+			Indices: []esclient.IndexRole{
+				{
+					// Standard data stream ingestion (any data_stream.namespace).
+					Names:      []string{"logs-*-*", "metrics-*-*", "traces-*-*", "synthetics-*-*"},
+					Privileges: []string{"auto_configure", "create_doc"},
+				},
+				{
+					// Catch-all for custom indices not covered by the data stream patterns above.
+					// Kept as a separate entry so privileges can be adjusted independently per pattern.
+					Names:      []string{"*"},
+					Privileges: []string{"auto_configure", "create_doc"},
 				},
 			},
 		},

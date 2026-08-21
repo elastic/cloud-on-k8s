@@ -221,6 +221,14 @@ spec:
                         If not specified and the referenced resource requires client authentication, ECK will auto-generate a
                         client certificate.
                       type: string
+                    elasticsearchRole:
+                      description: |-
+                        ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user
+                        for this output. Defaults to eck_agent_user_role. The role must already exist in the target
+                        cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles can be
+                        provided as a comma-separated list.
+                        Only valid for standalone Agents with a named (non-secretName) Elasticsearch reference.
+                      type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
                         to an Elastic resource managed by ECK.
@@ -10655,6 +10663,14 @@ spec:
                         ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
                         configuration files, and will be used to identify "named clusters" in Logstash
                       minLength: 1
+                      type: string
+                    elasticsearchRole:
+                      description: |-
+                        ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user
+                        for this cluster reference. Defaults to eck_logstash_user_role. The role must already exist in
+                        the target cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles
+                        can be provided as a comma-separated list.
+                        Only valid for named (non-secretName) Elasticsearch references.
                       type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
