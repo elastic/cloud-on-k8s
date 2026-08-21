@@ -1,0 +1,27 @@
+= APM Server with Jaeger gRPC Ingestion
+
+This recipe demonstrates how to configure an APM Server to accept traces from link:https://www.jaegertracing.io[Jaeger] clients via the Jaeger gRPC protocol.
+
+IMPORTANT: This recipe is for illustration purposes only and should not be considered production-ready.
+
+== Recipe
+
+The APM Server enables the Jaeger gRPC listener on port `14250` alongside the standard APM ingestion port `8200`. Both ports are exposed via the Kubernetes Service.
+
+[source,sh]
+----
+kubectl apply -f apm-server-jaeger.yaml
+----
+
+Jaeger clients can be pointed at the APM Server's gRPC port (`14250`) and traces will be forwarded to the associated Elasticsearch cluster. No additional APM Server configuration is required; the APM Server translates the Jaeger wire format into Elastic APM events automatically.
+
+== Connecting Jaeger clients
+
+The Service defaults to `ClusterIP`. To reach the APM Server from outside the cluster, use port-forward:
+
+[source,sh]
+----
+kubectl port-forward service/apm-server-quickstart-apm-http 14250:14250
+----
+
+Then point your Jaeger client at `localhost:14250` using gRPC. Alternatively, expose the Service as a `LoadBalancer` by adding `spec.http.service.spec.type: LoadBalancer` to the manifest.
