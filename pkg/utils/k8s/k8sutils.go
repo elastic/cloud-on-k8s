@@ -6,8 +6,10 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -341,4 +343,52 @@ func NamespaceFilterFunc(
 	}
 
 	return namespaces.Has, nil // Return the Has method directly
+}
+
+// PatchAnnotations sends a JSON merge patch that upserts the keys in upsert and sets the keys
+// in remove to null (which deletes them). Only keys whose values actually differ from obj's
+// current annotations are included in the patch; if there is no diff, no request is sent.
+// The resourceVersion read from obj is embedded in the patch to maintain the
+// optimistic-concurrency guarantee.
+func PatchAnnotations(ctx context.Context, c Client, obj client.Object, upsert map[string]string, remove ...string) error {
+	orig := obj.GetAnnotations()
+	diff := make(map[string]any)
+	for k, v := range upsert {
+		if ov, ok := orig[k]; !ok || ov != v {
+			diff[k] = v
+		}
+	}
+	for _, k := range remove {
+		if _, ok := orig[k]; ok {
+			diff[k] = nil
+		}
+	}
+	if len(diff) == 0 {
+		return nil
+	}
+	data, err := json.Marshal(map[string]any{"metadata": map[string]any{
+		"resourceVersion": obj.GetResourceVersion(),
+		"annotations":     diff,
+	}})
+	if err != nil {
+		return err
+	}
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
+}
+
+// PatchObjectFinalizers sends a JSON merge patch replacing the finalizers list with finalizers.
+// If the list is unchanged, no request is sent. The resourceVersion read from obj is embedded
+// in the patch to maintain the optimistic-concurrency guarantee.
+func PatchObjectFinalizers(ctx context.Context, c Client, obj client.Object, finalizers []string) error {
+	if slices.Equal(obj.GetFinalizers(), finalizers) {
+		return nil
+	}
+	data, err := json.Marshal(map[string]any{"metadata": map[string]any{
+		"resourceVersion": obj.GetResourceVersion(),
+		"finalizers":      finalizers,
+	}})
+	if err != nil {
+		return err
+	}
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
 }

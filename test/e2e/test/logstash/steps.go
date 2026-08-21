@@ -90,6 +90,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 		checks.CheckPods(b, k),
+		test.CheckSpecNotOwnedByOperator(&b.Logstash, k),
 	}
 }
 

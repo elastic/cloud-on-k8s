@@ -6,6 +6,8 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net"
 	"reflect"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,6 +24,21 @@ import (
 
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
+
+// patchRecordingClient wraps a Client and records the raw bytes of the most recent Patch call.
+type patchRecordingClient struct {
+	Client
+	lastPatchBody []byte
+}
+
+func (c *patchRecordingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	data, err := patch.Data(obj)
+	if err != nil {
+		return err
+	}
+	c.lastPatchBody = data
+	return c.Client.Patch(ctx, obj, patch, opts...)
+}
 
 func TestDeepCopyObject(t *testing.T) {
 	testCases := []struct {
@@ -578,7 +596,7 @@ func TestNamespaceFilterFunc(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filterFunc, err := NamespaceFilterFunc(context.Background(), tt.args.c, tt.args.selector)
+			filterFunc, err := NamespaceFilterFunc(t.Context(), tt.args.c, tt.args.selector)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NamespaceFilterFunc() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -594,4 +612,306 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPatchAnnotations(t *testing.T) {
+	tests := []struct {
+		name                 string
+		initialAnnotations   map[string]string
+		upsert               map[string]string
+		remove               []string
+		failingClientErr     error
+		wantErr              bool
+		wantAnnotations      map[string]string
+		wantNoPatchCall      bool
+		wantPatchAnnotations map[string]any
+	}{
+		{
+			name:                 "add annotation to object with no annotations",
+			initialAnnotations:   nil,
+			upsert:               map[string]string{"new": "value"},
+			wantAnnotations:      map[string]string{"new": "value"},
+			wantPatchAnnotations: map[string]any{"new": "value"},
+		},
+		{
+			name:                 "add annotation to object with existing annotations",
+			initialAnnotations:   map[string]string{"keep": "same"},
+			upsert:               map[string]string{"new": "value"},
+			wantAnnotations:      map[string]string{"keep": "same", "new": "value"},
+			wantPatchAnnotations: map[string]any{"new": "value"}, // "keep" must not appear in the patch
+		},
+		{
+			name:                 "change value of an existing annotation",
+			initialAnnotations:   map[string]string{"key": "old"},
+			upsert:               map[string]string{"key": "new"},
+			wantAnnotations:      map[string]string{"key": "new"},
+			wantPatchAnnotations: map[string]any{"key": "new"},
+		},
+		{
+			name:                 "remove one annotation, keep the others",
+			initialAnnotations:   map[string]string{"keep": "same", "remove": "gone"},
+			remove:               []string{"remove"},
+			wantAnnotations:      map[string]string{"keep": "same"},
+			wantPatchAnnotations: map[string]any{"remove": nil}, // "keep" must not appear in the patch
+		},
+		{
+			name:                 "remove all annotations",
+			initialAnnotations:   map[string]string{"a": "1", "b": "2"},
+			remove:               []string{"a", "b"},
+			wantAnnotations:      nil, // an emptied annotations map round-trips as nil due to the omitempty json tag
+			wantPatchAnnotations: map[string]any{"a": nil, "b": nil},
+		},
+		{
+			name:                 "add, change and remove combined in a single call",
+			initialAnnotations:   map[string]string{"unchanged": "1", "changed": "old", "removed": "x"},
+			upsert:               map[string]string{"changed": "new", "added": "y"},
+			remove:               []string{"removed"},
+			wantAnnotations:      map[string]string{"unchanged": "1", "changed": "new", "added": "y"},
+			wantPatchAnnotations: map[string]any{"changed": "new", "removed": nil, "added": "y"}, // "unchanged" must not appear
+		},
+		{
+			name:                 "adding a key with an empty string value is treated as a change",
+			initialAnnotations:   nil,
+			upsert:               map[string]string{"blank": ""},
+			wantAnnotations:      map[string]string{"blank": ""},
+			wantPatchAnnotations: map[string]any{"blank": ""},
+		},
+		{
+			name:               "upserting the same value does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			upsert:             map[string]string{"key": "value"},
+			wantAnnotations:    map[string]string{"key": "value"},
+			wantNoPatchCall:    true,
+		},
+		{
+			name:               "removing a key that does not exist does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			remove:             []string{"nonexistent"},
+			wantAnnotations:    map[string]string{"key": "value"},
+			wantNoPatchCall:    true,
+		},
+		{
+			name:               "nil upsert and no removes does not issue a patch",
+			initialAnnotations: map[string]string{"key": "value"},
+			wantAnnotations:    map[string]string{"key": "value"},
+			wantNoPatchCall:    true,
+		},
+		{
+			name:            "remove non-existent key from nil annotations does not issue a patch",
+			remove:          []string{"nonexistent"},
+			wantNoPatchCall: true,
+		},
+		{
+			name:             "client error is propagated",
+			upsert:           map[string]string{"new": "value"},
+			failingClientErr: errors.New("boom"),
+			wantErr:          true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Annotations: tc.initialAnnotations},
+			}
+
+			var inner Client
+			if tc.failingClientErr != nil {
+				inner = NewFailingClient(tc.failingClientErr)
+			} else {
+				inner = NewFakeClient(obj)
+			}
+			recorder := &patchRecordingClient{Client: inner}
+
+			// Fetch obj so its ResourceVersion is populated; PatchAnnotations embeds it in the patch body.
+			if tc.failingClientErr == nil {
+				require.NoError(t, recorder.Get(t.Context(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj))
+			}
+			prePatchResourceVersion := obj.GetResourceVersion()
+
+			err := PatchAnnotations(t.Context(), recorder, obj, tc.upsert, tc.remove...)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			fetched := &corev1.ConfigMap{}
+			require.NoError(t, recorder.Get(t.Context(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, fetched))
+			assert.Equal(t, tc.wantAnnotations, fetched.Annotations)
+
+			if tc.wantNoPatchCall {
+				assert.Equal(t, prePatchResourceVersion, fetched.ResourceVersion, "expected no patch request to be issued")
+				assert.Nil(t, recorder.lastPatchBody, "expected no patch request to be issued")
+				return
+			}
+
+			wantBody := map[string]any{
+				"metadata": map[string]any{
+					"resourceVersion": prePatchResourceVersion,
+					"annotations":     tc.wantPatchAnnotations,
+				},
+			}
+			var gotBody map[string]any
+			require.NoError(t, json.Unmarshal(recorder.lastPatchBody, &gotBody))
+			assert.Equal(t, wantBody, gotBody)
+		})
+	}
+}
+
+func TestPatchAnnotationsOptimisticLock(t *testing.T) {
+	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"}}
+	c := NewFakeClient(cm)
+
+	stale := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: "test", Namespace: "ns"}, stale))
+
+	// Someone else changes the object first, bumping its resourceVersion.
+	live := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: "test", Namespace: "ns"}, live))
+	live.Labels = map[string]string{"someone-else": "true"}
+	require.NoError(t, c.Update(t.Context(), live))
+
+	// Patching using the object fetched before that change must be rejected, since the
+	// resourceVersion PatchAnnotations embeds no longer matches what's stored.
+	err := PatchAnnotations(t.Context(), c, stale, map[string]string{"foo": "bar"})
+	require.True(t, apierrors.IsConflict(err))
+}
+
+func TestPatchObjectFinalizers(t *testing.T) {
+	tests := []struct {
+		name                string
+		initialFinalizers   []string
+		finalizers          []string
+		failingClientErr    error
+		wantErr             bool
+		wantFinalizers      []string
+		wantNoPatchCall     bool
+		wantPatchFinalizers []any
+	}{
+		{
+			name:                "remove one finalizer, keep the others",
+			initialFinalizers:   []string{"keep", "remove"},
+			finalizers:          []string{"keep"},
+			wantFinalizers:      []string{"keep"},
+			wantPatchFinalizers: []any{"keep"},
+		},
+		{
+			name:                "remove all finalizers",
+			initialFinalizers:   []string{"a", "b"},
+			finalizers:          nil,
+			wantFinalizers:      nil,
+			wantPatchFinalizers: nil, // patch sends "finalizers":null which removes all
+		},
+		{
+			name:                "add a finalizer to object with existing finalizers",
+			initialFinalizers:   []string{"existing"},
+			finalizers:          []string{"existing", "new"},
+			wantFinalizers:      []string{"existing", "new"},
+			wantPatchFinalizers: []any{"existing", "new"},
+		},
+		{
+			name:                "add a finalizer to object with no finalizers",
+			initialFinalizers:   nil,
+			finalizers:          []string{"new"},
+			wantFinalizers:      []string{"new"},
+			wantPatchFinalizers: []any{"new"},
+		},
+		{
+			name:              "same finalizers list does not issue a patch",
+			initialFinalizers: []string{"keep"},
+			finalizers:        []string{"keep"},
+			wantFinalizers:    []string{"keep"},
+			wantNoPatchCall:   true,
+		},
+		{
+			name:            "nil finalizers on empty object does not issue a patch",
+			wantNoPatchCall: true,
+		},
+		{
+			name:              "client error is propagated",
+			initialFinalizers: []string{"finalizer"},
+			finalizers:        nil,
+			failingClientErr:  errors.New("boom"),
+			wantErr:           true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Finalizers: tc.initialFinalizers},
+			}
+
+			var inner Client
+			if tc.failingClientErr != nil {
+				inner = NewFailingClient(tc.failingClientErr)
+			} else {
+				inner = NewFakeClient(obj)
+			}
+			recorder := &patchRecordingClient{Client: inner}
+
+			// Fetch obj so its ResourceVersion is populated; PatchObjectFinalizers embeds it in the patch body.
+			if tc.failingClientErr == nil {
+				require.NoError(t, recorder.Get(t.Context(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, obj))
+			}
+			preCallResourceVersion := obj.GetResourceVersion()
+
+			err := PatchObjectFinalizers(t.Context(), recorder, obj, tc.finalizers)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			fetched := &corev1.ConfigMap{}
+			require.NoError(t, recorder.Get(t.Context(), types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, fetched))
+			assert.Equal(t, tc.wantFinalizers, fetched.Finalizers)
+
+			if tc.wantNoPatchCall {
+				assert.Equal(t, preCallResourceVersion, fetched.ResourceVersion, "expected no patch request to be issued")
+				assert.Nil(t, recorder.lastPatchBody, "expected no patch request to be issued")
+				return
+			}
+
+			// JSON unmarshal produces interface-nil for "finalizers":null, not []any(nil),
+			// so coerce the typed nil to bare nil for a consistent comparison.
+			var finalizersVal any
+			if tc.wantPatchFinalizers != nil {
+				finalizersVal = tc.wantPatchFinalizers
+			}
+			wantBody := map[string]any{
+				"metadata": map[string]any{
+					"resourceVersion": preCallResourceVersion,
+					"finalizers":      finalizersVal,
+				},
+			}
+			var gotBody map[string]any
+			require.NoError(t, json.Unmarshal(recorder.lastPatchBody, &gotBody))
+			assert.Equal(t, wantBody, gotBody)
+		})
+	}
+}
+
+func TestPatchObjectFinalizersOptimisticLock(t *testing.T) {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns", Finalizers: []string{"existing"}},
+	}
+	c := NewFakeClient(cm)
+
+	stale := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: "test", Namespace: "ns"}, stale))
+
+	// Someone else changes the object first, bumping its resourceVersion.
+	live := &corev1.ConfigMap{}
+	require.NoError(t, c.Get(t.Context(), types.NamespacedName{Name: "test", Namespace: "ns"}, live))
+	live.Labels = map[string]string{"someone-else": "true"}
+	require.NoError(t, c.Update(t.Context(), live))
+
+	// Patching using the object fetched before that change must be rejected, since the
+	// resourceVersion PatchObjectFinalizers embeds no longer matches what's stored.
+	err := PatchObjectFinalizers(t.Context(), c, stale, nil)
+	require.True(t, apierrors.IsConflict(err))
 }

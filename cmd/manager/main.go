@@ -595,6 +595,7 @@ func startOperator(ctx context.Context) error {
 		LeaderElectionID:           LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
+		Client:                     client.Options{FieldOwner: about.FieldOwner},
 	}
 
 	probesAddr := viper.GetString(operator.ProbesBindAddressFlag)

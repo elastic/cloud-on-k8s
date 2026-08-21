@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -115,6 +116,78 @@ func TestParams_ReconcileResources(t *testing.T) {
 	caBundle = webhookConfiguration.Webhooks[0].ClientConfig.CABundle
 	// Check again that the cert in the secret has been signed by the caBundle
 	verifyCertificates(t, caBundle, webhookServerSecret.Data["tls.crt"])
+}
+
+// TestReconcileResources_PreservesHelmOwnedFields verifies that cert rotation uses scoped patches
+// and does not overwrite fields on the Secret or ValidatingWebhookConfiguration that are managed
+// by the Helm chart (e.g. labels on the Secret, FailurePolicy/Rules on webhook entries).
+func TestReconcileResources_PreservesHelmOwnedFields(t *testing.T) {
+	const helmLabel = "helm.sh/chart"
+	failurePolicy := v1.Fail
+	rules := []v1.RuleWithOperations{
+		{
+			Operations: []v1.OperationType{v1.OperationAll},
+			Rule: v1.Rule{
+				APIGroups:   []string{"elasticsearch.k8s.elastic.co"},
+				APIVersions: []string{"v1"},
+				Resources:   []string{"elasticsearches"},
+			},
+		},
+	}
+
+	w := Params{
+		Name:       "elastic-webhook.k8s.elastic.co",
+		Namespace:  "elastic-system",
+		SecretName: "elastic-webhook-server-cert",
+		Rotation: certificates.RotationParams{
+			Validity:     certificates.DefaultCertValidity,
+			RotateBefore: certificates.DefaultRotateBefore,
+		},
+	}
+
+	clientset := fake.NewClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "elastic-system",
+				Name:      "elastic-webhook-server-cert",
+				Labels:    map[string]string{helmLabel: "eck-stack-1.0.0"},
+			},
+		},
+		&v1.ValidatingWebhookConfiguration{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "elastic-webhook.k8s.elastic.co",
+			},
+			Webhooks: []v1.ValidatingWebhook{
+				{
+					Name:          "elastic-es-validation-v1.k8s.elastic.co",
+					FailurePolicy: &failurePolicy,
+					Rules:         rules,
+					ClientConfig: v1.WebhookClientConfig{
+						Service: &v1.ServiceReference{Name: "elastic-webhook-server", Namespace: "elastic-system"},
+					},
+				},
+			},
+		},
+	)
+
+	wh, err := w.NewAdmissionControllerInterface(context.Background(), clientset)
+	require.NoError(t, err)
+	require.NoError(t, w.ReconcileResources(context.Background(), clientset, wh))
+
+	ctx := context.Background()
+
+	secret, err := clientset.CoreV1().Secrets(w.Namespace).Get(ctx, w.SecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "eck-stack-1.0.0", secret.Labels[helmLabel], "Helm-managed label must survive cert rotation")
+	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName], "ECK label must be set")
+
+	webhookCfg, err := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, w.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Len(t, webhookCfg.Webhooks, 1)
+	wh0 := webhookCfg.Webhooks[0]
+	assert.Equal(t, v1.Fail, *wh0.FailurePolicy, "Helm-managed FailurePolicy must survive caBundle patch")
+	assert.Equal(t, rules, wh0.Rules, "Helm-managed Rules must survive caBundle patch")
+	assert.NotEmpty(t, wh0.ClientConfig.CABundle, "caBundle must be set by cert rotation")
 }
 
 func verifyCertificates(t *testing.T, rootCert []byte, serverCert []byte) {

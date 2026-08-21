@@ -6,12 +6,15 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 
 	v1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 )
 
 type webhook struct {
@@ -82,13 +85,33 @@ func (v1w *v1webhookHandler) services() Services {
 	return services
 }
 
+// updateCABundle patches only the clientConfig.caBundle of each webhook entry, matched by name,
+// instead of replacing the whole object. The webhooks list is a Kubernetes-native associative list
+// keyed by name (+patchStrategy=merge +patchMergeKey=name), so a strategic merge patch here leaves
+// every other field of the ValidatingWebhookConfiguration (rules, failurePolicy, selectors, etc.),
+// which is managed by the Helm chart, untouched. The resourceVersion read at Get time is embedded
+// in the patch to preserve the optimistic-concurrency guarantee.
 func (v1w *v1webhookHandler) updateCABundle(caCert []byte) error {
-	for i := range v1w.webhookConfiguration.Webhooks {
-		v1w.webhookConfiguration.Webhooks[i].ClientConfig.CABundle = caCert
+	webhooks := make([]map[string]any, 0, len(v1w.webhookConfiguration.Webhooks))
+	for _, wh := range v1w.webhookConfiguration.Webhooks {
+		webhooks = append(webhooks, map[string]any{
+			"name":         wh.Name,
+			"clientConfig": map[string]any{"caBundle": caCert},
+		})
 	}
-	_, err := v1w.clientset.
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"resourceVersion": v1w.webhookConfiguration.ResourceVersion,
+		},
+		"webhooks": webhooks,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = v1w.clientset.
 		AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Update(v1w.ctx, v1w.webhookConfiguration, metav1.UpdateOptions{})
+		Patch(v1w.ctx, v1w.webhookConfiguration.Name, types.StrategicMergePatchType, patch,
+			metav1.PatchOptions{FieldManager: about.FieldOwner})
 	return err
 }

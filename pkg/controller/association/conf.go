@@ -14,7 +14,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -201,44 +200,31 @@ func RemoveObsoleteAssociationConfs(
 	associated commonv1.Associated,
 	associationConfAnnotationNameBase string,
 ) error {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
+	annotations := associated.GetAnnotations()
 
 	expected := make(map[string]bool)
 	for _, association := range associated.GetAssociations() {
 		expected[association.AssociationConfAnnotationName()] = true
 	}
 
-	modified := false
+	var toDelete []string
 	for key := range annotations {
 		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
-			delete(annotations, key)
-			modified = true
+			toDelete = append(toDelete, key)
 		}
 	}
 
-	if !modified {
+	if len(toDelete) == 0 {
 		return nil
 	}
 
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	return k8s.PatchAnnotations(ctx, client, associated, nil, toDelete...)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
 func RemoveAssociationConf(ctx context.Context, client k8s.Client, association commonv1.Association) error {
 	associated := association.Associated()
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
+	annotations := associated.GetAnnotations()
 
 	if len(annotations) == 0 {
 		return nil
@@ -249,12 +235,7 @@ func RemoveAssociationConf(ctx context.Context, client k8s.Client, association c
 		return nil
 	}
 
-	delete(annotations, annotationName)
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	return k8s.PatchAnnotations(ctx, client, associated, nil, annotationName)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
@@ -264,32 +245,14 @@ func UpdateAssociationConf(
 	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
 ) error {
-	accessor := meta.NewAccessor()
-
-	obj := association.Associated()
-	annotations, err := accessor.Annotations(obj)
-	if err != nil {
-		return err
-	}
-
-	// serialize the config and update the object
+	// serialize the config
 	serializedConf, err := json.Marshal(wantConf)
 	if err != nil {
 		return errors.Wrapf(err, "failed to serialize configuration")
 	}
 
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	annotationName := association.AssociationConfAnnotationName()
-	annotations[annotationName] = unsafeBytesToString(serializedConf)
-	if err := accessor.SetAnnotations(obj, annotations); err != nil {
-		return err
-	}
-
-	// persist the changes
-	return client.Update(ctx, obj)
+	obj := association.Associated()
+	return k8s.PatchAnnotations(ctx, client, obj, map[string]string{association.AssociationConfAnnotationName(): unsafeBytesToString(serializedConf)})
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.
