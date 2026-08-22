@@ -10,10 +10,10 @@ spec:
     name: elasticsearch
   resources:
     requests:
-      memory: 1Gi
+      memory: 2Gi
       cpu: 200m
     limits:
-      memory: 1Gi
+      memory: 2Gi
       cpu: 200m
   podTemplate:
     spec:
