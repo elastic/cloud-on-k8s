@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -42,12 +43,22 @@ import (
 
 var defaultRequeue = reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}
 
-// AdditionalSecret is a secret to be copied into an associated resource's namespace.
+// AdditionalSecretNamer is a Namer for transitive Elasticsearch secrets (CA copies and client
+// certificate copies) placed in fleet-managed agent namespaces. Secrets use DNS subdomain naming
+// (253 chars max) and can therefore be longer than label-constrained resource names.
+var AdditionalSecretNamer = name.NewSecretNamer()
+
+// AdditionalSecret describes one secret that should be copied into the associated resource's namespace.
+// The reconciler copies every descriptor returned by the AdditionalSecrets callback and GCs any stale
+// copies (those that are no longer returned) automatically via deleteStaleAdditionalSecrets.
 type AdditionalSecret struct {
 	// Source is the namespace/name of the secret to copy from (in the referenced resource's namespace).
 	Source types.NamespacedName
 	// Keys is an optional list of data keys to include in the copy; all keys are copied when empty.
 	Keys []string
+	// TargetName is the name to give the copy in the associated resource's namespace.
+	// Defaults to Source.Name when empty.
+	TargetName string
 }
 
 // AssociationInfo contains information specific to a particular associated resource (eg. Kibana, APMServer, etc.).
@@ -297,18 +308,9 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return commonv1.AssociationPending, results.WithError(err) // maybe not created yet
 	}
 
-	var secretsHash hash.Hash32
-	if r.AdditionalSecrets != nil {
-		secretsHash = fnv.New32a()
-		additionalSecrets, err := r.AdditionalSecrets(ctx, r.Client, association)
-		if err != nil {
-			return commonv1.AssociationPending, results.WithError(err) // maybe not created yet
-		}
-		for _, sec := range additionalSecrets {
-			if err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec.Source, sec.Keys); err != nil {
-				return commonv1.AssociationPending, results.WithError(err)
-			}
-		}
+	secretsHash, err := r.reconcileAdditionalSecrets(ctx, association)
+	if err != nil {
+		return commonv1.AssociationPending, results.WithError(err)
 	}
 
 	url, err := r.AssociationInfo.ExternalServiceURL(r.Client, association)
@@ -533,8 +535,53 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 		}
 	}
 
+	// Delete any per-agent additional secret copies (e.g. transitive ES CA) that
+	// live in the associated resource's namespace. Passing nil or an empty set deletes all copies.
+	if r.AdditionalSecrets != nil {
+		assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
+		if err := deleteStaleAdditionalSecrets(ctx, r.Client, association.GetNamespace(), assocLabels, nil); err != nil {
+			return err
+		}
+	}
+
 	// Also remove the association configuration
 	return RemoveAssociationConf(ctx, r.Client, association)
+}
+
+// reconcileAdditionalSecrets copies secrets required by the association into the associated
+// resource's namespace, hashes their content, and GCs any stale copies from previous reconciles.
+// Returns nil, nil when AdditionalSecrets is not configured for this association type.
+// If AdditionalSecrets returns an error the stale GC is intentionally skipped: existing copies
+// remain until the referenced resource is reachable again or Kubernetes GC removes them via the
+// owner references set on each copy.
+func (r *Reconciler) reconcileAdditionalSecrets(ctx context.Context, association commonv1.Association) (hash.Hash32, error) {
+	if r.AdditionalSecrets == nil {
+		return nil, nil
+	}
+	secretsHash := fnv.New32a()
+	additionalSecrets, err := r.AdditionalSecrets(ctx, r.Client, association)
+	if err != nil {
+		return nil, err
+	}
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
+	copiedNames := sets.New[string]()
+	for _, sec := range additionalSecrets {
+		destName := sec.TargetName
+		if destName == "" {
+			destName = sec.Source.Name
+		}
+		copied, err := copySecret(ctx, r.Client, secretsHash, association.GetNamespace(), sec.Source, sec.Keys, destName, association.Associated(), assocLabels)
+		if err != nil {
+			return nil, err
+		}
+		if copied {
+			copiedNames.Insert(destName)
+		}
+	}
+	if err := deleteStaleAdditionalSecrets(ctx, r.Client, association.GetNamespace(), assocLabels, copiedNames); err != nil {
+		return nil, err
+	}
+	return secretsHash, nil
 }
 
 // updateAssocConf updates associated with the expected association conf.

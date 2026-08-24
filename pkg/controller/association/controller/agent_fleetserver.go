@@ -63,14 +63,13 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 // additionalSecrets returns secrets from the Fleet Server's Elasticsearch association that
 // need to be copied into the fleet-managed agent's namespace: the CA secret (when present)
 // and the client certificate secret (when the user has provided one on the Fleet Server's ES ref).
+// For same-namespace deployments (agent and Fleet Server share a namespace) the active entries
+// (CA and client cert) are still returned so that their content is hashed into AdditionalSecretsHash;
+// copySecret detects the shared namespace and skips creating a copy while still writing the hash.
+// Legacy copies (created by older ECK with the source secret's original name) are collected by
+// GarbageCollectLegacyFleetServerAdditionalSecrets at startup.
 func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]association.AdditionalSecret, error) {
 	log := ulog.FromContext(ctx)
-	associated := assoc.Associated()
-	var agent agentv1alpha1.Agent
-	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
-	if err := c.Get(ctx, nsn, &agent); err != nil {
-		return nil, err
-	}
 	fleetServerRef := assoc.AssociationRef()
 	if !fleetServerRef.IsSet() {
 		return nil, nil
@@ -102,30 +101,29 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 	}
 
 	secrets := make([]association.AdditionalSecret, 0, 2)
+
 	if conf.CACertProvided {
 		log.V(1).Info("additional secret because CA provided")
-		// Always restrict the copy to ca.crt. For external ES references, CASecretName ==
-		// AuthSecretName, so the source secret also contains url/username/password — filtering
-		// to ca.crt prevents credential leakage. For managed refs the CA secret also contains
-		// tls.crt; agents only need ca.crt for TLS verification, so the narrower copy is correct
-		// in both cases.
 		secrets = append(secrets, association.AdditionalSecret{
-			Source: types.NamespacedName{
-				Namespace: fleetServer.Namespace,
-				Name:      conf.CASecretName,
-			},
-			Keys: []string{certificates.CAFileName},
+			Source: types.NamespacedName{Namespace: fleetServer.Namespace, Name: conf.CASecretName},
+			// Always restrict the copy to ca.crt. For external ES references, CASecretName ==
+			// AuthSecretName, so the source secret also contains url/username/password — filtering
+			// to ca.crt prevents credential leakage. For managed refs the CA secret also contains
+			// tls.crt; agents only need ca.crt for TLS verification, so the narrower copy is correct
+			// in both cases.
+			Keys:       []string{certificates.CAFileName},
+			TargetName: transitiveESCATargetName(assoc, conf),
 		})
 	}
+
 	if conf.ClientCertIsConfigured() && esRef.GetClientCertificateSecretName() != "" {
 		log.V(1).Info("additional secret because user client certificate is provided")
 		secrets = append(secrets, association.AdditionalSecret{
-			Source: types.NamespacedName{
-				Namespace: fleetServer.Namespace,
-				Name:      conf.GetClientCertSecretName(),
-			},
+			Source:     types.NamespacedName{Namespace: fleetServer.Namespace, Name: conf.GetClientCertSecretName()},
+			TargetName: transitiveESClientCertTargetName(assoc, conf),
 		})
 	}
+
 	return secrets, nil
 }
 
@@ -137,6 +135,34 @@ func clientCertSecretName(associated commonv1.Associated, ref commonv1.Associati
 	return association.ClientCertNamer.Suffix(associatedName, associationName, refHash, "client-cert")
 }
 
+// transitiveSecretTargetName returns the name a transitive ES secret should have in the
+// fleet-managed agent's namespace. For same-namespace deployments this is origName (the secret
+// already lives in the shared namespace, no copy needed); for cross-namespace deployments it is a
+// deterministic-hashed name that embeds the fleet server's NamespacedName to avoid collisions.
+// Used by both additionalSecrets and fleetManagedAgentTransitiveESRef so the two code paths always
+// agree on the target name.
+func transitiveSecretTargetName(assoc commonv1.Association, origName, suffix string) string {
+	agentNS := assoc.Associated().GetNamespace()
+	refNS := assoc.AssociationRef().GetNamespace()
+	switch refNS {
+	case "":
+		// Omitting namespace on the FleetServerRef means same namespace as the agent.
+		return origName
+	case agentNS:
+		return origName
+	}
+	refHash := hash.HashObject(assoc.AssociationRef().NamespacedName())
+	return association.AdditionalSecretNamer.Suffix(assoc.Associated().GetName(), "agent-fleetserver", refHash, suffix)
+}
+
+func transitiveESCATargetName(assoc commonv1.Association, conf *commonv1.AssociationConf) string {
+	return transitiveSecretTargetName(assoc, conf.CASecretName, "es-ca")
+}
+
+func transitiveESClientCertTargetName(assoc commonv1.Association, conf *commonv1.AssociationConf) string {
+	return transitiveSecretTargetName(assoc, conf.GetClientCertSecretName(), "es-client-cert")
+}
+
 // fleetManagedAgentTransitiveESRef resolves the transitive Elasticsearch association
 // (Agent -> Fleet Server -> Elasticsearch) and reconciles a client certificate for the
 // fleet-managed agent when the Elasticsearch requires client authentication.
@@ -146,9 +172,9 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	log := ulog.FromContext(ctx)
 	associated := assoc.Associated()
-	var agent agentv1alpha1.Agent
+	var agnt agentv1alpha1.Agent
 	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
-	if err := c.Get(ctx, nsn, &agent); err != nil {
+	if err := c.Get(ctx, nsn, &agnt); err != nil {
 		return nil, results.WithError(err)
 	}
 	fleetServerRef := assoc.AssociationRef()
@@ -189,18 +215,32 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		return nil, nil
 	}
 
-	ref := esAssociation.AssociationRef()
-	if ref.IsExternal() {
+	esAssocRef := esAssociation.AssociationRef()
+
+	var caSecretName string
+	if conf.CACertProvided {
+		caSecretName = transitiveESCATargetName(assoc, conf)
+	}
+
+	// Compute the user-provided client cert name up front so the external-ES branch can include
+	// it in the TransitiveESRef and preserve its copy in the agent namespace.
+	var userClientCertName string
+	if esRef.GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
+		userClientCertName = transitiveESClientCertTargetName(assoc, conf)
+	}
+
+	if esAssocRef.IsExternal() {
 		// For external ES references, the operator cannot determine whether client
-		// authentication is required. Skip client cert reconciliation.
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		// authentication is required. Propagate the user-provided cert copy if present
+		// but skip ECK-managed client cert reconciliation.
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, userClientCertName); err != nil {
 			return nil, results.WithError(err)
 		}
-		return nil, nil
+		return transitiveESRefOrNil(caSecretName, userClientCertName), nil
 	}
 
 	var es esv1.Elasticsearch
-	if err := c.Get(ctx, ref.NamespacedName(), &es); err != nil {
+	if err := c.Get(ctx, esAssocRef.NamespacedName(), &es); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -208,30 +248,30 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
-		return nil, nil
+		return transitiveESRefOrNil(caSecretName, ""), nil
 	}
 
-	// If the Fleet Server has a user-provided client certificate for its ES association, reuse it.
-	// The secret is already copied into the agent's namespace by additionalSecrets/copySecret.
-	if esRef.GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
-		copiedSecretName := conf.GetClientCertSecretName()
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+	// If the Fleet Server has a user-provided client certificate for its ES association, reuse
+	// it: for cross-namespace associations this is the per-agent copy created by
+	// additionalSecrets/copySecret; for same-namespace associations it is the original secret.
+	if userClientCertName != "" {
+		// Pass userClientCertName to preserve the copy: it may inherit SoftOwnerKindLabel/
+		// ClientCertificateLabelName from the source secret, so "" would match and delete it.
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, userClientCertName); err != nil {
 			return nil, results.WithError(err)
 		}
-		return &commonv1.TransitiveESRef{
-			ClientCertSecretName: copiedSecretName,
-		}, results
+		return transitiveESRefOrNil(caSecretName, userClientCertName), results
 	}
 
 	// Build soft-owner labels pointing to the referenced server resource.
 	extraLabels := map[string]string{
-		reconciler.SoftOwnerNameLabel:      ref.GetName(),
-		reconciler.SoftOwnerNamespaceLabel: ref.GetNamespace(),
+		reconciler.SoftOwnerNameLabel:      esAssocRef.GetName(),
+		reconciler.SoftOwnerNamespaceLabel: esAssocRef.GetNamespace(),
 		reconciler.SoftOwnerKindLabel:      esv1.Kind,
 		labels.ClientCertificateLabelName:  "true",
 	}
 
-	secretName := clientCertSecretName(associated, ref, "agent-es")
+	secretName := clientCertSecretName(associated, esAssocRef, "agent-es")
 
 	_, certResults := association.ReconcileManagedClientCert(ctx, c, assoc, assocMeta, secretName, extraLabels)
 	results.WithResults(certResults)
@@ -243,9 +283,19 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		return nil, results.WithError(err)
 	}
 
+	return transitiveESRefOrNil(caSecretName, secretName), results
+}
+
+// transitiveESRefOrNil returns a *TransitiveESRef populated with the provided names, or nil if
+// both are empty (indicating no transitive ES state to propagate).
+func transitiveESRefOrNil(caSecretName, clientCertSecretName string) *commonv1.TransitiveESRef {
+	if caSecretName == "" && clientCertSecretName == "" {
+		return nil
+	}
 	return &commonv1.TransitiveESRef{
-		ClientCertSecretName: secretName,
-	}, results
+		CASecretName:         caSecretName,
+		ClientCertSecretName: clientCertSecretName,
+	}
 }
 
 // deleteOrphanedTransitiveESClientCertSecrets lists transitive ES client cert secrets scoped to

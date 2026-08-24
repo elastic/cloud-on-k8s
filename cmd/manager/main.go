@@ -962,6 +962,10 @@ func (r *gcRunnable) Start(ctx context.Context) error {
 	if err := garbageCollectUsers(gcCtx, r.cfg, namespaces); err != nil {
 		return fmt.Errorf("user garbage collection failed: %w", err)
 	}
+	// legacy fleet-server additional secret copies (cross-namespace copies with old naming scheme)
+	if err := associationctl.GarbageCollectLegacyFleetServerAdditionalSecrets(gcCtx, r.mgr.GetClient(), namespaces); err != nil {
+		log.Error(err, "Legacy fleet-server cross-namespace additional secrets GC failed, will be attempted again at next operator restart")
+	}
 	// - soft-owned secrets
 	garbageCollectSoftOwnedSecrets(gcCtx, r.mgr.GetClient())
 	// - autoops orphaned resources (API key secrets without owner references)
