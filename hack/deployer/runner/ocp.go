@@ -491,7 +491,7 @@ func (d *OCPDriver) copyKubeconfig() error {
 }
 
 func (d *OCPDriver) removeKubeconfig() error {
-	return removeKubeconfig("admin", "admin", "admin")
+	return removeKubeconfig("admin", d.plan.ClusterName, "admin")
 }
 
 func (d *OCPDriver) bucketParams() map[string]any {
