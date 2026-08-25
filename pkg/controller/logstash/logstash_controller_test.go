@@ -715,7 +715,7 @@ func TestReconcileLogstash_Resize(t *testing.T) {
 				// Final pass of the reconciler  deletes the logstash annotations
 				result, err = r.Reconcile(ctx, request)
 				require.NoError(t, err)
-				require.Equal(t, reconcile.Result{Requeue: false}, result)
+				require.Equal(t, reconcile.Result{}, result)
 
 				updatedls = logstashv1alpha1.Logstash{}
 				_ = r.Client.Get(ctx, request.NamespacedName, &updatedls)

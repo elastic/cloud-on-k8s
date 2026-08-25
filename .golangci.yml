@@ -115,11 +115,21 @@ linters:
       - linters:
           - staticcheck
         # added exclusion until ManagedAnnotation is completely removed
-        text: 'SA1019: common.IsUnmanaged is deprecated: Migrate to IsOrchestrationPaused instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+        text: 'SA1019: .*/common.IsUnmanaged is deprecated: Migrate to IsOrchestrationPaused instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
       - linters:
           - staticcheck
         # added exclusion until ManagedAnnotation is completely removed
-        text: 'SA1019: common.ManagedAnnotation is deprecated: Use PauseOrchestrationAnnotation instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+        text: 'SA1019: .*/common.ManagedAnnotation is deprecated: Use PauseOrchestrationAnnotation instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
+          - staticcheck
+        # SelfLink is a legacy k8s read-only field no longer populated by the system; still set in test fixtures for historical reasons
+        path: .*_test\.go
+        text: 'SA1019: .*\.SelfLink is deprecated: selfLink is a legacy read-only field'
+      - linters:
+          - staticcheck
+        # added exclusion until SecureSettings is completely removed from StackConfigPolicySpec
+        path: .*_test\.go
+        text: 'SA1019: .*\.SecureSettings is deprecated: SecureSettings only applies to Elasticsearch'
       - linters:
           - revive
         # revive naming rules are not that happy with our packages/var names in common/utils/shared packages

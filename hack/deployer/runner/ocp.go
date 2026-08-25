@@ -327,14 +327,14 @@ func (d *OCPDriver) ensureWorkDir() error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Defaulting WorkDir: %s", workDir)
+		log.Printf("Defaulting WorkDir: %s", workDir) //nolint:gosec
 	}
 
-	if err := os.MkdirAll(workDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(workDir, os.ModePerm); err != nil { //nolint:gosec
 		return err
 	}
 	d.runtimeState.ClusterStateDir = workDir
-	log.Printf("Using ClusterStateDir: %s", workDir)
+	log.Printf("Using ClusterStateDir: %s", workDir) //nolint:gosec
 	return nil
 }
 

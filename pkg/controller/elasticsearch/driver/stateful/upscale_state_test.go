@@ -180,12 +180,12 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	}
 
 	getTest := func(args args) test {
-		var actualSsets es_sset.StatefulSetList
+		actualSsets := make(es_sset.StatefulSetList, 0, len(args.actual))
 		for _, count := range args.actual {
 			actualSsets = append(actualSsets, sset.TestSset{Name: "sset", Replicas: int32(count), Master: false}.Build())
 		}
 
-		var expectedResources nodespec.ResourcesList
+		expectedResources := make(nodespec.ResourcesList, 0, len(args.expected))
 		for _, count := range args.expected {
 			expectedResources = append(expectedResources, nodespec.Resources{StatefulSet: sset.TestSset{Name: "sset", Replicas: int32(count), Master: false}.Build()})
 		}

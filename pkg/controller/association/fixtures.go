@@ -73,7 +73,7 @@ func (t testAPMServer) withElasticsearchAssoc() testAPMServer {
 }
 
 func (t testAPMServer) withKibanaAssoc() testAPMServer {
-	t.kbAssociation = &commonv1.AssociationConf{
+	t.kbAssociation = &commonv1.AssociationConf{ //nolint:gosec
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "apm-kb-user",
 		CACertProvided: true,

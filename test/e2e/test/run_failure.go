@@ -6,6 +6,7 @@ package test
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +53,8 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 		}
 	}
 
-	for idx := len(builders) - 1; idx >= 0; idx-- {
-		steps = steps.WithSteps(builders[idx].DeletionTestSteps(k))
+	for _, builder := range slices.Backward(builders) {
+		steps = steps.WithSteps(builder.DeletionTestSteps(k))
 	}
 
 	steps.RunSequential(t)

@@ -170,11 +170,9 @@ func (e *EKSDriver) Execute() error {
 	return nil
 }
 
-func (e *EKSDriver) runCleanup() func() {
-	return func() {
-		for _, f := range e.cleanUp {
-			f()
-		}
+func (e *EKSDriver) runCleanup() {
+	for _, f := range e.cleanUp {
+		f()
 	}
 }
 

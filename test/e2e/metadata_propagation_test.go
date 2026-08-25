@@ -207,7 +207,7 @@ func (ec *expectedChildrenForHelper) GetObjects(matchingLabels map[string]string
 			return ec
 		}
 		for i := 0; i < v.Len(); i++ {
-			item, ok := v.Index(i).Addr().Interface().(client.Object)
+			item, ok := reflect.TypeAssert[client.Object](v.Index(i).Addr())
 			if !ok {
 				ec.err = multierror.Append(ec.err, fmt.Errorf("item %d in list %T is not a client.Object", i, list))
 				return ec

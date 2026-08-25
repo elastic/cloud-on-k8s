@@ -121,7 +121,7 @@ func setLogger(v *int) {
 func determineLogLevel(v *int) zap.AtomicLevel {
 	switch {
 	case v != nil && *v > -3:
-		return zap.NewAtomicLevelAt(zapcore.Level(max(*v*-1, math.MinInt8))) //nolint:gosec // G115: clamped to [math.MinInt8, 2]
+		return zap.NewAtomicLevelAt(zapcore.Level(max(*v*-1, math.MinInt8)))
 	case dev.Enabled:
 		return zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	default:

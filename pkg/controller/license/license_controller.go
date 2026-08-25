@@ -216,8 +216,7 @@ func (r *ReconcileLicenses) findLicense(ctx context.Context, c k8s.Client, check
 
 func recordInvalidLicenseEvents(errs []error, recorder toolsevents.EventRecorder) {
 	for _, err := range errs {
-		var licenseErr *license.Error
-		if errors.As(err, &licenseErr) {
+		if licenseErr, ok := errors.AsType[*license.Error](err); ok {
 			k8s.EmitEvent(recorder, licenseErr.Source, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, err.Error())
 		}
 	}
