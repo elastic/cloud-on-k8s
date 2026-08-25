@@ -250,7 +250,7 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	}
 
 	// Update the Elasticsearch resource
-	if err := r.Client.Update(ctx, reconciledEs); err != nil {
+	if err := r.Client.Update(ctx, reconciledEs); err != nil { //nolint:ssacrdlint // legitimate full-object write: autoscaler updates the full ES spec
 		if apierrors.IsConflict(err) {
 			return results.WithRequeue().Aggregate()
 		}
