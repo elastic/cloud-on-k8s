@@ -1,6 +1,11 @@
 version: "2"
 linters:
   settings:
+    custom:
+      ssacrdlint:
+        type: module
+        description: "flags client.Client.Update() calls on ECK CRDs that may cause SSA field-ownership conflicts with Helm's field manager"
+
     exhaustive:
       default-signifies-exhaustive: true
 
@@ -103,7 +108,15 @@ linters:
           - gosec
           - unparam
           - forbidigo
+          - ssacrdlint
         path: .*_test\.go
+      - linters:
+          - ssacrdlint
+        path: test/e2e/
+      - linters:
+          - nolintlint
+        # nolintlint cannot see ssacrdlint output (plugin linter) so it incorrectly marks //nolint:ssacrdlint as unused
+        text: ssacrdlint
       - linters:
           - staticcheck
         path: pkg/controller/common/tracing/apmclientgo/client.go
@@ -143,6 +156,7 @@ linters:
   default: none
 
   enable:
+    - ssacrdlint
     - asciicheck
     - bodyclose
     - dogsled
