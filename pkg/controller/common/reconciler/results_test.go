@@ -17,14 +17,15 @@ import (
 )
 
 func TestResults(t *testing.T) {
-	requeueResult := reconcile.Result{Requeue: true} //nolint:staticcheck // keep testing deprecated Requeue field support
+	requeueResult := reconcile.Result{Requeue: true}                                    //nolint:staticcheck // keep testing deprecated Requeue field support
+	bothFieldsResult := reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true} //nolint:staticcheck // keep testing deprecated Requeue field support
 	args := []struct {
 		kind   resultKind
 		result reconcile.Result
 	}{
 		{kind: noqueueKind, result: reconcile.Result{}},                                // 0
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2
+		{kind: specificKind, result: bothFieldsResult},                                 // 2
 		{kind: genericKind, result: requeueResult},                                     // 3
 	}
 
@@ -34,7 +35,7 @@ func TestResults(t *testing.T) {
 	}{
 		{kind: noqueueKind, result: reconcile.Result{}},                                // 0 & 0
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 0 & 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 0 & 2
+		{kind: specificKind, result: bothFieldsResult},                                 // 0 & 2
 		{kind: genericKind, result: requeueResult},                                     // 0 & 3
 
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 0
@@ -42,9 +43,9 @@ func TestResults(t *testing.T) {
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 2
 		{kind: genericKind, result: requeueResult},                                     // 1 & 3
 
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2 & 0
+		{kind: specificKind, result: bothFieldsResult},                                 // 2 & 0
 		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 2 & 1
-		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second}}, // 2 & 2
+		{kind: specificKind, result: bothFieldsResult},                                 // 2 & 2
 		{kind: genericKind, result: requeueResult},                                     // 2 & 3
 
 		{kind: genericKind, result: requeueResult}, // 3 & 0
