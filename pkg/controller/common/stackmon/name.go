@@ -5,26 +5,20 @@
 package stackmon
 
 import (
-	"crypto/sha256"
-	"fmt"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
 
-const maxVolumeNameLength = 63
-
-var VolumeNamer = name.Namer{
-	MaxSuffixLength: name.MaxSuffixLength,
-	MaxNameLength:   maxVolumeNameLength,
-}
-
 func configVolumeName(name string, beatName string) string {
-	return VolumeNamer.Suffix(name, beatName, "config")
+	return volume.VolumeNamer.Suffix(name, beatName, "config")
 }
 
 func caVolumeName(assoc commonv1.Association) string {
-	nsn := assoc.AssociationRef().GetNamespace() + assoc.AssociationRef().NameOrSecretName()
-	nsnHash := fmt.Sprintf("%x", sha256.Sum256([]byte(nsn)))[0:6]
-	return VolumeNamer.Suffix(string(assoc.AssociationType()), nsnHash, "ca")
+	ref := assoc.AssociationRef()
+	return volume.CAVolumeName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName())
+}
+
+func clientCertVolumeName(assoc commonv1.Association) string {
+	ref := assoc.AssociationRef()
+	return volume.ClientCertVolumeName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName())
 }

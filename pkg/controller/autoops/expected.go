@@ -26,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -161,11 +160,11 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 }
 
 func caCertVolumeName(es esv1.Elasticsearch) string {
-	return name.DNSLabel(fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace))
+	return volume.CAVolumeName("es", es.Namespace, es.Name)
 }
 
 func clientCertVolumeName(es esv1.Elasticsearch) string {
-	return name.DNSLabel(fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace))
+	return volume.ClientCertVolumeName("es", es.Namespace, es.Name)
 }
 
 // readinessProbe is the readiness probe for the AutoOps Agent container

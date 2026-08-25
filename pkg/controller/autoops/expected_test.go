@@ -639,9 +639,16 @@ func Test_certVolumeNames(t *testing.T) {
 		},
 	}
 
-	t.Run("short names are unchanged", func(t *testing.T) {
-		require.Equal(t, "es-ca-es-cluster-default", caCertVolumeName(shortES))
-		require.Equal(t, "es-client-cert-es-cluster-default", clientCertVolumeName(shortES))
+	t.Run("short names stay within 63 characters", func(t *testing.T) {
+		caName := caCertVolumeName(shortES)
+		require.LessOrEqual(t, len(caName), validation.DNS1123LabelMaxLength)
+		require.Empty(t, validation.IsDNS1123Label(caName), caName)
+		require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
+
+		clientName := clientCertVolumeName(shortES)
+		require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
+		require.Empty(t, validation.IsDNS1123Label(clientName), clientName)
+		require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
 	})
 
 	t.Run("customer reproduction stays within 63 characters", func(t *testing.T) {
@@ -653,6 +660,7 @@ func Test_certVolumeNames(t *testing.T) {
 		require.Empty(t, validation.IsDNS1123Label(caName))
 		require.NotEqual(t, originalCA, caName)
 		require.Equal(t, caName, caCertVolumeName(longES), "volume names must be deterministic")
+		require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
 
 		originalClient := fmt.Sprintf("es-client-cert-%s-%s", longES.Name, longES.Namespace)
 		require.Greater(t, len(originalClient), validation.DNS1123LabelMaxLength)
@@ -660,6 +668,7 @@ func Test_certVolumeNames(t *testing.T) {
 		require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
 		require.Empty(t, validation.IsDNS1123Label(clientName))
 		require.NotEqual(t, originalClient, clientName)
+		require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
 	})
 
 	t.Run("nearby long names do not collide", func(t *testing.T) {
@@ -671,13 +680,33 @@ func Test_certVolumeNames(t *testing.T) {
 		policy := autoopsv1alpha1.AutoOpsAgentPolicy{
 			ObjectMeta: metav1.ObjectMeta{Name: "autoops-elastic-agent"},
 		}
-		require.Equal(
-			t,
-			fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", longES.Namespace, longES.Name),
-			expectedVolumeMounts(longES)[1].MountPath,
-		)
-		require.Equal(t, caCertVolumeName(longES), expectedVolumeMounts(longES)[1].Name)
-		require.Equal(t, caCertVolumeName(longES), expectedVolumes(policy, longES)[1].Name)
-		require.Equal(t, autoopsv1alpha1.CASecret(policy.GetName(), longES), expectedVolumes(policy, longES)[1].Secret.SecretName)
+		caName := caCertVolumeName(longES)
+		wantMountPath := fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", longES.Namespace, longES.Name)
+
+		mount, found := volumeMountByName(expectedVolumeMounts(longES), caName)
+		require.True(t, found, "CA volume mount %q not found", caName)
+		require.Equal(t, wantMountPath, mount.MountPath)
+
+		vol, found := volumeByName(expectedVolumes(policy, longES), caName)
+		require.True(t, found, "CA volume %q not found", caName)
+		require.Equal(t, autoopsv1alpha1.CASecret(policy.GetName(), longES), vol.Secret.SecretName)
 	})
+}
+
+func volumeMountByName(mounts []corev1.VolumeMount, name string) (corev1.VolumeMount, bool) {
+	for _, mount := range mounts {
+		if mount.Name == name {
+			return mount, true
+		}
+	}
+	return corev1.VolumeMount{}, false
+}
+
+func volumeByName(volumes []corev1.Volume, name string) (corev1.Volume, bool) {
+	for _, vol := range volumes {
+		if vol.Name == name {
+			return vol, true
+		}
+	}
+	return corev1.Volume{}, false
 }
