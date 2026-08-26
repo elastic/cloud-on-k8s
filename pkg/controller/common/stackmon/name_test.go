@@ -84,6 +84,6 @@ func TestClientCertVolumeName(t *testing.T) {
 	assoc := monitoring.GetMetricsAssociation(&es)[0]
 	name := clientCertVolumeName(assoc)
 	assert.LessOrEqual(t, len(name), volume.MaxVolumeNameLength)
-	assert.Equal(t, "es-monitoring-954c60-client-cert", name)
-	assert.NotEqual(t, fmt.Sprintf("%s-client-cert", caVolumeName(assoc)), name)
+	assert.Equal(t, "es-monitoring-954c60-ca-client-cert", name)
+	assert.NotEqual(t, caVolumeName(assoc), name)
 }
