@@ -5,7 +5,6 @@
 package stackmon
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

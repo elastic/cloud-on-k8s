@@ -639,58 +639,78 @@ func Test_certVolumeNames(t *testing.T) {
 		},
 	}
 
-	t.Run("short names stay within 63 characters", func(t *testing.T) {
-		caName := caCertVolumeName(shortES)
-		require.LessOrEqual(t, len(caName), validation.DNS1123LabelMaxLength)
-		require.Empty(t, validation.IsDNS1123Label(caName), caName)
-		require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
+	tests := []struct {
+		name                string
+		es                  esv1.Elasticsearch
+		distinctFrom        *esv1.Elasticsearch
+		legacyCA            string
+		legacyClient        string
+		checkSecretAndMount bool
+	}{
+		{
+			name: "short names stay within 63 characters",
+			es:   shortES,
+		},
+		{
+			name:         "customer reproduction stays within 63 characters",
+			es:           longES,
+			legacyCA:     fmt.Sprintf("es-ca-%s-%s", longES.Name, longES.Namespace),
+			legacyClient: fmt.Sprintf("es-client-cert-%s-%s", longES.Name, longES.Namespace),
+		},
+		{
+			name:         "nearby long names do not collide",
+			es:           longES,
+			distinctFrom: &otherLongES,
+		},
+		{
+			name:                "secret names and mount paths are not truncated",
+			es:                  longES,
+			checkSecretAndMount: true,
+		},
+	}
 
-		clientName := clientCertVolumeName(shortES)
-		require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
-		require.Empty(t, validation.IsDNS1123Label(clientName), clientName)
-		require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caName := caCertVolumeName(tt.es)
+			clientName := clientCertVolumeName(tt.es)
 
-	t.Run("customer reproduction stays within 63 characters", func(t *testing.T) {
-		originalCA := fmt.Sprintf("es-ca-%s-%s", longES.Name, longES.Namespace)
-		require.Greater(t, len(originalCA), validation.DNS1123LabelMaxLength)
+			require.LessOrEqual(t, len(caName), validation.DNS1123LabelMaxLength)
+			require.Empty(t, validation.IsDNS1123Label(caName), caName)
+			require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
+			require.Equal(t, caName, caCertVolumeName(tt.es), "volume names must be deterministic")
 
-		caName := caCertVolumeName(longES)
-		require.LessOrEqual(t, len(caName), validation.DNS1123LabelMaxLength)
-		require.Empty(t, validation.IsDNS1123Label(caName))
-		require.NotEqual(t, originalCA, caName)
-		require.Equal(t, caName, caCertVolumeName(longES), "volume names must be deterministic")
-		require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
+			require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
+			require.Empty(t, validation.IsDNS1123Label(clientName), clientName)
+			require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
 
-		originalClient := fmt.Sprintf("es-client-cert-%s-%s", longES.Name, longES.Namespace)
-		require.Greater(t, len(originalClient), validation.DNS1123LabelMaxLength)
-		clientName := clientCertVolumeName(longES)
-		require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
-		require.Empty(t, validation.IsDNS1123Label(clientName))
-		require.NotEqual(t, originalClient, clientName)
-		require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
-	})
+			if tt.legacyCA != "" {
+				require.Greater(t, len(tt.legacyCA), validation.DNS1123LabelMaxLength)
+				require.NotEqual(t, tt.legacyCA, caName)
+			}
+			if tt.legacyClient != "" {
+				require.Greater(t, len(tt.legacyClient), validation.DNS1123LabelMaxLength)
+				require.NotEqual(t, tt.legacyClient, clientName)
+			}
+			if tt.distinctFrom != nil {
+				require.NotEqual(t, caName, caCertVolumeName(*tt.distinctFrom))
+				require.NotEqual(t, clientName, clientCertVolumeName(*tt.distinctFrom))
+			}
+			if tt.checkSecretAndMount {
+				policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+					ObjectMeta: metav1.ObjectMeta{Name: "autoops-elastic-agent"},
+				}
+				wantMountPath := fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", tt.es.Namespace, tt.es.Name)
 
-	t.Run("nearby long names do not collide", func(t *testing.T) {
-		require.NotEqual(t, caCertVolumeName(longES), caCertVolumeName(otherLongES))
-		require.NotEqual(t, clientCertVolumeName(longES), clientCertVolumeName(otherLongES))
-	})
+				mount, found := volumeMountByName(expectedVolumeMounts(tt.es), caName)
+				require.True(t, found, "CA volume mount %q not found", caName)
+				require.Equal(t, wantMountPath, mount.MountPath)
 
-	t.Run("secret names and mount paths are not truncated", func(t *testing.T) {
-		policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-			ObjectMeta: metav1.ObjectMeta{Name: "autoops-elastic-agent"},
-		}
-		caName := caCertVolumeName(longES)
-		wantMountPath := fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", longES.Namespace, longES.Name)
-
-		mount, found := volumeMountByName(expectedVolumeMounts(longES), caName)
-		require.True(t, found, "CA volume mount %q not found", caName)
-		require.Equal(t, wantMountPath, mount.MountPath)
-
-		vol, found := volumeByName(expectedVolumes(policy, longES), caName)
-		require.True(t, found, "CA volume %q not found", caName)
-		require.Equal(t, autoopsv1alpha1.CASecret(policy.GetName(), longES), vol.Secret.SecretName)
-	})
+				vol, found := volumeByName(expectedVolumes(policy, tt.es), caName)
+				require.True(t, found, "CA volume %q not found", caName)
+				require.Equal(t, autoopsv1alpha1.CASecret(policy.GetName(), tt.es), vol.Secret.SecretName)
+			}
+		})
+	}
 }
 
 func volumeMountByName(mounts []corev1.VolumeMount, name string) (corev1.VolumeMount, bool) {

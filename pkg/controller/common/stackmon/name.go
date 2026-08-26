@@ -10,7 +10,7 @@ import (
 )
 
 func configVolumeName(name string, beatName string) string {
-	return volume.VolumeNamer.Suffix(name, beatName, "config")
+	return volume.VolumeName(name, beatName, "config")
 }
 
 func caVolumeName(assoc commonv1.Association) string {
@@ -20,5 +20,8 @@ func caVolumeName(assoc commonv1.Association) string {
 
 func clientCertVolumeName(assoc commonv1.Association) string {
 	ref := assoc.AssociationRef()
-	return volume.ClientCertVolumeName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName())
+	// "ca-client-cert" matches the suffix that the old inline derivation produced:
+	// fmt.Sprintf("%s-client-cert", caVolumeName(assoc)) → "{type}-{hash}-ca-client-cert".
+	// Keeping it avoids a volume rename on existing resources when upgrading.
+	return volume.VolumeNamespacedName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName(), "ca-client-cert")
 }
