@@ -16,8 +16,8 @@ const (
 	MaxVolumeNameLength = 63
 )
 
-// VolumeNamer builds Kubernetes volume names capped at MaxVolumeNameLength.
-var VolumeNamer = name.Namer{
+// volumeNamer builds Kubernetes volume names capped at MaxVolumeNameLength.
+var volumeNamer = name.Namer{
 	MaxSuffixLength: name.MaxSuffixLength,
 	MaxNameLength:   MaxVolumeNameLength,
 }
@@ -30,10 +30,21 @@ func nsnHash(namespace, name string) string {
 // CAVolumeName returns a DNS-label volume name for a CA certificate secret.
 // prefix is typically an association type (for example "es-monitoring").
 func CAVolumeName(prefix, namespace, name string) string {
-	return VolumeNamer.Suffix(prefix, nsnHash(namespace, name), "ca")
+	return VolumeNamespacedName(prefix, namespace, name, "ca")
 }
 
 // ClientCertVolumeName returns a DNS-label volume name for a client certificate secret.
 func ClientCertVolumeName(prefix, namespace, name string) string {
-	return VolumeNamer.Suffix(prefix, nsnHash(namespace, name), "client-cert")
+	return VolumeNamespacedName(prefix, namespace, name, "client-cert")
+}
+
+// VolumeNamespacedName returns a DNS-label volume name derived from a namespace/name pair.
+// The namespace and name are hashed together so the result always fits within MaxVolumeNameLength.
+func VolumeNamespacedName(prefix, namespace, name, suffix string) string {
+	return VolumeName(prefix, nsnHash(namespace, name), suffix)
+}
+
+// VolumeName joins prefix and suffixes with hyphens and truncates the result to MaxVolumeNameLength.
+func VolumeName(prefix string, suffixes ...string) string {
+	return volumeNamer.Suffix(prefix, suffixes...)
 }
