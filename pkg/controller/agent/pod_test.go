@@ -1080,7 +1080,9 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "elasticsearch-es-ca",
 				})
 			},
-			wantVolumesFromAssociationsLength: 2,
+			// Kibana skipped (not pod-mounted); ES skipped (applyRelatedEsAssoc handles it in fleet mode).
+			// 1 CA vol for Fleet Server = 1
+			wantVolumesFromAssociationsLength: 1,
 		},
 		{
 			name: "fleet mode enabled, kb no tls ref, fleet ref",
@@ -1155,8 +1157,8 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
-			// 1 CA vol for ES + 1 client cert vol for ES + 1 CA vol for Fleet Server = 3
-			wantVolumesFromAssociationsLength: 3,
+			// ES skipped: applyRelatedEsAssoc handles it in fleet mode. 1 CA vol for Fleet Server = 1
+			wantVolumesFromAssociationsLength: 1,
 		},
 		{
 			name: "fleet server enabled, es ref with CA only",
@@ -1246,7 +1248,7 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assocs := tt.params.Agent.GetAssociations()
 			tt.setAssocConfs(assocs)
-			associations, err := getVolumesFromAssociations(assocs, tt.params.Agent.Spec.FleetServerEnabled)
+			associations, err := getVolumesFromAssociations(assocs, tt.params.Agent.Spec.FleetModeEnabled())
 			require.NoError(t, err)
 			require.Equal(t, tt.wantVolumesFromAssociationsLength, len(associations))
 		})
@@ -2333,44 +2335,50 @@ func Test_fleetManagedAgentESClientCertSecretName(t *testing.T) {
 
 func Test_shouldSkipVolumeMount(t *testing.T) {
 	for _, tt := range []struct {
-		name               string
-		assocType          commonv1.AssociationType
-		fleetServerEnabled bool
-		want               bool
+		name             string
+		assocType        commonv1.AssociationType
+		fleetModeEnabled bool
+		want             bool
 	}{
 		{
-			name:               "kibana is always skipped",
-			assocType:          commonv1.KibanaAssociationType,
-			fleetServerEnabled: false,
-			want:               true,
+			name:             "kibana is always skipped",
+			assocType:        commonv1.KibanaAssociationType,
+			fleetModeEnabled: false,
+			want:             true,
 		},
 		{
-			name:               "kibana is skipped even when fleet server enabled",
-			assocType:          commonv1.KibanaAssociationType,
-			fleetServerEnabled: true,
-			want:               true,
+			name:             "kibana is skipped even when fleet mode enabled",
+			assocType:        commonv1.KibanaAssociationType,
+			fleetModeEnabled: true,
+			want:             true,
 		},
 		{
-			name:               "elasticsearch skipped when fleet server enabled",
-			assocType:          commonv1.ElasticsearchAssociationType,
-			fleetServerEnabled: true,
-			want:               true,
+			name:             "elasticsearch skipped when fleet mode enabled (fleet server agent)",
+			assocType:        commonv1.ElasticsearchAssociationType,
+			fleetModeEnabled: true,
+			want:             true,
 		},
 		{
-			name:               "elasticsearch mounted when fleet server disabled",
-			assocType:          commonv1.ElasticsearchAssociationType,
-			fleetServerEnabled: false,
-			want:               false,
+			name:             "elasticsearch skipped when fleet mode enabled (fleet-managed agent)",
+			assocType:        commonv1.ElasticsearchAssociationType,
+			fleetModeEnabled: true,
+			want:             true,
 		},
 		{
-			name:               "fleet server association always mounted",
-			assocType:          commonv1.FleetServerAssociationType,
-			fleetServerEnabled: false,
-			want:               false,
+			name:             "elasticsearch mounted when not in fleet mode",
+			assocType:        commonv1.ElasticsearchAssociationType,
+			fleetModeEnabled: false,
+			want:             false,
+		},
+		{
+			name:             "fleet server association always mounted",
+			assocType:        commonv1.FleetServerAssociationType,
+			fleetModeEnabled: false,
+			want:             false,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, shouldSkipVolumeMount(tt.assocType, tt.fleetServerEnabled))
+			require.Equal(t, tt.want, shouldSkipVolumeMount(tt.assocType, tt.fleetModeEnabled))
 		})
 	}
 }
