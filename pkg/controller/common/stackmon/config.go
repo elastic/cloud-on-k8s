@@ -176,9 +176,8 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 		)
 		outputConfig["ssl.certificate"] = filepath.Join(clientCertDirPath, certificates.CertFileName)
 		outputConfig["ssl.key"] = filepath.Join(clientCertDirPath, certificates.KeyFileName)
-		clientCertVolumeName := fmt.Sprintf("%s-client-cert", caVolumeName(assoc))
 		clientCertVolume = volume.NewSecretVolumeWithMountPath(
-			assocConf.GetClientCertSecretName(), clientCertVolumeName, clientCertDirPath,
+			assocConf.GetClientCertSecretName(), clientCertVolumeName(assoc), clientCertDirPath,
 		)
 	}
 
