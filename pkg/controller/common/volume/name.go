@@ -40,11 +40,11 @@ func ClientCertVolumeName(prefix, namespace, name string) string {
 
 // VolumeNamespacedName returns a DNS-label volume name derived from a namespace/name pair.
 // The namespace and name are hashed together so the result always fits within MaxVolumeNameLength.
-func VolumeNamespacedName(prefix, namespace, name, suffix string) string {
+func VolumeNamespacedName(prefix, namespace, name, suffix string) string { //nolint:revive
 	return VolumeName(prefix, nsnHash(namespace, name), suffix)
 }
 
 // VolumeName joins prefix and suffixes with hyphens and truncates the result to MaxVolumeNameLength.
-func VolumeName(prefix string, suffixes ...string) string {
+func VolumeName(prefix string, suffixes ...string) string { //nolint:revive
 	return volumeNamer.Suffix(prefix, suffixes...)
 }
