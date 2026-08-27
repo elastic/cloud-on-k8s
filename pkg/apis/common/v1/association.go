@@ -258,10 +258,32 @@ type AssociationConf struct {
 // of a client certificate secret reconciled for mTLS. It is stored in the association conf
 // annotation so that changes trigger reconciliation of the associated resource.
 type TransitiveESRef struct {
+	// CASecretName is the name of the CA secret available in the associated resource's namespace
+	// for TLS verification of the transitive Elasticsearch. For cross-namespace deployments this
+	// is a copy with a deterministic hashed name; for same-namespace deployments it is the original
+	// secret name from the fleet server's Elasticsearch association conf.
+	// Empty when no CA is configured.
+	CASecretName string `json:"caSecretName,omitempty"`
 	// ClientCertSecretName is the name of the client certificate secret reconciled in the
 	// associated resource's namespace for mTLS with the transitive Elasticsearch.
 	// Empty when the Elasticsearch does not require client authentication.
 	ClientCertSecretName string `json:"clientCertSecretName,omitempty"`
+}
+
+// GetCASecretName returns the CA secret name, or empty string if the receiver is nil.
+func (t *TransitiveESRef) GetCASecretName() string {
+	if t == nil {
+		return ""
+	}
+	return t.CASecretName
+}
+
+// GetClientCertSecretName returns the client certificate secret name, or empty string if the receiver is nil.
+func (t *TransitiveESRef) GetClientCertSecretName() string {
+	if t == nil {
+		return ""
+	}
+	return t.ClientCertSecretName
 }
 
 // ClientCertIsConfigured returns true if a client certificate secret name is set.

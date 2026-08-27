@@ -13,8 +13,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -159,7 +158,7 @@ var (
 	}
 )
 
-func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32, esClientCertSecretName string, clientAuthRequired bool) (corev1.PodTemplateSpec, error) {
+func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, configHash hash.Hash32, esClientCertSecretName, esCASecretName string, clientAuthRequired bool) (corev1.PodTemplateSpec, error) {
 	defer tracing.Span(&params.Context)()
 	spec := &params.Agent.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), ContainerName)
@@ -176,7 +175,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	// fleet mode requires some special treatment
 	if spec.FleetModeEnabled() {
 		var err error
-		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash, esClientCertSecretName, clientAuthRequired); err != nil {
+		if builder, err = amendBuilderForFleetMode(params, fleetCerts, fleetToken, builder, configHash, esClientCertSecretName, esCASecretName, clientAuthRequired); err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 		if params.AgentVersion.GTE(agentv1alpha1.FleetAdvancedConfigMinVersion) {
@@ -239,13 +238,13 @@ func fleetConfigPath(v version.Version) string {
 	return DataMountPath
 }
 
-func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash, esClientCertSecretName string, clientAuthRequired bool) (*defaults.PodTemplateBuilder, error) {
+func amendBuilderForFleetMode(params Params, fleetCerts *certificates.CertificatesSecret, fleetToken EnrollmentAPIKey, builder *defaults.PodTemplateBuilder, configHash hash.Hash, esClientCertSecretName, esCASecretName string, clientAuthRequired bool) (*defaults.PodTemplateBuilder, error) {
 	esAssociation, err := getRelatedEsAssoc(params)
 	if err != nil {
 		return nil, err
 	}
 
-	builder, err = applyRelatedEsAssoc(params.Agent, esAssociation, esClientCertSecretName, builder)
+	builder, err = applyRelatedEsAssoc(params.Agent, esAssociation, esCASecretName, esClientCertSecretName, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -393,7 +392,7 @@ func getRelatedEsAssoc(params Params) (commonv1.Association, error) {
 	return esAssociation, nil
 }
 
-func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Association, esClientCertSecretName string, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
+func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Association, esCASecretName, esClientCertSecretName string, builder *defaults.PodTemplateBuilder) (*defaults.PodTemplateBuilder, error) {
 	if esAssociation == nil {
 		return builder, nil
 	}
@@ -402,9 +401,17 @@ func applyRelatedEsAssoc(agent agentv1alpha1.Agent, esAssociation commonv1.Assoc
 	if err != nil {
 		return nil, err
 	}
-	if assocConf.CAIsConfigured() {
+	// Mount the Elasticsearch CA for TLS verification. For fleet-managed agents esCASecretName
+	// is set to the CA copy reconciled in the agent's namespace (same name for same-namespace
+	// deployments, hashed name for cross-namespace). For Fleet Server it falls back to the CA
+	// from its own ES association conf.
+	caSecret := esCASecretName
+	if caSecret == "" && assocConf.CAIsConfigured() {
+		caSecret = assocConf.GetCASecretName()
+	}
+	if caSecret != "" {
 		builder = builder.WithVolumeLikes(volume.NewSecretVolumeWithMountPath(
-			assocConf.GetCASecretName(),
+			caSecret,
 			fmt.Sprintf("%s-certs", esAssociation.AssociationType()),
 			CertificatesDir(esAssociation),
 		))

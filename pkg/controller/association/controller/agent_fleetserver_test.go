@@ -124,6 +124,73 @@ func TestAdditionalSecrets(t *testing.T) {
 			wantSecrets: nil,
 		},
 		{
+			name: "same-namespace fleet server with omitted namespace: CA entry returned for hashing, no copy created",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version: "8.0.0",
+					// Namespace intentionally omitted — ECK treats this as same namespace.
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName: "-",
+							CACertProvided: true,
+							CASecretName:   "fleet1-es-ca",
+							URL:            "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esSelector}},
+					},
+				},
+			},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "fleet1-es-ca"},
+			},
+		},
+		{
+			name: "same-namespace fleet server: CA entry returned for hashing, no copy created",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "ns"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName: "-",
+							CACertProvided: true,
+							CASecretName:   "fleet1-es-ca",
+							URL:            "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esSelector}},
+					},
+				},
+			},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "fleet1-es-ca"},
+			},
+		},
+		{
 			name: "fleet server has ES ref with CA returns CA secret",
 			agent: &agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
@@ -153,7 +220,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-ca"},
 			},
 		},
 		{
@@ -190,12 +257,78 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
-				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "copied-user-cert"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-ca"},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "copied-user-cert"}, TargetName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-client-cert"},
 			},
 		},
 		{
-			name: "client cert in conf but no user-provided cert name returns only CA",
+			name: "CA not provided: empty slice returned, GC handles stale copies",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "fs-ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName: "-",
+							CACertProvided: false,
+							CASecretName:   "fleet1-es-ca",
+							URL:            "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esSelector}},
+					},
+				},
+			},
+			wantSecrets: []association.AdditionalSecret{},
+		},
+		{
+			name: "client cert removed from ESRef but still in conf: only CA returned, GC removes stale client cert copy",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "fs-ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName:       "-",
+							CACertProvided:       true,
+							CASecretName:         "fleet1-es-ca",
+							ClientCertSecretName: "copied-user-cert", // stale: user removed cert ref from ESRef
+							URL:                  "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						// ClientCertificateSecretName deliberately absent — user removed the ref
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esSelector}},
+					},
+				},
+			},
+			wantSecrets: []association.AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-ca"},
+			},
+		},
+		{
+			name: "client cert in conf but no user-provided cert name: only CA returned",
 			agent: &agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
@@ -225,7 +358,7 @@ func TestAdditionalSecrets(t *testing.T) {
 				},
 			},
 			wantSecrets: []association.AdditionalSecret{
-				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}},
+				{Source: types.NamespacedName{Namespace: "fs-ns", Name: "fleet1-es-ca"}, Keys: []string{"ca.crt"}, TargetName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-ca"},
 			},
 		},
 	} {
@@ -378,7 +511,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			wantNilResults: true,
 		},
 		{
-			name: "ES without client auth annotation returns nil and cleans up",
+			name: "ES without client auth annotation returns CA-only TransitiveESRef and cleans up",
 			agent: &agentv1alpha1.Agent{
 				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"},
 				Spec: agentv1alpha1.AgentSpec{
@@ -409,7 +542,9 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			es: &esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "es-ns"},
 			},
-			wantRef:        nil,
+			wantRef: &commonv1.TransitiveESRef{
+				CASecretName: association.AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}), "es-ca"),
+			},
 			wantNilResults: true,
 		},
 		{
@@ -453,7 +588,10 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 					},
 				},
 			},
-			wantRef: &commonv1.TransitiveESRef{ClientCertSecretName: "copied-user-cert"},
+			wantRef: &commonv1.TransitiveESRef{
+				CASecretName:         association.AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}), "es-ca"),
+				ClientCertSecretName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-client-cert",
+			},
 		},
 		{
 			name: "ES has client auth and no user cert returns auto-generated secret name",
@@ -493,6 +631,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				},
 			},
 			wantRef: &commonv1.TransitiveESRef{
+				CASecretName:         association.AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}), "es-ca"),
 				ClientCertSecretName: "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert",
 			},
 			wantCreatedSecret: &types.NamespacedName{
@@ -533,6 +672,98 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			wantRef:        nil,
 			wantNilResults: true,
 			wantOrphanGone: true,
+		},
+		{
+			name: "same-namespace fleet server with client auth sets CA secret name to original",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "fs-ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "fs-ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName: "-",
+							CACertProvided: true,
+							CASecretName:   "fleet1-es-ca",
+							URL:            "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esSelector}},
+					},
+				},
+			},
+			es: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "es1", Namespace: "es-ns",
+					Annotations: map[string]string{
+						annotation.ClientAuthenticationRequiredAnnotation: "true",
+					},
+				},
+			},
+			wantRef: &commonv1.TransitiveESRef{
+				CASecretName:         "fleet1-es-ca",
+				ClientCertSecretName: "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert",
+			},
+			wantCreatedSecret: &types.NamespacedName{
+				Namespace: "fs-ns",
+				Name:      "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert",
+			},
+		},
+		{
+			name: "same-namespace fleet server with user-provided cert returns original client cert name",
+			agent: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "fs-ns"},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:        "8.0.0",
+					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
+				},
+			},
+			fleetServer: &agentv1alpha1.Agent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "fleet1", Namespace: "fs-ns",
+					Annotations: map[string]string{
+						esConfAnnotationKey(esSelector): esAssocConfAnnotation(commonv1.AssociationConf{
+							AuthSecretName:       "-",
+							CACertProvided:       true,
+							CASecretName:         "fleet1-es-ca",
+							ClientCertSecretName: "user-provided-cert",
+							URL:                  "https://es1-http.es-ns.svc:9200",
+						}),
+					},
+				},
+				Spec: agentv1alpha1.AgentSpec{
+					Version:            "8.0.0",
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []agentv1alpha1.Output{
+						{ElasticsearchSelector: commonv1.ElasticsearchSelector{
+							ObjectSelector:              esSelector,
+							ClientCertificateSecretName: "user-provided-cert",
+						}},
+					},
+				},
+			},
+			es: &esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "es1", Namespace: "es-ns",
+					Annotations: map[string]string{
+						annotation.ClientAuthenticationRequiredAnnotation: "true",
+					},
+				},
+			},
+			wantRef: &commonv1.TransitiveESRef{
+				CASecretName:         "fleet1-es-ca",
+				ClientCertSecretName: "user-provided-cert",
+			},
 		},
 		{
 			name: "conf is nil returns nil and cleans up",
@@ -578,6 +809,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				require.Nil(t, ref)
 			} else {
 				require.NotNil(t, ref)
+				require.Equal(t, tt.wantRef.CASecretName, ref.CASecretName)
 				require.Equal(t, tt.wantRef.ClientCertSecretName, ref.ClientCertSecretName)
 			}
 
