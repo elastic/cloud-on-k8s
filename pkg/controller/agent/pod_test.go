@@ -1070,14 +1070,15 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				},
 			},
 			setAssocConfs: func(assocs []commonv1.Association) {
+				// GetAssociations order: [ES, Kibana, FleetServer]
 				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "kibana-kb-http-certs-public",
+					CASecretName: "elasticsearch-es-ca",
 				})
 				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "fleet-agent-http-certs-public",
+					CASecretName: "kibana-kb-http-certs-public",
 				})
 				assocs[2].SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "elasticsearch-es-ca",
+					CASecretName: "fleet-agent-http-certs-public",
 				})
 			},
 			// Kibana skipped (not pod-mounted); ES skipped (applyRelatedEsAssoc handles it in fleet mode).
@@ -1233,12 +1234,13 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				},
 			},
 			setAssocConfs: func(assocs []commonv1.Association) {
+				// GetAssociations order: [ES, Kibana]
 				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "kibana-kb-http-certs-public",
-				})
-				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
 					CASecretName:         "elasticsearch-es-ca",
 					ClientCertSecretName: "es-client-cert",
+				})
+				assocs[1].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName: "kibana-kb-http-certs-public",
 				})
 			},
 			// Kibana skipped (not pod-mounted); ES skipped (applyRelatedEsAssoc handles it).
