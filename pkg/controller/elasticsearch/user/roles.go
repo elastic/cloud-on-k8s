@@ -249,7 +249,7 @@ var (
 			},
 		},
 		AgentUserRole: esclient.Role{
-			Cluster: []string{"monitor", "manage_ingest_pipelines"},
+			Cluster: []string{"monitor"},
 			Indices: []esclient.IndexRole{
 				{
 					// Standard data stream ingestion (any data_stream.namespace).
@@ -260,7 +260,7 @@ var (
 					// Catch-all for custom indices not covered by the data stream patterns above.
 					// Kept as a separate entry so privileges can be adjusted independently per pattern.
 					Names:      []string{"*"},
-					Privileges: []string{"auto_configure", "create_doc"},
+					Privileges: []string{"auto_configure"},
 				},
 			},
 		},
