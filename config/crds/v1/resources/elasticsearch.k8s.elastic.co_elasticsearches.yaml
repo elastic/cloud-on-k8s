@@ -613,8 +613,12 @@ spec:
                     type: object
                 type: object
               nodeSets:
-                description: NodeSets allow specifying groups of Elasticsearch nodes
-                  sharing the same configuration and Pod templates.
+                description: |-
+                  NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+                  The list is keyed by nodeSet name so that Server-Side Apply tracks field ownership per nodeSet
+                  and per field. Without this the list would default to atomic, and any write by the operator
+                  (for example the autoscaling controller updating a node count) would claim ownership of the
+                  whole nodeSets tree, conflicting with tools such as Helm that manage the rest of the spec.
                 items:
                   description: NodeSet is the specification for a group of Elasticsearch
                     nodes sharing the same configuration and a Pod template.
@@ -9235,12 +9239,9 @@ spec:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     resources:
-                      description: Resources specifies the resource requests and limits
-                        (CPU and Memory only) for the Elasticsearch nodes in this
-                        NodeSet. When set, these override the resource requests and
-                        limits set in the PodTemplate for the primary Elasticsearch
-                        container. To set the resources for other containers, use
-                        the PodTemplate.Spec.Containers[].Resources field.
+                      description: |-
+                        Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+                        It also carries the storage request applied to this NodeSet's data volume claim.
                       properties:
                         limits:
                           description: Limits is the shorthand for the main container's
@@ -9306,6 +9307,22 @@ spec:
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
+                        storage:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: |-
+                            Storage overrides the storage request of this NodeSet's data volume claim: the claim named
+                            "elasticsearch-data" if present, otherwise the single claim when exactly one is declared. A
+                            nil value means "do not override", so any storage request already set in
+                            VolumeClaimTemplates is passed through unchanged. A non-nil value wins over the claim's own
+                            request.
+
+                            This is the field the autoscaling controller writes. Keeping it out of VolumeClaimTemplates
+                            leaves that list, and therefore the storage class and access modes, owned solely by whoever
+                            declares it.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
                       type: object
                     volumeClaimTemplates:
                       description: |-
@@ -9772,6 +9789,9 @@ spec:
                   type: object
                 minItems: 1
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.

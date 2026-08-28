@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -215,6 +216,30 @@ func (ab *AutoscalingBuilder) WithPolicy(policy string, roles []string, resource
 		ab.policies[policy].Deciders["ml"] = map[string]string{"down_scale_delay": "0"}
 	}
 	return ab
+}
+
+// AllowedOperatorOwnedFields returns a fieldpath.Set of the spec paths the operator is
+// permitted to own for all autoscaled nodeSets: count is always included; cpu/memory limits
+// and requests are included when the corresponding range is set; storage is included when
+// StorageRange is set.
+func (ab *AutoscalingBuilder) AllowedOperatorOwnedFields() *fieldpath.Set {
+	set := &fieldpath.Set{}
+	for nodeSetName, policy := range ab.policies {
+		nsKey := fieldpath.KeyElementByFields("name", nodeSetName)
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "count"))
+		if policy.StorageRange != nil {
+			set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "storage"))
+		}
+		if policy.CPURange != nil {
+			set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "cpu"))
+			set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "cpu"))
+		}
+		if policy.MemoryRange != nil {
+			set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "memory"))
+			set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "memory"))
+		}
+	}
+	return set
 }
 
 // WithFixedDecider sets a setting for the fixed decider on an already existing policy.
