@@ -67,7 +67,6 @@ func TestAutoscaling(t *testing.T) {
 		// Add a ml tier, node count is initially set to 0, it will be updated by the autoscaling controller.
 		WithNodeSet(newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC)).
 		WithRestrictedSecurityContext().
-		WithSkipSpecOwnership().
 		WithExpectedNodeSets(
 			// master has no autoscaling policy — NodeSet.Resources is not managed by the autoscaler and stays empty.
 			newNodeSet("master", []string{"master"}, 1, corev1.ResourceList{}, initialPVC),
@@ -89,6 +88,7 @@ func TestAutoscaling(t *testing.T) {
 			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
 			NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 1},
 		})
+	esBuilder = esBuilder.WithOwnershipCheckAndAllowedFields(autoscalingBuilder.AllowedOperatorOwnedFields())
 
 	// Use the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
 	esaScaleUpStorageBuilder := autoscalingBuilder.DeepCopy().WithFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"})
@@ -223,11 +223,11 @@ func newNodeSet(name string, roles []string, count int32, limits corev1.Resource
 // newNodeSetResources maps CPU and memory limits to NodeSet shorthand resources.
 // This mirrors autoscaling reconciliation, which now writes recommendations into
 // spec.nodeSets[].resources instead of only mutating the PodTemplate container resources.
-func newNodeSetResources(limits corev1.ResourceList) commonv1.Resources {
-	resources := commonv1.Resources{
+func newNodeSetResources(limits corev1.ResourceList) esv1.NodeSetResources {
+	resources := esv1.NodeSetResources{Resources: commonv1.Resources{
 		Requests: commonv1.ResourceAllocations{},
 		Limits:   commonv1.ResourceAllocations{},
-	}
+	}}
 
 	if memory, exists := limits[corev1.ResourceMemory]; exists {
 		memoryReq := memory
@@ -269,7 +269,7 @@ func checkNodeSetResourcesStep(k8sClient *test.K8sClient, expectedBuilder *elast
 				if actualNodeSet == nil {
 					return fmt.Errorf("expected NodeSet %q was not found in Elasticsearch spec", expectedNodeSet.Name)
 				}
-				if err := ensureNodeSetResourcesMatchExpected(expectedNodeSet.Resources, actualNodeSet.Resources); err != nil {
+				if err := ensureNodeSetResourcesMatchExpected(expectedNodeSet.Resources.ContainerResources(), actualNodeSet.Resources.ContainerResources()); err != nil {
 					return fmt.Errorf("NodeSet %q resources mismatch: %w", expectedNodeSet.Name, err)
 				}
 			}
@@ -301,7 +301,7 @@ func checkAutoscaledPodsResourcesStep(k8sClient *test.K8sClient, expectedBuilder
 				if _, shouldCheck := nodeSetsToCheck[nodeSet.Name]; !shouldCheck || nodeSet.Count == 0 {
 					continue
 				}
-				if err := ensureCPUAndMemorySet(nodeSet.Name, nodeSet.Resources); err != nil {
+				if err := ensureCPUAndMemorySet(nodeSet.Name, nodeSet.Resources.ContainerResources()); err != nil {
 					return err
 				}
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -141,7 +142,13 @@ type ElasticsearchSpec struct {
 	Transport TransportConfig `json:"transport,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+	// The list is keyed by nodeSet name so that Server-Side Apply tracks field ownership per nodeSet
+	// and per field. Without this the list would default to atomic, and any write by the operator
+	// (for example the autoscaling controller updating a node count) would claim ownership of the
+	// whole nodeSets tree, conflicting with tools such as Helm that manage the rest of the spec.
 	// +kubebuilder:validation:MinItems=1
+	// +listType=map
+	// +listMapKey=name
 	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
@@ -385,8 +392,9 @@ type NodeSet struct {
 	Count int32 `json:"count"`
 
 	// Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+	// It also carries the storage request applied to this NodeSet's data volume claim.
 	// +kubebuilder:validation:Optional
-	Resources commonv1.Resources `json:"resources,omitzero"`
+	Resources NodeSetResources `json:"resources,omitzero"`
 
 	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
 	// +kubebuilder:validation:Optional
@@ -402,6 +410,39 @@ type NodeSet struct {
 	// Items defined here take precedence over any default claims added by the operator with the same name.
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+}
+
+// NodeSetResources extends the shared CPU/memory shorthand with the storage request applied to
+// this NodeSet's data volume claim.
+//
+// Storage deliberately sits alongside Requests and Limits rather than inside them. Every field of
+// commonv1.ResourceAllocations is a main container override, applied via
+// PodTemplateBuilder.WithResourcesAndOverrides, whereas Storage targets a volume claim. Keeping
+// them apart also avoids a meaningless limits.storage, since a PersistentVolumeClaim has no
+// storage limit.
+type NodeSetResources struct {
+	// The omitzero JSON tag on the parent NodeSet.Resources field, and on the embedded Limits and
+	// Requests, matters beyond tidiness: without it an unset shorthand round-trips as
+	// `{"limits":{},"requests":{}}`, and under Server-Side Apply adding those empty objects counts
+	// as a change, which transfers field ownership to whichever manager wrote them.
+	commonv1.Resources `json:",inline"`
+
+	// Storage overrides the storage request of this NodeSet's data volume claim: the claim named
+	// "elasticsearch-data" if present, otherwise the single claim when exactly one is declared. A
+	// nil value means "do not override", so any storage request already set in
+	// VolumeClaimTemplates is passed through unchanged. A non-nil value wins over the claim's own
+	// request.
+	//
+	// This is the field the autoscaling controller writes. Keeping it out of VolumeClaimTemplates
+	// leaves that list, and therefore the storage class and access modes, owned solely by whoever
+	// declares it.
+	// +kubebuilder:validation:Optional
+	Storage *resource.Quantity `json:"storage,omitempty"`
+}
+
+// ContainerResources returns the CPU/memory shorthand applied to the main Elasticsearch container.
+func (r NodeSetResources) ContainerResources() commonv1.Resources {
+	return r.Resources
 }
 
 const (

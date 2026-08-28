@@ -144,7 +144,12 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
-		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
+		// The StatefulSet claims already carry the effective size, storage shorthand included, so
+		// the proposed claims have to be resolved the same way. Otherwise a user who moves the size
+		// from volumeClaimTemplates to spec.nodeSets[].resources.storage looks like they are
+		// requesting a decrease to nothing.
+		proposedClaims := volume.ApplyStorageOverride(proposedNodeSet.VolumeClaimTemplates, proposedNodeSet.Resources.Storage)
+		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedClaims, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				proposedNodeSet.VolumeClaimTemplates,
@@ -165,10 +170,19 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 }
 
 // claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
+//
+// A claim may legitimately carry no resource requests at all: that is what a nodeSet looks like once
+// the storage size moves to spec.nodeSets[].resources.storage and the claim is left declaring only
+// the storage class and access modes. Normalising a nil map to an explicit empty storage request is
+// also what makes such a claim compare equal to the same claim with a size, which is the point of
+// this function.
 func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
 		result = append(result, patchedClaim)
 	}

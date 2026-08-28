@@ -92,7 +92,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
-		test.CheckSpecNotOwnedByOperator(&b.EMS, k),
+		test.CheckFieldsNotOwnedByOperator(&b.EMS, k, nil),
 	}
 }
 

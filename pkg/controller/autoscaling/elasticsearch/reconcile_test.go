@@ -45,7 +45,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 						{
 							Name:  "hot",
 							Count: 1,
-							Resources: commonv1.Resources{
+							Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 								Requests: commonv1.ResourceAllocations{
 									CPU:    quantityPtr(resource.MustParse("500m")),
 									Memory: quantityPtr(resource.MustParse("2Gi")),
@@ -54,7 +54,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 									CPU:    quantityPtr(resource.MustParse("1000m")),
 									Memory: quantityPtr(resource.MustParse("2Gi")),
 								},
-							},
+							}},
 							PodTemplate: corev1.PodTemplateSpec{
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
@@ -120,7 +120,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 						{
 							Name:  "warm",
 							Count: 2,
-							Resources: commonv1.Resources{
+							Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 								Requests: commonv1.ResourceAllocations{
 									CPU:    quantityPtr(resource.MustParse("800m")),
 									Memory: quantityPtr(resource.MustParse("2Gi")),
@@ -129,7 +129,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 									CPU:    quantityPtr(resource.MustParse("1200m")),
 									Memory: quantityPtr(resource.MustParse("3Gi")),
 								},
-							},
+							}},
 							PodTemplate: corev1.PodTemplateSpec{
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
@@ -181,14 +181,14 @@ func TestReconcileElasticsearch(t *testing.T) {
 						{
 							Name:  "cold",
 							Count: 1,
-							Resources: commonv1.Resources{
+							Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 								Requests: commonv1.ResourceAllocations{
 									Memory: quantityPtr(resource.MustParse("1Gi")),
 								},
 								Limits: commonv1.ResourceAllocations{
 									Memory: quantityPtr(resource.MustParse("2Gi")),
 								},
-							},
+							}},
 							PodTemplate: corev1.PodTemplateSpec{
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
@@ -231,6 +231,64 @@ func TestReconcileElasticsearch(t *testing.T) {
 			wantMemoryLimit:            "4Gi",
 			wantPodTemplateRequestsNil: true,
 			wantPodTemplateLimitsNil:   true,
+		},
+		{
+			name: "storage dimension dropped from policy: existing shorthand is preserved",
+			initialES: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:  "data",
+							Count: 3,
+							Resources: esv1.NodeSetResources{
+								Resources: commonv1.Resources{
+									Requests: commonv1.ResourceAllocations{
+										CPU:    quantityPtr(resource.MustParse("2")),
+										Memory: quantityPtr(resource.MustParse("8Gi")),
+									},
+									Limits: commonv1.ResourceAllocations{
+										CPU:    quantityPtr(resource.MustParse("2")),
+										Memory: quantityPtr(resource.MustParse("8Gi")),
+									},
+								},
+								Storage: quantityPtr(resource.MustParse("4Gi")),
+							},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{Name: esv1.ElasticsearchContainerName},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			// Policy still targets "data" for CPU/memory but has no storage decider any more.
+			nextClusterResources: v1alpha1.ClusterResources{
+				{
+					Name: "policy-data",
+					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
+						{Name: "data", NodeCount: 3},
+					},
+					NodeResources: v1alpha1.NodeResources{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("2"),
+							corev1.ResourceMemory: resource.MustParse("8Gi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("2"),
+							corev1.ResourceMemory: resource.MustParse("8Gi"),
+						},
+					},
+				},
+			},
+			wantNodeSetCount:   3,
+			wantCPURequest:     "2",
+			wantMemoryRequest:  "8Gi",
+			wantCPULimit:       "2",
+			wantMemoryLimit:    "8Gi",
+			wantStorageRequest: "4Gi",
 		},
 		{
 			name: "preserves non cpu/memory keys on the main container",
@@ -287,8 +345,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			es := tt.initialES.DeepCopy()
 
-			err := reconcileElasticsearch(logr.Discard(), es, tt.nextClusterResources)
-			require.NoError(t, err)
+			reconcileElasticsearch(logr.Discard(), es, tt.nextClusterResources)
 			require.Len(t, es.Spec.NodeSets, 1)
 
 			nodeSet := es.Spec.NodeSets[0]
@@ -299,29 +356,27 @@ func TestReconcileElasticsearch(t *testing.T) {
 			assertQuantityPointerEqual(t, tt.wantMemoryLimit, nodeSet.Resources.Limits.Memory)
 
 			if tt.wantStorageRequest != "" {
-				require.Len(t, nodeSet.VolumeClaimTemplates, 1)
-				assert.True(
-					t,
-					resource.MustParse(tt.wantStorageRequest).Equal(nodeSet.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage]),
-				)
+				// The recommended size goes to the storage shorthand, which is a granular leaf under
+				// spec.nodeSets[name=...]. It must not be written into volumeClaimTemplates: that list
+				// is atomic under Server-Side Apply, so writing to it would claim the storage class and
+				// access modes along with the size.
+				assertQuantityPointerEqual(t, tt.wantStorageRequest, nodeSet.Resources.Storage)
+
+				initialNodeSet := tt.initialES.Spec.NodeSets[0]
+				assert.Equal(t, initialNodeSet.VolumeClaimTemplates, nodeSet.VolumeClaimTemplates,
+					"volumeClaimTemplates must be left untouched by the autoscaling controller")
 			}
 
+			// The pod template is the user's to own. The autoscaling controller must not touch it:
+			// writing there would claim podTemplate.spec.containers, an atomic list under
+			// preserve-unknown-fields, and break `helm upgrade` for whoever declared it. The
+			// shorthand already wins at pod build time via WithResourcesAndOverrides, so any
+			// CPU/memory left in the pod template is shadowed rather than applied.
+			initialMainContainer := getMainContainer(tt.initialES.Spec.NodeSets[0])
 			mainContainer := getMainContainer(nodeSet)
 			require.NotNil(t, mainContainer)
-			_, hasCPURequest := mainContainer.Resources.Requests[corev1.ResourceCPU]
-			_, hasMemRequest := mainContainer.Resources.Requests[corev1.ResourceMemory]
-			_, hasCPULimit := mainContainer.Resources.Limits[corev1.ResourceCPU]
-			_, hasMemLimit := mainContainer.Resources.Limits[corev1.ResourceMemory]
-			assert.False(t, hasCPURequest, "pod template main container CPU request must be stripped")
-			assert.False(t, hasMemRequest, "pod template main container memory request must be stripped")
-			assert.False(t, hasCPULimit, "pod template main container CPU limit must be stripped")
-			assert.False(t, hasMemLimit, "pod template main container memory limit must be stripped")
-			if tt.wantPodTemplateRequestsNil {
-				assert.Nil(t, mainContainer.Resources.Requests, "expected requests map to be nil after stripping all keys")
-			}
-			if tt.wantPodTemplateLimitsNil {
-				assert.Nil(t, mainContainer.Resources.Limits, "expected limits map to be nil after stripping all keys")
-			}
+			assert.Equal(t, initialMainContainer.Resources, mainContainer.Resources,
+				"pod template main container resources must be left untouched")
 			if tt.wantPodTemplateExtraRequestKey != "" {
 				got, ok := mainContainer.Resources.Requests[tt.wantPodTemplateExtraRequestKey]
 				require.True(t, ok, "expected non-CPU/memory request key %q to be preserved", tt.wantPodTemplateExtraRequestKey)
@@ -331,12 +386,12 @@ func TestReconcileElasticsearch(t *testing.T) {
 	}
 }
 
-// TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent simulates an operator upgrade from a
+// TestReconcileElasticsearch_LeavesPodTemplateUntouchedAndIsIdempotent simulates an operator upgrade from a
 // version that only wrote autoscaler-managed CPU/memory on the PodTemplate container to the current version
 // that writes the shorthand NodeSet.Resources field. After the first reconcile the shorthand must reflect
-// the autoscaler recommendation and the previously-written PodTemplate CPU/memory entries must be removed
-// so the validating webhook does not fire.
-func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testing.T) {
+// the autoscaler recommendation, and any CPU/memory entries left in the PodTemplate must be left exactly
+// as-is: writing to podTemplate.spec.containers would claim that atomic list from whoever declared it.
+func TestReconcileElasticsearch_LeavesPodTemplateUntouchedAndIsIdempotent(t *testing.T) {
 	next := v1alpha1.ClusterResources{
 		{
 			Name: "policy-hot",
@@ -388,7 +443,7 @@ func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testin
 		},
 	}
 
-	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+	reconcileElasticsearch(logr.Discard(), &es, next)
 
 	nodeSet := es.Spec.NodeSets[0]
 	assert.Equal(t, int32(2), nodeSet.Count)
@@ -397,19 +452,20 @@ func TestReconcileElasticsearch_MigratesFromPodTemplateAndIsIdempotent(t *testin
 	assertQuantityPointerEqual(t, "2000m", nodeSet.Resources.Limits.CPU)
 	assertQuantityPointerEqual(t, "3Gi", nodeSet.Resources.Limits.Memory)
 
-	// PodTemplate CPU/memory entries left by the previous operator must be removed so the shorthand stays
-	// the single source of truth and the validating webhook stops emitting an admission warning every
-	// reconcile. Effective container resources are unchanged because WithResourcesAndOverrides applies the
-	// new shorthand at pod-template-build time, so this does not trigger a rolling restart on its own.
+	// CPU/memory left in the PodTemplate by a previous operator version stays exactly where the user
+	// put it. Removing it would mean writing to podTemplate.spec.containers, an atomic list under
+	// preserve-unknown-fields, which claims the whole list from whoever declared it and breaks
+	// `helm upgrade`. Nothing is lost by leaving it: WithResourcesAndOverrides applies the shorthand
+	// on top at pod-build time, so the shorthand is what actually reaches the container.
 	mainContainer := getMainContainer(nodeSet)
 	require.NotNil(t, mainContainer)
-	assert.Nil(t, mainContainer.Resources.Requests, "expected requests to be nil after stripping cpu/memory")
-	assert.Nil(t, mainContainer.Resources.Limits, "expected limits to be nil after stripping cpu/memory")
+	assert.Equal(t, "500m", mainContainer.Resources.Requests.Cpu().String(), "pod template must be left untouched")
+	assert.Equal(t, "1Gi", mainContainer.Resources.Requests.Memory().String(), "pod template must be left untouched")
 
-	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream Update
-	// calls from persistently dirtying the Elasticsearch custom resource.
+	// A second reconcile with the same recommendation must be an in-memory no-op to keep upstream
+	// writes from persistently dirtying the Elasticsearch custom resource.
 	before := es.DeepCopy()
-	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+	reconcileElasticsearch(logr.Discard(), &es, next)
 	assert.Equal(t, before.Spec, es.Spec)
 }
 
@@ -458,22 +514,22 @@ func TestReconcileElasticsearch_NonAutoscaledNodeSetDoesNotPersistEmptyResources
 				{
 					Name:  "di",
 					Count: 2,
-					Resources: commonv1.Resources{
+					Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
 							CPU:    quantityPtr(resource.MustParse("1")),
 							Memory: quantityPtr(resource.MustParse("4Gi")),
 						},
-					},
+					}},
 				},
 				{
 					Name:  "ml",
 					Count: 1,
-					Resources: commonv1.Resources{
+					Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 						Requests: commonv1.ResourceAllocations{
 							CPU:    quantityPtr(resource.MustParse("500m")),
 							Memory: quantityPtr(resource.MustParse("2Gi")),
 						},
-					},
+					}},
 				},
 			},
 		},
@@ -503,7 +559,7 @@ func TestReconcileElasticsearch_NonAutoscaledNodeSetDoesNotPersistEmptyResources
 		},
 	}
 
-	require.NoError(t, reconcileElasticsearch(logr.Discard(), &es, next))
+	reconcileElasticsearch(logr.Discard(), &es, next)
 
 	require.Len(t, es.Spec.NodeSets, 3)
 	master := es.Spec.NodeSets[0]
