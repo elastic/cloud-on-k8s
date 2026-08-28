@@ -17383,7 +17383,7 @@ spec:
                         (built-in, defined via spec.auth.roles, a StackConfigPolicy, or the Role Management API).
                         If empty, the default role is used.
                       items:
-                        pattern: ^[a-z0-9_-]+$
+                        pattern: ^[a-zA-Z0-9_-]+$
                         type: string
                       type: array
                   type: object

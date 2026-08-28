@@ -143,7 +143,7 @@ AgentSpec defines the desired state of the Agent
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`outputName`* __string__ |  |
-| *`elasticsearchRole`* __string__ | ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user<br>for this output. Defaults to eck_agent_user_role. The role must already exist in the target<br>cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles can be<br>provided as a comma-separated list.<br>Only valid for standalone Agents with a named (non-secretName) Elasticsearch reference. |
+| *`UserRolesOverrideSpec`* __[UserRolesOverrideSpec](#userrolesoverridespec)__ |  |
 
 
 ### StatefulSetSpec  [#statefulsetspec]
@@ -1001,6 +1001,22 @@ TLSWithClientOptions extends TLSOptions with client authentication settings.
 | *`client`* __[ClientOptions](#clientoptions)__ | Client holds client configuration options. |
 
 
+
+
+### UserRolesOverrideSpec  [#userrolesoverridespec]
+
+UserRolesOverrideSpec allows overriding the Elasticsearch roles granted to the user
+that ECK automatically creates for the association with an Elasticsearch cluster.
+
+:::{admonition} Appears In:
+* [ElasticsearchCluster](#elasticsearchcluster)
+* [Output](#output)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`userRoles`* __string array__ | UserRoles is the list of Elasticsearch roles to grant to the user created by ECK for this association,<br>instead of the default role. Each role must already exist in the referenced Elasticsearch cluster<br>(built-in, defined via spec.auth.roles, a StackConfigPolicy, or the Role Management API).<br>If empty, the default role is used. |
 
 
 
@@ -2063,7 +2079,7 @@ ElasticsearchCluster is a named reference to an Elasticsearch cluster which can 
 | --- | --- |
 | *`ElasticsearchSelector`* __[ElasticsearchSelector](#elasticsearchselector)__ |  |
 | *`clusterName`* __string__ | ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash<br>configuration files, and will be used to identify "named clusters" in Logstash |
-| *`elasticsearchRole`* __string__ | ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user<br>for this cluster reference. Defaults to eck_logstash_user_role. The role must already exist in<br>the target cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles<br>can be provided as a comma-separated list.<br>Only valid for named (non-secretName) Elasticsearch references. |
+| *`UserRolesOverrideSpec`* __[UserRolesOverrideSpec](#userrolesoverridespec)__ |  |
 
 
 ### Logstash  [#logstash]
