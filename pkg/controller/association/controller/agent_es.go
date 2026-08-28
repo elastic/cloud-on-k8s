@@ -62,7 +62,7 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				agent, ok := associated.(*agentv1alpha1.Agent)
 				if !ok {
-					return user.SuperUserBuiltinRole, nil
+					return user.AgentUserRole, nil
 				}
 				// Fleet Server agents on ES >= 7.17 authenticate via the built-in elastic/fleet-server
 				// service account and never reach this code path (reconciler returns earlier).
