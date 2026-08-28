@@ -36,7 +36,7 @@ func TestElasticsearchRoleOverride(t *testing.T) {
 		WithElasticsearchRefs(logstashv1alpha1.ElasticsearchCluster{
 			ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: esBuilder.Ref()},
 			ClusterName:           "default",
-			ElasticsearchRole:     esuser.SuperUserBuiltinRole,
+			UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{esuser.SuperUserBuiltinRole}},
 		})
 
 	standaloneAgentBuilder := agent.NewBuilder("test-role-override-agent").

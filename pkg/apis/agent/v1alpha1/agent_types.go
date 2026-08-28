@@ -130,13 +130,7 @@ type AgentSpec struct {
 type Output struct {
 	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	OutputName                     string `json:"outputName,omitempty"`
-	// ElasticsearchRole overrides the Elasticsearch role assigned to the ECK-created file-realm user
-	// for this output. Defaults to eck_agent_user_role. The role must already exist in the target
-	// cluster (built-in, via spec.auth.roles, or the Role Management API). Multiple roles can be
-	// provided as a comma-separated list.
-	// Only valid for standalone Agents with a named (non-secretName) Elasticsearch reference.
-	// +kubebuilder:validation:Optional
-	ElasticsearchRole string `json:"elasticsearchRole,omitempty"`
+	commonv1.UserRolesOverrideSpec `json:",omitempty,inline"`
 }
 
 type DaemonSetSpec struct {
@@ -318,7 +312,7 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 		associations = append(associations, &AgentESAssociation{
 			Agent:    a,
 			ref:      ref.WithDefaultNamespace(a.Namespace),
-			userRole: ref.ElasticsearchRole,
+			userRole: ref.UserRolesOverride(),
 		})
 	}
 
@@ -472,9 +466,9 @@ func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
 }
 
 // UserRoleOverride implements commonv1.AssociationWithUserRoleOverride.
-func (aea *AgentESAssociation) UserRoleOverride() string { return aea.userRole }
+func (aea *AgentESAssociation) UserRolesOverride() string { return aea.userRole }
 
-var _ commonv1.AssociationWithUserRoleOverride = (*AgentESAssociation)(nil)
+var _ commonv1.AssociationWithUserRolesOverride = (*AgentESAssociation)(nil)
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.esAssocConfs == nil {

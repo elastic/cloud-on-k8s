@@ -240,7 +240,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		log.V(1).Info(
 			"Conflict while updating status",
 			"namespace", associatedKey.Namespace,
-			"name", associatedKey.Name)
+			"name", associatedKey.Name,
+		)
 		return results.WithRequeue().Aggregate()
 	} else if err != nil {
 		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
@@ -451,8 +452,8 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if err != nil {
 		return commonv1.AssociationFailed, results.WithError(err)
 	}
-	if withOverride, ok := association.(commonv1.AssociationWithUserRoleOverride); ok {
-		if override := withOverride.UserRoleOverride(); override != "" {
+	if withOverride, ok := association.(commonv1.AssociationWithUserRolesOverride); ok {
+		if override := withOverride.UserRolesOverride(); override != "" {
 			userRole = override
 		}
 	}
@@ -599,7 +600,8 @@ func (r *Reconciler) updateStatus(ctx context.Context, associated commonv1.Assoc
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
 			events.EventActionStatusUpdate,
-			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
+			"Association status changed from [%s] to [%s]", oldStatus, newStatus,
+		)
 	}
 	return nil
 }

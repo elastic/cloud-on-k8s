@@ -242,7 +242,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					if !is {
 						continue
 					}
-					if esAssoc.UserRoleOverride() != "" {
+					if esAssoc.UserRolesOverride() != "" {
 						continue
 					}
 

@@ -312,17 +312,18 @@ func checkAssociations(a *Agent) field.ErrorList {
 func checkESRefsRole(a *Agent) field.ErrorList {
 	var errs field.ErrorList
 	for i, o := range a.Spec.ElasticsearchRefs {
-		if o.ElasticsearchRole == "" {
+		p := field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles")
+		errs = append(errs, o.UserRolesOverrideSpec.Validate(p)...)
+		if len(o.UserRolesOverrideSpec.UserRoles) == 0 {
 			continue
 		}
-		p := field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("elasticsearchRole")
 		if o.SecretName != "" {
 			errs = append(errs, field.Forbidden(p,
-				"elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"))
+				"userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"))
 		}
 		if a.Spec.FleetModeEnabled() {
 			errs = append(errs, field.Forbidden(p,
-				"elasticsearchRole can only be used in standalone mode: Fleet Server agents authenticate with a service account token"))
+				"userRoles can only be used in standalone mode: Fleet Server agents authenticate with a service account token"))
 		}
 	}
 	return errs

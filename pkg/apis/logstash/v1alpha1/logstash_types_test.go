@@ -112,15 +112,15 @@ func TestLogstash_GetAssociations(t *testing.T) {
 				{
 					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "ns1"}},
 					ClusterName:           "cluster1",
-					ElasticsearchRole:     "custom_role",
+					UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 				},
 			},
 			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
 				t.Helper()
 				require.Len(t, ca, 1)
-				a, ok := ca[0].(commonv1.AssociationWithUserRoleOverride)
+				a, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
 				require.True(t, ok)
-				require.Equal(t, "custom_role", a.UserRoleOverride())
+				require.Equal(t, "custom_role", a.UserRolesOverride())
 			},
 		},
 		{
@@ -134,9 +134,9 @@ func TestLogstash_GetAssociations(t *testing.T) {
 			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
 				t.Helper()
 				require.Len(t, ca, 1)
-				a, ok := ca[0].(commonv1.AssociationWithUserRoleOverride)
+				a, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
 				require.True(t, ok)
-				require.Equal(t, "", a.UserRoleOverride())
+				require.Equal(t, "", a.UserRolesOverride())
 			},
 		},
 		{
@@ -145,7 +145,7 @@ func TestLogstash_GetAssociations(t *testing.T) {
 				{
 					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
 					ClusterName:           "cluster1",
-					ElasticsearchRole:     "custom_role",
+					UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 				},
 				{
 					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es2"}},
@@ -155,13 +155,13 @@ func TestLogstash_GetAssociations(t *testing.T) {
 			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
 				t.Helper()
 				require.Len(t, ca, 2)
-				a0, ok := ca[0].(commonv1.AssociationWithUserRoleOverride)
+				a0, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
 				require.True(t, ok)
-				require.Equal(t, "custom_role", a0.UserRoleOverride())
+				require.Equal(t, "custom_role", a0.UserRolesOverride())
 				require.Equal(t, "default", a0.AssociationRef().GetNamespace())
-				a1, ok := ca[1].(commonv1.AssociationWithUserRoleOverride)
+				a1, ok := ca[1].(commonv1.AssociationWithUserRolesOverride)
 				require.True(t, ok)
-				require.Equal(t, "", a1.UserRoleOverride())
+				require.Equal(t, "", a1.UserRolesOverride())
 				require.Equal(t, "default", a1.AssociationRef().GetNamespace())
 			},
 		},

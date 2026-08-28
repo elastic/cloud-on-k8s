@@ -8,12 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -338,6 +341,42 @@ func (e ElasticsearchSelector) WithDefaultNamespace(defaultNamespace string) Ela
 		ObjectSelector:              e.ObjectSelector.WithDefaultNamespace(defaultNamespace),
 		ClientCertificateSecretName: e.ClientCertificateSecretName,
 	}
+}
+
+// UserRolesOverrideSpec allows overriding the Elasticsearch roles granted to the user
+// that ECK automatically creates for the association with an Elasticsearch cluster.
+type UserRolesOverrideSpec struct {
+	// UserRoles is the list of Elasticsearch roles to grant to the user created by ECK for this association,
+	// instead of the default role. Each role must already exist in the referenced Elasticsearch cluster
+	// (built-in, defined via spec.auth.roles, a StackConfigPolicy, or the Role Management API).
+	// If empty, the default role is used.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:items:Pattern=`^[a-zA-Z0-9_-]+$`
+	UserRoles []string `json:"userRoles,omitempty"`
+}
+
+// userRolePattern mirrors the kubebuilder items:Pattern validation on UserRoles.
+var userRolePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+func (u UserRolesOverrideSpec) UserRolesOverride() string { return strings.Join(u.UserRoles, ",") }
+
+func (u UserRolesOverrideSpec) Validate(path *field.Path) field.ErrorList {
+	if len(u.UserRoles) == 0 {
+		return nil
+	}
+
+	var errs []*field.Error
+
+	for i, role := range u.UserRoles {
+		if !userRolePattern.MatchString(role) {
+			errs = append(
+				errs,
+				field.Invalid(path.Index(i), role, "invalid user role"),
+			)
+		}
+	}
+
+	return errs
 }
 
 var _ AssociationRef = (*FleetServerSelector)(nil)

@@ -1105,8 +1105,8 @@ func Test_checkNoDowngrade(t *testing.T) {
 }
 
 func Test_checkESRefsRole(t *testing.T) {
-	roleField := func(i int) *field.Path {
-		return field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("elasticsearchRole")
+	rolesField := func(i int) *field.Path {
+		return field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles")
 	}
 
 	tests := []struct {
@@ -1136,11 +1136,26 @@ func Test_checkESRefsRole(t *testing.T) {
 				ElasticsearchRefs: []Output{
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: nil,
+		},
+		{
+			name: "role with invalid characters: invalid",
+			a: &Agent{Spec: AgentSpec{
+				Mode: AgentStandaloneMode,
+				ElasticsearchRefs: []Output{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"good_role", "bad role!"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Invalid(rolesField(0).Index(1), "bad role!", "invalid user role"),
+			},
 		},
 		{
 			name: "secretName ref with role: forbidden",
@@ -1149,12 +1164,12 @@ func Test_checkESRefsRole(t *testing.T) {
 				ElasticsearchRefs: []Output{
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: field.ErrorList{
-				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(rolesField(0), "userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
 			},
 		},
 		{
@@ -1164,12 +1179,12 @@ func Test_checkESRefsRole(t *testing.T) {
 				ElasticsearchRefs: []Output{
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: field.ErrorList{
-				field.Forbidden(roleField(0), "elasticsearchRole can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
+				field.Forbidden(rolesField(0), "userRoles can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
 			},
 		},
 		{
@@ -1179,13 +1194,13 @@ func Test_checkESRefsRole(t *testing.T) {
 				ElasticsearchRefs: []Output{
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: field.ErrorList{
-				field.Forbidden(roleField(0), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
-				field.Forbidden(roleField(0), "elasticsearchRole can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
+				field.Forbidden(rolesField(0), "userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(rolesField(0), "userRoles can only be used in standalone mode: Fleet Server agents authenticate with a service account token"),
 			},
 		},
 		{
@@ -1200,12 +1215,12 @@ func Test_checkESRefsRole(t *testing.T) {
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
 						OutputName:            "second",
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: field.ErrorList{
-				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(rolesField(1), "userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
 			},
 		},
 		{
@@ -1216,17 +1231,17 @@ func Test_checkESRefsRole(t *testing.T) {
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
 						OutputName:            "first",
-						ElasticsearchRole:     "valid_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"valid_role"}},
 					},
 					{
 						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
 						OutputName:            "second",
-						ElasticsearchRole:     "custom_role",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
 					},
 				},
 			}},
 			want: field.ErrorList{
-				field.Forbidden(roleField(1), "elasticsearchRole cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
+				field.Forbidden(rolesField(1), "userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"),
 			},
 		},
 	}

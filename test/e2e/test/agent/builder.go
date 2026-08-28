@@ -568,8 +568,10 @@ func (b Builder) getPodSecurityContext() *corev1.PodSecurityContext {
 	}
 }
 
-var _ test.Builder = Builder{}
-var _ test.Subject = Builder{}
+var (
+	_ test.Builder = Builder{}
+	_ test.Subject = Builder{}
+)
 
 func (b Builder) NSN() types.NamespacedName {
 	return k8s.ExtractNamespacedName(&b.Agent)
@@ -630,7 +632,7 @@ func ToOutputWithRole(selector commonv1.ObjectSelector, outputName, role string)
 	return agentv1alpha1.Output{
 		ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: selector},
 		OutputName:            outputName,
-		ElasticsearchRole:     role,
+		UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{role}},
 	}
 }
 

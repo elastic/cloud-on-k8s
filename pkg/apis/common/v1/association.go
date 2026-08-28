@@ -209,17 +209,16 @@ type Association interface {
 	AssociationID() string
 }
 
-// AssociationWithUserRoleOverride is optionally implemented by Association types whose spec
+// AssociationWithUserRolesOverride is optionally implemented by Association types whose spec
 // allows overriding the Elasticsearch file-realm user role per reference.
-// When implemented and UserRoleOverride returns a non-empty string, the reconciler uses that
-// role instead of the controller's default (provided by ElasticsearchUserCreation.ESUserRole).
-// Multiple roles may be expressed as a comma-separated list.
+// When implemented and UserRolesOverride returns a non-empty string, the reconciler uses that
+// role(s) instead of the controller's default (provided by ElasticsearchUserCreation.ESUserRole).
 // +kubebuilder:object:generate=false
-type AssociationWithUserRoleOverride interface {
+type AssociationWithUserRolesOverride interface {
 	Association
-	// UserRoleOverride returns the user-configured role for this association's Elasticsearch user,
-	// or "" to fall back to the controller default.
-	UserRoleOverride() string
+	// UserRolesOverride returns the user-configured role(s) for this association's Elasticsearch user,
+	// or "" to fall back to the controller default. Multiple roles may be expressed as a comma-separated list.
+	UserRolesOverride() string
 }
 
 // FormatNameWithID conditionally formats `template`. `template` is expected to have a single %s verb.
