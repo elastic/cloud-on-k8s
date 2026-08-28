@@ -93,7 +93,11 @@ func (b Builder) DeepCopy() *Builder {
 // WithOwnershipCheckAndAllowedFields sets the fieldpath.Set of spec paths the operator is
 // permitted to own. When set, CheckK8sTestSteps permits those paths in its ownership assertion.
 func (b Builder) WithOwnershipCheckAndAllowedFields(allowed *fieldpath.Set) Builder {
-	b.allowedOwnedFields = allowed.Copy()
+	if allowed == nil {
+		b.allowedOwnedFields = nil
+	} else {
+		b.allowedOwnedFields = allowed.Copy()
+	}
 	return b
 }
 
