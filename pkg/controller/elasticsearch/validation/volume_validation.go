@@ -8,9 +8,6 @@ import (
 	"context"
 	"slices"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
-	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -20,6 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -144,11 +144,16 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
-		// The StatefulSet claims already carry the effective size, storage shorthand included, so
-		// the proposed claims have to be resolved the same way. Otherwise a user who moves the size
-		// from volumeClaimTemplates to spec.nodeSets[].resources.storage looks like they are
-		// requesting a decrease to nothing.
-		proposedClaims := volume.ApplyStorageOverride(proposedNodeSet.VolumeClaimTemplates, proposedNodeSet.Resources.Storage)
+		// Mirror BuildStatefulSet (AppendDefaultPVCs → ApplyStorageOverride): a nodeSet that omits
+		// volumeClaimTemplates gets the default elasticsearch-data claim injected at build time, so
+		// the validator must produce the same resolved claim list or it compares against an empty
+		// slice and silently misses storage-decrease checks on the default claim.
+		proposedVCTs := defaults.AppendDefaultPVCs(
+			proposedNodeSet.VolumeClaimTemplates,
+			proposedNodeSet.PodTemplate.Spec,
+			volume.DefaultVolumeClaimTemplates...,
+		)
+		proposedClaims := volume.ApplyStorageOverride(proposedVCTs, proposedNodeSet.Resources.Storage)
 		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedClaims, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),

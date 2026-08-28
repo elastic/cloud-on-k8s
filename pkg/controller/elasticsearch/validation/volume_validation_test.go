@@ -297,6 +297,70 @@ func Test_validPVCModification(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			// Regression: when a nodeSet omits volumeClaimTemplates entirely, BuildStatefulSet
+			// injects the default elasticsearch-data claim via AppendDefaultPVCs before applying
+			// the storage shorthand. The validator must mirror that sequence; without it,
+			// proposedClaims is empty and the decrease check is silently skipped.
+			name: "storage decrease via shorthand on nodeSet without explicit VCTs: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1"},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:      "set1",
+						Resources: esv1.NodeSetResources{Storage: new(resource.MustParse("500Mi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									}},
+								},
+							},
+						}},
+					}),
+				validateStorageClass: false,
+			},
+			wantErr: true,
+		},
+		{
+			name: "storage increase via shorthand on nodeSet without explicit VCTs: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1"},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:      "set1",
+						Resources: esv1.NodeSetResources{Storage: new(resource.MustParse("5Gi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("1Gi"),
+									}},
+								},
+							},
+						}},
+					}),
+				validateStorageClass: false,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
