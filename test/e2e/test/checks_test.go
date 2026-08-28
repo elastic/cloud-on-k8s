@@ -130,7 +130,7 @@ func Test_checkManagedFieldsEntry(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "no error when spec path is owned and allowedPaths is non-nil empty set",
+			name: "error when spec path is owned but not in allowedPaths",
 			entry: v1.ManagedFieldsEntry{
 				Manager:  manager,
 				FieldsV1: fieldsV1(`{"f:spec":{"f:replicas":{}}}`),
