@@ -44,6 +44,7 @@ const (
 	EnvVarOperatorImage            = "OPERATOR_IMAGE"
 	EnvVarE2EImage                 = "E2E_IMG"
 	EnvVarRestrictWatchedResources = "RESTRICT_WATCHED_RESOURCES"
+	EnvVarContainerSuffix          = "CONTAINER_SUFFIX"
 
 	K8sInDockerMachineType = "n1-standard-16"
 )
@@ -68,6 +69,7 @@ var (
 		"s":   EnvVarStackVersion,
 		"t":   EnvVarTestsMatch,
 		"rwr": EnvVarRestrictWatchedResources,
+		"cs":  EnvVarContainerSuffix,
 	}
 
 	fixed   string

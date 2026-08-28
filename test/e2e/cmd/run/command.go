@@ -52,6 +52,7 @@ type runFlags struct {
 	testEnvTags           []string
 	// restrictWatchedResources enables the operator's --restrict-watched-resources flag.
 	restrictWatchedResources bool
+	containerSuffix          string
 }
 
 var log logr.Logger
@@ -109,6 +110,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
 	cmd.Flags().BoolVar(&flags.restrictWatchedResources, "restrict-watched-resources", false, "Deploy the operator with the --restrict-watched-resources flag enabled")
+	cmd.Flags().StringVar(&flags.containerSuffix, "container-suffix", "", "Suffix to append to all stack container images resolved by the operator (e.g. \"-wolfi\")")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
