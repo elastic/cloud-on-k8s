@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -348,6 +349,76 @@ func TestReconcileAgent_OnDelete_GarbageCollectsSoftOwnedSecrets(t *testing.T) {
 
 			require.ElementsMatch(t, tt.wantRemainingSecrets, remaining,
 				"remaining secrets mismatch: got %v, want %v", remaining, tt.wantRemainingSecrets)
+		})
+	}
+}
+
+func TestReconcileAgent_validate_licenseErrorDoesNotStopFlow(t *testing.T) {
+	agentWithClientAuth := func(name string) agentv1alpha1.Agent {
+		return agentv1alpha1.Agent{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns"},
+			Spec: agentv1alpha1.AgentSpec{
+				Version:            "9.5.0",
+				Mode:               agentv1alpha1.AgentFleetMode,
+				FleetServerEnabled: true,
+				Deployment:         &agentv1alpha1.DeploymentSpec{},
+				HTTP: commonv1.HTTPConfigWithClientOptions{
+					TLS: commonv1.TLSWithClientOptions{
+						Client: commonv1.ClientOptions{Authentication: true},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name       string
+		agent      agentv1alpha1.Agent
+		checker    license.Checker
+		wantErr    bool
+		wantEvents int
+	}{
+		{
+			name:       "license check fails on Basic license: validate returns nil and emits warning event",
+			agent:      agentWithClientAuth("agent"),
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: false},
+			wantErr:    false,
+			wantEvents: 2,
+		},
+		{
+			name:       "hard validation error (name too long): validate returns error",
+			agent:      agentWithClientAuth("testAgentwithtoolongofanamereallylongname"),
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: false},
+			wantErr:    true,
+			wantEvents: 1,
+		},
+		{
+			name:       "no validation errors: validate returns nil",
+			agent:      agentWithClientAuth("agent"),
+			checker:    license.MockLicenseChecker{EnterpriseEnabled: true},
+			wantErr:    false,
+			wantEvents: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeRecorder := toolsevents.NewFakeRecorder(10)
+			r := &ReconcileAgent{
+				Client:         k8s.NewFakeClient(),
+				recorder:       fakeRecorder,
+				dynamicWatches: watches.NewDynamicWatches(),
+				licenseChecker: tt.checker,
+			}
+
+			err := r.validate(context.Background(), tt.agent)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, fakeRecorder.Events, tt.wantEvents)
 		})
 	}
 }

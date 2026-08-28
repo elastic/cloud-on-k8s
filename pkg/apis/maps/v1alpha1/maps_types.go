@@ -84,6 +84,12 @@ func (m *ElasticMapsServer) IsMarkedForDeletion() bool {
 	return !m.DeletionTimestamp.IsZero()
 }
 
+// DownwardNodeLabels returns the node labels to copy as annotations on the Elastic Maps Server Pods,
+// as declared via the DownwardNodeLabelsAnnotation annotation.
+func (m *ElasticMapsServer) DownwardNodeLabels() []string {
+	return commonv1.DownwardNodeLabelsFromAnnotations(m.Annotations)
+}
+
 func (m *ElasticMapsServer) Associated() commonv1.Associated {
 	return m
 }

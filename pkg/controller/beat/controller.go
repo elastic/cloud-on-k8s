@@ -188,7 +188,7 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err), &status
 	}
 
-	driverResults, updatedStatus := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, beat, status).Reconcile()
+	driverResults, updatedStatus := newDriver(ctx, r.recorder, r.Client, r.dynamicWatches, beat, status, r.OperatorImage).Reconcile()
 	return results.WithResults(driverResults), updatedStatus
 }
 
@@ -196,7 +196,7 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	warnings, err := beatv1beta1.Validate(beat, nil)
+	warnings, err := validateBeat(beat, nil, r.ExposedNodeLabels)
 	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
 		k8s.MaybeEmitErrorEvent(r.recorder, err, beat, events.EventReasonValidation, events.EventActionValidation, err.Error())
@@ -228,6 +228,7 @@ func newDriver(
 	dynamicWatches watches.DynamicWatches,
 	beat beatv1beta1.Beat,
 	status beatv1beta1.BeatStatus,
+	operatorImage string,
 ) beatcommon.Driver {
 	dp := beatcommon.DriverParams{
 		Client:        client,
@@ -236,6 +237,7 @@ func newDriver(
 		EventRecorder: recorder,
 		Status:        &status,
 		Beat:          beat,
+		OperatorImage: operatorImage,
 	}
 
 	switch beat.Spec.Type {

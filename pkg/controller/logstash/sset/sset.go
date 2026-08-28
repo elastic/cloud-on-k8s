@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels/initcontainer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -60,8 +61,11 @@ func New(params Params) appsv1.StatefulSet {
 		},
 	}
 
-	// store a hash of the sset resource in its labels for comparison purposes
-	sset.Labels = hash.SetTemplateHashLabel(sset.Labels, sset.Spec)
+	// store a hash of the sset resource in its labels for comparison purposes;
+	// normalize the wait-for-annotations init container image so operator patch upgrades do not roll pods.
+	specForHash := sset.Spec
+	specForHash.Template = initcontainer.NormalizeTemplateForHash(specForHash.Template)
+	sset.Labels = hash.SetTemplateHashLabel(sset.Labels, specForHash)
 
 	return sset
 }

@@ -115,6 +115,10 @@ const expectedTelemetryTemplate = `eck:
     maps:
       pod_count: 0
       resource_count: 0
+    packageregistries:
+      helm_resource_count: 0
+      pod_count: 0
+      resource_count: 0
     stackconfigpolicies:
       configured_resources_count: 0
       resource_count: 0

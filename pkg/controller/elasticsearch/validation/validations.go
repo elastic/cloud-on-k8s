@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	stackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -44,7 +45,6 @@ const (
 	unsupportedClientAuthenticationMsg       = "HTTP client authentication mode \"required\" is not supported when set via nodeSet configuration; use spec.http.tls.client.authentication (enterprise license) instead"
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
-	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 	inconsistentFIPSModeWarningMsg           = "xpack.security.fips_mode.enabled is not consistent across all NodeSets; FIPS mode should be uniform across the cluster"
 	fipsManagedKeystoreUnsupportedWarningMsg = "FIPS mode is enabled in NodeSet configuration but Elasticsearch version is below 9.4.0; the operator cannot manage the keystore password automatically."
@@ -74,7 +74,7 @@ func updateValidations(ctx context.Context, k8sClient k8s.Client, validateStorag
 // ValidateElasticsearch is also called directly from the reconciler
 // (elasticsearch_controller.go) to guard against invalid specs when webhooks
 // are not configured, and that path does not go through the wrapper.
-func validations(ctx context.Context, checker license.Checker, exposedNodeLabels NodeLabels) []validation {
+func validations(ctx context.Context, checker license.Checker, exposedNodeLabels commonnodelabels.NodeLabels) []validation {
 	return []validation{
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validNodeLabels(proposed, exposedNodeLabels)
@@ -105,27 +105,9 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 // and all zone-awareness-derived topology keys are permitted by the operator's exposed-node-labels policy.
 // Zone-awareness topology keys are only validated when the policy is configured (non-empty), so that
 // zone awareness works out of the box when no exposed-node-labels restriction is in place.
-func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) field.ErrorList {
-	var errs field.ErrorList
-	annotationValue := ""
-	if proposed.Annotations != nil {
-		annotationValue = proposed.Annotations[esv1.DownwardNodeLabelsAnnotation]
-	}
+func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels commonnodelabels.NodeLabels) field.ErrorList {
 	// firstly validate the downward-node-labels annotations
-	annotationLabels := esv1.ParseDownwardNodeLabels(annotationValue)
-	for nodeLabel := range annotationLabels {
-		if exposedNodeLabels.IsAllowed(nodeLabel) {
-			continue
-		}
-		errs = append(
-			errs,
-			field.Invalid(
-				field.NewPath("metadata").Child("annotations", esv1.DownwardNodeLabelsAnnotation),
-				nodeLabel,
-				notAllowedNodesLabelMsg,
-			),
-		)
-	}
+	errs := commonnodelabels.ValidateAnnotation(proposed.Annotations, exposedNodeLabels)
 
 	// then validate the zone-awareness-derived topology keys
 	if len(exposedNodeLabels) > 0 {
@@ -142,7 +124,7 @@ func validNodeLabels(proposed esv1.Elasticsearch, exposedNodeLabels NodeLabels) 
 				field.Invalid(
 					field.NewPath("spec").Child("nodeSets").Index(i).Child("zoneAwareness", "topologyKey"),
 					topologyKey,
-					notAllowedNodesLabelMsg,
+					commonnodelabels.NotAllowedNodesLabelMsg,
 				),
 			)
 		}

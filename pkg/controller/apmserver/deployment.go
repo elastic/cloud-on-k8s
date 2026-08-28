@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	commonnodelabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nodelabels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -66,6 +67,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		TokenSecret:  tokenSecret,
 		ConfigSecret: reconciledConfigSecret,
 
+		OperatorImage:     r.OperatorImage,
 		keystoreResources: keystoreResources,
 	}
 	params, err := r.deploymentParams(as, apmServerPodSpecParams, meta)
@@ -117,6 +119,10 @@ func buildConfigHash(c k8s.Client, as *apmv1.ApmServer, params PodSpecParams) (s
 
 	// - in the APMServer configuration file content
 	_, _ = configHash.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
+
+	// Changes to the downward-node-labels annotation must roll the APM Server Pods so the new annotations
+	// are re-applied on scheduling.
+	commonnodelabels.MaybeWriteNodeLabelsHashInput(configHash, as)
 
 	// - in the APMServer keystore
 	if params.keystoreResources != nil {
