@@ -20,7 +20,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.65.0 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.0 | MIT |
-| [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v0.7.5 | MIT |
+| [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v1.0.0 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.43.7 | Apache-2.0 |
 | [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.19.37 | Apache-2.0 |
