@@ -502,11 +502,11 @@ Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go
 
 --------------------------------------------------------------------------------
 Module  : github.com/KimMachineGun/automemlimit
-Version : v0.7.5
-Time    : 2025-10-08T05:39:30Z
+Version : v1.0.0
+Time    : 2026-08-21T17:09:36Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!kim!machine!gun/automemlimit@v0.7.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/!kim!machine!gun/automemlimit@v1.0.0/LICENSE:
 
 MIT License
 
