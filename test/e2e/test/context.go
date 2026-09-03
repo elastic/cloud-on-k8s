@@ -130,6 +130,8 @@ type Context struct {
 	// resource watching (secrets, services and configmaps) to resources carrying the
 	// eck.k8s.elastic.co/watched=true label.
 	RestrictWatchedResources bool `json:"restrict_watched_resources"`
+	// ContainerSuffix is appended to all stack container images resolved by the operator, e.g. "-wolfi".
+	ContainerSuffix string `json:"container_suffix"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

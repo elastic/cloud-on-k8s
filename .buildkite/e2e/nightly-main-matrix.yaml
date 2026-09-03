@@ -10,9 +10,30 @@
     # current stack version 9.5.1 is tested in all other tests no need to test it again
     - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
+- label: stack-wolfi
+  fixed:
+    E2E_PROVIDER: gke
+    CONTAINER_SUFFIX: "-wolfi"
+  mixed:
+    - E2E_STACK_VERSION: "8.19.20"
+    - E2E_STACK_VERSION: "9.3.8"
+    - E2E_STACK_VERSION: "9.4.5"
+    - E2E_STACK_VERSION: "9.5.1"
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
 - label: ocp
   fixed:
     E2E_PROVIDER: ocp
+  mixed:
+    ## Test the current stack version.
+    - E2E_STACK_VERSION: "9.5.1"
+    ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
+- label: ocp-wolfi
+  fixed:
+    E2E_PROVIDER: ocp
+    CONTAINER_SUFFIX: "-wolfi"
   mixed:
     ## Test the current stack version.
     - E2E_STACK_VERSION: "9.5.1"
