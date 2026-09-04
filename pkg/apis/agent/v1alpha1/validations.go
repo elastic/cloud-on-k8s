@@ -25,6 +25,7 @@ var (
 		checkAtMostOneDeploymentOption,
 		checkAtMostOneDefaultESRef,
 		checkESRefsNamed,
+		checkESRefsRole,
 		checkSingleConfigSource,
 		checkSpec,
 		checkEmptyConfigForFleetMode,
@@ -306,6 +307,26 @@ func checkAssociations(a *Agent) field.ErrorList {
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
 	err3 := commonv1.CheckFleetServerSelectorRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
 	return append(append(err1, err2...), err3...)
+}
+
+func checkESRefsRole(a *Agent) field.ErrorList {
+	var errs field.ErrorList
+	for i, o := range a.Spec.ElasticsearchRefs {
+		p := field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles")
+		errs = append(errs, o.UserRolesOverrideSpec.Validate(p)...)
+		if len(o.UserRolesOverrideSpec.UserRoles) == 0 {
+			continue
+		}
+		if o.SecretName != "" {
+			errs = append(errs, field.Forbidden(p,
+				"userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"))
+		}
+		if a.Spec.FleetModeEnabled() {
+			errs = append(errs, field.Forbidden(p,
+				"userRoles can only be used in standalone mode: Fleet Server agents authenticate with a service account token"))
+		}
+	}
+	return errs
 }
 
 func checkClientAuthentication(a *Agent) field.ErrorList {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -31,7 +32,8 @@ func TestLogstashEsAssociation_AssociationConfAnnotationName(t *testing.T) {
 			cluster: ElasticsearchCluster{
 				ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 					Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
-					Name:      "elasticsearch1elasticsearch1elastics"}},
+					Name:      "elasticsearch1elasticsearch1elastics",
+				}},
 				ClusterName: "test",
 			},
 			want: "association.k8s.elastic.co/es-conf-3419573237",
@@ -73,7 +75,8 @@ func TestLogstashMonitoringAssociation_AssociationConfAnnotationName(t *testing.
 			name: "max length namespace and name (63 and 36 respectively)",
 			ref: commonv1.ObjectSelector{
 				Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
-				Name:      "elasticsearch1elasticsearch1elastics"},
+				Name:      "elasticsearch1elasticsearch1elastics",
+			},
 			want: "association.k8s.elastic.co/es-conf-3419573237-sm",
 		},
 		{
@@ -91,6 +94,84 @@ func TestLogstashMonitoringAssociation_AssociationConfAnnotationName(t *testing.
 			require.Equal(t, 2, len(tokens))
 			require.LessOrEqual(t, len(tokens[0]), 253)
 			require.LessOrEqual(t, len(tokens[1]), 63)
+		})
+	}
+}
+
+func TestLogstash_GetAssociations(t *testing.T) {
+	defaultNamespace := "default"
+
+	for _, tt := range []struct {
+		name               string
+		refs               []ElasticsearchCluster
+		assertAssociations func(*testing.T, []commonv1.Association)
+	}{
+		{
+			name: "custom role is preserved",
+			refs: []ElasticsearchCluster{
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "ns1"}},
+					ClusterName:           "cluster1",
+					UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
+				},
+			},
+			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
+				t.Helper()
+				require.Len(t, ca, 1)
+				a, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
+				require.True(t, ok)
+				require.Equal(t, "custom_role", a.UserRolesOverride())
+			},
+		},
+		{
+			name: "empty role when not set",
+			refs: []ElasticsearchCluster{
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "ns1"}},
+					ClusterName:           "cluster1",
+				},
+			},
+			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
+				t.Helper()
+				require.Len(t, ca, 1)
+				a, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
+				require.True(t, ok)
+				require.Equal(t, "", a.UserRolesOverride())
+			},
+		},
+		{
+			name: "role preserved per-ref across multiple refs",
+			refs: []ElasticsearchCluster{
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
+					ClusterName:           "cluster1",
+					UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
+				},
+				{
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es2"}},
+					ClusterName:           "cluster2",
+				},
+			},
+			assertAssociations: func(t *testing.T, ca []commonv1.Association) {
+				t.Helper()
+				require.Len(t, ca, 2)
+				a0, ok := ca[0].(commonv1.AssociationWithUserRolesOverride)
+				require.True(t, ok)
+				require.Equal(t, "custom_role", a0.UserRolesOverride())
+				require.Equal(t, "default", a0.AssociationRef().GetNamespace())
+				a1, ok := ca[1].(commonv1.AssociationWithUserRolesOverride)
+				require.True(t, ok)
+				require.Equal(t, "", a1.UserRolesOverride())
+				require.Equal(t, "default", a1.AssociationRef().GetNamespace())
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ls := Logstash{
+				ObjectMeta: v1.ObjectMeta{Namespace: defaultNamespace},
+				Spec:       LogstashSpec{ElasticsearchRefs: tt.refs},
+			}
+			tt.assertAssociations(t, ls.GetAssociations())
 		})
 	}
 }

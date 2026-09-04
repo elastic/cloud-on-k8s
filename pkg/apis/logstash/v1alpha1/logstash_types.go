@@ -136,7 +136,8 @@ type ElasticsearchCluster struct {
 	// +kubebuilder:validation:MinLength=1
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
 	// configuration files, and will be used to identify "named clusters" in Logstash
-	ClusterName string `json:"clusterName,omitempty"`
+	ClusterName                    string `json:"clusterName,omitempty"`
+	commonv1.UserRolesOverrideSpec `json:",omitempty,inline"`
 }
 
 // LogstashStatus defines the observed state of Logstash
@@ -211,6 +212,7 @@ func (l *Logstash) ElasticsearchRefs() []commonv1.ElasticsearchSelector {
 	}
 	return refs
 }
+
 func (l *Logstash) ServiceAccountName() string {
 	return l.Spec.ServiceAccountName
 }
@@ -237,12 +239,10 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 	)
 
 	for _, ref := range l.Spec.ElasticsearchRefs {
+		ref.ElasticsearchSelector = ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace)
 		associations = append(associations, &LogstashESAssociation{
-			Logstash: l,
-			ElasticsearchCluster: ElasticsearchCluster{
-				ElasticsearchSelector: ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace),
-				ClusterName:           ref.ClusterName,
-			},
+			Logstash:             l,
+			ElasticsearchCluster: ref,
 		})
 	}
 
@@ -351,6 +351,13 @@ func (lses *LogstashESAssociation) SetAssociationConf(conf *commonv1.Association
 func (lses *LogstashESAssociation) SupportsAuthAPIKey() bool {
 	return false
 }
+
+// UserRoleOverride implements commonv1.AssociationWithUserRoleOverride.
+func (lses *LogstashESAssociation) UserRolesOverride() string {
+	return lses.ElasticsearchCluster.UserRolesOverrideSpec.UserRolesOverride()
+}
+
+var _ commonv1.AssociationWithUserRolesOverride = (*LogstashESAssociation)(nil)
 
 func (lses *LogstashESAssociation) AssociationID() string {
 	return fmt.Sprintf("%s-%s", lses.ElasticsearchCluster.ObjectSelector.Namespace, lses.ElasticsearchCluster.ObjectSelector.NameOrSecretName())

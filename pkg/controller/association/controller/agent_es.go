@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -59,7 +60,18 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 			},
 			UserSecretSuffix: "agent-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
-				return "superuser", nil
+				agent, ok := associated.(*agentv1alpha1.Agent)
+				if !ok {
+					return user.AgentUserRole, nil
+				}
+				// Fleet Server agents on ES >= 7.17 authenticate via the built-in elastic/fleet-server
+				// service account and never reach this code path (reconciler returns earlier).
+				// Fleet Server agents on 7.10-7.16 fall back to a file-realm user and genuinely require
+				// superuser-level access (agent API key management, .fleet-* system indices).
+				if agent.Spec.FleetServerEnabled {
+					return user.SuperUserBuiltinRole, nil
+				}
+				return user.AgentUserRole, nil
 			},
 		},
 	})

@@ -38,10 +38,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
-var (
-	//go:embed fixtures/stackconfigpolicy_esConfig.yaml
-	esConfig string
-)
+//go:embed fixtures/stackconfigpolicy_esConfig.yaml
+var esConfig string
 
 // TestStackConfigPolicy tests the StackConfigPolicy feature.
 func TestStackConfigPolicy(t *testing.T) {
@@ -229,7 +227,8 @@ func TestStackConfigPolicy(t *testing.T) {
 						Type: "gcs",
 						Settings: SnapshotRepositorySettings{
 							Bucket:   "my-bucket",
-							BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name())},
+							BasePath: fmt.Sprintf("snapshots/%s-%s", es.Namespace(), es.Name()),
+						},
 					}
 					if !reflect.DeepEqual(actualRepo, expectedRepo) {
 						act, err := json.Marshal(actualRepo)
@@ -812,7 +811,7 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+					hasPrivResp, err := elasticsearch.HasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [
 							{"names": ["logs-test"], "privileges": ["read"]},
@@ -886,7 +885,7 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+					hasPrivResp, err := elasticsearch.HasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
 						"cluster": ["monitor"],
 						"index": [{"names": ["logs-test"], "privileges": ["read"]}]
 					}`)
@@ -913,35 +912,6 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 	}
 
 	test.Sequence(before, steps, esWithLicense).RunSequential(t)
-}
-
-type HasPrivilegesResponse struct {
-	Username        string                     `json:"username"`
-	HasAllRequested bool                       `json:"has_all_requested"`
-	Cluster         map[string]bool            `json:"cluster"`
-	Index           map[string]map[string]bool `json:"index"`
-}
-
-func hasPrivilegesAs(ctx context.Context, esClient client.Client, runAsUser string, body string) (HasPrivilegesResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", strings.NewReader(body))
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	req.Header.Set("es-security-runas-user", runAsUser)
-	resp, err := esClient.Request(ctx, req)
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	defer resp.Body.Close()
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return HasPrivilegesResponse{}, err
-	}
-	var hasPrivResp HasPrivilegesResponse
-	if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
-		return HasPrivilegesResponse{}, fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
-	}
-	return hasPrivResp, nil
 }
 
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {

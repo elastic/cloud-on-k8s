@@ -46,6 +46,7 @@ func validations() []validation {
 		checkSupportedVersion,
 		checkSingleConfigSource,
 		checkESRefsNamed,
+		checkESRefsRole,
 		checkAssociations,
 		checkSinglePipelineSource,
 		checkPipelinesRefSource,
@@ -119,6 +120,22 @@ func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
 	return nil
 }
 
+func checkESRefsRole(l *lsv1alpha1.Logstash) field.ErrorList {
+	var errs field.ErrorList
+	for i, ref := range l.Spec.ElasticsearchRefs {
+		for _, e := range ref.UserRolesOverrideSpec.Validate(field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles")) {
+			errs = append(errs, e)
+		}
+		if ref.SecretName != "" && len(ref.UserRolesOverrideSpec.UserRoles) > 0 {
+			errs = append(errs, field.Forbidden(
+				field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles"),
+				"userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references",
+			))
+		}
+	}
+	return errs
+}
+
 func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 	var errorList field.ErrorList
 	for i, esRef := range l.Spec.ElasticsearchRefs {
@@ -127,7 +144,8 @@ func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
 				errorList,
 				field.Required(
 					field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("clusterName"),
-					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.NamespacedName())),
+					fmt.Sprintf("clusterName is a mandatory field - missing on %v", esRef.NamespacedName()),
+				),
 			)
 		}
 	}

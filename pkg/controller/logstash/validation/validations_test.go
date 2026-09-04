@@ -501,3 +501,170 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkESRefsRole(t *testing.T) {
+	rolesField := func(i int) *field.Path {
+		return field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("userRoles")
+	}
+	forbiddenMsg := "userRoles cannot be used with secretName: no file-realm user is created for external Elasticsearch references"
+
+	tests := []struct {
+		name string
+		l    *lsv1alpha1.Logstash
+		want field.ErrorList
+	}{
+		{
+			name: "no refs: OK",
+			l:    &lsv1alpha1.Logstash{},
+			want: nil,
+		},
+		{
+			name: "ref without roles: OK",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+					},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "named ref with valid roles: OK",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role", "another-role", "Role123"}},
+					},
+				},
+			}},
+			want: nil,
+		},
+		{
+			name: "role with invalid characters: invalid",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"bad role!"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Invalid(rolesField(0).Index(0), "bad role!", "invalid user role"),
+			},
+		},
+		{
+			name: "empty role string: invalid",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{""}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Invalid(rolesField(0).Index(0), "", "invalid user role"),
+			},
+		},
+		{
+			name: "mix of valid and invalid roles: only invalid ones error, with their index",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}},
+						ClusterName:           "es",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"valid_role", "with space", "also-valid", "comma,role"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Invalid(rolesField(0).Index(1), "with space", "invalid user role"),
+				field.Invalid(rolesField(0).Index(3), "comma,role", "invalid user role"),
+			},
+		},
+		{
+			name: "secretName ref with roles: forbidden",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ClusterName:           "ext",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(rolesField(0), forbiddenMsg),
+			},
+		},
+		{
+			name: "secretName ref with invalid role: both invalid and forbidden errors",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ClusterName:           "ext",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"bad role!"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Invalid(rolesField(0).Index(0), "bad role!", "invalid user role"),
+				field.Forbidden(rolesField(0), forbiddenMsg),
+			},
+		},
+		{
+			name: "multiple refs, only one with secretName and roles: only that ref errors",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es1"}},
+						ClusterName:           "first",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"valid_role"}},
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-secret"}},
+						ClusterName:           "second",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"custom_role"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(rolesField(1), forbiddenMsg),
+			},
+		},
+		{
+			name: "multiple refs with secretName and roles: both error",
+			l: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{
+				ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-a"}},
+						ClusterName:           "first",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"role_a"}},
+					},
+					{
+						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ext-b"}},
+						ClusterName:           "second",
+						UserRolesOverrideSpec: commonv1.UserRolesOverrideSpec{UserRoles: []string{"role_b"}},
+					},
+				},
+			}},
+			want: field.ErrorList{
+				field.Forbidden(rolesField(0), forbiddenMsg),
+				field.Forbidden(rolesField(1), forbiddenMsg),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, checkESRefsRole(tt.l))
+		})
+	}
+}
