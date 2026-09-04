@@ -57,7 +57,7 @@ type PullRequest struct {
 	Issues []int
 }
 
-func LoadPullRequests(repoName, version string, ignoredLabels map[string]struct{}) ([]PullRequest, error) {
+func LoadPullRequests(ctx context.Context, repoName, version string, ignoredLabels map[string]struct{}) ([]PullRequest, error) {
 	client := mkClient()
 	loader := &prLoader{
 		apiEndpoint: graphqlEndpoint,
@@ -66,7 +66,7 @@ func LoadPullRequests(repoName, version string, ignoredLabels map[string]struct{
 		prp:         newPRProcessor(repoName, ignoredLabels),
 	}
 
-	return loader.loadPullRequests(client)
+	return loader.loadPullRequests(ctx, client)
 }
 
 func mkClient() *http.Client {
@@ -91,12 +91,12 @@ type prLoader struct {
 	prp         *prProcessor
 }
 
-func (loader *prLoader) loadPullRequests(client *http.Client) ([]PullRequest, error) {
+func (loader *prLoader) loadPullRequests(ctx context.Context, client *http.Client) ([]PullRequest, error) {
 	var pullRequests []PullRequest
 	var cursor *string
 
 	for {
-		apiResp, err := loader.mkRequest(client, cursor)
+		apiResp, err := loader.mkRequest(ctx, client, cursor)
 		if err != nil {
 			return pullRequests, err
 		}
@@ -112,8 +112,8 @@ func (loader *prLoader) loadPullRequests(client *http.Client) ([]PullRequest, er
 	}
 }
 
-func (loader *prLoader) mkRequest(client *http.Client, cursor *string) (*apiResponse, error) {
-	req, err := loader.buildRequest(cursor)
+func (loader *prLoader) mkRequest(ctx context.Context, client *http.Client, cursor *string) (*apiResponse, error) {
+	req, err := loader.buildRequest(ctx, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ type apiResponse struct {
 	} `json:"data"`
 }
 
-func (loader *prLoader) buildRequest(cursor *string) (*http.Request, error) {
+func (loader *prLoader) buildRequest(ctx context.Context, cursor *string) (*http.Request, error) {
 	variables := map[string]any{
 		"q":     fmt.Sprintf("repo:%s is:pr is:closed label:v%s", loader.repoName, loader.version),
 		"after": cursor,
@@ -190,7 +190,7 @@ func (loader *prLoader) buildRequest(cursor *string) (*http.Request, error) {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, loader.apiEndpoint, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, loader.apiEndpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
