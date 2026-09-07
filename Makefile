@@ -205,17 +205,18 @@ integration-xml: setup-envtest clean
 	exit $$exit_code
 
 GOLANGCI_LINT_CUSTOM := ./bin/golangci-lint-custom
+SSACRLINT_DIR := hack/linters/ssacrlint
+SSACRLINT_SOURCES := $(shell find $(SSACRLINT_DIR) -name "*.go")
 
-# .SECONDEXPANSION is a global GNU Make directive that enables $$(…) in
-# prerequisite lists to be evaluated lazily (when the target is considered)
-# rather than at parse time. It applies to all rules that follow in this file.
-.SECONDEXPANSION:
-$(GOLANGCI_LINT_CUSTOM): .custom-gcl.yml hack/linters/ssacrdlint/go.mod hack/linters/ssacrdlint/go.sum $$(shell find hack/linters/ssacrdlint -name "*.go")
+$(GOLANGCI_LINT_CUSTOM): .custom-gcl.yml $(SSACRLINT_DIR)/go.mod $(SSACRLINT_DIR)/go.sum $(SSACRLINT_SOURCES)
 	golangci-lint custom
 
 lint: $(GOLANGCI_LINT_CUSTOM)
-	cd hack/linters/ssacrdlint && go test ./...
 	GOGC=40 $(GOLANGCI_LINT_CUSTOM) run --verbose
+
+ssacrlint-unit-tests:
+	cd $(SSACRLINT_DIR) && go mod tidy
+	cd $(SSACRLINT_DIR) && go test ./... -cover $(TEST_OPTS)
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh

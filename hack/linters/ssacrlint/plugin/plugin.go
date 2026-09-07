@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// Package plugin registers ssacrdlint as a golangci-lint module plugin.
+// Package plugin registers ssacrlint as a golangci-lint module plugin.
 // The custom binary is built with:
 //
 //	golangci-lint custom
@@ -14,11 +14,11 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
-	"github.com/elastic/cloud-on-k8s/hack/linters/ssacrdlint"
+	"github.com/elastic/cloud-on-k8s/hack/linters/ssacrlint"
 )
 
 func init() {
-	register.Plugin("ssacrdlint", New)
+	register.Plugin("ssacrlint", New)
 }
 
 type linterPlugin struct{}
@@ -28,7 +28,7 @@ func New(_ any) (register.LinterPlugin, error) {
 }
 
 func (p *linterPlugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	return []*analysis.Analyzer{ssacrdlint.Analyzer}, nil
+	return []*analysis.Analyzer{ssacrlint.NewAnalyzer()}, nil
 }
 
 func (p *linterPlugin) GetLoadMode() string {

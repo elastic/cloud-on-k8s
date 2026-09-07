@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package ssacrdlint
+package ssacrlint
 
 import (
 	"go/types"
@@ -19,9 +19,18 @@ func TestLookupType(t *testing.T) {
 	// A package at targetPath with typeName in scope.
 	pkgWithType := types.NewPackage(targetPath, "target")
 	pkgWithType.Scope().Insert(types.NewTypeName(0, pkgWithType, typeName, types.Typ[types.Int]))
+	pkgWithType.MarkComplete()
 
-	// A package at targetPath with an empty scope — the case under test.
+	// A fully loaded package at targetPath whose scope lacks typeName. The
+	// dependency genuinely dropped the type, which must be reported as an error.
 	pkgWithoutType := types.NewPackage(targetPath, "target")
+	pkgWithoutType.MarkComplete()
+
+	// An incomplete stub at targetPath, as when the package is only reached
+	// transitively through export data. Its empty scope carries no information
+	// either way, so it must be skipped silently rather than reported as a
+	// changed dependency.
+	pkgIncomplete := types.NewPackage(targetPath, "target")
 
 	makeRoot := func(imports ...*types.Package) *types.Package {
 		p := types.NewPackage("example.com/root", "root")
@@ -52,6 +61,12 @@ func TestLookupType(t *testing.T) {
 			root:     makeRoot(pkgWithoutType),
 			wantType: false,
 			wantErr:  targetPath + "." + typeName,
+		},
+		{
+			name:     "incomplete stub package is skipped",
+			root:     makeRoot(pkgIncomplete),
+			wantType: false,
+			wantErr:  "",
 		},
 	}
 
