@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1003,8 +1003,8 @@ spec:
                                 * An existing PVC (PersistentVolumeClaim)
                                 If the provisioner or an external controller can support the specified data source,
                                 it will create a new volume based on the contents of the specified data source.
-                                When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                copied to dataSource when dataSourceRef.namespace is not specified.
                                 If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                               properties:
                                 apiGroup:
@@ -1049,7 +1049,6 @@ spec:
                                   specified.
                                 * While dataSource only allows local objects, dataSourceRef allows objects
                                   in any namespaces.
-                                (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                 (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                               properties:
                                 apiGroup:
@@ -1263,7 +1262,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2596,7 +2595,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2981,7 +2980,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3566,7 +3565,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -4269,7 +4268,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -4624,7 +4623,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -5425,8 +5424,8 @@ spec:
                                   * An existing PVC (PersistentVolumeClaim)
                                   If the provisioner or an external controller can support the specified data source,
                                   it will create a new volume based on the contents of the specified data source.
-                                  When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                  and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                  dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                  copied to dataSource when dataSourceRef.namespace is not specified.
                                   If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                                 properties:
                                   apiGroup:
@@ -5471,7 +5470,6 @@ spec:
                                     specified.
                                   * While dataSource only allows local objects, dataSourceRef allows objects
                                     in any namespaces.
-                                  (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                   (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                                 properties:
                                   apiGroup:
@@ -5681,7 +5679,7 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at most "maxUnavailable" pods selected by
+                          maxUnavailable indicates that an eviction is allowed if at most "maxUnavailable" pods selected by
                           "selector" are unavailable after the eviction, i.e. even in absence of
                           the evicted pod. For example, one can prevent all voluntary evictions
                           by specifying 0. This is a mutually exclusive setting with "minAvailable".
@@ -5691,14 +5689,14 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at least "minAvailable" pods selected by
+                          minAvailable indicates that an eviction is allowed if at least "minAvailable" pods selected by
                           "selector" will still be available after the eviction, i.e. even in the
                           absence of the evicted pod.  So for example you can prevent all voluntary
                           evictions by specifying "100%".
                         x-kubernetes-int-or-string: true
                       selector:
                         description: |-
-                          Label query over pods whose evictions are managed by the disruption
+                          selector is a label query over pods whose evictions are managed by the disruption
                           budget.
                           A null selector will match no pods, while an empty ({}) selector will select
                           all pods within the namespace.
@@ -5748,7 +5746,7 @@ spec:
                         x-kubernetes-map-type: atomic
                       unhealthyPodEvictionPolicy:
                         description: |-
-                          UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
+                          unhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
                           should be considered for eviction. Current implementation considers healthy pods,
                           as pods that have status.conditions item with type="Ready",status="True".
 
@@ -7498,8 +7496,8 @@ spec:
                                   * An existing PVC (PersistentVolumeClaim)
                                   If the provisioner or an external controller can support the specified data source,
                                   it will create a new volume based on the contents of the specified data source.
-                                  When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                  and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                  dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                  copied to dataSource when dataSourceRef.namespace is not specified.
                                   If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                                 properties:
                                   apiGroup:
@@ -7544,7 +7542,6 @@ spec:
                                     specified.
                                   * While dataSource only allows local objects, dataSourceRef allows objects
                                     in any namespaces.
-                                  (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                   (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                                 properties:
                                   apiGroup:
@@ -7724,7 +7721,7 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at most "maxUnavailable" pods selected by
+                          maxUnavailable indicates that an eviction is allowed if at most "maxUnavailable" pods selected by
                           "selector" are unavailable after the eviction, i.e. even in absence of
                           the evicted pod. For example, one can prevent all voluntary evictions
                           by specifying 0. This is a mutually exclusive setting with "minAvailable".
@@ -7734,14 +7731,14 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at least "minAvailable" pods selected by
+                          minAvailable indicates that an eviction is allowed if at least "minAvailable" pods selected by
                           "selector" will still be available after the eviction, i.e. even in the
                           absence of the evicted pod.  So for example you can prevent all voluntary
                           evictions by specifying "100%".
                         x-kubernetes-int-or-string: true
                       selector:
                         description: |-
-                          Label query over pods whose evictions are managed by the disruption
+                          selector is a label query over pods whose evictions are managed by the disruption
                           budget.
                           A null selector selects no pods.
                           An empty selector ({}) also selects no pods, which differs from standard behavior of selecting all pods.
@@ -7792,7 +7789,7 @@ spec:
                         x-kubernetes-map-type: atomic
                       unhealthyPodEvictionPolicy:
                         description: |-
-                          UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
+                          unhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
                           should be considered for eviction. Current implementation considers healthy pods,
                           as pods that have status.conditions item with type="Ready",status="True".
 
@@ -7915,7 +7912,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -9202,7 +9199,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -10640,7 +10637,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -11541,8 +11538,8 @@ spec:
                             * An existing PVC (PersistentVolumeClaim)
                             If the provisioner or an external controller can support the specified data source,
                             it will create a new volume based on the contents of the specified data source.
-                            When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                            and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                            dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                            copied to dataSource when dataSourceRef.namespace is not specified.
                             If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                           properties:
                             apiGroup:
@@ -11585,7 +11582,6 @@ spec:
                               specified.
                             * While dataSource only allows local objects, dataSourceRef allows objects
                               in any namespaces.
-                            (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                             (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                           properties:
                             apiGroup:
@@ -11866,6 +11862,58 @@ spec:
                             currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                             When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
                           type: string
+                        healthStatus:
+                          description: |-
+                            healthStatus contains the latest controller-reported health information
+                            for the volume bound to this claim.
+                          properties:
+                            healthConditions:
+                              description: |-
+                                conditions is the set of adverse conditions reported by
+                                the CSI controller plugin. An empty list means no adverse condition.
+                                At most 16 conditions may be reported.
+                              items:
+                                description: VolumeHealthCondition represents an adverse
+                                  health condition reported for a volume.
+                                properties:
+                                  message:
+                                    description: |-
+                                      message is a human-readable description.
+                                      Maximum permitted length of a message is 1024 bytes.
+                                    type: string
+                                  reason:
+                                    description: |-
+                                      reason is a brief CamelCase machine-parseable reason.
+                                      Together with status it forms the unique identity of a condition entry.
+                                      Maximum permitted length of a reason is 256 bytes.
+                                    type: string
+                                  status:
+                                    description: |-
+                                      status is the machine-parseable health category.
+                                      Possible values:
+                                      - "Inaccessible": the volume cannot be accessed.
+                                      - "DataLoss": data loss has been detected on the volume.
+                                      - "Degraded": the volume is functioning with reduced capability.
+                                    enum:
+                                    - DataLoss
+                                    - Degraded
+                                    - Inaccessible
+                                    type: string
+                                required:
+                                - reason
+                                - status
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - status
+                              - reason
+                              x-kubernetes-list-type: map
+                            lastTransitionTime:
+                              description: lastTransitionTime is when the current
+                                set of conditions first appeared.
+                              format: date-time
+                              type: string
+                          type: object
                         modifyVolumeStatus:
                           description: |-
                             ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
@@ -11979,7 +12027,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -12637,7 +12685,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
