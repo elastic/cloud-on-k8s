@@ -21,6 +21,10 @@ LOG_VERBOSITY ?= 1
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
+LOCAL_BIN := $(CURDIR)/bin
+GOLANGCI_LINT_VERSION := v2.13.2
+GOLANGCI_LINT := $(LOCAL_BIN)/golangci-lint
+
 # find or download controller-gen
 controller-gen: CONTROLLER_TOOLS_VERSION = $(shell grep controller-tools go.mod | grep -o "v[0-9\.]*")
 controller-gen:
@@ -171,6 +175,7 @@ generate-image-dependencies:
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
+	rm -rf $(LOCAL_BIN)
 
 ## -- tests
 
@@ -204,8 +209,15 @@ integration-xml: setup-envtest clean
 	done; \
 	exit $$exit_code
 
-lint:
-	GOGC=40 golangci-lint run --verbose
+.PHONY: golangci-lint
+golangci-lint:
+	@if ! $(GOLANGCI_LINT) version 2>/dev/null | grep -q "version $(patsubst v%,%,$(GOLANGCI_LINT_VERSION))"; then \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
+			| sh -s -- -b $(LOCAL_BIN) $(GOLANGCI_LINT_VERSION); \
+	fi
+
+lint: golangci-lint
+	GOGC=40 $(GOLANGCI_LINT) run --verbose
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh
