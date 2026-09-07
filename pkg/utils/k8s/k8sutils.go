@@ -373,7 +373,7 @@ func PatchAnnotations(ctx context.Context, c Client, obj client.Object, upsert m
 	if err != nil {
 		return err
 	}
-	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data)) //nolint:ssacrlint // metadata-only patch; touches only metadata.annotations, safe for ECK CRs
 }
 
 // PatchObjectFinalizers sends a JSON merge patch replacing the finalizers list with finalizers.
@@ -390,5 +390,5 @@ func PatchObjectFinalizers(ctx context.Context, c Client, obj client.Object, fin
 	if err != nil {
 		return err
 	}
-	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data))
+	return c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data)) //nolint:ssacrlint // metadata-only patch; touches only metadata.finalizers, safe for ECK CRs
 }
