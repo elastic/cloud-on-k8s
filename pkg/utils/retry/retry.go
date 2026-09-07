@@ -32,6 +32,7 @@ func UntilSuccess(f func() error, timeout time.Duration, retryInterval time.Dura
 // RetryOnError retries the given function f for up to the given timeout,
 // separating each attempt by the given retryInterval. An error is retried only
 // when shouldRetry returns true. Non-retryable errors are returned immediately.
+// A nil shouldRetry retries all errors.
 //
 // f is considered successful if it does not return an error. If the timeout is
 // reached before the first failure of f, an ErrTimeoutReached is returned.
@@ -52,7 +53,7 @@ func RetryOnError(
 		return lastErr
 	}
 	for {
-		resp := make(chan (error))
+		resp := make(chan error, 1)
 		go func() {
 			resp <- f()
 		}()
@@ -64,7 +65,7 @@ func RetryOnError(
 				return nil
 			}
 			lastErr = err
-			if !shouldRetry(err) {
+			if shouldRetry != nil && !shouldRetry(err) {
 				return err
 			}
 			retryTimer := time.NewTimer(retryInterval)

@@ -68,6 +68,43 @@ func TestRetryOnErrorReturnsNonRetryableError(t *testing.T) {
 	assert.Equal(t, 1, nAttempts)
 }
 
+func TestRetryOnErrorReturnsNonRetryableErrorAfterRetry(t *testing.T) {
+	retryableErr := errors.New("retryable")
+	permanentErr := errors.New("permanent")
+	nAttempts := 0
+	f := func() error {
+		nAttempts++
+		if nAttempts == 1 {
+			return retryableErr
+		}
+		return permanentErr
+	}
+
+	err := RetryOnError(
+		f,
+		func(err error) bool { return errors.Is(err, retryableErr) },
+		10*time.Second,
+		0,
+	)
+
+	assert.ErrorIs(t, err, permanentErr)
+	assert.Equal(t, 2, nAttempts)
+}
+
+func TestRetryOnErrorWithNilPredicateRetriesAllErrors(t *testing.T) {
+	nAttempts := 0
+	f := func() error {
+		nAttempts++
+		if nAttempts == 2 {
+			return nil
+		}
+		return errors.New("retryable")
+	}
+
+	assert.NoError(t, RetryOnError(f, nil, 10*time.Second, 0))
+	assert.Equal(t, 2, nAttempts)
+}
+
 func TestGlobalTimeoutOnFirstCall(t *testing.T) {
 	timeout := 1 * time.Millisecond
 	stopChan := make(chan (struct{}))

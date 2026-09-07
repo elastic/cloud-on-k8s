@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestIsRetryableK8sError(t *testing.T) {
+func TestIsRetryableError(t *testing.T) {
 	transientErrors := []error{
 		apierrors.NewInternalError(errors.New("internal error")),
 		apierrors.NewServerTimeout(schema.GroupResource{Resource: "agents"}, "get", 1),
