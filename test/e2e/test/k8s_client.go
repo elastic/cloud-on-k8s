@@ -450,7 +450,7 @@ func (k *K8sClient) CreateWithRetry(
 	objs ...k8sclient.Object,
 ) error {
 	for _, desired := range objs {
-		err := retry.RetryOnError(func() error {
+		err := retry.OnError(func() error {
 			obj := k8s.DeepCopyObject(desired)
 			err := k.Client.Create(context.Background(), obj)
 			if apierrors.IsAlreadyExists(err) {

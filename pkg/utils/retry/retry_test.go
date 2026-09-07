@@ -43,7 +43,7 @@ func TestRetryOnErrorRetriesMatchingError(t *testing.T) {
 		return retryableErr
 	}
 
-	err := RetryOnError(
+	err := OnError(
 		f,
 		func(err error) bool { return errors.Is(err, retryableErr) },
 		10*time.Second,
@@ -62,7 +62,7 @@ func TestRetryOnErrorReturnsNonRetryableError(t *testing.T) {
 		return permanentErr
 	}
 
-	err := RetryOnError(f, func(error) bool { return false }, 10*time.Second, 0)
+	err := OnError(f, func(error) bool { return false }, 10*time.Second, 0)
 
 	assert.ErrorIs(t, err, permanentErr)
 	assert.Equal(t, 1, nAttempts)
@@ -80,7 +80,7 @@ func TestRetryOnErrorReturnsNonRetryableErrorAfterRetry(t *testing.T) {
 		return permanentErr
 	}
 
-	err := RetryOnError(
+	err := OnError(
 		f,
 		func(err error) bool { return errors.Is(err, retryableErr) },
 		10*time.Second,
@@ -101,7 +101,7 @@ func TestRetryOnErrorWithNilPredicateRetriesAllErrors(t *testing.T) {
 		return errors.New("retryable")
 	}
 
-	assert.NoError(t, RetryOnError(f, nil, 10*time.Second, 0))
+	assert.NoError(t, OnError(f, nil, 10*time.Second, 0))
 	assert.Equal(t, 2, nAttempts)
 }
 

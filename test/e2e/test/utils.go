@@ -92,7 +92,7 @@ func RetryOnError(f func() error, shouldRetry func(error) bool, timeout time.Dur
 	return func(t *testing.T) {
 		t.Helper()
 		fmt.Printf("Retries (%s timeout): ", timeout)
-		err := retry.RetryOnError(func() error {
+		err := retry.OnError(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
 		}, shouldRetry, timeout, DefaultRetryDelay)
