@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"time"
 
 	computeclassv1 "github.com/googlecloudplatform/compute-class-api/api/cloud.google.com/v1"
 	"github.com/pkg/errors"
@@ -52,6 +53,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	eprlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 )
 
 type K8sClient struct {
@@ -423,6 +425,40 @@ func (k *K8sClient) CreateOrUpdateSecrets(secrets ...corev1.Secret) error {
 func (k *K8sClient) DeleteSecrets(secrets ...corev1.Secret) error {
 	for i := range secrets {
 		if err := k.Client.Delete(context.Background(), &secrets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IsRetryableError reports whether err represents a transient Kubernetes API
+// server response for which retrying the request may succeed.
+func IsRetryableError(err error) bool {
+	return apierrors.IsInternalError(err) ||
+		apierrors.IsServerTimeout(err) ||
+		apierrors.IsServiceUnavailable(err) ||
+		apierrors.IsTooManyRequests(err) ||
+		apierrors.IsTimeout(err)
+}
+
+// CreateWithRetry creates each object independently, retrying errors accepted by
+// shouldRetry for up to timeout. An existing object is considered a successful
+// outcome. The caller's objects are not modified.
+func (k *K8sClient) CreateWithRetry(
+	shouldRetry func(error) bool,
+	timeout time.Duration,
+	objs ...k8sclient.Object,
+) error {
+	for _, desired := range objs {
+		err := retry.RetryOnError(func() error {
+			obj := k8s.DeepCopyObject(desired)
+			err := k.Client.Create(context.Background(), obj)
+			if apierrors.IsAlreadyExists(err) {
+				return nil
+			}
+			return err
+		}, shouldRetry, timeout, DefaultRetryDelay)
+		if err != nil {
 			return err
 		}
 	}

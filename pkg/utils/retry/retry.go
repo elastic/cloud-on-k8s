@@ -26,6 +26,22 @@ func (e *ErrTimeoutReached) Error() string {
 // an ErrTimeoutReached is returned.
 // Otherwise, the error from the last attempt is returned.
 func UntilSuccess(f func() error, timeout time.Duration, retryInterval time.Duration) error {
+	return RetryOnError(f, func(error) bool { return true }, timeout, retryInterval)
+}
+
+// RetryOnError retries the given function f for up to the given timeout,
+// separating each attempt by the given retryInterval. An error is retried only
+// when shouldRetry returns true. Non-retryable errors are returned immediately.
+//
+// f is considered successful if it does not return an error. If the timeout is
+// reached before the first failure of f, an ErrTimeoutReached is returned.
+// Otherwise, the error from the last attempt is returned.
+func RetryOnError(
+	f func() error,
+	shouldRetry func(error) bool,
+	timeout time.Duration,
+	retryInterval time.Duration,
+) error {
 	totalTimer := time.NewTimer(timeout)
 	defer totalTimer.Stop()
 	var lastErr error
@@ -48,12 +64,16 @@ func UntilSuccess(f func() error, timeout time.Duration, retryInterval time.Dura
 				return nil
 			}
 			lastErr = err
+			if !shouldRetry(err) {
+				return err
+			}
 			retryTimer := time.NewTimer(retryInterval)
 			select {
 			case <-retryTimer.C:
 				retryTimer.Stop()
 				continue
 			case <-totalTimer.C:
+				retryTimer.Stop()
 				return errorToReturn()
 			}
 		}
