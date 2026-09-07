@@ -330,16 +330,16 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 
 type fakeClientset struct {
 	kubernetes.Interface
-	discovery discovery.DiscoveryInterface
+	discovery discovery.DiscoveryInterfaces
 }
 
 type fakeDiscovery struct {
-	discovery.DiscoveryInterface
+	discovery.DiscoveryInterfaces
 	resources                         []*metav1.APIResourceList
 	errServerResourcesForGroupVersion error
 }
 
-func (c *fakeClientset) Discovery() discovery.DiscoveryInterface {
+func (c *fakeClientset) Discovery() discovery.DiscoveryInterfaces {
 	return c.discovery
 }
 

@@ -106,7 +106,7 @@ go-build: go-build-elastic-operator
 # the .buildkite/scripts/build/verify-fips-binary.sh should be adjusted accordingly.
 go-build-fips: go-generate
 go-build-fips: export CGO_ENABLED=0
-go-build-fips: export GOFIPS140=v1.0.0
+go-build-fips: export GOFIPS140=certified
 go-build-fips: GO_LDFLAGS_EXTRA=-X runtime.godebugDefault=fips140=on
 go-build-fips: go-build-elastic-operator
 go-build-fips:

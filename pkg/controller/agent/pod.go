@@ -17,7 +17,6 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -204,7 +203,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 	}
 
 	// all volumes with CAs of direct associations
-	caAssocVols, err := getVolumesFromAssociations(params.Agent.GetAssociations())
+	caAssocVols, err := getVolumesFromAssociations(params.Agent.GetAssociations(), spec.FleetModeEnabled())
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -488,12 +487,26 @@ func writeEsAssocToConfigHash(params Params, esAssociation commonv1.Association,
 	)
 }
 
-func getVolumesFromAssociations(associations []commonv1.Association) ([]volume.VolumeLike, error) {
+// shouldSkipVolumeMount centralises association-type skip decisions for getVolumesFromAssociations.
+// Adding a new association type that needs special-cased volume handling belongs here.
+func shouldSkipVolumeMount(assocType commonv1.AssociationType, fleetModeEnabled bool) bool {
+	switch assocType {
+	case commonv1.KibanaAssociationType:
+		// Kibana is operator-only; no cert mount needed in agent pods.
+		return true
+	case commonv1.ElasticsearchAssociationType:
+		// For fleet mode, applyRelatedEsAssoc already mounts both the CA and the client cert
+		// (CA as a plain secret volume, client cert at FleetManagedAgentClientCertDir).
+		return fleetModeEnabled
+	default:
+		return false
+	}
+}
+
+func getVolumesFromAssociations(associations []commonv1.Association, fleetModeEnabled bool) ([]volume.VolumeLike, error) {
 	var vols []volume.VolumeLike
 	for i, assoc := range associations {
-		// the Kibana association is only used by the operator to interact with the Kibana Fleet API but
-		// not by the individual Elastic Agent Pods. There is therefore no need to mount the Kibana certificate secret.
-		if assoc.AssociationType() == commonv1.KibanaAssociationType {
+		if shouldSkipVolumeMount(assoc.AssociationType(), fleetModeEnabled) {
 			continue
 		}
 		assocConf, err := assoc.AssociationConf()
@@ -733,13 +746,10 @@ func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent,
 	}
 
 	if esAssocConf.ClientCertIsConfigured() {
-		esAssoc, err := association.SingleAssociationOfType(agent.GetAssociations(), commonv1.ElasticsearchAssociationType)
-		if err != nil {
-			return err
-		}
-		clientCertDir := associationClientCertificatesDir(esAssoc)
-		fleetServerCfg[FleetServerESCert] = path.Join(clientCertDir, certificates.CertFileName)
-		fleetServerCfg[FleetServerESCertKey] = path.Join(clientCertDir, certificates.KeyFileName)
+		// FleetManagedAgentClientCertDir is mounted by applyRelatedEsAssoc; reuse
+		// the same path.
+		fleetServerCfg[FleetServerESCert] = path.Join(FleetManagedAgentClientCertDir, certificates.CertFileName)
+		fleetServerCfg[FleetServerESCertKey] = path.Join(FleetManagedAgentClientCertDir, certificates.KeyFileName)
 	}
 
 	return nil
@@ -759,18 +769,6 @@ func secretSource(name, key string) *corev1.EnvVarSource {
 }
 
 func cleanupEnvVarsSecret(params Params) error {
-	var envVarsSecret corev1.Secret
-	if err := params.Client.Get(
-		params.Context,
-		types.NamespacedName{Name: EnvVarsSecretName(params.Agent.Name), Namespace: params.Agent.Namespace},
-		&envVarsSecret,
-	); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
-	} else if err := params.Client.Delete(params.Context, &envVarsSecret); err != nil {
-		return err
-	}
-
-	return nil
+	return k8s.DeleteSecretIfExists(params.Context, params.Client,
+		types.NamespacedName{Name: EnvVarsSecretName(params.Agent.Name), Namespace: params.Agent.Namespace})
 }

@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -108,6 +109,56 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			args: args{
 				autoops: autoopsFixture,
 				es:      esWithTLSFixtureAndClientAuthenticationEnabled,
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment with long ES name and namespace truncates cert volume names",
+			args: args{
+				autoops: autoopsFixture,
+				es: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "elasticsearch-aws-nonprod-monitoring",
+						Namespace: "apl-ops-intelligence-monitoring",
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "deployment with long names and client auth truncates both cert volume names",
+			clientCertSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esv1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "elasticsearch-aws-nonprod-monitoring",
+							Namespace: "apl-ops-intelligence-monitoring",
+						},
+					}),
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("test-client-cert"),
+					certificates.KeyFileName:  []byte("test-client-key"),
+				},
+			},
+			args: args{
+				autoops: autoopsFixture,
+				es: esv1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "elasticsearch-aws-nonprod-monitoring",
+						Namespace: "apl-ops-intelligence-monitoring",
+						Annotations: map[string]string{
+							annotation.ClientAuthenticationRequiredAnnotation: "true",
+						},
+					},
+					Spec: esv1.ElasticsearchSpec{
+						Version: "9.1.0",
+					},
+				},
 			},
 			wantErr: false,
 		},
@@ -213,6 +264,13 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				want := expectedDeployment(tt.args.autoops, tt.args.es, expectedHashStr)
 				if !cmp.Equal(got, want) {
 					t.Errorf("ReconcileAutoOpsAgentPolicy.deploymentParams() diff = %v", cmp.Diff(got, want))
+				}
+				for _, vol := range got.Spec.Template.Spec.Volumes {
+					require.Emptyf(t, validation.IsDNS1123Label(vol.Name), "volume name %q must be a DNS label", vol.Name)
+				}
+				require.NotEmpty(t, got.Spec.Template.Spec.Containers)
+				for _, m := range got.Spec.Template.Spec.Containers[0].VolumeMounts {
+					require.Emptyf(t, validation.IsDNS1123Label(m.Name), "volume mount name %q must be a DNS label", m.Name)
 				}
 			}
 		})
@@ -370,14 +428,14 @@ func expectedVolumeMounts(es esv1.Elasticsearch) []corev1.VolumeMount {
 	}
 	if es.Spec.HTTP.TLS.Enabled() {
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			Name:      caCertVolumeName(es),
 			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
 			ReadOnly:  true,
 		})
 	}
 	if annotation.HasClientAuthenticationRequired(&es) {
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			Name:      clientCertVolumeName(es),
 			MountPath: fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
 			ReadOnly:  true,
 		})
@@ -403,7 +461,7 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 	if es.Spec.HTTP.TLS.Enabled() {
 		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 		volumes = append(volumes, corev1.Volume{
-			Name: fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			Name: caCertVolumeName(es),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: caSecretName,
@@ -415,7 +473,7 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 	if annotation.HasClientAuthenticationRequired(&es) {
 		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
 		volumes = append(volumes, corev1.Volume{
-			Name: fmt.Sprintf("es-client-cert-%s-%s", es.Name, es.Namespace),
+			Name: clientCertVolumeName(es),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: clientCertSecretName,
@@ -559,4 +617,116 @@ func Test_autoopsEnvVars(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_certVolumeNames(t *testing.T) {
+	shortES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-cluster",
+			Namespace: "default",
+		},
+	}
+	longES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "elasticsearch-aws-nonprod-monitoring",
+			Namespace: "apl-ops-intelligence-monitoring",
+		},
+	}
+	otherLongES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "elasticsearch-aws-nonprod-monitoring",
+			Namespace: "apl-ops-intelligence-monitorinx",
+		},
+	}
+
+	tests := []struct {
+		name                string
+		es                  esv1.Elasticsearch
+		distinctFrom        *esv1.Elasticsearch
+		legacyCA            string
+		legacyClient        string
+		checkSecretAndMount bool
+	}{
+		{
+			name: "short names stay within 63 characters",
+			es:   shortES,
+		},
+		{
+			name:         "customer reproduction stays within 63 characters",
+			es:           longES,
+			legacyCA:     fmt.Sprintf("es-ca-%s-%s", longES.Name, longES.Namespace),
+			legacyClient: fmt.Sprintf("es-client-cert-%s-%s", longES.Name, longES.Namespace),
+		},
+		{
+			name:         "nearby long names do not collide",
+			es:           longES,
+			distinctFrom: &otherLongES,
+		},
+		{
+			name:                "secret names and mount paths are not truncated",
+			es:                  longES,
+			checkSecretAndMount: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			caName := caCertVolumeName(tt.es)
+			clientName := clientCertVolumeName(tt.es)
+
+			require.LessOrEqual(t, len(caName), validation.DNS1123LabelMaxLength)
+			require.Empty(t, validation.IsDNS1123Label(caName), caName)
+			require.Regexp(t, `^es-[0-9a-f]{6}-ca$`, caName)
+			require.Equal(t, caName, caCertVolumeName(tt.es), "volume names must be deterministic")
+
+			require.LessOrEqual(t, len(clientName), validation.DNS1123LabelMaxLength)
+			require.Empty(t, validation.IsDNS1123Label(clientName), clientName)
+			require.Regexp(t, `^es-[0-9a-f]{6}-client-cert$`, clientName)
+
+			if tt.legacyCA != "" {
+				require.Greater(t, len(tt.legacyCA), validation.DNS1123LabelMaxLength)
+				require.NotEqual(t, tt.legacyCA, caName)
+			}
+			if tt.legacyClient != "" {
+				require.Greater(t, len(tt.legacyClient), validation.DNS1123LabelMaxLength)
+				require.NotEqual(t, tt.legacyClient, clientName)
+			}
+			if tt.distinctFrom != nil {
+				require.NotEqual(t, caName, caCertVolumeName(*tt.distinctFrom))
+				require.NotEqual(t, clientName, clientCertVolumeName(*tt.distinctFrom))
+			}
+			if tt.checkSecretAndMount {
+				policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+					ObjectMeta: metav1.ObjectMeta{Name: "autoops-elastic-agent"},
+				}
+				wantMountPath := fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", tt.es.Namespace, tt.es.Name)
+
+				mount, found := volumeMountByName(expectedVolumeMounts(tt.es), caName)
+				require.True(t, found, "CA volume mount %q not found", caName)
+				require.Equal(t, wantMountPath, mount.MountPath)
+
+				vol, found := volumeByName(expectedVolumes(policy, tt.es), caName)
+				require.True(t, found, "CA volume %q not found", caName)
+				require.Equal(t, autoopsv1alpha1.CASecret(policy.GetName(), tt.es), vol.Secret.SecretName)
+			}
+		})
+	}
+}
+
+func volumeMountByName(mounts []corev1.VolumeMount, name string) (corev1.VolumeMount, bool) {
+	for _, mount := range mounts {
+		if mount.Name == name {
+			return mount, true
+		}
+	}
+	return corev1.VolumeMount{}, false
+}
+
+func volumeByName(volumes []corev1.Volume, name string) (corev1.Volume, bool) {
+	for _, vol := range volumes {
+		if vol.Name == name {
+			return vol, true
+		}
+	}
+	return corev1.Volume{}, false
 }

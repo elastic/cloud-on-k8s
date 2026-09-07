@@ -264,7 +264,7 @@ func (g *GCSManager) createServiceAccountAndKey() (string, error) {
 		`gcloud storage buckets add-iam-policy-binding gs://%s --member="serviceAccount:%s" --role="roles/storage.objectAdmin"`,
 		g.cfg.Name, saEmail,
 	)
-	if err := retry(bindCmd, 5, 10*time.Second); err != nil {
+	if _, err := retry(bindCmd, 5, 10*time.Second, true); err != nil {
 		return "", fmt.Errorf("while granting bucket IAM binding: %w", err)
 	}
 
@@ -307,7 +307,9 @@ func (g *GCSManager) deleteExistingKeys() error {
 		`gcloud iam service-accounts keys list --iam-account=%s --project %s --managed-by=user --format="value(name)"`,
 		saEmail, g.project,
 	)
-	output, err := exec.NewCommand(listCmd).WithoutStreaming().Output()
+	// Retry to handle GCP IAM eventual consistency: a newly created service account may not
+	// be immediately visible to the keys API even after the IAM binding step succeeded.
+	output, err := retry(listCmd, 5, 10*time.Second, false)
 	if err != nil {
 		return fmt.Errorf("while listing keys for service account %s: %w", saEmail, err)
 	}
@@ -396,16 +398,25 @@ func (g *GCSManager) deleteBucket() error {
 
 // retry runs a command up to maxAttempts times, sleeping between attempts.
 // This is useful when a GCP resource was just created and may not have propagated yet.
-func retry(cmd string, maxAttempts int, sleep time.Duration) error {
-	var err error
+// It returns the output of command
+func retry(cmd string, maxAttempts int, sleep time.Duration, stream bool) (string, error) {
+	var (
+		output string
+		err    error
+	)
 	for i := range maxAttempts {
-		if err = exec.NewCommand(cmd).Run(); err == nil {
-			return nil
+		command := exec.NewCommand(cmd)
+		if !stream {
+			command = command.WithoutStreaming()
+		}
+		output, err = command.Output()
+		if err == nil {
+			return output, nil
 		}
 		if i < maxAttempts-1 {
 			log.Printf("Attempt %d/%d failed, retrying in %s...", i+1, maxAttempts, sleep)
 			time.Sleep(sleep)
 		}
 	}
-	return err
+	return output, err
 }

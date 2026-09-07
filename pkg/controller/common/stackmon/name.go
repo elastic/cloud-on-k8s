@@ -5,26 +5,23 @@
 package stackmon
 
 import (
-	"crypto/sha256"
-	"fmt"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 )
 
-const maxVolumeNameLength = 63
-
-var VolumeNamer = name.Namer{
-	MaxSuffixLength: name.MaxSuffixLength,
-	MaxNameLength:   maxVolumeNameLength,
-}
-
 func configVolumeName(name string, beatName string) string {
-	return VolumeNamer.Suffix(name, beatName, "config")
+	return volume.VolumeName(name, beatName, "config")
 }
 
 func caVolumeName(assoc commonv1.Association) string {
-	nsn := assoc.AssociationRef().GetNamespace() + assoc.AssociationRef().NameOrSecretName()
-	nsnHash := fmt.Sprintf("%x", sha256.Sum256([]byte(nsn)))[0:6]
-	return VolumeNamer.Suffix(string(assoc.AssociationType()), nsnHash, "ca")
+	ref := assoc.AssociationRef()
+	return volume.CAVolumeName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName())
+}
+
+func clientCertVolumeName(assoc commonv1.Association) string {
+	ref := assoc.AssociationRef()
+	// "ca-client-cert" matches the suffix that the old inline derivation produced:
+	// fmt.Sprintf("%s-client-cert", caVolumeName(assoc)) → "{type}-{hash}-ca-client-cert".
+	// Keeping it avoids a volume rename on existing resources when upgrading.
+	return volume.VolumeNamespacedName(string(assoc.AssociationType()), ref.GetNamespace(), ref.NameOrSecretName(), "ca-client-cert")
 }
