@@ -212,6 +212,7 @@ integration-xml: setup-envtest clean
 .PHONY: golangci-lint
 golangci-lint:
 	@if ! $(GOLANGCI_LINT) version 2>/dev/null | grep -q "version $(patsubst v%,%,$(GOLANGCI_LINT_VERSION))"; then \
+		set -o pipefail; \
 		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
 			| sh -s -- -b $(LOCAL_BIN) $(GOLANGCI_LINT_VERSION); \
 	fi

@@ -7,12 +7,15 @@ This page explains you how to set up your development environment.
 Before you start, install the following tools and packages:
 
 * [go](https://golang.org/dl/) (>= 1.17)
+* [curl](https://curl.se/)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
 * [docker](https://docs.docker.com/) (>= 19.0.0 with optional `buildx` extension for multi-arch builds)
 * [helm](https://helm.sh/docs/intro/install/) (>= 3.2.0, preferably 3.9.x)
 * [helm unittest](https://github.com/helm-unittest/helm-unittest?tab=readme-ov-file#install) (only needed if developing helm charts) `helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3`
 * Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
+
+`make lint` downloads the required `golangci-lint` version automatically.
 
 ### Get sources
 

@@ -100,6 +100,7 @@ check_docker_version() {
 
 
 check go
+check curl
 check kubectl
 check kubebuilder
 check_oneof gcloud minikube kind
