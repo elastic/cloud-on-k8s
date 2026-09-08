@@ -83,13 +83,19 @@ func Eventually(f func() error) func(*testing.T) {
 
 // UntilSuccess executes f until it succeeds, or the timeout is reached.
 func UntilSuccess(f func() error, timeout time.Duration) func(*testing.T) {
+	return RetryOnError(f, func(error) bool { return true }, timeout)
+}
+
+// RetryOnError executes f until it succeeds, a non-retryable error is returned,
+// or the timeout is reached.
+func RetryOnError(f func() error, shouldRetry func(error) bool, timeout time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 		fmt.Printf("Retries (%s timeout): ", timeout)
-		err := retry.UntilSuccess(func() error {
+		err := retry.OnError(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
-		}, timeout, DefaultRetryDelay)
+		}, shouldRetry, timeout, DefaultRetryDelay)
 		fmt.Println()
 		require.NoError(t, err)
 	}
