@@ -127,10 +127,21 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 				// Watch both the source secret and the copy in the association namespace
 				// so that changes on either side trigger reconciliation.
 				for _, sec := range secs {
-					toWatch = append(toWatch,
-						sec.Source,
-						types.NamespacedName{Name: sec.Source.Name, Namespace: association.GetNamespace()},
-					)
+					// Watch the source secret
+					toWatch = append(toWatch, sec.Source)
+					// Also watch the target copy in the association's namespace.
+					if sec.Source.Namespace == association.GetNamespace() {
+						// Same-namespace: source and target are the same secret, no second watch needed.
+						continue
+					}
+					targetName := sec.Source.Name
+					if sec.TargetName != "" {
+						targetName = sec.TargetName
+					}
+					toWatch = append(toWatch, types.NamespacedName{
+						Name:      targetName,
+						Namespace: association.GetNamespace(),
+					})
 				}
 			}
 			return toWatch, nil

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +29,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
@@ -1149,6 +1151,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, err
 			}
 			fleetServerRef := assoc.AssociationRef()
+			caTargetName := AdditionalSecretNamer.Suffix(associated.GetName(), "agent-fleetserver", commonhash.HashObject(fleetServerRef.NamespacedName()), "es-ca")
 			if !fleetServerRef.IsSet() {
 				return nil, nil
 			}
@@ -1156,9 +1159,6 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			if err := c.Get(context.Background(), fleetServerRef.NamespacedName(), &fleetServer); err != nil {
 				return nil, err
 			}
-
-			// If the Fleet Server Agent is not associated with an Elasticsearch cluster
-			// (potentially because of a manual setup) we should do nothing.
 			if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
 				return nil, nil
 			}
@@ -1166,7 +1166,6 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-
 			conf, err := esAssociation.AssociationConf()
 			if err != nil {
 				return nil, err
@@ -1175,11 +1174,9 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				return nil, nil
 			}
 			return []AdditionalSecret{{
-				Source: types.NamespacedName{
-					Namespace: fleetServer.Namespace,
-					Name:      conf.CASecretName,
-				},
-				Keys: []string{"ca.crt"},
+				Source:     types.NamespacedName{Namespace: fleetServer.Namespace, Name: conf.CASecretName},
+				Keys:       []string{"ca.crt"},
+				TargetName: caTargetName,
 			}}, nil
 		},
 	}
@@ -1339,18 +1336,33 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			true,
 			"ca.crt", "tls.crt",
 		),
-		mkAgentSecret(
-			"fleet-server1-agent-es-default-es1-ca",
-			"agentNs",
-			"fleet-ns",
-			"fleet-server1",
-			"es-ns",
-			"es1",
-			false,
-			false,
-			true,
-			"ca.crt",
-		),
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", commonhash.HashObject(types.NamespacedName{Name: "fleet-server1", Namespace: "fleet-ns"}), "es-ca"),
+				Namespace: "agentNs",
+				Labels: map[string]string{
+					"agent.k8s.elastic.co/name":                      "fleet-server1",
+					"agent.k8s.elastic.co/namespace":                 "fleet-ns",
+					"agentassociation.k8s.elastic.co/name":           "agent1",
+					"agentassociation.k8s.elastic.co/namespace":      "agentNs",
+					"agentassociation.k8s.elastic.co/type":           commonv1.FleetServerAssociationType,
+					AdditionalSecretLabelName:                        "true",
+					commonv1.RestrictWatchedResourcesLabelName:       commonv1.RestrictWatchedResourcesLabelValue,
+					"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
+					"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "agent.k8s.elastic.co/v1alpha1",
+						Kind:               "Agent",
+						Name:               "agent1",
+						Controller:         &varTrue,
+						BlockOwnerDeletion: &varTrue,
+					},
+				},
+			},
+			Data: map[string][]byte{"ca.crt": []byte("ca cert content")},
+		},
 	}
 
 	// initial reconciliation, all resources should be created
@@ -1361,7 +1373,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 
 	// get Agent resource and run checks
 	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &agent))
-	checkSecrets(t, r, true, false, ref1ExpectedSecrets)
+	checkSecrets(t, r, true, true, ref1ExpectedSecrets)
 	checkAnnotations(t, agent, true, generateAnnotationName("fleet-ns", "fleet-server1"))
 	checkWatches(t, r.watches, true, false)
 	checkStatus(t, agent, false, "fleet-ns/fleet-server1")
@@ -1375,11 +1387,326 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, results)
 
-	// check whether clean up was done
-	// These aren't being removed properly....
-	// Temporarily disabling.
+	// Kubernetes GC removes per-agent copies via owner references when the agent is deleted.
+	// The fake client does not simulate GC, so this path is not covered by this test.
 	// checkSecrets(t, r, false, false, ref1ExpectedSecrets)
 	checkWatches(t, r.watches, false, true)
+}
+
+func TestReconciler_Reconcile_Transitive_SameNamespace(t *testing.T) {
+	const ns = "shared-ns"
+
+	caSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: "fleet1-es-ca"},
+		Data:       map[string][]byte{"ca.crt": []byte("original-ca")},
+	}
+	fleetServer := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "fleet1", Namespace: ns},
+		Spec:       agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
+	}
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: ns},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "7.7.0",
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: ns}},
+		},
+	}
+	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		URL: "https://fleet1:8220",
+	})
+
+	info := AssociationInfo{
+		AssociationType:       commonv1.FleetServerAssociationType,
+		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
+		ReferencedResourceVersion: func(_ k8s.Client, _ commonv1.Association) (string, bool, error) {
+			return "7.7.0", false, nil
+		},
+		ExternalServiceURL: func(_ k8s.Client, _ commonv1.Association) (string, error) {
+			return "https://fleet1:8220", nil
+		},
+		ReferencedResourceNamer:               common_name.NewNamer("agent"),
+		AssociationName:                       "agent-fleetserver",
+		AssociatedShortName:                   "agent",
+		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
+		AssociationResourceNameLabelName:      "agent.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"agentassociation.k8s.elastic.co/name":      associated.Name,
+				"agentassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
+			}
+		},
+		// AdditionalSecrets returns a source in the agent namespace (same-namespace case):
+		// copySecret will hash the data but skip creating a copy.
+		AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+			return []AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: ns, Name: "fleet1-es-ca"}, TargetName: "fleet1-es-ca"},
+			}, nil
+		},
+	}
+
+	r := Reconciler{
+		AssociationInfo: info,
+		Client:          k8s.NewFakeClient(&agent, &fleetServer, &caSecret),
+		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+		watches:         watches.NewDynamicWatches(),
+		recorder:        toolsevents.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
+		},
+	}
+
+	// First reconcile: CA source is in the same namespace as the agent — no copy should be created.
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+
+	// Exactly one secret should exist (the original CA); no copy was created.
+	var secrets corev1.SecretList
+	require.NoError(t, r.List(context.Background(), &secrets, client.InNamespace(ns)))
+	require.Len(t, secrets.Items, 1, "exactly one secret should exist in the namespace after first reconcile (original CA only, no copy)")
+	require.Equal(t, "fleet1-es-ca", secrets.Items[0].Name)
+
+	// Read the agent annotation to capture the initial hash.
+	var updatedAgent agentv1alpha1.Agent
+	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &updatedAgent))
+	assocAnnotation := updatedAgent.GetAssociations()[0].AssociationConfAnnotationName()
+	firstAnnotation := updatedAgent.Annotations[assocAnnotation]
+	require.NotEmpty(t, firstAnnotation, "association conf annotation must be set after first reconcile")
+
+	// Simulate CA rotation: update the CA secret with new data.
+	caSecret.Data = map[string][]byte{"ca.crt": []byte("rotated-ca")}
+	require.NoError(t, r.Update(context.Background(), &caSecret))
+
+	// Second reconcile after CA rotation: AdditionalSecretsHash must change to trigger a reconcile.
+	_, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+
+	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&agent), &updatedAgent))
+	secondAnnotation := updatedAgent.Annotations[assocAnnotation]
+	require.NotEmpty(t, secondAnnotation, "association conf annotation must be set after second reconcile")
+	require.NotEqual(t, firstAnnotation, secondAnnotation, "AdditionalSecretsHash must change after CA rotation to trigger a reconcile")
+
+	// Still no copy — only the original secret should exist.
+	require.NoError(t, r.List(context.Background(), &secrets, client.InNamespace(ns)))
+	require.Len(t, secrets.Items, 1, "only the original CA secret should exist after CA rotation")
+	require.Equal(t, "fleet1-es-ca", secrets.Items[0].Name)
+}
+
+// TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange verifies that a per-agent secret
+// copy (e.g. transitive CA) is deleted when the condition that required it no longer holds
+// (e.g. CACertProvided transitions from true to false).
+func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T) {
+	const caTargetName = "agent1-transitive-es-ca"
+
+	caCertProvided := true
+
+	info := AssociationInfo{
+		AssociationType:       commonv1.FleetServerAssociationType,
+		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
+		ReferencedResourceVersion: func(c k8s.Client, association commonv1.Association) (string, bool, error) {
+			return "7.7.0", false, nil
+		},
+		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
+			return "https://fleet:8220", nil
+		},
+		ReferencedResourceNamer:               common_name.NewNamer("agent"),
+		AssociationName:                       "agent-fleetserver",
+		AssociatedShortName:                   "agent",
+		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
+		AssociationResourceNameLabelName:      "agent.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"agentassociation.k8s.elastic.co/name":      associated.Name,
+				"agentassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
+			}
+		},
+		AdditionalSecrets: func(ctx context.Context, c k8s.Client, assoc commonv1.Association) ([]AdditionalSecret, error) {
+			if !caCertProvided {
+				return nil, nil
+			}
+			return []AdditionalSecret{{
+				Source:     types.NamespacedName{Namespace: "fleet-ns", Name: "fleet-server1-es-ca"},
+				Keys:       []string{"ca.crt"},
+				TargetName: caTargetName,
+			}}, nil
+		},
+	}
+
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "agentNs"},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "7.7.0",
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"}},
+		},
+	}
+	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		URL:            "https://fleet:8220",
+		CACertProvided: true,
+	})
+
+	fleetAgent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "fleet-server1", Namespace: "fleet-ns"},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:            "7.7.0",
+			FleetServerEnabled: true,
+		},
+	}
+
+	caSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "fleet-ns", Name: "fleet-server1-es-ca"},
+		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+	}
+	// Simulate a stale per-agent CA copy left from when CACertProvided was true.
+	staleCAcopy := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "agentNs", Name: caTargetName},
+		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+	}
+
+	r := Reconciler{
+		AssociationInfo: info,
+		Client:          k8s.NewFakeClient(&agent, &fleetAgent, caSecret, staleCAcopy),
+		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+		watches:         watches.NewDynamicWatches(),
+		recorder:        toolsevents.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{
+				BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"},
+			},
+		},
+	}
+
+	// First reconcile: caCertProvided=true → per-agent CA copy is created/refreshed.
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+	var got corev1.Secret
+	require.NoError(t, r.Get(context.Background(), types.NamespacedName{Namespace: "agentNs", Name: caTargetName}, &got))
+	require.Len(t, got.OwnerReferences, 1)
+	require.Equal(t, "agent1", got.OwnerReferences[0].Name)
+
+	// Simulate CA being removed from the fleet server's ES association.
+	caCertProvided = false
+
+	// Second reconcile: caCertProvided=false → stale CA copy must be deleted.
+	_, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+	err = r.Get(context.Background(), types.NamespacedName{Namespace: "agentNs", Name: caTargetName}, &got)
+	require.True(t, apierrors.IsNotFound(err), "stale CA copy should have been deleted, got: %v", err)
+}
+
+// TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition verifies that a stale hashed
+// copy in the agent namespace is deleted when the topology transitions from cross-namespace to
+// same-namespace. In the same-namespace case copySecret returns copied=false, leaving copiedNames
+// empty, so deleteStaleAdditionalSecrets must remove all prior AdditionalSecretLabelName copies.
+func TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition(t *testing.T) {
+	const (
+		agentNS      = "agent-ns"
+		fleetNS      = "fleet-ns"
+		caTargetName = "agent1-agent-fleetserver-hashxxx-es-ca"
+	)
+
+	crossNS := true
+
+	info := AssociationInfo{
+		AssociationType:       commonv1.FleetServerAssociationType,
+		AssociatedObjTemplate: func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		ReferencedObjTemplate: func() client.Object { return &agentv1alpha1.Agent{} },
+		ReferencedResourceVersion: func(_ k8s.Client, _ commonv1.Association) (string, bool, error) {
+			return "7.7.0", false, nil
+		},
+		ExternalServiceURL: func(_ k8s.Client, _ commonv1.Association) (string, error) {
+			return "https://fleet:8220", nil
+		},
+		ReferencedResourceNamer:               common_name.NewNamer("agent"),
+		AssociationName:                       "agent-fleetserver",
+		AssociatedShortName:                   "agent",
+		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
+		AssociationResourceNameLabelName:      "agent.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "agent.k8s.elastic.co/namespace",
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"agentassociation.k8s.elastic.co/name":      associated.Name,
+				"agentassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
+			}
+		},
+		AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+			if crossNS {
+				return []AdditionalSecret{{
+					Source:     types.NamespacedName{Namespace: fleetNS, Name: "fleet1-es-ca"},
+					Keys:       []string{"ca.crt"},
+					TargetName: caTargetName,
+				}}, nil
+			}
+			// Same-namespace: copySecret will see source.Namespace == targetNamespace and skip copying.
+			return []AdditionalSecret{{
+				Source:     types.NamespacedName{Namespace: agentNS, Name: "fleet1-es-ca"},
+				Keys:       []string{"ca.crt"},
+				TargetName: "fleet1-es-ca",
+			}}, nil
+		},
+	}
+
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: agentNS},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "7.7.0",
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: fleetNS}},
+		},
+	}
+	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{URL: "https://fleet:8220"})
+
+	fleetAgent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "fleet1", Namespace: fleetNS},
+		Spec:       agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
+	}
+
+	// Pre-create CA secrets in both namespaces so both reconcile phases can read from their source.
+	caInFleetNS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: fleetNS, Name: "fleet1-es-ca"},
+		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+	}
+	caInAgentNS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca"},
+		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+	}
+
+	r := Reconciler{
+		AssociationInfo: info,
+		Client:          k8s.NewFakeClient(&agent, &fleetAgent, caInFleetNS, caInAgentNS),
+		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+		watches:         watches.NewDynamicWatches(),
+		recorder:        toolsevents.NewFakeRecorder(10),
+		Parameters: operator.Parameters{
+			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
+		},
+	}
+
+	// First reconcile: cross-namespace → hashed copy is created in agent-ns.
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+	var secretCopy corev1.Secret
+	require.NoError(t, r.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: caTargetName}, &secretCopy),
+		"hashed CA copy must exist in agent-ns after cross-namespace reconcile")
+
+	// Transition: fleet server moves to agent-ns (same namespace). Switch AdditionalSecrets to return
+	// the same-namespace source; copySecret will skip the copy, leaving copiedNames empty.
+	crossNS = false
+
+	// Second reconcile: same-namespace → hashed copy must be deleted, original in agent-ns preserved.
+	_, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&agent)})
+	require.NoError(t, err)
+
+	err = r.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: caTargetName}, &secretCopy)
+	require.True(t, apierrors.IsNotFound(err), "stale hashed CA copy must be deleted after topology transition, got: %v", err)
+
+	var original corev1.Secret
+	require.NoError(t, r.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: "fleet1-es-ca"}, &original),
+		"original CA in agent-ns must be preserved after topology transition")
 }
 
 func checkSecrets(t *testing.T, client k8s.Client, expected bool, withOwnerRefs bool, secrets ...[]corev1.Secret) {
@@ -1590,19 +1917,38 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
 
-// TestReconciler_Unbind_ServiceAccountTokens verifies that Unbind deletes both the
-// Elasticsearch-side and application-side service-account-token secrets so that a
-// revoked cross-namespace association cannot continue to authenticate against ES.
-func TestReconciler_Unbind_ServiceAccountTokens(t *testing.T) {
-	// Labels that both SA token secrets carry from the association metadata.
+// sameNSReconciler returns a Reconciler wired with AdditionalSecrets that returns a single hash-only entry
+// (Source.Namespace == association.GetNamespace()), simulating a same-namespace agent→fleet-server association.
+func sameNSReconciler(objs ...client.Object) Reconciler {
+	const ns = "shared-ns"
+	return Reconciler{
+		AssociationInfo: AssociationInfo{
+			Labels:                                func(types.NamespacedName) map[string]string { return nil },
+			AssociationResourceNameLabelName:      "test",
+			AssociationResourceNamespaceLabelName: "test-ns",
+			ReferencedResourceNamer:               common_name.NewNamer("agent"),
+			AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+				// Hash-only entry: Source.Namespace == agent namespace — no cross-namespace copy.
+				return []AdditionalSecret{
+					{Source: types.NamespacedName{Namespace: ns, Name: "fleet1-es-ca"}, TargetName: "fleet1-es-ca"},
+				}, nil
+			},
+		},
+		Client:  k8s.NewFakeClient(objs...),
+		watches: watches.NewDynamicWatches(),
+	}
+}
+
+func TestReconciler_Unbind(t *testing.T) {
+	const sharedNS = "shared-ns"
+
+	// Fixtures for the SA-token case.
 	assocResourceLabels := map[string]string{
 		"elasticsearch.k8s.elastic.co/cluster-name":      sampleES.Name,
 		"elasticsearch.k8s.elastic.co/cluster-namespace": sampleES.Namespace,
 		"kibanaassociation.k8s.elastic.co/name":          "kbname",
 		"kibanaassociation.k8s.elastic.co/namespace":     kibanaNamespace,
 	}
-
-	// ES-side SA token secret: Elasticsearch reads this to validate the bearer token.
 	esTokenSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: esNamespace,
@@ -1616,9 +1962,6 @@ func TestReconciler_Unbind_ServiceAccountTokens(t *testing.T) {
 			},
 		},
 	}
-
-	// Application-side SA token secret: holds the bearer token value, lives in the associated namespace.
-	// secretKey(kb.EsAssociation(), "kibana-user") = {Namespace: kibanaNamespace, Name: "kbname-kibana-user"}.
 	appTokenSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kibanaNamespace,
@@ -1632,20 +1975,134 @@ func TestReconciler_Unbind_ServiceAccountTokens(t *testing.T) {
 			},
 		},
 	}
-
 	kb := sampleKibanaWithESRef()
-	r := testReconciler(&sampleES, &kb, &esTokenSecret, &appTokenSecret)
 
-	err := r.Unbind(context.Background(), kb.EsAssociation())
-	require.NoError(t, err)
+	// Fixtures for the same-namespace case.
+	caSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: sharedNS, Name: "fleet1-es-ca"},
+		Data:       map[string][]byte{"ca.crt": []byte("CACERT")},
+	}
+	sameNSAgent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: sharedNS},
+		Spec: agentv1alpha1.AgentSpec{
+			FleetServerRef: commonv1.FleetServerSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: sharedNS},
+			},
+		},
+	}
 
-	// ES-side token secret must be deleted to revoke Elasticsearch access.
-	var esSecret corev1.Secret
-	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&esTokenSecret), &esSecret)
-	require.True(t, apierrors.IsNotFound(err), "ES-side SA token secret should have been deleted by Unbind")
+	// Fixtures for the cross-namespace case.
+	const agentNS, fleetNS = "agent-ns", "fleet-ns"
+	caCopy := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: agentNS,
+			Name:      "fleet1-es-ca-copy",
+			Labels: map[string]string{
+				AdditionalSecretLabelName: "true",
+				// These match what AssociationResourceLabels produces for the test reconciler
+				// (AssociationResourceNameLabelName="test", fleet server ref name="fleet1"/"fleet-ns").
+				"test":    "fleet1",
+				"test-ns": "fleet-ns",
+			},
+		},
+		Data: map[string][]byte{"ca.crt": []byte("CACERT")},
+	}
+	crossNSAgent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: agentNS},
+		Spec: agentv1alpha1.AgentSpec{
+			FleetServerRef: commonv1.FleetServerSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: fleetNS},
+			},
+		},
+	}
 
-	// Application-side token secret must also be deleted.
-	var appSecret corev1.Secret
-	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&appTokenSecret), &appSecret)
-	require.True(t, apierrors.IsNotFound(err), "Application-side SA token secret should have been deleted by Unbind")
+	for _, tt := range []struct {
+		name  string
+		setup func() (Reconciler, commonv1.Association)
+		check func(t *testing.T, r Reconciler)
+	}{
+		{
+			// Unbind must delete both sides of the SA token pair so that a revoked association
+			// cannot continue to authenticate against Elasticsearch.
+			name: "SA token secrets are deleted",
+			setup: func() (Reconciler, commonv1.Association) {
+				return testReconciler(&sampleES, &kb, &esTokenSecret, &appTokenSecret), kb.EsAssociation()
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				var esSecret corev1.Secret
+				err := r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&esTokenSecret), &esSecret)
+				require.True(t, apierrors.IsNotFound(err), "ES-side SA token secret should have been deleted by Unbind")
+				var appSecret corev1.Secret
+				err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&appTokenSecret), &appSecret)
+				require.True(t, apierrors.IsNotFound(err), "Application-side SA token secret should have been deleted by Unbind")
+			},
+		},
+		{
+			name: "original CA secret survives when agent and fleet server share a namespace",
+			setup: func() (Reconciler, commonv1.Association) {
+				return sameNSReconciler(&sameNSAgent, &caSecret), sameNSAgent.GetAssociations()[0]
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				var got corev1.Secret
+				err := r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&caSecret), &got)
+				assert.NoError(t, err, "original CA secret must survive Unbind when agent and fleet server share a namespace")
+			},
+		},
+		{
+			name: "cross-namespace CA copy is deleted",
+			setup: func() (Reconciler, commonv1.Association) {
+				r := Reconciler{
+					AssociationInfo: AssociationInfo{
+						Labels:                                func(types.NamespacedName) map[string]string { return nil },
+						AssociationResourceNameLabelName:      "test",
+						AssociationResourceNamespaceLabelName: "test-ns",
+						ReferencedResourceNamer:               common_name.NewNamer("agent"),
+						AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+							return []AdditionalSecret{
+								{Source: types.NamespacedName{Namespace: fleetNS, Name: "fleet1-es-ca"}, TargetName: caCopy.Name},
+							}, nil
+						},
+					},
+					Client:  k8s.NewFakeClient(&crossNSAgent, &caCopy),
+					watches: watches.NewDynamicWatches(),
+				}
+				return r, crossNSAgent.GetAssociations()[0]
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				var got corev1.Secret
+				err := r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&caCopy), &got)
+				require.True(t, apierrors.IsNotFound(err), "cross-namespace CA copy must be deleted by Unbind")
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r, assoc := tt.setup()
+			require.NoError(t, r.Unbind(context.Background(), assoc))
+			tt.check(t, r)
+		})
+	}
+}
+
+func TestReconcileWatches_SameNamespace_WatchRegistered(t *testing.T) {
+	const ns = "shared-ns"
+
+	agent := agentv1alpha1.Agent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: ns},
+		Spec: agentv1alpha1.AgentSpec{
+			FleetServerRef: commonv1.FleetServerSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: ns},
+			},
+		},
+	}
+	assoc := agent.GetAssociations()[0]
+
+	r := sameNSReconciler(&agent)
+	agentNSN := types.NamespacedName{Namespace: ns, Name: "agent1"}
+	require.NoError(t, r.reconcileWatches(context.Background(), agentNSN, []commonv1.Association{assoc}))
+
+	assert.Contains(t, r.watches.Secrets.Registrations(), additionalSecretWatchName(agentNSN),
+		"additional-secret watch must be registered even when agent and fleet server share a namespace")
 }

@@ -184,10 +184,12 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		return results.WithError(err), params.Status
 	}
 
-	// For fleet-managed agents, read the client cert secret name from the transitive ES ref
-	// in the Fleet Server association conf. The cert is reconciled by the agent-fleetserver
-	// association controller.
-	esClientCertSecretName := fleetManagedAgentESClientCertSecretName(params)
+	// For fleet-managed agents, read the CA and client cert secret names from the transitive ES ref
+	// in the Fleet Server association conf. Both are reconciled by the agent-fleetserver association
+	// controller and stored in the annotation so pod changes trigger a roll.
+	transitiveRef := fleetManagedAgentTransitiveRef(params)
+	esCASecretName := transitiveRef.GetCASecretName()
+	esClientCertSecretName := transitiveRef.GetClientCertSecretName()
 
 	// Include the transitive client cert secret in the config hash so the pod rolls when it changes.
 	if esClientCertSecretName != "" {
@@ -203,7 +205,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		}
 	}
 
-	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash, esClientCertSecretName, clientAuthRequired)
+	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash, esClientCertSecretName, esCASecretName, clientAuthRequired)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -366,22 +368,21 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 	return results
 }
 
-// fleetManagedAgentESClientCertSecretName returns the client cert secret name from the
-// Fleet Server association conf's TransitiveESRef, or empty string if not applicable.
-func fleetManagedAgentESClientCertSecretName(params Params) string {
+// fleetManagedAgentTransitiveRef returns the TransitiveESRef from the Fleet Server association
+// conf for fleet-managed agents (FleetServerRef set, FleetServerEnabled false), or nil otherwise.
+// The ref holds the CA and client cert secret names reconciled in the agent's namespace by the
+// agent-fleetserver association controller.
+func fleetManagedAgentTransitiveRef(params Params) *commonv1.TransitiveESRef {
 	if params.Agent.Spec.FleetServerEnabled || !params.Agent.Spec.FleetServerRef.IsSet() {
-		return ""
+		return nil
 	}
 	fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
 	if err != nil || fsAssociation == nil {
-		return ""
+		return nil
 	}
 	fsConf, err := fsAssociation.AssociationConf()
 	if err != nil || fsConf == nil {
-		return ""
+		return nil
 	}
-	if fsConf.TransitiveESRef.ClientCertIsConfigured() {
-		return fsConf.TransitiveESRef.ClientCertSecretName
-	}
-	return ""
+	return fsConf.TransitiveESRef
 }
