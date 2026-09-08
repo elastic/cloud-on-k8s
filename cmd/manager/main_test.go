@@ -18,15 +18,26 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrlmgr "sigs.k8s.io/controller-runtime/pkg/manager"
+	ctrlrecorder "sigs.k8s.io/controller-runtime/pkg/recorder"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	webhookconversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
@@ -36,7 +47,9 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
 func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.Secret {
@@ -497,4 +510,37 @@ func Test_parseNSSelector(t *testing.T) {
 			assert.Equal(t, tt.wantSel, got)
 		})
 	}
+}
+
+// fakeManager implements manager.Manager with just enough behavior for registerControllers
+// to succeed: a fully populated scheme (for GVK lookups and owner-reference handlers),
+// SkipNameValidation to avoid the global controller-name uniqueness registry, and nil/no-op
+// returns for everything that is only stored and never called during controller setup.
+type fakeManager struct {
+	ctrlmgr.Manager // embed to satisfy unimplemented methods — panics if unexpectedly called
+}
+
+func (fakeManager) GetScheme() *runtime.Scheme        { return clientgoscheme.Scheme }
+func (fakeManager) GetClient() client.Client          { return nil }
+func (fakeManager) GetCache() cache.Cache             { return nil }
+func (fakeManager) GetRESTMapper() apimeta.RESTMapper { return nil }
+func (fakeManager) GetLogger() logr.Logger            { return logr.Discard() }
+func (fakeManager) GetControllerOptions() config.Controller {
+	return config.Controller{Logger: logr.Discard(), SkipNameValidation: new(true)}
+}
+func (fakeManager) Add(ctrlmgr.Runnable) error                         { return nil }
+func (fakeManager) GetEventRecorderFor(string) record.EventRecorder    { return nil }
+func (fakeManager) GetEventRecorder(string) ctrlrecorder.EventRecorder { return nil }
+func (fakeManager) AddHealthzCheck(string, healthz.Checker) error      { return nil }
+func (fakeManager) AddReadyzCheck(string, healthz.Checker) error       { return nil }
+func (fakeManager) GetWebhookServer() ctrlwebhook.Server               { return nil }
+func (fakeManager) GetConverterRegistry() webhookconversion.Registry   { return nil }
+
+// TestRegisterControllers verifies that registerControllers succeeds with a fake manager.
+// It acts as a registration smoke-test: if any controller's AssociationInfo violates
+// ValidateAssociationInfo (e.g. ElasticsearchUserCreation set but ElasticsearchRef nil),
+// this test catches it before the operator starts.
+func TestRegisterControllers(t *testing.T) {
+	controllerscheme.SetupScheme()
+	require.NoError(t, registerControllers(fakeManager{}, operator.Parameters{}, rbac.NewPermissiveAccessReviewer()))
 }

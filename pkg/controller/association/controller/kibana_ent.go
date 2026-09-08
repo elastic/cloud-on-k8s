@@ -43,6 +43,7 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      entctl.EnterpriseSearchNameLabelName,
 		AssociationResourceNamespaceLabelName: entctl.EnterpriseSearchNamespaceLabelName,
+		ElasticsearchRef:                      nil, // no transitive ES association for Kibana->Ent connection
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
 	})
 }

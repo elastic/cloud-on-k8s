@@ -43,8 +43,8 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
+		ElasticsearchRef: getElasticsearchFromKibana,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
-			ElasticsearchRef: getElasticsearchFromKibana,
 			UserSecretSuffix: "agent-kb-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				agent, ok := associated.(*agentv1alpha1.Agent)
