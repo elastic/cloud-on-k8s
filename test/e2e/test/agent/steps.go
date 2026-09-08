@@ -11,6 +11,7 @@ import (
 	"maps"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
 )
+
+const k8sRequestRetryTimeout = time.Minute
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -120,21 +123,25 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Creating an Agent should succeed",
 				Test: func(t *testing.T) {
 					t.Helper()
-					for _, obj := range b.RuntimeObjects() {
-						err := k.Client.Create(context.Background(), obj)
-						require.NoError(t, err)
-					}
+					require.NoError(t, k.CreateWithRetry(
+						test.IsRetryableError,
+						k8sRequestRetryTimeout,
+						b.RuntimeObjects()...,
+					))
 				},
 			},
 			test.Step{
 				Name: "Agent should be created",
-				Test: func(t *testing.T) {
-					t.Helper()
+				Test: test.RetryOnError(func() error {
 					var createdAgent agentv1alpha1.Agent
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent)
-					require.NoError(t, err)
-					require.Equal(t, b.Agent.Spec.Version, createdAgent.Spec.Version)
-				},
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent); err != nil {
+						return err
+					}
+					if b.Agent.Spec.Version != createdAgent.Spec.Version {
+						return fmt.Errorf("expected version %s but got %s", b.Agent.Spec.Version, createdAgent.Spec.Version)
+					}
+					return nil
+				}, test.IsRetryableError, k8sRequestRetryTimeout),
 			},
 		})
 }
