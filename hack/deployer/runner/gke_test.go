@@ -80,7 +80,7 @@ func TestGKECIPlanUsesRawNVMeLocalSSD(t *testing.T) {
 
 	plan, err := choosePlan(plans.Plans, "gke-ci")
 	require.NoError(t, err)
-	require.Equal(t, "us-east4", plan.Gke.Region)
+	require.Equal(t, "europe-west1", plan.Gke.Region)
 	require.Equal(t, "n2d-standard-4", plan.MachineType)
 	require.Zero(t, plan.Gke.LocalSsdCount)
 	require.True(t, plan.Gke.LocalNvmeSsdBlock)
