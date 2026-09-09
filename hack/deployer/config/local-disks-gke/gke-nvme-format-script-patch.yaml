@@ -1,0 +1,27 @@
+- op: add
+  path: /data/gke-nvme-format.sh
+  value: |-
+    #!/bin/sh
+    set -eu
+
+    device=/dev/disk/by-id/google-local-ssd-block0
+    mount_point=/mnt/disks/ssd0
+
+    if [ ! -e "${device}" ]; then
+      echo "GKE raw NVMe Local SSD not found at ${device}" >&2
+      exit 1
+    fi
+
+    if ! blkid "${device}" >/dev/null 2>&1; then
+      echo "Formatting ${device} as ext4"
+      mkfs.ext4 -m 0 -F "${device}"
+    fi
+
+    mkdir -p "${mount_point}"
+    if mountpoint -q -- "${mount_point}"; then
+      echo "${mount_point} already mounted"
+      exit 0
+    fi
+
+    echo "Mounting ${device} at ${mount_point}"
+    mount -t ext4 -o defaults,noatime,discard,nobarrier "${device}" "${mount_point}"

@@ -57,6 +57,11 @@ type GKEDriver struct {
 }
 
 func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
+	localSSDOption, err := gkeLocalSSDOption(plan.Gke)
+	if err != nil {
+		return nil, err
+	}
+
 	pvcPrefix := plan.ClusterName
 	if len(pvcPrefix) > pvcPrefixMaxLength {
 		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
@@ -87,7 +92,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"Region":                 plan.Gke.Region,
 			"KubernetesVersion":      plan.KubernetesVersion,
 			"MachineType":            plan.MachineType,
-			"LocalSsdCount":          plan.Gke.LocalSsdCount,
+			"LocalSSDOption":         localSSDOption,
 			"GcpScopes":              plan.Gke.GcpScopes,
 			"NodeCountPerZone":       plan.Gke.NodeCountPerZone,
 			"ClusterIPv4CIDR":        clusterIPv4CIDR,
@@ -95,6 +100,25 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 		},
 		vaultClient: c,
 	}, nil
+}
+
+func gkeLocalSSDOption(settings *GKESettings) (string, error) {
+	if settings == nil {
+		return "", fmt.Errorf("GKE settings must be configured")
+	}
+	if settings.LocalSsdCount > 0 && settings.LocalNvmeSsdBlock {
+		return "", fmt.Errorf("localSsdCount and localNvmeSsdBlock are mutually exclusive")
+	}
+	if settings.LocalNvmeSsdBlock {
+		return "--local-nvme-ssd-block count=1", nil
+	}
+	if settings.LocalSsdCount > 0 {
+		return fmt.Sprintf("--local-ssd-count %d", settings.LocalSsdCount), nil
+	}
+	if settings.LocalSsdCount < 0 {
+		return "", fmt.Errorf("local SSD count must not be negative")
+	}
+	return "", nil
 }
 
 func (d *GKEDriver) Execute() error {
@@ -327,7 +351,7 @@ func (d *GKEDriver) create() error {
 		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 100 ` +
-			`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
+			`{{.LocalSSDOption}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 			`--addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 			`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 			`--network projects/{{.GCloudProject}}/global/networks/default ` +

@@ -1,0 +1,23 @@
+- op: add
+  path: /spec/template/spec/initContainers/0
+  value:
+    name: gke-nvme-format
+    image: cgr.dev/chainguard/wolfi-base:latest
+    securityContext:
+      privileged: true
+    command:
+      - sh
+      - -c
+      - |-
+        apk update \
+          && apk add e2fsprogs mount util-linux \
+          && /bin/gke-nvme-format.sh
+    volumeMounts:
+      - mountPath: /bin/gke-nvme-format.sh
+        name: setup-disks
+        subPath: gke-nvme-format.sh
+      - mountPath: /mnt/disks
+        name: e2e-default
+        mountPropagation: Bidirectional
+      - mountPath: /dev
+        name: host-dev
