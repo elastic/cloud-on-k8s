@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func TestTLSOptions_Enabled(t *testing.T) {
@@ -532,6 +533,55 @@ func TestLocalObjectSelector_IsValid(t *testing.T) {
 			if got := tt.objectSelector.IsValid(); (got != nil) != tt.wantErr {
 				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestUserRolesOverrideSpec_Validate(t *testing.T) {
+	path := field.NewPath("spec").Child("userRoles")
+
+	tests := []struct {
+		name  string
+		roles []string
+		want  field.ErrorList
+	}{
+		{
+			name:  "no roles: OK",
+			roles: nil,
+			want:  nil,
+		},
+		{
+			name:  "valid roles: OK",
+			roles: []string{"superuser", "custom-role", "role_123"},
+			want:  nil,
+		},
+		{
+			name:  "empty role string: invalid",
+			roles: []string{""},
+			want: field.ErrorList{
+				field.Invalid(path.Index(0), "", "invalid user role"),
+			},
+		},
+		{
+			name:  "role with invalid characters: invalid",
+			roles: []string{"bad role!"},
+			want: field.ErrorList{
+				field.Invalid(path.Index(0), "bad role!", "invalid user role"),
+			},
+		},
+		{
+			name:  "mix of valid and invalid roles: only invalid ones error",
+			roles: []string{"valid_role", "with space", "comma,role"},
+			want: field.ErrorList{
+				field.Invalid(path.Index(1), "with space", "invalid user role"),
+				field.Invalid(path.Index(2), "comma,role", "invalid user role"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := UserRolesOverrideSpec{UserRoles: tt.roles}.Validate(path)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

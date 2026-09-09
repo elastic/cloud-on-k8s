@@ -209,6 +209,18 @@ type Association interface {
 	AssociationID() string
 }
 
+// AssociationWithUserRolesOverride is optionally implemented by Association types whose spec
+// allows overriding the Elasticsearch file-realm user role per reference.
+// When implemented and UserRolesOverride returns a non-empty string, the reconciler uses that
+// role(s) instead of the controller's default (provided by ElasticsearchUserCreation.ESUserRole).
+// +kubebuilder:object:generate=false
+type AssociationWithUserRolesOverride interface {
+	Association
+	// UserRolesOverride returns the user-configured role(s) for this association's Elasticsearch user,
+	// or "" to fall back to the controller default. Multiple roles may be expressed as a comma-separated list.
+	UserRolesOverride() string
+}
+
 // FormatNameWithID conditionally formats `template`. `template` is expected to have a single %s verb.
 // If `id` is empty, the %s verb will be formatted with empty string. Otherwise %s verb will be replaced with `-id`.
 // Eg:
@@ -221,7 +233,7 @@ type Association interface {
 func FormatNameWithID(template string, id string) string {
 	if id != SingletonAssociationID {
 		// we want names to be changed for any id but SingletonAssociationID
-		id = fmt.Sprintf("-%s", id)
+		id = "-" + id
 	}
 
 	return fmt.Sprintf(template, id)

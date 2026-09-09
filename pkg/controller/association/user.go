@@ -27,8 +27,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// elasticsearchUserName identifies the associated user in Elasticsearch namespace.
-func elasticsearchUserName(association commonv1.Association, userSuffix string) string {
+// ElasticsearchUserName identifies the associated user in Elasticsearch namespace.
+func ElasticsearchUserName(association commonv1.Association, userSuffix string) string {
 	// must be namespace-aware since we might have several associated instances running in
 	// different namespaces with the same name: we need one user for each
 	// in the Elasticsearch namespace
@@ -53,7 +53,7 @@ func UserKey(association commonv1.Association, esNamespace, userSuffix string) t
 	return types.NamespacedName{
 		// user lives in the ES namespace
 		Namespace: esNamespace,
-		Name:      elasticsearchUserName(association, userSuffix),
+		Name:      ElasticsearchUserName(association, userSuffix),
 	}
 }
 
@@ -72,7 +72,7 @@ func UserSecretKeySelector(association commonv1.Association, userSuffix string) 
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: userSecretObjectName(association, userSuffix),
 		},
-		Key: elasticsearchUserName(association, userSuffix),
+		Key: ElasticsearchUserName(association, userSuffix),
 	}
 }
 

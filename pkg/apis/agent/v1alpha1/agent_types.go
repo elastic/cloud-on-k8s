@@ -130,6 +130,7 @@ type AgentSpec struct {
 type Output struct {
 	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	OutputName                     string `json:"outputName,omitempty"`
+	commonv1.UserRolesOverrideSpec `json:",omitempty,inline"`
 }
 
 type DaemonSetSpec struct {
@@ -305,11 +306,13 @@ var _ commonv1.Associated = (*Agent)(nil)
 var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
 
 func (a *Agent) GetAssociations() []commonv1.Association {
-	associations := make([]commonv1.Association, 0)
+	associations := make([]commonv1.Association, 0, len(a.Spec.ElasticsearchRefs))
+
 	for _, ref := range a.Spec.ElasticsearchRefs {
 		associations = append(associations, &AgentESAssociation{
-			Agent: a,
-			ref:   ref.WithDefaultNamespace(a.Namespace),
+			Agent:    a,
+			ref:      ref.WithDefaultNamespace(a.Namespace),
+			userRole: ref.UserRolesOverride(),
 		})
 	}
 
@@ -408,6 +411,8 @@ type AgentESAssociation struct {
 	*Agent
 	// ref is the Elasticsearch selector used in Association
 	ref commonv1.ElasticsearchSelector
+	// userRole is the optional per-ref role override from Output.ElasticsearchRole.
+	userRole string
 }
 
 var _ commonv1.Association = (*AgentESAssociation)(nil)
@@ -459,6 +464,11 @@ func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, err
 func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
 	return true
 }
+
+// UserRoleOverride implements commonv1.AssociationWithUserRoleOverride.
+func (aea *AgentESAssociation) UserRolesOverride() string { return aea.userRole }
+
+var _ commonv1.AssociationWithUserRolesOverride = (*AgentESAssociation)(nil)
 
 func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
 	if aea.esAssocConfs == nil {
