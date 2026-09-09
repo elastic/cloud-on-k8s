@@ -190,6 +190,7 @@ func (h *helper) initTestContext() error {
 		AutopilotCluster:         isAutopilotCluster(h),
 		ArtefactsDir:             artefactsDir,
 		RestrictWatchedResources: h.restrictWatchedResources,
+		ContainerSuffix:          h.containerSuffix,
 	}
 
 	for i, ns := range h.managedNamespaces {

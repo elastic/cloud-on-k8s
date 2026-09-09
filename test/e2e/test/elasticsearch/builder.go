@@ -189,7 +189,11 @@ func (b Builder) WithNamespace(namespace string) Builder {
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
-		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+		image := container.ElasticsearchImage
+		if suffix := test.Ctx().ContainerSuffix; suffix != "" {
+			image += container.Image(suffix)
+		}
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(image, version)
 	} else {
 		// reset the image in case the builder was set to a SNAPSHOT version at some point
 		b.Elasticsearch.Spec.Image = ""

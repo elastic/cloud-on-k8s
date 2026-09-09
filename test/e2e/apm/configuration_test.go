@@ -20,6 +20,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -44,6 +45,10 @@ type PartialApmConfiguration struct {
 }
 
 func TestUpdateConfiguration(t *testing.T) {
+	if test.Ctx().ContainerSuffix == container.WolfiSuffix {
+		// TODO: revert when https://github.com/elastic/cloud-on-k8s/issues/9714 is resolved
+		t.SkipNow()
+	}
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
 	secureSettings := corev1.Secret{
