@@ -88,7 +88,7 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	if autoscalingResource != nil {
 		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
 		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
-		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.
+		// manifest, and wait for the autoscaling controller to reconcile the storage capacity via spec.nodeSets[].resources.storage.
 		log.V(1).Info(
 			"Autoscaling is enabled in proposed, ignoring PVC modification validation",
 			"namespace", proposed.Namespace,
