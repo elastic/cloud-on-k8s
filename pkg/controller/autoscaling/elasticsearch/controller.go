@@ -259,10 +259,6 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		if apierrors.IsConflict(err) {
 			return results.WithRequeue().Aggregate()
 		}
-		// The API server may return 422 Unprocessable Entity (apierrors.IsInvalid) when a JSON Patch
-		// test operation fails (e.g. a nodeSet was renamed since the snapshot). This can be a transient
-		// stale-cache situation, but it can also be due to validation errors, immutable-field rejections,
-		// or admission webhooks, so we use results.WithError to requeue with backoff.
 		return results.WithError(err).Aggregate()
 	}
 	return results.WithResults(defaultResult(&esa)).Aggregate()

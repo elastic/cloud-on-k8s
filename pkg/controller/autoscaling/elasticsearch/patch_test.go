@@ -7,10 +7,14 @@ package elasticsearch
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,8 +29,9 @@ import (
 // both the number of round-trips and the exact paths/values that were sent.
 type recordingPatchClient struct {
 	k8s.Client
-	patches int
-	ops     []jsonPatchOp
+	patches  int
+	ops      []jsonPatchOp
+	patchErr error // when set, Patch returns this error instead of delegating
 }
 
 func (c *recordingPatchClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
@@ -35,6 +40,9 @@ func (c *recordingPatchClient) Patch(ctx context.Context, obj client.Object, pat
 	_ = json.Unmarshal(raw, &decoded)
 	c.ops = append(c.ops, decoded...)
 	c.patches++
+	if c.patchErr != nil {
+		return c.patchErr
+	}
 	return c.Client.Patch(ctx, obj, patch, opts...)
 }
 
@@ -77,13 +85,15 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 	ns0 := "/spec/nodeSets/0" // base path for nodeSet at index 0
 
 	tests := []struct {
-		name        string
-		current     *esv1.Elasticsearch
-		stored      *esv1.Elasticsearch // nil → same as current (no concurrent write)
-		reconciled  *esv1.Elasticsearch // nil → same as current (nothing changed)
-		wantErr     bool
-		wantPatches int
-		verify      func(t *testing.T, c *recordingPatchClient, live esv1.Elasticsearch)
+		name         string
+		current      *esv1.Elasticsearch
+		stored       *esv1.Elasticsearch // nil → same as current (no concurrent write)
+		reconciled   *esv1.Elasticsearch // nil → same as current (nothing changed)
+		clientErr    error               // synthetic error injected into the fake client's Patch call
+		wantErr      bool
+		wantConflict bool
+		wantPatches  int
+		verify       func(t *testing.T, c *recordingPatchClient, live esv1.Elasticsearch)
 	}{
 		{
 			name: "writes count and resources for the changed nodeSet only",
@@ -169,12 +179,12 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 			},
 		},
 		{
-			name:        "fails rather than writing to the wrong nodeSet when names drift",
-			current:     esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}),
-			stored:      esWithNodeSets(esv1.NodeSet{Name: "renamed", Count: 1}),
-			reconciled:  esWithNodeSets(esv1.NodeSet{Name: "data", Count: 9}),
-			wantErr:     true,
-			wantPatches: 1,
+			name:         "fails rather than writing to the wrong nodeSet when names drift",
+			current:      esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}),
+			stored:       esWithNodeSets(esv1.NodeSet{Name: "renamed", Count: 1}),
+			reconciled:   esWithNodeSets(esv1.NodeSet{Name: "data", Count: 9}),
+			wantConflict: true,
+			wantPatches:  1,
 			verify: func(t *testing.T, _ *recordingPatchClient, live esv1.Elasticsearch) {
 				t.Helper()
 				assert.Equal(t, int32(1), live.Spec.NodeSets[0].Count)
@@ -503,10 +513,21 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 				es.ResourceVersion = "1"
 				return es
 			}(),
-			stored:      esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}), // ResourceVersion "999" - newer than current
-			reconciled:  esWithNodeSets(esv1.NodeSet{Name: "data", Count: 2}),
-			wantErr:     true,
-			wantPatches: 1,
+			stored:       esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}), // ResourceVersion "999" - newer than current
+			reconciled:   esWithNodeSets(esv1.NodeSet{Name: "data", Count: 2}),
+			wantConflict: true,
+			wantPatches:  1,
+		},
+		{
+			name:       "422 test-op failure from apiserver remapped to Conflict",
+			current:    esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}),
+			reconciled: esWithNodeSets(esv1.NodeSet{Name: "data", Count: 2}),
+			clientErr: &apierrors.StatusError{ErrStatus: metav1.Status{
+				Code:    http.StatusUnprocessableEntity,
+				Message: "testing value /metadata/resourceVersion failed: test failed",
+			}},
+			wantConflict: true,
+			wantPatches:  1,
 		},
 		{
 			name: "no change: no patch issued",
@@ -532,18 +553,55 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 			if reconciled == nil {
 				reconciled = tt.current.DeepCopy()
 			}
-			c := &recordingPatchClient{Client: k8s.NewFakeClient(stored)}
+			c := &recordingPatchClient{Client: k8s.NewFakeClient(stored), patchErr: tt.clientErr}
 
 			err := patchAutoscaledNodeSets(context.Background(), c, tt.current, reconciled)
-			if tt.wantErr {
-				require.Error(t, err, "the test operation on the nodeSet name must reject the patch")
-			} else {
+			switch {
+			case tt.wantConflict:
+				require.True(t, apierrors.IsConflict(err), "expected Conflict error, got: %v", err)
+			case tt.wantErr:
+				require.Error(t, err)
+			default:
 				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.wantPatches, c.patches)
 			if tt.verify != nil {
 				tt.verify(t, c, liveES(t, c))
 			}
+		})
+	}
+}
+
+func TestIsJSONPatchTestFailure(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "unrelated error",
+			err:  fmt.Errorf("some other error"),
+			want: false,
+		},
+		{
+			name: "evanphx/json-patch test failure message",
+			err:  fmt.Errorf("testing value /metadata/resourceVersion failed: test failed"),
+			want: true,
+		},
+		{
+			name: "case-insensitive match",
+			err:  fmt.Errorf("Testing Value /spec/nodeSets/0/name Failed"),
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isJSONPatchTestFailure(tt.err))
 		})
 	}
 }

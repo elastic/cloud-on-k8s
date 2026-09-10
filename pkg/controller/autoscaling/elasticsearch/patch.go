@@ -8,8 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -46,6 +49,10 @@ type jsonPatchOp struct {
 //
 // Each write is guarded by a test operation on the NodeSet name, so a concurrent reorder or rename
 // makes the patch fail rather than write the recommendation to the wrong NodeSet.
+//
+// A failed test op is remapped to a Conflict error before returning. kube-apiserver maps test
+// failures to 422 Unprocessable Entity rather than 409 Conflict; remapping lets callers treat a
+// stale-read or name-drift rejection the same as a concurrent write conflict.
 func patchAutoscaledNodeSets(ctx context.Context, c k8s.Client, current, reconciled *esv1.Elasticsearch) error {
 	var ops []jsonPatchOp
 
@@ -86,7 +93,17 @@ func patchAutoscaledNodeSets(ctx context.Context, c k8s.Client, current, reconci
 	if err != nil {
 		return err
 	}
-	return c.Patch(ctx, reconciled, client.RawPatch(types.JSONPatchType, patch))
+	if err := c.Patch(ctx, reconciled, client.RawPatch(types.JSONPatchType, patch)); err != nil {
+		if isJSONPatchTestFailure(err) {
+			return apierrors.NewConflict(
+				schema.GroupResource{Group: esv1.GroupVersion.Group, Resource: "elasticsearches"},
+				current.Name,
+				err,
+			)
+		}
+		return err
+	}
+	return nil
 }
 
 // resourcesLeafOps returns RFC 6902 ops for the resource fields that changed between prev and next.
@@ -176,4 +193,17 @@ func buildAllocationMap(a commonv1.ResourceAllocations) map[string]any {
 		m["memory"] = a.Memory
 	}
 	return m
+}
+
+// isJSONPatchTestFailure reports whether err came from a failed RFC 6902 "test" operation.
+// kube-apiserver returns HTTP 422 for any json-patch apply error; the evanphx/json-patch library
+// surfaces the failure as a message containing "testing value ... failed". The fake client used in
+// tests exposes the same text. Matching on message content is imperfect but is the only signal
+// both paths expose today.
+func isJSONPatchTestFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "testing value") && strings.Contains(msg, "failed")
 }
