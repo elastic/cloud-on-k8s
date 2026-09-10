@@ -74,7 +74,12 @@ func TestAutoscaling(t *testing.T) {
 			newNodeSet("data-ingest", []string{"data", "ingest"}, 2, corev1.ResourceList{corev1.ResourceMemory: nodespec.DefaultMemoryLimits}, newPVC("10Gi", storageClass)),
 			// ML node count should still be 0.
 			newNodeSet("ml", []string{"ml"}, 0, corev1.ResourceList{}, initialPVC),
-		)
+		).
+		// Tell the ownership checker which fields the autoscaler below is allowed to own on each
+		// managed nodeSet. master has no policy so it is intentionally absent here.
+		WithAutoscalerManagedNodeset("data-ingest", true, true, true).
+		WithAutoscalerManagedNodeset("ml", true, true, true)
+
 	autoscalingBuilder := autoscaling.NewAutoscalingBuilder(t, k8s.ExtractNamespacedName(&esBuilder.Elasticsearch)).
 		WithPolicy("data-ingest", []string{"data", "ingest"}, v1alpha1.AutoscalingResources{
 			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
@@ -88,7 +93,6 @@ func TestAutoscaling(t *testing.T) {
 			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
 			NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 1},
 		})
-	esBuilder = esBuilder.WithOwnershipCheckAndAllowedFields(autoscalingBuilder.AllowedOperatorOwnedFields())
 
 	// Use the fixed decider to trigger a scale up of the data tier up to its max memory limit and 3 nodes.
 	esaScaleUpStorageBuilder := autoscalingBuilder.DeepCopy().WithFixedDecider("data-ingest", map[string]string{"storage": "19gb", "nodes": "3"})

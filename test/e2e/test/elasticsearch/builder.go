@@ -90,6 +90,35 @@ func (b Builder) DeepCopy() *Builder {
 	return &builderCopy
 }
 
+// WithAutoscalerManagedNodeset declares which resource dimensions the autoscaler is permitted to
+// own for the given nodeSet. count is always included. cpu, memory, and storage each correspond to
+// the resource ranges in the autoscaling policy. The resulting fields are merged into any previously
+// registered allowed fields (prior calls are not cleared), and the accumulated set is used by
+// CheckK8sTestSteps to assert that the operator does not claim ownership of any field outside it.
+func (b Builder) WithAutoscalerManagedNodeset(nodeSetName string, cpu, memory, storage bool) Builder {
+	b.skipSpecOwnership = false
+	var set *fieldpath.Set
+	if b.allowedOwnedFields != nil {
+		set = b.allowedOwnedFields.Copy()
+	} else {
+		set = fieldpath.NewSet()
+	}
+	nsKey := fieldpath.KeyElementByFields("name", nodeSetName)
+	set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "count"))
+	if cpu {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "cpu"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "cpu"))
+	}
+	if memory {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "memory"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "memory"))
+	}
+	if storage {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "storage"))
+	}
+	return b.WithOwnershipCheckAndAllowedFields(set)
+}
+
 // WithOwnershipCheckAndAllowedFields sets the fieldpath.Set of spec paths the operator is
 // permitted to own. When set, CheckK8sTestSteps permits those paths in its ownership assertion.
 func (b Builder) WithOwnershipCheckAndAllowedFields(allowed *fieldpath.Set) Builder {
