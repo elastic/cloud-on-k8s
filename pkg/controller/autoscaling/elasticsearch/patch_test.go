@@ -61,7 +61,7 @@ func (c *recordingPatchClient) valueJSON(path string) string {
 
 func esWithNodeSets(nodeSets ...esv1.NodeSet) *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns", ResourceVersion: "999"},
 		Spec:       esv1.ElasticsearchSpec{Version: "8.16.0", NodeSets: nodeSets},
 	}
 }
@@ -495,6 +495,18 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 				assert.False(t, c.hasPath(ns0+"/resources/requests"))
 				assert.False(t, c.hasPath(ns0+"/resources/limits"))
 			},
+		},
+		{
+			name: "stale resourceVersion: patch rejected",
+			current: func() *esv1.Elasticsearch {
+				es := esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1})
+				es.ResourceVersion = "1"
+				return es
+			}(),
+			stored:      esWithNodeSets(esv1.NodeSet{Name: "data", Count: 1}), // ResourceVersion "999" - newer than current
+			reconciled:  esWithNodeSets(esv1.NodeSet{Name: "data", Count: 2}),
+			wantErr:     true,
+			wantPatches: 1,
 		},
 		{
 			name: "no change: no patch issued",

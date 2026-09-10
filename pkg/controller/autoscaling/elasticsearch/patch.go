@@ -80,6 +80,8 @@ func patchAutoscaledNodeSets(ctx context.Context, c k8s.Client, current, reconci
 		return nil
 	}
 
+	ops = append([]jsonPatchOp{{Op: "test", Path: "/metadata/resourceVersion", Value: current.ResourceVersion}}, ops...)
+
 	patch, err := json.Marshal(ops)
 	if err != nil {
 		return err
