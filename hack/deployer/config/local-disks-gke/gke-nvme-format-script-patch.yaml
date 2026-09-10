@@ -11,14 +11,21 @@
       echo "GKE raw NVMe Local SSD not found at ${device}" >&2
       exit 1
     fi
+    canonical_device=$(readlink -f "${device}")
 
     mkdir -p "${mount_point}"
     if mountpoint -q -- "${mount_point}"; then
-      echo "${mount_point} already mounted"
-      exit 0
+      mounted_source=$(findmnt -rn -o SOURCE --target "${mount_point}")
+      canonical_mounted_source=$(readlink -f "${mounted_source}" 2>/dev/null || true)
+      if [ "${canonical_mounted_source}" = "${canonical_device}" ]; then
+        echo "${device} already mounted at ${mount_point}"
+        exit 0
+      fi
+      echo "${mount_point} is mounted from unexpected source ${mounted_source}; expected ${device}" >&2
+      exit 1
     fi
 
-    if findmnt -rn --source "${device}" >/dev/null 2>&1; then
+    if findmnt -rn --source "${canonical_device}" >/dev/null 2>&1; then
       echo "${device} is already mounted outside ${mount_point}; refusing to format or remount it" >&2
       exit 1
     fi
