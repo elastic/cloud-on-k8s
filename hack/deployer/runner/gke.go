@@ -28,6 +28,7 @@ const (
 	GKEServiceAccountVaultFieldName = "service-account"
 	GKEProjectVaultFieldName        = "gcloud-project"
 	GoogleCloudProjectCtxKey        = "GCloudProject"
+	gkeLocalDiskSetupCommand        = "kubectl apply -k hack/deployer/config/local-disks-gke"
 	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
   clusterName: %s-dev-cluster
@@ -61,6 +62,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	if err != nil {
 		return nil, err
 	}
+	plan = configureGKELocalSSD(plan)
 
 	pvcPrefix := plan.ClusterName
 	if len(pvcPrefix) > pvcPrefixMaxLength {
@@ -106,6 +108,9 @@ func gkeLocalSSDOption(settings *GKESettings) (string, error) {
 	if settings == nil {
 		return "", fmt.Errorf("GKE settings must be configured")
 	}
+	if settings.LocalSsdCount < 0 {
+		return "", fmt.Errorf("local SSD count must not be negative")
+	}
 	if settings.LocalSsdCount > 0 && settings.LocalNvmeSsdBlock {
 		return "", fmt.Errorf("localSsdCount and localNvmeSsdBlock are mutually exclusive")
 	}
@@ -113,12 +118,18 @@ func gkeLocalSSDOption(settings *GKESettings) (string, error) {
 		return "--local-nvme-ssd-block count=1", nil
 	}
 	if settings.LocalSsdCount > 0 {
+		// Deprecated compatibility path for existing GKE deployer overrides.
+		log.Printf("WARNING: gke.localSsdCount is deprecated; use gke.localNvmeSsdBlock instead")
 		return fmt.Sprintf("--local-ssd-count %d", settings.LocalSsdCount), nil
 	}
-	if settings.LocalSsdCount < 0 {
-		return "", fmt.Errorf("local SSD count must not be negative")
-	}
 	return "", nil
+}
+
+func configureGKELocalSSD(plan Plan) Plan {
+	if plan.Gke.LocalNvmeSsdBlock && plan.DiskSetup == "" {
+		plan.DiskSetup = gkeLocalDiskSetupCommand
+	}
+	return plan
 }
 
 func (d *GKEDriver) Execute() error {

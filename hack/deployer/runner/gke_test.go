@@ -24,7 +24,7 @@ func TestGKELocalSSDOption(t *testing.T) {
 			settings: &GKESettings{},
 		},
 		{
-			name: "legacy local SSD",
+			name: "deprecated legacy local SSD compatibility",
 			settings: &GKESettings{
 				LocalSsdCount: 1,
 			},
@@ -49,6 +49,14 @@ func TestGKELocalSSDOption(t *testing.T) {
 			name: "negative count",
 			settings: &GKESettings{
 				LocalSsdCount: -1,
+			},
+			wantErr: "local SSD count must not be negative",
+		},
+		{
+			name: "negative count with raw NVMe local SSD",
+			settings: &GKESettings{
+				LocalSsdCount:     -1,
+				LocalNvmeSsdBlock: true,
 			},
 			wantErr: "local SSD count must not be negative",
 		},
@@ -84,9 +92,52 @@ func TestGKECIPlanUsesRawNVMeLocalSSD(t *testing.T) {
 	require.Equal(t, "n2d-standard-4", plan.MachineType)
 	require.Zero(t, plan.Gke.LocalSsdCount)
 	require.True(t, plan.Gke.LocalNvmeSsdBlock)
-	require.Equal(t, "kubectl apply -k hack/deployer/config/local-disks-gke", plan.DiskSetup)
+	require.Empty(t, plan.DiskSetup)
 
 	option, err := gkeLocalSSDOption(plan.Gke)
 	require.NoError(t, err)
 	require.Equal(t, "--local-nvme-ssd-block count=1", option)
+
+	plan = configureGKELocalSSD(plan)
+	require.Equal(t, gkeLocalDiskSetupCommand, plan.DiskSetup)
+}
+
+func TestGKEDevPlanDefaultsToPersistentDiskWithLocalSSDOptIn(t *testing.T) {
+	plansYAML, err := os.ReadFile("../config/plans.yml")
+	require.NoError(t, err)
+
+	var plans Plans
+	require.NoError(t, yaml.Unmarshal(plansYAML, &plans))
+
+	plan, err := choosePlan(plans.Plans, "gke-dev")
+	require.NoError(t, err)
+	require.Equal(t, "europe-west1", plan.Gke.Region)
+	require.Equal(t, "n2d-standard-8", plan.MachineType)
+	require.Zero(t, plan.Gke.LocalSsdCount)
+	require.False(t, plan.Gke.LocalNvmeSsdBlock)
+	require.Empty(t, plan.DiskSetup)
+
+	option, err := gkeLocalSSDOption(plan.Gke)
+	require.NoError(t, err)
+	require.Empty(t, option)
+
+	var runConfig RunConfig
+	require.NoError(t, yaml.Unmarshal([]byte(`
+id: gke-dev
+overrides:
+  gke:
+    localNvmeSsdBlock: true
+`), &runConfig))
+
+	plan, err = GetPlan(plans.Plans, runConfig, "")
+	require.NoError(t, err)
+	require.True(t, plan.Gke.LocalNvmeSsdBlock)
+	require.Empty(t, plan.DiskSetup)
+
+	option, err = gkeLocalSSDOption(plan.Gke)
+	require.NoError(t, err)
+	require.Equal(t, "--local-nvme-ssd-block count=1", option)
+
+	plan = configureGKELocalSSD(plan)
+	require.Equal(t, gkeLocalDiskSetupCommand, plan.DiskSetup)
 }

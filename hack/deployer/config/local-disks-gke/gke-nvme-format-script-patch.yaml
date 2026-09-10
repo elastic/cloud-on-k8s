@@ -12,16 +12,31 @@
       exit 1
     fi
 
-    if ! blkid "${device}" >/dev/null 2>&1; then
-      echo "Formatting ${device} as ext4"
-      mkfs.ext4 -m 0 -F "${device}"
-    fi
-
     mkdir -p "${mount_point}"
     if mountpoint -q -- "${mount_point}"; then
       echo "${mount_point} already mounted"
       exit 0
     fi
+
+    if findmnt -rn --source "${device}" >/dev/null 2>&1; then
+      echo "${device} is already mounted outside ${mount_point}; refusing to format or remount it" >&2
+      exit 1
+    fi
+
+    filesystem_type=$(blkid -s TYPE -o value "${device}" 2>/dev/null || true)
+    case "${filesystem_type}" in
+      "")
+        echo "Formatting ${device} as ext4"
+        mkfs.ext4 -m 0 -F "${device}"
+        ;;
+      ext4)
+        echo "${device} already contains an ext4 filesystem"
+        ;;
+      *)
+        echo "${device} contains unsupported filesystem ${filesystem_type}; refusing to format it" >&2
+        exit 1
+        ;;
+    esac
 
     echo "Mounting ${device} at ${mount_point}"
     mount -t ext4 -o defaults,noatime,discard,nobarrier "${device}" "${mount_point}"
