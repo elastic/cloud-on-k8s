@@ -178,7 +178,7 @@ func (f *nvmeFormatterFixture) run() nvmeFormatterResult {
 	scriptPath := filepath.Join(f.t.TempDir(), "gke-nvme-format.sh")
 	writeExecutable(f.t, scriptPath, f.script)
 
-	cmd := exec.Command("sh", scriptPath)
+	cmd := exec.CommandContext(f.t.Context(), "sh", scriptPath)
 	cmd.Env = append(withoutPath(os.Environ()),
 		"PATH="+f.binDir+":"+os.Getenv("PATH"),
 		"GKE_LOCAL_SSD_DEVICE="+f.device,
