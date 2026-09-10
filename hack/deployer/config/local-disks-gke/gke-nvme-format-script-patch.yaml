@@ -4,8 +4,8 @@
     #!/bin/sh
     set -eu
 
-    device=/dev/disk/by-id/google-local-ssd-block0
-    mount_point=/mnt/disks/ssd0
+    device=${GKE_LOCAL_SSD_DEVICE:-/dev/disk/by-id/google-local-ssd-block0}
+    mount_point=${GKE_LOCAL_SSD_MOUNT_POINT:-/mnt/disks/ssd0}
 
     if [ ! -e "${device}" ]; then
       echo "GKE raw NVMe Local SSD not found at ${device}" >&2
