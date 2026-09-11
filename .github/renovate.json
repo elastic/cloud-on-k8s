@@ -26,6 +26,15 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\n]+)\\nENV \\w+=(?<currentValue>[^\\n]+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.custom-gcl\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\n]+)\\nversion: (?<currentValue>[^\\n]+)"
+      ]
     }
   ],
   "ignorePaths": [

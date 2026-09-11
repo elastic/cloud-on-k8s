@@ -67,6 +67,13 @@ steps:
           cpu: "4"
           memory: "2G"
 
+      - label: ":go: ssacrlint-tests"
+        command: "make ssacrlint-unit-tests check-local-changes"
+        agents:
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:2ec5947f0cad2f11965f33c9b7b47279f2c17815d5136076f3e19b87ba07e839
+          cpu: "4"
+          memory: "2G"
+
   # generate build steps with serverless-docker-builder
 
   - group: build operator

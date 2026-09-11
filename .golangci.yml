@@ -1,6 +1,11 @@
 version: "2"
 linters:
   settings:
+    custom:
+      ssacrlint:
+        type: module
+        description: "flags client.Writer.Update() and Patch() calls on ECK CRs that may cause SSA field-ownership conflicts"
+
     exhaustive:
       default-signifies-exhaustive: true
 
@@ -103,7 +108,15 @@ linters:
           - gosec
           - unparam
           - forbidigo
+          - ssacrlint
         path: .*_test\.go
+      - linters:
+          - ssacrlint
+        path: test/e2e/
+      - linters:
+          - nolintlint
+        # nolintlint cannot see ssacrlint output (plugin linter) so it incorrectly marks //nolint:ssacrlint as unused
+        text: ssacrlint
       - linters:
           - staticcheck
         path: pkg/controller/common/tracing/apmclientgo/client.go
@@ -143,6 +156,7 @@ linters:
   default: none
 
   enable:
+    - ssacrlint
     - asciicheck
     - bodyclose
     - dogsled

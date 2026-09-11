@@ -204,8 +204,19 @@ integration-xml: setup-envtest clean
 	done; \
 	exit $$exit_code
 
-lint:
-	GOGC=40 golangci-lint run --verbose
+GOLANGCI_LINT_CUSTOM := ./bin/golangci-lint-custom
+SSACRLINT_DIR := hack/linters/ssacrlint
+SSACRLINT_SOURCES := $(shell find $(SSACRLINT_DIR) -name "*.go")
+
+$(GOLANGCI_LINT_CUSTOM): .custom-gcl.yml $(SSACRLINT_DIR)/go.mod $(SSACRLINT_DIR)/go.sum $(SSACRLINT_SOURCES)
+	golangci-lint custom
+
+lint: $(GOLANGCI_LINT_CUSTOM)
+	GOGC=40 $(GOLANGCI_LINT_CUSTOM) run --verbose
+
+ssacrlint-unit-tests:
+	cd $(SSACRLINT_DIR) && go mod tidy
+	cd $(SSACRLINT_DIR) && go test ./... -cover $(TEST_OPTS)
 
 manifest-gen-test:
 	hack/manifest-gen/test.sh

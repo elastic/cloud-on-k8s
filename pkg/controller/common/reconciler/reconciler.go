@@ -68,7 +68,8 @@ func (p Params) CheckNilValues() error {
 }
 
 // ReconcileResource is a generic reconciliation function for resources that need to
-// implement runtime.Object and meta/v1.Object.
+// implement runtime.Object and meta/v1.Object. It performs a full-object Update, which
+// can cause SSA field-ownership conflicts. Do not use this function to reconcile ECK CRs.
 func ReconcileResource(params Params) error {
 	err := params.CheckNilValues()
 	if err != nil {
@@ -175,7 +176,7 @@ func ReconcileResource(params Params) error {
 			k8s.OverrideControllerReference(reconciledMeta, expectedOwners[0])
 		}
 
-		err = params.Client.Update(params.Context, params.Reconciled)
+		err = params.Client.Update(params.Context, params.Reconciled) //nolint:ssacrlint // generic helper for non-ECK-CR resources; callers must not pass ECK CRs
 		if err != nil {
 			return err
 		}
