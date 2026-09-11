@@ -18,6 +18,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
@@ -73,4 +74,44 @@ func Test_namespaceFlipRequests(t *testing.T) {
 		{NamespacedName: types.NamespacedName{Namespace: "scoped", Name: "cross-ref"}},
 		{NamespacedName: types.NamespacedName{Namespace: "descoped", Name: "default-ns-ref"}},
 	}, reqs)
+}
+
+func TestValidateAssociationInfo(t *testing.T) {
+	withUserCreation := &ElasticsearchUserCreation{UserSecretSuffix: "x"}
+	withESRef := func(_ context.Context, _ k8s.Client, assoc commonv1.Association) (bool, commonv1.AssociationRef, error) {
+		return true, assoc.AssociationRef(), nil
+	}
+
+	for _, tt := range []struct {
+		name    string
+		info    AssociationInfo
+		wantErr bool
+	}{
+		{
+			name: "both nil: valid (no user creation, no transitive ES ref)",
+			info: AssociationInfo{AssociationName: "test"},
+		},
+		{
+			name: "ElasticsearchRef set without user creation: valid (transitive RBAC only)",
+			info: AssociationInfo{AssociationName: "test", ElasticsearchRef: withESRef},
+		},
+		{
+			name: "both set: valid",
+			info: AssociationInfo{AssociationName: "test", ElasticsearchRef: withESRef, ElasticsearchUserCreation: withUserCreation},
+		},
+		{
+			name:    "user creation without ElasticsearchRef: invalid",
+			info:    AssociationInfo{AssociationName: "test", ElasticsearchUserCreation: withUserCreation},
+			wantErr: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAssociationInfo(tt.info)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

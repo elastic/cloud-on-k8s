@@ -32,8 +32,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
-func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
+func agentFleetServerAssociationInfo() association.AssociationInfo {
+	return association.AssociationInfo{
 		AssociatedObjTemplate:        func() commonv1.Associated { return &agentv1alpha1.Agent{} },
 		AssociatedObjListTemplate:    func() client.ObjectList { return &agentv1alpha1.AgentList{} },
 		ReferencedObjTemplate:        func() client.Object { return &agentv1alpha1.Agent{} },
@@ -44,6 +44,7 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociatedShortName:          "agent",
 		AssociationType:              commonv1.FleetServerAssociationType,
 		AdditionalSecrets:            additionalSecrets,
+		ElasticsearchRef:             agentFleetServerESRef,
 		ReconcileTransitiveESSecrets: fleetManagedAgentTransitiveESRef,
 		Labels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
@@ -57,7 +58,47 @@ func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer
 		AssociationResourceNamespaceLabelName: agent.NamespaceLabelName,
 
 		ElasticsearchUserCreation: nil,
-	})
+	}
+}
+
+func AddAgentFleetServer(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+	return association.AddAssociationController(mgr, accessReviewer, params, agentFleetServerAssociationInfo())
+}
+
+// getFleetServerESAssociation fetches the fleet server at nsn and returns its single
+// Elasticsearch association. Returns (nil, nil) when the fleet server has no
+// ElasticsearchRefs. Returns (nil, err) on any lookup or ambiguity error.
+func getFleetServerESAssociation(ctx context.Context, c k8s.Client, nsn types.NamespacedName) (commonv1.Association, error) {
+	var fleetServer agentv1alpha1.Agent
+	if err := c.Get(ctx, nsn, &fleetServer); err != nil {
+		return nil, err
+	}
+	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+		return nil, nil
+	}
+	return association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
+}
+
+// agentFleetServerESRef resolves the Elasticsearch reference transitively via the Fleet Server
+// (Agent -> Fleet Server -> Elasticsearch) for RBAC enforcement purposes.
+// Returns (false, _, nil) whenever no transitive ES ref can be resolved: the fleet server ref is
+// not set on the agent, the fleet server does not exist yet, or the fleet server has no ES association.
+func agentFleetServerESRef(ctx context.Context, c k8s.Client, assoc commonv1.Association) (bool, commonv1.AssociationRef, error) {
+	fleetServerRef := assoc.AssociationRef()
+	if !fleetServerRef.IsSet() {
+		return false, commonv1.ObjectSelector{}, nil
+	}
+	esAssociation, err := getFleetServerESAssociation(ctx, c, fleetServerRef.NamespacedName())
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, commonv1.ObjectSelector{}, nil
+		}
+		return false, commonv1.ObjectSelector{}, err
+	}
+	if esAssociation == nil {
+		return false, commonv1.ObjectSelector{}, nil
+	}
+	return true, esAssociation.AssociationRef(), nil
 }
 
 // additionalSecrets returns secrets from the Fleet Server's Elasticsearch association that
@@ -74,22 +115,13 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 	if !fleetServerRef.IsSet() {
 		return nil, nil
 	}
-	fleetServer := agentv1alpha1.Agent{}
-	if err := c.Get(ctx, fleetServerRef.NamespacedName(), &fleetServer); err != nil {
-		return nil, err
-	}
-
-	// If the Fleet Server Agent is not associated with an Elasticsearch cluster
-	// (potentially because of a manual setup) we should do nothing.
-	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
-		return nil, nil
-	}
-	esRef := fleetServer.Spec.ElasticsearchRefs[0]
-	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
+	esAssociation, err := getFleetServerESAssociation(ctx, c, fleetServerRef.NamespacedName())
 	if err != nil {
 		return nil, err
 	}
-
+	if esAssociation == nil {
+		return nil, nil
+	}
 	conf, err := esAssociation.AssociationConf()
 	if err != nil {
 		log.V(1).Info("no additional secrets because no assoc conf")
@@ -105,7 +137,7 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 	if conf.CACertProvided {
 		log.V(1).Info("additional secret because CA provided")
 		secrets = append(secrets, association.AdditionalSecret{
-			Source: types.NamespacedName{Namespace: fleetServer.Namespace, Name: conf.CASecretName},
+			Source: types.NamespacedName{Namespace: fleetServerRef.NamespacedName().Namespace, Name: conf.CASecretName},
 			// Always restrict the copy to ca.crt. For external ES references, CASecretName ==
 			// AuthSecretName, so the source secret also contains url/username/password — filtering
 			// to ca.crt prevents credential leakage. For managed refs the CA secret also contains
@@ -116,10 +148,10 @@ func additionalSecrets(ctx context.Context, c k8s.Client, assoc commonv1.Associa
 		})
 	}
 
-	if conf.ClientCertIsConfigured() && esRef.GetClientCertificateSecretName() != "" {
+	if conf.ClientCertIsConfigured() && esAssociation.AssociationRef().GetClientCertificateSecretName() != "" {
 		log.V(1).Info("additional secret because user client certificate is provided")
 		secrets = append(secrets, association.AdditionalSecret{
-			Source:     types.NamespacedName{Namespace: fleetServer.Namespace, Name: conf.GetClientCertSecretName()},
+			Source:     types.NamespacedName{Namespace: fleetServerRef.NamespacedName().Namespace, Name: conf.GetClientCertSecretName()},
 			TargetName: transitiveESClientCertTargetName(assoc, conf),
 		})
 	}
@@ -172,11 +204,6 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	log := ulog.FromContext(ctx)
 	associated := assoc.Associated()
-	var agnt agentv1alpha1.Agent
-	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
-	if err := c.Get(ctx, nsn, &agnt); err != nil {
-		return nil, results.WithError(err)
-	}
 	fleetServerRef := assoc.AssociationRef()
 	if !fleetServerRef.IsSet() {
 		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
@@ -184,24 +211,16 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		}
 		return nil, nil
 	}
-	fleetServer := agentv1alpha1.Agent{}
-	if err := c.Get(ctx, fleetServerRef.NamespacedName(), &fleetServer); err != nil {
+	esAssociation, err := getFleetServerESAssociation(ctx, c, fleetServerRef.NamespacedName())
+	if err != nil {
 		return nil, results.WithError(err)
 	}
-
-	// Fleet Server Agent is not associated with an Elasticsearch cluster
-	if len(fleetServer.Spec.ElasticsearchRefs) == 0 {
+	if esAssociation == nil {
 		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
 	}
-	esRef := fleetServer.Spec.ElasticsearchRefs[0]
-	esAssociation, err := association.SingleAssociationOfType(fleetServer.GetAssociations(), commonv1.ElasticsearchAssociationType)
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
 	conf, err := esAssociation.AssociationConf()
 	if err != nil {
 		log.V(1).Info("Transitive ES association conf not available")
@@ -225,7 +244,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	// Compute the user-provided client cert name up front so the external-ES branch can include
 	// it in the TransitiveESRef and preserve its copy in the agent namespace.
 	var userClientCertName string
-	if esRef.GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
+	if esAssociation.AssociationRef().GetClientCertificateSecretName() != "" && conf.ClientCertIsConfigured() {
 		userClientCertName = transitiveESClientCertTargetName(assoc, conf)
 	}
 
