@@ -141,12 +141,12 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := reconcilePVCOwnerRefs(ctx, d.K8sClient(), d.ES); err != nil {
+	waitingPVCs, err := reconcilePVCOwnerRefs(ctx, d.K8sClient(), d.ES, actualStatefulSets)
+	if err != nil {
 		return results.WithError(err)
 	}
-
-	if err := GarbageCollectPVCs(ctx, d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
-		return results.WithError(err)
+	if len(waitingPVCs) > 0 {
+		results.WithReconciliationState(shared.DefaultRequeue.WithReason(fmt.Sprintf("Waiting for upstream StatefulSet controller to stamp ownerRefs on PVCs: %s", waitingPVCs)))
 	}
 
 	if err := keystorepassword.MaybeGarbageCollectKeystorePasswordSecret(ctx, d.Client, d.ES, d.Version, resolvedConfig.PolicyConfig.ElasticsearchConfig); err != nil {

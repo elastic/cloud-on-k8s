@@ -117,6 +117,18 @@ func BuildStatefulSet(
 	}
 	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
 
+	// WhenDeleted controls cascade-deletion when the StatefulSet is GC'd on cluster deletion.
+	// WhenScaled=Delete delegates scale-down PVC cleanup to the StatefulSet controller, which
+	// stamps a Pod ownerRef on each condemned PVC before deleting the pod so Kubernetes GC
+	// removes it automatically.
+	var pvcWhenDeleted appsv1.PersistentVolumeClaimRetentionPolicyType
+	switch es.Spec.VolumeClaimDeletePolicyOrDefault() {
+	case esv1.DeleteOnScaledownAndClusterDeletionPolicy:
+		pvcWhenDeleted = appsv1.DeletePersistentVolumeClaimRetentionPolicyType
+	case esv1.DeleteOnScaledownOnlyPolicy:
+		pvcWhenDeleted = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
+	}
+
 	sset := appsv1.StatefulSet{
 		Namespace:   es.Namespace,
 		Name:        statefulSetName,
@@ -139,6 +151,10 @@ func BuildStatefulSet(
 			Replicas:             &nodeSet.Count,
 			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
+			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: pvcWhenDeleted,
+				WhenScaled:  appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+			},
 		},
 	}
 
