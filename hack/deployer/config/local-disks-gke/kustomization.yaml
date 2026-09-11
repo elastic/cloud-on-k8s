@@ -1,0 +1,15 @@
+resources:
+  - ../local-disks
+patches:
+  - target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: setup-disks
+    path: gke-nvme-format-script-patch.yaml
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: local-volume-provisioner
+    path: gke-nvme-init-container-patch.yaml

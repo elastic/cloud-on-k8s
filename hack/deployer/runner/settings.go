@@ -76,16 +76,19 @@ type BucketSecretSettings struct {
 
 // GKESettings encapsulates settings specific to GKE
 type GKESettings struct {
-	GCloudProject    string `yaml:"gCloudProject"`
-	Region           string `yaml:"region"`
-	LocalSsdCount    int    `yaml:"localSsdCount"`
-	NodeCountPerZone int    `yaml:"nodeCountPerZone"`
-	GcpScopes        string `yaml:"gcpScopes"`
-	ClusterIPv4CIDR  string `yaml:"clusterIpv4Cidr"`
-	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
-	Private          bool   `yaml:"private"`
-	NetworkPolicy    bool   `yaml:"networkPolicy"`
-	Autopilot        bool   `yaml:"autopilot"`
+	GCloudProject string `yaml:"gCloudProject"`
+	Region        string `yaml:"region"`
+	// Deprecated: use LocalNvmeSsdBlock. LocalSsdCount is retained for compatibility with existing GKE overrides.
+	LocalSsdCount int `yaml:"localSsdCount"`
+	// LocalNvmeSsdBlock attaches one raw NVMe Local SSD per node and configures it for local PersistentVolumes.
+	LocalNvmeSsdBlock bool   `yaml:"localNvmeSsdBlock"`
+	NodeCountPerZone  int    `yaml:"nodeCountPerZone"`
+	GcpScopes         string `yaml:"gcpScopes"`
+	ClusterIPv4CIDR   string `yaml:"clusterIpv4Cidr"`
+	ServicesIPv4CIDR  string `yaml:"servicesIpv4Cidr"`
+	Private           bool   `yaml:"private"`
+	NetworkPolicy     bool   `yaml:"networkPolicy"`
+	Autopilot         bool   `yaml:"autopilot"`
 }
 
 // AKSSettings encapsulates settings specific to AKS
