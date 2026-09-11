@@ -200,9 +200,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOnline, statusBuilder.Build())
 
 	// Update the Elasticsearch resource with the calculated resources.
-	if err := reconcileElasticsearch(log, &es, nextClusterResources); err != nil {
-		errors = append(errors, err)
-	}
+	reconcileElasticsearch(log, &es, nextClusterResources)
 	if len(errors) > 0 {
 		return nil, tracing.CaptureError(ctx, k8serrors.NewAggregate(errors))
 	}
@@ -247,9 +245,7 @@ func (r *baseReconcileAutoscaling) doOfflineReconciliation(
 	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOffline, statusBuilder.Build())
 
 	// Update the Elasticsearch manifest
-	if err := reconcileElasticsearch(log, &es, clusterNodeSetsResources); err != nil {
-		return nil, tracing.CaptureError(ctx, err)
-	}
+	reconcileElasticsearch(log, &es, clusterNodeSetsResources)
 
 	// Register new resources in the status
 	statusBuilder.UpdateResources(clusterNodeSetsResources, currentAutoscalingStatus)

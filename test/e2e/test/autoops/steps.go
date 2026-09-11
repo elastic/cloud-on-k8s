@@ -198,7 +198,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				})
 			}),
 		}).
-		WithStep(test.CheckSpecNotOwnedByOperator(&b.AutoOpsAgentPolicy, k))
+		WithStep(test.CheckFieldsNotOwnedByOperator(&b.AutoOpsAgentPolicy, k, nil))
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {

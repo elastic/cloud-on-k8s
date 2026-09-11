@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -405,7 +406,7 @@ func Test_shorthandResourcesOverrideWarning(t *testing.T) {
 	nodeSet := func(name string, shorthand commonv1.Resources, containerName string, containerResources corev1.ResourceRequirements) esv1.NodeSet {
 		return esv1.NodeSet{
 			Name:      name,
-			Resources: shorthand,
+			Resources: esv1.NodeSetResources{Resources: shorthand},
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -539,5 +540,47 @@ func Test_shorthandResourcesOverrideWarning(t *testing.T) {
 				assert.Contains(t, w.Detail, "overrides")
 			}
 		})
+	}
+}
+
+// Test_shorthandResourcesOverrideWarning_autoscaled checks that NodeSets driven by an autoscaling
+// policy are NOT exempt from the warning. The shorthand there is written by the autoscaling
+// controller, so the values being shadowed are the user's own, and this is precisely the case the
+// autoscaling contract asks charts to avoid. Removing the container resources from the manifest
+// clears the warning without turning autoscaling off.
+//
+// The warning is deliberately blind to autoscaling: it reports the overlap wherever it finds it,
+// which is why no client is needed to compute it.
+func Test_shorthandResourcesOverrideWarning_autoscaled(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.16.0",
+			// "data" is the tier a policy would target; "master" stands in for a hand-managed one.
+			NodeSets: []esv1.NodeSet{
+				nodeSetWithShorthandAndContainer("autoscaled", "data", cpu),
+				nodeSetWithShorthandAndContainer("manual", "master", cpu),
+			},
+		},
+	}
+
+	got := shorthandResourcesOverrideWarning(es)
+	require.Len(t, got, 2, "an autoscaled NodeSet must warn just like a hand-managed one")
+	assert.Contains(t, got[0].Field, "nodeSets[0]")
+	assert.Contains(t, got[1].Field, "nodeSets[1]")
+}
+
+func nodeSetWithShorthandAndContainer(name, role string, cpu resource.Quantity) esv1.NodeSet {
+	return esv1.NodeSet{
+		Name:   name,
+		Config: &commonv1.Config{Data: map[string]any{"node.roles": []string{role}}},
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
+			Requests: commonv1.ResourceAllocations{CPU: &cpu},
+		}},
+		PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+			Name:      esv1.ElasticsearchContainerName,
+			Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+		}}}},
 	}
 }

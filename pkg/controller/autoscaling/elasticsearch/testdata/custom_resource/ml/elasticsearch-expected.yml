@@ -8,48 +8,54 @@ metadata:
   uid: 898d54d8-a35a-4cd7-9f36-c76ba118c090
 spec:
   nodeSets:
-  - config:
-      node:
-        roles:
-        - master
-    count: 1
-    name: master
-  - config:
-      node:
-        roles:
-        - data
-        - ingest
-        store.allow_mmap: false
-    count: 3
-    name: data
-  - config:
-      node:
-        roles:
-        - ml
-        store.allow_mmap: false
-    count: 1
-    name: ml
-    resources:
-      limits:
-        cpu: "2"
-        memory: "4Gi"
-      requests:
-        cpu: "2"
-        memory: "4Gi"
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources: {}
-    volumeClaimTemplates:
-    - metadata:
-        name: elasticsearch-data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 5Gi
+    - config:
+        node:
+          roles:
+            - master
+      count: 1
+      name: master
+    - config:
+        node:
+          roles:
+            - data
+            - ingest
+          store.allow_mmap: false
+      count: 3
+      name: data
+    - config:
+        node:
+          roles:
+            - ml
+          store.allow_mmap: false
+      count: 1
+      name: ml
+      resources:
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+        requests:
+          cpu: "2"
+          memory: "4Gi"
+        storage: 5Gi
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                limits:
+                  memory: "3520439718"
+                requests:
+                  cpu: "2"
+                  memory: "3520439718"
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
   version: 7.11.0
 status:
   availableNodes: 4

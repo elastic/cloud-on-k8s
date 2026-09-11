@@ -11,11 +11,10 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"

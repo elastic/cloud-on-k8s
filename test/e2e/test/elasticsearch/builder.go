@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -59,6 +60,10 @@ type Builder struct {
 	mutationToleratedChecksFailureCount int
 
 	skipSpecOwnership bool
+
+	// allowedOwnedFields is the fieldpath.Set of spec paths the operator is permitted to own.
+	// Set via CheckFieldOwnershipWithAllowed; used by CheckK8sTestSteps when non-nil.
+	allowedOwnedFields *fieldpath.Set
 }
 
 func (b Builder) ResourceName() string {
@@ -79,7 +84,50 @@ func (b Builder) DeepCopy() *Builder {
 	builderCopy.GlobalCA = b.GlobalCA
 	builderCopy.mutationToleratedChecksFailureCount = b.mutationToleratedChecksFailureCount
 	builderCopy.skipSpecOwnership = b.skipSpecOwnership
+	if b.allowedOwnedFields != nil {
+		builderCopy.allowedOwnedFields = b.allowedOwnedFields.Copy()
+	}
 	return &builderCopy
+}
+
+// WithAutoscalerManagedNodeset declares which resource dimensions the autoscaler is permitted to
+// own for the given nodeSet. count is always included. cpu, memory, and storage each correspond to
+// the resource ranges in the autoscaling policy. The resulting fields are merged into any previously
+// registered allowed fields (prior calls are not cleared), and the accumulated set is used by
+// CheckK8sTestSteps to assert that the operator does not claim ownership of any field outside it.
+func (b Builder) WithAutoscalerManagedNodeset(nodeSetName string, cpu, memory, storage bool) Builder {
+	b.skipSpecOwnership = false
+	var set *fieldpath.Set
+	if b.allowedOwnedFields != nil {
+		set = b.allowedOwnedFields.Copy()
+	} else {
+		set = fieldpath.NewSet()
+	}
+	nsKey := fieldpath.KeyElementByFields("name", nodeSetName)
+	set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "count"))
+	if cpu {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "cpu"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "cpu"))
+	}
+	if memory {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "memory"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "memory"))
+	}
+	if storage {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "storage"))
+	}
+	return b.WithOwnershipCheckAndAllowedFields(set)
+}
+
+// WithOwnershipCheckAndAllowedFields sets the fieldpath.Set of spec paths the operator is
+// permitted to own. When set, CheckK8sTestSteps permits those paths in its ownership assertion.
+func (b Builder) WithOwnershipCheckAndAllowedFields(allowed *fieldpath.Set) Builder {
+	if allowed == nil {
+		b.allowedOwnedFields = nil
+	} else {
+		b.allowedOwnedFields = allowed.Copy()
+	}
+	return b
 }
 
 func (b Builder) GetExpectedElasticsearch() esv1.Elasticsearch {

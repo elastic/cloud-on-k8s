@@ -110,6 +110,17 @@ func (nr NodeResources) ToNodeSetResourcesWith(existing commonv1.Resources) comm
 	return merged
 }
 
+// StorageRequestOr returns the storage request held by this recommendation, or existing when the
+// recommendation does not manage storage. Storage lives in the same request list as CPU and memory
+// on the autoscaling side, but targets a volume claim rather than the main container, so it is
+// resolved separately from ToNodeSetResourcesWith.
+func (nr NodeResources) StorageRequestOr(existing *resource.Quantity) *resource.Quantity {
+	if !nr.HasRequest(corev1.ResourceStorage) {
+		return existing
+	}
+	return new(nr.GetRequest(corev1.ResourceStorage))
+}
+
 // MaxMerge merges the specified resource into the NodeResources only if its quantity is greater than the existing one.
 func (nr *NodeResources) MaxMerge(
 	other corev1.ResourceRequirements,

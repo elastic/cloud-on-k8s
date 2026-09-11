@@ -66,6 +66,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20260626114624-be93311217bd | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.25.0 | Apache-2.0 |
 | [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.22.0 | Apache-2.0 |
+| [sigs.k8s.io/structured-merge-diff/v6](https://sigs.k8s.io/structured-merge-diff/v6) | v6.4.2 | Apache-2.0 |
 | [sigs.k8s.io/yaml](https://sigs.k8s.io/yaml) | v1.6.0 | Apache-2.0 |
 
 
@@ -270,5 +271,4 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [sigs.k8s.io/apiserver-network-proxy/konnectivity-client](https://sigs.k8s.io/apiserver-network-proxy/konnectivity-client) | v0.36.0 | Apache-2.0 |
 | [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20250730193827-2d320260d730 | Apache-2.0 |
 | [sigs.k8s.io/randfill](https://sigs.k8s.io/randfill) | v1.0.0 | Apache-2.0 |
-| [sigs.k8s.io/structured-merge-diff/v6](https://sigs.k8s.io/structured-merge-diff/v6) | v6.4.2 | Apache-2.0 |
 
