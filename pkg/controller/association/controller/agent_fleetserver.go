@@ -204,11 +204,6 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 
 	log := ulog.FromContext(ctx)
 	associated := assoc.Associated()
-	var agnt agentv1alpha1.Agent
-	nsn := types.NamespacedName{Namespace: associated.GetNamespace(), Name: associated.GetName()}
-	if err := c.Get(ctx, nsn, &agnt); err != nil {
-		return nil, results.WithError(err)
-	}
 	fleetServerRef := assoc.AssociationRef()
 	if !fleetServerRef.IsSet() {
 		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
