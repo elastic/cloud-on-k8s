@@ -141,7 +141,7 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if err := reconcilePVCOwnerRefs(ctx, d.K8sClient(), d.ES); err != nil {
+	if err := ReconcilePVCOwnerRefs(ctx, d.K8sClient(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 

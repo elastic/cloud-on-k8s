@@ -113,6 +113,19 @@ func BuildStatefulSet(
 	}
 	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
 
+	// When DeleteOnScaledownAndClusterDeletion is set (the default), instruct the StatefulSet
+	// controller to stamp ownerRef → StatefulSet on every PVC it manages, including any PVC it
+	// recreates during the cluster-deletion window. When the StatefulSet is subsequently
+	// garbage-collected (because the ES CR is gone), all owned PVCs cascade-delete automatically.
+	// WhenScaled is always Retain because ECK manages scale-down PVC cleanup itself via GarbageCollectPVCs.
+	var pvcWhenDeleted appsv1.PersistentVolumeClaimRetentionPolicyType
+	switch es.Spec.VolumeClaimDeletePolicyOrDefault() {
+	case esv1.DeleteOnScaledownAndClusterDeletionPolicy:
+		pvcWhenDeleted = appsv1.DeletePersistentVolumeClaimRetentionPolicyType
+	case esv1.DeleteOnScaledownOnlyPolicy:
+		pvcWhenDeleted = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
+	}
+
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   es.Namespace,
@@ -137,6 +150,10 @@ func BuildStatefulSet(
 			Replicas:             &nodeSet.Count,
 			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
+			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: pvcWhenDeleted,
+				WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+			},
 		},
 	}
 

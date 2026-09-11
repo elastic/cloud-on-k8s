@@ -19,7 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func Test_reconcilePVCOwnerRefs(t *testing.T) {
+func Test_ReconcilePVCOwnerRefs(t *testing.T) {
 	type args struct {
 		c  k8s.Client
 		es esv1.Elasticsearch
@@ -55,6 +55,16 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 	pvcFixturePtr := func(name string, ownerRefs ...string) *corev1.PersistentVolumeClaim {
 		pvc := pvcFixture(name, ownerRefs...)
 		return &pvc
+	}
+
+	// withSSetOwnerRef appends a StatefulSet ownerRef to the given PVC.
+	withSSetOwnerRef := func(pvc corev1.PersistentVolumeClaim, ssetName string) corev1.PersistentVolumeClaim {
+		pvc.OwnerReferences = append(pvc.OwnerReferences, metav1.OwnerReference{
+			Name:       ssetName,
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		})
+		return pvc
 	}
 
 	tests := []struct {
@@ -124,15 +134,54 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 			wantErr:    false,
 			wantUpdate: true,
 		},
+		{
+			name: "remove stale StatefulSet ownerRef on DeleteOnScaledownOnlyPolicy",
+			args: args{
+				c: k8s.NewFakeClient(func() *corev1.PersistentVolumeClaim {
+					p := withSSetOwnerRef(pvcFixture("es-data-0"), "es-es-0")
+					return &p
+				}()),
+				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
+			},
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
+			wantErr:    false,
+			wantUpdate: true,
+		},
+		{
+			name: "remove both ES and StatefulSet ownerRefs on DeleteOnScaledownOnlyPolicy",
+			args: args{
+				c: k8s.NewFakeClient(func() *corev1.PersistentVolumeClaim {
+					p := withSSetOwnerRef(pvcFixture("es-data-0", "es"), "es-es-0")
+					return &p
+				}()),
+				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
+			},
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0")},
+			wantErr:    false,
+			wantUpdate: true,
+		},
+		{
+			name: "keep non-StatefulSet ownerRefs when removing stale StatefulSet ownerRef",
+			args: args{
+				c: k8s.NewFakeClient(func() *corev1.PersistentVolumeClaim {
+					p := withSSetOwnerRef(pvcFixture("es-data-0", "some-other-ref"), "es-es-0")
+					return &p
+				}()),
+				es: esFixture(esv1.DeleteOnScaledownOnlyPolicy),
+			},
+			want:       []corev1.PersistentVolumeClaim{pvcFixture("es-data-0", "some-other-ref")},
+			wantErr:    false,
+			wantUpdate: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			trackedClient := trackingK8sClient{Client: tt.args.c}
-			if err := reconcilePVCOwnerRefs(context.Background(), &trackedClient, tt.args.es); (err != nil) != tt.wantErr {
+			if err := ReconcilePVCOwnerRefs(t.Context(), &trackedClient, tt.args.es); (err != nil) != tt.wantErr {
 				t.Errorf("reconcilePVCOwnerRefs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var pvcs corev1.PersistentVolumeClaimList
-			if err := tt.args.c.List(context.Background(), &pvcs); err != nil {
+			if err := tt.args.c.List(t.Context(), &pvcs); err != nil {
 				t.Errorf("reconcilePVCOwnerRefs(), failed to list pvcs: %v", err)
 			}
 			require.Equal(t, len(tt.want), len(pvcs.Items), "unexpected number of pvcs")
