@@ -8,11 +8,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
@@ -130,6 +137,77 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := preserveExistingVolumeClaimsOwnerRefs(tt.persistentVolumeClaims, tt.existingClaims)
 			require.Equal(t, tt.wantClaims, got)
+		})
+	}
+}
+
+func Test_BuildStatefulSet_PVCRetentionPolicy(t *testing.T) {
+	tests := []struct {
+		name            string
+		deletePolicy    esv1.VolumeClaimDeletePolicy
+		wantWhenDeleted appsv1.PersistentVolumeClaimRetentionPolicyType
+		wantWhenScaled  appsv1.PersistentVolumeClaimRetentionPolicyType
+	}{
+		{
+			name:            "DeleteOnScaledownAndClusterDeletion sets whenDeleted=Delete",
+			deletePolicy:    esv1.DeleteOnScaledownAndClusterDeletionPolicy,
+			wantWhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+			wantWhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+		},
+		{
+			name:            "DeleteOnScaledownOnly sets whenDeleted=Retain",
+			deletePolicy:    esv1.DeleteOnScaledownOnlyPolicy,
+			wantWhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+			wantWhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+		},
+		{
+			name:            "empty policy (default) sets whenDeleted=Delete",
+			deletePolicy:    "",
+			wantWhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+			wantWhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+		},
+	}
+
+	nodeSet := esv1.NodeSet{
+		Name:  "default",
+		Count: 1,
+		Config: &commonv1.Config{
+			Data: map[string]any{"node.roles": []string{"master", "data"}},
+		},
+		PodTemplate: corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esObj := newEsSampleBuilder().withVersion("8.14.0").build()
+			esObj.Spec.NodeSets = []esv1.NodeSet{nodeSet}
+			esObj.Spec.VolumeClaimDeletePolicy = tt.deletePolicy
+
+			client := k8s.NewFakeClient(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: esObj.Namespace, Name: esv1.ScriptsConfigMap(esObj.Name)},
+			})
+
+			ver, err := version.Parse(esObj.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(
+				esObj.Name, ver, corev1.IPv4Protocol, esObj.Spec.HTTP,
+				*nodeSet.Config, nil, false, false, false, false,
+			)
+			require.NoError(t, err)
+
+			sts, err := BuildStatefulSet(
+				t.Context(), client, esObj, nodeSet, cfg,
+				nil, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
+			)
+			require.NoError(t, err)
+			require.NotNil(t, sts.Spec.PersistentVolumeClaimRetentionPolicy,
+				"PersistentVolumeClaimRetentionPolicy must be set")
+			require.Equal(t, tt.wantWhenDeleted, sts.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted)
+			require.Equal(t, tt.wantWhenScaled, sts.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
 		})
 	}
 }
