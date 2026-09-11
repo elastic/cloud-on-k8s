@@ -858,7 +858,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 
 			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets)
 			// the shutdowns of the draining nodes are already registered, only the nodes selected for removal get one
-			require.Equal(t, tt.wantPutShutdowns, esClient.PutShutdownCalledWith)
+			var putShutdowns []string
+			for _, call := range esClient.PutShutdownCalls {
+				putShutdowns = append(putShutdowns, call.NodeID)
+			}
+			require.Equal(t, tt.wantPutShutdowns, putShutdowns)
 			require.Equal(t, tt.wantErr, results.HasError())
 			require.Equal(t, tt.wantShutdownCancelled, esClient.DeleteShutdownCalled)
 			// the shutdown status of each node is retrieved, and reported to the observer, once
