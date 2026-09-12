@@ -169,7 +169,7 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			ConfigVolumeName,
 			path.Join(ConfigMountPath, ConfigFileName),
 			ConfigFileName,
-			0440),
+			0444), // temporary fix this will be split-up in a follow up PR
 	}
 
 	// fleet mode requires some special treatment

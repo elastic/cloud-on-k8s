@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -28,6 +29,31 @@ func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
 	}
 	if !isValid {
 		t.SkipNow()
+	}
+
+	SkipUnsupportedStackVariantVersions(t, srcVersion, dstVersion)
+}
+
+func SkipUnsupportedStackVariantVersions(t *testing.T, versions ...string) {
+	t.Helper()
+
+	containerSuffix := Ctx().ContainerSuffix
+	if containerSuffix != container.WolfiSuffix {
+		return
+	}
+
+	for _, v := range versions {
+		ver, err := version.Parse(v)
+		if err != nil {
+			t.Fatalf("Failed to determine the validity of the upgrade path: %v", err)
+		}
+		switch {
+		case ver.Major == 7:
+			t.Skipf("Version %s is unsupported for Wolfi image variants", v)
+		// 8.16.0 is the oldest version where all stack components publish a -wolfi image variant.
+		case ver.Major == 8 && ver.Minor < 16:
+			t.Skipf("Version %s is unsupported for Wolfi image variants", v)
+		}
 	}
 }
 
