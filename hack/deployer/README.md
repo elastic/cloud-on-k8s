@@ -18,6 +18,31 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
     make switch-gke bootstrap-cloud
     ```
 
+  The `gke-dev` plan uses GKE Persistent Disk for `e2e-default` and does not
+  attach Local SSDs by default. To reproduce the CI storage setup, enable raw
+  NVMe Local SSD before initially creating the cluster. This single setting
+  both attaches one Local SSD to every node and provisions it as fixed-size
+  local PersistentVolumes.
+
+  Add `localNvmeSsdBlock` to the `gke` overrides in the generated
+  `hack/deployer/config/deployer-config-gke.yml` before running
+  `make bootstrap-cloud`:
+
+    ```yaml
+    overrides:
+      gke:
+        localNvmeSsdBlock: true
+    ```
+
+  This override only takes effect during cluster creation and cannot enable
+  Local SSD on an existing cluster. To opt in later, migrate or back up any
+  existing `e2e-default` data, delete the cluster, and create it again with the
+  override enabled.
+
+  The GKE `localSsdCount` setting is deprecated and retained only for
+  compatibility with existing deployer configurations. New configurations
+  should use `localNvmeSsdBlock`.
+
 * AKS
 
   * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)

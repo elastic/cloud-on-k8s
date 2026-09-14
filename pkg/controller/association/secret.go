@@ -11,17 +11,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash"
+	"maps"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	esClient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -39,6 +42,11 @@ const (
 	AuthTypeUnmanagedBasic = iota
 	AuthTypeUnmanagedAPIKey
 )
+
+// AdditionalSecretLabelName marks secrets created as cross-namespace copies by the additional-secrets
+// mechanism. deleteStaleAdditionalSecrets uses this label (combined with association labels) to find
+// and GC copies that are no longer needed.
+const AdditionalSecretLabelName = "association.k8s.elastic.co/additional-secret"
 
 // ExpectedConfigFromUnmanagedAssociation returns the association configuration to associate the external unmanaged resource referenced
 // in the given association.
@@ -172,7 +180,7 @@ func (r UnmanagedAssociationConnectionInfo) Request(path string, out any) error 
 	}
 
 	httpClient := &http.Client{
-		Timeout: client.DefaultESClientTimeout,
+		Timeout: esClient.DefaultESClientTimeout,
 	}
 	// configure CA if it exists
 	if r.CaCert != "" {
@@ -224,14 +232,26 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
-// copySecret hashes the source secret data (restricted to keys when non-empty) and, when
-// targetNamespace differs from the source namespace, reconciles a copy of the secret there.
-// The hash is always written so that AdditionalSecretsHash reflects CA cert changes even
-// when source and target share a namespace.
-func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targetNamespace string, source types.NamespacedName, keys []string) error {
+// copySecret copies the source secret into targetNamespace under destName, hashing the
+// (filtered) source data into secHash. Keys restricts which data keys are included; all keys
+// are copied when empty. extraLabels are merged onto the source labels. owner is set as the
+// controller owner reference so Kubernetes GC removes the copy on deletion.
+// Returns true when a secret reconciliation is issued (source and target in different namespaces),
+// false when both share a namespace (hash-only path, no Secret is written).
+func copySecret(
+	ctx context.Context,
+	c k8s.Client,
+	secHash hash.Hash,
+	targetNamespace string,
+	source types.NamespacedName,
+	keys []string,
+	targetName string,
+	owner client.Object,
+	extraLabels map[string]string,
+) (bool, error) {
 	var original corev1.Secret
-	if err := client.Get(ctx, source, &original); err != nil {
-		return err
+	if err := c.Get(ctx, source, &original); err != nil {
+		return false, err
 	}
 
 	data := original.Data
@@ -251,14 +271,19 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targe
 	// the CA cert (the only field that actually reaches pods) has not changed.
 	commonhash.WriteHashObject(secHash, data)
 	if targetNamespace == original.Namespace {
-		return nil
+		return false, nil
 	}
+
+	merged := make(map[string]string, len(original.Labels)+len(extraLabels)+1)
+	maps.Copy(merged, original.Labels)
+	maps.Copy(merged, extraLabels)
+	merged[AdditionalSecretLabelName] = "true"
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        original.Name,
+			Name:        targetName,
 			Namespace:   targetNamespace,
-			Labels:      original.Labels,
+			Labels:      merged,
 			Annotations: original.Annotations,
 		},
 		Data: data,
@@ -268,6 +293,34 @@ func copySecret(ctx context.Context, client k8s.Client, secHash hash.Hash, targe
 	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret
 	// manifest as base64, which would re-expose any credential fields that were filtered
 	// out of Data. Always drop it unconditionally.
-	_, err := reconciler.ReconcileSecret(ctx, client, expected, nil, reconciler.WithAnnotationsToRemove(corev1.LastAppliedConfigAnnotation))
-	return err
+	if _, err := reconciler.ReconcileSecret(ctx, c, expected, owner,
+		reconciler.WithAnnotationsToRemove(corev1.LastAppliedConfigAnnotation)); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// deleteStaleAdditionalSecrets lists secrets in targetNamespace that carry AdditionalSecretLabelName
+// and the given assocLabels, then deletes those whose name is not in copiedNames.
+// copiedNames holds the names of copies that must be preserved; any copy absent from the set is
+// deleted. Pass nil to delete all matching copies (used by Unbind).
+func deleteStaleAdditionalSecrets(ctx context.Context, c client.Client, targetNamespace string, assocLabels map[string]string, copiedNames sets.Set[string]) error {
+	selector := make(client.MatchingLabels, len(assocLabels)+1)
+	maps.Copy(selector, assocLabels)
+	selector[AdditionalSecretLabelName] = "true"
+
+	var secrets corev1.SecretList
+	if err := c.List(ctx, &secrets, client.InNamespace(targetNamespace), selector); err != nil {
+		return err
+	}
+	for i := range secrets.Items {
+		if exists := copiedNames.Has(secrets.Items[i].Name); exists {
+			continue
+		}
+		if err := k8s.DeleteSecretIfExists(ctx, c, k8s.ExtractNamespacedName(&secrets.Items[i])); err != nil {
+			return err
+		}
+		ulog.FromContext(ctx).V(1).Info("Deleted stale additional secret copy", "secret_namespace", secrets.Items[i].Namespace, "secret_name", secrets.Items[i].Name)
+	}
+	return nil
 }
