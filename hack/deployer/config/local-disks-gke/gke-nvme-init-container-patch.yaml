@@ -10,7 +10,7 @@
       - -c
       - |-
         apk update \
-          && apk add e2fsprogs mount util-linux \
+          && apk add e2fsprogs findmnt mount util-linux \
           && /bin/gke-nvme-format.sh
     volumeMounts:
       - mountPath: /bin/gke-nvme-format.sh
