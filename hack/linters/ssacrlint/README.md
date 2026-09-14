@@ -59,7 +59,7 @@ The second and third messages are deliberately conservative. A mixed or unresolv
 
 Some full-object writes are intentional. One example is a controller that owns the whole spec. Mark those writes with a `//nolint:ssacrlint` directive and a short reason.
 
-These forms all work:
+Suppression is handled by golangci-lint's own nolint processing. These forms work:
 
 ```go
 // Same line as the call
@@ -77,22 +77,17 @@ c.Update( //nolint:ssacrlint
     ctx,
     es,
 )
-
-// Suppress-all forms
-c.Update(ctx, es) //nolint:all
-c.Update(ctx, es) //nolint
 ```
 
-Two forms do not work:
+One form does not work:
 
-1. A directive on an argument line of a multi-line call. The linter reports the diagnostic at the line that opens the call, so it does not see a directive below that line.
-2. A directive that trails the statement before the call, for example `foo() //nolint:ssacrlint`. That directive belongs to `foo()`. The linter accepts a directive on the preceding line only when the comment stands alone.
+- A directive on an argument line of a multi-line call. The linter reports the diagnostic at the line that opens the call, so golangci-lint does not match a directive below that line.
+
+When running the standalone binary (`go vet -vettool=...`), there is no suppression mechanism. Every flagged call produces a diagnostic regardless of any `//nolint` comment.
 
 ### Repository-level exclusions
 
 `.golangci.yml` disables the linter for `*_test.go` files and for `test/e2e/`. Full-object writes are expected in both.
-
-`.golangci.yml` also tells `nolintlint` to ignore `ssacrlint` directives. `nolintlint` cannot see the output of a plugin linter. Without the exclusion it reports every `//nolint:ssacrlint` as unused.
 
 ## Running the linter
 

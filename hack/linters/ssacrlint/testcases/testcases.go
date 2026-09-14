@@ -51,81 +51,11 @@ func NotFlaggedStatusUpdate(c client.Client, ctx context.Context) {
 	c.Status().Update(ctx, cr)
 }
 
-// NotFlaggedNolint has a //nolint:ssacrlint comment — must not be flagged.
-func NotFlaggedNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolint:ssacrlint
-}
-
-// NotFlaggedNolintAll has a //nolint:all comment — must not be flagged.
-func NotFlaggedNolintAll(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolint:all
-}
-
-// NotFlaggedBareNolint has a bare //nolint comment — must not be flagged.
-func NotFlaggedBareNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolint
-}
-
-// NotFlaggedMultilineNolint has //nolint:ssacrlint on the opening line of a
-// multi-line call — must not be flagged.
-func NotFlaggedMultilineNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update( //nolint:ssacrlint
-		ctx,
-		cr,
-	)
-}
-
-// NotFlaggedCombinedNolint has a //nolint:govet,ssacrlint comment — must not be flagged.
-func NotFlaggedCombinedNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolint:govet,ssacrlint
-}
-
-// FlaggedMultilineNolintWrongLine has //nolint:ssacrlint on an argument line
-// of a multi-line call. Diagnostics are reported at the call's opening line, so
-// the nolint is invisible there — must produce a diagnostic.
-func FlaggedMultilineNolintWrongLine(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update( // want "on an ECK CR"
-		ctx,
-		cr, //nolint:ssacrlint
-	)
-}
-
-// NotFlaggedPrecedingLineNolint has //nolint:ssacrlint on the line immediately
-// before the call — the repository's established suppression form — must not be flagged.
-func NotFlaggedPrecedingLineNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	//nolint:ssacrlint
-	c.Update(ctx, cr)
-}
-
-// FlaggedTrailingNolintPreviousStatement has //nolint:ssacrlint trailing on
-// the statement immediately before the Update call. The directive belongs to
-// that statement, not the call — must produce a diagnostic.
-func FlaggedTrailingNolintPreviousStatement(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	_ = cr            //nolint:ssacrlint
-	c.Update(ctx, cr) // want "on an ECK CR"
-}
-
 // FlaggedMethodExprUpdate calls Update as a method expression where the
 // receiver is passed as an explicit first argument — must produce a diagnostic.
 func FlaggedMethodExprUpdate(c client.Client, ctx context.Context) {
 	cr := &fakev1.FakeCR{}
 	client.Client.Update(c, ctx, cr) // want "on an ECK CR"
-}
-
-// FlaggedNolintUnrelated has //nolintlint on the call line. It is an
-// unrelated directive (isNolintSuppressed returns false for it) and must
-// not suppress this linter — must produce a diagnostic.
-func FlaggedNolintUnrelated(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolintlint // want "on an ECK CR"
 }
 
 // FlaggedAliasUpdate calls Update on a type alias of an ECK CR. The analyzer
@@ -188,17 +118,6 @@ func FlaggedParenConversionUpdate(c client.Client, ctx context.Context) {
 	c.Update(ctx, (client.Object(cr))) // want "on an ECK CR"
 }
 
-// FlaggedBraceNolintPreviousLine has //nolint:ssacrlint trailing after an
-// opening brace on the line immediately preceding the Update call. Since code
-// precedes the directive on that line it is not a standalone suppression —
-// must produce a diagnostic.
-func FlaggedBraceNolintPreviousLine(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	if true { //nolint:ssacrlint
-		c.Update(ctx, cr) // want "on an ECK CR"
-	}
-}
-
 // FlaggedInterfaceVarUpdate declares obj as client.Object but assigns a
 // concrete ECK CR value. The static type at the call site is client.Object,
 // but the analyzer traces the variable back to its initializer and must
@@ -243,12 +162,6 @@ func FlaggedPatchCR(c client.Client, ctx context.Context) {
 func NotFlaggedPatchNonCR(c client.Client, ctx context.Context) {
 	secret := &corev1.Secret{}
 	c.Patch(ctx, secret, client.MergeFrom(&corev1.Secret{}))
-}
-
-// NotFlaggedPatchNolint has a //nolint:ssacrlint comment — must not be flagged.
-func NotFlaggedPatchNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Patch(ctx, cr, client.MergeFrom(&fakev1.FakeCR{})) //nolint:ssacrlint
 }
 
 // NotFlaggedSubResourcePatch calls Status().Patch() — SubResourceWriter does
@@ -336,14 +249,6 @@ func FlaggedMixedBranchPatch(c client.Client, ctx context.Context, b bool) {
 		obj = &corev1.Secret{}
 	}
 	c.Patch(ctx, obj, client.MergeFrom(&fakev1.FakeCR{})) // want "on at least one branch"
-}
-
-// NotFlaggedSpaceAfterColonNolint has //nolint: ssacrlint (space after the colon),
-// which golangci-lint accepts natively. The custom isNolintSuppressed must also
-// accept it — must not be flagged.
-func NotFlaggedSpaceAfterColonNolint(c client.Client, ctx context.Context) {
-	cr := &fakev1.FakeCR{}
-	c.Update(ctx, cr) //nolint: ssacrlint
 }
 
 // FlaggedLoopCarriedPhiUpdate exercises the crStateInProgress cycle-breaking

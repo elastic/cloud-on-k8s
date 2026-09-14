@@ -38,16 +38,11 @@
 //
 // # Suppression
 //
-// Add a nolint directive to the call. Use it for legitimate full-object writes,
-// such as spec changes and data reconciliation.
-//
-// These forms all work: //nolint:ssacrlint, //nolint:govet,ssacrlint,
-// //nolint:all, and bare //nolint.
-//
-// Put the directive on the same line as the call. You can also put it on the
-// line immediately before the call, as a standalone comment. For a multi-line
-// call, put it on the line that opens the call. A directive on an argument line
-// has no effect.
+// When run through golangci-lint, add //nolint:ssacrlint to the call line to
+// mark a full-object write as intentional. Suppression is handled by
+// golangci-lint's own nolint processing; the analyzer always reports the
+// diagnostic. When run as a standalone go vet tool, there is no suppression
+// mechanism.
 package ssacrlint
 
 import (
@@ -56,7 +51,6 @@ import (
 	"go/token"
 	"go/types"
 	"regexp"
-	"strings"
 	"sync"
 
 	"golang.org/x/tools/go/analysis"
@@ -172,11 +166,6 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 	ssaResult := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssaArgStates := computeSSAArgStates(ssaResult.SrcFuncs, objIdxByMethod, clientWriterIface, crPathRE)
 
-	// Build per-file code-position maps once so that hasNolint can determine
-	// whether a preceding-line comment stands alone without a full AST walk
-	// per call site.
-	lineCodeMaps := buildLineCodeMaps(pass.Files, pass.Fset)
-
 	nodeFilter := []ast.Node{(*ast.CallExpr)(nil)}
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		call := n.(*ast.CallExpr)
@@ -255,10 +244,6 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 		}
 
 		if state == crStateNonCR {
-			return
-		}
-
-		if hasNolint(pass, call.Pos(), lineCodeMaps) {
 			return
 		}
 
@@ -508,118 +493,4 @@ func isECKCR(t types.Type, crPathRE *regexp.Regexp) bool {
 		return false
 	}
 	return crPathRE.MatchString(pkg.Path())
-}
-
-// buildLineCodeMaps returns a map from *token.File to a per-line map of the
-// minimum code position (start or end of any non-comment AST node) on each
-// line. Used by hasNolint to determine in O(1) whether a comment is standalone
-// on its line or trails a prior statement, without a full AST walk per call.
-func buildLineCodeMaps(files []*ast.File, fset *token.FileSet) map[*token.File]map[int]token.Pos {
-	result := make(map[*token.File]map[int]token.Pos, len(files))
-	for _, f := range files {
-		tf := fset.File(f.Pos())
-		m := make(map[int]token.Pos)
-		ast.Inspect(f, func(n ast.Node) bool {
-			if n == nil {
-				return false
-			}
-			addPos := func(p token.Pos) {
-				if !p.IsValid() {
-					return
-				}
-				l := fset.Position(p).Line
-				if prev, ok := m[l]; !ok || p < prev {
-					m[l] = p
-				}
-			}
-			addPos(n.Pos())
-			addPos(n.End())
-			return true
-		})
-		result[tf] = m
-	}
-	return result
-}
-
-// hasNolint returns true when the call site's source line, or the immediately
-// preceding line, contains a nolint directive that covers this linter:
-// //nolint:ssacrlint, //nolint:govet,ssacrlint (combined), //nolint:all,
-// or bare //nolint (suppress-all). For the preceding-line case the comment
-// must be standalone (no code before it on the same line) so that a trailing
-// directive on a prior statement is not misattributed to the Update call.
-//
-// This function is required in both standalone (go vet -vettool, cmd/main.go)
-// and golangci-lint plugin modes. In plugin mode, golangci-lint does apply its
-// own nolint post-processing, but only to diagnostics that are actually
-// reported via pass.Report — this function suppresses before reporting. More
-// importantly, golangci-lint's own processor handles same-line //nolint reliably
-// but does not guarantee support for the preceding-line standalone form, which
-// is another established suppression pattern. Removing this function would silently
-// break that form in plugin mode and remove all suppression in standalone mode.
-func hasNolint(pass *analysis.Pass, pos token.Pos, lineCodeMaps map[*token.File]map[int]token.Pos) bool {
-	line := pass.Fset.Position(pos).Line
-	targetFile := pass.Fset.File(pos)
-	lcm := lineCodeMaps[targetFile]
-	for _, f := range pass.Files {
-		if pass.Fset.File(f.Pos()) != targetFile {
-			continue
-		}
-		for _, cg := range f.Comments {
-			for _, c := range cg.List {
-				commentLine := pass.Fset.Position(c.Pos()).Line
-				if commentLine == line && isNolintSuppressed(c.Text) {
-					return true
-				}
-				if commentLine == line-1 && isNolintSuppressed(c.Text) &&
-					!hasCodeBeforeOnLine(lcm, c.Pos(), commentLine) {
-					return true
-				}
-			}
-		}
-		break
-	}
-	return false
-}
-
-// hasCodeBeforeOnLine reports whether any non-comment AST node starts or ends
-// on the given line at a position before commentPos. It uses a precomputed map
-// of minimum code positions per line (built once per file by buildLineCodeMaps)
-// to answer in O(1). A true result means the comment is trailing on a prior
-// statement rather than standing alone on its own line.
-func hasCodeBeforeOnLine(lcm map[int]token.Pos, commentPos token.Pos, line int) bool {
-	minPos, ok := lcm[line]
-	return ok && minPos < commentPos
-}
-
-// isNolintSuppressed reports whether text is a nolint directive that covers
-// ssacrlint: the specific linter name (alone or in a comma-separated list),
-// //nolint:all, or bare //nolint. Linter names are matched as exact tokens to
-// avoid false positives from names like "ssacrlintx" or "alliance".
-func isNolintSuppressed(text string) bool {
-	after, ok := strings.CutPrefix(strings.TrimSpace(text), "//nolint")
-	if !ok {
-		return false
-	}
-	// bare //nolint (no linter list, or whitespace-delimited) is suppress-all;
-	// any other non-colon suffix (e.g., //nolintlint) is a different directive.
-	if after == "" || after[0] == ' ' || after[0] == '\t' {
-		return true
-	}
-	if after[0] != ':' {
-		return false
-	}
-	// parse comma-separated linter names; trim leading/trailing spaces to
-	// tolerate //nolint: ssacrlint (space after colon), then cut at the first
-	// remaining space/tab to drop trailing inline comments (// reason).
-	list := strings.TrimSpace(after[1:])
-	if idx := strings.IndexAny(list, " \t"); idx >= 0 {
-		list = list[:idx]
-	}
-	for name := range strings.SplitSeq(list, ",") {
-		n := strings.TrimSpace(name)
-		if n == "ssacrlint" || n == "all" {
-			return true
-		}
-	}
-	return false
 }

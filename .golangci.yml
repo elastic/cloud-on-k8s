@@ -114,10 +114,6 @@ linters:
           - ssacrlint
         path: test/e2e/
       - linters:
-          - nolintlint
-        # nolintlint cannot see ssacrlint output (plugin linter) so it incorrectly marks //nolint:ssacrlint as unused
-        text: ssacrlint
-      - linters:
           - staticcheck
         path: pkg/controller/common/tracing/apmclientgo/client.go
         text: SA1019
