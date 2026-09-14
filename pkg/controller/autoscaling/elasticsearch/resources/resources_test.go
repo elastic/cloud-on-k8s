@@ -200,6 +200,55 @@ func TestNodeSetsResources_Match(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "Happy path: storage shorthand matches autoscaler recommendation",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("2Gi"), corev1.ResourceMemory: resource.MustParse("4Gi"), corev1.ResourceCPU: resource.MustParse("2000m")},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).withStorageShorthand("2Gi").withMemoryRequest("4Gi").withCPURequest("2000m").build()},
+			want: true,
+		},
+		{
+			name: "Storage shorthand does not match autoscaler recommendation",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("4Gi"), corev1.ResourceMemory: resource.MustParse("4Gi"), corev1.ResourceCPU: resource.MustParse("2000m")},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).withStorageShorthand("2Gi").withMemoryRequest("4Gi").withCPURequest("2000m").build()},
+			want: false,
+		},
+		{
+			name: "Storage shorthand wins over VCT when both are set",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}, v1alpha1.NodeSetNodeCount{Name: "nodeset-2", NodeCount: 5}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("2Gi")},
+				},
+			},
+			// shorthand says 2Gi (matches), VCT says 8Gi (would not match); shorthand must win
+			args: args{nodeSet: newNodeSetBuilder("nodeset-2", 5).withStorageShorthand("2Gi").withStorageRequest("8Gi").build()},
+			want: true,
+		},
+		{
+			name: "policy has storage but NodeSet has no VCTs and no shorthand: not matched",
+			fields: fields{
+				Name:             "data-inject",
+				NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{v1alpha1.NodeSetNodeCount{Name: "nodeset-1", NodeCount: 3}},
+				ResourcesSpecification: v1alpha1.NodeResources{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: resource.MustParse("10Gi")},
+				},
+			},
+			args: args{nodeSet: newNodeSetBuilder("nodeset-1", 3).build()},
+			want: false,
+		},
+		{
 			name: "Pod template matches but nodeSet resources differ",
 			fields: fields{
 				Name:             "data-inject",
@@ -296,6 +345,7 @@ type nodeSetBuilder struct {
 	memoryRequest, cpuRequest             *resource.Quantity
 	podTemplateMemoryRequest              *resource.Quantity
 	podTemplateCPURequest, storageRequest *resource.Quantity
+	storageShorthand                      *resource.Quantity
 }
 
 func newNodeSetBuilder(name string, count int) *nodeSetBuilder {
@@ -320,6 +370,12 @@ func (nsb *nodeSetBuilder) withCPURequest(qs string) *nodeSetBuilder {
 func (nsb *nodeSetBuilder) withStorageRequest(qs string) *nodeSetBuilder {
 	q := resource.MustParse(qs)
 	nsb.storageRequest = &q
+	return nsb
+}
+
+func (nsb *nodeSetBuilder) withStorageShorthand(qs string) *nodeSetBuilder {
+	q := resource.MustParse(qs)
+	nsb.storageShorthand = &q
 	return nsb
 }
 
@@ -377,6 +433,11 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 		nodeSet.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU] = *nsb.podTemplateCPURequest
 	}
 
+	// Set storage shorthand
+	if nsb.storageShorthand != nil {
+		nodeSet.Resources.Storage = nsb.storageShorthand
+	}
+
 	// Set storage
 	if nsb.storageRequest != nil {
 		storageRequest := corev1.ResourceList{}
@@ -397,4 +458,58 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 		)
 	}
 	return nodeSet
+}
+
+func TestStorageRequestOf(t *testing.T) {
+	q2Gi := resource.MustParse("2Gi")
+	q8Gi := resource.MustParse("8Gi")
+
+	// nodeSetWithEmptyVCT returns a NodeSet that has one VCT but no storage request on it,
+	// to exercise the "VCT present but no request" path in storageRequestOf.
+	nodeSetWithEmptyVCT := func() esv1.NodeSet {
+		ns := newNodeSetBuilder("ns", 1).build()
+		ns.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+			ObjectMeta: metav1.ObjectMeta{Name: volume.ElasticsearchDataVolumeName},
+		}}
+		return ns
+	}
+
+	tests := []struct {
+		name    string
+		nodeSet esv1.NodeSet
+		want    corev1.ResourceList
+	}{
+		{
+			name:    "shorthand wins when both shorthand and VCT are set",
+			nodeSet: newNodeSetBuilder("ns", 1).withStorageShorthand("2Gi").withStorageRequest("8Gi").build(),
+			want:    corev1.ResourceList{corev1.ResourceStorage: q2Gi},
+		},
+		{
+			name:    "VCT fallback when shorthand is nil",
+			nodeSet: newNodeSetBuilder("ns", 1).withStorageRequest("8Gi").build(),
+			want:    corev1.ResourceList{corev1.ResourceStorage: q8Gi},
+		},
+		{
+			name:    "shorthand returned when no VCT is declared",
+			nodeSet: newNodeSetBuilder("ns", 1).withStorageShorthand("2Gi").build(),
+			want:    corev1.ResourceList{corev1.ResourceStorage: q2Gi},
+		},
+		{
+			name:    "nil when no shorthand and no VCT",
+			nodeSet: newNodeSetBuilder("ns", 1).build(),
+			want:    nil,
+		},
+		{
+			name:    "nil when VCT has no storage request and shorthand is unset",
+			nodeSet: nodeSetWithEmptyVCT(),
+			want:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := storageRequestOf(tt.nodeSet)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }

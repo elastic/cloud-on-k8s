@@ -25,20 +25,17 @@ func Match(ntr v1alpha1.NodeSetsResources, nodeSet esv1.NodeSet) (bool, error) {
 			return false, nil
 		}
 
-		// Compare volume request
-		switch len(nodeSet.VolumeClaimTemplates) {
-		case 0:
-			// If there is no VolumeClaimTemplate in the NodeSet then there should be no storage request in the NodeSetsResources.
-			if ntr.HasRequest(corev1.ResourceStorage) {
-				return false, nil
-			}
-		case 1:
-			volumeClaim := nodeSet.VolumeClaimTemplates[0]
-			if !ResourceEqual(corev1.ResourceStorage, ntr.NodeResources.Requests, volumeClaim.Spec.Resources.Requests) {
-				return false, nil
-			}
-		default:
+		// A NodeSet managed by an autoscaling policy is allowed at most one volume claim, because the
+		// data deciders do not support multiple data paths.
+		if len(nodeSet.VolumeClaimTemplates) > 1 {
 			return false, fmt.Errorf("only 1 volume claim template is allowed when autoscaling is enabled, got %d in nodeSet %s", len(nodeSet.VolumeClaimTemplates), nodeSet.Name)
+		}
+
+		// Compare the storage request. The autoscaling controller writes the size to the NodeSet
+		// storage shorthand rather than into the volume claim template, so that is where the
+		// recommendation has to be reflected.
+		if !ResourceEqual(corev1.ResourceStorage, ntr.NodeResources.Requests, storageRequestOf(nodeSet)) {
+			return false, nil
 		}
 
 		currentRequests := nodeSet.Resources.Requests.ToResourceList()
@@ -49,6 +46,26 @@ func Match(ntr v1alpha1.NodeSetsResources, nodeSet esv1.NodeSet) (bool, error) {
 			ResourceEqual(corev1.ResourceCPU, ntr.NodeResources.Limits, currentLimits), nil
 	}
 	return false, nil
+}
+
+// storageRequestOf returns the NodeSet's effective storage request as a ResourceList, so it can be
+// compared with a recommendation. The storage shorthand wins, and the volume claim template's own
+// request is the fallback for a NodeSet that has not been reconciled by the autoscaler yet.
+//
+// If resources.storage is removed from the spec by hand, the shorthand is nil and the VCT becomes
+// the fallback. That causes Match to return false again, so the autoscaler refills the shorthand on
+// the next reconcile via StorageRequestOr.
+func storageRequestOf(nodeSet esv1.NodeSet) corev1.ResourceList {
+	if nodeSet.Resources.Storage != nil {
+		return corev1.ResourceList{corev1.ResourceStorage: *nodeSet.Resources.Storage}
+	}
+	if len(nodeSet.VolumeClaimTemplates) == 1 {
+		q, ok := nodeSet.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage]
+		if ok {
+			return corev1.ResourceList{corev1.ResourceStorage: q}
+		}
+	}
+	return nil
 }
 
 func ResourceEqual(resourceName corev1.ResourceName, expected, current corev1.ResourceList) bool {

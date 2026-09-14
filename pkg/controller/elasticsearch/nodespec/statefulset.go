@@ -100,6 +100,12 @@ func BuildStatefulSet(
 		esvolume.DefaultVolumeClaimTemplates...,
 	)
 
+	// Apply storage shorthand AFTER AppendDefaultPVCs: the default claim must exist before we can
+	// stamp the size onto it. Swapping the calls would silently omit the size when no user VCT is declared.
+	// Keeping the size here rather than in VolumeClaimTemplates lets the storage class and access modes
+	// remain owned solely by whoever declares them.
+	nodeSet.VolumeClaimTemplates = esvolume.ApplyStorageOverride(nodeSet.VolumeClaimTemplates, nodeSet.Resources.Storage)
+
 	// build pod template
 	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue, clientAuthRequired)
 	if err != nil {
