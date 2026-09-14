@@ -228,11 +228,9 @@ func TestWebhook(t *testing.T) {
 
 func mkBeat(uid string) *beatv1beta1.Beat {
 	return &beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: beatv1beta1.BeatSpec{
 			Type:      "filebeat",
 			Version:   "8.2.3",

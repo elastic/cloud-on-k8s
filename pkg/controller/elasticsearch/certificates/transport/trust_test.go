@@ -61,7 +61,7 @@ func TestMaybeRetrieveAdditionalCAs(t *testing.T) {
 
 			name: "NOK ca.crt in configmap does not exist",
 			args: args{
-				client: k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-trust"}}),
+				client: k8s.NewFakeClient(&corev1.ConfigMap{Namespace: "ns", Name: "my-trust"}),
 				elasticsearch: v1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					Spec:       v1.ElasticsearchSpec{Transport: v1.TransportConfig{TLS: v1.TransportTLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "my-trust"}}}},
@@ -73,7 +73,7 @@ func TestMaybeRetrieveAdditionalCAs(t *testing.T) {
 		{
 			name: "OK happy path",
 			args: args{
-				client: k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-trust"}, Data: map[string]string{"ca.crt": "CA bytes go here"}}),
+				client: k8s.NewFakeClient(&corev1.ConfigMap{Namespace: "ns", Name: "my-trust", Data: map[string]string{"ca.crt": "CA bytes go here"}}),
 				elasticsearch: v1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 					Spec:       v1.ElasticsearchSpec{Transport: v1.TransportConfig{TLS: v1.TransportTLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "my-trust"}}}},

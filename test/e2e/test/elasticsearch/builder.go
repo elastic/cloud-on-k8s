@@ -443,10 +443,8 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 		// setup an EmptyDir for the data volume
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
-				Name: volume.ElasticsearchDataVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
+				Name:     volume.ElasticsearchDataVolumeName,
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		}
 	}
@@ -463,11 +461,9 @@ func (b Builder) WithSecretVolumeMountForElasticsearch(volumeName, secretName, m
 		ns := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
 		ns.Volumes = append(ns.Volumes, corev1.Volume{
 			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName:  secretName,
-					DefaultMode: &defaultMode,
-				},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  secretName,
+				DefaultMode: &defaultMode,
 			},
 		})
 		for j := range ns.Containers {
@@ -497,9 +493,7 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 		// setup default claim with the custom storage class
 		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: volume.ElasticsearchDataVolumeName,
-				},
+				Name: volume.ElasticsearchDataVolumeName,
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						corev1.ReadWriteOnce,

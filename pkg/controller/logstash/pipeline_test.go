@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -43,9 +42,7 @@ func Test_buildPipeline(t *testing.T) {
 		{
 			name: "pipelinesref populated - no secret",
 			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-pipeline",
-				},
+				SecretName: "my-secret-pipeline",
 			},
 			client:  k8s.NewFakeClient(),
 			want:    pipelines.EmptyConfig(),
@@ -54,14 +51,10 @@ func Test_buildPipeline(t *testing.T) {
 		{
 			name: "pipelinesref populated - no secret key",
 			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-pipeline",
-				},
+				SecretName: "my-secret-pipeline",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-pipeline",
-				},
+				Name: "my-secret-pipeline",
 			}),
 			want:    pipelines.EmptyConfig(),
 			wantErr: true,
@@ -69,14 +62,10 @@ func Test_buildPipeline(t *testing.T) {
 		{
 			name: "pipelinesref populated - malformed config",
 			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-pipeline-2",
-				},
+				SecretName: "my-secret-pipeline-2",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-pipeline-2",
-				},
+				Name: "my-secret-pipeline-2",
 				Data: map[string][]byte{"pipelines.yml": []byte("something:bad:value")},
 			}),
 			want:    pipelines.EmptyConfig(),
@@ -85,14 +74,10 @@ func Test_buildPipeline(t *testing.T) {
 		{
 			name: "pipelinesref populated",
 			pipelinesRef: &commonv1.ConfigMapOrSecretSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-pipeline-2",
-				},
+				SecretName: "my-secret-pipeline-2",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-pipeline-2",
-				},
+				Name: "my-secret-pipeline-2",
 				Data: map[string][]byte{"pipelines.yml": []byte(`- "pipeline.id": "main"`)},
 			}),
 			want: pipelines.MustParse([]byte(`- "pipeline.id": "main"`)),

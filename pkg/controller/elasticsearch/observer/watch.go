@@ -5,7 +5,6 @@
 package observer
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -40,10 +39,9 @@ func healthChangeListener(reconciliation chan event.TypedGenericEvent[*esv1.Elas
 
 		// trigger a reconciliation event for that cluster
 		evt := event.TypedGenericEvent[*esv1.Elasticsearch]{
-			Object: &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+			Object: &esv1.Elasticsearch{
 				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
-			}},
+				Name:      cluster.Name},
 		}
 		reconciliation <- evt
 	}

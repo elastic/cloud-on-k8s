@@ -234,9 +234,7 @@ type Signer struct {
 // NewSigner creates a new license signer from a private key.
 func NewSigner(privKey *rsa.PrivateKey) *Signer {
 	return &Signer{
-		Verifier: Verifier{
-			PublicKey: &privKey.PublicKey,
-		},
+		PublicKey:  &privKey.PublicKey,
 		privateKey: privKey,
 	}
 }

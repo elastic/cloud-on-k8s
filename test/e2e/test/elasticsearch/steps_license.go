@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -125,16 +124,14 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 		Name: "Creating enterprise trial license secret",
 		Test: test.Eventually(func() error {
 			sec := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      secretName,
-					Labels: map[string]string{
-						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
-						commonv1.TypeLabelName:   license.Type,
-					},
-					Annotations: map[string]string{
-						license.EULAAnnotation: license.EULAAcceptedValue,
-					},
+				Namespace: test.Ctx().ManagedNamespace(0),
+				Name:      secretName,
+				Labels: map[string]string{
+					license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
+					commonv1.TypeLabelName:   license.Type,
+				},
+				Annotations: map[string]string{
+					license.EULAAnnotation: license.EULAAcceptedValue,
 				},
 			}
 			return ltctx.k.CreateOrUpdate(&sec)
@@ -177,10 +174,8 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName
 		Test: test.Eventually(func() error {
 			// Delete operator license secret
 			sec := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      licenseSecretName,
-				},
+				Namespace: test.Ctx().ManagedNamespace(0),
+				Name:      licenseSecretName,
 			}
 			err := ltctx.k.Client.Delete(context.Background(), &sec)
 			if err != nil && !apierrors.IsNotFound(err) {

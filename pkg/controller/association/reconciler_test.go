@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -110,16 +109,14 @@ var (
 	kibanaNamespace = "kbns"
 	esNamespace     = "esns"
 	sampleES        = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: esNamespace, Name: "esname"},
-		Status:     esv1.ElasticsearchStatus{Version: stackVersion},
+		Namespace: esNamespace, Name: "esname",
+		Status: esv1.ElasticsearchStatus{Version: stackVersion},
 	}
 	sampleKibanaNoEsRef = func() kbv1.Kibana {
 		return kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:         kibanaNamespace,
-				Name:              "kbname",
-				CreationTimestamp: metav1.Now(),
-			},
+			Namespace:         kibanaNamespace,
+			Name:              "kbname",
+			CreationTimestamp: metav1.Now(),
 		}
 	}
 	sampleKibanaWithESRef = func() kbv1.Kibana {
@@ -150,10 +147,8 @@ var (
 
 	// es public http certs containing the ca cert to be trusted
 	esHTTPPublicCertsSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "esname-es-http-certs-public",
-		},
+		Namespace: esNamespace,
+		Name:      "esname-es-http-certs-public",
 		Data: map[string][]byte{
 			"ca.crt":  []byte("ca cert content"),
 			"tls.crt": []byte("tls cert content"),
@@ -161,25 +156,23 @@ var (
 	}
 	// kibana user in the ES namespace created for the association
 	kibanaUserInESNamespace = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "kbns-kbname-kibana-user",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                     "user",
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
-				"kibanaassociation.k8s.elastic.co/name":          "kbname",
-				"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-					Kind:               "Elasticsearch",
-					Name:               "esname",
-					Controller:         &varTrue,
-					BlockOwnerDeletion: &varTrue,
-				},
+		Namespace: esNamespace,
+		Name:      "kbns-kbname-kibana-user",
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":                     "user",
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
+			"elasticsearch.k8s.elastic.co/cluster-namespace": esNamespace,
+			"kibanaassociation.k8s.elastic.co/name":          "kbname",
+			"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+				Kind:               "Elasticsearch",
+				Name:               "esname",
+				Controller:         &varTrue,
+				BlockOwnerDeletion: &varTrue,
 			},
 		},
 		Data: map[string][]byte{
@@ -190,24 +183,22 @@ var (
 	}
 	// es public certs we expect to be copied over into the Kibana namespace
 	esCertsInKibanaNamespace = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kibanaNamespace,
-			Name:      "kbname-kb-es-ca",
-			Labels: map[string]string{
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
-				"kibanaassociation.k8s.elastic.co/name":          "kbname",
-				"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "kibana.k8s.elastic.co/v1",
-					Kind:               "Kibana",
-					Name:               "kbname",
-					Controller:         &varTrue,
-					BlockOwnerDeletion: &varTrue,
-				},
+		Namespace: kibanaNamespace,
+		Name:      "kbname-kb-es-ca",
+		Labels: map[string]string{
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
+			"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
+			"kibanaassociation.k8s.elastic.co/name":          "kbname",
+			"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "kibana.k8s.elastic.co/v1",
+				Kind:               "Kibana",
+				Name:               "kbname",
+				Controller:         &varTrue,
+				BlockOwnerDeletion: &varTrue,
 			},
 		},
 		Data: map[string][]byte{
@@ -217,25 +208,23 @@ var (
 	}
 	// kibana user credentials in the Kibana namespace
 	kibanaUserInKibanaNamespace = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kibanaNamespace,
-			Name:      "kbname-kibana-user",
-			Labels: map[string]string{
-				"eck.k8s.elastic.co/credentials":                 "true",
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
-				"kibanaassociation.k8s.elastic.co/name":          "kbname",
-				"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "kibana.k8s.elastic.co/v1",
-					Kind:               "Kibana",
-					Name:               "kbname",
-					Controller:         &varTrue,
-					BlockOwnerDeletion: &varTrue,
-				},
+		Namespace: kibanaNamespace,
+		Name:      "kbname-kibana-user",
+		Labels: map[string]string{
+			"eck.k8s.elastic.co/credentials":                 "true",
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      "esname",
+			"elasticsearch.k8s.elastic.co/cluster-namespace": "esns",
+			"kibanaassociation.k8s.elastic.co/name":          "kbname",
+			"kibanaassociation.k8s.elastic.co/namespace":     "kbns",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "kibana.k8s.elastic.co/v1",
+				Kind:               "Kibana",
+				Name:               "kbname",
+				Controller:         &varTrue,
+				BlockOwnerDeletion: &varTrue,
 			},
 		},
 		Data: map[string][]byte{
@@ -244,10 +233,8 @@ var (
 	}
 	esHTTPService = func() *corev1.Service {
 		return &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: esNamespace,
-				Name:      "esname-es-http",
-			},
+			Namespace: esNamespace,
+			Name:      "esname-es-http",
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
 					{
@@ -278,14 +265,12 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.5.0",
-				},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{
+				Version: "1.5.0",
 			},
-			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
+		PasswordGenerator:      fixtures.MustTestRandomGenerator(24),
 		referencedResourceKind: esv1.Kind,
 	}
 }
@@ -294,7 +279,7 @@ func TestReconciler_Reconcile_resourceNotFound(t *testing.T) {
 	// no resource in the apiserver
 	r := testReconciler()
 	// should do nothing
-	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "ns", Name: "resource"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{Namespace: "ns", Name: "resource"})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, res)
 }
@@ -514,22 +499,18 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 	// Kibana references Enterprise Search, the association controller is configured to not
 	// create an Elasticsearch user
-	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "entns", Name: "entname"}}
+	ent := entv1.EnterpriseSearch{Namespace: "entns", Name: "entname"}
 	entHTTPPublicCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "entns",
-			Name:      "entname-ent-http-certs-public",
-		},
+		Namespace: "entns",
+		Name:      "entname-ent-http-certs-public",
 		Data: map[string][]byte{
 			"ca.crt":  []byte("ca cert content"),
 			"tls.crt": []byte("tls cert content"),
 		},
 	}
 	entHTTPService := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "entns",
-			Name:      "entname-ent-http",
-		},
+		Namespace: "entns",
+		Name:      "entname-ent-http",
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
@@ -544,25 +525,23 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 
 	// ent public certs we expect to be copied over into the Kibana namespace
 	entCertsInKibanaNamespace := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kibanaNamespace,
-			Name:      "kbname-kb-ent-ca",
-			Labels: map[string]string{
-				"eck.k8s.elastic.co/watched":                 "true",
-				"enterprisesearch.k8s.elastic.co/name":       "entname",
-				"enterprisesearch.k8s.elastic.co/namespace":  "entns",
-				"kibanaassociation.k8s.elastic.co/name":      "kbname",
-				"kibanaassociation.k8s.elastic.co/namespace": "kbns",
-				"kibanaassociation.k8s.elastic.co/type":      "ent",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "kibana.k8s.elastic.co/v1",
-					Kind:               "Kibana",
-					Name:               "kbname",
-					Controller:         &varTrue,
-					BlockOwnerDeletion: &varTrue,
-				},
+		Namespace: kibanaNamespace,
+		Name:      "kbname-kb-ent-ca",
+		Labels: map[string]string{
+			"eck.k8s.elastic.co/watched":                 "true",
+			"enterprisesearch.k8s.elastic.co/name":       "entname",
+			"enterprisesearch.k8s.elastic.co/namespace":  "entns",
+			"kibanaassociation.k8s.elastic.co/name":      "kbname",
+			"kibanaassociation.k8s.elastic.co/namespace": "kbns",
+			"kibanaassociation.k8s.elastic.co/type":      "ent",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "kibana.k8s.elastic.co/v1",
+				Kind:               "Kibana",
+				Name:               "kbname",
+				Controller:         &varTrue,
+				BlockOwnerDeletion: &varTrue,
 			},
 		},
 		Data: map[string][]byte{
@@ -627,11 +606,9 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.4.0-unittest",
-				},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{
+				Version: "1.4.0-unittest",
 			},
 		},
 	}
@@ -783,14 +760,12 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 func TestReconciler_getElasticsearch(t *testing.T) {
 	// ResourceVersion 999 has no specific meaning.
 	// It is the commonly used value in controller-runtime tests where some ResourceVersion needs to be set.
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", ResourceVersion: "999"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es", ResourceVersion: "999"}
 	associatedKibana := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "kb",
-			Annotations: map[string]string{
-				"association.k8s.elastic.co/es-conf": "association-conf-data", // we don't care about the data here
-			},
+		Namespace: "ns",
+		Name:      "kb",
+		Annotations: map[string]string{
+			"association.k8s.elastic.co/es-conf": "association-conf-data", // we don't care about the data here
 		},
 		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ElasticsearchSelector{
 			ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
@@ -857,9 +832,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			Spec: agentv1alpha1.AgentSpec{
 				ElasticsearchRefs: []agentv1alpha1.Output{
 					{
-						ElasticsearchSelector: commonv1.ElasticsearchSelector{
-							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
-						},
+						Name: name, Namespace: namespace,
 					},
 				},
 			},
@@ -917,23 +890,17 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 
 	// Agent with two refs
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent1",
-			Namespace: "agentNs",
-		},
+		Name:      "agent1",
+		Namespace: "agentNs",
 		Spec: agentv1alpha1.AgentSpec{
 			Version: "7.7.0",
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es1Namespace"},
-					},
+					Name: "es1", Namespace: "es1Namespace",
 					OutputName: "default",
 				},
 				{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "es2", Namespace: "es2Namespace"},
-					},
+					Name: "es2", Namespace: "es2Namespace",
 					OutputName: "monitoring",
 				},
 			},
@@ -946,34 +913,26 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		Client: k8s.NewFakeClient(
 			&agent,
 			&esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "es1",
-					Namespace: "es1Namespace",
-				},
-				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
+				Name:      "es1",
+				Namespace: "es1Namespace",
+				Spec:      esv1.ElasticsearchSpec{Version: "7.7.0"},
 			},
 			&esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "es2",
-					Namespace: "es2Namespace",
-				},
-				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
+				Name:      "es2",
+				Namespace: "es2Namespace",
+				Spec:      esv1.ElasticsearchSpec{Version: "7.7.0"},
 			},
 			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "es1Namespace",
-					Name:      "es1-es-http-certs-public",
-				},
+				Namespace: "es1Namespace",
+				Name:      "es1-es-http-certs-public",
 				Data: map[string][]byte{
 					"ca.crt":  []byte("ca cert content"),
 					"tls.crt": []byte("tls cert content"),
 				},
 			},
 			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "es2Namespace",
-					Name:      "es2-es-http-certs-public",
-				},
+				Namespace: "es2Namespace",
+				Name:      "es2-es-http-certs-public",
 				Data: map[string][]byte{
 					"ca.crt":  []byte("ca cert content"),
 					"tls.crt": []byte("tls cert content"),
@@ -983,14 +942,12 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.4.0-unittest",
-				},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{
+				Version: "1.4.0-unittest",
 			},
-			PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 		},
+		PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 	}
 
 	// Secrets created for the first ref
@@ -1218,10 +1175,8 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 
 	// Agent with fleet ref
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent1",
-			Namespace: "agentNs",
-		},
+		Name:      "agent1",
+		Namespace: "agentNs",
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			KibanaRef:      commonv1.ObjectSelector{Name: "kb", Namespace: "default"},
@@ -1241,11 +1196,10 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 	})
 
 	fleetAgent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fleet-server1",
-			Namespace: "fleet-ns",
-			Annotations: map[string]string{
-				commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"}): `
+		Name:      "fleet-server1",
+		Namespace: "fleet-ns",
+		Annotations: map[string]string{
+			commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"}): `
 {
 "authSecretName": "-",
 "authSecretKey": "-",
@@ -1256,16 +1210,13 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 "version": "7.7.0"
 }
 `,
-			},
 		},
 		Spec: agentv1alpha1.AgentSpec{
 			Version:            "7.7.0",
 			FleetServerEnabled: false,
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"},
-					},
+					Name: "es1", Namespace: "es-ns",
 					OutputName: "default",
 				},
 			},
@@ -1287,16 +1238,27 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			&agent,
 			&fleetAgent,
 			&esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "es1",
-					Namespace: "es-ns",
-				},
-				Spec: esv1.ElasticsearchSpec{Version: "7.7.0"},
+				Name:      "es1",
+				Namespace: "es-ns",
+				Spec:      esv1.ElasticsearchSpec{Version: "7.7.0"},
 			},
 			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "es-ns",
-					Name:      "es1-es-http-certs-public",
+				Namespace: "es-ns",
+				Name:      "es1-es-http-certs-public",
+				Data: map[string][]byte{
+					"ca.crt":  []byte("ca cert content"),
+					"tls.crt": []byte("tls cert content"),
+				},
+			},
+			&corev1.Secret{
+				Namespace: "fleet-ns",
+				Name:      "fleet-server1-agent-es-default-es1-ca",
+				Labels: map[string]string{
+					"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
+					"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
+					"agentassociation.k8s.elastic.co/name":           "fleet-server1",
+					"agentassociation.k8s.elastic.co/namespace":      "fleet-ns",
 				},
 				Data: map[string][]byte{
 					"ca.crt":  []byte("ca cert content"),
@@ -1304,37 +1266,16 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 				},
 			},
 			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "fleet-ns",
-					Name:      "fleet-server1-agent-es-default-es1-ca",
-					Labels: map[string]string{
-						"agentassociation.k8s.elastic.co/type":           "elasticsearch",
-						"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
-						"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
-						"agentassociation.k8s.elastic.co/name":           "fleet-server1",
-						"agentassociation.k8s.elastic.co/namespace":      "fleet-ns",
-					},
-				},
-				Data: map[string][]byte{
-					"ca.crt":  []byte("ca cert content"),
-					"tls.crt": []byte("tls cert content"),
-				},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "fleet-ns",
-					Name:      "fleet-server1-agent-http-certs-public",
-				},
+				Namespace: "fleet-ns",
+				Name:      "fleet-server1-agent-http-certs-public",
 				Data: map[string][]byte{
 					"ca.crt":  []byte("ca cert content"),
 					"tls.crt": []byte("tls cert content"),
 				},
 			},
 			&corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fleet-server1-agent-http",
-					Namespace: "fleet-ns",
-				},
+				Name:      "fleet-server1-agent-http",
+				Namespace: "fleet-ns",
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
 						{
@@ -1348,11 +1289,9 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.4.0-unittest",
-				},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{
+				Version: "1.4.0-unittest",
 			},
 		},
 	}
@@ -1372,28 +1311,26 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			"ca.crt", "tls.crt",
 		),
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", commonhash.HashObject(types.NamespacedName{Name: "fleet-server1", Namespace: "fleet-ns"}), "es-ca"),
-				Namespace: "agentNs",
-				Labels: map[string]string{
-					"agent.k8s.elastic.co/name":                      "fleet-server1",
-					"agent.k8s.elastic.co/namespace":                 "fleet-ns",
-					"agentassociation.k8s.elastic.co/name":           "agent1",
-					"agentassociation.k8s.elastic.co/namespace":      "agentNs",
-					"agentassociation.k8s.elastic.co/type":           commonv1.FleetServerAssociationType,
-					AdditionalSecretLabelName:                        "true",
-					commonv1.RestrictWatchedResourcesLabelName:       commonv1.RestrictWatchedResourcesLabelValue,
-					"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
-					"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
-				},
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "agent.k8s.elastic.co/v1alpha1",
-						Kind:               "Agent",
-						Name:               "agent1",
-						Controller:         &varTrue,
-						BlockOwnerDeletion: &varTrue,
-					},
+			Name:      AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", commonhash.HashObject(types.NamespacedName{Name: "fleet-server1", Namespace: "fleet-ns"}), "es-ca"),
+			Namespace: "agentNs",
+			Labels: map[string]string{
+				"agent.k8s.elastic.co/name":                      "fleet-server1",
+				"agent.k8s.elastic.co/namespace":                 "fleet-ns",
+				"agentassociation.k8s.elastic.co/name":           "agent1",
+				"agentassociation.k8s.elastic.co/namespace":      "agentNs",
+				"agentassociation.k8s.elastic.co/type":           commonv1.FleetServerAssociationType,
+				AdditionalSecretLabelName:                        "true",
+				commonv1.RestrictWatchedResourcesLabelName:       commonv1.RestrictWatchedResourcesLabelValue,
+				"elasticsearch.k8s.elastic.co/cluster-name":      "es1",
+				"elasticsearch.k8s.elastic.co/cluster-namespace": "es-ns",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "agent.k8s.elastic.co/v1alpha1",
+					Kind:               "Agent",
+					Name:               "agent1",
+					Controller:         &varTrue,
+					BlockOwnerDeletion: &varTrue,
 				},
 			},
 			Data: map[string][]byte{"ca.crt": []byte("ca cert content")},
@@ -1432,15 +1369,15 @@ func TestReconciler_Reconcile_Transitive_SameNamespace(t *testing.T) {
 	const ns = "shared-ns"
 
 	caSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: "fleet1-es-ca"},
-		Data:       map[string][]byte{"ca.crt": []byte("original-ca")},
+		Namespace: ns, Name: "fleet1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("original-ca")},
 	}
 	fleetServer := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "fleet1", Namespace: ns},
-		Spec:       agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
+		Name: "fleet1", Namespace: ns,
+		Spec: agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
 	}
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: ns},
+		Name: "agent1", Namespace: ns,
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: ns}},
@@ -1488,9 +1425,7 @@ func TestReconciler_Reconcile_Transitive_SameNamespace(t *testing.T) {
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
-		},
+		OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
 	}
 
 	// First reconcile: CA source is in the same namespace as the agent — no copy should be created.
@@ -1573,7 +1508,7 @@ func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T)
 	}
 
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "agentNs"},
+		Name: "agent1", Namespace: "agentNs",
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet-server1", Namespace: "fleet-ns"}},
@@ -1585,7 +1520,7 @@ func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T)
 	})
 
 	fleetAgent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "fleet-server1", Namespace: "fleet-ns"},
+		Name: "fleet-server1", Namespace: "fleet-ns",
 		Spec: agentv1alpha1.AgentSpec{
 			Version:            "7.7.0",
 			FleetServerEnabled: true,
@@ -1593,13 +1528,13 @@ func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T)
 	}
 
 	caSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "fleet-ns", Name: "fleet-server1-es-ca"},
-		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+		Namespace: "fleet-ns", Name: "fleet-server1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("ca-data")},
 	}
 	// Simulate a stale per-agent CA copy left from when CACertProvided was true.
 	staleCAcopy := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "agentNs", Name: caTargetName},
-		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+		Namespace: "agentNs", Name: caTargetName,
+		Data: map[string][]byte{"ca.crt": []byte("ca-data")},
 	}
 
 	r := Reconciler{
@@ -1608,10 +1543,8 @@ func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T)
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"},
-			},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"},
 		},
 	}
 
@@ -1687,7 +1620,7 @@ func TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition(t *testing.
 	}
 
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: agentNS},
+		Name: "agent1", Namespace: agentNS,
 		Spec: agentv1alpha1.AgentSpec{
 			Version:        "7.7.0",
 			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: fleetNS}},
@@ -1696,18 +1629,18 @@ func TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition(t *testing.
 	agent.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{URL: "https://fleet:8220"})
 
 	fleetAgent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "fleet1", Namespace: fleetNS},
-		Spec:       agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
+		Name: "fleet1", Namespace: fleetNS,
+		Spec: agentv1alpha1.AgentSpec{Version: "7.7.0", FleetServerEnabled: true},
 	}
 
 	// Pre-create CA secrets in both namespaces so both reconcile phases can read from their source.
 	caInFleetNS := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: fleetNS, Name: "fleet1-es-ca"},
-		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+		Namespace: fleetNS, Name: "fleet1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("ca-data")},
 	}
 	caInAgentNS := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca"},
-		Data:       map[string][]byte{"ca.crt": []byte("ca-data")},
+		Namespace: agentNS, Name: "fleet1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("ca-data")},
 	}
 
 	r := Reconciler{
@@ -1716,9 +1649,7 @@ func TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition(t *testing.
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
-		},
+		OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
 	}
 
 	// First reconcile: cross-namespace → hashed copy is created in agent-ns.
@@ -1826,25 +1757,23 @@ func mkAgentSecret(name, ns, sourceNs, sourceName, targetNs, targetName string, 
 	}
 
 	result := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			Labels: map[string]string{
-				"agentassociation.k8s.elastic.co/name":           sourceName,
-				"agentassociation.k8s.elastic.co/namespace":      sourceNs,
-				"agentassociation.k8s.elastic.co/type":           "elasticsearch",
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      targetName,
-				"elasticsearch.k8s.elastic.co/cluster-namespace": targetNs,
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         apiVersion,
-					Kind:               kind,
-					Name:               ownerName,
-					Controller:         &varTrue,
-					BlockOwnerDeletion: &varTrue,
-				},
+		Name:      name,
+		Namespace: ns,
+		Labels: map[string]string{
+			"agentassociation.k8s.elastic.co/name":           sourceName,
+			"agentassociation.k8s.elastic.co/namespace":      sourceNs,
+			"agentassociation.k8s.elastic.co/type":           "elasticsearch",
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      targetName,
+			"elasticsearch.k8s.elastic.co/cluster-namespace": targetNs,
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         apiVersion,
+				Kind:               kind,
+				Name:               ownerName,
+				Controller:         &varTrue,
+				BlockOwnerDeletion: &varTrue,
 			},
 		},
 		Data: map[string][]byte{},
@@ -1894,10 +1823,8 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 
 	// create the missing secret without the password field
 	objRefSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "kbns",
-			Name:      "sample-es-ref-secret",
-		},
+		Namespace: "kbns",
+		Name:      "sample-es-ref-secret",
 		Data: map[string][]byte{
 			"url":      []byte("https://es.io:9243"),
 			"username": []byte("elastic"),
@@ -1957,17 +1884,15 @@ func TestReconciler_ReconcileSecretRef(t *testing.T) {
 func sameNSReconciler(objs ...client.Object) Reconciler {
 	const ns = "shared-ns"
 	return Reconciler{
-		AssociationInfo: AssociationInfo{
-			Labels:                                func(types.NamespacedName) map[string]string { return nil },
-			AssociationResourceNameLabelName:      "test",
-			AssociationResourceNamespaceLabelName: "test-ns",
-			ReferencedResourceNamer:               common_name.NewNamer("agent"),
-			AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
-				// Hash-only entry: Source.Namespace == agent namespace — no cross-namespace copy.
-				return []AdditionalSecret{
-					{Source: types.NamespacedName{Namespace: ns, Name: "fleet1-es-ca"}, TargetName: "fleet1-es-ca"},
-				}, nil
-			},
+		Labels:                                func(types.NamespacedName) map[string]string { return nil },
+		AssociationResourceNameLabelName:      "test",
+		AssociationResourceNamespaceLabelName: "test-ns",
+		ReferencedResourceNamer:               common_name.NewNamer("agent"),
+		AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+			// Hash-only entry: Source.Namespace == agent namespace — no cross-namespace copy.
+			return []AdditionalSecret{
+				{Source: types.NamespacedName{Namespace: ns, Name: "fleet1-es-ca"}, TargetName: "fleet1-es-ca"},
+			}, nil
 		},
 		Client:  k8s.NewFakeClient(objs...),
 		watches: watches.NewDynamicWatches(),
@@ -1985,40 +1910,36 @@ func TestReconciler_Unbind(t *testing.T) {
 		"kibanaassociation.k8s.elastic.co/namespace":     kibanaNamespace,
 	}
 	esTokenSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "kbns-kbname-es-sa-token",
-			Labels: map[string]string{
-				commonv1.TypeLabelName:                       user.ServiceAccountTokenType,
-				eslabel.ClusterNameLabelName:                 sampleES.Name,
-				eslabel.ClusterNamespaceLabelName:            sampleES.Namespace,
-				"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
-				"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
-			},
+		Namespace: esNamespace,
+		Name:      "kbns-kbname-es-sa-token",
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                       user.ServiceAccountTokenType,
+			eslabel.ClusterNameLabelName:                 sampleES.Name,
+			eslabel.ClusterNamespaceLabelName:            sampleES.Namespace,
+			"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
+			"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
 		},
 	}
 	appTokenSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kibanaNamespace,
-			Name:      "kbname-kibana-user",
-			Labels: map[string]string{
-				"eck.k8s.elastic.co/credentials":             "true",
-				eslabel.ClusterNameLabelName:                 sampleES.Name,
-				eslabel.ClusterNamespaceLabelName:            sampleES.Namespace,
-				"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
-				"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
-			},
+		Namespace: kibanaNamespace,
+		Name:      "kbname-kibana-user",
+		Labels: map[string]string{
+			"eck.k8s.elastic.co/credentials":             "true",
+			eslabel.ClusterNameLabelName:                 sampleES.Name,
+			eslabel.ClusterNamespaceLabelName:            sampleES.Namespace,
+			"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
+			"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
 		},
 	}
 	kb := sampleKibanaWithESRef()
 
 	// Fixtures for the same-namespace case.
 	caSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: sharedNS, Name: "fleet1-es-ca"},
-		Data:       map[string][]byte{"ca.crt": []byte("CACERT")},
+		Namespace: sharedNS, Name: "fleet1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("CACERT")},
 	}
 	sameNSAgent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: sharedNS},
+		Name: "agent1", Namespace: sharedNS,
 		Spec: agentv1alpha1.AgentSpec{
 			FleetServerRef: commonv1.FleetServerSelector{
 				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: sharedNS},
@@ -2029,21 +1950,19 @@ func TestReconciler_Unbind(t *testing.T) {
 	// Fixtures for the cross-namespace case.
 	const agentNS, fleetNS = "agent-ns", "fleet-ns"
 	caCopy := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: agentNS,
-			Name:      "fleet1-es-ca-copy",
-			Labels: map[string]string{
-				AdditionalSecretLabelName: "true",
-				// These match what AssociationResourceLabels produces for the test reconciler
-				// (AssociationResourceNameLabelName="test", fleet server ref name="fleet1"/"fleet-ns").
-				"test":    "fleet1",
-				"test-ns": "fleet-ns",
-			},
+		Namespace: agentNS,
+		Name:      "fleet1-es-ca-copy",
+		Labels: map[string]string{
+			AdditionalSecretLabelName: "true",
+			// These match what AssociationResourceLabels produces for the test reconciler
+			// (AssociationResourceNameLabelName="test", fleet server ref name="fleet1"/"fleet-ns").
+			"test":    "fleet1",
+			"test-ns": "fleet-ns",
 		},
 		Data: map[string][]byte{"ca.crt": []byte("CACERT")},
 	}
 	crossNSAgent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: agentNS},
+		Name: "agent1", Namespace: agentNS,
 		Spec: agentv1alpha1.AgentSpec{
 			FleetServerRef: commonv1.FleetServerSelector{
 				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: fleetNS},
@@ -2089,16 +2008,14 @@ func TestReconciler_Unbind(t *testing.T) {
 			name: "cross-namespace CA copy is deleted",
 			setup: func() (Reconciler, commonv1.Association) {
 				r := Reconciler{
-					AssociationInfo: AssociationInfo{
-						Labels:                                func(types.NamespacedName) map[string]string { return nil },
-						AssociationResourceNameLabelName:      "test",
-						AssociationResourceNamespaceLabelName: "test-ns",
-						ReferencedResourceNamer:               common_name.NewNamer("agent"),
-						AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
-							return []AdditionalSecret{
-								{Source: types.NamespacedName{Namespace: fleetNS, Name: "fleet1-es-ca"}, TargetName: caCopy.Name},
-							}, nil
-						},
+					Labels:                                func(types.NamespacedName) map[string]string { return nil },
+					AssociationResourceNameLabelName:      "test",
+					AssociationResourceNamespaceLabelName: "test-ns",
+					ReferencedResourceNamer:               common_name.NewNamer("agent"),
+					AdditionalSecrets: func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+						return []AdditionalSecret{
+							{Source: types.NamespacedName{Namespace: fleetNS, Name: "fleet1-es-ca"}, TargetName: caCopy.Name},
+						}, nil
 					},
 					Client:  k8s.NewFakeClient(&crossNSAgent, &caCopy),
 					watches: watches.NewDynamicWatches(),
@@ -2116,21 +2033,17 @@ func TestReconciler_Unbind(t *testing.T) {
 			name: "CA secret without AdditionalSecretLabel is deleted",
 			setup: func() (Reconciler, commonv1.Association) {
 				caSecretNoLabel := corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: agentNS,
-						Name:      "agent1-fleetserver-ca",
-						Labels:    map[string]string{"test": "fleet1", "test-ns": "fleet-ns"},
-					},
+					Namespace: agentNS,
+					Name:      "agent1-fleetserver-ca",
+					Labels:    map[string]string{"test": "fleet1", "test-ns": "fleet-ns"},
 				}
 				r := Reconciler{
-					AssociationInfo: AssociationInfo{
-						Labels:                                func(types.NamespacedName) map[string]string { return nil },
-						AssociationResourceNameLabelName:      "test",
-						AssociationResourceNamespaceLabelName: "test-ns",
-						ReferencedResourceNamer:               common_name.NewNamer("agent"),
-					},
-					Client:  k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel),
-					watches: watches.NewDynamicWatches(),
+					Labels:                                func(types.NamespacedName) map[string]string { return nil },
+					AssociationResourceNameLabelName:      "test",
+					AssociationResourceNamespaceLabelName: "test-ns",
+					ReferencedResourceNamer:               common_name.NewNamer("agent"),
+					Client:                                k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel),
+					watches:                               watches.NewDynamicWatches(),
 				}
 				return r, crossNSAgent.GetAssociations()[0]
 			},
@@ -2146,34 +2059,30 @@ func TestReconciler_Unbind(t *testing.T) {
 			setup: func() (Reconciler, commonv1.Association) {
 				assocLabels := map[string]string{"test": "fleet1", "test-ns": "fleet-ns"}
 				caSecretNoLabel := corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "agent1-fleetserver-ca", Labels: assocLabels},
+					Namespace: agentNS, Name: "agent1-fleetserver-ca", Labels: assocLabels,
 				}
 				additionalCopy := corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: agentNS,
-						Name:      "fleet1-es-ca-copy",
-						Labels: map[string]string{
-							AdditionalSecretLabelName: "true",
-							"test":                    "fleet1",
-							"test-ns":                 "fleet-ns",
-						},
+					Namespace: agentNS,
+					Name:      "fleet1-es-ca-copy",
+					Labels: map[string]string{
+						AdditionalSecretLabelName: "true",
+						"test":                    "fleet1",
+						"test-ns":                 "fleet-ns",
 					},
 				}
 				clientCertSecret := corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "agent1-es-client-cert", Labels: assocLabels},
+					Namespace: agentNS, Name: "agent1-es-client-cert", Labels: assocLabels,
 				}
 				unrelatedSecret := corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "unrelated-secret"},
+					Namespace: agentNS, Name: "unrelated-secret",
 				}
 				r := Reconciler{
-					AssociationInfo: AssociationInfo{
-						Labels:                                func(types.NamespacedName) map[string]string { return nil },
-						AssociationResourceNameLabelName:      "test",
-						AssociationResourceNamespaceLabelName: "test-ns",
-						ReferencedResourceNamer:               common_name.NewNamer("agent"),
-					},
-					Client:  k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel, &additionalCopy, &clientCertSecret, &unrelatedSecret),
-					watches: watches.NewDynamicWatches(),
+					Labels:                                func(types.NamespacedName) map[string]string { return nil },
+					AssociationResourceNameLabelName:      "test",
+					AssociationResourceNamespaceLabelName: "test-ns",
+					ReferencedResourceNamer:               common_name.NewNamer("agent"),
+					Client:                                k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel, &additionalCopy, &clientCertSecret, &unrelatedSecret),
+					watches:                               watches.NewDynamicWatches(),
 				}
 				return r, crossNSAgent.GetAssociations()[0]
 			},
@@ -2241,7 +2150,7 @@ func TestReconcileWatches_SameNamespace_WatchRegistered(t *testing.T) {
 	const ns = "shared-ns"
 
 	agent := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: ns},
+		Name: "agent1", Namespace: ns,
 		Spec: agentv1alpha1.AgentSpec{
 			FleetServerRef: commonv1.FleetServerSelector{
 				ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: ns},

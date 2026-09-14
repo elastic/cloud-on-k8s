@@ -296,7 +296,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			},
 			args: args{
 				resourcesState: ResourcesState{AllPods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "7.8.0"}}}},
+					{Labels: map[string]string{label.VersionLabelName: "7.8.0"}}},
 				},
 			},
 			stateAssertions: func(s *State) {
@@ -313,7 +313,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			},
 			args: args{
 				resourcesState: ResourcesState{AllPods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: "invalid"}}}},
+					{Labels: map[string]string{label.VersionLabelName: "invalid"}}},
 				},
 			},
 			stateAssertions: func(s *State) {
@@ -355,7 +355,7 @@ func TestState_UpdateMinRunningVersion(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}}}
 	}
 	podWithVersion := func(value string) corev1.Pod {
-		return corev1.Pod{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{label.VersionLabelName: value}}}
+		return corev1.Pod{Labels: map[string]string{label.VersionLabelName: value}}
 	}
 	type want struct {
 		ver       string             // expected version to be set in the status

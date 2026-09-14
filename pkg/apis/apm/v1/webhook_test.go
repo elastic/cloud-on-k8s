@@ -186,7 +186,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}}
+				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
 				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns", ServiceName: "essvc"}
 				return test.MustMarshalJSON(t, apm)
 			},
@@ -198,7 +198,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}}
+				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
 				apm.Spec.KibanaRef = commonv1.ObjectSelector{SecretName: "kbname"}
 				return test.MustMarshalJSON(t, apm)
 			},
@@ -223,7 +223,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				apm := mkApmServer(uid)
-				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"}}
+				apm.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname", Namespace: "esns"}
 				return test.MustMarshalJSON(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -353,11 +353,9 @@ func TestWebhook(t *testing.T) {
 
 func mkApmServer(uid string) *apmv1.ApmServer {
 	return &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: apmv1.ApmServerSpec{
 			Version: "7.17.0",
 		},

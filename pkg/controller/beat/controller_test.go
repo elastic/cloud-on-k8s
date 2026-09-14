@@ -27,11 +27,9 @@ import (
 
 func TestReconcileBeat_Reconcile(t *testing.T) {
 	defaultBeat := beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "testbeat",
-			Namespace:  "testing",
-			Generation: 2,
-		},
+		Name:       "testbeat",
+		Namespace:  "testing",
+		Generation: 2,
 		Spec: beatv1beta1.BeatSpec{
 			Type:      "filebeat",
 			Version:   "7.17.0",
@@ -42,10 +40,8 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 	}
 	defaultRequest := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "testbeat",
-			Namespace: "testing",
-		},
+		Name:      "testbeat",
+		Namespace: "testing",
 	}
 	tests := []struct {
 		name      string

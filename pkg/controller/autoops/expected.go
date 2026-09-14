@@ -176,12 +176,10 @@ func readinessProbe() corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(readinessProbePort),
-				Path:   "/health/status",
-				Scheme: scheme,
-			},
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt(readinessProbePort),
+			Path:   "/health/status",
+			Scheme: scheme,
 		},
 	}
 }
@@ -249,10 +247,8 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "AUTOOPS_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "autoops-token",
+					Name: policy.Spec.AutoOpsRef.SecretName,
+					Key:  "autoops-token",
 				},
 			},
 		},
@@ -264,10 +260,8 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "AUTOOPS_OTEL_URL",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "autoops-otel-url",
+					Name: policy.Spec.AutoOpsRef.SecretName,
+					Key:  "autoops-otel-url",
 				},
 			},
 		},
@@ -275,9 +269,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "AUTOOPS_ES_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
-					},
+					Name:     autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 					Key:      apiKeySecretKey,
 					Optional: new(false),
 				},
@@ -287,10 +279,8 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "cloud-connected-mode-api-key",
+					Name: policy.Spec.AutoOpsRef.SecretName,
+					Key:  "cloud-connected-mode-api-key",
 				},
 			},
 		},
@@ -298,9 +288,7 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
+					Name:     policy.Spec.AutoOpsRef.SecretName,
 					Key:      "cloud-connected-mode-api-url",
 					Optional: new(true),
 				},

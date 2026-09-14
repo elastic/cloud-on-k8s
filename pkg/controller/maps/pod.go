@@ -48,12 +48,10 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/status",
-				Scheme: scheme,
-			},
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt(HTTPPort),
+			Path:   "/status",
+			Scheme: scheme,
 		},
 	}
 }

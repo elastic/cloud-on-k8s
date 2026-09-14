@@ -46,11 +46,9 @@ func newTestReconciler(c k8s.Client, owner client.Object, lbls map[string]string
 
 func TestReconcileClientCertificate_OperatorCert(t *testing.T) {
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-			UID:       "test-uid",
-		},
+		Namespace: "ns",
+		Name:      "es",
+		UID:       "test-uid",
 	}
 	secretName := OperatorClientCertSecretName(esv1.ESNamer, owner.Name)
 
@@ -106,11 +104,9 @@ func TestReconcileClientCertificate_OperatorCert(t *testing.T) {
 
 func TestReconcileClientCertificate_WithExtraLabels(t *testing.T) {
 	kibana := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "my-kibana",
-			UID:       "test-uid",
-		},
+		Namespace: "ns",
+		Name:      "my-kibana",
+		UID:       "test-uid",
 		Spec: kbv1.KibanaSpec{
 			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 				Name:      "my-es",
@@ -158,7 +154,7 @@ func TestReconcileClientCertificate_WithExtraLabels(t *testing.T) {
 
 func TestParseTLSCertificate(t *testing.T) {
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "test-uid"},
+		Namespace: "ns", Name: "es", UID: "test-uid",
 	}
 	c := k8s.NewFakeClient()
 	r := newTestReconciler(c, owner, nil)
@@ -170,7 +166,7 @@ func TestParseTLSCertificate(t *testing.T) {
 
 	t.Run("parses valid cert and key", func(t *testing.T) {
 		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test"},
+			Namespace: "ns", Name: "test",
 			Data: map[string][]byte{
 				CertFileName: certPEM,
 				KeyFileName:  keyPEM,
@@ -183,8 +179,8 @@ func TestParseTLSCertificate(t *testing.T) {
 
 	t.Run("fails on missing cert", func(t *testing.T) {
 		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test"},
-			Data:       map[string][]byte{KeyFileName: keyPEM},
+			Namespace: "ns", Name: "test",
+			Data: map[string][]byte{KeyFileName: keyPEM},
 		}
 		_, err := ParseTLSCertificate(secret)
 		require.Error(t, err)
@@ -192,8 +188,8 @@ func TestParseTLSCertificate(t *testing.T) {
 
 	t.Run("fails on missing key", func(t *testing.T) {
 		secret := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test"},
-			Data:       map[string][]byte{CertFileName: certPEM},
+			Namespace: "ns", Name: "test",
+			Data: map[string][]byte{CertFileName: certPEM},
 		}
 		_, err := ParseTLSCertificate(secret)
 		require.Error(t, err)
@@ -202,7 +198,7 @@ func TestParseTLSCertificate(t *testing.T) {
 
 func TestLoadClientCertIfExists(t *testing.T) {
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "test-uid"},
+		Namespace: "ns", Name: "es", UID: "test-uid",
 	}
 
 	expectedSecretName := OperatorClientCertSecretName(esv1.ESNamer, owner.Name)
@@ -221,7 +217,7 @@ func TestLoadClientCertIfExists(t *testing.T) {
 
 	t.Run("loads existing secret", func(t *testing.T) {
 		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: expectedSecretName},
+			Namespace: "ns", Name: expectedSecretName,
 			Data: map[string][]byte{
 				CertFileName: selfSignedSecret.Data[CertFileName],
 				KeyFileName:  selfSignedSecret.Data[KeyFileName],
@@ -237,7 +233,7 @@ func TestLoadClientCertIfExists(t *testing.T) {
 
 func TestClientCertSecretCleanup(t *testing.T) {
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "test-uid"},
+		Namespace: "ns", Name: "es", UID: "test-uid",
 	}
 	secretName := OperatorClientCertSecretName(esv1.ESNamer, owner.Name)
 
@@ -263,10 +259,10 @@ func TestClientCertSecretCleanup(t *testing.T) {
 func TestDiscoverClientCertSecrets(t *testing.T) {
 	// kibana1 / kibana2 act as ECK owners in their respective namespaces.
 	kibana1 := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "client-ns-1", Name: "my-kibana-1", UID: "uid-kibana-1"},
+		Namespace: "client-ns-1", Name: "my-kibana-1", UID: "uid-kibana-1",
 	}
 	kibana2 := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "client-ns-2", Name: "my-kibana-2", UID: "uid-kibana-2"},
+		Namespace: "client-ns-2", Name: "my-kibana-2", UID: "uid-kibana-2",
 	}
 
 	eckOwnerRef := func(kb *kbv1.Kibana) metav1.OwnerReference {
@@ -280,44 +276,38 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 
 	t.Run("discovers secrets with matching labels and verified ECK owner", func(t *testing.T) {
 		secret1 := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:       "client-ns-1",
-				Name:            "client-1-es-client-cert",
-				OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana1)},
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "my-es",
-					reconciler.SoftOwnerNamespaceLabel: "es-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace:       "client-ns-1",
+			Name:            "client-1-es-client-cert",
+			OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana1)},
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "my-es",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-1")},
 		}
 		secret2 := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:       "client-ns-2",
-				Name:            "client-2-es-client-cert",
-				OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana2)},
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "my-es",
-					reconciler.SoftOwnerNamespaceLabel: "es-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace:       "client-ns-2",
+			Name:            "client-2-es-client-cert",
+			OwnerReferences: []metav1.OwnerReference{eckOwnerRef(kibana2)},
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "my-es",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-2")},
 		}
 		// Belongs to a different ES — should not appear in results.
 		secretOther := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "other-ns",
-				Name:      "other-client-cert",
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "other-es",
-					reconciler.SoftOwnerNamespaceLabel: "other-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace: "other-ns",
+			Name:      "other-client-cert",
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "other-es",
+				reconciler.SoftOwnerNamespaceLabel: "other-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("other-cert")},
 		}
@@ -332,15 +322,13 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 		// Secret has correct soft-owner labels but was not created through the ECK
 		// association flow and therefore carries no owner reference.
 		unowned := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "other-ns",
-				Name:      "unowned-client-cert",
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "my-es",
-					reconciler.SoftOwnerNamespaceLabel: "es-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace: "other-ns",
+			Name:      "unowned-client-cert",
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "my-es",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-data")},
 		}
@@ -354,21 +342,19 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 	t.Run("excludes secret with non-ECK owner reference", func(t *testing.T) {
 		// Secret is owned by a core Kubernetes resource rather than an ECK custom resource.
 		nonECKOwned := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "other-ns",
-				Name:      "pod-owned-client-cert",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion: "v1",
-					Kind:       "Pod",
-					Name:       "some-pod",
-					UID:        "uid-pod",
-				}},
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "my-es",
-					reconciler.SoftOwnerNamespaceLabel: "es-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace: "other-ns",
+			Name:      "pod-owned-client-cert",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: "v1",
+				Kind:       "Pod",
+				Name:       "some-pod",
+				UID:        "uid-pod",
+			}},
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "my-es",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-data")},
 		}
@@ -383,24 +369,22 @@ func TestDiscoverClientCertSecrets(t *testing.T) {
 		// Owner reference points to an existing Kibana but the UID does not match,
 		// as would happen with a stale reference after a delete/recreate cycle.
 		kb := &kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "other-ns", Name: "my-kibana", UID: "current-uid"},
+			Namespace: "other-ns", Name: "my-kibana", UID: "current-uid",
 		}
 		staleRef := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "other-ns",
-				Name:      "stale-ref-client-cert",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion: "kibana.k8s.elastic.co/v1",
-					Kind:       "Kibana",
-					Name:       kb.Name,
-					UID:        "old-uid",
-				}},
-				Labels: map[string]string{
-					labels.ClientCertificateLabelName:  "true",
-					reconciler.SoftOwnerNameLabel:      "my-es",
-					reconciler.SoftOwnerNamespaceLabel: "es-ns",
-					reconciler.SoftOwnerKindLabel:      esv1.Kind,
-				},
+			Namespace: "other-ns",
+			Name:      "stale-ref-client-cert",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: "kibana.k8s.elastic.co/v1",
+				Kind:       "Kibana",
+				Name:       kb.Name,
+				UID:        "old-uid",
+			}},
+			Labels: map[string]string{
+				labels.ClientCertificateLabelName:  "true",
+				reconciler.SoftOwnerNameLabel:      "my-es",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
 			},
 			Data: map[string][]byte{CertFileName: []byte("cert-data")},
 		}
@@ -423,12 +407,12 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 	t.Run("concatenates tls.crt from secrets", func(t *testing.T) {
 		secrets := []corev1.Secret{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "secret1"},
-				Data:       map[string][]byte{CertFileName: []byte("CERT-1\n")},
+				Namespace: "ns1", Name: "secret1",
+				Data: map[string][]byte{CertFileName: []byte("CERT-1\n")},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns2", Name: "secret2"},
-				Data:       map[string][]byte{CertFileName: []byte("CERT-2\n")},
+				Namespace: "ns2", Name: "secret2",
+				Data: map[string][]byte{CertFileName: []byte("CERT-2\n")},
 			},
 		}
 
@@ -439,12 +423,12 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 	t.Run("skips secrets without tls.crt", func(t *testing.T) {
 		secrets := []corev1.Secret{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "secret1"},
-				Data:       map[string][]byte{CertFileName: []byte("CERT\n")},
+				Namespace: "ns1", Name: "secret1",
+				Data: map[string][]byte{CertFileName: []byte("CERT\n")},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns2", Name: "secret2"},
-				Data:       map[string][]byte{},
+				Namespace: "ns2", Name: "secret2",
+				Data: map[string][]byte{},
 			},
 		}
 
@@ -455,16 +439,16 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 	t.Run("sorts secrets by namespace/name for deterministic output", func(t *testing.T) {
 		secrets := []corev1.Secret{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns2", Name: "secret-b"},
-				Data:       map[string][]byte{CertFileName: []byte("B")},
+				Namespace: "ns2", Name: "secret-b",
+				Data: map[string][]byte{CertFileName: []byte("B")},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "secret-a"},
-				Data:       map[string][]byte{CertFileName: []byte("A")},
+				Namespace: "ns1", Name: "secret-a",
+				Data: map[string][]byte{CertFileName: []byte("A")},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns2", Name: "secret-a"},
-				Data:       map[string][]byte{CertFileName: []byte("C")},
+				Namespace: "ns2", Name: "secret-a",
+				Data: map[string][]byte{CertFileName: []byte("C")},
 			},
 		}
 
@@ -475,12 +459,12 @@ func TestBuildTrustBundleFromSecrets(t *testing.T) {
 	t.Run("does not double newline when cert already ends with newline", func(t *testing.T) {
 		secrets := []corev1.Secret{
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "a"},
-				Data:       map[string][]byte{CertFileName: []byte("CERT-1\n")},
+				Namespace: "ns1", Name: "a",
+				Data: map[string][]byte{CertFileName: []byte("CERT-1\n")},
 			},
 			{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "b"},
-				Data:       map[string][]byte{CertFileName: []byte("CERT-2")},
+				Namespace: "ns1", Name: "b",
+				Data: map[string][]byte{CertFileName: []byte("CERT-2")},
 			},
 		}
 
@@ -494,10 +478,10 @@ func TestDeleteClientCertResources(t *testing.T) {
 	esNS := "my-ns"
 
 	operatorCertSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: OperatorClientCertSecretName(esv1.ESNamer, esName)},
+		Namespace: esNS, Name: OperatorClientCertSecretName(esv1.ESNamer, esName),
 	}
 	trustBundleSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: esNS, Name: ClientCertTrustBundleSecretName(esv1.ESNamer, esName)},
+		Namespace: esNS, Name: ClientCertTrustBundleSecretName(esv1.ESNamer, esName),
 	}
 
 	tests := []struct {
@@ -547,12 +531,10 @@ func TestDeleteClientCertResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: esNS,
-					Name:      esName,
-					Annotations: map[string]string{
-						annotation.ClientAuthenticationRequiredAnnotation: "true",
-					},
+				Namespace: esNS,
+				Name:      esName,
+				Annotations: map[string]string{
+					annotation.ClientAuthenticationRequiredAnnotation: "true",
 				},
 			}
 

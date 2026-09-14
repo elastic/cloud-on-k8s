@@ -69,13 +69,11 @@ func (sv SecretVolume) VolumeMount() corev1.VolumeMount {
 func (sv SecretVolume) Volume() corev1.Volume {
 	return corev1.Volume{
 		Name: sv.name,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  sv.secretName,
-				Items:       sv.items,
-				Optional:    &defaultOptional,
-				DefaultMode: sv.defaultMode,
-			},
+		Secret: &corev1.SecretVolumeSource{
+			SecretName:  sv.secretName,
+			Items:       sv.items,
+			Optional:    &defaultOptional,
+			DefaultMode: sv.defaultMode,
 		},
 	}
 }

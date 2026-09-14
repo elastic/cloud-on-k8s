@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
@@ -72,7 +71,7 @@ func TestReconcileElasticsearch(t *testing.T) {
 							},
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{Name: volume.ElasticsearchDataVolumeName},
+									Name: volume.ElasticsearchDataVolumeName,
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
@@ -90,16 +89,14 @@ func TestReconcileElasticsearch(t *testing.T) {
 					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 						{Name: "hot", NodeCount: 3},
 					},
-					NodeResources: v1alpha1.NodeResources{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:     resource.MustParse("2000m"),
-							corev1.ResourceMemory:  resource.MustParse("4Gi"),
-							corev1.ResourceStorage: resource.MustParse("8Gi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("3000m"),
-							corev1.ResourceMemory: resource.MustParse("6Gi"),
-						},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("2000m"),
+						corev1.ResourceMemory:  resource.MustParse("4Gi"),
+						corev1.ResourceStorage: resource.MustParse("8Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("3000m"),
+						corev1.ResourceMemory: resource.MustParse("6Gi"),
 					},
 				},
 			},
@@ -155,13 +152,11 @@ func TestReconcileElasticsearch(t *testing.T) {
 					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 						{Name: "warm", NodeCount: 4},
 					},
-					NodeResources: v1alpha1.NodeResources{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("5Gi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("7Gi"),
-						},
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("7Gi"),
 					},
 				},
 			},
@@ -214,13 +209,11 @@ func TestReconcileElasticsearch(t *testing.T) {
 					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 						{Name: "cold", NodeCount: 2},
 					},
-					NodeResources: v1alpha1.NodeResources{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("3Gi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("4Gi"),
-						},
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("3Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("4Gi"),
 					},
 				},
 			},
@@ -271,15 +264,13 @@ func TestReconcileElasticsearch(t *testing.T) {
 					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 						{Name: "data", NodeCount: 3},
 					},
-					NodeResources: v1alpha1.NodeResources{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("2"),
-							corev1.ResourceMemory: resource.MustParse("8Gi"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("2"),
-							corev1.ResourceMemory: resource.MustParse("8Gi"),
-						},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("2"),
+						corev1.ResourceMemory: resource.MustParse("8Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("2"),
+						corev1.ResourceMemory: resource.MustParse("8Gi"),
 					},
 				},
 			},
@@ -324,11 +315,9 @@ func TestReconcileElasticsearch(t *testing.T) {
 					NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 						{Name: "hot", NodeCount: 2},
 					},
-					NodeResources: v1alpha1.NodeResources{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("1500m"),
-							corev1.ResourceMemory: resource.MustParse("3Gi"),
-						},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1500m"),
+						corev1.ResourceMemory: resource.MustParse("3Gi"),
 					},
 				},
 			},
@@ -398,15 +387,13 @@ func TestReconcileElasticsearch_LeavesPodTemplateUntouchedAndIsIdempotent(t *tes
 			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{
 				{Name: "hot", NodeCount: 2},
 			},
-			NodeResources: v1alpha1.NodeResources{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1500m"),
-					corev1.ResourceMemory: resource.MustParse("3Gi"),
-				},
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("2000m"),
-					corev1.ResourceMemory: resource.MustParse("3Gi"),
-				},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1500m"),
+				corev1.ResourceMemory: resource.MustParse("3Gi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("2000m"),
+				corev1.ResourceMemory: resource.MustParse("3Gi"),
 			},
 		},
 	}
@@ -540,21 +527,17 @@ func TestReconcileElasticsearch_NonAutoscaledNodeSetDoesNotPersistEmptyResources
 		{
 			Name:             "policy-di",
 			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{{Name: "di", NodeCount: 3}},
-			NodeResources: v1alpha1.NodeResources{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("8Gi"),
-				},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("2"),
+				corev1.ResourceMemory: resource.MustParse("8Gi"),
 			},
 		},
 		{
 			Name:             "policy-ml",
 			NodeSetNodeCount: v1alpha1.NodeSetNodeCountList{{Name: "ml", NodeCount: 2}},
-			NodeResources: v1alpha1.NodeResources{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("4Gi"),
-				},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("4Gi"),
 			},
 		},
 	}

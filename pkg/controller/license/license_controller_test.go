@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -76,10 +74,8 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 }
 
 var cluster = &esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "cluster",
-		Namespace: "namespace",
-	},
+	Name:      "cluster",
+	Namespace: "namespace",
 	Spec: esv1.ElasticsearchSpec{
 		Version: "8.0.0",
 	},
@@ -112,9 +108,7 @@ func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType
 	bytes, err := json.Marshal(license)
 	require.NoError(t, err)
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
-		},
+		Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
 		Data: map[string][]byte{
 			commonlicense.FileName: bytes,
 		},
@@ -141,10 +135,9 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		{
 			name:    "no existing license but cluster license exists: delete cluster license",
 			cluster: cluster,
-			k8sResources: []crclient.Object{cluster, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			k8sResources: []crclient.Object{cluster, &corev1.Secret{
 				Name:      esv1.LicenseSecretName("cluster"),
-				Namespace: "namespace",
-			}}},
+				Namespace: "namespace"}},
 			wantErr:            "",
 			wantClusterLicense: false,
 			wantRequeueAfter:   false,
@@ -219,17 +212,15 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 
 func Test_namespaceFlipRequests(t *testing.T) {
 	// the namespace whose selector match state just changed
-	changedNS := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
+	changedNS := &corev1.Namespace{Name: "ns-a"}
 
 	operatorLicense := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "eck-license",
-			Namespace: changedNS.Name,
-			Labels:    map[string]string{commonlicense.LicenseLabelScope: string(commonlicense.LicenseScopeOperator)},
-		},
+		Name:      "eck-license",
+		Namespace: changedNS.Name,
+		Labels:    map[string]string{commonlicense.LicenseLabelScope: string(commonlicense.LicenseScopeOperator)},
 	}
-	esA := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-a", Namespace: "ns-a"}}
-	esB := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-b", Namespace: "ns-b"}}
+	esA := esv1.Elasticsearch{Name: "es-a", Namespace: "ns-a"}
+	esB := esv1.Elasticsearch{Name: "es-b", Namespace: "ns-b"}
 
 	tests := []struct {
 		name           string
@@ -245,8 +236,8 @@ func Test_namespaceFlipRequests(t *testing.T) {
 			licenseSecrets: []corev1.Secret{operatorLicense},
 			clientClusters: []crclient.Object{esA.DeepCopy(), esB.DeepCopy()},
 			want: []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: "ns-a", Name: "es-a"}},
-				{NamespacedName: types.NamespacedName{Namespace: "ns-b", Name: "es-b"}},
+				{Namespace: "ns-a", Name: "es-a"},
+				{Namespace: "ns-b", Name: "es-b"},
 			},
 		},
 		{
@@ -255,7 +246,7 @@ func Test_namespaceFlipRequests(t *testing.T) {
 			// the filtering client must not be consulted here: this cluster must not show up
 			clientClusters: []crclient.Object{esB.DeepCopy()},
 			want: []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: "ns-a", Name: "es-a"}},
+				{Namespace: "ns-a", Name: "es-a"},
 			},
 		},
 		{

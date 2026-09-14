@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -92,16 +91,14 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 
 func Test_newUpscaleState(t *testing.T) {
 	esWithMaxSurge := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "cluster",
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.3.0", UpdateStrategy: esv1.UpdateStrategy{ChangeBudget: esv1.ChangeBudget{MaxSurge: new(int32(3))}}},
+		Name:        "cluster",
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
+		Spec:        esv1.ElasticsearchSpec{Version: "7.3.0", UpdateStrategy: esv1.UpdateStrategy{ChangeBudget: esv1.ChangeBudget{MaxSurge: new(int32(3))}}},
 	}
 
 	esWithoutMaxSurge := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
+		Name: "cluster",
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 	type args struct {
 		ctx      upscaleCtx
@@ -146,10 +143,8 @@ func Test_newUpscaleState(t *testing.T) {
 
 func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "cluster",
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
-		},
+		Name:        "cluster",
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.3.0",
 			UpdateStrategy: esv1.UpdateStrategy{

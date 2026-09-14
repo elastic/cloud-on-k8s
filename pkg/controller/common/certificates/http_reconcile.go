@@ -17,7 +17,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -35,12 +34,10 @@ import (
 func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts *CertificatesSecret) error {
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   nsn.Namespace,
-			Name:        nsn.Name,
-			Labels:      r.Metadata.Labels,
-			Annotations: r.Metadata.Annotations,
-		},
+		Namespace:   nsn.Namespace,
+		Name:        nsn.Name,
+		Labels:      r.Metadata.Labels,
+		Annotations: r.Metadata.Annotations,
 		Data: map[string][]byte{
 			CertFileName: internalCerts.CertPem(),
 		},
@@ -66,10 +63,8 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	}
 
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ownerNSN.Namespace,
-			Name:      InternalCertsSecretName(r.Namer, ownerNSN.Name),
-		},
+		Namespace: ownerNSN.Namespace,
+		Name:      InternalCertsSecretName(r.Namer, ownerNSN.Name),
 	}
 
 	shouldCreateSecret := false

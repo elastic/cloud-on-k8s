@@ -10,7 +10,6 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -91,17 +90,15 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 // CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
 func CreateTrialLicense(ctx context.Context, c k8s.Client, nsn types.NamespacedName) error {
 	return c.Create(ctx, &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      nsn.Name,
-			Namespace: nsn.Namespace,
-			Labels: map[string]string{
-				commonv1.TypeLabelName:                     Type,
-				LicenseLabelType:                           string(LicenseTypeEnterpriseTrial),
-				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-			},
-			Annotations: map[string]string{
-				EULAAnnotation: EULAAcceptedValue,
-			},
+		Name:      nsn.Name,
+		Namespace: nsn.Namespace,
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                     Type,
+			LicenseLabelType:                           string(LicenseTypeEnterpriseTrial),
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		},
+		Annotations: map[string]string{
+			EULAAnnotation: EULAAcceptedValue,
 		},
 	})
 }

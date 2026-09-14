@@ -521,10 +521,8 @@ func Test_validUpgradePath(t *testing.T) {
 func Test_noUnknownFields(t *testing.T) {
 	GetEsWithLastApplied := func(lastApplied string) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					corev1.LastAppliedConfigAnnotation: lastApplied,
-				},
+			Annotations: map[string]string{
+				corev1.LastAppliedConfigAnnotation: lastApplied,
 			},
 		}
 	}
@@ -1224,8 +1222,8 @@ func Test_fipsWarnings(t *testing.T) {
 			name: "fips enabled below min version but keystore password via envFrom secret",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ks-envfrom"},
-					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/x")},
+					Namespace: "ns", Name: "ks-envfrom",
+					Data: map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/x")},
 				},
 			},
 			es: esv1.Elasticsearch{
@@ -1244,7 +1242,7 @@ func Test_fipsWarnings(t *testing.T) {
 											Name: esv1.ElasticsearchContainerName,
 											EnvFrom: []corev1.EnvFromSource{
 												{SecretRef: &corev1.SecretEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{Name: "ks-envfrom"},
+													Name: "ks-envfrom",
 												}},
 											},
 										},
@@ -1303,10 +1301,8 @@ func Test_fipsWarnings(t *testing.T) {
 			name: "fips enabled only via stack config policy below min version emits unsupported warning",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-only"),
-						Namespace: "ns",
-					},
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-only"),
+					Namespace: "ns",
 					Data: map[string][]byte{
 						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 					},
@@ -1332,10 +1328,8 @@ func Test_fipsWarnings(t *testing.T) {
 			name: "stack config policy fips override suppresses mixed nodeset inconsistency warning",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-override"),
-						Namespace: "ns",
-					},
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("policy-override"),
+					Namespace: "ns",
 					Data: map[string][]byte{
 						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 					},
@@ -1392,7 +1386,7 @@ func Test_fipsWarnings_notFoundEnvFromDoesNotBlockAdmissionWarningPath(t *testin
 											Name: esv1.ElasticsearchContainerName,
 											EnvFrom: []corev1.EnvFromSource{
 												{SecretRef: &corev1.SecretEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+													Name: "missing-secret",
 												}},
 											},
 										},
@@ -1423,7 +1417,7 @@ func Test_fipsWarnings_notFoundEnvFromDoesNotBlockAdmissionWarningPath(t *testin
 											Name: esv1.ElasticsearchContainerName,
 											EnvFrom: []corev1.EnvFromSource{
 												{SecretRef: &corev1.SecretEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{Name: "missing-secret"},
+													Name: "missing-secret",
 												}},
 											},
 										},
@@ -1464,10 +1458,8 @@ func Test_validateRestartTriggerWarnings(t *testing.T) {
 
 	esCR := func(triggerValue string) esv1.Elasticsearch {
 		cr := esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: clusterNamespace,
-			},
+			Name:      clusterName,
+			Namespace: clusterNamespace,
 		}
 		if triggerValue != "" {
 			cr.Annotations = map[string]string{
@@ -1479,12 +1471,10 @@ func Test_validateRestartTriggerWarnings(t *testing.T) {
 
 	pod := func(name, triggerValue string) *corev1.Pod {
 		p := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: clusterNamespace,
-				Labels: map[string]string{
-					label.ClusterNameLabelName: clusterName,
-				},
+			Name:      name,
+			Namespace: clusterNamespace,
+			Labels: map[string]string{
+				label.ClusterNameLabelName: clusterName,
 			},
 		}
 		if triggerValue != "" {
@@ -1600,11 +1590,9 @@ func Test_validateRestartTriggerWarnings(t *testing.T) {
 // es returns an es fixture at a given version
 func es(v string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "foo",
-		},
-		Spec: esv1.ElasticsearchSpec{Version: v},
+		Namespace: "default",
+		Name:      "foo",
+		Spec:      esv1.ElasticsearchSpec{Version: v},
 	}
 }
 

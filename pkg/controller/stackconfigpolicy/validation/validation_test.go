@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -18,10 +17,8 @@ const operatorNamespace = "operator-ns"
 
 func mkSCP(ns string) *policyv1alpha1.StackConfigPolicy {
 	return &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: ns,
-		},
+		Name:      "test-policy",
+		Namespace: ns,
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},

@@ -42,7 +42,7 @@ type Driver struct {
 
 // NewDriver returns a new stateful driver implementation.
 func NewDriver(parameters driver.Parameters) driver.Driver {
-	return &Driver{BaseDriver: driver.BaseDriver{Parameters: parameters}}
+	return &Driver{Parameters: parameters}
 }
 
 var _ commondriver.Interface = (*Driver)(nil)

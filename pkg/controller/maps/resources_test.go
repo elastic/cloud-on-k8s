@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
@@ -35,7 +34,7 @@ func buildMapsPodTemplate(t *testing.T, ems emsv1alpha1.ElasticMapsServer) corev
 
 func TestMapsResources(t *testing.T) {
 	base := emsv1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{Name: "ems-test", Namespace: "default"},
+		Name: "ems-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {

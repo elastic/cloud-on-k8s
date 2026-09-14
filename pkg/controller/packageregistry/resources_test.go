@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -28,8 +27,8 @@ func eprContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequireme
 
 func newMinimalEPR(spec eprv1alpha1.PackageRegistrySpec) eprv1alpha1.PackageRegistry {
 	return eprv1alpha1.PackageRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: "epr-test", Namespace: "default"},
-		Spec:       spec,
+		Name: "epr-test", Namespace: "default",
+		Spec: spec,
 	}
 }
 

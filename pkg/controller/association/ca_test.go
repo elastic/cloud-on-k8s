@@ -27,10 +27,8 @@ const kibanaESAssociationName = "kibana-es"
 
 func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-foo",
-			Namespace: "default",
-		},
+		Name:      "es-foo",
+		Namespace: "default",
 	}
 	kibanaFixtureObjectMeta := metav1.ObjectMeta{
 		Name:      "kibana-foo",
@@ -49,27 +47,21 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	}
 	// mock existing ES resource
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esFixture.Namespace,
-			Name:      esFixture.Name,
-		},
+		Namespace: esFixture.Namespace,
+		Name:      esFixture.Name,
 	}
 	// mock existing CA secret for ES
 	esCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-		},
+		Namespace: es.Namespace,
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
 			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedEsCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-		},
+		Namespace: es.Namespace,
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),
 			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
@@ -77,40 +69,32 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	}
 	// mock existing ES CA secret for Kibana
 	kibanaEsCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-		},
+		Namespace: es.Namespace,
+		Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
 			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedKibanaEsCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-		},
+		Namespace: es.Namespace,
+		Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),
 			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
 	esEmptyCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
-		},
+		Namespace: es.Namespace,
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
 			certificates.CAFileName:   {},
 		},
 	}
 	kibanaEmptyEsCA := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-		},
+		Namespace: es.Namespace,
+		Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
 			certificates.CAFileName:   {},
@@ -166,17 +150,15 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Reconciler{
-				AssociationInfo: AssociationInfo{
-					Labels: func(associated types.NamespacedName) map[string]string {
-						return map[string]string{}
-					},
-					AssociationName:                       "kibana-es",
-					AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
-					AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
+				Labels: func(associated types.NamespacedName) map[string]string {
+					return map[string]string{}
 				},
-				Client:     tt.client,
-				watches:    watches.DynamicWatches{},
-				Parameters: operator.Parameters{},
+				AssociationName:                       "kibana-es",
+				AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
+				AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
+				Client:                                tt.client,
+				watches:                               watches.DynamicWatches{},
+				Parameters:                            operator.Parameters{},
 			}
 
 			// re-use the one used for ES association, but it could be anything else

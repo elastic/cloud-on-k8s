@@ -36,7 +36,6 @@ import (
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -534,11 +533,10 @@ func Test_Driver_updateDesiredNodes(t *testing.T) {
 			}
 
 			d := &Driver{
-				BaseDriver: driver.BaseDriver{Parameters: driver.Parameters{
-					ReconcileState: reconcileState,
-					ES:             es,
-					Client:         k8sClient,
-				}},
+
+				ReconcileState: reconcileState,
+				ES:             es,
+				Client:         k8sClient,
 			}
 
 			wantClient := wantClient{}
@@ -610,7 +608,7 @@ func (esb esBuilder) toExpectedResources() nodespec.ResourcesList {
 					Template: fns.toPodTemplateSpec(),
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+							Name: "elasticsearch-data",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								Resources: corev1.VolumeResourceRequirements{
 									Requests: corev1.ResourceList{
@@ -638,13 +636,11 @@ func (esb esBuilder) toEs() esv1.Elasticsearch {
 	}
 
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "elasticsearch-desired-sample",
-			Namespace:       "default",
-			UID:             esb.uid,
-			ResourceVersion: esb.resourceVersion,
-			Generation:      1,
-		},
+		Name:            "elasticsearch-desired-sample",
+		Namespace:       "default",
+		UID:             esb.uid,
+		ResourceVersion: esb.resourceVersion,
+		Generation:      1,
 		Spec: esv1.ElasticsearchSpec{
 			Version:  esb.esVersion,
 			NodeSets: nodeSets,
@@ -661,13 +657,11 @@ func (esb esBuilder) toResources() []crclient.Object {
 		}
 		for i := 0; i < int(nodeSet.count); i++ {
 			pvc := corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            fmt.Sprintf("elasticsearch-data-elasticsearch-desired-sample-es-%s-%d", nodeSet.name, i),
-					Namespace:       "default",
-					UID:             uuid.NewUUID(),
-					ResourceVersion: strconv.Itoa(rand.Intn(1000)),
-					Generation:      1,
-				},
+				Name:            fmt.Sprintf("elasticsearch-data-elasticsearch-desired-sample-es-%s-%d", nodeSet.name, i),
+				Namespace:       "default",
+				UID:             uuid.NewUUID(),
+				ResourceVersion: strconv.Itoa(rand.Intn(1000)),
+				Generation:      1,
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: nodeSet.claimedStorage.DeepCopy()},

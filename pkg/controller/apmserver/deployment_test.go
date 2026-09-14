@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -121,33 +120,25 @@ func expectedDeploymentParams() testParams {
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						{
-							Name: "apmserver-data",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
+							Name:     "apmserver-data",
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 						{
 							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: "test-apm-config",
-									Optional:   ptrFalse(),
-								},
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "test-apm-config",
+								Optional:   ptrFalse(),
 							},
 						},
 						{
-							Name: "config-volume",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
+							Name:     "config-volume",
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 						{
 							Name: certificates.HTTPCertificatesSecretVolumeName,
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: certSecretName,
-									Optional:   ptrFalse(),
-								},
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: certSecretName,
+								Optional:   ptrFalse(),
 							},
 						},
 					},
@@ -184,10 +175,8 @@ func expectedDeploymentParams() testParams {
 							Name: "SECRET_TOKEN",
 							ValueFrom: &corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "test-apm-server-apm-token",
-									},
-									Key: "secret-token",
+									Name: "test-apm-server-apm-token",
+									Key:  "secret-token",
 								},
 							},
 						}),
@@ -200,12 +189,10 @@ func expectedDeploymentParams() testParams {
 							PeriodSeconds:       10,
 							SuccessThreshold:    1,
 							TimeoutSeconds:      5,
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Port:   intstr.FromInt(8200),
-									Path:   "/",
-									Scheme: corev1.URISchemeHTTPS,
-								},
+							HTTPGet: &corev1.HTTPGetAction{
+								Port:   intstr.FromInt(8200),
+								Path:   "/",
+								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
 						Resources: DefaultResources,
@@ -223,7 +210,7 @@ func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.As
 	apmv1.NewApmKibanaAssociation(as).SetAssociationConf(kbAssocConf)
 
 	if esAssocConf != nil {
-		as.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}}
+		as.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{Name: "es"}
 	}
 
 	if kbAssocConf != nil {
@@ -235,12 +222,8 @@ func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.As
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	apmFixture := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-apm-server",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind: apmv1.Kind,
-		},
+		Name: "test-apm-server",
+		Kind: apmv1.Kind,
 	}
 	defaultPodSpecParams := PodSpecParams{
 		Version: "1.0.0",
@@ -276,9 +259,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 				},
 			},
@@ -295,14 +276,10 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "es-ca",
-						},
+						Name: "es-ca",
 						Data: map[string][]byte{
 							certificates.CAFileName: []byte("es-ca-cert"),
 						},
@@ -313,11 +290,9 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				withConfigHash("4033121041").
 				withVolume(4, corev1.Volume{
 					Name: "elasticsearch-certs",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "es-ca",
-							Optional:   ptrFalse(),
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "es-ca",
+						Optional:   ptrFalse(),
 					},
 				}).
 				withVolumeMount(4, corev1.VolumeMount{
@@ -342,22 +317,16 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "es-ca",
-						},
+						Name: "es-ca",
 						Data: map[string][]byte{
 							certificates.CAFileName: []byte("es-ca-cert"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "kb-ca",
-						},
+						Name: "kb-ca",
 						Data: map[string][]byte{
 							certificates.CAFileName: []byte("kb-ca-cert"),
 						},
@@ -368,20 +337,16 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				withConfigHash("3109678476").
 				withVolume(4, corev1.Volume{
 					Name: "elasticsearch-certs",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "es-ca",
-							Optional:   ptrFalse(),
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "es-ca",
+						Optional:   ptrFalse(),
 					},
 				}).
 				withVolume(5, corev1.Volume{
 					Name: "kibana-certs",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "kb-ca",
-							Optional:   ptrFalse(),
-						},
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "kb-ca",
+						Optional:   ptrFalse(),
 					},
 				}).
 				withVolumeMount(4, corev1.VolumeMount{
@@ -404,9 +369,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 						Data: map[string][]byte{
 							certificates.CertFileName: []byte("bar"),
 						},
@@ -423,9 +386,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: func() PodSpecParams {
 					params := defaultPodSpecParams
 					params.ConfigSecret = corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "test-apm-config",
-						},
+						Name: "test-apm-config",
 						Data: map[string][]byte{
 							"apm-server.yml": []byte("baz"),
 						},
@@ -434,9 +395,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				}(),
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 				},
 			},
@@ -460,9 +419,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				}(),
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 				},
 			},
@@ -481,9 +438,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: func() PodSpecParams {
 					params := defaultPodSpecParams
 					params.TokenSecret = corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: SecretToken(apmFixture.Name),
-						},
+						Name: SecretToken(apmFixture.Name),
 						Data: map[string][]byte{
 							SecretTokenKey: []byte("s3cr3t"),
 						},
@@ -492,9 +447,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				}(),
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 				},
 			},
@@ -509,9 +462,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				setDefaultSecurityContext: true,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: certSecretName,
-						},
+						Name: certSecretName,
 					},
 				},
 			},
@@ -524,10 +475,10 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.initialObjects...)
 			w := watches.NewDynamicWatches()
 			r := &ReconcileApmServer{
-				Client:         client,
-				recorder:       toolsevents.NewFakeRecorder(100),
-				dynamicWatches: w,
-				Parameters:     operator.Parameters{SetDefaultSecurityContext: tt.args.setDefaultSecurityContext},
+				Client:                    client,
+				recorder:                  toolsevents.NewFakeRecorder(100),
+				dynamicWatches:            w,
+				SetDefaultSecurityContext: tt.args.setDefaultSecurityContext,
 			}
 			md := metadata.Propagate(tt.args.as, metadata.Metadata{Labels: tt.args.as.GetIdentityLabels()})
 			got, err := r.deploymentParams(tt.args.as, tt.args.podSpecParams, md)

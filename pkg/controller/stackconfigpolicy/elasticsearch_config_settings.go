@@ -25,7 +25,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -86,13 +85,11 @@ func newElasticsearchConfigSecret(esConfig policyv1alpha1.ElasticsearchConfigPol
 		Annotations: annotations,
 	})
 	elasticsearchConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        esv1.StackConfigElasticsearchConfigSecretName(es.Name),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Data: data,
+		Namespace:   es.Namespace,
+		Name:        esv1.StackConfigElasticsearchConfigSecretName(es.Name),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
+		Data:        data,
 	}
 
 	// Add label to delete secret on deletion of the stack config policy
@@ -126,13 +123,11 @@ func reconcileSecretMounts(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 		// Recreate it in the Elasticsearch namespace, prefix with es name.
 		secretName := esv1.StackConfigAdditionalSecretName(es.Name, secretMount.SecretName)
 		expected := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   es.Namespace,
-				Name:        secretName,
-				Labels:      secretMeta.Labels,
-				Annotations: secretMeta.Annotations,
-			},
-			Data: additionalSecret.Data,
+			Namespace:   es.Namespace,
+			Name:        secretName,
+			Labels:      secretMeta.Labels,
+			Annotations: secretMeta.Annotations,
+			Data:        additionalSecret.Data,
 		}
 
 		// Set stackconfigpolicy as a softowner

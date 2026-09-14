@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -266,10 +265,8 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 			name: "StatefulSet transport Secret exists",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-name-es-sset1-es-transport-certs",
-						Namespace: testNamespace,
-					},
+					Name:      "test-es-name-es-sset1-es-transport-certs",
+					Namespace: testNamespace,
 				}),
 				es:       testES,
 				ssetName: esv1.StatefulSet(testEsName, "sset1"),
@@ -316,10 +313,8 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 			name: "Former cluster transport Secret exists",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-name-es-transport-certificates", // Create a Secret with the former name
-						Namespace: testNamespace,
-					},
+					Name:      "test-es-name-es-transport-certificates", // Create a Secret with the former name
+					Namespace: testNamespace,
 				}),
 				es: testES,
 			},
@@ -364,15 +359,13 @@ func (t *trackingK8sClient) Delete(ctx context.Context, obj client.Object, opts 
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StatefulSetTransportCertificatesSecret(esv1.StatefulSet(testES.Name, "sset1")),
-			Namespace: testES.Namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName:     testES.Name,
-				"common.k8s.elastic.co/type":   "elasticsearch",
-				label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
-				"eck.k8s.elastic.co/watched":   "true",
-			},
+		Name:      esv1.StatefulSetTransportCertificatesSecret(esv1.StatefulSet(testES.Name, "sset1")),
+		Namespace: testES.Namespace,
+		Labels: map[string]string{
+			label.ClusterNameLabelName:     testES.Name,
+			"common.k8s.elastic.co/type":   "elasticsearch",
+			label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
+			"eck.k8s.elastic.co/watched":   "true",
 		},
 		Data: make(map[string][]byte),
 	}

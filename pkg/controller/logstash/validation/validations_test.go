@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -40,11 +39,9 @@ func TestCheckNameLength(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := lsv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      tc.logstashName,
-					Namespace: "test",
-				},
-				Spec: lsv1alpha1.LogstashSpec{},
+				Name:      tc.logstashName,
+				Namespace: "test",
+				Spec:      lsv1alpha1.LogstashSpec{},
 			}
 
 			errList := checkNameLength(&ls)
@@ -83,9 +80,9 @@ func TestCheckNoUnknownFields(t *testing.T) {
 			name: "Downgrade with override OK",
 			args: args{
 				prev: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.6.1"}},
-				curr: &lsv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				curr: &lsv1alpha1.Logstash{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
+				}, Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
 			},
 			want: nil,
 		},
@@ -214,7 +211,7 @@ func Test_checkPipelinesRefSource(t *testing.T) {
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
 					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
-						SecretRef: commonv1.SecretRef{SecretName: "my-secret"},
+						SecretName: "my-secret",
 					},
 				},
 			},
@@ -225,7 +222,7 @@ func Test_checkPipelinesRefSource(t *testing.T) {
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
 					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
-						ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+						ConfigMapName: "my-cm",
 					},
 				},
 			},
@@ -236,8 +233,8 @@ func Test_checkPipelinesRefSource(t *testing.T) {
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
 					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
-						SecretRef:    commonv1.SecretRef{SecretName: "my-secret"},
-						ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+						SecretName:    "my-secret",
+						ConfigMapName: "my-cm",
 					},
 				},
 			},
@@ -309,12 +306,12 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"}},
-								ClusterName:           "test",
+								SecretName:  "bla",
+								ClusterName: "test",
 							},
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
-								ClusterName:           "test2",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "test2",
 							},
 						},
 					},
@@ -329,8 +326,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"}},
-								ClusterName:           "test",
+								SecretName: "bla", Name: "bla",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -345,8 +342,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"}},
-								ClusterName:           "test",
+								Namespace:   "blub",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -361,8 +358,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"}},
-								ClusterName:           "test",
+								ServiceName: "ble",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -402,7 +399,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
+								Name: "bla", Namespace: "blub",
 							},
 						},
 					},
@@ -417,12 +414,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
-								ClusterName:           "bla",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "bla",
 							},
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
-								ClusterName:           "blub",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "blub",
 							},
 						},
 					},
@@ -437,12 +434,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
-								ClusterName:           "",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "",
 							},
 							{
-								ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
-								ClusterName:           "default",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "default",
 							},
 						},
 					},
@@ -468,27 +465,21 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 		{
 			name: "pause-orchestration false",
 			ls: &lsv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
-				},
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "pause-orchestration true",
 			ls: &lsv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
-				},
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "pause-orchestration invalid",
 			ls: &lsv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
-				},
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
 			},
 			wantErr: true,
 		},

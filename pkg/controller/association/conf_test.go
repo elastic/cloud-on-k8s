@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -169,10 +168,8 @@ func testFetchKibana(t *testing.T) {
 
 func mkKibana(withAnnotations bool) *kbv1.Kibana {
 	kb := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb-test",
-			Namespace: "kb-ns",
-		},
+		Name:      "kb-test",
+		Namespace: "kb-ns",
 		Spec: kbv1.KibanaSpec{
 			Image: "test-image",
 			Count: 1,
@@ -184,7 +181,7 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 			kb.EsAssociation().AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
 		}
 		kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-			ObjectSelector: commonv1.ObjectSelector{Name: "es-test", Namespace: "es-ns"},
+			Name: "es-test", Namespace: "es-ns",
 		}
 	}
 
@@ -240,11 +237,9 @@ func TestAreConfiguredIfSet(t *testing.T) {
 func TestElasticsearchAuthSettings(t *testing.T) {
 	apmEsAssociation := apmv1.ApmEsAssociation{
 		ApmServer: &apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm-server-sample",
-				Namespace: "default",
-			},
-			Spec: apmv1.ApmServerSpec{},
+			Name:      "apm-server-sample",
+			Namespace: "default",
+			Spec:      apmv1.ApmServerSpec{},
 		},
 	}
 
@@ -263,11 +258,9 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		{
 			name: "When auth details are defined",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+				Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+				Namespace: "default",
+				Data:      map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
 			assocConf: commonv1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
@@ -281,11 +274,9 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		{
 			name: "When auth details are undefined",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+				Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+				Namespace: "default",
+				Data:      map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
 			assocConf: commonv1.AssociationConf{
 				CASecretName: "ca-secret",
@@ -295,11 +286,9 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		{
 			name: "When the auth secret does not exist",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "some-secret",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+				Name:      "some-secret",
+				Namespace: "default",
+				Data:      map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
 			assocConf: commonv1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
@@ -312,11 +301,9 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 		{
 			name: "When the auth secret key does not exist",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+				Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+				Namespace: "default",
+				Data:      map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
 			assocConf: commonv1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
@@ -348,7 +335,7 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 
 func TestUpdateAssociationConf(t *testing.T) {
 	kb := mkKibana(true)
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
+	request := reconcile.Request{Name: "kb-test", Namespace: "kb-ns"}
 	client := k8s.NewFakeClient(kb)
 
 	expectedAssocConf := &commonv1.AssociationConf{
@@ -394,7 +381,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 func TestRemoveAssociationConf(t *testing.T) {
 	kb := mkKibana(true)
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
+	request := reconcile.Request{Name: "kb-test", Namespace: "kb-ns"}
 	client := k8s.NewFakeClient(kb)
 
 	expectedAssocConf := &commonv1.AssociationConf{
@@ -451,11 +438,7 @@ func TestAllowVersion(t *testing.T) {
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{
-							SecretName: "my-secret",
-						},
-					},
+					SecretName: "my-secret",
 				},
 			},
 		},
@@ -565,11 +548,9 @@ func TestAllowVersion(t *testing.T) {
 func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 	withAnnotations := func(annotationNames ...string) *agentv1alpha1.Agent {
 		result := &agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "agent1",
-				Namespace:   "namespace1",
-				Annotations: make(map[string]string),
-			},
+			Name:        "agent1",
+			Namespace:   "namespace1",
+			Annotations: make(map[string]string),
 		}
 		for _, annotationName := range annotationNames {
 			result.Annotations[annotationName] = annotationName
@@ -584,9 +565,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 				outputName = "default"
 			}
 			agent.Spec.ElasticsearchRefs = append(agent.Spec.ElasticsearchRefs, agentv1alpha1.Output{
-				ElasticsearchSelector: commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: nsName.Name, Namespace: nsName.Namespace},
-				},
+				Name: nsName.Name, Namespace: nsName.Namespace,
 				OutputName: outputName,
 			})
 		}
@@ -598,9 +577,7 @@ func TestRemoveObsoleteAssociationConfs(t *testing.T) {
 			Spec: agentv1alpha1.AgentSpec{
 				ElasticsearchRefs: []agentv1alpha1.Output{
 					{
-						ElasticsearchSelector: commonv1.ElasticsearchSelector{
-							ObjectSelector: commonv1.ObjectSelector{Name: name, Namespace: namespace},
-						},
+						Name: name, Namespace: namespace,
 					},
 				},
 			},

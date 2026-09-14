@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -29,23 +28,19 @@ import (
 
 var (
 	existingElasticsearch = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "elasticsearch-sample",
-			Namespace:       "e2e-mercury",
-			UID:             types.UID("eda4b94f-687d-4797-af3b-e46b248b82af"),
-			ResourceVersion: "4242",
-			Generation:      3,
-		},
+		Name:            "elasticsearch-sample",
+		Namespace:       "e2e-mercury",
+		UID:             types.UID("eda4b94f-687d-4797-af3b-e46b248b82af"),
+		ResourceVersion: "4242",
+		Generation:      3,
 	}
 
 	existingKibana = kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "kibana-sample",
-			Namespace:       "e2e-venus",
-			UID:             types.UID("892ff7d8-9cf2-48f0-89bc-5a530e77a930"),
-			ResourceVersion: "8819",
-			Generation:      2,
-		},
+		Name:            "kibana-sample",
+		Namespace:       "e2e-venus",
+		UID:             types.UID("892ff7d8-9cf2-48f0-89bc-5a530e77a930"),
+		ResourceVersion: "8819",
+		Generation:      2,
 		Spec: kbv1.KibanaSpec{
 			Count: 1,
 			ElasticsearchRef: commonv1.ElasticsearchSelector{
@@ -55,21 +50,19 @@ var (
 	}
 
 	expectedKibanaUserSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "e2e-venus",
-			Name:      "kibana-sample-kibana-user",
-			UID:       types.UID("6f5cb31d-69c4-409d-8b8d-8eafafc6bbd7"),
-			Labels: map[string]string{
-				"eck.k8s.elastic.co/credentials":                 "true",
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
-				"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
-				"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
-				"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
-			},
-			ResourceVersion: "3442951",
+		Namespace: "e2e-venus",
+		Name:      "kibana-sample-kibana-user",
+		UID:       types.UID("6f5cb31d-69c4-409d-8b8d-8eafafc6bbd7"),
+		Labels: map[string]string{
+			"eck.k8s.elastic.co/credentials":                 "true",
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
+			"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
+			"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
+			"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
+			"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
 		},
+		ResourceVersion: "3442951",
 		Data: map[string][]byte{
 			"serviceAccount": []byte("elastic/kibana"),
 			"name":           []byte("e2e-venus_kibana-sample_892ff7d8-9cf2-48f0-89bc-5a530e77a930"),
@@ -79,20 +72,18 @@ var (
 	}
 
 	expectedElasticsearchUserSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       "e2e-mercury",
-			Name:            "e2e-venus-kibana-sample-kibana-user",
-			UID:             types.UID("0c60f0f4-5847-48b7-b539-c76746a7394f"),
-			ResourceVersion: "3443557",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                     "service-account-token",
-				"eck.k8s.elastic.co/watched":                     "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
-				"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
-				"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
-				"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
-				"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
-			},
+		Namespace:       "e2e-mercury",
+		Name:            "e2e-venus-kibana-sample-kibana-user",
+		UID:             types.UID("0c60f0f4-5847-48b7-b539-c76746a7394f"),
+		ResourceVersion: "3443557",
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":                     "service-account-token",
+			"eck.k8s.elastic.co/watched":                     "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":      "elasticsearch-sample",
+			"elasticsearch.k8s.elastic.co/cluster-namespace": "e2e-mercury",
+			"kibanaassociation.k8s.elastic.co/name":          "kibana-sample",
+			"kibanaassociation.k8s.elastic.co/namespace":     "e2e-venus",
+			"kibanaassociation.k8s.elastic.co/type":          "elasticsearch",
 		},
 		Data: map[string][]byte{
 			"name": []byte("elastic/kibana/e2e-venus_kibana-sample_892ff7d8-9cf2-48f0-89bc-5a530e77a930"),

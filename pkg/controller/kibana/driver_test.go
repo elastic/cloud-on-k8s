@@ -49,16 +49,14 @@ func Test_getStrategyType(t *testing.T) {
 		result := make([]client.Object, 0, podCount)
 		for i := range podCount {
 			result = append(result, &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					OwnerReferences: []metav1.OwnerReference{
-						{Name: fmt.Sprintf("rs-%v-%v", kbName, version)},
-					},
-					Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
-					Namespace: "default",
-					Labels: map[string]string{
-						kblabel.KibanaNameLabelName:    kbName,
-						kblabel.KibanaVersionLabelName: version,
-					},
+				OwnerReferences: []metav1.OwnerReference{
+					{Name: fmt.Sprintf("rs-%v-%v", kbName, version)},
+				},
+				Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
+				Namespace: "default",
+				Labels: map[string]string{
+					kblabel.KibanaNameLabelName:    kbName,
+					kblabel.KibanaVersionLabelName: version,
 				},
 			})
 		}
@@ -291,37 +289,29 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: func() []client.Object {
 					return []client.Object{
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "es-ca-secret",
-								Namespace: "default",
-							},
+							Name:      "es-ca-secret",
+							Namespace: "default",
 							Data: map[string][]byte{
 								certificates.CAFileName: nil,
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-auth",
-								Namespace: "default",
-							},
+							Name:      "test-auth",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"kibana-user": []byte("some-secret"),
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-kb-config",
-								Namespace: "default",
-							},
+							Name:      "test-kb-config",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"kibana.yml": []byte("server.name: test"),
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-kb-http-certs-internal",
-								Namespace: "default",
-							},
+							Name:      "test-kb-http-certs-internal",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"tls.crt": []byte("this is also relevant"),
 							},
@@ -463,72 +453,52 @@ func expectedDeploymentParams() deployment.Params {
 				Volumes: []corev1.Volume{
 					{
 						Name: certificates.HTTPCertificatesSecretVolumeName,
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-http-certs-internal",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "test-kb-http-certs-internal",
+							Optional:   &falseVal,
 						},
 					},
 					{
 						Name: "elastic-internal-kibana-config",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-config",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "test-kb-config",
+							Optional:   &falseVal,
 						},
 					},
 					{
-						Name: initcontainer.ConfigSharedVolume.VolumeName,
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     initcontainer.ConfigSharedVolume.VolumeName,
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
 						Name: "elasticsearch-certs",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "es-ca-secret",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "es-ca-secret",
+							Optional:   &falseVal,
 						},
 					},
 					{
-						Name: kbvolume.DataVolumeName,
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     kbvolume.DataVolumeName,
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
-						Name: "kibana-logs",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "kibana-logs",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
-						Name: "kibana-plugins",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "kibana-plugins",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
 						Name: "kibana-scripts",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "test-kb-scripts",
-								},
-								DefaultMode: new(int32(0755)),
-								Optional:    new(false),
-							},
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							Name:        "test-kb-scripts",
+							DefaultMode: new(int32(0755)),
+							Optional:    new(false),
 						},
 					},
 					{
-						Name: "temp-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "temp-volume",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				InitContainers: []corev1.Container{
@@ -667,12 +637,10 @@ func expectedDeploymentParams() deployment.Params {
 						PeriodSeconds:       10,
 						SuccessThreshold:    1,
 						TimeoutSeconds:      5,
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Port:   intstr.FromInt(5601),
-								Path:   "/login",
-								Scheme: corev1.URISchemeHTTPS,
-							},
+						HTTPGet: &corev1.HTTPGetAction{
+							Port:   intstr.FromInt(5601),
+							Path:   "/login",
+							Scheme: corev1.URISchemeHTTPS,
 						},
 					},
 					Resources:       DefaultResources,
@@ -703,10 +671,8 @@ func pre710(params deployment.Params) deployment.Params {
 
 func kibanaFixture() *kbv1.Kibana {
 	kbFixture := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
-		},
+		Name:      "test",
+		Namespace: "default",
 		Spec: kbv1.KibanaSpec{
 			Version: "7.17.0",
 			Image:   "my-image",
@@ -730,10 +696,8 @@ func kibanaFixture() *kbv1.Kibana {
 func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 	kbFixture := kibanaFixture()
 	kbFixture.Spec.PodTemplate = corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"mylabel": "value",
-			},
+		Labels: map[string]string{
+			"mylabel": "value",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -751,37 +715,29 @@ func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 func defaultInitialObjects() []client.Object {
 	return []client.Object{
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "es-ca-secret",
-				Namespace: "default",
-			},
+			Name:      "es-ca-secret",
+			Namespace: "default",
 			Data: map[string][]byte{
 				certificates.CAFileName: nil,
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-auth",
-				Namespace: "default",
-			},
+			Name:      "test-auth",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"kibana-user": nil,
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-kb-config",
-				Namespace: "default",
-			},
+			Name:      "test-kb-config",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"kibana.yml": []byte("server.name: test"),
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-kb-http-certs-internal",
-				Namespace: "default",
-			},
+			Name:      "test-kb-http-certs-internal",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"ca.crt": nil,
 			},
@@ -863,10 +819,8 @@ func TestNewService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "kibana-test",
-					Namespace: "test",
-				},
+				Name:      "kibana-test",
+				Namespace: "test",
 				Spec: kbv1.KibanaSpec{
 					HTTP: tc.httpConf,
 				},
@@ -879,13 +833,11 @@ func TestNewService(t *testing.T) {
 
 func mkService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kibana-test-kb-http",
-			Namespace: "test",
-			Labels: map[string]string{
-				kblabel.KibanaNameLabelName: "kibana-test",
-				commonv1.TypeLabelName:      kblabel.Type,
-			},
+		Name:      "kibana-test-kb-http",
+		Namespace: "test",
+		Labels: map[string]string{
+			kblabel.KibanaNameLabelName: "kibana-test",
+			commonv1.TypeLabelName:      kblabel.Type,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -912,10 +864,8 @@ func TestDriver_buildVolumes(t *testing.T) {
 		{
 			name: "without associations",
 			kb: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test-ns",
-				},
+				Name:      "test-kb",
+				Namespace: "test-ns",
 				Spec: kbv1.KibanaSpec{
 					Version: "7.10.0",
 				},
@@ -931,12 +881,10 @@ func TestDriver_buildVolumes(t *testing.T) {
 			name: "with EPR association and CA configured",
 			kb: func() *kbv1.Kibana {
 				kb := &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kb",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
@@ -969,13 +917,11 @@ func TestDriver_buildVolumes(t *testing.T) {
 			name: "with multiple associations",
 			kb: func() *kbv1.Kibana {
 				kb := &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/es-conf":  `{"authSecretName":"test-es-user","authSecretKey":"token","caCertProvided":true,"caSecretName":"test-es-ca","url":"https://test-es:9200"}`,
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kb",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/es-conf":  `{"authSecretName":"test-es-user","authSecretKey":"token","caCertProvided":true,"caSecretName":"test-es-ca","url":"https://test-es:9200"}`,
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",

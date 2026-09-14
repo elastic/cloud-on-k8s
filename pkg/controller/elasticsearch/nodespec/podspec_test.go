@@ -86,15 +86,13 @@ func (esb *esSampleBuilder) withTransportCertsDisabled(disabled bool) *esSampleB
 }
 
 var sampleES = esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace: "namespace",
-		Name:      "name",
-		Labels: map[string]string{
-			"cluster-label-name": "cluster-label-value",
-		},
-		Annotations: map[string]string{
-			"cluster-annotation-name": "cluster-annotation-value",
-		},
+	Namespace: "namespace",
+	Name:      "name",
+	Labels: map[string]string{
+		"cluster-label-name": "cluster-label-value",
+	},
+	Annotations: map[string]string{
+		"cluster-annotation-name": "cluster-annotation-value",
 	},
 	Spec: esv1.ElasticsearchSpec{
 		Version: "7.2.0",
@@ -235,7 +233,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, false, false)
 			require.NoError(t, err)
 
-			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)})
 			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
@@ -264,7 +262,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		},
 	}
 	// shared fixture
-	scriptsConfigMap := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}}
+	scriptsConfigMap := &corev1.ConfigMap{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}
 
 	type args struct {
 		client                    k8s.Client
@@ -830,7 +828,7 @@ func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)})
 			actual, err := BuildPodTemplateSpec(context.Background(), client, es, nodeSet, cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 
@@ -1157,7 +1155,7 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false, sampleES.Spec.NodeSets[0].ZoneAwareness != nil, false)
 			require.NoError(t, err)
-			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)})
 			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 

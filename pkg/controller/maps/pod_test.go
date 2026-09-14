@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
@@ -93,8 +92,8 @@ func TestNewPodSpec_CommandOverride(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test EMS with the specified version
 			ems := emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-ems", Namespace: "default"},
-				Spec:       emsv1alpha1.MapsSpec{Version: tt.version},
+				Name: "test-ems", Namespace: "default",
+				Spec: emsv1alpha1.MapsSpec{Version: tt.version},
 			}
 
 			podSpec, err := newPodSpec(ems, "test-hash", metadata.Metadata{}, tt.setDefaultSecurityContext)
@@ -178,7 +177,7 @@ func Test_withESCertsVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ems := emsv1alpha1.ElasticMapsServer{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-ems", Namespace: "default"},
+				Name: "test-ems", Namespace: "default",
 				Spec: emsv1alpha1.MapsSpec{
 					Version:          "8.0.0",
 					ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"}},

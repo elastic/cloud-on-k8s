@@ -54,10 +54,10 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "cross-namespace legacy copies are deleted",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-agent-es-xxx-client-cert", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet1-agent-es-xxx-client-cert", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 			},
 			managedNS:   []string{agentNS},
@@ -67,7 +67,7 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "orphaned legacy copy with no agent objects present is still deleted",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 			},
 			managedNS:   []string{agentNS},
@@ -78,14 +78,12 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			secrets: []client.Object{
 				// New-scheme: agentassociation labels point to the agent, not the fleet server.
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: agentNS,
-						Name:      "agent1-agent-fleetserver-hashxxx-es-ca",
-						Labels: map[string]string{
-							AgentAssociationLabelName:      "agent1",
-							AgentAssociationLabelNamespace: agentNS,
-							AgentAssociationLabelType:      commonv1.FleetServerAssociationType,
-						},
+					Namespace: agentNS,
+					Name:      "agent1-agent-fleetserver-hashxxx-es-ca",
+					Labels: map[string]string{
+						AgentAssociationLabelName:      "agent1",
+						AgentAssociationLabelNamespace: agentNS,
+						AgentAssociationLabelType:      commonv1.FleetServerAssociationType,
 					},
 				},
 			},
@@ -96,7 +94,7 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "original CA in fleet-server namespace is not touched",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: fleetServerNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: fleetServerNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 			},
 			managedNS:     []string{agentNS, fleetServerNS},
@@ -106,7 +104,7 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "same-namespace secret preserved",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: sharedNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", sharedNS)},
+					Namespace: sharedNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", sharedNS),
 				},
 			},
 			managedNS:     []string{sharedNS},
@@ -116,12 +114,10 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "secret with owner reference is skipped even if labels match",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: agentNS, Name: "fleet1-es-ca",
-						Labels: fleetServerESLabels("fleet1", fleetServerNS),
-						OwnerReferences: []metav1.OwnerReference{
-							{APIVersion: "agent.k8s.elastic.co/v1alpha1", Kind: "Agent", Name: "agent1"},
-						},
+					Namespace: agentNS, Name: "fleet1-es-ca",
+					Labels: fleetServerESLabels("fleet1", fleetServerNS),
+					OwnerReferences: []metav1.OwnerReference{
+						{APIVersion: "agent.k8s.elastic.co/v1alpha1", Kind: "Agent", Name: "agent1"},
 					},
 				},
 			},
@@ -132,10 +128,10 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "cross-namespace copies for two different fleet servers both deleted",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet2-es-ca", Labels: fleetServerESLabels("fleet2", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet2-es-ca", Labels: fleetServerESLabels("fleet2", fleetServerNS),
 				},
 			},
 			managedNS:   []string{agentNS},
@@ -145,7 +141,7 @@ func TestGarbageCollectLegacyFleetServerAdditionalSecrets(t *testing.T) {
 			name: "empty managedNamespaces sweeps all namespaces",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS)},
+					Namespace: agentNS, Name: "fleet1-es-ca", Labels: fleetServerESLabels("fleet1", fleetServerNS),
 				},
 			},
 			managedNS:   []string{}, // empty = all namespaces

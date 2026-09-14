@@ -270,11 +270,9 @@ func TestWebhook(t *testing.T) {
 
 func mkElasticsearch(uid string) *esv1beta1.Elasticsearch {
 	return &esv1beta1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: esv1beta1.ElasticsearchSpec{
 			Version: "8.16.0",
 			NodeSets: []esv1beta1.NodeSet{

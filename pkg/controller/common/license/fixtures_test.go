@@ -14,7 +14,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -83,14 +82,12 @@ func asClientObject(l EnterpriseLicense) client.Object {
 	}
 
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test-system",
-			Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
-			Labels: map[string]string{
-				commonv1.TypeLabelName: Type,
-				LicenseLabelScope:      string(LicenseScopeOperator),
-				LicenseLabelType:       string(l.License.Type),
-			},
+		Namespace: "test-system",
+		Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
+		Labels: map[string]string{
+			commonv1.TypeLabelName: Type,
+			LicenseLabelScope:      string(LicenseScopeOperator),
+			LicenseLabelType:       string(l.License.Type),
 		},
 		Data: map[string][]byte{
 			FileName: bytes,

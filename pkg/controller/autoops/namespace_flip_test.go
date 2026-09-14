@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -23,11 +21,11 @@ import (
 func Test_namespaceFlipRequests(t *testing.T) {
 	policy := func(name, namespace string) autoopsv1alpha1.AutoOpsAgentPolicy {
 		return autoopsv1alpha1.AutoOpsAgentPolicy{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Name: name, Namespace: namespace,
 		}
 	}
 	req := func(namespace, name string) reconcile.Request {
-		return reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}}
+		return reconcile.Request{Namespace: namespace, Name: name}
 	}
 
 	// Policies select Elasticsearch clusters cluster-wide by label, so a flip of any
@@ -65,7 +63,7 @@ func Test_namespaceFlipRequests(t *testing.T) {
 
 			reqs := namespaceFlipRequests(logr.Discard(), c)(
 				context.Background(),
-				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "flipped"}},
+				&corev1.Namespace{Name: "flipped"},
 			)
 
 			require.ElementsMatch(t, tt.want, reqs)

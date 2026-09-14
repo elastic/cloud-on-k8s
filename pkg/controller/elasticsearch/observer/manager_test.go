@@ -14,7 +14,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.elastic.co/apm/v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -289,10 +288,8 @@ func TestManager_AddObservationListener(_ *testing.T) {
 
 func esObject(n types.NamespacedName) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: n.Namespace,
-			Name:      n.Name,
-		},
+		Namespace: n.Namespace,
+		Name:      n.Name,
 	}
 }
 
@@ -318,7 +315,7 @@ func TestExtractSettings(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: tc.annotations}}
+			es := esv1.Elasticsearch{Name: "test", Annotations: tc.annotations}
 			m := NewManager(tc.globalInterval, nil)
 			have := m.extractObserverSettings(context.Background(), es)
 			require.Equal(t, tc.want, have)

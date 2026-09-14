@@ -11,7 +11,6 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -321,12 +320,10 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 	configMapName := autoopsv1alpha1.Config(policy.GetName(), es)
 
 	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        configMapName,
-			Namespace:   policy.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        configMapName,
+		Namespace:   policy.GetNamespace(),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string]string{
 			autoopsv1alpha1.ConfigFileName: string(rendered),
 		},

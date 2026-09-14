@@ -14,8 +14,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
@@ -49,7 +47,7 @@ import (
 )
 
 // DefaultRequeue is the default requeue result for reconciliation.
-var DefaultRequeue = reconciler.ReconciliationState{Result: controller.Result{RequeueAfter: reconciler.DefaultRequeue}}
+var DefaultRequeue = reconciler.ReconciliationState{RequeueAfter: reconciler.DefaultRequeue}
 
 // ReconcileSharedResources contains the reconciliation logic shared across all Elasticsearch driver implementations.
 // clientAuthenticationRequired indicates whether client certificate authentication is required based on the ES configuration.
@@ -109,10 +107,8 @@ func ReconcileSharedResources(
 	} else {
 		// Ensure that remote cluster Service does not exist.
 		remoteClusterService := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      services.RemoteClusterServiceName(es.Name),
-			},
+			Namespace: es.Namespace,
+			Name:      services.RemoteClusterServiceName(es.Name),
 		}
 		results.WithError(k8s.DeleteResourceIfExists(ctx, client, remoteClusterService))
 	}

@@ -54,11 +54,11 @@ import (
 
 func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
+		Namespace: namespace, Name: name, Labels: map[string]string{
 			reconciler.SoftOwnerNameLabel:      ownerName,
 			reconciler.SoftOwnerNamespaceLabel: ownerNs,
 			reconciler.SoftOwnerKindLabel:      ownerKind,
-		}},
+		},
 	}
 }
 
@@ -90,8 +90,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Elasticsearch soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Elasticsearch"},
+					Namespace: "ns", Name: "es",
+					Kind: "Elasticsearch",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
@@ -118,8 +118,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Kibana soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Kibana"},
+					Namespace: "ns", Name: "es",
+					Kind: "Kibana",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
@@ -146,8 +146,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no ApmServer soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&apmv1.ApmServer{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "ApmServer"},
+					Namespace: "ns", Name: "es",
+					Kind: "ApmServer",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
@@ -174,8 +174,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no EnterpriseSearch soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&entv1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "EnterpriseSearch"},
+					Namespace: "ns", Name: "es",
+					Kind: "EnterpriseSearch",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
@@ -202,8 +202,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Beat soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&beatv1beta1.Beat{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Beat"},
+					Namespace: "ns", Name: "es",
+					Kind: "Beat",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},

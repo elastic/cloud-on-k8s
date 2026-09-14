@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -114,10 +113,8 @@ func (cb *clusterBuilder) build() []client.Object {
 	}
 	return []client.Object{
 		&esv1.Elasticsearch{
-			ObjectMeta: v1.ObjectMeta{
-				Namespace: cb.namespace,
-				Name:      cb.name,
-			},
+			Namespace: cb.namespace,
+			Name:      cb.name,
 			Spec: esv1.ElasticsearchSpec{
 				Version:        cb.version,
 				RemoteClusters: remoteClusters,
@@ -128,12 +125,10 @@ func (cb *clusterBuilder) build() []client.Object {
 			},
 		},
 		&corev1.Pod{
-			ObjectMeta: v1.ObjectMeta{
-				Namespace: cb.namespace,
-				Name:      fmt.Sprintf("es-%s-%s-1", cb.namespace, cb.name),
-				Labels: map[string]string{
-					label.ClusterNameLabelName: cb.name,
-				},
+			Namespace: cb.namespace,
+			Name:      fmt.Sprintf("es-%s-%s-1", cb.namespace, cb.name),
+			Labels: map[string]string{
+				label.ClusterNameLabelName: cb.name,
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -158,10 +153,8 @@ func fakePublicCa(namespace, name string) *corev1.Secret {
 	}
 	transportPublicCertKey := transport.PublicCertsSecretRef(namespacedName)
 	return &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: transportPublicCertKey.Namespace,
-			Name:      transportPublicCertKey.Name,
-		},
+		Namespace: transportPublicCertKey.Namespace,
+		Name:      transportPublicCertKey.Name,
 		Data: map[string][]byte{
 			certificates.CAFileName: []byte(namespacedName.String()),
 		},
@@ -175,16 +168,14 @@ func remoteCa(localNamespace, localName, remoteNamespace, remoteName string) *co
 		Namespace: remoteNamespace,
 	}
 	return &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: localNamespace,
-			Name:      remoteCASecretName(localName, remoteNamespacedName),
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                            "remote-ca",
-				"eck.k8s.elastic.co/watched":                            "true",
-				"elasticsearch.k8s.elastic.co/cluster-name":             localName,
-				"elasticsearch.k8s.elastic.co/remote-cluster-name":      remoteName,
-				"elasticsearch.k8s.elastic.co/remote-cluster-namespace": remoteNamespace,
-			},
+		Namespace: localNamespace,
+		Name:      remoteCASecretName(localName, remoteNamespacedName),
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":                            "remote-ca",
+			"eck.k8s.elastic.co/watched":                            "true",
+			"elasticsearch.k8s.elastic.co/cluster-name":             localName,
+			"elasticsearch.k8s.elastic.co/remote-cluster-name":      remoteName,
+			"elasticsearch.k8s.elastic.co/remote-cluster-namespace": remoteNamespace,
 		},
 		Data: map[string][]byte{
 			certificates.CAFileName: []byte(remoteNamespacedName.String()),

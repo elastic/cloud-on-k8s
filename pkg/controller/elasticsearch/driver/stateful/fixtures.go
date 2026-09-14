@@ -126,11 +126,9 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 
 func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations map[string]string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestEsName,
-			Namespace:   TestEsNamespace,
-			Annotations: annotations,
-		},
+		Name:        TestEsName,
+		Namespace:   TestEsNamespace,
+		Annotations: annotations,
 		Spec: esv1.ElasticsearchSpec{
 			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
@@ -283,14 +281,12 @@ func (t testPod) toPod() corev1.Pod {
 		deletionTimestamp = &now
 	}
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              t.name,
-			Namespace:         TestEsNamespace,
-			UID:               t.uid,
-			DeletionTimestamp: deletionTimestamp,
-			ResourceVersion:   t.resourceVersion,
-			Finalizers:        t.finalizers,
-		},
+		Name:              t.name,
+		Namespace:         TestEsNamespace,
+		UID:               t.uid,
+		DeletionTimestamp: deletionTimestamp,
+		ResourceVersion:   t.resourceVersion,
+		Finalizers:        t.finalizers,
 	}
 
 	if t.version == "" {

@@ -182,8 +182,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom ConfigMap containing KEYSTORE_PASSWORD",
 			objects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-configmap"},
-					Data:       map[string]string{"KEYSTORE_PASSWORD": "from-cm"},
+					Namespace: namespace, Name: "my-configmap",
+					Data: map[string]string{"KEYSTORE_PASSWORD": "from-cm"},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -193,7 +193,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{ConfigMapRef: &corev1.ConfigMapEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "my-configmap"},
+									Name: "my-configmap",
 								}},
 							},
 						},
@@ -206,8 +206,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom Secret containing ES_KEYSTORE_PASSPHRASE_FILE",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-secret"},
-					Data:       map[string][]byte{"ES_KEYSTORE_PASSPHRASE_FILE": []byte("/tmp/pw")},
+					Namespace: namespace, Name: "my-secret",
+					Data: map[string][]byte{"ES_KEYSTORE_PASSPHRASE_FILE": []byte("/tmp/pw")},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -217,7 +217,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{SecretRef: &corev1.SecretEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret"},
+									Name: "my-secret",
 								}},
 							},
 						},
@@ -230,8 +230,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom Secret containing KEYSTORE_PASSWORD_FILE",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "my-secret-password-file"},
-					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/mnt/secret/keystore-password")},
+					Namespace: namespace, Name: "my-secret-password-file",
+					Data: map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/mnt/secret/keystore-password")},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -241,7 +241,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{SecretRef: &corev1.SecretEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret-password-file"},
+									Name: "my-secret-password-file",
 								}},
 							},
 						},
@@ -254,8 +254,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom ConfigMap without keystore vars",
 			objects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "unrelated-cm"},
-					Data:       map[string]string{"SOME_OTHER_VAR": "val"},
+					Namespace: namespace, Name: "unrelated-cm",
+					Data: map[string]string{"SOME_OTHER_VAR": "val"},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -265,7 +265,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{ConfigMapRef: &corev1.ConfigMapEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "unrelated-cm"},
+									Name: "unrelated-cm",
 								}},
 							},
 						},
@@ -278,8 +278,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom prefix causes key to match",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "prefixed-secret"},
-					Data:       map[string][]byte{"PASSWORD": []byte("val")},
+					Namespace: namespace, Name: "prefixed-secret",
+					Data: map[string][]byte{"PASSWORD": []byte("val")},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -291,7 +291,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 								{
 									Prefix: "KEYSTORE_",
 									SecretRef: &corev1.SecretEnvSource{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "prefixed-secret"},
+										Name: "prefixed-secret",
 									},
 								},
 							},
@@ -305,8 +305,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 			name: "envFrom prefix prevents match",
 			objects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "prefixed-cm"},
-					Data:       map[string]string{"KEYSTORE_PASSWORD": "val"},
+					Namespace: namespace, Name: "prefixed-cm",
+					Data: map[string]string{"KEYSTORE_PASSWORD": "val"},
 				},
 			},
 			podTemplate: corev1.PodTemplateSpec{
@@ -318,7 +318,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 								{
 									Prefix: "MY_",
 									ConfigMapRef: &corev1.ConfigMapEnvSource{
-										LocalObjectReference: corev1.LocalObjectReference{Name: "prefixed-cm"},
+										Name: "prefixed-cm",
 									},
 								},
 							},
@@ -337,7 +337,7 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{ConfigMapRef: &corev1.ConfigMapEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "does-not-exist"},
+									Name: "does-not-exist",
 								}},
 							},
 						},
@@ -355,8 +355,8 @@ func TestHasUserProvidedKeystorePassword(t *testing.T) {
 							Name: esv1.ElasticsearchContainerName,
 							EnvFrom: []corev1.EnvFromSource{
 								{ConfigMapRef: &corev1.ConfigMapEnvSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "does-not-exist"},
-									Optional:             new(true),
+									Name:     "does-not-exist",
+									Optional: new(true),
 								}},
 							},
 						},
@@ -425,7 +425,7 @@ func TestAnyNodeSetHasUserProvidedKeystorePassword(t *testing.T) {
 									Name: esv1.ElasticsearchContainerName,
 									EnvFrom: []corev1.EnvFromSource{
 										{ConfigMapRef: &corev1.ConfigMapEnvSource{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "missing"},
+											Name: "missing",
 										}},
 									},
 								},
@@ -555,7 +555,7 @@ func TestShouldManageGeneratedKeystorePassword(t *testing.T) {
 									EnvFrom: []corev1.EnvFromSource{
 										{
 											ConfigMapRef: &corev1.ConfigMapEnvSource{
-												LocalObjectReference: corev1.LocalObjectReference{Name: "missing"},
+												Name: "missing",
 											},
 										},
 									},
@@ -658,10 +658,8 @@ func TestGetStackConfigPolicyElasticsearchConfig(t *testing.T) {
 			name: "valid policy secret returns parsed config",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.StackConfigElasticsearchConfigSecretName("with-config"),
-						Namespace: "ns",
-					},
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("with-config"),
+					Namespace: "ns",
 					Data: map[string][]byte{
 						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 					},
@@ -676,10 +674,8 @@ func TestGetStackConfigPolicyElasticsearchConfig(t *testing.T) {
 			name: "policy secret with empty config returns empty canonical config",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.StackConfigElasticsearchConfigSecretName("empty-config"),
-						Namespace: "ns",
-					},
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("empty-config"),
+					Namespace: "ns",
 				},
 			},
 			es: esv1.Elasticsearch{
@@ -691,10 +687,8 @@ func TestGetStackConfigPolicyElasticsearchConfig(t *testing.T) {
 			name: "invalid policy secret config returns error",
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.StackConfigElasticsearchConfigSecretName("invalid-config"),
-						Namespace: "ns",
-					},
+					Name:      esv1.StackConfigElasticsearchConfigSecretName("invalid-config"),
+					Namespace: "ns",
 					Data: map[string][]byte{
 						esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":`),
 					},

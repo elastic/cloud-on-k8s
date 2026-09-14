@@ -79,12 +79,10 @@ func NewMemoryRecommender(
 	}
 
 	memoryRecommender := memory{
-		base: base{
-			log:                      log,
-			autoscalingSpec:          autoscalingSpec,
-			statusBuilder:            statusBuilder,
-			currentAutoscalingStatus: currentAutoscalingStatus,
-		},
+		log:                         log,
+		autoscalingSpec:             autoscalingSpec,
+		statusBuilder:               statusBuilder,
+		currentAutoscalingStatus:    currentAutoscalingStatus,
 		requiredTotalMemoryCapacity: autoscalingPolicyResult.RequiredCapacity.Total.Memory,
 		requiredNodeMemoryCapacity:  autoscalingPolicyResult.RequiredCapacity.Node.Memory,
 	}

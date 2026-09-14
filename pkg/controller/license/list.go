@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -27,10 +26,9 @@ func reconcileRequestsForAllClusters(c k8s.Client, log logr.Logger) ([]reconcile
 	requests := make([]reconcile.Request, len(clusters.Items))
 	for i, cl := range clusters.Items {
 		log.V(1).Info("Generating license reconcile event for ES cluster", "name", cl.Name, "namespace", cl.Namespace)
-		requests[i] = reconcile.Request{NamespacedName: types.NamespacedName{
+		requests[i] = reconcile.Request{
 			Namespace: cl.Namespace,
-			Name:      cl.Name,
-		}}
+			Name:      cl.Name}
 	}
 	return requests, nil
 }

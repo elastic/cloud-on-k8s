@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -26,10 +25,9 @@ import (
 
 func Test_FileSettingsSecret_ApplyPolicy(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	es := esv1.Elasticsearch{
 		Namespace: esNsn.Namespace,
-		Name:      esNsn.Name,
-	}}
+		Name:      esNsn.Name}
 	policy := policyv1alpha1.ElasticsearchConfigPolicySpec{
 		ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},
 	}
@@ -62,10 +60,9 @@ func Test_FileSettingsSecret_ApplyPolicy(t *testing.T) {
 
 func Test_FileSettingsSecret_VersionUnchanged(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	es := esv1.Elasticsearch{
 		Namespace: esNsn.Namespace,
-		Name:      esNsn.Name,
-	}}
+		Name:      esNsn.Name}
 
 	fakeClient := k8s.NewFakeClient()
 
@@ -107,12 +104,10 @@ func Test_FileSettingsSecret_ApplyPolicy_PreservesClusterSecrets(t *testing.T) {
 	require.NoError(t, err)
 
 	currentSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   esNsn.Namespace,
-			Name:        "esName-es-file-settings",
-			Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
-		},
-		Data: map[string][]byte{SettingsSecretKey: settingsBytes},
+		Namespace:   esNsn.Namespace,
+		Name:        "esName-es-file-settings",
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
 	}
 
 	fakeClient := k8s.NewFakeClient(currentSecret)
@@ -142,12 +137,10 @@ func Test_Reset_ClearsSCPManagedFields(t *testing.T) {
 	require.NoError(t, err)
 
 	currentSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   esNsn.Namespace,
-			Name:        "esName-es-file-settings",
-			Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
-		},
-		Data: map[string][]byte{SettingsSecretKey: settingsBytes},
+		Namespace:   esNsn.Namespace,
+		Name:        "esName-es-file-settings",
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
 	}
 
 	fakeClient := k8s.NewFakeClient(currentSecret)
@@ -165,11 +158,10 @@ func Test_Reset_ClearsSCPManagedFields(t *testing.T) {
 
 func Test_ApplyEmptyPolicy_ClearsSCPManagedFields(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	es := esv1.Elasticsearch{
 		Namespace: esNsn.Namespace,
 		Name:      esNsn.Name,
-		UID:       "test-uid",
-	}}
+		UID:       "test-uid"}
 
 	// Create a current secret with cluster_settings (SCP-managed)
 	currentSettings := NewEmptySettings(1)
@@ -180,12 +172,10 @@ func Test_ApplyEmptyPolicy_ClearsSCPManagedFields(t *testing.T) {
 	require.NoError(t, err)
 
 	currentSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   esNsn.Namespace,
-			Name:        esv1.FileSettingsSecretName(esNsn.Name),
-			Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
-		},
-		Data: map[string][]byte{SettingsSecretKey: settingsBytes},
+		Namespace:   esNsn.Namespace,
+		Name:        esv1.FileSettingsSecretName(esNsn.Name),
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
 	}
 
 	fakeClient := k8s.NewFakeClient(&es, currentSecret)
@@ -217,10 +207,9 @@ func Test_ApplyEmptyPolicy_ClearsSCPManagedFields(t *testing.T) {
 
 func Test_SecureSettings_RoundTrip(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	es := esv1.Elasticsearch{
 		Namespace: esNsn.Namespace,
-		Name:      esNsn.Name,
-	}}
+		Name:      esNsn.Name}
 
 	fakeClient := k8s.NewFakeClient()
 
@@ -275,11 +264,10 @@ func Test_Save_SecureSettingsAnnotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-			es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+			es := esv1.Elasticsearch{
 				Namespace: esNsn.Namespace,
 				Name:      esNsn.Name,
-				UID:       "test-uid",
-			}}
+				UID:       "test-uid"}
 
 			existingSettings := NewEmptySettings(1)
 			settingsBytes, err := json.Marshal(existingSettings)
@@ -292,13 +280,11 @@ func Test_Save_SecureSettingsAnnotation(t *testing.T) {
 			require.NoError(t, err)
 
 			existingSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: esNsn.Namespace,
-					Name:      esv1.FileSettingsSecretName(esNsn.Name),
-					Annotations: map[string]string{
-						commonannotation.SettingsHashAnnotationName:          existingSettings.hash(),
-						commonannotation.SecureSettingsSecretsAnnotationName: string(secureSettingsJSON),
-					},
+				Namespace: esNsn.Namespace,
+				Name:      esv1.FileSettingsSecretName(esNsn.Name),
+				Annotations: map[string]string{
+					commonannotation.SettingsHashAnnotationName:          existingSettings.hash(),
+					commonannotation.SecureSettingsSecretsAnnotationName: string(secureSettingsJSON),
 				},
 				Data: map[string][]byte{SettingsSecretKey: settingsBytes},
 			}

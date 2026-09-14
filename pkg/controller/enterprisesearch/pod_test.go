@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -102,10 +101,8 @@ func Test_withESCertsVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ent := entv1.EnterpriseSearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fake-ent",
-					Namespace: "default",
-				},
+				Name:      "fake-ent",
+				Namespace: "default",
 				Spec: entv1.EnterpriseSearchSpec{
 					Version:          "8.0.0",
 					ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "default"}},

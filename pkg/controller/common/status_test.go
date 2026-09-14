@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -32,8 +31,8 @@ func TestLowestVersionFromPods(t *testing.T) {
 			name: "all pods have the same version: return it",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{versionLabel: "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{versionLabel: "7.7.0"}}},
+					{Labels: map[string]string{versionLabel: "7.7.0"}},
+					{Labels: map[string]string{versionLabel: "7.7.0"}},
 				},
 				currentVersion: "",
 				versionLabel:   versionLabel,
@@ -44,8 +43,8 @@ func TestLowestVersionFromPods(t *testing.T) {
 			name: "return the lowest running version",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{versionLabel: "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{versionLabel: "7.6.0"}}},
+					{Labels: map[string]string{versionLabel: "7.7.0"}},
+					{Labels: map[string]string{versionLabel: "7.6.0"}},
 				},
 				currentVersion: "",
 				versionLabel:   versionLabel,
@@ -56,7 +55,7 @@ func TestLowestVersionFromPods(t *testing.T) {
 			name: "cannot parse version from pods: return the current version",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{versionLabel: "invalid"}}},
+					{Labels: map[string]string{versionLabel: "invalid"}},
 				},
 				currentVersion: "7.7.0",
 				versionLabel:   versionLabel,
@@ -112,9 +111,9 @@ func TestDeploymentStatus(t *testing.T) {
 					},
 				},
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
 				},
 				versionLabel: "version-label",
 			},
@@ -142,9 +141,9 @@ func TestDeploymentStatus(t *testing.T) {
 					},
 				},
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
 				},
 				versionLabel: "version-label",
 			},

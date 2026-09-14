@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/go-ucfg"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +44,7 @@ var _ driver.Interface = fakeDriver{}
 func TestParseConfigRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
-	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
+	res := corev1.ConfigMap{Namespace: resNsn.Namespace, Name: resNsn.Name}
 	watchName := ConfigRefWatchName(resNsn)
 
 	tests := []struct {
@@ -61,11 +60,11 @@ func TestParseConfigRef(t *testing.T) {
 	}{
 		{
 			name:      "happy path",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef: &commonv1.ConfigSource{SecretName: "my-secret"},
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
@@ -75,11 +74,11 @@ func TestParseConfigRef(t *testing.T) {
 		},
 		{
 			name:      "happy path, secret already watched",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef: &commonv1.ConfigSource{SecretName: "my-secret"},
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
@@ -94,7 +93,7 @@ func TestParseConfigRef(t *testing.T) {
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
@@ -108,7 +107,7 @@ func TestParseConfigRef(t *testing.T) {
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("foo: bar\nbar: baz\n"),
 					}},
@@ -119,7 +118,7 @@ func TestParseConfigRef(t *testing.T) {
 		},
 		{
 			name:        "secret not found: error out but watch the future secret",
-			configRef:   &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef:   &commonv1.ConfigSource{SecretName: "my-secret"},
 			secretKey:   "configFile.yml",
 			runtimeObjs: []client.Object{},
 			want:        nil,
@@ -128,11 +127,11 @@ func TestParseConfigRef(t *testing.T) {
 		},
 		{
 			name:      "missing key in the referenced secret: error out, watch the secret and emit an event",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef: &commonv1.ConfigSource{SecretName: "my-secret"},
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"unexpected-key": []byte("foo: bar\nbar: baz\n"),
 					}},
@@ -143,11 +142,11 @@ func TestParseConfigRef(t *testing.T) {
 		},
 		{
 			name:      "invalid config the referenced secret: error out, watch the secret and emit an event",
-			configRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef: &commonv1.ConfigSource{SecretName: "my-secret"},
 			secretKey: "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("that's not yaml"),
 					}},
@@ -194,7 +193,7 @@ func TestParseConfigRef(t *testing.T) {
 
 func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
-	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
+	res := corev1.ConfigMap{Namespace: resNsn.Namespace, Name: resNsn.Name}
 
 	secretWatchName := func(nsn types.NamespacedName) string { return nsn.Namespace + "-" + nsn.Name + "-secret" }
 	cmWatchName := func(nsn types.NamespacedName) string { return nsn.Namespace + "-" + nsn.Name + "-cm" }
@@ -225,12 +224,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "happy path - secret",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
-					Data:       map[string][]byte{"key.yml": []byte("foo: bar\n")},
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{"key.yml": []byte("foo: bar\n")},
 				},
 			},
 			wantSecretWatches: []string{wantSecretWatch},
@@ -238,12 +237,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "happy path - configmap",
-			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
-					Data:       map[string]string{"key.yml": "foo: bar\n"},
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{"key.yml": "foo: bar\n"},
 				},
 			},
 			wantSecretWatches: []string{},
@@ -251,7 +250,7 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "secret not found: error but watch registered",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs:        []client.Object{},
 			wantErr:            true,
@@ -260,7 +259,7 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "configmap not found: error but watch registered",
-			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs:        []client.Object{},
 			wantErr:            true,
@@ -269,12 +268,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "missing key in secret: event emitted",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
-					Data:       map[string][]byte{"other.yml": []byte("foo: bar\n")},
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{"other.yml": []byte("foo: bar\n")},
 				},
 			},
 			wantErr:           true,
@@ -284,12 +283,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "missing key in configmap: event emitted",
-			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
-					Data:       map[string]string{"other.yml": "foo: bar\n"},
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{"other.yml": "foo: bar\n"},
 				},
 			},
 			wantErr:           true,
@@ -299,12 +298,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "invalid yaml in secret: event emitted",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
-					Data:       map[string][]byte{"key.yml": []byte("not: valid: yaml")},
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{"key.yml": []byte("not: valid: yaml")},
 				},
 			},
 			wantErr:           true,
@@ -314,12 +313,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "invalid yaml in configmap: event emitted",
-			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			configMapWatchName: cmWatchName,
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
-					Data:       map[string]string{"key.yml": "not: valid: yaml"},
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{"key.yml": "not: valid: yaml"},
 				},
 			},
 			wantErr:           true,
@@ -329,13 +328,13 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:                "switch from secret to configmap: secret watch cleared",
-			ref:                 &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			ref:                 &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			configMapWatchName:  cmWatchName,
 			existingSecretWatch: []string{wantSecretWatch},
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
-					Data:       map[string]string{"key.yml": "foo: bar\n"},
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{"key.yml": "foo: bar\n"},
 				},
 			},
 			wantSecretWatches: []string{},
@@ -343,13 +342,13 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "switch from configmap to secret: configmap watch cleared",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: cmWatchName,
 			existingCMWatch:    []string{wantCMWatch},
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
-					Data:       map[string][]byte{"key.yml": []byte("foo: bar\n")},
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{"key.yml": []byte("foo: bar\n")},
 				},
 			},
 			wantSecretWatches: []string{wantSecretWatch},
@@ -357,12 +356,12 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		},
 		{
 			name:               "nil configMapWatchName: configmap watch skipped",
-			ref:                &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			ref:                &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			configMapWatchName: nil,
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
-					Data:       map[string][]byte{"key.yml": []byte("foo: bar\n")},
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{"key.yml": []byte("foo: bar\n")},
 				},
 			},
 			wantSecretWatches: []string{wantSecretWatch},
@@ -371,8 +370,8 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 		{
 			name: "both secretName and configMapName set: error before any watch is registered",
 			ref: &commonv1.ConfigMapOrSecretSource{
-				SecretRef:    commonv1.SecretRef{SecretName: "my-secret"},
-				ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"},
+				SecretName:    "my-secret",
+				ConfigMapName: "my-cm",
 			},
 			configMapWatchName: cmWatchName,
 			runtimeObjs:        []client.Object{},

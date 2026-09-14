@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -101,15 +100,13 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-key"),
@@ -118,10 +115,8 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			esClusters: []esv1.Elasticsearch{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-2",
-					},
+					Name:      "es-1",
+					Namespace: "ns-2",
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
 					},
@@ -137,30 +132,26 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-key-1"),
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2-ns-3-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							"autoops.k8s.elastic.co/policy-name":      "policy-1",
-							"autoops.k8s.elastic.co/policy-namespace": "ns-1",
-							"elasticsearch.k8s.elastic.co/name":       "es-2",
-							"elasticsearch.k8s.elastic.co/namespace":  "ns-3",
-						},
+					Name:      "es-2-ns-3-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						"autoops.k8s.elastic.co/policy-name":      "policy-1",
+						"autoops.k8s.elastic.co/policy-namespace": "ns-1",
+						"elasticsearch.k8s.elastic.co/name":       "es-2",
+						"elasticsearch.k8s.elastic.co/namespace":  "ns-3",
 					},
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-key-2"),
@@ -169,19 +160,15 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			esClusters: []esv1.Elasticsearch{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-2",
-					},
+					Name:      "es-1",
+					Namespace: "ns-2",
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-3",
-					},
+					Name:      "es-2",
+					Namespace: "ns-3",
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
 					},
@@ -197,14 +184,12 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "secret-without-labels",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							"autoops.k8s.elastic.co/policy-name":      "policy-1",
-							"autoops.k8s.elastic.co/policy-namespace": "ns-1",
-							// Missing ES cluster labels
-						},
+					Name:      "secret-without-labels",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						"autoops.k8s.elastic.co/policy-name":      "policy-1",
+						"autoops.k8s.elastic.co/policy-namespace": "ns-1",
+						// Missing ES cluster labels
 					},
 				},
 			},
@@ -219,15 +204,13 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 				},
 			},
@@ -242,36 +225,30 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key-duplicate",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key-duplicate",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 				},
 			},
 			esClusters: []esv1.Elasticsearch{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-2",
-					},
+					Name:      "es-1",
+					Namespace: "ns-2",
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
 					},
@@ -287,15 +264,13 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			secrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1-ns-2-autoops-es-api-key",
-						Namespace: "ns-1",
-						Labels: map[string]string{
-							PolicyNameLabelKey:                       "policy-1",
-							policyNamespaceLabelKey:                  "ns-1",
-							"elasticsearch.k8s.elastic.co/name":      "es-1",
-							"elasticsearch.k8s.elastic.co/namespace": "ns-2",
-						},
+					Name:      "es-1-ns-2-autoops-es-api-key",
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						PolicyNameLabelKey:                       "policy-1",
+						policyNamespaceLabelKey:                  "ns-1",
+						"elasticsearch.k8s.elastic.co/name":      "es-1",
+						"elasticsearch.k8s.elastic.co/namespace": "ns-2",
 					},
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-key"),
@@ -304,10 +279,8 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 			},
 			esClusters: []esv1.Elasticsearch{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-2",
-					},
+					Name:      "es-1",
+					Namespace: "ns-2",
 					Status: esv1.ElasticsearchStatus{
 						Phase: esv1.ElasticsearchReadyPhase,
 					},

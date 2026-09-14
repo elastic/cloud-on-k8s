@@ -10,28 +10,23 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_Driver_expectationSatisfied(t *testing.T) {
 	client := k8s.NewFakeClient()
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "cluster",
-		},
+		Namespace: "ns",
+		Name:      "cluster",
 	}
-	d := &Driver{BaseDriver: driver.BaseDriver{Parameters: driver.Parameters{
+	d := &Driver{
 		Expectations: expectations.NewExpectations(client, &appsv1.StatefulSet{}),
 		Client:       client,
-		ES:           es,
-	}}}
+		ES:           es}
 	ctx := context.Background()
 
 	// no expectations set

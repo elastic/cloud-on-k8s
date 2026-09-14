@@ -12,7 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -214,12 +213,10 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 	})
 
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secretName,
-			Namespace:   policy.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        secretName,
+		Namespace:   policy.GetNamespace(),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			certificates.CAFileName: caCert,
 		},

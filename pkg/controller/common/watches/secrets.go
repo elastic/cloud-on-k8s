@@ -81,7 +81,7 @@ func reconcileReqForSoftOwner(kind string) handler.TypedMapFunc[*corev1.Secret, 
 			return nil
 		}
 		return []reconcile.Request{
-			{NamespacedName: types.NamespacedName{Namespace: softOwner.Namespace, Name: softOwner.Name}},
+			{Namespace: softOwner.Namespace, Name: softOwner.Name},
 		}
 	})
 }

@@ -15,7 +15,6 @@ import (
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -46,12 +45,10 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   params.Agent.Namespace,
-			Name:        ConfigSecretName(params.Agent.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
-			Annotations: params.Meta.Annotations,
-		},
+		Namespace:   params.Agent.Namespace,
+		Name:        ConfigSecretName(params.Agent.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
+		Annotations: params.Meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},

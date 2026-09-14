@@ -71,11 +71,9 @@ func buildVolumes(
 	for _, claimTemplate := range nodeSpec.VolumeClaimTemplates {
 		persistentVolumes = append(persistentVolumes, corev1.Volume{
 			Name: claimTemplate.Name,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					// actual claim name will be resolved and fixed right before pod creation
-					ClaimName: "claim-name-placeholder",
-				},
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				// actual claim name will be resolved and fixed right before pod creation
+				ClaimName: "claim-name-placeholder",
 			},
 		})
 	}

@@ -14,13 +14,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -37,15 +35,13 @@ var trialLicenseNsn = types.NamespacedName{
 
 func trialLicenseSecretSample(annotated bool, data map[string][]byte) *corev1.Secret {
 	sec := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      trialLicenseName,
-			Namespace: testNs,
-			Labels: map[string]string{
-				licensing.LicenseLabelType: "enterprise-trial", // assume always there otherwise watch would not trigger
-			},
-			Annotations: map[string]string{},
+		Name:      trialLicenseName,
+		Namespace: testNs,
+		Labels: map[string]string{
+			licensing.LicenseLabelType: "enterprise-trial", // assume always there otherwise watch would not trigger
 		},
-		Data: data,
+		Annotations: map[string]string{},
+		Data:        data,
 	}
 	if annotated {
 		sec.Annotations[licensing.EULAAnnotation] = licensing.EULAAcceptedValue
@@ -269,10 +265,8 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 				Client: k8s.NewFakeClient(trialLicenseSecretSample(true, map[string][]byte{
 					"license": trialLicenseBytes(),
 				}), &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      licensing.TrialStatusSecretKey,
-						Namespace: testNs,
-					},
+					Name:      licensing.TrialStatusSecretKey,
+					Namespace: testNs,
 				}),
 				trialState: runningTrialSample(t),
 			},
@@ -303,16 +297,14 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:     tt.fields.Client,
-				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   toolsevents.NewFakeRecorder(10),
-				trialState: tt.fields.trialState,
+				Client:            tt.fields.Client,
+				OperatorNamespace: testNs,
+				recorder:          toolsevents.NewFakeRecorder(10),
+				trialState:        tt.fields.trialState,
 			}
 			_, err := r.Reconcile(context.Background(), reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: testNs,
-					Name:      trialLicenseName,
-				},
+				Namespace: testNs,
+				Name:      trialLicenseName,
 			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
@@ -399,10 +391,8 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 			name: "restore trial status memory on operator restart: fail",
 			fields: fields{
 				Client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      licensing.TrialStatusSecretKey,
-						Namespace: testNs,
-					},
+					Name:      licensing.TrialStatusSecretKey,
+					Namespace: testNs,
 					Data: map[string][]byte{
 						licensing.TrialPubkeyKey: []byte("garbage"),
 					},
@@ -432,10 +422,10 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:     tt.fields.Client,
-				Parameters: operator.Parameters{OperatorNamespace: testNs},
-				recorder:   toolsevents.NewFakeRecorder(10),
-				trialState: tt.fields.trialState,
+				Client:            tt.fields.Client,
+				OperatorNamespace: testNs,
+				recorder:          toolsevents.NewFakeRecorder(10),
+				trialState:        tt.fields.trialState,
 			}
 			if err := r.reconcileTrialStatus(context.Background(), trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileTrialStatus() error = %v, wantErr %v", err, tt.wantErr)

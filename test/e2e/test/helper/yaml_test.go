@@ -20,8 +20,8 @@ func TestTweakEnvSecretRefs(t *testing.T) {
 			Name: name,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-					Key:                  secretKey,
+					Name: secretName,
+					Key:  secretKey,
 				},
 			},
 		}

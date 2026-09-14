@@ -148,10 +148,8 @@ func TestWebhook(t *testing.T) {
 
 func mkStackConfigPolicy(uid string) *policyv1alpha1.StackConfigPolicy {
 	return &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "config-policy-test",
-			UID:  types.UID(uid),
-		},
+		Name: "config-policy-test",
+		UID:  types.UID(uid),
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				ClusterSettings: &commonv1.Config{Data: map[string]any{"a": "b"}},

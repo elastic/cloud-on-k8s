@@ -26,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -45,18 +44,14 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	const nodeSetName2 = "data"
 
 	scriptsConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.ScriptsConfigMap(esName),
-			Namespace: namespace,
-		},
+		Name:      esv1.ScriptsConfigMap(esName),
+		Namespace: namespace,
 	}
 
 	// --- Single-NodeSet (Count=3) setup ---
 	elasticsearch := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esName,
-			Namespace: namespace,
-		},
+		Name:      esName,
+		Namespace: namespace,
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.17.0",
 			NodeSets: []esv1.NodeSet{
@@ -82,10 +77,8 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 
 	// --- Two-NodeSet setup ---
 	elasticsearch2 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esName,
-			Namespace: namespace,
-		},
+		Name:      esName,
+		Namespace: namespace,
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.17.0",
 			NodeSets: []esv1.NodeSet{
@@ -187,12 +180,10 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 			k8sClient: k8s.NewFakeClient(
 				scriptsConfigMap,
 				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        esName + "-es-" + nodeSetName + "-0",
-						Namespace:   namespace,
-						Labels:      map[string]string{label.ClusterNameLabelName: esName},
-						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-					},
+					Name:        esName + "-es-" + nodeSetName + "-0",
+					Namespace:   namespace,
+					Labels:      map[string]string{label.ClusterNameLabelName: esName},
+					Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
 				},
 			),
 			actualSets:     matchingActualSets, // built without the pod, so annotation is absent
@@ -215,14 +206,10 @@ func TestDriver_hasPendingSpecChanges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Driver{
-				BaseDriver: driver.BaseDriver{
-					Parameters: driver.Parameters{
-						Client: tt.k8sClient,
-						ES:     tt.elasticsearch,
-						OperatorParameters: operator.Parameters{
-							SetDefaultSecurityContext: tt.setDefaultSecurityContext,
-						},
-					},
+				Client: tt.k8sClient,
+				ES:     tt.elasticsearch,
+				OperatorParameters: operator.Parameters{
+					SetDefaultSecurityContext: tt.setDefaultSecurityContext,
 				},
 			}
 
@@ -296,17 +283,13 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 	const nodeSetName = "default"
 
 	scriptsConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.ScriptsConfigMap(esName),
-			Namespace: namespace,
-		},
+		Name:      esv1.ScriptsConfigMap(esName),
+		Namespace: namespace,
 	}
 
 	elasticsearch := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esName,
-			Namespace: namespace,
-		},
+		Name:      esName,
+		Namespace: namespace,
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.17.0",
 			NodeSets: []esv1.NodeSet{
@@ -435,16 +418,12 @@ func TestDriver_reconcileCriticalStepsWhilePaused(t *testing.T) {
 
 			reconcileState := reconcile.MustNewState(elasticsearch)
 			d := &Driver{
-				BaseDriver: driver.BaseDriver{
-					Parameters: driver.Parameters{
-						Client:         k8sClient,
-						ES:             elasticsearch,
-						ReconcileState: reconcileState,
-						Expectations: &expectations.Expectations{
-							ExpectedGenerations:  expectations.NewExpectedGenerations(k8sClient, nil),
-							ExpectedPodDeletions: expectations.NewExpectedPodDeletions(k8sClient),
-						},
-					},
+				Client:         k8sClient,
+				ES:             elasticsearch,
+				ReconcileState: reconcileState,
+				Expectations: &expectations.Expectations{
+					ExpectedGenerations:  expectations.NewExpectedGenerations(k8sClient, nil),
+					ExpectedPodDeletions: expectations.NewExpectedPodDeletions(k8sClient),
 				},
 			}
 
@@ -521,17 +500,13 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "one statefulset exists in this but not that",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sset1",
-					},
+					Name: "sset1",
 					Spec: appsv1.StatefulSetSpec{},
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sset2",
-					},
+					Name: "sset2",
 					Spec: appsv1.StatefulSetSpec{},
 				},
 			},
@@ -541,8 +516,8 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "this is non-empty, that is nil",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{},
+					Name: "sset1",
+					Spec: appsv1.StatefulSetSpec{},
 				},
 			},
 			that: nil,
@@ -553,8 +528,8 @@ func Test_hasSpecDiff(t *testing.T) {
 			this: nil,
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "sset1"},
-					Spec:       appsv1.StatefulSetSpec{},
+					Name: "sset1",
+					Spec: appsv1.StatefulSetSpec{},
 				},
 			},
 			want: true,
@@ -563,18 +538,14 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "same name but different ordinals",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 3}}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 3}}),
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 5}}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Ordinals: &appsv1.StatefulSetOrdinals{Start: 5}}),
 				},
 			},
 			want: true,
@@ -583,30 +554,22 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "multiple StatefulSets, all specs match",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
-					},
+					Name:   "sset2",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
-					},
+					Name:   "sset2",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 				},
 			},
 			want: false,
@@ -615,30 +578,22 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "multiple StatefulSets, one has a different number of replicas",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
-					},
+					Name:   "sset2",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(1))}),
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset2",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(2))}),
-					},
+					Name:   "sset2",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(2))}),
 				},
 			},
 			want: true,
@@ -647,18 +602,14 @@ func Test_hasSpecDiff(t *testing.T) {
 			name: "StatefulSet exists in both this and that and have equal specs",
 			this: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 			},
 			that: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:   "sset1",
-						Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
-					},
+					Name:   "sset1",
+					Labels: hash.SetTemplateHashLabel(nil, appsv1.StatefulSetSpec{Replicas: new(int32(3))}),
 				},
 			},
 			want: false,
@@ -680,12 +631,8 @@ func TestDriver_maybeResetPausedCondition(t *testing.T) {
 	}
 
 	d := &Driver{
-		BaseDriver: driver.BaseDriver{
-			Parameters: driver.Parameters{
-				ES:             elasticsearch,
-				ReconcileState: reconcile.MustNewState(elasticsearch),
-			},
-		},
+		ES:             elasticsearch,
+		ReconcileState: reconcile.MustNewState(elasticsearch),
 	}
 
 	t.Run("maybeResetPausedCondition called when OrchestrationPaused has never been set should remain unset", func(t *testing.T) {

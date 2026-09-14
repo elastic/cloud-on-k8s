@@ -40,7 +40,7 @@ func storageResources(storageSizeInVCT string) Resources {
 
 	replicas := int32(1)
 	sts := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es-data"},
+		Namespace: "ns", Name: "es-data",
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "es"}},
@@ -66,7 +66,7 @@ func storageResources(storageSizeInVCT string) Resources {
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{
-				ObjectMeta: metav1.ObjectMeta{Name: esvolume.ElasticsearchDataVolumeName},
+				Name: esvolume.ElasticsearchDataVolumeName,
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: storage},

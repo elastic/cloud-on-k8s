@@ -21,16 +21,12 @@ import (
 
 func Test_ValidatePodTemplate(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+		Namespace: "ns",
+		Name:      "es",
 	}
 	ssetSample := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      "sset",
-		},
+		Namespace: es.Namespace,
+		Name:      "sset",
 	}
 	type args struct {
 		c      k8s.Client

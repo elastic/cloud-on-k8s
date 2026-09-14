@@ -28,10 +28,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 
 	kibanaESAssociationName := "kibana-es"
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-foo",
-			Namespace: "default",
-		},
+		Name:      "es-foo",
+		Namespace: "default",
 	}
 	kibanaFixtureObjectMeta := metav1.ObjectMeta{
 		Name:      "kibana-foo",
@@ -103,25 +101,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			},
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInKibanaNamespace,
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      userInKibanaNamespace,
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInEsNamespace,
-						Namespace: "default",
-						Labels:    userSecretLabels,
-					},
+					Name:      userInEsNamespace,
+					Namespace: "default",
+					Labels:    userSecretLabels,
 				},
 			},
 			postCondition: func(c k8s.Client) {
@@ -144,25 +136,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			},
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInKibanaNamespace,
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      userInKibanaNamespace,
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInEsNamespace,
-						Namespace: "default", // but we still have a user secret in default
-						Labels:    userSecretLabels,
-					},
+					Name:      userInEsNamespace,
+					Namespace: "default", // but we still have a user secret in default
+					Labels:    userSecretLabels,
 				},
 			},
 			postCondition: func(c k8s.Client) {
@@ -186,22 +172,16 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			es:     esFixture,
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInKibanaNamespace,
-						Namespace: kibanaFixture.Namespace,
-					},
+					Name:      userInKibanaNamespace,
+					Namespace: kibanaFixture.Namespace,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-						Namespace: kibanaFixture.Namespace,
-					},
+					Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
+					Namespace: kibanaFixture.Namespace,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInEsNamespace,
-						Namespace: kibanaFixture.Namespace,
-					},
+					Name:      userInEsNamespace,
+					Namespace: kibanaFixture.Namespace,
 				},
 			},
 			postCondition: func(c k8s.Client) {
@@ -217,25 +197,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			es: esFixture,
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInKibanaNamespace,
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      userInKibanaNamespace,
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userInEsNamespace,
-						Namespace: kibanaFixture.Namespace,
-						Labels:    userSecretLabels,
-					},
+					Name:      userInEsNamespace,
+					Namespace: kibanaFixture.Namespace,
+					Labels:    userSecretLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
-						Namespace: kibanaFixture.Namespace,
-						Labels:    associationLabels,
-					},
+					Name:      CACertSecretName(kibanaFixture.EsAssociation(), kibanaESAssociationName),
+					Namespace: kibanaFixture.Namespace,
+					Labels:    associationLabels,
 				},
 			},
 			postCondition: func(c k8s.Client) {
@@ -271,25 +245,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			},
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "kibana-foo-kibana-user",
-						Namespace: "ns2",
-						Labels:    associationLabels,
-					},
+					Name:      "kibana-foo-kibana-user",
+					Namespace: "ns2",
+					Labels:    associationLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "ns2-kibana-foo-kibana-user",
-						Namespace: "ns1",
-						Labels:    userSecretLabels,
-					},
+					Name:      "ns2-kibana-foo-kibana-user",
+					Namespace: "ns1",
+					Labels:    userSecretLabels,
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "kibana-foo-kb-es-ca",
-						Namespace: "ns2",
-						Labels:    associationLabels,
-					},
+					Name:      "kibana-foo-kb-es-ca",
+					Namespace: "ns2",
+					Labels:    associationLabels,
 				},
 			},
 			postCondition: func(c k8s.Client) {

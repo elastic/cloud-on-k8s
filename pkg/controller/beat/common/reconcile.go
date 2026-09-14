@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,10 +56,8 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		expectedVehicle = &ds
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = &v1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Beat.Namespace,
-			},
+			Name:      name,
+			Namespace: params.Beat.Namespace,
 		}
 	case spec.Deployment != nil:
 		d, err := buildExpectedDeployment(rp)
@@ -70,10 +67,8 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		expectedVehicle = &d
 		reconciliationFunc = reconcileDeployment
 		toDelete = &v1.DaemonSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: params.Beat.Namespace,
-			},
+			Name:      name,
+			Namespace: params.Beat.Namespace,
 		}
 	}
 

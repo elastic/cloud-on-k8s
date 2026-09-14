@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -175,13 +174,11 @@ func reconcilePredefinedUsers(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   secretNsn.Namespace,
-			Name:        secretNsn.Name,
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
-		Data: secretData,
+		Namespace:   secretNsn.Namespace,
+		Name:        secretNsn.Name,
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
+		Data:        secretData,
 	}
 
 	if setOwnerRef {
