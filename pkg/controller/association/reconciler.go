@@ -115,15 +115,19 @@ type AssociationInfo struct { //nolint:revive
 	// association conf annotation) along with reconciler results for requeue scheduling.
 	ReconcileTransitiveESSecrets func(context.Context, k8s.Client, commonv1.Association, metadata.Metadata) (*commonv1.TransitiveESRef, *reconciler.Results)
 
+	// ElasticsearchRef resolves the (possibly transitive) Elasticsearch reference for this association.
+	// When set, RBAC is checked against the resolved ES before any side-effecting operations.
+	// Must be set whenever ElasticsearchUserCreation is non-nil. May also be set without
+	// ElasticsearchUserCreation to apply the transitive ES RBAC check for associations that
+	// copy ES-sourced secrets without creating a dedicated ES user (e.g. Agent -> Fleet Server -> Elasticsearch).
+	ElasticsearchRef func(ctx context.Context, c k8s.Client, assoc commonv1.Association) (bool, commonv1.AssociationRef, error)
+
 	// ElasticsearchUserCreation specifies settings to create an Elasticsearch user as part of the association.
 	// May be nil if no user creation is required.
 	ElasticsearchUserCreation *ElasticsearchUserCreation
 }
 
 type ElasticsearchUserCreation struct {
-	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
-	// In the case of a transitive reference this is used to create the Elasticsearch user.
-	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error)
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
@@ -295,6 +299,15 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return status, results.WithError(err)
 	}
 
+	// Resolve the (possibly transitive) ES ref and enforce RBAC against it before any side-effecting operations.
+	// esAssocRef is nil in two cases: ElasticsearchRef is not configured at all, or ElasticsearchRef returns
+	// !found with ElasticsearchUserCreation==nil (e.g. Fleet Server in manual-setup mode with no ES ref).
+	// The ElasticsearchUserCreation==nil guard below prevents any dereference in either path.
+	esAssocRef, es, assocStatus, err := r.resolveESAndCheckRBAC(ctx, association)
+	if assocStatus != "" || err != nil {
+		return assocStatus, results.WithError(err)
+	}
+
 	// metadata to propagate to children
 	assocMeta := metadata.Propagate(association, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())})
 	caSecret, err := r.ReconcileCASecret(
@@ -375,16 +388,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return status, results.WithError(err)
 	}
 
-	// since Elasticsearch can be a transitive reference we need to use the provided ElasticsearchRef function
-	found, esAssocRef, err := r.ElasticsearchUserCreation.ElasticsearchRef(r.Client, association)
-	if err != nil {
-		return commonv1.AssociationFailed, results.WithError(err)
-	}
-	// the Elasticsearch ref does not exist yet, set status to Pending
-	if !found {
-		return commonv1.AssociationPending, results.WithError(RemoveAssociationConf(ctx, r.Client, association))
-	}
-
 	if esAssocRef.IsExternal() {
 		log.V(1).Info("Association with a transitive unmanaged Elasticsearch, skip user creation",
 			"name", association.Associated().GetName(), "ref_name", assocRef.NameOrSecretName(), "es_ref_name", esAssocRef.NameOrSecretName())
@@ -393,17 +396,6 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		expectedAssocConf.AuthSecretKey = authPasswordUnmanagedSecretKey
 		status, err := r.updateAssocConf(ctx, expectedAssocConf, association)
 		return status, results.WithError(err)
-	}
-
-	// retrieve the Elasticsearch resource
-	es, associationStatus, err := r.getElasticsearch(ctx, association, esAssocRef)
-	if associationStatus != "" || err != nil {
-		return associationStatus, results.WithError(err)
-	}
-
-	// check if reference to Elasticsearch is allowed to be established
-	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
-		return commonv1.AssociationPending, results.WithError(err)
 	}
 
 	serviceAccount, err := association.ElasticServiceAccount()
@@ -504,6 +496,56 @@ func (r *Reconciler) getElasticsearch(
 	return es, "", nil
 }
 
+// resolveESAndCheckRBAC resolves the (possibly transitive) Elasticsearch reference for the association
+// and checks RBAC against it. It returns the resolved ref and ES object for use by the caller.
+// A non-empty status or a non-nil error means the caller should return immediately.
+func (r *Reconciler) resolveESAndCheckRBAC(ctx context.Context, association commonv1.Association) (commonv1.AssociationRef, esv1.Elasticsearch, commonv1.AssociationStatus, error) {
+	if r.ElasticsearchRef == nil {
+		return nil, esv1.Elasticsearch{}, "", nil
+	}
+	found, esAssocRef, err := r.ElasticsearchRef(ctx, r.Client, association)
+	if err != nil {
+		return nil, esv1.Elasticsearch{}, commonv1.AssociationFailed, err
+	}
+	if !found {
+		if r.ElasticsearchUserCreation != nil {
+			// Transitive ES not yet established; without it we cannot create the ES user.
+			return nil, esv1.Elasticsearch{}, commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
+		}
+		// No ES ref and no user creation required (e.g. Fleet Server with no ES ref
+		// configured - manual setup). Skip the transitive RBAC check and proceed.
+		return nil, esv1.Elasticsearch{}, "", nil
+	}
+	if esAssocRef.IsExternal() {
+		return esAssocRef, esv1.Elasticsearch{}, "", nil
+	}
+	es, status, err := r.getElasticsearch(ctx, association, esAssocRef)
+	if status != "" || err != nil {
+		return nil, esv1.Elasticsearch{}, status, err
+	}
+	if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, &es, r, r.recorder); err != nil || !allowed {
+		return nil, esv1.Elasticsearch{}, commonv1.AssociationPending, err
+	}
+	return esAssocRef, es, "", nil
+}
+
+// deleteAllAssociationSecrets deletes every secret in the associated resource's namespace that
+// carries the association's resource labels: the CA copy, additional-secret copies, and any
+// transitive ES client cert secrets.
+func (r *Reconciler) deleteAllAssociationSecrets(ctx context.Context, association commonv1.Association) error {
+	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
+	var secrets corev1.SecretList
+	if err := r.List(ctx, &secrets, client.InNamespace(association.GetNamespace()), assocLabels); err != nil {
+		return err
+	}
+	for i := range secrets.Items {
+		if err := k8s.DeleteSecretIfExists(ctx, r.Client, k8s.ExtractNamespacedName(&secrets.Items[i])); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Unbind removes the association resources.
 func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
 	associated := k8s.ExtractNamespacedName(association)
@@ -535,13 +577,10 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 		}
 	}
 
-	// Delete any per-agent additional secret copies (e.g. transitive ES CA) that
-	// live in the associated resource's namespace. Passing nil or an empty set deletes all copies.
-	if r.AdditionalSecrets != nil {
-		assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
-		if err := deleteStaleAdditionalSecrets(ctx, r.Client, association.GetNamespace(), assocLabels, nil); err != nil {
-			return err
-		}
+	// Delete all association-labeled secrets in the associated resource's namespace: CA copy,
+	// additional-secret copies, and any transitive ES client cert secrets.
+	if err := r.deleteAllAssociationSecrets(ctx, association); err != nil {
+		return err
 	}
 
 	// Also remove the association configuration
@@ -673,10 +712,14 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
 func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler {
+	return NewTestAssociationReconcilerWithReviewer(assocInfo, rbac.NewPermissiveAccessReviewer(), runtimeObjs...)
+}
+
+func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewer rbac.AccessReviewer, runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
-		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+		accessReviewer:  reviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		Parameters: operator.Parameters{

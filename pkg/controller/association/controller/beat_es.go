@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -59,10 +58,8 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "beat-user",
 			ESUserRole:       getBeatRoles,
 		},

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -121,6 +122,11 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 			var toWatch []types.NamespacedName
 			for _, association := range associations {
 				secs, err := r.AdditionalSecrets(ctx, r.Client, association)
+				if apierrors.IsNotFound(err) {
+					// Transitive resource not yet created; no additional secrets to watch yet.
+					// The watch on the referenced resource re-enqueues when it appears.
+					continue
+				}
 				if err != nil {
 					return nil, err
 				}

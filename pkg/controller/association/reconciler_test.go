@@ -7,6 +7,7 @@ package association
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,10 +96,10 @@ var (
 		AssociationConfAnnotationNameBase:     "association.k8s.elastic.co/es-conf",
 		AssociationResourceNameLabelName:      "elasticsearch.k8s.elastic.co/cluster-name",
 		AssociationResourceNamespaceLabelName: "elasticsearch.k8s.elastic.co/cluster-namespace",
+		ElasticsearchRef: func(_ context.Context, c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
+			return true, association.AssociationRef(), nil
+		},
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "kibana-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return "kibana_system", nil
@@ -402,25 +403,59 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 }
 
 func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
-	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
-	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, esHTTPService())
-	// simulate rbac association disallowed
-	r.accessReviewer = denyAllAccessReviewer{}
-	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	require.NoError(t, err)
-	// association should be pending
-	var updatedKibana kbv1.Kibana
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
-	require.NoError(t, err)
-	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
-	// association conf should be removed
-	require.Empty(t, updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
-	// user in es namespace should be deleted
-	var secret corev1.Secret
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	for _, tt := range []struct {
+		name             string
+		setup            func(*toolsevents.FakeRecorder) (Reconciler, types.NamespacedName)
+		wantWarningEvent bool
+		checkResult      func(*testing.T, Reconciler, kbv1.Kibana)
+	}{
+		{
+			name: "ES association denied: blocks (pending), conf cleared, user deleted",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				kb := sampleAssociatedKibana()
+				require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, esHTTPService())
+				r.accessReviewer = denyAllAccessReviewer{}
+				r.recorder = rec
+				return r, k8s.ExtractNamespacedName(&kb)
+			},
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.AssociationStatus)
+				require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				var secret corev1.Secret
+				err := r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
+				require.True(t, apierrors.IsNotFound(err))
+			},
+		},
+		{
+			name: "permissive reviewer (RBAC always allowed): association establishes, no warning event",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				kb := sampleKibanaWithESRef()
+				r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
+				r.recorder = rec
+				return r, k8s.ExtractNamespacedName(&kb)
+			},
+			wantWarningEvent: false,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationEstablished, kb.Status.AssociationStatus)
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := toolsevents.NewFakeRecorder(10)
+			r, nsn := tt.setup(recorder)
+			_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nsn})
+			require.NoError(t, err)
+			var updatedKibana kbv1.Kibana
+			require.NoError(t, r.Get(context.Background(), nsn, &updatedKibana))
+			gotWarning := strings.HasPrefix(fetchEvent(recorder), corev1.EventTypeWarning)
+			require.Equal(t, tt.wantWarningEvent, gotWarning)
+			tt.checkResult(t, r, updatedKibana)
+		})
+	}
 }
 
 func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
@@ -869,10 +904,10 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 		AssociationConfAnnotationNameBase:     commonv1.ElasticsearchConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
+		ElasticsearchRef: func(_ context.Context, c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
+			return true, association.AssociationRef(), nil
+		},
 		ElasticsearchUserCreation: &ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "agent-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return "superuser", nil
@@ -2077,6 +2112,83 @@ func TestReconciler_Unbind(t *testing.T) {
 				require.True(t, apierrors.IsNotFound(err), "cross-namespace CA copy must be deleted by Unbind")
 			},
 		},
+		{
+			name: "CA secret without AdditionalSecretLabel is deleted",
+			setup: func() (Reconciler, commonv1.Association) {
+				caSecretNoLabel := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: agentNS,
+						Name:      "agent1-fleetserver-ca",
+						Labels:    map[string]string{"test": "fleet1", "test-ns": "fleet-ns"},
+					},
+				}
+				r := Reconciler{
+					AssociationInfo: AssociationInfo{
+						Labels:                                func(types.NamespacedName) map[string]string { return nil },
+						AssociationResourceNameLabelName:      "test",
+						AssociationResourceNamespaceLabelName: "test-ns",
+						ReferencedResourceNamer:               common_name.NewNamer("agent"),
+					},
+					Client:  k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel),
+					watches: watches.NewDynamicWatches(),
+				}
+				return r, crossNSAgent.GetAssociations()[0]
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				var got corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: "agent1-fleetserver-ca"}, &got)
+				require.True(t, apierrors.IsNotFound(err), "CA secret without AdditionalSecretLabelName must be deleted by Unbind")
+			},
+		},
+		{
+			name: "all association-labeled secrets deleted; unrelated secret survives",
+			setup: func() (Reconciler, commonv1.Association) {
+				assocLabels := map[string]string{"test": "fleet1", "test-ns": "fleet-ns"}
+				caSecretNoLabel := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "agent1-fleetserver-ca", Labels: assocLabels},
+				}
+				additionalCopy := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: agentNS,
+						Name:      "fleet1-es-ca-copy",
+						Labels: map[string]string{
+							AdditionalSecretLabelName: "true",
+							"test":                    "fleet1",
+							"test-ns":                 "fleet-ns",
+						},
+					},
+				}
+				clientCertSecret := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "agent1-es-client-cert", Labels: assocLabels},
+				}
+				unrelatedSecret := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: agentNS, Name: "unrelated-secret"},
+				}
+				r := Reconciler{
+					AssociationInfo: AssociationInfo{
+						Labels:                                func(types.NamespacedName) map[string]string { return nil },
+						AssociationResourceNameLabelName:      "test",
+						AssociationResourceNamespaceLabelName: "test-ns",
+						ReferencedResourceNamer:               common_name.NewNamer("agent"),
+					},
+					Client:  k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel, &additionalCopy, &clientCertSecret, &unrelatedSecret),
+					watches: watches.NewDynamicWatches(),
+				}
+				return r, crossNSAgent.GetAssociations()[0]
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				for _, name := range []string{"agent1-fleetserver-ca", "fleet1-es-ca-copy", "agent1-es-client-cert"} {
+					var got corev1.Secret
+					err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: name}, &got)
+					require.True(t, apierrors.IsNotFound(err), "secret %q must be deleted by Unbind", name)
+				}
+				var got corev1.Secret
+				require.NoError(t, r.Client.Get(context.Background(), types.NamespacedName{Namespace: agentNS, Name: "unrelated-secret"}, &got),
+					"unrelated secret must survive Unbind")
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r, assoc := tt.setup()
@@ -2084,6 +2196,45 @@ func TestReconciler_Unbind(t *testing.T) {
 			tt.check(t, r)
 		})
 	}
+}
+
+func TestReconciler_ReconcileThenUnbind(t *testing.T) {
+	kb := sampleKibanaWithESRef()
+	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
+
+	// Reconcile to establish the association and create all secrets.
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	require.NoError(t, err)
+
+	// Verify the three secrets created by the reconcile exist.
+	for _, nsn := range []types.NamespacedName{
+		k8s.ExtractNamespacedName(&kibanaUserInESNamespace),
+		k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace),
+		k8s.ExtractNamespacedName(&esCertsInKibanaNamespace),
+	} {
+		var s corev1.Secret
+		require.NoError(t, r.Get(context.Background(), nsn, &s), "secret %s must exist after reconcile", nsn)
+	}
+
+	// Unbind should remove all of them.
+	var updatedKb kbv1.Kibana
+	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+	require.NoError(t, r.Unbind(context.Background(), updatedKb.EsAssociation()))
+
+	for _, nsn := range []types.NamespacedName{
+		k8s.ExtractNamespacedName(&kibanaUserInESNamespace),
+		k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace),
+		k8s.ExtractNamespacedName(&esCertsInKibanaNamespace),
+	} {
+		var s corev1.Secret
+		err := r.Get(context.Background(), nsn, &s)
+		require.True(t, apierrors.IsNotFound(err), "secret %s must be deleted after Unbind", nsn)
+	}
+
+	// Association conf annotation must also be cleared.
+	require.NoError(t, r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+	require.Empty(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()],
+		"association conf annotation must be cleared after Unbind")
 }
 
 func TestReconcileWatches_SameNamespace_WatchRegistered(t *testing.T) {

@@ -62,10 +62,8 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.AssociationRef, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "kibana-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return KibanaSystemUserBuiltinRole, nil
