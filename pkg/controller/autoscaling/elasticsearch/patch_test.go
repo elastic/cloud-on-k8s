@@ -541,6 +541,71 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 			}),
 			wantPatches: 0,
 		},
+		{
+			name: "multiple nodeSets change in same patch",
+			current: esWithNodeSets(
+				esv1.NodeSet{Name: "data", Count: 1},
+				esv1.NodeSet{Name: "ml", Count: 1},
+			),
+			reconciled: esWithNodeSets(
+				esv1.NodeSet{Name: "data", Count: 2},
+				esv1.NodeSet{Name: "ml", Count: 3},
+			),
+			wantPatches: 1,
+			verify: func(t *testing.T, c *recordingPatchClient, live esv1.Elasticsearch) {
+				t.Helper()
+				assert.True(t, c.hasPath("/spec/nodeSets/0/count"))
+				assert.True(t, c.hasPath("/spec/nodeSets/1/count"))
+				assert.Equal(t, int32(2), live.Spec.NodeSets[0].Count)
+				assert.Equal(t, int32(3), live.Spec.NodeSets[1].Count)
+			},
+		},
+		{
+			name: "storage cleared: nil replaces previous value",
+			current: esWithNodeSets(esv1.NodeSet{
+				Name:      "data",
+				Count:     1,
+				Resources: esv1.NodeSetResources{Storage: new(resource.MustParse("10Gi"))},
+			}),
+			reconciled: esWithNodeSets(esv1.NodeSet{
+				Name:      "data",
+				Count:     1,
+				Resources: esv1.NodeSetResources{Storage: nil},
+			}),
+			wantPatches: 1,
+			verify: func(t *testing.T, c *recordingPatchClient, live esv1.Elasticsearch) {
+				t.Helper()
+				assert.True(t, c.hasPath("/spec/nodeSets/0/resources/storage"))
+				assert.Nil(t, live.Spec.NodeSets[0].Resources.Storage)
+			},
+		},
+		{
+			name: "count-only change with existing resources",
+			current: esWithNodeSets(esv1.NodeSet{
+				Name:  "data",
+				Count: 2,
+				Resources: esv1.NodeSetResources{
+					Resources: commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: new(resource.MustParse("4Gi"))}},
+					Storage:   new(resource.MustParse("10Gi")),
+				},
+			}),
+			reconciled: esWithNodeSets(esv1.NodeSet{
+				Name:  "data",
+				Count: 4,
+				Resources: esv1.NodeSetResources{
+					Resources: commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: new(resource.MustParse("4Gi"))}},
+					Storage:   new(resource.MustParse("10Gi")),
+				},
+			}),
+			wantPatches: 1,
+			verify: func(t *testing.T, c *recordingPatchClient, live esv1.Elasticsearch) {
+				t.Helper()
+				assert.True(t, c.hasPath("/spec/nodeSets/0/count"))
+				assert.False(t, c.hasPath("/spec/nodeSets/0/resources/storage"))
+				assert.False(t, c.hasPath("/spec/nodeSets/0/resources/requests/memory"))
+				assert.Equal(t, int32(4), live.Spec.NodeSets[0].Count)
+			},
+		},
 	}
 
 	for _, tt := range tests {
