@@ -440,6 +440,11 @@ type NodeSetResources struct {
 	Storage *resource.Quantity `json:"storage,omitempty"`
 }
 
+// IsEmpty reports whether r carries no resource constraints at all.
+func (r NodeSetResources) IsEmpty() bool {
+	return r.Resources.IsEmpty() && r.Storage == nil
+}
+
 // ContainerResources returns the CPU/memory shorthand applied to the main Elasticsearch container.
 func (r NodeSetResources) ContainerResources() commonv1.Resources {
 	return r.Resources

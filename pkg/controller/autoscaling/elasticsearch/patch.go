@@ -113,7 +113,7 @@ func patchAutoscaledNodeSets(ctx context.Context, c k8s.Client, current, reconci
 // When /resources itself is absent a single object-level "add" is used, because JSON Patch rejects
 // ops that target a non-existent path.
 func resourcesLeafOps(basePath string, prev, next esv1.NodeSetResources) []jsonPatchOp {
-	resourcesExists := !prev.IsEmpty() || prev.Storage != nil
+	resourcesExists := !prev.IsEmpty()
 	if !resourcesExists {
 		if obj := buildResourcesMap(next); len(obj) > 0 {
 			return []jsonPatchOp{{Op: "add", Path: basePath, Value: obj}}
