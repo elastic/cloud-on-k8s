@@ -224,6 +224,11 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 	statusBuilder := newStatusBuilder(log, esa.Spec.AutoscalingPolicySpecs)
 	results := &reconciler.Results{}
 
+	// Snapshot the spec before reconciliation so the patch below can tell what actually changed.
+	// A plain copy would not do: reconcileInternal takes the Elasticsearch by value, but
+	// Spec.NodeSets is a slice, so the copy shares its backing array and is mutated in place.
+	originalEs := es.DeepCopy()
+
 	// Call the main function
 	reconciledEs, reconcileInternalErr := r.reconcileInternal(ctx, es, statusBuilder, autoscaledNodeSets, &esa)
 	if reconcileInternalErr != nil {
@@ -249,8 +254,8 @@ func (r *ReconcileElasticsearchAutoscaler) Reconcile(ctx context.Context, reques
 		return results.Aggregate()
 	}
 
-	// Update the Elasticsearch resource
-	if err := r.Client.Update(ctx, reconciledEs); err != nil {
+	// Persist the recommendations, touching only the NodeSet fields that changed.
+	if err := patchAutoscaledNodeSets(ctx, r.Client, originalEs, reconciledEs); err != nil {
 		if apierrors.IsConflict(err) {
 			return results.WithRequeue().Aggregate()
 		}

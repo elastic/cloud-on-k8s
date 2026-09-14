@@ -5,7 +5,6 @@
 package nodespec
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -94,7 +93,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("1500m")),
 						Memory: new(resource.MustParse("4Gi")),
@@ -103,7 +102,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("4Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -135,7 +134,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerWithPodResources),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("8Gi")),
@@ -144,7 +143,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						CPU:    new(resource.MustParse("2")),
 						Memory: new(resource.MustParse("8Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -190,11 +189,11 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 						},
 					},
 				}),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("1500m")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -214,14 +213,14 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("250m")),
 					},
 					Limits: commonv1.ResourceAllocations{
 						CPU: new(resource.MustParse("1")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -241,11 +240,11 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Requests: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("4Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -263,12 +262,12 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						CPU:    new(resource.MustParse("1")),
 						Memory: new(resource.MustParse("3Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -285,14 +284,14 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 				Count:       1,
 				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"master", "data"}}},
 				PodTemplate: basePodTemplate(esContainerMinimal),
-				Resources: commonv1.Resources{
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 					Limits: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("6Gi")),
 					},
 					Requests: commonv1.ResourceAllocations{
 						Memory: new(resource.MustParse("6Gi")),
 					},
-				},
+				}},
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			assertResources: func(t *testing.T, got corev1.ResourceRequirements) {
@@ -320,7 +319,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			require.NoError(t, err)
 
 			template, err := BuildPodTemplateSpec(
-				context.Background(), client, es, nodeSet, cfg,
+				t.Context(), client, es, nodeSet, cfg,
 				nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 			)
 			require.NoError(t, err)
@@ -360,14 +359,14 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
 			},
 		},
-		Resources: commonv1.Resources{
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 			Requests: commonv1.ResourceAllocations{
 				CPU: new(resource.MustParse("1")),
 			},
 			Limits: commonv1.ResourceAllocations{
 				CPU: new(resource.MustParse("2")),
 			},
-		},
+		}},
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 	}
 	es := testElasticsearchForNodeSet(nodeSet)
@@ -385,7 +384,7 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = BuildPodTemplateSpec(
-		context.Background(), client, es, nodeSet, cfg,
+		t.Context(), client, es, nodeSet, cfg,
 		nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
 	)
 	require.NoError(t, err)
@@ -393,103 +392,201 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 	require.Equal(t, snapshot, DefaultResources)
 }
 
-func TestNodeSetResources_BuildStatefulSet_elasticsearch_container(t *testing.T) {
-	nodeSet := esv1.NodeSet{
-		Name:  "nodeset-1",
-		Count: 3,
-		Config: &commonv1.Config{
-			Data: map[string]any{"node.roles": []string{"master", "data"}},
-		},
-		PodTemplate: corev1.PodTemplateSpec{
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
-			},
-		},
-		Resources: commonv1.Resources{
-			Requests: commonv1.ResourceAllocations{
-				CPU:    new(resource.MustParse("1")),
-				Memory: new(resource.MustParse("4Gi")),
-			},
-			Limits: commonv1.ResourceAllocations{
-				CPU:    new(resource.MustParse("2")),
-				Memory: new(resource.MustParse("4Gi")),
-			},
-		},
-		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+// TestBuildStatefulSet covers container resource propagation, nil-existing-StatefulSets safety,
+// and the AppendDefaultPVCs -> ApplyStorageOverride ordering (storage shorthand). The ordering
+// test is intentional: if the two calls in BuildStatefulSet were swapped, the "no user VCT" case
+// would fail because ApplyStorageOverride would find no claim and become a no-op, then
+// AppendDefaultPVCs would inject the default claim without the size.
+func TestBuildStatefulSet(t *testing.T) {
+	q10Gi := resource.MustParse("10Gi")
+
+	makeVCT := func(name, size string) corev1.PersistentVolumeClaim {
+		pvc := corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name}}
+		if size != "" {
+			pvc.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)}
+		}
+		return pvc
 	}
-	es := testElasticsearchForNodeSet(nodeSet)
-	client := k8s.NewFakeClient(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
-	})
 
-	ns := es.Spec.NodeSets[0]
-	ver, err := version.Parse(es.Spec.Version)
-	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(
-		es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
-		*ns.Config, nil, false, false, false, false,
-	)
-	require.NoError(t, err)
-
-	sts, err := BuildStatefulSet(
-		context.Background(), client, es, ns, cfg,
-		nil, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
-	)
-	require.NoError(t, err)
-
-	res, ok := elasticsearchContainerResources(sts.Spec.Template)
-	require.True(t, ok)
-	requireQuantityEqual(t, res.Requests, corev1.ResourceCPU, "1")
-	requireQuantityEqual(t, res.Requests, corev1.ResourceMemory, "4Gi")
-	requireQuantityEqual(t, res.Limits, corev1.ResourceCPU, "2")
-	requireQuantityEqual(t, res.Limits, corev1.ResourceMemory, "4Gi")
-}
-
-func TestNodeSetResources_BuildStatefulSet_nil_existing_statefulsets(t *testing.T) {
-	nodeSet := esv1.NodeSet{
-		Name:  "nodeset-1",
-		Count: 1,
-		Config: &commonv1.Config{
-			Data: map[string]any{"node.roles": []string{"master", "data"}},
-		},
-		PodTemplate: corev1.PodTemplateSpec{
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
-			},
-		},
-		Resources: commonv1.Resources{
-			Limits: commonv1.ResourceAllocations{
-				Memory: new(resource.MustParse("3Gi")),
-			},
-			Requests: commonv1.ResourceAllocations{
-				Memory: new(resource.MustParse("3Gi")),
-			},
-		},
-		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+	findVCT := func(claims []corev1.PersistentVolumeClaim, name string) *corev1.PersistentVolumeClaim {
+		for i := range claims {
+			if claims[i].Name == name {
+				return &claims[i]
+			}
+		}
+		return nil
 	}
-	es := testElasticsearchForNodeSet(nodeSet)
-	client := k8s.NewFakeClient(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
-	})
 
-	ns := es.Spec.NodeSets[0]
-	ver, err := version.Parse(es.Spec.Version)
-	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(
-		es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
-		*ns.Config, nil, false, false, false, false,
-	)
-	require.NoError(t, err)
+	tests := []struct {
+		name            string
+		nodeSet         esv1.NodeSet
+		existingSSets   es_sset.StatefulSetList
+		assertResources func(t *testing.T, res corev1.ResourceRequirements)
+		wantVCT         string
+		wantStorage     string
+	}{
+		{
+			name: "container resources: CPU and memory shorthand propagated",
+			nodeSet: esv1.NodeSet{
+				Name:  "nodeset-1",
+				Count: 3,
+				Config: &commonv1.Config{
+					Data: map[string]any{"node.roles": []string{"master", "data"}},
+				},
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
+					},
+				},
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
+					Requests: commonv1.ResourceAllocations{
+						CPU:    new(resource.MustParse("1")),
+						Memory: new(resource.MustParse("4Gi")),
+					},
+					Limits: commonv1.ResourceAllocations{
+						CPU:    new(resource.MustParse("2")),
+						Memory: new(resource.MustParse("4Gi")),
+					},
+				}},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			},
+			assertResources: func(t *testing.T, res corev1.ResourceRequirements) {
+				t.Helper()
+				requireQuantityEqual(t, res.Requests, corev1.ResourceCPU, "1")
+				requireQuantityEqual(t, res.Requests, corev1.ResourceMemory, "4Gi")
+				requireQuantityEqual(t, res.Limits, corev1.ResourceCPU, "2")
+				requireQuantityEqual(t, res.Limits, corev1.ResourceMemory, "4Gi")
+			},
+		},
+		{
+			// A nil StatefulSetList is a valid input: GetByName on a nil slice must not panic.
+			name: "nil existing StatefulSets: memory shorthand propagated without panic",
+			nodeSet: esv1.NodeSet{
+				Name:  "nodeset-1",
+				Count: 1,
+				Config: &commonv1.Config{
+					Data: map[string]any{"node.roles": []string{"master", "data"}},
+				},
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}},
+					},
+				},
+				Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
+					Limits:   commonv1.ResourceAllocations{Memory: new(resource.MustParse("3Gi"))},
+					Requests: commonv1.ResourceAllocations{Memory: new(resource.MustParse("3Gi"))},
+				}},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			},
+			existingSSets: nil,
+			assertResources: func(t *testing.T, res corev1.ResourceRequirements) {
+				t.Helper()
+				requireQuantityEqual(t, res.Requests, corev1.ResourceMemory, "3Gi")
+				requireQuantityEqual(t, res.Limits, corev1.ResourceMemory, "3Gi")
+			},
+		},
+		{
+			// AppendDefaultPVCs injects elasticsearch-data; ApplyStorageOverride must run after.
+			name: "storage shorthand: no user VCT, applied to injected default claim",
+			nodeSet: esv1.NodeSet{
+				Name:        "data",
+				Count:       1,
+				Config:      &commonv1.Config{Data: map[string]any{"node.roles": []string{"data"}}},
+				PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}}}},
+				Resources:   esv1.NodeSetResources{Storage: &q10Gi},
+			},
+			wantVCT:     "elasticsearch-data",
+			wantStorage: "10Gi",
+		},
+		{
+			// User declares the claim with a storage class but no size. AppendDefaultPVCs skips
+			// injection (claim already present). ApplyStorageOverride applies the shorthand.
+			name: "storage shorthand: user VCT with no size",
+			nodeSet: esv1.NodeSet{
+				Name:                 "data",
+				Count:                1,
+				Config:               &commonv1.Config{Data: map[string]any{"node.roles": []string{"data"}}},
+				PodTemplate:          corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}}}},
+				Resources:            esv1.NodeSetResources{Storage: &q10Gi},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{makeVCT("elasticsearch-data", "")},
+			},
+			wantVCT:     "elasticsearch-data",
+			wantStorage: "10Gi",
+		},
+		{
+			name: "storage shorthand: shorthand wins over VCT's own size",
+			nodeSet: esv1.NodeSet{
+				Name:                 "data",
+				Count:                1,
+				Config:               &commonv1.Config{Data: map[string]any{"node.roles": []string{"data"}}},
+				PodTemplate:          corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}}}},
+				Resources:            esv1.NodeSetResources{Storage: &q10Gi},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{makeVCT("elasticsearch-data", "5Gi")},
+			},
+			wantVCT:     "elasticsearch-data",
+			wantStorage: "10Gi",
+		},
+		{
+			// Single custom-named VCT: fallback path in StorageOverrideClaim.
+			name: "storage shorthand: single custom-named VCT via fallback",
+			nodeSet: esv1.NodeSet{
+				Name:                 "data",
+				Count:                1,
+				Config:               &commonv1.Config{Data: map[string]any{"node.roles": []string{"data"}}},
+				PodTemplate:          corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}}}},
+				Resources:            esv1.NodeSetResources{Storage: &q10Gi},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{makeVCT("custom-data", "5Gi")},
+			},
+			wantVCT:     "custom-data",
+			wantStorage: "10Gi",
+		},
+		{
+			name: "storage shorthand: nil shorthand leaves VCT size unchanged",
+			nodeSet: esv1.NodeSet{
+				Name:                 "data",
+				Count:                1,
+				Config:               &commonv1.Config{Data: map[string]any{"node.roles": []string{"data"}}},
+				PodTemplate:          corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: esv1.ElasticsearchContainerName}}}},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{makeVCT("elasticsearch-data", "5Gi")},
+			},
+			wantVCT:     "elasticsearch-data",
+			wantStorage: "5Gi",
+		},
+	}
 
-	var existing es_sset.StatefulSetList
-	sts, err := BuildStatefulSet(
-		context.Background(), client, es, ns, cfg,
-		nil, existing, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
-	)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := testElasticsearchForNodeSet(tt.nodeSet)
+			client := k8s.NewFakeClient(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
+			})
 
-	res, ok := elasticsearchContainerResources(sts.Spec.Template)
-	require.True(t, ok)
-	requireQuantityEqual(t, res.Requests, corev1.ResourceMemory, "3Gi")
-	requireQuantityEqual(t, res.Limits, corev1.ResourceMemory, "3Gi")
+			ns := es.Spec.NodeSets[0]
+			ver, err := version.Parse(es.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(
+				es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
+				*ns.Config, nil, false, false, false, false,
+			)
+			require.NoError(t, err)
+
+			sts, err := BuildStatefulSet(
+				t.Context(), client, es, ns, cfg,
+				nil, tt.existingSSets, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
+			)
+			require.NoError(t, err)
+
+			if tt.assertResources != nil {
+				res, ok := elasticsearchContainerResources(sts.Spec.Template)
+				require.True(t, ok, "elasticsearch container not found in pod template")
+				tt.assertResources(t, res)
+			}
+
+			if tt.wantVCT != "" {
+				vct := findVCT(sts.Spec.VolumeClaimTemplates, tt.wantVCT)
+				require.NotNilf(t, vct, "VCT %q not found; got %v", tt.wantVCT, sts.Spec.VolumeClaimTemplates)
+				requireQuantityEqual(t, vct.Spec.Resources.Requests, corev1.ResourceStorage, tt.wantStorage)
+			}
+		})
+	}
 }
