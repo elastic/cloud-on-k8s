@@ -27,7 +27,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.111.0 | Apache-2.0 |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
-| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.1 | Apache-2.0 |
+| [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.2 | Apache-2.0 |
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
 | [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.23 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.4 | Apache-2.0 |
