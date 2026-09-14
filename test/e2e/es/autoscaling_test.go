@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -201,13 +202,18 @@ func newPVC(storageQuantity, storageClass string) corev1.PersistentVolumeClaim {
 
 // newNodeSet returns a NodeSet with the provided properties.
 func newNodeSet(name string, roles []string, count int32, limits corev1.ResourceList, pvc corev1.PersistentVolumeClaim) esv1.NodeSet {
+	resources := newNodeSetResources(limits)
+	if storage, exists := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; exists {
+		storageCopy := storage
+		resources.Storage = &storageCopy
+	}
 	return esv1.NodeSet{
 		Name: name,
 		Config: &commonv1.Config{
 			Data: map[string]any{esv1.NodeRoles: roles},
 		},
 		Count:                count,
-		Resources:            newNodeSetResources(limits),
+		Resources:            resources,
 		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{pvc},
 		PodTemplate: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
@@ -275,6 +281,9 @@ func checkNodeSetResourcesStep(k8sClient *test.K8sClient, expectedBuilder *elast
 				}
 				if err := ensureNodeSetResourcesMatchExpected(expectedNodeSet.Resources.ContainerResources(), actualNodeSet.Resources.ContainerResources()); err != nil {
 					return fmt.Errorf("NodeSet %q resources mismatch: %w", expectedNodeSet.Name, err)
+				}
+				if expectedNodeSet.Resources.Storage != nil && !apiequality.Semantic.DeepEqual(expectedNodeSet.Resources.Storage, actualNodeSet.Resources.Storage) {
+					return fmt.Errorf("NodeSet %q storage mismatch: expected %v, got %v", expectedNodeSet.Name, expectedNodeSet.Resources.Storage, actualNodeSet.Resources.Storage)
 				}
 			}
 
