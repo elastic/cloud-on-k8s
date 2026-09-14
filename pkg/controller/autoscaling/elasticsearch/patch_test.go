@@ -561,6 +561,9 @@ func TestPatchAutoscaledNodeSets(t *testing.T) {
 			},
 		},
 		{
+			// This path is prevented by reconcileElasticsearch's use of StorageRequestOr,
+			// which preserves current storage when the autoscaling API returns nothing.
+			// Included for defensive coverage of the patch function in isolation.
 			name: "storage cleared: nil replaces previous value",
 			current: esWithNodeSets(esv1.NodeSet{
 				Name:      "data",
