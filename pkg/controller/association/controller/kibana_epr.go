@@ -44,6 +44,7 @@ func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EPRConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eprlabels.NameLabelName,
 		AssociationResourceNamespaceLabelName: eprlabels.PackageRegistryNamespaceLabelName,
+		ElasticsearchRef:                      nil, // no transitive ES association for Kibana->EPR connection
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->EPR connection
 	})
 }

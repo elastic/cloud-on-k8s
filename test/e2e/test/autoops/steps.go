@@ -28,6 +28,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
 )
 
+const k8sRequestRetryTimeout = time.Minute
+
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
@@ -119,12 +121,11 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Creating an AutoOpsAgentPolicy should succeed",
 			Test: func(t *testing.T) {
 				t.Helper()
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(context.Background(), obj)
-					if err != nil && !apierrors.IsAlreadyExists(err) {
-						require.NoError(t, err)
-					}
-				}
+				require.NoError(t, k.CreateWithRetry(
+					test.IsRetryableError,
+					k8sRequestRetryTimeout,
+					b.RuntimeObjects()...,
+				))
 			},
 		}).
 		WithStep(test.Step{

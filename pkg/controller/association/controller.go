@@ -26,6 +26,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
+// ValidateAssociationInfo returns an error if the invariants of info are violated.
+// ElasticsearchRef must be set whenever ElasticsearchUserCreation is non-nil: without it
+// the reconciler would attempt ES user creation against a zero-value Elasticsearch object.
+func ValidateAssociationInfo(info AssociationInfo) error {
+	if info.ElasticsearchUserCreation != nil && info.ElasticsearchRef == nil {
+		return fmt.Errorf("AssociationInfo %q: ElasticsearchRef must be set when ElasticsearchUserCreation is non-nil", info.AssociationName)
+	}
+	return nil
+}
+
 // AddAssociationController sets up and starts an association controller for the given associationInfo.
 func AddAssociationController(
 	mgr manager.Manager,
@@ -33,6 +43,9 @@ func AddAssociationController(
 	params operator.Parameters,
 	associationInfo AssociationInfo,
 ) error {
+	if err := ValidateAssociationInfo(associationInfo); err != nil {
+		return err
+	}
 	// Derive the referenced resource Kind from the scheme at setup time,
 	// making the relationship with ReferencedObjTemplate explicit and unbreakable.
 	referencedResourceKind, err := referencedObjKind(mgr, associationInfo.ReferencedObjTemplate())
