@@ -146,13 +146,7 @@ func managedAllocationLeafOps(
 ) []jsonPatchOp {
 	parentExists := prev.CPU != nil || prev.Memory != nil
 	if !parentExists {
-		obj := map[string]any{}
-		if cpuManaged && next.CPU != nil {
-			obj["cpu"] = next.CPU
-		}
-		if memManaged && next.Memory != nil {
-			obj["memory"] = next.Memory
-		}
+		obj := buildFilteredAllocationMap(next, cpuManaged, memManaged)
 		if len(obj) == 0 {
 			return nil
 		}
@@ -172,10 +166,10 @@ func managedAllocationLeafOps(
 // as a single op when the path does not yet exist in the stored object.
 func buildResourcesMap(next esv1.NodeSetResources) map[string]any {
 	obj := map[string]any{}
-	if req := buildAllocationMap(next.Requests); len(req) > 0 {
+	if req := buildFilteredAllocationMap(next.Requests, true, true); len(req) > 0 {
 		obj["requests"] = req
 	}
-	if lim := buildAllocationMap(next.Limits); len(lim) > 0 {
+	if lim := buildFilteredAllocationMap(next.Limits, true, true); len(lim) > 0 {
 		obj["limits"] = lim
 	}
 	if next.Storage != nil {
@@ -184,12 +178,12 @@ func buildResourcesMap(next esv1.NodeSetResources) map[string]any {
 	return obj
 }
 
-func buildAllocationMap(a commonv1.ResourceAllocations) map[string]any {
+func buildFilteredAllocationMap(a commonv1.ResourceAllocations, includeCPU, includeMemory bool) map[string]any {
 	m := map[string]any{}
-	if a.CPU != nil {
+	if includeCPU && a.CPU != nil {
 		m["cpu"] = a.CPU
 	}
-	if a.Memory != nil {
+	if includeMemory && a.Memory != nil {
 		m["memory"] = a.Memory
 	}
 	return m
