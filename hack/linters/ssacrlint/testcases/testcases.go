@@ -282,6 +282,61 @@ func FlaggedUnknownVsNonCRBranchUpdate(c client.Client, ctx context.Context, obj
 	c.Update(ctx, target) // want "cannot resolve its concrete type"
 }
 
+// FlaggedMixedPhiCombinedWithUnknownUpdate nests a crStateMixed inner Phi
+// (CR on one sub-branch, non-CR on the other) inside an outer Phi whose
+// remaining edge is a crStateUnknown function parameter. The Phi aggregator
+// must preserve crStateMixed rather than collapsing it to crStateUnknown —
+// must produce the mixed-branch diagnostic.
+func FlaggedMixedPhiCombinedWithUnknownUpdate(c client.Client, ctx context.Context, obj client.Object, a, b bool) {
+	var target client.Object
+	if a {
+		if b {
+			target = &fakev1.FakeCR{}
+		} else {
+			target = &corev1.Secret{}
+		}
+	} else {
+		target = obj
+	}
+	c.Update(ctx, target) // want "on at least one branch"
+}
+
+// FlaggedMixedPhiCombinedWithNonCRUpdate nests a crStateMixed inner Phi
+// inside an outer Phi whose remaining edge is a plain crStateNonCR type.
+// The Phi aggregator must preserve crStateMixed rather than collapsing it
+// to crStateUnknown — must produce the mixed-branch diagnostic.
+func FlaggedMixedPhiCombinedWithNonCRUpdate(c client.Client, ctx context.Context, a, b bool) {
+	var target client.Object
+	if a {
+		if b {
+			target = &fakev1.FakeCR{}
+		} else {
+			target = &corev1.Secret{}
+		}
+	} else {
+		target = &corev1.Secret{}
+	}
+	c.Update(ctx, target) // want "on at least one branch"
+}
+
+// FlaggedMethodExprInterfaceVarCR calls Update as a method expression where
+// the object argument is an interface-typed variable holding a concrete ECK CR.
+// The SSA map must resolve the concrete type through the MakeInterface
+// instruction — must produce a diagnostic.
+func FlaggedMethodExprInterfaceVarCR(c client.Client, ctx context.Context) {
+	var obj client.Object = &fakev1.FakeCR{}
+	client.Client.Update(c, ctx, obj) // want "on an ECK CR"
+}
+
+// NotFlaggedMethodExprInterfaceVarNonCR calls Update as a method expression
+// where the object argument is an interface-typed variable holding a plain
+// Kubernetes type. The SSA map must resolve the concrete type and recognise
+// it is not an ECK CR — must not produce a diagnostic.
+func NotFlaggedMethodExprInterfaceVarNonCR(c client.Client, ctx context.Context) {
+	var obj client.Object = &corev1.Secret{}
+	client.Client.Update(c, ctx, obj)
+}
+
 // NotFlaggedCreate calls Create on a fake ECK CR. Create is not in the
 // monitored method list (Update and Patch only) and must not be flagged.
 func NotFlaggedCreate(c client.Client, ctx context.Context) {

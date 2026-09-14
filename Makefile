@@ -209,7 +209,7 @@ SSACRLINT_DIR := hack/linters/ssacrlint
 SSACRLINT_SOURCES := $(shell find $(SSACRLINT_DIR) -name "*.go")
 
 $(GOLANGCI_LINT_CUSTOM): .custom-gcl.yml $(SSACRLINT_DIR)/go.mod $(SSACRLINT_DIR)/go.sum $(SSACRLINT_SOURCES)
-	golangci-lint custom
+	golangci-lint custom --destination $(dir $(GOLANGCI_LINT_CUSTOM))
 
 lint: $(GOLANGCI_LINT_CUSTOM)
 	GOGC=40 $(GOLANGCI_LINT_CUSTOM) run --verbose

@@ -51,6 +51,7 @@ import (
 	"go/token"
 	"go/types"
 	"regexp"
+	"strings"
 	"sync"
 
 	"golang.org/x/tools/go/analysis"
@@ -161,8 +162,8 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 	}
 
 	// Build an SSA-based map from call-site position to argument CR state.
-	// The map covers all invoke-mode calls (regular interface method calls);
-	// static method-expression calls fall back to the static type check below.
+	// The map covers both invoke-mode calls (c.Update(ctx, obj)) and static
+	// method-expression calls (client.Client.Update(c, ctx, obj)).
 	ssaResult := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssaArgStates := computeSSAArgStates(ssaResult.SrcFuncs, objIdxByMethod, clientWriterIface, crPathRE)
 
@@ -220,11 +221,10 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 
 		// Determine the CR state of the object argument.
 		//
-		// For invoke-mode calls the SSA map covers interface conversions,
-		// parenthesised expressions, MakeInterface chains, and Phi joins —
-		// all cases the static type alone cannot resolve.
-		// For method-expression (static) calls the SSA map has no entry;
-		// those fall back to the static type of the argument.
+		// The SSA map covers both invoke-mode calls and static
+		// method-expression calls. For interface-typed arguments the map
+		// resolves MakeInterface chains, parenthesised expressions, and
+		// Phi joins — all cases the static type alone cannot resolve.
 		argType := pass.TypesInfo.TypeOf(call.Args[actualObjIdx])
 		var state crState
 		if isECKCR(argType, crPathRE) {
@@ -270,33 +270,70 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 
 // computeSSAArgStates iterates all SSA source functions and returns a map from
 // call-site position (the Lparen of the call expression in SSA) to the CR
-// state of the object argument for every invoke-mode call to a client.Writer
-// Update or Patch method.
+// state of the object argument for every invoke-mode call and every static
+// method-expression call to a client.Writer Update or Patch method.
 func computeSSAArgStates(fns []*ssa.Function, objIdxByMethod map[string]int, clientWriterIface *types.Interface, crPathRE *regexp.Regexp) map[token.Pos]crState {
 	states := make(map[token.Pos]crState)
 	for _, fn := range fns {
 		for _, block := range fn.Blocks {
 			for _, instr := range block.Instrs {
 				call, ok := instr.(*ssa.Call)
-				if !ok || !call.Call.IsInvoke() {
-					continue
-				}
-				method := call.Call.Method
-				objIdx, ok := objIdxByMethod[method.Name()]
 				if !ok {
 					continue
 				}
-				if !implementsWriter(call.Call.Value.Type(), clientWriterIface) {
-					continue
+
+				var argIdx int // index into call.Call.Args for the client.Object argument
+
+				if call.Call.IsInvoke() {
+					// Ordinary interface method call: c.Update(ctx, obj)
+					// The receiver is in call.Call.Value; Args maps 1:1 to the
+					// method parameters.
+					objIdx, ok := objIdxByMethod[call.Call.Method.Name()]
+					if !ok {
+						continue
+					}
+					if !implementsWriter(call.Call.Value.Type(), clientWriterIface) {
+						continue
+					}
+					argIdx = objIdx
+				} else {
+					// Static call: check for method-expression calls of the form
+					// client.Client.Update(c, ctx, obj) where the receiver is
+					// passed as Args[0] and method parameters start at Args[1].
+					callee := call.Call.StaticCallee()
+					if callee == nil || len(call.Call.Args) == 0 {
+						continue
+					}
+					if !implementsWriter(call.Call.Args[0].Type(), clientWriterIface) {
+						continue
+					}
+					// SSA names interface method-expression wrappers as
+					// "<Method>$thunk" (e.g. "Update$thunk"). Strip the
+					// "$..." suffix first, then any receiver-type prefix
+					// (e.g. "(T).Update") to recover the bare method name.
+					methodName := callee.Name()
+					if i := strings.IndexByte(methodName, '$'); i >= 0 {
+						methodName = methodName[:i]
+					}
+					if i := strings.LastIndex(methodName, "."); i >= 0 {
+						methodName = methodName[i+1:]
+					}
+					objIdx, ok := objIdxByMethod[methodName]
+					if !ok {
+						continue
+					}
+					// Receiver occupies Args[0]; method params begin at Args[1].
+					argIdx = objIdx + 1
 				}
-				if objIdx >= len(call.Call.Args) {
+
+				if argIdx >= len(call.Call.Args) {
 					continue
 				}
 				pos := call.Pos()
 				if pos == token.NoPos {
 					continue
 				}
-				states[pos] = classifySSAValue(call.Call.Args[objIdx], make(map[ssa.Value]crState), crPathRE)
+				states[pos] = classifySSAValue(call.Call.Args[argIdx], make(map[ssa.Value]crState), crPathRE)
 			}
 		}
 	}
@@ -383,11 +420,14 @@ func classifySSAValueUncached(v ssa.Value, seen map[ssa.Value]crState, crPathRE 
 				continue
 			}
 			// Disagreement between edges. crStateMixed means "at least one
-			// branch is definitely a CR", so only return it when one of the
-			// sides is crStateCR. Unknown vs NonCR stays crStateUnknown:
+			// branch is definitely a CR". Preserve it whenever either
+			// operand is crStateCR or crStateMixed: a nested Phi that
+			// already resolved to crStateMixed still has a CR reachable,
+			// and combining it with crStateUnknown or crStateNonCR must
+			// not lose that fact. Unknown vs NonCR stays crStateUnknown:
 			// we cannot confirm any branch is a CR, so the less alarming
 			// "cannot resolve" message is more accurate.
-			if result == crStateCR || s == crStateCR {
+			if result == crStateCR || s == crStateCR || result == crStateMixed || s == crStateMixed {
 				return crStateMixed
 			}
 			result = crStateUnknown
