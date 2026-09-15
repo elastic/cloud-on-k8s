@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	httpServiceSuffix            = "http"
-	scriptsConfigMapSuffix       = "scripts"
-	configSecretSuffix           = "config"
-	backgroundTasksSuffix        = "bg"
-	backgroundTasksConfigSuffix  = "bg-config"
+	httpServiceSuffix           = "http"
+	scriptsConfigMapSuffix      = "scripts"
+	configSecretSuffix          = "config"
+	backgroundTasksSuffix       = "bg"
+	backgroundTasksConfigSuffix = "bg-config"
 )
 
 // KBNamer is a KBNamer that is configured with the defaults for resources related to a Kibana resource.

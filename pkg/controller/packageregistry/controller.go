@@ -329,7 +329,7 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegis
 	return deployment.Params{
 		Name:                 DeploymentName(epr.Name),
 		Namespace:            epr.Namespace,
-		Replicas:             epr.Spec.Count,
+		Replicas:             new(epr.Spec.Count),
 		Selector:             deploymentLabels,
 		Metadata:             meta,
 		PodTemplateSpec:      podSpec,
