@@ -221,7 +221,7 @@ func (d *Driver) reconcileNodeSpecs(
 		return results
 	}
 
-	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results)
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, expectedResources.StatefulSets(), actualStatefulSets, d.Client, results)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
@@ -252,7 +252,7 @@ func (d *Driver) reconcileNodeSpecs(
 	return results
 }
 
-func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
+func (d *Driver) isNodeSpecsReconciled(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}
@@ -261,7 +261,7 @@ func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets e
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToUpgrade(client, actualStatefulSets)
+	pods, err := podsToRollingUpgrade(ctx, client, expectedStatefulSets, actualStatefulSets)
 	if err != nil {
 		return false
 	}

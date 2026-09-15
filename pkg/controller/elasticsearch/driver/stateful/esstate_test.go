@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,7 @@ type fakeESClient struct { //nolint:maligned
 	GetClusterRoutingAllocationCallCount int
 
 	Shutdowns            map[string]esclient.NodeShutdown
+	PutShutdownCalls     []shutdownCall
 	DeleteShutdownCalled bool
 
 	health                      esclient.Health
@@ -102,7 +104,22 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, _ string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
+// shutdownCall is one PutShutdown call recorded by the fake.
+type shutdownCall struct {
+	NodeID string
+	Type   esclient.ShutdownType
+}
+
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, _ string, _ *time.Duration) error {
+	f.PutShutdownCalls = append(f.PutShutdownCalls, shutdownCall{NodeID: nodeID, Type: shutdownType})
+	// NodeShutdown.ReconcileShutdowns reads the record back right after the PUT, so one is created for the node if there
+	// is none yet; tests that need a specific status seed it in Shutdowns
+	if _, exists := f.Shutdowns[nodeID]; !exists {
+		if f.Shutdowns == nil {
+			f.Shutdowns = make(map[string]esclient.NodeShutdown)
+		}
+		f.Shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: strings.ToUpper(string(shutdownType)), Status: esclient.ShutdownComplete}
+	}
 	return nil
 }
 
@@ -117,8 +134,9 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 	return esclient.ShutdownResponse{Nodes: ns}, nil
 }
 
-func (f *fakeESClient) DeleteShutdown(_ context.Context, _ string) error {
+func (f *fakeESClient) DeleteShutdown(_ context.Context, nodeID string) error {
 	f.DeleteShutdownCalled = true
+	delete(f.Shutdowns, nodeID)
 	return nil
 }
 
