@@ -774,11 +774,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.47
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/credentials
-Version : v1.20.4
-Time    : 2026-09-09T18:16:59Z
+Version : v1.20.5
+Time    : 2026-09-14T19:03:55Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.20.4/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.20.5/LICENSE.txt:
 
 
                                  Apache License
@@ -5223,11 +5223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/api
-Version : v0.297.0
-Time    : 2026-09-02T00:17:06Z
+Version : v0.298.0
+Time    : 2026-09-14T15:29:43Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.297.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.298.0/LICENSE:
 
 Copyright (c) 2011 Google Inc. All rights reserved.
 
