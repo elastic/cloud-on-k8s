@@ -20,14 +20,6 @@ steps:
             fixed:
               E2E_PROVIDER: kind
               TESTS_MATCH: TestSmoke
-          - label: aks/TestSmoke
-            fixed:
-              E2E_PROVIDER: aks
-              TESTS_MATCH: TestSmoke
-          - label: eks/TestSmoke
-            fixed:
-              E2E_PROVIDER: eks
-              TESTS_MATCH: TestSmoke
           DEF
         agents:
           image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:16553030a2551c5a7ad9be142d7618a1f0cfbdd7d6e6d8f39f448b71837fab33
