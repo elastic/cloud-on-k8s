@@ -4,7 +4,7 @@ linters:
     custom:
       ssacrlint:
         type: module
-        description: "flags client.Writer.Update() and Patch() calls on ECK CRs that may cause SSA field-ownership conflicts"
+        description: "flags client.Writer.Update() and implicit-ownership Patch() calls on ECK CRs that may cause SSA field-ownership conflicts"
 
     exhaustive:
       default-signifies-exhaustive: true

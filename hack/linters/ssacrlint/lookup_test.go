@@ -38,6 +38,12 @@ func TestLookupType(t *testing.T) {
 		return p
 	}
 
+	// An intermediate package that does not itself contain typeName but imports a
+	// package that does. Used to verify that searchImports recurses transitively.
+	intermediate := types.NewPackage("example.com/intermediate", "intermediate")
+	intermediate.SetImports([]*types.Package{pkgWithType})
+	intermediate.MarkComplete()
+
 	tests := []struct {
 		name     string
 		root     *types.Package
@@ -66,6 +72,12 @@ func TestLookupType(t *testing.T) {
 			name:     "incomplete stub package is skipped",
 			root:     makeRoot(pkgIncomplete),
 			wantType: false,
+			wantErr:  "",
+		},
+		{
+			name:     "package found via transitive import",
+			root:     makeRoot(intermediate),
+			wantType: true,
 			wantErr:  "",
 		},
 	}

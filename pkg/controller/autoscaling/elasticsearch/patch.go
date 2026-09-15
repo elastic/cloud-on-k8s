@@ -93,7 +93,7 @@ func patchAutoscaledNodeSets(ctx context.Context, c k8s.Client, current, reconci
 	if err != nil {
 		return err
 	}
-	if err := c.Patch(ctx, reconciled, client.RawPatch(types.JSONPatchType, patch)); err != nil { //nolint:ssacrlint // patches only the fields expected to be owned
+	if err := c.Patch(ctx, reconciled, client.RawPatch(types.JSONPatchType, patch)); err != nil {
 		if isJSONPatchTestFailure(err) {
 			return apierrors.NewConflict(
 				schema.GroupResource{Group: esv1.GroupVersion.Group, Resource: "elasticsearches"},

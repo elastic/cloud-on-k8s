@@ -3,8 +3,13 @@
 // you may not use this file except in compliance with the Elastic License 2.0.
 
 // Package ssacrlint provides a go/analysis linter. It flags direct calls to
-// controller-runtime's client.Writer.Update() and client.Writer.Patch() on ECK
-// CRs. These calls can cause SSA field-ownership conflicts.
+// controller-runtime's client.Writer.Update() and certain client.Writer.Patch()
+// calls on ECK CRs that may cause SSA field-ownership conflicts.
+//
+// For Patch calls, only implicit-ownership patch types are flagged: MergeFrom,
+// StrategicMergeFrom, MergeFromWithOptions, and RawPatch with MergePatchType or
+// StrategicMergePatchType. Explicit-field patch types — RawPatch(JSONPatchType),
+// RawPatch(ApplyPatchType), and client.Apply — are not flagged.
 //
 // The analyzer reads the object-argument index from client.Writer's own
 // interface definition. It uses the parameter whose type is client.Object. The
@@ -24,8 +29,10 @@
 //     the interface. This covers explicit conversions such as
 //     client.Object(cr), parenthesized forms, and ordinary assignments.
 //   - A [*ssa.Phi] node joins values from conditional branches. The analyzer
-//     classifies every edge. All edges must agree for a definitive verdict. If
-//     the edges disagree, the analyzer treats the call as unresolved.
+//     classifies every edge. If all edges are ECK CRs the call is flagged as a
+//     CR write. If at least one edge is a CR (and another is not), the analyzer
+//     emits the mixed-branch diagnostic. If no edge is a confirmed CR, the call
+//     is treated as unresolved.
 //   - For some arguments the analyzer cannot determine a concrete type.
 //     Function parameters, cross-function flows, and values that other
 //     functions return are examples. The analyzer reports these with a separate
@@ -48,6 +55,7 @@ package ssacrlint
 import (
 	"errors"
 	"go/ast"
+	goconstant "go/constant"
 	"go/token"
 	"go/types"
 	"regexp"
@@ -59,6 +67,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 	"golang.org/x/tools/go/ssa"
+	ktypes "k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -66,9 +75,10 @@ const (
 	clientPkg = "sigs.k8s.io/controller-runtime/pkg/client"
 	// DefaultCRPathPattern is the default regexp matched against package paths to
 	// identify ECK CRD types. It matches pkg/apis/ packages under the ECK module
-	// root, including the major-version variant (v2/pkg/apis/…). It is also the
-	// default value of the -cr-path-pattern flag, which accepts any valid regexp
-	// so the pattern can be overridden directly — for example in tests.
+	// root, including major-version layouts (v2/pkg/apis/…, v3/pkg/apis/…, etc.).
+	// It is also the default value of the -cr-path-pattern flag, which accepts
+	// any valid regexp so the pattern can be overridden — for example in tests or
+	// when running the linter on a fork with a different module path.
 	DefaultCRPathPattern = `^github\.com/elastic/cloud-on-k8s/(v\d+/)?pkg/apis/`
 )
 
@@ -77,10 +87,22 @@ const (
 // mutating shared package-level state.
 type config struct {
 	crPathPattern string
-	once          sync.Once
+	once          sync.Once      // fires on the first run() call; flags must not change after that
 	crPathRE      *regexp.Regexp // compiled once on the first run() call; read-only thereafter
 	crPathREErr   error          // compilation error captured by once.Do; checked at the start of run()
 }
+
+// patchSafety classifies whether the patch argument of a client.Writer.Patch()
+// call uses an explicit-field patch type (safe) or an implicit-ownership patch
+// type (unsafe).
+type patchSafety int
+
+const (
+	patchSafetyUnknown    patchSafety = iota // patch type could not be determined; flag conservatively
+	patchSafetySafe                          // explicit-field patch (JSONPatch, Apply): do not flag
+	patchSafetyUnsafe                        // implicit-ownership patch (MergeFrom, StrategicMergeFrom): flag
+	patchSafetyInProgress                    // cycle-breaking sentinel for Phi traversal; never returned to callers
+)
 
 // crState classifies how confidently the analyzer can determine whether a
 // client.Writer method argument is an ECK CR.
@@ -102,7 +124,7 @@ func NewAnalyzer() *analysis.Analyzer {
 	cfg := &config{crPathPattern: DefaultCRPathPattern}
 	a := &analysis.Analyzer{
 		Name:     "ssacrlint",
-		Doc:      "flags client.Writer.Update() and Patch() calls on ECK CRs that may cause SSA field-ownership conflicts",
+		Doc:      "flags client.Writer.Update() and implicit-ownership Patch() calls on ECK CRs that may cause SSA field-ownership conflicts",
 		Requires: []*analysis.Analyzer{inspect.Analyzer, buildssa.Analyzer},
 		Run:      cfg.run,
 	}
@@ -141,8 +163,8 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 		return nil, errors.New("client.Writer underlying type is not an interface - controller-runtime changed its interface")
 	}
 
-	// client.Object is in the same package as client.Writer — look it up directly
-	// from the package scope without a second import-graph traversal.
+	// client.Object and client.Patch are in the same package as client.Writer —
+	// look them up directly from the package scope without a second import-graph traversal.
 	ctrlRuntimePkg := clientWriterNamed.Obj().Pkg()
 	clientObjLookup := ctrlRuntimePkg.Scope().Lookup("Object")
 	if clientObjLookup == nil {
@@ -150,22 +172,34 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 	}
 	clientObjType := clientObjLookup.Type()
 
+	clientPatchLookup := ctrlRuntimePkg.Scope().Lookup("Patch")
+	if clientPatchLookup == nil {
+		return nil, errors.New("client.Patch not found in controller-runtime client package - controller-runtime changed its interface")
+	}
+	clientPatchType := clientPatchLookup.Type()
+
 	// Derive the object-argument index for each monitored method from
 	// client.Writer's interface definition: the parameter whose type is client.Object.
 	objIdxByMethod := make(map[string]int, 2)
 	for _, methodName := range []string{"Update", "Patch"} {
-		idx := methodObjParamIdx(clientWriterIface, methodName, clientObjType)
+		idx := methodParamIdxByType(clientWriterIface, methodName, clientObjType)
 		if idx < 0 {
 			return nil, errors.New("client.Writer." + methodName + " with a client.Object parameter not found - controller-runtime changed its interface")
 		}
 		objIdxByMethod[methodName] = idx
 	}
 
-	// Build an SSA-based map from call-site position to argument CR state.
-	// The map covers both invoke-mode calls (c.Update(ctx, obj)) and static
-	// method-expression calls (client.Client.Update(c, ctx, obj)).
+	// Derive the patch-argument index for client.Writer.Patch from the interface
+	// definition: the parameter whose type is client.Patch.
+	patchPatchIdx := methodParamIdxByType(clientWriterIface, "Patch", clientPatchType)
+	if patchPatchIdx < 0 {
+		return nil, errors.New("client.Writer.Patch with a client.Patch parameter not found - controller-runtime changed its interface")
+	}
+
+	// Build SSA-based maps from call-site position to CR state and patch safety
+	// in a single pass over all source functions.
 	ssaResult := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
-	ssaArgStates := computeSSAArgStates(ssaResult.SrcFuncs, objIdxByMethod, clientWriterIface, crPathRE)
+	ssaArgStates, ssaPatchSafeties := computeSSACallData(ssaResult.SrcFuncs, objIdxByMethod, patchPatchIdx, clientWriterIface, clientPkg, crPathRE)
 
 	nodeFilter := []ast.Node{(*ast.CallExpr)(nil)}
 	insp.Preorder(nodeFilter, func(n ast.Node) {
@@ -211,12 +245,34 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 		// For method-expression calls (client.Writer.Update(w, ctx, cr)) sel.X
 		// is a type rather than a value, and the receiver is passed as
 		// call.Args[0], shifting every parameter index by one.
-		actualObjIdx := objIdx
+		isMethodExpr := false
 		if tv, ok := pass.TypesInfo.Types[sel.X]; ok && tv.IsType() {
+			isMethodExpr = true
+		}
+		actualObjIdx := objIdx
+		if isMethodExpr {
 			actualObjIdx = objIdx + 1
 		}
 		if len(call.Args) <= actualObjIdx {
 			return
+		}
+
+		// For Patch calls, skip if the patch type is structurally safe (explicit
+		// fields only: JSONPatch, ApplyPatch, client.Apply). Only implicit-ownership
+		// patch types (MergeFrom, StrategicMergeFrom, unknown) proceed to the CR check.
+		if sel.Sel.Name == "Patch" {
+			actualPatchIdx := patchPatchIdx
+			if isMethodExpr {
+				actualPatchIdx = patchPatchIdx + 1
+			}
+			// If the patch argument is present and its type is safe, skip the CR check.
+			// If it is absent (malformed call) or its safety is unknown/unsafe,
+			// fall through so the CR check runs conservatively.
+			if len(call.Args) > actualPatchIdx {
+				if safety, ok := ssaPatchSafeties[call.Lparen]; ok && safety == patchSafetySafe {
+					return
+				}
+			}
 		}
 
 		// Determine the CR state of the object argument.
@@ -247,20 +303,24 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
+		// For Patch calls, direct developers to safe alternatives. For Update, nolint
+		// is the only option since a full-object replace has no targeted equivalent.
+		nolintSuffix := "Add //nolint:ssacrlint to mark this as safe and dismiss this report."
+		if sel.Sel.Name == "Patch" {
+			nolintSuffix = "Use a scoped JSON Patch or client.Apply, or add //nolint:ssacrlint if this full-object write is intentional."
+		}
+
 		var msg string
 		switch state {
 		case crStateCR:
-			msg = "client.Writer." + sel.Sel.Name + "() on an ECK CR may cause SSA field-ownership conflicts. " +
-				"Add //nolint:ssacrlint to mark this as safe and dismiss this report."
+			msg = "client.Writer." + sel.Sel.Name + "() on an ECK CR may cause SSA field-ownership conflicts. " + nolintSuffix
 		case crStateMixed:
 			msg = "client.Writer." + sel.Sel.Name + "() has an interface-typed argument that is an ECK CR on at least one branch. " +
-				"This call may cause SSA field-ownership conflicts depending on which branch runs. " +
-				"Add //nolint:ssacrlint to mark this as safe and dismiss this report."
+				"This call may cause SSA field-ownership conflicts depending on which branch runs. " + nolintSuffix
 		default:
 			msg = "client.Writer." + sel.Sel.Name + "() has an interface-typed argument. " +
 				"The analyzer cannot resolve its concrete type. " +
-				"If the value is an ECK CR, this could cause SSA field-ownership conflicts. " +
-				"Add //nolint:ssacrlint to mark this as safe and dismiss this report."
+				"If the value is an ECK CR, this could cause SSA field-ownership conflicts. " + nolintSuffix
 		}
 		pass.Report(analysis.Diagnostic{Pos: call.Pos(), End: call.End(), Message: msg})
 	})
@@ -268,12 +328,37 @@ func (c *config) run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// computeSSAArgStates iterates all SSA source functions and returns a map from
-// call-site position (the Lparen of the call expression in SSA) to the CR
-// state of the object argument for every invoke-mode call and every static
-// method-expression call to a client.Writer Update or Patch method.
-func computeSSAArgStates(fns []*ssa.Function, objIdxByMethod map[string]int, clientWriterIface *types.Interface, crPathRE *regexp.Regexp) map[token.Pos]crState {
-	states := make(map[token.Pos]crState)
+// normalizeSSAMethodName recovers the bare method name from an SSA callee name.
+// SSA names interface method-expression wrappers as "<Method>$thunk"
+// (e.g. "Update$thunk") and may prefix a receiver type (e.g. "(T).Update").
+// This function strips both to produce the plain method name ("Update").
+func normalizeSSAMethodName(name string) string {
+	if i := strings.IndexByte(name, '$'); i >= 0 {
+		name = name[:i]
+	}
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		name = name[i+1:]
+	}
+	return name
+}
+
+// computeSSACallData performs a single pass over all SSA source functions and
+// returns two maps keyed by call-site position (the Lparen SSA assigns to each
+// call instruction):
+//   - argStates: the CR state of the client.Object argument for every
+//     client.Writer Update and Patch call (invoke-mode and method-expression).
+//   - patchSafeties: the patchSafety of the client.Patch argument for every
+//     client.Writer Patch call.
+func computeSSACallData(
+	fns []*ssa.Function,
+	objIdxByMethod map[string]int,
+	patchPatchIdx int,
+	clientWriterIface *types.Interface,
+	clientPkgPath string,
+	crPathRE *regexp.Regexp,
+) (argStates map[token.Pos]crState, patchSafeties map[token.Pos]patchSafety) {
+	argStates = make(map[token.Pos]crState)
+	patchSafeties = make(map[token.Pos]patchSafety)
 	for _, fn := range fns {
 		for _, block := range fn.Blocks {
 			for _, instr := range block.Instrs {
@@ -281,25 +366,23 @@ func computeSSAArgStates(fns []*ssa.Function, objIdxByMethod map[string]int, cli
 				if !ok {
 					continue
 				}
+				pos := call.Pos()
+				if pos == token.NoPos {
+					continue
+				}
 
-				var argIdx int // index into call.Call.Args for the client.Object argument
-
+				// Resolve the method name and the argument-index shift: 0 for
+				// invoke-mode calls (c.Update(ctx, obj)), 1 for method-expression
+				// calls (client.Client.Update(c, ctx, obj)) where the receiver is
+				// passed explicitly as Args[0] and method params start at Args[1].
+				var methodName string
+				var shift int
 				if call.Call.IsInvoke() {
-					// Ordinary interface method call: c.Update(ctx, obj)
-					// The receiver is in call.Call.Value; Args maps 1:1 to the
-					// method parameters.
-					objIdx, ok := objIdxByMethod[call.Call.Method.Name()]
-					if !ok {
-						continue
-					}
 					if !implementsWriter(call.Call.Value.Type(), clientWriterIface) {
 						continue
 					}
-					argIdx = objIdx
+					methodName = call.Call.Method.Name()
 				} else {
-					// Static call: check for method-expression calls of the form
-					// client.Client.Update(c, ctx, obj) where the receiver is
-					// passed as Args[0] and method parameters start at Args[1].
 					callee := call.Call.StaticCallee()
 					if callee == nil || len(call.Call.Args) == 0 {
 						continue
@@ -307,37 +390,27 @@ func computeSSAArgStates(fns []*ssa.Function, objIdxByMethod map[string]int, cli
 					if !implementsWriter(call.Call.Args[0].Type(), clientWriterIface) {
 						continue
 					}
-					// SSA names interface method-expression wrappers as
-					// "<Method>$thunk" (e.g. "Update$thunk"). Strip the
-					// "$..." suffix first, then any receiver-type prefix
-					// (e.g. "(T).Update") to recover the bare method name.
-					methodName := callee.Name()
-					if i := strings.IndexByte(methodName, '$'); i >= 0 {
-						methodName = methodName[:i]
-					}
-					if i := strings.LastIndex(methodName, "."); i >= 0 {
-						methodName = methodName[i+1:]
-					}
-					objIdx, ok := objIdxByMethod[methodName]
-					if !ok {
-						continue
-					}
-					// Receiver occupies Args[0]; method params begin at Args[1].
-					argIdx = objIdx + 1
+					methodName = normalizeSSAMethodName(callee.Name())
+					shift = 1
 				}
 
-				if argIdx >= len(call.Call.Args) {
-					continue
+				// Classify the client.Object argument for Update and Patch calls.
+				if objIdx, ok := objIdxByMethod[methodName]; ok {
+					if argIdx := objIdx + shift; argIdx < len(call.Call.Args) {
+						argStates[pos] = classifySSAValue(call.Call.Args[argIdx], make(map[ssa.Value]crState), crPathRE)
+					}
 				}
-				pos := call.Pos()
-				if pos == token.NoPos {
-					continue
+
+				// Classify the client.Patch argument for Patch calls.
+				if methodName == "Patch" {
+					if patchArgIdx := patchPatchIdx + shift; patchArgIdx < len(call.Call.Args) {
+						patchSafeties[pos] = classifyPatchSSAValue(call.Call.Args[patchArgIdx], make(map[ssa.Value]patchSafety), clientPkgPath)
+					}
 				}
-				states[pos] = classifySSAValue(call.Call.Args[argIdx], make(map[ssa.Value]crState), crPathRE)
 			}
 		}
 	}
-	return states
+	return argStates, patchSafeties
 }
 
 // classifySSAValue determines the CR state of an SSA value by inspecting its
@@ -440,11 +513,10 @@ func classifySSAValueUncached(v ssa.Value, seen map[ssa.Value]crState, crPathRE 
 	return crStateUnknown
 }
 
-// methodObjParamIdx returns the index of the client.Object parameter in the
-// named method's signature as declared in iface, derived from the interface
-// definition itself. Returns -1 if the method is not found or has no
-// client.Object parameter.
-func methodObjParamIdx(iface *types.Interface, methodName string, clientObjType types.Type) int {
+// methodParamIdxByType returns the index of the first parameter in the named
+// method's signature (as declared in iface) whose type is identical to
+// paramType. Returns -1 if the method is not found or has no such parameter.
+func methodParamIdxByType(iface *types.Interface, methodName string, paramType types.Type) int {
 	for m := range iface.Methods() {
 		if m.Name() != methodName {
 			continue
@@ -454,12 +526,157 @@ func methodObjParamIdx(iface *types.Interface, methodName string, clientObjType 
 			continue
 		}
 		for j := 0; j < sig.Params().Len(); j++ {
-			if types.Identical(sig.Params().At(j).Type(), clientObjType) {
+			if types.Identical(sig.Params().At(j).Type(), paramType) {
 				return j
 			}
 		}
 	}
 	return -1
+}
+
+// classifyPatchSSAValue determines whether the patch argument of a Patch call
+// is structurally safe (explicit fields only) or unsafe (implicit ownership).
+//
+// Safe:   client.RawPatch(types.JSONPatchType, …), client.RawPatch(types.ApplyPatchType, …), client.RawPatch(types.ApplyCBORPatchType, …), client.Apply
+// Unsafe: client.MergeFrom, client.MergeFromWithOptions, client.StrategicMergeFrom,
+//
+//	client.RawPatch(types.MergePatchType, …), client.RawPatch(types.StrategicMergePatchType, …)
+//
+// Unknown: anything else; treated conservatively as unsafe by the caller.
+//
+// seen caches already-classified values and breaks Phi cycles (the same
+// pattern as classifySSAValue). Pass a fresh map for each independent call site.
+func classifyPatchSSAValue(v ssa.Value, seen map[ssa.Value]patchSafety, clientPkgPath string) patchSafety {
+	if s, ok := seen[v]; ok {
+		return s
+	}
+	seen[v] = patchSafetyInProgress
+	s := classifyPatchSSAValueUncached(v, seen, clientPkgPath)
+	seen[v] = s
+	return s
+}
+
+// classifyPatchSSAValueUncached computes the safety of v. Call classifyPatchSSAValue
+// instead: it adds the caching and cycle handling this function relies on.
+func classifyPatchSSAValueUncached(v ssa.Value, seen map[ssa.Value]patchSafety, clientPkgPath string) patchSafety {
+	switch v := v.(type) {
+	case *ssa.Phi:
+		// Return patchSafetySafe only when every non-back-edge is safe.
+		// A back-edge into a Phi still being classified (patchSafetyInProgress)
+		// contributes no verdict; the result is decided by the edges that terminate.
+		allSafe, anyEdge := true, false
+		for _, edge := range v.Edges {
+			s := classifyPatchSSAValue(edge, seen, clientPkgPath)
+			if s == patchSafetyInProgress {
+				continue
+			}
+			anyEdge = true
+			if s != patchSafetySafe {
+				allSafe = false
+				break
+			}
+		}
+		if anyEdge && allSafe {
+			return patchSafetySafe
+		}
+		return patchSafetyUnknown
+	case *ssa.Call:
+		callee := v.Call.StaticCallee()
+		if callee == nil || callee.Package() == nil {
+			return patchSafetyUnknown
+		}
+		if callee.Package().Pkg.Path() != clientPkgPath {
+			return patchSafetyUnknown
+		}
+		switch callee.Name() {
+		case "MergeFrom", "MergeFromWithOptions", "StrategicMergeFrom":
+			return patchSafetyUnsafe
+		case "RawPatch":
+			if len(v.Call.Args) == 0 {
+				return patchSafetyUnknown
+			}
+			return classifyRawPatchType(v.Call.Args[0])
+		}
+		return patchSafetyUnknown
+	case *ssa.UnOp:
+		// client.Apply is declared as: var Apply Patch = applyPatch{}
+		// Loading it in SSA produces UnOp{Op: token.MUL, X: *ssa.Global{Apply}}.
+		if v.Op == token.MUL {
+			if g, ok := v.X.(*ssa.Global); ok &&
+				g.Package() != nil &&
+				g.Package().Pkg.Path() == clientPkgPath &&
+				g.Name() == "Apply" {
+				return patchSafetySafe
+			}
+		}
+		return patchSafetyUnknown
+	}
+	return patchSafetyUnknown
+}
+
+// classifyRawPatchType inspects the first argument of client.RawPatch — the
+// types.PatchType string constant — and returns the corresponding patchSafety.
+// Phi nodes (patch type selected via a conditional) are classified by
+// aggregating all non-back-edge verdicts: safe only when every reachable edge
+// is safe. Call classifyRawPatchType instead of classifyRawPatchTypeSeen
+// directly; it allocates the cycle-detection state.
+//
+// Safe:   JSONPatchType, ApplyYAMLPatchType, ApplyCBORPatchType
+// Unsafe: MergePatchType, StrategicMergePatchType
+// Unknown: anything else (treated conservatively as unsafe by the caller)
+func classifyRawPatchType(v ssa.Value) patchSafety {
+	return classifyRawPatchTypeSeen(v, make(map[ssa.Value]patchSafety))
+}
+
+// classifyRawPatchTypeSeen is classifyRawPatchType with explicit cycle-detection
+// state. seen maps each already-classified value to its result;
+// patchSafetyInProgress is the cycle-breaking sentinel for Phi back-edges.
+func classifyRawPatchTypeSeen(v ssa.Value, seen map[ssa.Value]patchSafety) patchSafety {
+	if s, ok := seen[v]; ok {
+		return s
+	}
+	seen[v] = patchSafetyInProgress
+	var s patchSafety
+	switch v := v.(type) {
+	case *ssa.Const:
+		if v.Value.Kind() != goconstant.String {
+			s = patchSafetyUnknown
+			break
+		}
+		switch goconstant.StringVal(v.Value) {
+		case string(ktypes.JSONPatchType), string(ktypes.ApplyYAMLPatchType), string(ktypes.ApplyCBORPatchType):
+			s = patchSafetySafe
+		case string(ktypes.MergePatchType), string(ktypes.StrategicMergePatchType):
+			s = patchSafetyUnsafe
+		default:
+			s = patchSafetyUnknown
+		}
+	case *ssa.Phi:
+		// Return patchSafetySafe only when every non-back-edge is safe.
+		// A back-edge (patchSafetyInProgress) contributes no verdict; the
+		// result is decided by the edges that terminate.
+		allSafe, anyEdge := true, false
+		for _, edge := range v.Edges {
+			es := classifyRawPatchTypeSeen(edge, seen)
+			if es == patchSafetyInProgress {
+				continue
+			}
+			anyEdge = true
+			if es != patchSafetySafe {
+				allSafe = false
+				break
+			}
+		}
+		if anyEdge && allSafe {
+			s = patchSafetySafe
+		} else {
+			s = patchSafetyUnknown
+		}
+	default:
+		s = patchSafetyUnknown
+	}
+	seen[v] = s
+	return s
 }
 
 // implementsWriter reports whether t (or *t for non-pointer concrete types)

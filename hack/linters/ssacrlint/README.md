@@ -1,6 +1,6 @@
 # ssacrlint
 
-A [go/analysis](https://pkg.go.dev/golang.org/x/tools/go/analysis) linter. It flags direct calls to `client.Writer.Update()` and `client.Writer.Patch()` on ECK CRs. These calls can cause Server-Side Apply (SSA) field-ownership conflicts.
+A [go/analysis](https://pkg.go.dev/golang.org/x/tools/go/analysis) linter. It flags direct calls to `client.Writer.Update()` and implicit-ownership `client.Writer.Patch()` calls on ECK CRs. These calls can cause Server-Side Apply (SSA) field-ownership conflicts.
 
 ## Background
 
@@ -12,10 +12,15 @@ Some controllers change only a few fields of an object. For those controllers, t
 
 ## What is flagged
 
-The linter reports a call when the receiver implements `client.Writer` and the method is `Update` or `Patch`:
+The linter reports a call when the receiver implements `client.Writer` and:
 
-- `c.Update(ctx, obj)`, where `obj` is an ECK CR or can be one.
-- `c.Patch(ctx, obj, patch)`, where `obj` is an ECK CR or can be one.
+- The method is `Update`: `c.Update(ctx, obj)`, where `obj` is an ECK CR or can be one.
+- The method is `Patch` **and** the patch type claims fields implicitly:
+  - `client.MergeFrom`, `client.MergeFromWithOptions`, `client.StrategicMergeFrom`
+  - `client.RawPatch(types.MergePatchType, …)`, `client.RawPatch(types.StrategicMergePatchType, …)`
+  - Any patch type the analyzer cannot resolve statically (conservative)
+
+Explicit-field patch types are **not** flagged: `client.RawPatch(types.JSONPatchType, …)`, `client.RawPatch(types.ApplyPatchType, …)`, and `client.Apply`. These only touch the fields they name and cannot claim unintended ownership.
 
 The linter does not flag sub-resource writes such as `c.Status().Update(...)` and `c.Status().Patch(...)`. `SubResourceWriter` has different method signatures, so it does not implement `client.Writer`. The exclusion follows from the type, not from a check on the method name.
 
@@ -26,31 +31,34 @@ The linter does not flag calls on plain Kubernetes types such as `corev1.Secret`
 At a call site, the static type is often the `client.Object` interface and not the concrete type. The linter therefore uses SSA (Static Single Assignment) form to trace the value back to its origin:
 
 - `*ssa.MakeInterface` shows the concrete type that goes into the interface. This covers ordinary assignments, explicit conversions such as `client.Object(es)`, and parenthesised forms.
-- `*ssa.Phi` nodes join values from conditional branches. If every incoming edge is an ECK CR, the linter flags the call as a CR write. If the edges disagree, the linter treats the call as unresolved.
+- `*ssa.Phi` nodes join values from conditional branches. If every incoming edge is an ECK CR, the linter flags the call as a CR write. If at least one edge is a CR and another is not, the linter emits the mixed-branch diagnostic. If no edge is a confirmed CR, the linter reports the call as unresolved.
 - Some values cannot be traced inside the package. Function parameters typed as `client.Object`, results from other functions, and cross-function flows are examples. The linter reports these as unresolved.
 
 The linter does not unwind cross-function flows. An ECK CR can pass through a `client.Object` parameter into a helper that calls `Update`. The unresolved diagnostic then appears at the helper, not at the caller.
 
 ## Diagnostics
 
-The linter emits one of three messages.
+The linter emits one of three messages. For `Patch` calls the suffix names the safe alternatives; for `Update` it does not (a full-object replace has no targeted equivalent).
 
 The concrete type resolves to an ECK CR:
 
 ```
 client.Writer.Update() on an ECK CR may cause SSA field-ownership conflicts. Add //nolint:ssacrlint to mark this as safe and dismiss this report.
+client.Writer.Patch() on an ECK CR may cause SSA field-ownership conflicts. Use a scoped JSON Patch or client.Apply, or add //nolint:ssacrlint if this full-object write is intentional.
 ```
 
 The argument is interface-typed and is an ECK CR on at least one conditional branch:
 
 ```
 client.Writer.Update() has an interface-typed argument that is an ECK CR on at least one branch. This call may cause SSA field-ownership conflicts depending on which branch runs. Add //nolint:ssacrlint to mark this as safe and dismiss this report.
+client.Writer.Patch() has an interface-typed argument that is an ECK CR on at least one branch. This call may cause SSA field-ownership conflicts depending on which branch runs. Use a scoped JSON Patch or client.Apply, or add //nolint:ssacrlint if this full-object write is intentional.
 ```
 
 The argument is interface-typed and the concrete type is unknown:
 
 ```
 client.Writer.Update() has an interface-typed argument. The analyzer cannot resolve its concrete type. If the value is an ECK CR, this could cause SSA field-ownership conflicts. Add //nolint:ssacrlint to mark this as safe and dismiss this report.
+client.Writer.Patch() has an interface-typed argument. The analyzer cannot resolve its concrete type. If the value is an ECK CR, this could cause SSA field-ownership conflicts. Use a scoped JSON Patch or client.Apply, or add //nolint:ssacrlint if this full-object write is intentional.
 ```
 
 The second and third messages are deliberately conservative. A mixed or unresolved argument can be an ECK CR, so the linter asks for a confirmation instead of staying silent.
@@ -137,7 +145,26 @@ The analyzer accepts one flag:
 
 The default matches `pkg/apis/` packages under the ECK module root, including the major-version layout (`v3/pkg/apis/…`) used when the module is bumped to v3 or later. The flag accepts any valid Go regexp, so the pattern can be overridden directly without any string-assembly logic in the analyzer.
 
-The flag exists mainly for the test suite. The tests point it at an in-module fake API package under `testcases/fakeapi/pkg/apis/`, so they do not need the real ECK module as a dependency.
+The flag is useful in two situations: in the test suite, where it points the analyzer at an in-module fake API package under `testcases/fakeapi/pkg/apis/` so that tests do not depend on the real ECK module; and when running the linter on a fork or a codebase where ECK CRs live under a different module path.
+
+The flag can be set through `.golangci.yml` via the `settings:` sub-key of the custom linter block:
+
+```yaml
+linters:
+  settings:
+    custom:
+      ssacrlint:
+        type: module
+        description: "..."
+        settings:
+          cr-path-pattern: '^github\.com/your-fork/cloud-on-k8s/(v\d+/)?pkg/apis/'
+```
+
+golangci-lint passes that block to `New(settings any)` in `plugin/plugin.go`, which reads the `cr-path-pattern` key and forwards the value to the analyzer flag. The standalone binary accepts the flag directly:
+
+```bash
+go vet -vettool=/tmp/ssacrlint -ssacrlint.cr-path-pattern='^github\.com/...' ./...
+```
 
 ## Development
 
@@ -162,8 +189,9 @@ Test fixtures are in `testcases/testcases.go`. To add one:
 1. Add an exported function. Name it after the behaviour it exercises and prefix the name with `Flagged` or `NotFlagged`.
 2. Write a doc comment. State what the analyzer must do, and why.
 3. For a case that must produce a diagnostic, add a `// want "..."` annotation on the same line as the `Update` or `Patch` call:
-   - `// want "on an ECK CR"` — for calls where the concrete ECK CR type is resolved.
-   - `// want "cannot resolve its concrete type"` — for calls where the argument is interface-typed and unresolved.
+   - `// want "on an ECK CR"` — concrete ECK CR type resolved.
+   - `// want "on at least one branch"` — interface-typed argument that is an ECK CR on at least one conditional branch.
+   - `// want "cannot resolve its concrete type"` — interface-typed argument whose concrete type is unresolvable.
 
 A case that must not be flagged needs no annotation. The test driver (`analysistest`) fails on any diagnostic that has no matching annotation, and on any annotation that has no matching diagnostic.
 

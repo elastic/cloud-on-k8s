@@ -11,6 +11,8 @@
 package plugin
 
 import (
+	"fmt"
+
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
@@ -21,14 +23,41 @@ func init() {
 	register.Plugin("ssacrlint", New)
 }
 
-type linterPlugin struct{}
+type linterPlugin struct {
+	crPathPattern string // empty means "use the analyzer default"
+}
 
-func New(_ any) (register.LinterPlugin, error) {
-	return &linterPlugin{}, nil
+// New creates the plugin. settings is the parsed content of the
+// linters.settings.custom.ssacrlint.settings block from .golangci.yml.
+// The only recognised key is cr-path-pattern (string). Omit it to use the
+// default, which matches pkg/apis/ packages under the ECK module root.
+func New(settings any) (register.LinterPlugin, error) {
+	p := &linterPlugin{}
+	if settings == nil {
+		return p, nil
+	}
+	m, ok := settings.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("ssacrlint: settings must be a YAML mapping, got %T", settings)
+	}
+	if v, ok := m["cr-path-pattern"]; ok {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("ssacrlint: cr-path-pattern must be a string, got %T", v)
+		}
+		p.crPathPattern = s
+	}
+	return p, nil
 }
 
 func (p *linterPlugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	return []*analysis.Analyzer{ssacrlint.NewAnalyzer()}, nil
+	a := ssacrlint.NewAnalyzer()
+	if p.crPathPattern != "" {
+		if err := a.Flags.Set("cr-path-pattern", p.crPathPattern); err != nil {
+			return nil, fmt.Errorf("ssacrlint: setting cr-path-pattern: %w", err)
+		}
+	}
+	return []*analysis.Analyzer{a}, nil
 }
 
 func (p *linterPlugin) GetLoadMode() string {

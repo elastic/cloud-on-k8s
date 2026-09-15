@@ -18,6 +18,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ktypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	otherv1 "github.com/elastic/cloud-on-k8s/hack/linters/ssacrlint/testcases/fakeapi/other/v1"
@@ -342,4 +344,229 @@ func NotFlaggedMethodExprInterfaceVarNonCR(c client.Client, ctx context.Context)
 func NotFlaggedCreate(c client.Client, ctx context.Context) {
 	cr := &fakev1.FakeCR{}
 	c.Create(ctx, cr)
+}
+
+// NotFlaggedDelete calls Delete on a fake ECK CR. Delete is not in the
+// monitored method list (Update and Patch only) and must not be flagged.
+func NotFlaggedDelete(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Delete(ctx, cr)
+}
+
+// NotFlaggedDeleteAllOf calls DeleteAllOf on a fake ECK CR. DeleteAllOf is not
+// in the monitored method list (Update and Patch only) and must not be flagged.
+func NotFlaggedDeleteAllOf(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.DeleteAllOf(ctx, cr)
+}
+
+// NotFlaggedPatchJSONType calls Patch with RawPatch(JSONPatchType) on an ECK CR.
+// JSONPatch modifies only explicit paths — must not be flagged.
+func NotFlaggedPatchJSONType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`)))
+}
+
+// NotFlaggedPatchApplyType calls Patch with RawPatch(ApplyPatchType) on an ECK CR.
+// ApplyPatch modifies only explicit fields — must not be flagged.
+func NotFlaggedPatchApplyType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.RawPatch(ktypes.ApplyPatchType, []byte(`{"spec":{"x":1}}`)))
+}
+
+// NotFlaggedPatchApplyCBORType calls Patch with RawPatch(ApplyCBORPatchType) on an ECK CR.
+// CBOR-encoded SSA apply modifies only explicit fields — must not be flagged.
+func NotFlaggedPatchApplyCBORType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.RawPatch(ktypes.ApplyCBORPatchType, []byte(`\xa1dspec\xa1ax\x01`)))
+}
+
+// NotFlaggedPatchApply calls Patch with client.Apply on an ECK CR.
+// client.Apply modifies only explicit fields — must not be flagged.
+func NotFlaggedPatchApply(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.Apply)
+}
+
+// FlaggedPatchMergePatchType calls Patch with RawPatch(MergePatchType) on an ECK CR.
+// MergePatch claims all fields present in the diff — must be flagged.
+func FlaggedPatchMergePatchType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.RawPatch(ktypes.MergePatchType, []byte(`{"spec":{}}`))) // want "on an ECK CR"
+}
+
+// FlaggedPatchMergePatchTypeInterfaceVar calls Patch with RawPatch(MergePatchType) where the
+// object is a client.Object variable holding an ECK CR — must be flagged.
+func FlaggedPatchMergePatchTypeInterfaceVar(c client.Client, ctx context.Context) {
+	var obj client.Object = &fakev1.FakeCR{}
+	c.Patch(ctx, obj, client.RawPatch(ktypes.MergePatchType, []byte(`{"spec":{}}`))) // want "on an ECK CR"
+}
+
+// FlaggedPatchMergePatchTypeFuncParam calls Patch with RawPatch(MergePatchType) where the
+// object is an unresolvable function parameter — must produce the "cannot resolve" diagnostic.
+func FlaggedPatchMergePatchTypeFuncParam(c client.Client, ctx context.Context, obj client.Object) {
+	c.Patch(ctx, obj, client.RawPatch(ktypes.MergePatchType, []byte(`{"spec":{}}`))) // want "cannot resolve its concrete type"
+}
+
+// NotFlaggedPatchJSONTypeInterfaceVar calls Patch with RawPatch(JSONPatchType) where the
+// object is a client.Object variable holding an ECK CR. The patch type is safe regardless
+// of what is in the object argument — must not be flagged.
+func NotFlaggedPatchJSONTypeInterfaceVar(c client.Client, ctx context.Context) {
+	var obj client.Object = &fakev1.FakeCR{}
+	c.Patch(ctx, obj, client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`)))
+}
+
+// NotFlaggedPatchJSONTypeFuncParam calls Patch with RawPatch(JSONPatchType) where the
+// object is an unresolvable function parameter. The patch type is safe regardless of
+// whether the object is an ECK CR — must not be flagged.
+func NotFlaggedPatchJSONTypeFuncParam(c client.Client, ctx context.Context, obj client.Object) {
+	c.Patch(ctx, obj, client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`)))
+}
+
+// NotFlaggedPatchJSONTypeLocalVar stores a JSONPatch in a local variable before
+// passing it to Patch. SSA keeps the variable in SSA form (no alloc), so the patch
+// argument is still the *ssa.Call result — must not be flagged.
+func NotFlaggedPatchJSONTypeLocalVar(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	p := client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`))
+	c.Patch(ctx, cr, p)
+}
+
+// NotFlaggedPatchApplyLocalVar stores client.Apply in a local variable before
+// passing it to Patch. SSA represents Apply as *ssa.UnOp{MUL, Global{Apply}},
+// which classifyPatchSSAValue already handles — must not be flagged.
+func NotFlaggedPatchApplyLocalVar(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	p := client.Apply
+	c.Patch(ctx, cr, p)
+}
+
+// NotFlaggedPatchJSONTypePhiBothSafe stores a JSONPatch via a conditional (producing
+// a Phi node) where both branches use safe patch types. classifyPatchSSAValue must
+// recognise a Phi whose every edge is patchSafetySafe as safe — must not be flagged.
+func NotFlaggedPatchJSONTypePhiBothSafe(c client.Client, ctx context.Context, b bool) {
+	cr := &fakev1.FakeCR{}
+	var p client.Patch
+	if b {
+		p = client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/a","value":1}]`))
+	} else {
+		p = client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/b","value":2}]`))
+	}
+	c.Patch(ctx, cr, p)
+}
+
+// FlaggedPatchPhiMixedSafety stores a patch via a conditional where one branch is
+// safe (JSONPatch) and the other is unsafe (MergeFrom). The Phi cannot be confirmed
+// safe, so classifyPatchSSAValue returns unknown and the CR check runs —
+// must produce a diagnostic.
+func FlaggedPatchPhiMixedSafety(c client.Client, ctx context.Context, b bool) {
+	cr := &fakev1.FakeCR{}
+	var p client.Patch
+	if b {
+		p = client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/a","value":1}]`))
+	} else {
+		p = client.MergeFrom(&fakev1.FakeCR{})
+	}
+	c.Patch(ctx, cr, p) // want "on an ECK CR"
+}
+
+// FlaggedPatchStrategicMergeFrom calls Patch with client.StrategicMergeFrom on an ECK CR.
+// StrategicMergeFrom uses implicit field ownership — must be flagged.
+func FlaggedPatchStrategicMergeFrom(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.StrategicMergeFrom(&fakev1.FakeCR{})) // want "on an ECK CR"
+}
+
+// FlaggedPatchMergeFromWithOptions calls Patch with client.MergeFromWithOptions on an ECK CR.
+// MergeFromWithOptions uses implicit field ownership — must be flagged.
+func FlaggedPatchMergeFromWithOptions(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.MergeFromWithOptions(&fakev1.FakeCR{})) // want "on an ECK CR"
+}
+
+// FlaggedPatchStrategicMergePatchType calls Patch with RawPatch(StrategicMergePatchType) on an ECK CR.
+// Strategic merge patch claims all fields present in the diff — must be flagged.
+func FlaggedPatchStrategicMergePatchType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	c.Patch(ctx, cr, client.RawPatch(ktypes.StrategicMergePatchType, []byte(`{"spec":{}}`))) // want "on an ECK CR"
+}
+
+// NotFlaggedPatchRawPatchTypePhiBothSafe stores two different known-safe patch
+// type constants in a conditional, producing a Phi node over two *ssa.Const
+// values for the RawPatch type argument. classifyRawPatchTypeSeen must recurse
+// into the Phi and recognise that every edge is safe — must not produce a
+// diagnostic.
+func NotFlaggedPatchRawPatchTypePhiBothSafe(c client.Client, ctx context.Context, b bool) {
+	cr := &fakev1.FakeCR{}
+	var pt ktypes.PatchType
+	if b {
+		pt = ktypes.JSONPatchType
+	} else {
+		pt = ktypes.ApplyPatchType
+	}
+	c.Patch(ctx, cr, client.RawPatch(pt, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`)))
+}
+
+// FlaggedPatchRawPatchTypePhiMixed stores a conditional where one branch is a
+// safe patch type (JSONPatchType) and the other is unsafe (MergePatchType),
+// producing a Phi node for the RawPatch type argument. The Phi cannot be
+// confirmed safe — must produce a diagnostic.
+func FlaggedPatchRawPatchTypePhiMixed(c client.Client, ctx context.Context, b bool) {
+	cr := &fakev1.FakeCR{}
+	var pt ktypes.PatchType
+	if b {
+		pt = ktypes.JSONPatchType
+	} else {
+		pt = ktypes.MergePatchType
+	}
+	c.Patch(ctx, cr, client.RawPatch(pt, []byte(`{"spec":{}}`))) // want "on an ECK CR"
+}
+
+// NotFlaggedMethodExprPatchInterfaceVarNonCR calls Patch as a method expression
+// where the object argument is an interface-typed variable holding a plain
+// Kubernetes type. The SSA map must resolve the concrete type and recognise
+// it is not an ECK CR — must not produce a diagnostic.
+func NotFlaggedMethodExprPatchInterfaceVarNonCR(c client.Client, ctx context.Context) {
+	var obj client.Object = &corev1.Secret{}
+	client.Client.Patch(c, ctx, obj, client.MergeFrom(&corev1.Secret{}))
+}
+
+// writerImpl is a minimal concrete client.Writer implementation. It exists so
+// that tests can use pointer-to-concrete-type method expressions
+// ((*writerImpl).Update) to exercise the non-thunk SSA path through
+// computeSSACallData, complementing the interface method-expression thunk path
+// already covered by FlaggedMethodExprUpdate.
+type writerImpl struct{}
+
+func (writerImpl) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+	return nil
+}
+func (writerImpl) Create(_ context.Context, _ client.Object, _ ...client.CreateOption) error {
+	return nil
+}
+func (writerImpl) Delete(_ context.Context, _ client.Object, _ ...client.DeleteOption) error {
+	return nil
+}
+func (writerImpl) Update(_ context.Context, _ client.Object, _ ...client.UpdateOption) error {
+	return nil
+}
+func (writerImpl) Patch(_ context.Context, _ client.Object, _ client.Patch, _ ...client.PatchOption) error {
+	return nil
+}
+func (writerImpl) DeleteAllOf(_ context.Context, _ client.Object, _ ...client.DeleteAllOfOption) error {
+	return nil
+}
+
+var _ client.Writer = (*writerImpl)(nil)
+
+// FlaggedConcreteTypeMethodExprUpdate calls Update via a concrete-type method
+// expression (writerImpl.Update). Unlike the interface-type method expression
+// tested by FlaggedMethodExprUpdate (client.Client.Update, which produces a
+// "$thunk" SSA callee), this form produces a direct SSA static call whose
+// callee name is "(writerImpl).Update". normalizeSSAMethodName must strip the
+// type prefix — must produce a diagnostic.
+func FlaggedConcreteTypeMethodExprUpdate(ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	w := writerImpl{}
+	writerImpl.Update(w, ctx, cr) // want "on an ECK CR"
 }
