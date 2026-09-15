@@ -722,11 +722,9 @@ func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewe
 		accessReviewer:  reviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{
-				BuildInfo: about.BuildInfo{
-					Version: "1.5.0",
-				},
+		OperatorInfo: about.OperatorInfo{
+			BuildInfo: about.BuildInfo{
+				Version: "1.5.0",
 			},
 		},
 	}

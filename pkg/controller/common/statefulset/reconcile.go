@@ -39,12 +39,10 @@ type Params struct {
 // New creates a StatefulSet from the given params.
 func New(params Params) appsv1.StatefulSet {
 	return appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Namespace,
-			Labels:      params.Metadata.Labels,
-			Annotations: params.Metadata.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Namespace,
+		Labels:      params.Metadata.Labels,
+		Annotations: params.Metadata.Annotations,
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &params.Replicas,
 			Selector: &metav1.LabelSelector{

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -38,16 +37,14 @@ func TestToMap(t *testing.T) {
 
 	t.Run("complete_object", func(t *testing.T) {
 		i := LicensingInfo{
-			memoryUsage: memoryUsage{
-				appUsage: map[string]managedMemory{
-					elasticsearchKey: newManagedMemory(21474836480, elasticsearchKey),
-					kibanaKey:        newManagedMemory(8589934592, kibanaKey),
-					apmKey:           newManagedMemory(4294967296, apmKey),
-					entSearchKey:     newManagedMemory(17179869184, entSearchKey),
-					logstashKey:      newManagedMemory(17179869184, logstashKey),
-				},
-				totalMemory: newManagedMemory(68719476736, totalKey),
+			appUsage: map[string]managedMemory{
+				elasticsearchKey: newManagedMemory(21474836480, elasticsearchKey),
+				kibanaKey:        newManagedMemory(8589934592, kibanaKey),
+				apmKey:           newManagedMemory(4294967296, apmKey),
+				entSearchKey:     newManagedMemory(17179869184, entSearchKey),
+				logstashKey:      newManagedMemory(17179869184, logstashKey),
 			},
+			totalMemory:                newManagedMemory(68719476736, totalKey),
 			Timestamp:                  "2020-05-28T11:15:31Z",
 			EckLicenseLevel:            "enterprise",
 			EckLicenseExpiryDate:       &dateFixture,
@@ -110,12 +107,10 @@ func TestLicensingResolver_Save(t *testing.T) {
 		// pre-existing config map carrying only the legacy type label and stale data,
 		// so that NeedsUpdate triggers and labels get reconciled to the expected set.
 		existing := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
-				Name:      LicensingCfgMapName,
-				Labels: map[string]string{
-					commonv1.TypeLabelName: Type,
-				},
+			Namespace: ns,
+			Name:      LicensingCfgMapName,
+			Labels: map[string]string{
+				commonv1.TypeLabelName: Type,
 			},
 			Data: map[string]string{
 				"eck_license_level": "stale",

@@ -178,7 +178,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}}
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
 				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -190,7 +190,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname"}}
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname"}
 				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
@@ -202,7 +202,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}}
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname", Name: "esname"}
 				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -216,7 +216,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Namespace: "esname"}}
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname", Namespace: "esname"}
 				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
@@ -265,11 +265,9 @@ func TestWebhook(t *testing.T) {
 
 func mkMaps(uid string) *emsv1alpha1.ElasticMapsServer {
 	return &emsv1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: emsv1alpha1.MapsSpec{
 			Version: "7.17.0",
 		},

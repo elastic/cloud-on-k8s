@@ -11,11 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func makeClaim(name, storageSize string) corev1.PersistentVolumeClaim {
-	pvc := corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	pvc := corev1.PersistentVolumeClaim{Name: name}
 	if storageSize != "" {
 		pvc.Spec.Resources.Requests = corev1.ResourceList{
 			corev1.ResourceStorage: resource.MustParse(storageSize),

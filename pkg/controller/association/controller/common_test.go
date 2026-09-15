@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
@@ -31,7 +30,7 @@ func Test_getElasticsearchFromKibana(t *testing.T) {
 			name: "association kibana ref unset",
 			assoc: func() commonv1.Association {
 				return &beatv1beta1.BeatKibanaAssociation{
-					Beat: &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "beat"}},
+					Beat: &beatv1beta1.Beat{Namespace: "ns", Name: "beat"},
 				}
 			},
 			wantFound: false,
@@ -41,8 +40,8 @@ func Test_getElasticsearchFromKibana(t *testing.T) {
 			assoc: func() commonv1.Association {
 				return &beatv1beta1.BeatKibanaAssociation{
 					Beat: &beatv1beta1.Beat{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "beat"},
-						Spec:       beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
+						Namespace: "ns", Name: "beat",
+						Spec: beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
 					},
 				}
 			},
@@ -53,12 +52,12 @@ func Test_getElasticsearchFromKibana(t *testing.T) {
 			assoc: func() commonv1.Association {
 				return &beatv1beta1.BeatKibanaAssociation{
 					Beat: &beatv1beta1.Beat{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "beat"},
-						Spec:       beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
+						Namespace: "ns", Name: "beat",
+						Spec: beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
 					},
 				}
 			},
-			objects:   []client.Object{&kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "kb"}}},
+			objects:   []client.Object{&kbv1.Kibana{Namespace: "ns", Name: "kb"}},
 			wantFound: false,
 		},
 		{
@@ -66,13 +65,13 @@ func Test_getElasticsearchFromKibana(t *testing.T) {
 			assoc: func() commonv1.Association {
 				return &beatv1beta1.BeatKibanaAssociation{
 					Beat: &beatv1beta1.Beat{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "beat"},
-						Spec:       beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
+						Namespace: "ns", Name: "beat",
+						Spec: beatv1beta1.BeatSpec{KibanaRef: commonv1.ObjectSelector{Name: "kb", Namespace: "ns"}},
 					},
 				}
 			},
 			objects: []client.Object{&kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "kb"},
+				Namespace: "ns", Name: "kb",
 				Spec: kbv1.KibanaSpec{
 					ElasticsearchRef: commonv1.ElasticsearchSelector{
 						ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},

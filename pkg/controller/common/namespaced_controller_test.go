@@ -89,7 +89,7 @@ func testMatcher(t *testing.T, matched ...string) *nsmatch.NamespaceMatcher {
 }
 
 func Test_namespacedReconcilerWrapper_Reconcile(t *testing.T) {
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "es1"}}
+	request := reconcile.Request{Namespace: "ns1", Name: "es1"}
 	innerResult := reconcile.Result{RequeueAfter: 42 * time.Second}
 
 	tests := []struct {
@@ -139,7 +139,7 @@ func Test_namespacedReconcilerWrapper_Reconcile(t *testing.T) {
 			inner:          &fakeNamespacedReconciler{result: innerResult},
 			licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 			wantResult:     innerResult,
-			wantReconciled: []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: testOperatorNS, Name: "es1"}}},
+			wantReconciled: []reconcile.Request{{Namespace: testOperatorNS, Name: "es1"}},
 		},
 		{
 			name:           "license check error: reconciliation fails without calling inner",
@@ -217,7 +217,7 @@ func Test_namespacedReconcilerWrapper_Reconcile_cacheError(t *testing.T) {
 		recorder:       toolsevents.NewFakeRecorder(10),
 	}
 
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "es1"}}
+	request := reconcile.Request{Namespace: "ns1", Name: "es1"}
 	result, err := r.Reconcile(t.Context(), request)
 
 	require.NoError(t, err)

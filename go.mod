@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/v3
 
-go 1.26.0
+go 1.27
 
 toolchain go1.27.1
 
@@ -55,7 +55,7 @@ require (
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 	sigs.k8s.io/controller-runtime v0.25.1
 	sigs.k8s.io/controller-tools v0.22.0
-	sigs.k8s.io/structured-merge-diff/v6 v6.4.2
+	sigs.k8s.io/structured-merge-diff/v7 v7.0.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -230,6 +230,7 @@ require (
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
 
 // both of these dependencies are used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin both of these

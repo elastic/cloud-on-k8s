@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -22,15 +21,15 @@ const policyNamespace = "test-ns"
 
 func configMap(name string, data map[string]string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: policyNamespace},
-		Data:       data,
+		Name: name, Namespace: policyNamespace,
+		Data: data,
 	}
 }
 
 func secret(name string, data map[string][]byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: policyNamespace},
-		Data:       data,
+		Name: name, Namespace: policyNamespace,
+		Data: data,
 	}
 }
 
@@ -239,8 +238,8 @@ func TestApply(t *testing.T) {
 			name:              "operator-namespace policy resolves variables from a cross-namespace source",
 			operatorNamespace: policyNamespace, // policy IS in the operator namespace
 			k8sObjects: []client.Object{&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "remote-vars", Namespace: "other-ns"},
-				Data:       map[string]string{"REMOTE_KEY": "remote-value"},
+				Name: "remote-vars", Namespace: "other-ns",
+				Data: map[string]string{"REMOTE_KEY": "remote-value"},
 			}},
 			sources: []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "remote-vars", Namespace: "other-ns"}},
 			spec:    policyv1alpha1.ElasticsearchConfigPolicySpec{ClusterSettings: &commonv1.Config{Data: map[string]any{"key": "${REMOTE_KEY}"}}},
@@ -265,8 +264,8 @@ func TestApply(t *testing.T) {
 				operatorNamespace = policyNamespace
 			}
 			p := &policyv1alpha1.StackConfigPolicy{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-policy", Namespace: policyNamespace},
-				Spec:       policyv1alpha1.StackConfigPolicySpec{VariablesFrom: tc.sources},
+				Name: "test-policy", Namespace: policyNamespace,
+				Spec: policyv1alpha1.StackConfigPolicySpec{VariablesFrom: tc.sources},
 			}
 			err := Apply(t.Context(), k8s.NewFakeClient(tc.k8sObjects...), p, operatorNamespace, &tc.spec)
 			if tc.wantErr {

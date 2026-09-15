@@ -26,23 +26,19 @@ import (
 
 func entWithConfigRef(secretName string) entv1.EnterpriseSearch {
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "ent",
-		},
+		Namespace: "ns",
+		Name:      "ent",
 	}
 	if secretName != "" {
-		ent.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: secretName}}
+		ent.Spec.ConfigRef = &commonv1.ConfigSource{SecretName: secretName}
 	}
 	return ent
 }
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFilename: cfg,
 		},
@@ -51,10 +47,8 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func entWithAssociation(name string, version string, associationConf commonv1.AssociationConf) entv1.EnterpriseSearch {
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Spec: entv1.EnterpriseSearchSpec{
 			Version: version,
 		},
@@ -135,7 +129,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
+						Namespace: "ns", Name: "ent-sample-ent-config",
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),
 						},
@@ -160,7 +154,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
+						Namespace: "ns", Name: "ent-sample-ent-config",
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfigWithReusableSettings),
 						},
@@ -322,10 +316,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -372,10 +364,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -424,10 +414,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -474,10 +462,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -624,10 +610,8 @@ func TestReconcileConfig(t *testing.T) {
 			name: "with user-provided config secret",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "my-config",
-					},
+					Namespace: "ns",
+					Name:      "my-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`ent_search.external_url: https://my.own.dns.from.configref.com`),
 					},
@@ -645,7 +629,7 @@ func TestReconcileConfig(t *testing.T) {
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
 					ConfigRef: &commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{SecretName: "my-config"}, // override the external url from config
+						SecretName: "my-config", // override the external url from config
 					},
 				},
 			},
@@ -782,10 +766,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 			},
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`
 secret_management:
@@ -827,10 +809,8 @@ secret_session_key: alreadysetsessionkey
 			},
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`
 secret_management:
@@ -915,10 +895,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			name: "update existing readiness probe script if different",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						ReadinessProbeFilename: []byte("to update"),
 					},
@@ -947,10 +925,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("password"),
 					},
@@ -963,10 +939,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			name: "with es credentials in a user-provided config secret",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "my-config",
-					},
+					Namespace: "ns",
+					Name:      "my-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte("elasticsearch.password: mypassword\nelasticsearch.username: myusername"),
 					},
@@ -980,7 +954,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.0",
 					ConfigRef: &commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{SecretName: "my-config"},
+						SecretName: "my-config",
 					},
 				},
 			},

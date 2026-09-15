@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/compare"
 )
@@ -28,9 +27,7 @@ func TestSetServiceDefaults(t *testing.T) {
 			name: "defaults are applied to empty service",
 			inSvc: func() *corev1.Service {
 				return &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{"bar": "baz"},
-					},
+					Annotations: map[string]string{"bar": "baz"},
 				}
 			},
 			defaultLabels:   map[string]string{"foo": "bar"},
@@ -65,10 +62,8 @@ func TestSetServiceDefaults(t *testing.T) {
 
 func mkService() *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"foo": "bar"},
-			Annotations: map[string]string{"bar": "baz"},
-		},
+		Labels:      map[string]string{"foo": "bar"},
+		Annotations: map[string]string{"bar": "baz"},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Ports: []corev1.ServicePort{

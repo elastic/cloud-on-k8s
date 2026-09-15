@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -48,10 +47,8 @@ func testElasticsearchForNodeSet(nodeSet esv1.NodeSet) esv1.Elasticsearch {
 func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 	scriptsCM := func(es esv1.Elasticsearch) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      esv1.ScriptsConfigMap(es.Name),
-			},
+			Namespace: es.Namespace,
+			Name:      esv1.ScriptsConfigMap(es.Name),
 		}
 	}
 
@@ -371,7 +368,7 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 	}
 	es := testElasticsearchForNodeSet(nodeSet)
 	client := k8s.NewFakeClient(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
+		Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name),
 	})
 
 	nodeSet = es.Spec.NodeSets[0]
@@ -401,7 +398,7 @@ func TestBuildStatefulSet(t *testing.T) {
 	q10Gi := resource.MustParse("10Gi")
 
 	makeVCT := func(name, size string) corev1.PersistentVolumeClaim {
-		pvc := corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name}}
+		pvc := corev1.PersistentVolumeClaim{Name: name}
 		if size != "" {
 			pvc.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)}
 		}
@@ -558,7 +555,7 @@ func TestBuildStatefulSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			es := testElasticsearchForNodeSet(tt.nodeSet)
 			client := k8s.NewFakeClient(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
+				Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name),
 			})
 
 			ns := es.Spec.NodeSets[0]

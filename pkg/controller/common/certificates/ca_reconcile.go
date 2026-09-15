@@ -247,12 +247,10 @@ func internalSecretForCA(
 		return corev1.Secret{}, err
 	}
 	return corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace:   owner.GetNamespace(),
-			Name:        CAInternalSecretName(namer, owner.GetName(), caType),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Namespace:   owner.GetNamespace(),
+		Name:        CAInternalSecretName(namer, owner.GetName(), caType),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			CertFileName: EncodePEMCert(ca.Cert.Raw),
 			KeyFileName:  privateKeyData,

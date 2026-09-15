@@ -247,11 +247,9 @@ func TestWebhook(t *testing.T) {
 
 func mkAgent(uid string) *agentv1alpha1.Agent {
 	return &agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: agentv1alpha1.AgentSpec{
 			Version:   "7.17.0",
 			DaemonSet: &agentv1alpha1.DaemonSetSpec{},

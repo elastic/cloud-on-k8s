@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -54,13 +53,11 @@ func (r *Reconciler) ReconcileCASecret(
 	}
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   association.GetNamespace(),
-			Name:        CACertSecretName(association, r.AssociationName),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Data: associatedPublicHTTPCertificatesSecret.Data,
+		Namespace:   association.GetNamespace(),
+		Name:        CACertSecretName(association, r.AssociationName),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
+		Data:        associatedPublicHTTPCertificatesSecret.Data,
 	}
 	if _, err := reconciler.ReconcileSecret(ctx, r, expectedSecret, association.Associated()); err != nil {
 		return CASecret{}, err

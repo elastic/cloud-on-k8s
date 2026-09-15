@@ -38,15 +38,11 @@ func TestParams_ReconcileResources(t *testing.T) {
 
 	clientset := fake.NewClientset(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "elastic-system",
-				Name:      "elastic-webhook-server-cert",
-			},
+			Namespace: "elastic-system",
+			Name:      "elastic-webhook-server-cert",
 		},
 		&v1.ValidatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "elastic-webhook.k8s.elastic.co",
-			},
+			Name: "elastic-webhook.k8s.elastic.co",
 			Webhooks: []v1.ValidatingWebhook{
 				{
 					Name: "elastic-es-validation-v1.k8s.elastic.co",
@@ -126,12 +122,10 @@ func TestReconcileResources_PreservesHelmOwnedFields(t *testing.T) {
 	failurePolicy := v1.Fail
 	rules := []v1.RuleWithOperations{
 		{
-			Operations: []v1.OperationType{v1.OperationAll},
-			Rule: v1.Rule{
-				APIGroups:   []string{"elasticsearch.k8s.elastic.co"},
-				APIVersions: []string{"v1"},
-				Resources:   []string{"elasticsearches"},
-			},
+			Operations:  []v1.OperationType{v1.OperationAll},
+			APIGroups:   []string{"elasticsearch.k8s.elastic.co"},
+			APIVersions: []string{"v1"},
+			Resources:   []string{"elasticsearches"},
 		},
 	}
 
@@ -147,16 +141,12 @@ func TestReconcileResources_PreservesHelmOwnedFields(t *testing.T) {
 
 	clientset := fake.NewClientset(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "elastic-system",
-				Name:      "elastic-webhook-server-cert",
-				Labels:    map[string]string{helmLabel: "eck-stack-1.0.0"},
-			},
+			Namespace: "elastic-system",
+			Name:      "elastic-webhook-server-cert",
+			Labels:    map[string]string{helmLabel: "eck-stack-1.0.0"},
 		},
 		&v1.ValidatingWebhookConfiguration{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "elastic-webhook.k8s.elastic.co",
-			},
+			Name: "elastic-webhook.k8s.elastic.co",
 			Webhooks: []v1.ValidatingWebhook{
 				{
 					Name:          "elastic-es-validation-v1.k8s.elastic.co",
@@ -224,25 +214,19 @@ func TestUpdateOperatorPods(t *testing.T) {
 			args: args{
 				objects: []runtime.Object{
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "elastic-system",
-							Name:      "pod-1",
-							Labels:    map[string]string{"control-plane": "elastic-operator"},
-						},
+						Namespace: "elastic-system",
+						Name:      "pod-1",
+						Labels:    map[string]string{"control-plane": "elastic-operator"},
 					},
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "elastic-system",
-							Name:      "pod-2",
-							Labels:    map[string]string{"control-plane": "elastic-operator"},
-						},
+						Namespace: "elastic-system",
+						Name:      "pod-2",
+						Labels:    map[string]string{"control-plane": "elastic-operator"},
 					},
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "elastic-system",
-							Name:        "pod-3",
-							Annotations: sampleAnnotations,
-						},
+						Namespace:   "elastic-system",
+						Name:        "pod-3",
+						Annotations: sampleAnnotations,
 					},
 				},
 				operatorNamespace: "elastic-system",
@@ -255,26 +239,20 @@ func TestUpdateOperatorPods(t *testing.T) {
 			args: args{
 				objects: []runtime.Object{
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "elastic-system",
-							Name:        "pod-1",
-							Labels:      map[string]string{"control-plane": "elastic-operator"},
-							Annotations: map[string]string{annotation.UpdateAnnotation: time.Now().Add(-time.Second * 5).Format(time.RFC3339Nano)},
-						},
+						Namespace:   "elastic-system",
+						Name:        "pod-1",
+						Labels:      map[string]string{"control-plane": "elastic-operator"},
+						Annotations: map[string]string{annotation.UpdateAnnotation: time.Now().Add(-time.Second * 5).Format(time.RFC3339Nano)},
 					},
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "elastic-system",
-							Name:        "pod-2",
-							Annotations: sampleAnnotations,
-						},
+						Namespace:   "elastic-system",
+						Name:        "pod-2",
+						Annotations: sampleAnnotations,
 					},
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "elastic-system",
-							Name:        "pod-3",
-							Annotations: sampleAnnotations,
-						},
+						Namespace:   "elastic-system",
+						Name:        "pod-3",
+						Annotations: sampleAnnotations,
 					},
 				},
 				operatorNamespace: "elastic-system",

@@ -44,10 +44,8 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 			Name: normalizedClusterName + "_ES_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: assocConf.AuthSecretName,
-					},
-					Key: assocConf.AuthSecretKey,
+					Name: assocConf.AuthSecretName,
+					Key:  assocConf.AuthSecretKey,
 				},
 			},
 		})

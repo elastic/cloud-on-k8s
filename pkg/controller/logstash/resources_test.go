@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -28,10 +27,8 @@ func buildLogstashPodTemplate(t *testing.T, ls logstashv1alpha1.Logstash) corev1
 	t.Helper()
 	// buildPodTemplate fetches the HTTP certs secret to compute TLS hash — provide a minimal one.
 	httpCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ls.Name + "-ls-http-certs-internal",
-			Namespace: ls.Namespace,
-		},
+		Name:      ls.Name + "-ls-http-certs-internal",
+		Namespace: ls.Namespace,
 	}
 	params := Params{
 		Context:         context.Background(),
@@ -47,7 +44,7 @@ func buildLogstashPodTemplate(t *testing.T, ls logstashv1alpha1.Logstash) corev1
 
 func TestLogstashResources(t *testing.T) {
 	base := logstashv1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{Name: "logstash-test", Namespace: "default"},
+		Name: "logstash-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {

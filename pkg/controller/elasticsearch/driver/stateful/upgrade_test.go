@@ -23,7 +23,6 @@ import (
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -35,11 +34,9 @@ import (
 
 func podWithRevision(name, revision string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: TestEsNamespace,
-			Labels:    map[string]string{appsv1.StatefulSetRevisionLabel: revision},
-		},
+		Name:      name,
+		Namespace: TestEsNamespace,
+		Labels:    map[string]string{appsv1.StatefulSetRevisionLabel: revision},
 	}
 }
 
@@ -390,10 +387,8 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 	clusterName = "test-cluster"
 	namespace := "ns"
 	es = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: namespace,
-		},
+		Name:      clusterName,
+		Namespace: namespace,
 	}
 
 	testSset := sset.TestSset{
@@ -559,12 +554,11 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			require.NoError(t, err)
 
 			d := &Driver{
-				BaseDriver: driver.BaseDriver{Parameters: driver.Parameters{
-					Client:         client,
-					ES:             tt.es,
-					Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
-					ReconcileState: reconcileState,
-				}},
+
+				Client:         client,
+				ES:             tt.es,
+				Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
+				ReconcileState: reconcileState,
 			}
 			if tt.expectations != nil {
 				tt.expectations(d.Expectations)
@@ -660,10 +654,8 @@ func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					ResourceVersion: tt.resourceVersion,
-					Annotations:     tt.annotations,
-				},
+				ResourceVersion: tt.resourceVersion,
+				Annotations:     tt.annotations,
 			}
 			reason, delay := shutdownReasonAndAllocationDelay(es, tt.isAnnotationTriggeredRestart, crlog.Log)
 			assert.Equal(t, tt.wantReason, reason)

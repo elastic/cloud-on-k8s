@@ -35,26 +35,20 @@ import (
 func Test_buildPodTemplate(t *testing.T) {
 	clientWithMonitoringEnabled := k8s.NewFakeClient(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
+			Name:      "secret",
+			Namespace: "ns",
+			Data:      map[string][]byte{"elastic": []byte("123")},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-user-secret",
-				Namespace: "ns",
-			},
+			Name:      "external-user-secret",
+			Namespace: "ns",
 			Data: map[string][]byte{
 				"elastic-external": []byte("asdf"),
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-es-monitoring",
-				Namespace: "ns",
-			},
+			Name:      "external-es-monitoring",
+			Namespace: "ns",
 			Data: map[string][]byte{
 				"url":      []byte("https://external-es.external.com"),
 				"username": []byte("monitoring-user"),
@@ -63,19 +57,15 @@ func Test_buildPodTemplate(t *testing.T) {
 			},
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "testes",
-				Namespace:   "ns",
-				Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
-			},
+			Name:        "testes",
+			Namespace:   "ns",
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
 		},
 	)
 	httpPortCfg := &commonv1.Config{Data: map[string]any{"http.port": 3033}}
 	beatWithMonitoring := beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "beat-name",
-			Namespace: "ns",
-		},
+		Name:      "beat-name",
+		Namespace: "ns",
 		Spec: beatv1beta1.BeatSpec{
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
@@ -218,20 +208,16 @@ func Test_buildPodTemplate(t *testing.T) {
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								ResourceVersion: "1", // ResourceVersion should be incremented during the reconciliation loop
-								Name:            "beat-name-beat-secure-settings",
-								Namespace:       "beat-namespace",
-							},
-							Data: map[string][]byte{"key": []byte("value1")},
+							ResourceVersion: "1", // ResourceVersion should be incremented during the reconciliation loop
+							Name:            "beat-name-beat-secure-settings",
+							Namespace:       "beat-namespace",
+							Data:            map[string][]byte{"key": []byte("value1")},
 						},
 						// User secret
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "foo",
-								Namespace: "beat-namespace",
-							},
-							Data: map[string][]byte{"key": []byte("value2")},
+							Name:      "foo",
+							Namespace: "beat-namespace",
+							Data:      map[string][]byte{"key": []byte("value2")},
 						},
 					),
 					Beat: beatv1beta1.Beat{
@@ -346,10 +332,8 @@ func Test_buildPodTemplate_clientCertVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			beat := beatv1beta1.Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "beat-name",
-					Namespace: "ns",
-				},
+				Name:      "beat-name",
+				Namespace: "ns",
 				Spec: beatv1beta1.BeatSpec{
 					Version: "8.0.0",
 					Type:    "filebeat",
@@ -366,8 +350,8 @@ func Test_buildPodTemplate_clientCertVolume(t *testing.T) {
 				Context: context.Background(),
 				Watches: watches.NewDynamicWatches(),
 				Client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "auth-secret", Namespace: "ns"},
-					Data:       map[string][]byte{"elastic": []byte("pass")},
+					Name: "auth-secret", Namespace: "ns",
+					Data: map[string][]byte{"elastic": []byte("pass")},
 				}),
 				Beat: beat,
 			}

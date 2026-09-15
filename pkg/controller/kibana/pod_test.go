@@ -162,7 +162,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Version: "7.4.0",
 				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := (&kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "kibana-name"}}).GetIdentityLabels()
+				labels := (&kbv1.Kibana{Name: "kibana-name"}).GetIdentityLabels()
 				labels[kblabel.KibanaVersionLabelName] = "7.4.0"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
@@ -516,12 +516,10 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			name: "with EPR association and user-provided NODE_EXTRA_CA_CERTS should pass env var to init container",
 			kb: func() kbv1.Kibana {
 				kb := kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kibana",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kibana",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",
@@ -658,12 +656,10 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			name: "with EPR association and CA configured",
 			kb: func() kbv1.Kibana {
 				kb := kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kibana",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kibana",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",
@@ -684,12 +680,10 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			name: "respects user-provided NODE_EXTRA_CA_CERTS",
 			kb: func() kbv1.Kibana {
 				kb := kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kibana",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kibana",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.1.0",

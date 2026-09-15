@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -47,8 +46,8 @@ func buildBeatPodTemplate(t *testing.T, beat beatv1beta1.Beat) corev1.PodTemplat
 
 func newMinimalBeat(spec beatv1beta1.BeatSpec) beatv1beta1.Beat {
 	return beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{Name: "beat-test", Namespace: "default"},
-		Spec:       spec,
+		Name: "beat-test", Namespace: "default",
+		Spec: spec,
 	}
 }
 

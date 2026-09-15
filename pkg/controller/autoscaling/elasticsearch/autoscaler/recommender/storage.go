@@ -169,12 +169,10 @@ func NewStorageRecommender(
 	}
 
 	storageRecommender := storage{
-		base: base{
-			log:                      log,
-			autoscalingSpec:          autoscalingSpec,
-			statusBuilder:            statusBuilder,
-			currentAutoscalingStatus: currentAutoscalingStatus,
-		},
+		log:                      log,
+		autoscalingSpec:          autoscalingSpec,
+		statusBuilder:            statusBuilder,
+		currentAutoscalingStatus: currentAutoscalingStatus,
 		hasZeroRequirement: autoscalingPolicyResult.RequiredCapacity.Node.Storage.IsZero() &&
 			autoscalingPolicyResult.RequiredCapacity.Total.Storage.IsZero(),
 		// In case of storage we must not scale down vertically the storage capacity

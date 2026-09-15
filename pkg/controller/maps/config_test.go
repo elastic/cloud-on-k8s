@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -114,10 +113,8 @@ ui: true
 			args: args{
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-maps-user",
-							Namespace: "ns",
-						},
+						Name:      "sample-maps-user",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"ns-sample-maps-user": []byte("password"),
 						},
@@ -152,10 +149,8 @@ ssl:
 			args: args{
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-maps-user",
-							Namespace: "ns",
-						},
+						Name:      "sample-maps-user",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"ns-sample-maps-user": []byte("password"),
 						},
@@ -193,10 +188,8 @@ ssl:
 			args: args{
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-maps-user",
-							Namespace: "ns",
-						},
+						Name:      "sample-maps-user",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"ns-sample-maps-user": []byte("password"),
 						},
@@ -254,10 +247,8 @@ ssl:
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFilename: cfg,
 		},
@@ -266,22 +257,18 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func emsWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.ElasticMapsServer {
 	return v1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ems",
-			Namespace: "ns",
-		},
+		Name:      "ems",
+		Namespace: "ns",
 		Spec: v1alpha1.MapsSpec{
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretName: name}},
 	}
 }
 
 func emsWithAssociation(associationConf commonv1.AssociationConf) v1alpha1.ElasticMapsServer {
 	ent := v1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "ems",
-		},
+		Namespace: "ns",
+		Name:      "ems",
 	}
 	ent.SetAssociationConf(&associationConf)
 	return ent

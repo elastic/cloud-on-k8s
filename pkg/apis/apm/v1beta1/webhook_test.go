@@ -308,11 +308,9 @@ func TestWebhook(t *testing.T) {
 
 func mkApmServer(uid string) *apmv1beta1.ApmServer {
 	return &apmv1beta1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: apmv1beta1.ApmServerSpec{
 			Version: "7.17.1",
 		},

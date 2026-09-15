@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -18,10 +17,8 @@ import (
 
 func TestNewInitContainer(t *testing.T) {
 	defaultKibana := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "test-ns",
-		},
+		Name:      "test",
+		Namespace: "test-ns",
 		Spec: kbv1.KibanaSpec{
 			Version: "7.10.0",
 		},

@@ -31,9 +31,7 @@ const (
 
 var (
 	esUserSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns", Name: "es-user-secret",
-		},
+		Namespace: "ns", Name: "es-user-secret",
 		Data: map[string][]byte{
 			esUser: []byte(esPassword),
 		},
@@ -44,7 +42,7 @@ var (
 )
 
 func entWithVersion(version string, annotations map[string]string) entv1.EnterpriseSearch {
-	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
+	ent := entv1.EnterpriseSearch{Namespace: "ns", Name: "ent", Annotations: annotations,
 		Spec: entv1.EnterpriseSearchSpec{Version: version}}
 	ent.SetAssociationConf(&associationConf)
 	return ent
@@ -52,19 +50,17 @@ func entWithVersion(version string, annotations map[string]string) entv1.Enterpr
 
 func podWithVersion(name string, version string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns", Name: name, Labels: map[string]string{
-				EnterpriseSearchNameLabelName: "ent",
-				commonv1.TypeLabelName:        Type,
-				VersionLabelName:              version,
-			},
+		Namespace: "ns", Name: name, Labels: map[string]string{
+			EnterpriseSearchNameLabelName: "ent",
+			commonv1.TypeLabelName:        Type,
+			VersionLabelName:              version,
 		},
 	}
 }
 
 func deploymentWithVersion(version string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: DeploymentName("ent")},
+		Namespace: "ns", Name: DeploymentName("ent"),
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 				VersionLabelName: version,

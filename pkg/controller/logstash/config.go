@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -63,12 +62,10 @@ func reconcileConfig(params Params, svcUseTLS bool, configHash hash.Hash) (confi
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   params.Logstash.Namespace,
-			Name:        logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
-			Annotations: params.Meta.Annotations,
-		},
+		Namespace:   params.Logstash.Namespace,
+		Name:        logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
+		Annotations: params.Meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},

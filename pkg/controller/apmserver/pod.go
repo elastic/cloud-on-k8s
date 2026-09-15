@@ -58,12 +58,10 @@ func readinessProbe(tls bool) corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/",
-				Scheme: scheme,
-			},
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt(HTTPPort),
+			Path:   "/",
+			Scheme: scheme,
 		},
 	}
 }
@@ -119,8 +117,8 @@ func newPodSpec(c k8s.Client, as *apmv1.ApmServer, p PodSpecParams, meta metadat
 		Name: "SECRET_TOKEN",
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: p.TokenSecret.Name},
-				Key:                  SecretTokenKey,
+				Name: p.TokenSecret.Name,
+				Key:  SecretTokenKey,
 			},
 		},
 	})

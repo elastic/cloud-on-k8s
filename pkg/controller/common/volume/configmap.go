@@ -45,15 +45,11 @@ func (cm ConfigMapVolume) VolumeMount() corev1.VolumeMount {
 func (cm ConfigMapVolume) Volume() corev1.Volume {
 	return corev1.Volume{
 		Name: cm.name,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: cm.configMapName,
-				},
-				Items:       cm.items,
-				Optional:    &defaultOptional,
-				DefaultMode: &cm.defaultMode,
-			},
+		ConfigMap: &corev1.ConfigMapVolumeSource{
+			Name:        cm.configMapName,
+			Items:       cm.items,
+			Optional:    &defaultOptional,
+			DefaultMode: &cm.defaultMode,
 		},
 	}
 }

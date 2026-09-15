@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -27,7 +26,7 @@ import (
 
 func TestFilterWithUserProvidedClientCert(t *testing.T) {
 	kbWithUserCert := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "kb-with-cert"},
+		Namespace: "ns", Name: "kb-with-cert",
 		Spec: kbv1.KibanaSpec{
 			ElasticsearchRef: commonv1.ElasticsearchSelector{
 				ObjectSelector:              commonv1.ObjectSelector{Name: "es", Namespace: "es-ns"},
@@ -36,7 +35,7 @@ func TestFilterWithUserProvidedClientCert(t *testing.T) {
 		},
 	}
 	kbWithoutUserCert := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "kb-no-cert"},
+		Namespace: "ns", Name: "kb-no-cert",
 		Spec: kbv1.KibanaSpec{
 			ElasticsearchRef: commonv1.ElasticsearchSelector{
 				ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "es-ns"},
@@ -71,10 +70,8 @@ func TestFilterWithUserProvidedClientCert(t *testing.T) {
 
 func TestClientCertSecretName(t *testing.T) {
 	kibana := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "my-kibana",
-		},
+		Namespace: "ns",
+		Name:      "my-kibana",
 		Spec: kbv1.KibanaSpec{
 			ElasticsearchRef: commonv1.ElasticsearchSelector{
 				ObjectSelector: commonv1.ObjectSelector{Name: "my-es", Namespace: "es-ns"},
@@ -92,7 +89,7 @@ func TestClientCertSecretName(t *testing.T) {
 	t.Run("different refs produce different names", func(t *testing.T) {
 		kibana2 := kibana.DeepCopy()
 		kibana2.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-			ObjectSelector: commonv1.ObjectSelector{Name: "other-es", Namespace: "es-ns"},
+			Name: "other-es", Namespace: "es-ns",
 		}
 		association2 := kibana2.EsAssociation()
 
@@ -188,57 +185,45 @@ func TestReconciler_Reconcile_ClientCertOrphanCleanup(t *testing.T) {
 	// Scenario: Kibana was associated with ES-A (with client auth), now switches to ES-B (without client auth).
 	// The orphaned client cert for ES-A should be cleaned up.
 	esA := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-a",
-			Annotations: map[string]string{
-				annotation.ClientAuthenticationRequiredAnnotation: "true",
-			},
+		Namespace: esNamespace,
+		Name:      "es-a",
+		Annotations: map[string]string{
+			annotation.ClientAuthenticationRequiredAnnotation: "true",
 		},
 		Status: esv1.ElasticsearchStatus{Version: stackVersion},
 	}
 	esB := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-b",
-		},
-		Status: esv1.ElasticsearchStatus{Version: stackVersion},
+		Namespace: esNamespace,
+		Name:      "es-b",
+		Status:    esv1.ElasticsearchStatus{Version: stackVersion},
 	}
 
 	esAHTTPPublicCerts := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-a-es-http-certs-public",
-		},
+		Namespace: esNamespace,
+		Name:      "es-a-es-http-certs-public",
 		Data: map[string][]byte{
 			"ca.crt":  []byte("ca cert content"),
 			"tls.crt": []byte("tls cert content"),
 		},
 	}
 	esBHTTPPublicCerts := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-b-es-http-certs-public",
-		},
+		Namespace: esNamespace,
+		Name:      "es-b-es-http-certs-public",
 		Data: map[string][]byte{
 			"ca.crt":  []byte("ca cert content"),
 			"tls.crt": []byte("tls cert content"),
 		},
 	}
 	esAHTTPService := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-a-es-http",
-		},
+		Namespace: esNamespace,
+		Name:      "es-a-es-http",
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{Name: "https", Port: 9200}},
 		},
 	}
 	esBHTTPService := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNamespace,
-			Name:      "es-b-es-http",
-		},
+		Namespace: esNamespace,
+		Name:      "es-b-es-http",
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{Name: "https", Port: 9200}},
 		},
@@ -275,7 +260,7 @@ func TestReconciler_Reconcile_ClientCertOrphanCleanup(t *testing.T) {
 
 	// Step 2: Switch Kibana to reference ES-B (no client auth)
 	updatedKb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-		ObjectSelector: commonv1.ObjectSelector{Name: esB.Name, Namespace: esB.Namespace},
+		Name: esB.Name, Namespace: esB.Namespace,
 	}
 	err = r.Client.Update(context.Background(), &updatedKb)
 	require.NoError(t, err)

@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -52,19 +51,15 @@ var (
 func TestCheckAndUnbind(t *testing.T) {
 	apmServer := &apmv1.ApmEsAssociation{
 		ApmServer: &apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm-server-sample",
-				Namespace: "apmserver-ns",
-			},
-			Spec: apmv1.ApmServerSpec{},
+			Name:      "apm-server-sample",
+			Namespace: "apmserver-ns",
+			Spec:      apmv1.ApmServerSpec{},
 		},
 	}
 
 	es := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-sample",
-			Namespace: "es-ns",
-		},
+		Name:      "es-sample",
+		Namespace: "es-ns",
 	}
 
 	type args struct {

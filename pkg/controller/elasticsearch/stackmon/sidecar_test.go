@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -29,10 +28,8 @@ import (
 
 func TestWithMonitoring(t *testing.T) {
 	sampleEs := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample",
-			Namespace: "aerospace",
-		},
+		Name:      "sample",
+		Namespace: "aerospace",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.14.0",
 		},
@@ -41,20 +38,20 @@ func TestWithMonitoring(t *testing.T) {
 	logsEsRef := []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
 
 	fakeElasticUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-internal-users", Namespace: "aerospace"},
-		Data:       map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
+		Name: "sample-es-internal-users", Namespace: "aerospace",
+		Data: map[string][]byte{"elastic-internal-monitoring": []byte("1234567890")},
 	}
 	fakeMetricsBeatUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace"},
-		Data:       map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
+		Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace",
+		Data: map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
 	}
 	fakeLogsBeatUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace"},
-		Data:       map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
+		Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace",
+		Data: map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
 	}
 	fakeEsHTTPCertSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-http-certs-public", Namespace: "aerospace"},
-		Data:       map[string][]byte{"ca.crt": []byte("7H1515N074r341C3r71F1C473")},
+		Name: "sample-es-http-certs-public", Namespace: "aerospace",
+		Data: map[string][]byte{"ca.crt": []byte("7H1515N074r341C3r71F1C473")},
 	}
 	fakeClient := k8s.NewFakeClient(&fakeElasticUserSecret, &fakeMetricsBeatUserSecret, &fakeLogsBeatUserSecret, &fakeEsHTTPCertSecret)
 

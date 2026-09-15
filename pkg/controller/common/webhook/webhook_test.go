@@ -55,12 +55,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -83,12 +81,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -110,12 +106,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.14.0",
@@ -138,12 +132,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "0.10.0",
@@ -199,10 +191,8 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-							},
+							Name:      "testAgent",
+							Namespace: "elastic",
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
@@ -260,10 +250,8 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-							},
+							Name:      "testAgent",
+							Namespace: "elastic",
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
@@ -273,10 +261,8 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-							},
+							Name:      "testAgent",
+							Namespace: "elastic",
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
 								Deployment: &agentv1alpha1.DeploymentSpec{},
@@ -322,12 +308,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Delete,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -350,12 +334,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Delete,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "unmanaged",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "unmanaged",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -377,12 +359,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -393,12 +373,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label2",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label2",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -421,12 +399,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.1",
@@ -437,12 +413,10 @@ func Test_ResourceValidator_Handle(t *testing.T) {
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",

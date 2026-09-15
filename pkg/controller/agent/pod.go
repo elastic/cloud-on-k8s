@@ -16,7 +16,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -319,12 +318,10 @@ func applyEnvVars(params Params, fleetToken EnrollmentAPIKey, certs *certificate
 	})
 
 	envVarsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      EnvVarsSecretName(params.Agent.Name),
-			Namespace: params.Agent.Namespace,
-			Labels:    labels.AddCredentialsLabel(params.Agent.GetIdentityLabels()),
-		},
-		Data: map[string][]byte{},
+		Name:      EnvVarsSecretName(params.Agent.Name),
+		Namespace: params.Agent.Namespace,
+		Labels:    labels.AddCredentialsLabel(params.Agent.GetIdentityLabels()),
+		Data:      map[string][]byte{},
 	}
 	for _, kv := range sortedVars {
 		k, v := kv.k, kv.v
@@ -766,9 +763,7 @@ func secretSource(name, key string) *corev1.EnvVarSource {
 	f := false
 	return &corev1.EnvVarSource{
 		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: EnvVarsSecretName(name),
-			},
+			Name:     EnvVarsSecretName(name),
 			Key:      key,
 			Optional: &f,
 		},

@@ -40,21 +40,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "merges without overwrites",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -141,11 +137,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy2",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -370,21 +364,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		}, {
 			name: "merges with overwrites",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -471,11 +461,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy2",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -665,21 +653,17 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		}, {
 			name: "no changes for single policy",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -769,22 +753,18 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "detects policies weight conflicts",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy with unique weight - should be merged
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -799,11 +779,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 				// Two policies with the same weight - should conflict and be skipped
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2-conflict",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy2-conflict",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -817,11 +795,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy3-conflict",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy3-conflict",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -840,22 +816,18 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "detects conflicts when same secret defined in multiple policies",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy 1 with lower weight - attempts to define the same secret as Policy 2, should conflict
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -873,11 +845,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 				// Policy 2 with higher weight - should be merged first
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy2",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -899,22 +869,18 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "detects conflicts when same mount path defined in multiple policies",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-					Labels: map[string]string{
-						"test": "test",
-					},
+				Name:      "test",
+				Namespace: "test",
+				Labels: map[string]string{
+					"test": "test",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy 1 with lower weight - attempts to use the same mount path, should conflict
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -932,11 +898,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 				// Policy 2 with higher weight - should be merged first
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy2",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy2",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"test": "test"},
@@ -959,22 +923,18 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 			name:              "elasticsearch different namespace",
 			operatorNamespace: "operator-namespace",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "es-namespace",
-					Labels: map[string]string{
-						"env": "production",
-					},
+				Name:      "test-es",
+				Namespace: "es-namespace",
+				Labels: map[string]string{
+					"env": "production",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy in wrong namespace - should not match
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "wrong-namespace",
-						Name:            "policy-wrong-ns",
-						ResourceVersion: "1",
-					},
+					Namespace:       "wrong-namespace",
+					Name:            "policy-wrong-ns",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "production"},
@@ -998,23 +958,19 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "elasticsearch non-matching labels",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "test",
-					Labels: map[string]string{
-						"env":  "production",
-						"team": "platform",
-					},
+				Name:      "test-es",
+				Namespace: "test",
+				Labels: map[string]string{
+					"env":  "production",
+					"team": "platform",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				// Policy with non-matching label selector - should not match
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy-wrong-labels",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy-wrong-labels",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -1031,11 +987,9 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 				},
 				// Policy with partially matching labels - should not match
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "policy-partial-match",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "policy-partial-match",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -1064,20 +1018,20 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 			name: "variablesFrom: substitutes variables from ConfigMap and Secret",
 			k8sObjects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Name: "repo-vars", Namespace: "test"},
-					Data:       map[string]string{"BUCKET_NAME": "my-bucket", "REGION": "eu-west-1"},
+					Name: "repo-vars", Namespace: "test",
+					Data: map[string]string{"BUCKET_NAME": "my-bucket", "REGION": "eu-west-1"},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "repo-creds", Namespace: "test"},
-					Data:       map[string][]byte{"ACCESS_KEY": []byte("AKIAIOSFODNN7")},
+					Name: "repo-creds", Namespace: "test",
+					Data: map[string][]byte{"ACCESS_KEY": []byte("AKIAIOSFODNN7")},
 				},
 			},
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+				Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "vars-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "vars-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
 						Weight:           10,
@@ -1121,11 +1075,11 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "variablesFrom: no VariablesFrom is a no-op",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+				Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "no-vars-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "no-vars-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
 						Weight:           10,
@@ -1147,11 +1101,11 @@ func Test_getStackPolicyConfigForElasticsearch(t *testing.T) {
 		{
 			name: "variablesFrom: missing non-optional source returns error",
 			targetElasticsearch: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"}},
+				Name: "test", Namespace: "test", Labels: map[string]string{"test": "test"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "missing-vars-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "missing-vars-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "test"}},
 						Weight:           10,
@@ -1214,21 +1168,17 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "merges Kibana configs without overwrites",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test",
-					Labels: map[string]string{
-						"app": "kibana",
-					},
+				Name:      "test-kb",
+				Namespace: "test",
+				Labels: map[string]string{
+					"app": "kibana",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-policy1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "kb-policy1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"app": "kibana"},
@@ -1249,11 +1199,9 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-policy2",
-						ResourceVersion: "2",
-					},
+					Namespace:       "test",
+					Name:            "kb-policy2",
+					ResourceVersion: "2",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"app": "kibana"},
@@ -1318,21 +1266,17 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "merges Kibana configs with overwrites - higher weight wins",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test",
-					Labels: map[string]string{
-						"env": "prod",
-					},
+				Name:      "test-kb",
+				Namespace: "test",
+				Labels: map[string]string{
+					"env": "prod",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-low-priority",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "kb-low-priority",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "prod"},
@@ -1347,11 +1291,9 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-high-priority",
-						ResourceVersion: "2",
-					},
+					Namespace:       "test",
+					Name:            "kb-high-priority",
+					ResourceVersion: "2",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "prod"},
@@ -1389,21 +1331,17 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "Kibana policies with same weight cause conflict",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test",
-					Labels: map[string]string{
-						"env": "staging",
-					},
+				Name:      "test-kb",
+				Namespace: "test",
+				Labels: map[string]string{
+					"env": "staging",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-conflict-1",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "kb-conflict-1",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "staging"},
@@ -1417,11 +1355,9 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-conflict-2",
-						ResourceVersion: "2",
-					},
+					Namespace:       "test",
+					Name:            "kb-conflict-2",
+					ResourceVersion: "2",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"env": "staging"},
@@ -1440,22 +1376,18 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "Kibana policy doesn't match due to namespace",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "prod",
-					Labels: map[string]string{
-						"app": "kibana",
-					},
+				Name:      "test-kb",
+				Namespace: "prod",
+				Labels: map[string]string{
+					"app": "kibana",
 				},
 			},
 			operatorNamespace: "elastic-system",
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "dev",
-						Name:            "kb-policy-wrong-ns",
-						ResourceVersion: "1",
-					},
+					Namespace:       "dev",
+					Name:            "kb-policy-wrong-ns",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"app": "kibana"},
@@ -1479,22 +1411,18 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "Kibana policy doesn't match due to labels",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test",
-					Labels: map[string]string{
-						"app": "kibana",
-						"env": "prod",
-					},
+				Name:      "test-kb",
+				Namespace: "test",
+				Labels: map[string]string{
+					"app": "kibana",
+					"env": "prod",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-policy-wrong-labels",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "kb-policy-wrong-labels",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -1521,21 +1449,17 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "no changes for single policy",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test",
-					Labels: map[string]string{
-						"app": "kibana",
-					},
+				Name:      "test-kb",
+				Namespace: "test",
+				Labels: map[string]string{
+					"app": "kibana",
 				},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       "test",
-						Name:            "kb-single-policy",
-						ResourceVersion: "1",
-					},
+					Namespace:       "test",
+					Name:            "kb-single-policy",
+					ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"app": "kibana"},
@@ -1568,16 +1492,16 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			name: "variablesFrom: substitutes variables from ConfigMap",
 			k8sObjects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Name: "kb-vars", Namespace: "test"},
-					Data:       map[string]string{"MAX_PAYLOAD": "2097152"},
+					Name: "kb-vars", Namespace: "test",
+					Data: map[string]string{"MAX_PAYLOAD": "2097152"},
 				},
 			},
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+				Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-vars-cm-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "kb-vars-cm-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
 						Weight:           10,
@@ -1601,16 +1525,16 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 			name: "variablesFrom: substitutes variables from Secret",
 			k8sObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "kb-creds", Namespace: "test"},
-					Data:       map[string][]byte{"LOG_LEVEL": []byte("debug")},
+					Name: "kb-creds", Namespace: "test",
+					Data: map[string][]byte{"LOG_LEVEL": []byte("debug")},
 				},
 			},
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+				Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-vars-secret-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "kb-vars-secret-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
 						Weight:           10,
@@ -1633,11 +1557,11 @@ func Test_getPolicyConfigForKibana(t *testing.T) {
 		{
 			name: "variablesFrom: missing non-optional source returns error",
 			targetKibana: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"}},
+				Name: "test-kb", Namespace: "test", Labels: map[string]string{"app": "kibana"},
 			},
 			stackConfigPolicies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "kb-missing-vars-policy", ResourceVersion: "1"},
+					Namespace: "test", Name: "kb-missing-vars-policy", ResourceVersion: "1",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "kibana"}},
 						Weight:           10,
@@ -1688,13 +1612,13 @@ func Test_getConfigPolicyForElasticsearch_noSharedStateMutation(t *testing.T) {
 	// OUTER's value is the string "${INNER}". Single-pass substitution resolves ${OUTER} → ${INNER}
 	// but does not re-scan the output, so every reconcile pass must produce "${INNER}", not "42mb".
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "vars", Namespace: "test"},
-		Data:       map[string]string{"OUTER": "${INNER}", "INNER": "42mb"},
+		Name: "vars", Namespace: "test",
+		Data: map[string]string{"OUTER": "${INNER}", "INNER": "42mb"},
 	}
 
 	allPolicies := []policyv1alpha1.StackConfigPolicy{
 		{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "policy"},
+			Namespace: "test", Name: "policy",
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
 				VariablesFrom:    []policyv1alpha1.VariableSource{{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: "vars"}},
@@ -1712,7 +1636,7 @@ func Test_getConfigPolicyForElasticsearch_noSharedStateMutation(t *testing.T) {
 	esLabels := map[string]string{"env": "prod"}
 
 	for _, name := range []string{"es-a", "es-b"} {
-		es := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", Labels: esLabels}}
+		es := &esv1.Elasticsearch{Name: name, Namespace: "test", Labels: esLabels}
 		cfg, err := getConfigPolicyForElasticsearch(context.Background(), fakeClient, es, allPolicies, params)
 		require.NoError(t, err)
 		assert.Equal(t, "${INNER}", cfg.Spec.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"],

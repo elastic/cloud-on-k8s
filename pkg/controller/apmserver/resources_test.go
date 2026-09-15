@@ -40,10 +40,8 @@ func buildApmPodTemplate(t *testing.T, as apmv1.ApmServer) corev1.PodTemplateSpe
 	t.Helper()
 	// newPodSpec calls buildConfigHash which fetches the HTTP certs secret; provide a minimal one.
 	httpCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      as.Name + "-apm-http-certs-internal",
-			Namespace: as.Namespace,
-		},
+		Name:      as.Name + "-apm-http-certs-internal",
+		Namespace: as.Namespace,
 	}
 	got, err := newPodSpec(k8s.NewFakeClient(&httpCertsSecret), &as, minimalApmParams(as), metadata.Metadata{}, false)
 	require.NoError(t, err)
@@ -52,7 +50,7 @@ func buildApmPodTemplate(t *testing.T, as apmv1.ApmServer) corev1.PodTemplateSpe
 
 func TestApmResources(t *testing.T) {
 	base := apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{Name: "apm-test", Namespace: "default"},
+		Name: "apm-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {

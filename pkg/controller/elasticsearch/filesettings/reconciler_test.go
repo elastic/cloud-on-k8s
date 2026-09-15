@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -37,18 +36,16 @@ var (
 
 	sampleAnnotations = map[string]string{"annotation1": "value1", "annotation2": "value2"}
 
-	owner = &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	owner = &esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 )
 
 func createSecret(name string, data map[string][]byte, labels map[string]string, annotations map[string]string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   testNamespace,
-			Name:        name,
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Data: data,
+		Namespace:   testNamespace,
+		Name:        name,
+		Labels:      labels,
+		Annotations: annotations,
+		Data:        data,
 	}
 }
 
@@ -248,10 +245,9 @@ func TestReconcileSecret(t *testing.T) {
 
 func Test_FileSettingsSecret_CreateAndIdempotent(t *testing.T) {
 	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	es := esv1.Elasticsearch{
 		Namespace: esNsn.Namespace,
-		Name:      esNsn.Name,
-	}}
+		Name:      esNsn.Name}
 
 	fakeClient := k8s.NewFakeClient()
 

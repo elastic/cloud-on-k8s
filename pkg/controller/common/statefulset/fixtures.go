@@ -71,14 +71,12 @@ func (t TestSset) Build() appsv1.StatefulSet {
 	label.NodeTypesDataContentLabelName.Set(t.DataContent, labels)
 	label.NodeTypesDataFrozenLabelName.Set(t.DataFrozen, labels)
 	statefulSet := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      t.Name,
-			Namespace: t.Namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: t.ClusterName,
-			},
-			ResourceVersion: t.ResourceVersion,
+		Name:      t.Name,
+		Namespace: t.Namespace,
+		Labels: map[string]string{
+			label.ClusterNameLabelName: t.ClusterName,
 		},
+		ResourceVersion: t.ResourceVersion,
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &t.Replicas,
 			Template: corev1.PodTemplateSpec{
@@ -172,13 +170,11 @@ func (t TestPod) Build() corev1.Pod {
 		},
 	}
 	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       t.Namespace,
-			Name:            t.Name,
-			Labels:          labels,
-			ResourceVersion: t.ResourceVersion,
-		},
-		Status: status,
+		Namespace:       t.Namespace,
+		Name:            t.Name,
+		Labels:          labels,
+		ResourceVersion: t.ResourceVersion,
+		Status:          status,
 	}
 }
 

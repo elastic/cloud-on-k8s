@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -252,9 +251,9 @@ func Test_checkNoDowngrade(t *testing.T) {
 			name: "Downgrade with override OK",
 			args: args{
 				prev: &Beat{Spec: BeatSpec{Version: "8.2.0"}},
-				curr: &Beat{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				curr: &Beat{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: BeatSpec{Version: "8.1.0"}},
+				}, Spec: BeatSpec{Version: "8.1.0"}},
 			},
 			want: nil,
 		},
@@ -275,10 +274,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring not enabled returns nil",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -290,10 +287,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with only metrics ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -315,10 +310,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with only logs ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -340,10 +333,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with both logs and metrics ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",

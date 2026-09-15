@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 
@@ -444,9 +443,7 @@ func (nsb *nodeSetBuilder) build() esv1.NodeSet {
 		storageRequest[corev1.ResourceStorage] = *nsb.storageRequest
 		nodeSet.VolumeClaimTemplates = append(nodeSet.VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: volume.ElasticsearchDataVolumeName,
-				},
+				Name: volume.ElasticsearchDataVolumeName,
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
@@ -469,7 +466,7 @@ func TestStorageRequestOf(t *testing.T) {
 	nodeSetWithEmptyVCT := func() esv1.NodeSet {
 		ns := newNodeSetBuilder("ns", 1).build()
 		ns.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
-			ObjectMeta: metav1.ObjectMeta{Name: volume.ElasticsearchDataVolumeName},
+			Name: volume.ElasticsearchDataVolumeName,
 		}}
 		return ns
 	}

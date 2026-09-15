@@ -15,7 +15,6 @@ import (
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -280,14 +279,12 @@ func copySecret(
 	merged[AdditionalSecretLabelName] = "true"
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        targetName,
-			Namespace:   targetNamespace,
-			Labels:      merged,
-			Annotations: original.Annotations,
-		},
-		Data: data,
-		Type: original.Type,
+		Name:        targetName,
+		Namespace:   targetNamespace,
+		Labels:      merged,
+		Annotations: original.Annotations,
+		Data:        data,
+		Type:        original.Type,
 	}
 
 	// kubectl.kubernetes.io/last-applied-configuration embeds the full original Secret

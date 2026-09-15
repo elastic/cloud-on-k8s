@@ -34,12 +34,10 @@ type Params struct {
 // New creates a Deployment from the given params.
 func New(params Params) appsv1.Deployment {
 	d := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Namespace,
-			Labels:      params.Metadata.Labels,
-			Annotations: params.Metadata.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Namespace,
+		Labels:      params.Metadata.Labels,
+		Annotations: params.Metadata.Annotations,
 		Spec: appsv1.DeploymentSpec{
 			RevisionHistoryLimit: params.RevisionHistoryLimit,
 			Selector: &metav1.LabelSelector{

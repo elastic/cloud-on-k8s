@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -23,10 +22,8 @@ import (
 )
 
 var defaultKibana = kbv1.Kibana{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace: "test-ns",
-		Name:      "test",
-	},
+	Namespace: "test-ns",
+	Name:      "test",
 }
 
 func TestReconcileConfigSecret(t *testing.T) {
@@ -44,10 +41,8 @@ func TestReconcileConfigSecret(t *testing.T) {
 			args: args{
 				kb: defaultKibana,
 				initialObjects: []client.Object{&kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "test-ns",
-					},
+					Name:      "test",
+					Namespace: "test-ns",
 				}},
 			},
 			assertions: func(secrets corev1.SecretList) error {
@@ -64,12 +59,10 @@ func TestReconcileConfigSecret(t *testing.T) {
 				kb: defaultKibana,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-kb-config",
-							Namespace: "test-ns",
-							Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
-						},
-						Data: map[string][]byte{},
+						Name:      "test-kb-config",
+						Namespace: "test-ns",
+						Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
+						Data:      map[string][]byte{},
 					}},
 			},
 
@@ -85,11 +78,9 @@ func TestReconcileConfigSecret(t *testing.T) {
 				kb: defaultKibana,
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-kb-config",
-							Namespace: "test-ns",
-							Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
-						},
+						Name:      "test-kb-config",
+						Namespace: "test-ns",
+						Labels:    map[string]string{kblabel.KibanaNameLabelName: defaultKibana.Name},
 						Data: map[string][]byte{
 							SettingsFilename: []byte("eW8h"),
 						},

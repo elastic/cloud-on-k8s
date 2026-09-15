@@ -47,10 +47,8 @@ param2: value2
 `,
 				initObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "monitored-default-monitoring-beat-es-mon-user",
-							Namespace: "default",
-						},
+						Name:      "monitored-default-monitoring-beat-es-mon-user",
+						Namespace: "default",
 						Data: map[string][]byte{
 							"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
 						},
@@ -59,11 +57,10 @@ param2: value2
 				beatName: "metricbeat",
 				image:    "8.8.0",
 				associated: &esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "monitored",
-						Namespace: "default",
-						Annotations: map[string]string{
-							commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+					Name:      "monitored",
+					Namespace: "default",
+					Annotations: map[string]string{
+						commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
 {
 	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
 	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
@@ -74,7 +71,6 @@ param2: value2
 	"version": "8.4.0"
 }
 `,
-						},
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Monitoring: commonv1.Monitoring{
@@ -117,10 +113,8 @@ param1: value1
 `,
 				initObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "monitored-default-monitoring-beat-es-mon-user",
-							Namespace: "default",
-						},
+						Name:      "monitored-default-monitoring-beat-es-mon-user",
+						Namespace: "default",
 						Data: map[string][]byte{
 							"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
 						},
@@ -129,11 +123,10 @@ param1: value1
 				beatName: "metricbeat",
 				image:    "8.8.0",
 				associated: &esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "monitored",
-						Namespace: "default",
-						Annotations: map[string]string{
-							commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+					Name:      "monitored",
+					Namespace: "default",
+					Annotations: map[string]string{
+						commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
 {
 	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
 	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
@@ -145,7 +138,6 @@ param1: value1
 	"clientCertSecretName": "monitored-es-monitoring-client-cert"
 }
 `,
-						},
 					},
 					Spec: esv1.ElasticsearchSpec{
 						Monitoring: commonv1.Monitoring{
@@ -276,10 +268,8 @@ func TestTemplateFuncsSignature(t *testing.T) {
 
 func Test_buildOutputConfig_withClientCert(t *testing.T) {
 	authSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "monitored-default-monitoring-beat-es-mon-user",
-			Namespace: "default",
-		},
+		Name:      "monitored-default-monitoring-beat-es-mon-user",
+		Namespace: "default",
 		Data: map[string][]byte{
 			"default-monitored-default-monitoring-beat-es-mon-user": []byte("password"),
 		},
@@ -287,11 +277,10 @@ func Test_buildOutputConfig_withClientCert(t *testing.T) {
 	fakeClient := k8s.NewFakeClient(authSecret)
 
 	associated := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "monitored",
-			Namespace: "default",
-			Annotations: map[string]string{
-				commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
+		Name:      "monitored",
+		Namespace: "default",
+		Annotations: map[string]string{
+			commonv1.ElasticsearchConfigAnnotationName(commonv1.ObjectSelector{Name: "monitoring", Namespace: "default"}): `
 {
 	"authSecretName": "monitored-default-monitoring-beat-es-mon-user",
 	"authSecretKey": "default-monitored-default-monitoring-beat-es-mon-user",
@@ -303,7 +292,6 @@ func Test_buildOutputConfig_withClientCert(t *testing.T) {
 	"clientCertSecretName": "monitored-es-monitoring-client-cert"
 }
 `,
-			},
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Monitoring: commonv1.Monitoring{

@@ -8,7 +8,6 @@ import (
 	"maps"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -41,11 +40,9 @@ func BuildImmutableSecret(baseName, namespace string, data map[string][]byte, la
 
 	immutable := true
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    secretLabels,
-		},
+		Name:      name,
+		Namespace: namespace,
+		Labels:    secretLabels,
 		Immutable: &immutable,
 		Data:      data,
 	}
@@ -68,11 +65,9 @@ func BuildImmutableConfigMap(baseName, namespace string, data map[string]string,
 
 	immutable := true
 	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    cmLabels,
-		},
+		Name:      name,
+		Namespace: namespace,
+		Labels:    cmLabels,
 		Immutable: &immutable,
 		Data:      data,
 	}

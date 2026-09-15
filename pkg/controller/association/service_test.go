@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -23,7 +22,7 @@ func TestServiceURL(t *testing.T) {
 	}
 	svcName := types.NamespacedName{Namespace: "a", Name: "b"}
 	svcFixture := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
+		Namespace: "a", Name: "b",
 		Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{
 			{
 				Name: "https",

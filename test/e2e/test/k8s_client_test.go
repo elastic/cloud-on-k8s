@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,11 +46,9 @@ func TestCreateWithRetryAcceptsExistingObjects(t *testing.T) {
 	require.NoError(t, corev1.AddToScheme(scheme))
 
 	existing := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "config",
-			Namespace: "default",
-		},
-		Data: map[string]string{"value": "old"},
+		Name:      "config",
+		Namespace: "default",
+		Data:      map[string]string{"value": "old"},
 	}
 	baseClient := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -60,18 +57,14 @@ func TestCreateWithRetryAcceptsExistingObjects(t *testing.T) {
 	k := &K8sClient{Client: baseClient}
 
 	desiredExisting := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      existing.Name,
-			Namespace: existing.Namespace,
-		},
-		Data: map[string]string{"value": "new"},
+		Name:      existing.Name,
+		Namespace: existing.Namespace,
+		Data:      map[string]string{"value": "new"},
 	}
 	desiredNew := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "new-config",
-			Namespace: existing.Namespace,
-		},
-		Data: map[string]string{"value": "new"},
+		Name:      "new-config",
+		Namespace: existing.Namespace,
+		Data:      map[string]string{"value": "new"},
 	}
 	require.NoError(t, k.CreateWithRetry(
 		func(error) bool { return false },

@@ -50,10 +50,8 @@ var (
 	}
 
 	licenceConfigMap = &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elastic-licensing",
-			Namespace: "elastic-system",
-		},
+		Name:      "elastic-licensing",
+		Namespace: "elastic-system",
 		Data: map[string]string{
 			"eck_license_level":         "basic",
 			"enterprise_resource_units": "1",
@@ -130,20 +128,16 @@ func TestMarshalTelemetry(t *testing.T) {
 
 func createKbAndSecret(name, namespace string, count int32) (kbv1.Kibana, corev1.Secret) {
 	kb := kbv1.Kibana{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
+		TypeMeta:  metav1.TypeMeta{},
+		Name:      name,
+		Namespace: namespace,
 		Spec: kbv1.KibanaSpec{
 			Count: count,
 		},
 	}
 	return kb, corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(kb.Name),
-			Namespace: namespace,
-		},
+		Name:      kbv1.ConfigSecret(kb.Name),
+		Namespace: namespace,
 	}
 }
 
@@ -186,37 +180,29 @@ func initFakeClient() (k8s.Client, fixtures) {
 		&s3,
 		&s4,
 		&esav1alpha1.ElasticsearchAutoscaler{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "autoscaled-with-crd",
-			},
+			Namespace: "ns1",
+			Name:      "autoscaled-with-crd",
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "autoscaled-with-annotation",
-				Annotations: map[string]string{
-					esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
-				},
+			Namespace: "ns1",
+			Name:      "autoscaled-with-annotation",
+			Annotations: map[string]string{
+				esv1.ElasticsearchAutoscalingSpecAnnotationName: "{}",
 			},
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 3,
 			},
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "non-autoscaled",
-			},
+			Namespace: "ns1",
+			Name:      "non-autoscaled",
 			Status: esv1.ElasticsearchStatus{
 				AvailableNodes: 6,
 			},
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "monitored",
-			},
+			Namespace: "ns1",
+			Name:      "monitored",
 			Spec: esv1.ElasticsearchSpec{
 				Monitoring: commonv1.Monitoring{
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
@@ -228,17 +214,13 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "helm-managed",
-				Labels:    map[string]string{"helm.sh/chart": "eck-elasticsearch-0.1.0"},
-			},
+			Namespace: "ns1",
+			Name:      "helm-managed",
+			Labels:    map[string]string{"helm.sh/chart": "eck-elasticsearch-0.1.0"},
 		},
 		&apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Labels:    map[string]string{"helm.sh/chart": "eck-apm-server-0.1.0"},
-			},
+			Namespace: "ns1",
+			Labels:    map[string]string{"helm.sh/chart": "eck-apm-server-0.1.0"},
 			Status: apmv1.ApmServerStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 2,
@@ -246,10 +228,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&entv1.EnterpriseSearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Labels:    map[string]string{"helm.sh/chart": "eck-enterprise-search-0.1.0"},
-			},
+			Namespace: "ns1",
+			Labels:    map[string]string{"helm.sh/chart": "eck-enterprise-search-0.1.0"},
 			Status: entv1.EnterpriseSearchStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 3,
@@ -257,10 +237,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&logstashv1alpha1.Logstash{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Labels:    map[string]string{"helm.sh/chart": "eck-logstash-0.1.0"},
-			},
+			Namespace: "ns1",
+			Labels:    map[string]string{"helm.sh/chart": "eck-logstash-0.1.0"},
 			Spec: logstashv1alpha1.LogstashSpec{
 				Count: 3,
 				Monitoring: commonv1.Monitoring{
@@ -298,9 +276,7 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&logstashv1alpha1.Logstash{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns2",
-			},
+			Namespace: "ns2",
 			Spec: logstashv1alpha1.LogstashSpec{
 				Count: 1,
 				Services: []logstashv1alpha1.LogstashService{
@@ -321,11 +297,9 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&beatv1beta1.Beat{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat1",
-				Namespace: "ns1",
-				Labels:    map[string]string{"helm.sh/chart": "eck-beats-0.1.0"},
-			},
+			Name:      "beat1",
+			Namespace: "ns1",
+			Labels:    map[string]string{"helm.sh/chart": "eck-beats-0.1.0"},
 			Spec: beatv1beta1.BeatSpec{
 				Type: "filebeat",
 			},
@@ -334,10 +308,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&beatv1beta1.Beat{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat2",
-				Namespace: "ns2",
-			},
+			Name:      "beat2",
+			Namespace: "ns2",
 			Spec: beatv1beta1.BeatSpec{
 				Type: "metricbeat",
 			},
@@ -346,10 +318,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&beatv1beta1.Beat{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat3",
-				Namespace: "ns3",
-			},
+			Name:      "beat3",
+			Namespace: "ns3",
 			Spec: beatv1beta1.BeatSpec{
 				Type: "metricbeat",
 			},
@@ -358,21 +328,17 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent1",
-				Namespace: "ns2",
-				Labels:    map[string]string{"helm.sh/chart": "eck-fleet-server-0.1.0"},
-			},
+			Name:      "agent1",
+			Namespace: "ns2",
+			Labels:    map[string]string{"helm.sh/chart": "eck-fleet-server-0.1.0"},
 			Status: agentv1alpha1.AgentStatus{
 				AvailableNodes: 10,
 			},
 		},
 		&agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent2",
-				Namespace: "ns2",
-				Labels:    map[string]string{"helm.sh/chart": "eck-agent-0.1.0"},
-			},
+			Name:      "agent2",
+			Namespace: "ns2",
+			Labels:    map[string]string{"helm.sh/chart": "eck-agent-0.1.0"},
 			Spec: agentv1alpha1.AgentSpec{
 				ElasticsearchRefs: []agentv1alpha1.Output{{}, {}}, // two outputs
 			},
@@ -381,10 +347,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent3",
-				Namespace: "ns2",
-			},
+			Name:      "agent3",
+			Namespace: "ns2",
 			Spec: agentv1alpha1.AgentSpec{
 				FleetServerEnabled: true,
 				Mode:               agentv1alpha1.AgentFleetMode,
@@ -394,10 +358,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent4",
-				Namespace: "ns2",
-			},
+			Name:      "agent4",
+			Namespace: "ns2",
 			Spec: agentv1alpha1.AgentSpec{
 				Mode: agentv1alpha1.AgentFleetMode,
 			},
@@ -406,10 +368,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&mapsv1alpha1.ElasticMapsServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "maps1",
-				Namespace: "ns1",
-			},
+			Name:      "maps1",
+			Namespace: "ns1",
 			Status: mapsv1alpha1.MapsStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
 					AvailableNodes: 1,
@@ -418,10 +378,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 		},
 		licenceConfigMap,
 		&policyv1alpha1.StackConfigPolicy{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "scp1",
-				Namespace: "ns1",
-			},
+			Name:      "scp1",
+			Namespace: "ns1",
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 					ClusterSettings: &commonv1.Config{Data: map[string]any{
@@ -441,10 +399,8 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&policyv1alpha1.StackConfigPolicy{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "scp2",
-				Namespace: "ns2",
-			},
+			Name:      "scp2",
+			Namespace: "ns2",
 			Spec: policyv1alpha1.StackConfigPolicySpec{
 				Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 					SnapshotRepositories: &commonv1.Config{Data: map[string]any{
@@ -460,11 +416,9 @@ func initFakeClient() (k8s.Client, fixtures) {
 			},
 		},
 		&autoopsv1alpha1.AutoOpsAgentPolicy{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "aop1",
-				Namespace: "ns1",
-				Labels:    map[string]string{"helm.sh/chart": "eck-autoops-agent-policy-0.1.0"},
-			},
+			Name:      "aop1",
+			Namespace: "ns1",
+			Labels:    map[string]string{"helm.sh/chart": "eck-autoops-agent-policy-0.1.0"},
 			Status: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 2,
 			},
@@ -724,19 +678,15 @@ func TestReporter_report(t *testing.T) {
 			fields: fields{
 				objects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "non-autoscaled",
-						},
+						Namespace: testNS,
+						Name:      "non-autoscaled",
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 6,
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "monitored",
-						},
+						Namespace: testNS,
+						Name:      "monitored",
 						Spec: esv1.ElasticsearchSpec{
 							Monitoring: commonv1.Monitoring{
 								Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
@@ -747,10 +697,8 @@ func TestReporter_report(t *testing.T) {
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "monitored2",
-						},
+						Namespace: testNS,
+						Name:      "monitored2",
 						Spec: esv1.ElasticsearchSpec{
 							Monitoring: commonv1.Monitoring{
 								Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
@@ -777,19 +725,15 @@ func TestReporter_report(t *testing.T) {
 			fields: fields{
 				objects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "non-autoscaled",
-						},
+						Namespace: testNS,
+						Name:      "non-autoscaled",
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 2,
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "monitored",
-						},
+						Namespace: testNS,
+						Name:      "monitored",
 						Spec: esv1.ElasticsearchSpec{
 							Monitoring: commonv1.Monitoring{
 								Logs: commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "monitoring"}}},
@@ -816,22 +760,18 @@ func TestReporter_report(t *testing.T) {
 			fields: fields{
 				objects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "node-labels1",
-							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
-							},
+						Namespace: testNS,
+						Name:      "node-labels1",
+						Annotations: map[string]string{
+							esv1.DownwardNodeLabelsAnnotation: "ns/label1",
 						},
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 2,
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "simple",
-						},
+						Namespace: testNS,
+						Name:      "simple",
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 2,
 						},
@@ -856,24 +796,20 @@ func TestReporter_report(t *testing.T) {
 			fields: fields{
 				objects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "node-labels1",
-							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label1",
-							},
+						Namespace: testNS,
+						Name:      "node-labels1",
+						Annotations: map[string]string{
+							esv1.DownwardNodeLabelsAnnotation: "ns/label1",
 						},
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 2,
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "node-labels2",
-							Annotations: map[string]string{
-								esv1.DownwardNodeLabelsAnnotation: "ns/label2,ns/label1,ns/label3",
-							},
+						Namespace: testNS,
+						Name:      "node-labels2",
+						Annotations: map[string]string{
+							esv1.DownwardNodeLabelsAnnotation: "ns/label2,ns/label1,ns/label3",
 						},
 						Status: esv1.ElasticsearchStatus{
 							AvailableNodes: 2,
@@ -899,10 +835,8 @@ func TestReporter_report(t *testing.T) {
 			fields: fields{
 				objects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "es1",
-						},
+						Namespace: testNS,
+						Name:      "es1",
 						Spec: esv1.ElasticsearchSpec{
 							RemoteClusters: []esv1.RemoteCluster{
 								{
@@ -920,10 +854,8 @@ func TestReporter_report(t *testing.T) {
 						},
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNS,
-							Name:      "es2",
-						},
+						Namespace: testNS,
+						Name:      "es2",
 						Spec: esv1.ElasticsearchSpec{
 							RemoteClusters: []esv1.RemoteCluster{
 								{
@@ -976,7 +908,7 @@ func TestReporter_report(t *testing.T) {
 }
 
 func nsLabelled(name string, lbls map[string]string) corev1.Namespace {
-	return corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: lbls}}
+	return corev1.Namespace{Name: name, Labels: lbls}
 }
 
 func mustLabelSelector(t *testing.T, matchLabels map[string]string) labels.Selector {

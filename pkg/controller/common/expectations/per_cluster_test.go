@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -33,11 +32,9 @@ func TestClustersExpectation(t *testing.T) {
 
 	// simulate a pod deletion expectation
 	pod := corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "pod",
-			UID:       uuid.NewUUID(),
-		},
+		Namespace: "ns",
+		Name:      "pod",
+		UID:       uuid.NewUUID(),
 	}
 	require.NoError(t, client.Create(context.Background(), &pod))
 	clusterExp.ExpectDeletion(pod)
@@ -78,11 +75,9 @@ func TestClustersExpectation_ConcurrentForCluster(t *testing.T) {
 
 	// Create a pod to use for deletion expectations
 	pod := corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "pod",
-			UID:       uuid.NewUUID(),
-		},
+		Namespace: "ns",
+		Name:      "pod",
+		UID:       uuid.NewUUID(),
 	}
 	require.NoError(t, client.Create(context.Background(), &pod))
 

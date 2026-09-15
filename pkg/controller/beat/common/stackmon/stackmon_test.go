@@ -187,50 +187,44 @@ output:
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name:         "beat-metricbeat-config",
-					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: new(false)}},
+					Name:   "beat-metricbeat-config",
+					Secret: &corev1.SecretVolumeSource{SecretName: "beat-beat-monitoring-metricbeat-config", Optional: new(false)},
 				},
 				{
-					Name:         "metricbeat-data",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					Name:     "metricbeat-data",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 				{
-					Name:         "shared-data",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					Name:     "shared-data",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 				{
-					Name:         "metricbeat-logs",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					Name:     "metricbeat-logs",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			},
 		}
 	}
 
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "es",
-			Namespace:   "test",
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
-		},
+		Name:        "es",
+		Namespace:   "test",
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.2.3",
 		},
 	}
 	monitoringEsFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "esmonitoring",
-			Namespace:   "test",
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd4321"},
-		},
+		Name:        "esmonitoring",
+		Namespace:   "test",
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd4321"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.2.3",
 		},
 	}
 	beatFixture := v1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "beat",
-			Namespace: "test",
-		},
+		Name:      "beat",
+		Namespace: "test",
 		Spec: v1beta1.BeatSpec{
 			Type:             "metricbeat",
 			Version:          "8.2.3",
@@ -278,7 +272,7 @@ output:
 	defer esAPIFixture.Close()
 
 	externalESSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "external-es"},
+		Namespace: "test", Name: "external-es",
 		Data: map[string][]byte{
 			"url":      []byte(esAPIFixture.URL),
 			"username": []byte("es-user"),
@@ -300,8 +294,8 @@ output:
 			name: "beat with stack monitoring enabled and valid elasticsearchRef returns properly configured sidecar",
 			args: args{
 				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
-					Data:       map[string][]byte{"es-user": []byte("es-password")},
+					Name: "es-secret-name", Namespace: "test",
+					Data: map[string][]byte{"es-user": []byte("es-password")},
 				}),
 				beat: func() *v1beta1.Beat {
 					return &beatFixture
@@ -314,8 +308,8 @@ output:
 			name: "beat with stack monitoring enabled and no elasticsearchRef returns configured sidecar",
 			args: args{
 				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
-					Data:       map[string][]byte{"es-user": []byte("es-password")},
+					Name: "es-secret-name", Namespace: "test",
+					Data: map[string][]byte{"es-user": []byte("es-password")},
 				}),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
@@ -330,8 +324,8 @@ output:
 			name: "beat > 8.8 with stack monitoring enabled and valid elasticsearchRef returns properly configured sidecar",
 			args: args{
 				client: k8s.NewFakeClient(&beatFixture, &esFixture, &monitoringEsFixture, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "es-secret-name", Namespace: "test"},
-					Data:       map[string][]byte{"es-user": []byte("es-password")},
+					Name: "es-secret-name", Namespace: "test",
+					Data: map[string][]byte{"es-user": []byte("es-password")},
 				}),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
@@ -348,7 +342,7 @@ output:
 				client: k8s.NewFakeClient(&beatFixture, &externalESSecret),
 				beat: func() *v1beta1.Beat {
 					beat := beatFixture.DeepCopy()
-					beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "external-es"}}
+					beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "external-es"}
 					beat.Spec.Monitoring = commonv1.Monitoring{
 						Metrics: commonv1.MetricsMonitoring{
 							ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "external-es"}},

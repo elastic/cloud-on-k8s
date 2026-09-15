@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -138,12 +137,10 @@ func NewExternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.S
 // to remove the possibility of the user misconfiguring access to the ES cluster.
 func NewInternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        InternalServiceName(es.Name),
-			Namespace:   es.Namespace,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        InternalServiceName(es.Name),
+		Namespace:   es.Namespace,
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{

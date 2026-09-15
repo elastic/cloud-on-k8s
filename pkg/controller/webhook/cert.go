@@ -13,7 +13,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -129,7 +128,7 @@ func extractDNSNames(webhookServices Services) []string {
 	svcNames := make(map[string]struct{}, len(webhookServices))
 	for svcRef := range webhookServices {
 		names := k8s.GetServiceDNSName(
-			corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: svcRef.Namespace, Name: svcRef.Name}},
+			corev1.Service{Namespace: svcRef.Namespace, Name: svcRef.Name},
 		)
 		for _, n := range names {
 			svcNames[n] = struct{}{}

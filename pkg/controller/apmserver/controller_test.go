@@ -114,10 +114,8 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 
 func Test_reconcileApmServerToken(t *testing.T) {
 	apm := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "apm",
-		},
+		Namespace: "ns",
+		Name:      "apm",
 	}
 	tests := []struct {
 		name       string
@@ -131,10 +129,8 @@ func Test_reconcileApmServerToken(t *testing.T) {
 		{
 			name: "reuse token if it already exists",
 			c: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "ns",
-					Name:      SecretToken(apm.Name),
-				},
+				Namespace: "ns",
+				Name:      SecretToken(apm.Name),
 				Data: map[string][]byte{
 					SecretTokenKey: []byte("existing"),
 				},
@@ -218,13 +214,11 @@ func TestNewService(t *testing.T) {
 
 func mkService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "apm-test-apm-http",
-			Namespace: "test",
-			Labels: map[string]string{
-				ApmServerNameLabelName: "apm-test",
-				commonv1.TypeLabelName: Type,
-			},
+		Name:      "apm-test-apm-http",
+		Namespace: "test",
+		Labels: map[string]string{
+			ApmServerNameLabelName: "apm-test",
+			commonv1.TypeLabelName: Type,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -244,10 +238,8 @@ func mkService() corev1.Service {
 
 func mkAPMServer(httpConf commonv1.HTTPConfig) apmv1.ApmServer {
 	return apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "apm-test",
-			Namespace: "test",
-		},
+		Name:      "apm-test",
+		Namespace: "test",
 		Spec: apmv1.ApmServerSpec{
 			HTTP: httpConf,
 		},
@@ -256,11 +248,9 @@ func mkAPMServer(httpConf commonv1.HTTPConfig) apmv1.ApmServer {
 
 func TestReconcileApmServer_Reconcile(t *testing.T) {
 	sampleAPMObject := apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:  "test",
-			Name:       "test",
-			Generation: 2,
-		},
+		Namespace:  "test",
+		Name:       "test",
+		Generation: 2,
 		Spec: apmv1.ApmServerSpec{
 			Version: "7.0.1",
 			Count:   1,
@@ -270,10 +260,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 		},
 	}
 	defaultRequest := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "test",
-			Namespace: "test",
-		},
+		Name:      "test",
+		Namespace: "test",
 	}
 	type fields struct {
 		Client k8s.Client
@@ -355,10 +343,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: k8s.NewFakeClient(
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "testes",
-							Namespace: "test",
-						},
+						Name:      "testes",
+						Namespace: "test",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "7.16.2",
 						},
@@ -373,10 +359,8 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 						Version: "",
 					}),
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "testes-es-elastic-user",
-							Namespace: "test",
-						},
+						Name:      "testes-es-elastic-user",
+						Namespace: "test",
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},

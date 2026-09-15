@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 )
@@ -123,7 +122,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						PodCertFileName(testPod.Name): rsaCert,
 					},
 				},
-				pod:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
+				pod:          &corev1.Pod{Name: "different"},
 				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,

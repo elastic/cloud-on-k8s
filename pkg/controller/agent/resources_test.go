@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -32,10 +31,8 @@ func agentContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequire
 func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.PodTemplateSpec {
 	t.Helper()
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(agent.Name),
-			Namespace: agent.Namespace,
-		},
+		Name:      ConfigSecretName(agent.Name),
+		Namespace: agent.Namespace,
 	}
 	params := Params{
 		Context:      context.Background(),
@@ -51,10 +48,8 @@ func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) co
 func buildAgentFleetPodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.PodTemplateSpec {
 	t.Helper()
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(agent.Name),
-			Namespace: agent.Namespace,
-		},
+		Name:      ConfigSecretName(agent.Name),
+		Namespace: agent.Namespace,
 	}
 	params := Params{
 		Context:      context.Background(),
@@ -69,7 +64,7 @@ func buildAgentFleetPodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.
 
 func TestAgentStandaloneResources(t *testing.T) {
 	base := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent-test", Namespace: "default"},
+		Name: "agent-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {
@@ -174,7 +169,7 @@ func TestAgentStandaloneResources(t *testing.T) {
 
 func TestAgentFleetResources(t *testing.T) {
 	base := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent-fleet-test", Namespace: "default"},
+		Name: "agent-fleet-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {

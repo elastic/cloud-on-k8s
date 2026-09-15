@@ -166,7 +166,7 @@ func toReconcileRequests(secret *corev1.Secret) []reconcile.Request {
 		if nsn.Kind != policyv1alpha1.Kind {
 			continue
 		}
-		requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: nsn.Namespace, Name: nsn.Name}})
+		requests = append(requests, reconcile.Request{Namespace: nsn.Namespace, Name: nsn.Name})
 	}
 	return requests
 }

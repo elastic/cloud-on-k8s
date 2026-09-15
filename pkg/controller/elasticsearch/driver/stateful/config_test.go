@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -29,7 +28,7 @@ func Test_detectClientAuthenticationRequired(t *testing.T) {
 			ns.Config = userConfig
 		}
 		return esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "default"},
+			Name: "test-es", Namespace: "default",
 			Spec: esv1.ElasticsearchSpec{
 				Version: "8.17.0",
 				HTTP: commonv1.HTTPConfigWithClientOptions{

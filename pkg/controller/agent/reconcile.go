@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -61,16 +60,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = append(toDelete,
 			&v1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 			&v1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 		)
 	case spec.Deployment != nil:
@@ -82,16 +77,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		reconciliationFunc = reconcileDeployment
 		toDelete = append(toDelete,
 			&v1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 			&v1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 		)
 	case spec.StatefulSet != nil:
@@ -103,16 +94,12 @@ func reconcilePodVehicle(params Params, podTemplate corev1.PodTemplateSpec) (*re
 		reconciliationFunc = reconcileStatefulSet
 		toDelete = append(toDelete,
 			&v1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 			&v1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Agent.Namespace,
-				},
+				Name:      name,
+				Namespace: params.Agent.Namespace,
 			},
 		)
 	}

@@ -32,11 +32,9 @@ var nsnFixture = types.NamespacedName{
 	Name:      "test-resource",
 }
 var emsFixture = v1alpha1.ElasticMapsServer{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace:  nsnFixture.Namespace,
-		Name:       nsnFixture.Name,
-		Generation: 2,
-	},
+	Namespace:  nsnFixture.Namespace,
+	Name:       nsnFixture.Name,
+	Generation: 2,
 	Spec: v1alpha1.MapsSpec{
 		Version: "7.12.0",
 		Count:   1,
@@ -85,12 +83,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              nsnFixture.Name,
-						Namespace:         nsnFixture.Namespace,
-						DeletionTimestamp: &timeFixture, Generation: 2,
-						Finalizers: []string{"something"},
-					},
+					Name:              nsnFixture.Name,
+					Namespace:         nsnFixture.Namespace,
+					DeletionTimestamp: &timeFixture, Generation: 2,
+					Finalizers: []string{"something"},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
 					},
@@ -118,12 +114,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource is unmanaged",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							common.ManagedAnnotation: "false",
-						},
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						common.ManagedAnnotation: "false",
 					},
 				}),
 			},
@@ -152,11 +146,9 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "validates on reconcile",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version: "7.10.0", // unsupported version
 					},
@@ -177,11 +169,9 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Association specified but not configured (yet)",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
 						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
@@ -207,14 +197,12 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Association specified but ES version too old",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/es-conf": `{"authSecretName":"test-resource-maps-user","authSecretKey":"ns-test-resource-maps-user","caCertProvided":true,"caSecretName": "test-resource-es-ca","url":"https://es-es-http.ns.svc:9200","version":"7.10.0"}`,
-						},
-						Generation: 2,
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/es-conf": `{"authSecretName":"test-resource-maps-user","authSecretKey":"ns-test-resource-maps-user","caCertProvided":true,"caSecretName": "test-resource-es-ca","url":"https://es-es-http.ns.svc:9200","version":"7.10.0"}`,
 					},
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
 						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
@@ -316,7 +304,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 func Test_buildConfigHash(t *testing.T) {
 	emsWithAssoc := *emsFixture.DeepCopy()
 	esTLSCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: "es-tls-certs"},
+		Namespace: nsnFixture.Namespace, Name: "es-tls-certs",
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
@@ -332,7 +320,7 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	tlsCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(EMSNamer, nsnFixture.Name)},
+		Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(EMSNamer, nsnFixture.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("cert-data"),
 		},

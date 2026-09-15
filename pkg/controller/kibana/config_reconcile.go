@@ -12,7 +12,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -58,13 +57,11 @@ func ReconcileConfigSecret(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   kb.Namespace,
-			Name:        kbv1.ConfigSecret(kb.Name),
-			Labels:      maps.Clone(meta.Labels),
-			Annotations: meta.Annotations,
-		},
-		Data: data,
+		Namespace:   kb.Namespace,
+		Name:        kbv1.ConfigSecret(kb.Name),
+		Labels:      maps.Clone(meta.Labels),
+		Annotations: meta.Annotations,
+		Data:        data,
 	}
 
 	_, err = reconciler.ReconcileSecret(ctx, client, expected, &kb)

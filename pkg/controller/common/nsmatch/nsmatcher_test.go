@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
@@ -102,25 +101,25 @@ func TestNamespaceMatcherNamespaceMatches(t *testing.T) {
 
 	t.Run("selector disabled: always matches", func(t *testing.T) {
 		m := NewNamespaceMatcher(nil, testOperatorNS)
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns"}}
+		ns := &corev1.Namespace{Name: "dev-ns"}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("always-managed namespace: matches regardless of labels", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testOperatorNS}}
+		ns := &corev1.Namespace{Name: testOperatorNS}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("labels satisfy the selector: matches", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-ns", Labels: map[string]string{"env": "prod"}}}
+		ns := &corev1.Namespace{Name: "prod-ns", Labels: map[string]string{"env": "prod"}}
 		assert.True(t, m.NamespaceMatches(ns))
 	})
 
 	t.Run("labels do not satisfy the selector: does not match", func(t *testing.T) {
 		m := NewNamespaceMatcher(sel, testOperatorNS)
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}}
+		ns := &corev1.Namespace{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}
 		assert.False(t, m.NamespaceMatches(ns))
 	})
 }
@@ -151,9 +150,9 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 	t.Run("returns matching namespaces plus always-managed ones, deduplicated", func(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnListSetNamespaceList(
-			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "prod-ns", Labels: map[string]string{"env": "prod"}}},
-			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}},
-			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testOperatorNS}},
+			corev1.Namespace{Name: "prod-ns", Labels: map[string]string{"env": "prod"}},
+			corev1.Namespace{Name: "dev-ns", Labels: map[string]string{"env": "dev"}},
+			corev1.Namespace{Name: testOperatorNS},
 		).Return(nil)
 
 		m := NewNamespaceMatcher(sel, testOperatorNS)
@@ -168,7 +167,7 @@ func TestNamespaceMatcherMatchingNamespaces(t *testing.T) {
 	t.Run("always-managed namespace is included even when absent from the listed namespaces", func(t *testing.T) {
 		mc := cachemock.NewCache(t)
 		mc.OnListSetNamespaceList(
-			corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dev-ns", Labels: map[string]string{"env": "dev"}}},
+			corev1.Namespace{Name: "dev-ns", Labels: map[string]string{"env": "dev"}},
 		).Return(nil)
 
 		m := NewNamespaceMatcher(sel, testOperatorNS)
