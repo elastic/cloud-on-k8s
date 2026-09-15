@@ -63,8 +63,8 @@ func TestActiveRoles(t *testing.T) {
 
 func TestGetPoolIdentityLabels(t *testing.T) {
 	t.Run("no backgroundTasks: no role label added", func(t *testing.T) {
-		kb := Kibana{}
-		kb.Name = "test-kb"
+		kb := Kibana{
+			Name: "test-kb"}
 		kb.Spec.Version = "8.17.0"
 		labels := kb.GetPoolIdentityLabels(label.UIRole)
 		_, hasRoleLabel := labels[label.UIRoleLabelName]
@@ -75,8 +75,8 @@ func TestGetPoolIdentityLabels(t *testing.T) {
 
 	t.Run("with backgroundTasks: role label added per pool", func(t *testing.T) {
 		count := int32(1)
-		kb := Kibana{}
-		kb.Name = "test-kb"
+		kb := Kibana{
+			Name: "test-kb"}
 		kb.Spec.Version = "8.17.0"
 		kb.Spec.BackgroundTasks = &KibanaBackgroundTasks{Count: &count}
 
