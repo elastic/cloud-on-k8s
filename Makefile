@@ -475,6 +475,7 @@ E2E_SKIP_CLEANUP           ?= false
 E2E_DEPLOY_CHAOS_JOB       ?= false
 # Defaults to RESTRICT_WATCHED_RESOURCES env var set by the Buildkite pipeline.
 E2E_RESTRICT_WATCHED_RESOURCES ?= $(or $(RESTRICT_WATCHED_RESOURCES),false)
+E2E_CONTAINER_SUFFIX           ?= $(or $(CONTAINER_SUFFIX),)
 # go build constraints potentially restricting the tests to run
 E2E_TAGS                   ?= e2e
 # tags conveying information about the test environment to the test runner
@@ -505,7 +506,8 @@ e2e-run: go-generate
 		--skip-cleanup=$(E2E_SKIP_CLEANUP) \
 		--deploy-chaos-job=$(E2E_DEPLOY_CHAOS_JOB) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
-		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES) \
+		--container-suffix=$(E2E_CONTAINER_SUFFIX)
 
 e2e-generate-xml:
 	@ hack/ci/generate-junit-xml-report.sh e2e-tests.json
@@ -531,7 +533,8 @@ e2e-local: go-generate
 		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT) \
 		--test-env-tags=$(E2E_TEST_ENV_TAGS) \
-		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES)
+		--restrict-watched-resources=$(E2E_RESTRICT_WATCHED_RESOURCES) \
+		--container-suffix=$(E2E_CONTAINER_SUFFIX)
 
 ##########################
 ##  --   Helpers    --  ##
