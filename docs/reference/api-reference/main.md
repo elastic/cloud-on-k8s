@@ -548,6 +548,7 @@ Config represents untyped YAML configuration.
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
 * [IndexTemplates](#indextemplates)
+* [KibanaBackgroundTasks](#kibanabackgroundtasks)
 * [KibanaConfigPolicySpec](#kibanaconfigpolicyspec)
 * [KibanaSpec](#kibanaspec)
 * [LogstashSpec](#logstashspec)
@@ -611,6 +612,15 @@ ConfigSource references configuration settings.
 | --- | --- |
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
+
+### DeploymentHealth (string)  [#deploymenthealth]
+
+
+
+:::{admonition} Appears In:
+* [KibanaPoolStatus](#kibanapoolstatus)
+
+:::
 
 
 
@@ -856,6 +866,7 @@ PodTemplate are preserved as-is.
 * [AutoOpsAgentPolicySpec](#autoopsagentpolicyspec)
 * [BeatSpec](#beatspec)
 * [EnterpriseSearchSpec](#enterprisesearchspec)
+* [KibanaBackgroundTasks](#kibanabackgroundtasks)
 * [KibanaSpec](#kibanaspec)
 * [LogstashSpec](#logstashspec)
 * [MapsSpec](#mapsspec)
@@ -1989,6 +2000,27 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 | *`spec`* __[KibanaSpec](#kibanaspec)__ |  |
 
 
+### KibanaBackgroundTasks  [#kibanabackgroundtasks]
+
+KibanaBackgroundTasks defines the configuration for the Kibana background tasks pool.
+When set, ECK creates a dedicated Deployment with node.roles: ["background_tasks"] and
+pins the primary (UI) Deployment to node.roles: ["ui"].
+
+:::{admonition} Appears In:
+* [KibanaSpec](#kibanaspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`count`* __integer__ | Count of background task Kibana instances. When nil, ECK does not manage the replica count<br>of the Deployment, allowing an HPA to target it directly. |
+| *`config`* __[Config](#config)__ | Config holds Kibana configuration specific to the background tasks pool.<br>The node.roles setting is managed by ECK and must not be set here. |
+| *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the<br>background tasks pool. When set, these values override any CPU or memory resource settings<br>specified in PodTemplate for the primary Kibana container. To set resources on other containers,<br>use PodTemplate. |
+| *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customization options for the background tasks pool pods.<br>It is applied as a strategic-merge overlay on top of spec.podTemplate. |
+
+
+
+
 ### KibanaSpec  [#kibanaspec]
 
 KibanaSpec holds the specification of a Kibana instance.
@@ -2014,6 +2046,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana.<br>See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
+| *`backgroundTasks`* __[KibanaBackgroundTasks](#kibanabackgroundtasks)__ | BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])<br>in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].<br>When nil, Kibana runs a single Deployment with all roles (current behavior).<br>Requires Kibana >= 8.16.0. |
 
 
 

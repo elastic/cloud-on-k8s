@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	httpServiceSuffix      = "http"
-	scriptsConfigMapSuffix = "scripts"
-	configSecretSuffix     = "config"
+	httpServiceSuffix            = "http"
+	scriptsConfigMapSuffix       = "scripts"
+	configSecretSuffix           = "config"
+	backgroundTasksSuffix        = "bg"
+	backgroundTasksConfigSuffix  = "bg-config"
 )
 
 // KBNamer is a KBNamer that is configured with the defaults for resources related to a Kibana resource.
@@ -33,4 +35,15 @@ func ScriptsConfigMap(kbName string) string {
 // ConfigSecret returns the name of the Secret containing the Kibana configuration for the given Kibana resource.
 func ConfigSecret(kbName string) string {
 	return KBNamer.Suffix(kbName, configSecretSuffix)
+}
+
+// BackgroundTasksDeployment returns the name of the Deployment for the background tasks pool.
+func BackgroundTasksDeployment(kbName string) string {
+	return KBNamer.Suffix(kbName, backgroundTasksSuffix)
+}
+
+// BackgroundTasksConfigSecret returns the name of the Secret containing the Kibana configuration
+// for the background tasks pool.
+func BackgroundTasksConfigSecret(kbName string) string {
+	return KBNamer.Suffix(kbName, backgroundTasksConfigSuffix)
 }
