@@ -1,7 +1,7 @@
-FROM docker.elastic.co/wolfi/go:v1.27.1-r0@sha256:9757715fe63f51fdf6799ccb4417c305c504d7b6ddc6ca1eb12061dd92bfebff as builder
+FROM docker.io/library/golang:1.27.1@sha256:f44f6e88636cfb311f9ebace870ded69d943f227bb3cb27d32ffd84ea18c43ea AS builder
 ADD . /manifest-gen
 WORKDIR /manifest-gen
-ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux 
+ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux
 RUN go build -a -ldflags '-w -s' -o manifest-gen .
 
 FROM scratch
