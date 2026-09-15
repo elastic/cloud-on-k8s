@@ -344,7 +344,7 @@ func (h *helper) installOperatorUnderTest() error {
 		return err
 	}
 
-	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
+	if _, _, err := h.kubectl("apply", "-f", manifestFile, "--server-side"); err != nil {
 		return fmt.Errorf("failed to apply operator manifest: %w", err)
 	}
 
@@ -381,7 +381,8 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		return fmt.Errorf("failed to generate Helm values from %s: %w", valuesFile, err)
 	}
 
-	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
+	cmd := command.New(
+		"hack/manifest-gen/manifest-gen.sh",
 		"-g",
 		"-n", namespace,
 		fmt.Sprintf("--set=global.kubeVersion=%s", h.testContext.KubernetesVersion),
@@ -394,7 +395,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
 	}
 
-	if err := os.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+	if err := os.WriteFile(manifestFile, manifestBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
 	}
 
@@ -471,7 +472,8 @@ func (h *helper) deployMonitoring() error {
 
 func (h *helper) deployTestSecrets() error {
 	log.Info("Deploying e2e test secret")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/secrets.yaml",
+	return h.kubectlApplyTemplateWithCleanup(
+		"config/e2e/secrets.yaml",
 		struct {
 			Secrets         map[string]string
 			OperatorSecrets map[string]string

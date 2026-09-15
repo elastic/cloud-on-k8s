@@ -115,7 +115,7 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 		Metadata:             rp.meta,
 		PodTemplateSpec:      rp.podTemplate,
 		RevisionHistoryLimit: rp.beat.Spec.RevisionHistoryLimit,
-		Replicas:             pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
+		Replicas:             new(pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1))),
 		Strategy:             rp.beat.Spec.Deployment.Strategy,
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {

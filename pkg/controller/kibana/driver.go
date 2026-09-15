@@ -318,7 +318,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	return deployment.Params{
 		Name:                 kbv1.KBNamer.Suffix(kb.Name),
 		Namespace:            kb.Namespace,
-		Replicas:             kb.Spec.Count,
+		Replicas:             new(kb.Spec.Count),
 		Selector:             kb.GetIdentityLabels(),
 		Metadata:             meta,
 		PodTemplateSpec:      kibanaPodSpec,
