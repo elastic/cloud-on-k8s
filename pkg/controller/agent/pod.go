@@ -168,7 +168,8 @@ func buildPodTemplate(params Params, fleetCerts *certificates.CertificatesSecret
 			ConfigVolumeName,
 			path.Join(ConfigMountPath, ConfigFileName),
 			ConfigFileName,
-			0440),
+			0444, // need to give public read access here. See https://github.com/elastic/elastic-agent/issues/16644
+		),
 	}
 
 	// fleet mode requires some special treatment
