@@ -388,7 +388,7 @@ func (r *ReconcileMapsServer) deploymentParams(ems emsv1alpha1.ElasticMapsServer
 	return deployment.Params{
 		Name:            Deployment(ems.Name),
 		Namespace:       ems.Namespace,
-		Replicas:        ems.Spec.Count,
+		Replicas:        new(ems.Spec.Count),
 		Selector:        deploymentLabels,
 		Metadata:        meta,
 		PodTemplateSpec: podSpec,

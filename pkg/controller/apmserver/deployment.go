@@ -102,7 +102,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	return deployment.Params{
 		Name:                 Deployment(as.Name),
 		Namespace:            as.Namespace,
-		Replicas:             as.Spec.Count,
+		Replicas:             new(as.Spec.Count),
 		Selector:             as.GetIdentityLabels(),
 		Metadata:             meta,
 		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,
