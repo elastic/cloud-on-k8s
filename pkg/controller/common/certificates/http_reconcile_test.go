@@ -503,6 +503,50 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 			},
 		},
+		{
+			name: "should add watched label to internal cert secret even when custom cert data is unchanged",
+			args: args{
+				es: esv1.Elasticsearch{
+					Name:      "test-es-name",
+					Namespace: "test-namespace",
+					Spec: esv1.ElasticsearchSpec{
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{SecretName: "my-cert"},
+								},
+							},
+						},
+					},
+				},
+				ca:        testCA,
+				custCerts: &customCertFixture,
+				// Pre-existing internal cert secret with the correct cert data but without the watched label.
+				// Simulates an upgrade scenario where the label was never applied because needsUpdate was
+				// incorrectly overwritten by populateFromCustomCertificateContents.
+				initialObjects: []client.Object{
+					&corev1.Secret{
+						Name:      "test-es-name-es-http-certs-internal",
+						Namespace: "test-namespace",
+						Labels: map[string]string{
+							"common.k8s.elastic.co/type": "elasticsearch",
+						},
+						Data: map[string][]byte{
+							CertFileName: tls,
+							KeyFileName:  key,
+							CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+						},
+					},
+				},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				internalSecret := &corev1.Secret{}
+				assert.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(cs), internalSecret))
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, internalSecret.Labels[commonv1.RestrictWatchedResourcesLabelName],
+					"watched label must be present even when cert data is unchanged")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
