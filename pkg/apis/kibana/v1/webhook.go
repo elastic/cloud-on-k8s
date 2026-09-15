@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 const (
@@ -32,6 +33,9 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
+		checkBackgroundTasksVersion,
+		checkBackgroundTasksNodeRoles,
+		checkBackgroundTasksCount,
 		commonv1.PauseOrchestrationAnnotationCheck[*Kibana](),
 	}
 
@@ -66,6 +70,18 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 		k.Spec.PodTemplate,
 	); resourcesWarning != "" {
 		warnings = append(warnings, resourcesWarning)
+	}
+
+	if k.Spec.BackgroundTasks != nil {
+		if bgResourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+			"spec.backgroundTasks.resources",
+			"spec.backgroundTasks.podTemplate",
+			KibanaContainerName,
+			k.Spec.BackgroundTasks.Resources,
+			k.Spec.BackgroundTasks.PodTemplate,
+		); bgResourcesWarning != "" {
+			warnings = append(warnings, bgResourcesWarning)
+		}
 	}
 
 	if old != nil {
@@ -133,4 +149,70 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
 	err5 := commonv1.CheckLocalAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
 	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
+}
+
+// checkBackgroundTasksVersion rejects spec.backgroundTasks on Kibana versions that predate
+// BackgroundTasksMinVersion (8.16.0). The readiness probe relies on /api/status, which is
+// only available without authentication from 8.16.0 onwards; background-only pods do not
+// serve /login, so earlier versions would not pass the readiness check.
+func checkBackgroundTasksVersion(k *Kibana) field.ErrorList {
+	if k.Spec.BackgroundTasks == nil {
+		return nil
+	}
+	v, err := version.Parse(k.Spec.Version)
+	if err != nil {
+		// version format already validated by checkSupportedVersion; skip here.
+		return nil
+	}
+	if !v.GTE(BackgroundTasksMinVersion) {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("backgroundTasks"),
+			k.Spec.Version,
+			"spec.backgroundTasks requires Kibana >= 8.16.0",
+		)}
+	}
+	return nil
+}
+
+// checkBackgroundTasksNodeRoles rejects configurations where the user sets node.roles in
+// spec.config or spec.backgroundTasks.config. ECK owns node.roles when background task
+// isolation is enabled.
+func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
+	var errs field.ErrorList
+	if k.Spec.BackgroundTasks == nil {
+		// No isolation: node.roles is user-controlled; no error.
+		return nil
+	}
+	nodeRolesKey := label.NodeRolesConfigKey
+	specConfigPath := field.NewPath("spec").Child("config")
+	bgConfigPath := field.NewPath("spec").Child("backgroundTasks").Child("config")
+
+	if k.Spec.Config != nil {
+		if _, set := k.Spec.Config.Data[nodeRolesKey]; set {
+			errs = append(errs, field.Forbidden(specConfigPath,
+				"node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.config"))
+		}
+	}
+	if k.Spec.BackgroundTasks.Config != nil {
+		if _, set := k.Spec.BackgroundTasks.Config.Data[nodeRolesKey]; set {
+			errs = append(errs, field.Forbidden(bgConfigPath,
+				"node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.backgroundTasks.config"))
+		}
+	}
+	return errs
+}
+
+// checkBackgroundTasksCount rejects a negative backgroundTasks.count.
+func checkBackgroundTasksCount(k *Kibana) field.ErrorList {
+	if k.Spec.BackgroundTasks == nil || k.Spec.BackgroundTasks.Count == nil {
+		return nil
+	}
+	if *k.Spec.BackgroundTasks.Count < 0 {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("backgroundTasks").Child("count"),
+			*k.Spec.BackgroundTasks.Count,
+			"count must be >= 0",
+		)}
+	}
+	return nil
 }
