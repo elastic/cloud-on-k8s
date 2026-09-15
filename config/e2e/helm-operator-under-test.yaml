@@ -46,6 +46,9 @@ config:
   logVerbosity: "1"
   metricsPort: "9090"
   restrictWatchedResources: {{ .RestrictWatchedResources }}
+{{- if .ContainerSuffix }}
+  containerSuffix: "{{ .ContainerSuffix }}"
+{{- end }}
 
 internal:
   createOperatorNamespace: false

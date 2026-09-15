@@ -237,7 +237,12 @@ func (b Builder) WithNamespace(namespace string) Builder {
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
-		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+		// Pinning a digest ensures all ES nodes in the test cluster pull the exact same SNAPSHOT image, even if the tag is overwritten between node rollouts.
+		image := container.ElasticsearchImage
+		if suffix := test.Ctx().ContainerSuffix; suffix != "" {
+			image = container.Image(string(image) + suffix)
+		}
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(image, version)
 	} else {
 		// reset the image in case the builder was set to a SNAPSHOT version at some point
 		b.Elasticsearch.Spec.Image = ""

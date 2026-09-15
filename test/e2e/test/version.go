@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -16,7 +17,7 @@ const (
 	// LatestReleasedVersion7x is the latest released version for 7.x
 	LatestReleasedVersion7x = "7.17.29"
 	// LatestReleasedVersion8x is the latest release version for 8.x
-	LatestReleasedVersion8x = "8.19.19"
+	LatestReleasedVersion8x = "8.19.20"
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
@@ -29,6 +30,46 @@ func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
 	if !isValid {
 		t.SkipNow()
 	}
+
+	SkipUnsupportedStackVariantVersions(t, srcVersion, dstVersion)
+}
+
+func SkipUnsupportedStackVariantVersions(t *testing.T, versions ...string) {
+	t.Helper()
+
+	if Ctx().ContainerSuffix != container.WolfiSuffix {
+		return
+	}
+
+	for _, v := range versions {
+		ver, err := version.Parse(v)
+		if err != nil {
+			t.Fatalf("SkipUnsupportedStackVariantVersions: failed to parse version %q: %v", v, err)
+		}
+		if supported, reason := isVersionSupportedForWolfi(ver); !supported {
+			t.Skipf("%s", reason)
+		}
+	}
+}
+
+// isVersionSupportedForWolfi reports whether the given version has Wolfi image variants that ECK can use.
+// All stack components publish a -wolfi image variant starting with 8.16.0. However, Logstash lacks the
+// openssl binary needed by ECK to inject TLS certificates until 8.16.4, 8.17.2, and 8.18+; without it
+// the operator cannot bring up a Logstash instance in a TLS-enabled cluster (see https://github.com/elastic/logstash/issues/16965).
+// APM does not offer a shell in any Wolfi variant version, but this affects only secure settings functionality;
+// the respective tests are skipped individually.
+func isVersionSupportedForWolfi(ver version.Version) (bool, string) {
+	switch {
+	case ver.Major == 7:
+		return false, fmt.Sprintf("version %s is unsupported for Wolfi image variants", ver)
+	case ver.Major == 8 && ver.Minor < 16:
+		return false, fmt.Sprintf("version %s is unsupported for Wolfi image variants", ver)
+	case ver.Major == 8 && ver.Minor == 16 && ver.Patch < 4:
+		return false, fmt.Sprintf("version %s is unsupported for Wolfi image variants", ver)
+	case ver.Major == 8 && ver.Minor == 17 && ver.Patch < 2:
+		return false, fmt.Sprintf("version %s is unsupported for Wolfi image variants", ver)
+	}
+	return true, ""
 }
 
 // isValidUpgrade reports whether an upgrade from one version to another version is valid.
