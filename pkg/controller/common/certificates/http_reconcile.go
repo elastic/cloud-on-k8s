@@ -117,7 +117,9 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	caCertProvided := true
 
 	if customCertificates.HasLeafCertificate() {
-		caCertProvided, needsUpdate = r.populateFromCustomCertificateContents(&secret, customCertificates, ca)
+		var certNeedsUpdate bool
+		caCertProvided, certNeedsUpdate = r.populateFromCustomCertificateContents(&secret, customCertificates, ca)
+		needsUpdate = needsUpdate || certNeedsUpdate
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
 			ctx, &secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
