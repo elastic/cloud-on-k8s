@@ -19,6 +19,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+func assertConfigVolumeDefaultMode(t *testing.T, pod corev1.PodTemplateSpec) {
+	t.Helper()
+	for _, vol := range pod.Spec.Volumes {
+		if vol.Name == ConfigVolumeName {
+			require.NotNil(t, vol.Secret, "config volume has no Secret source")
+			require.NotNil(t, vol.Secret.DefaultMode, "config volume DefaultMode is nil")
+			require.Equal(t, int32(0444), *vol.Secret.DefaultMode)
+			return
+		}
+	}
+	t.Errorf("config volume %q not found in pod spec", ConfigVolumeName)
+}
+
 func agentContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequirements, bool) {
 	for i := range pod.Spec.Containers {
 		if pod.Spec.Containers[i].Name == ContainerName {
@@ -163,6 +176,7 @@ func TestAgentStandaloneResources(t *testing.T) {
 			res, ok := agentContainerResources(pod)
 			require.True(t, ok, "agent container not found")
 			tt.assert(t, res)
+			assertConfigVolumeDefaultMode(t, pod)
 		})
 	}
 }
@@ -224,6 +238,7 @@ func TestAgentFleetResources(t *testing.T) {
 			res, ok := agentContainerResources(pod)
 			require.True(t, ok, "agent container not found in fleet mode")
 			tt.assert(t, res)
+			assertConfigVolumeDefaultMode(t, pod)
 		})
 	}
 }
