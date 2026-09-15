@@ -147,7 +147,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, resour
 		t.Run(tc.Name, func(t *testing.T) {
 			uid := tc.Name
 			payload := &admissionv1.AdmissionReview{
-				TypeMeta: metav1.TypeMeta{Kind: "AdmissionReview"},
+				Kind: "AdmissionReview",
 				Request: &admissionv1.AdmissionRequest{
 					UID:       types.UID(uid),
 					Kind:      gvk,

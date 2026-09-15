@@ -33,10 +33,8 @@ func (v SharedVolume) VolumeMount() corev1.VolumeMount {
 
 func (v SharedVolume) Volume() corev1.Volume {
 	return corev1.Volume{
-		Name: v.VolumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
+		Name:     v.VolumeName,
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	}
 }
 
@@ -65,10 +63,8 @@ func (v SharedVolumeArray) Volumes() []corev1.Volume {
 	volumes := make([]corev1.Volume, len(v.Array))
 	for i, v := range v.Array {
 		volumes[i] = corev1.Volume{
-			Name: v.VolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
+			Name:     v.VolumeName,
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
 	}
 	return volumes

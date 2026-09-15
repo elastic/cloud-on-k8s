@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -19,12 +18,12 @@ import (
 
 func Test_getEnvVars(t *testing.T) {
 	fakeLogstashUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "logstash-sample-default-elasticsearch-sample-logstash-user", Namespace: "default"},
-		Data:       map[string][]byte{"default-logstash-sample-default-elasticsearch-sample-logstash-user": []byte("1234567890")},
+		Name: "logstash-sample-default-elasticsearch-sample-logstash-user", Namespace: "default",
+		Data: map[string][]byte{"default-logstash-sample-default-elasticsearch-sample-logstash-user": []byte("1234567890")},
 	}
 
 	fakeExternalEsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "external-cloud-es-ref", Namespace: "default"},
+		Name: "external-cloud-es-ref", Namespace: "default",
 		Data: map[string][]byte{
 			"url":      []byte("https://some.gcp.cloud.es.io"),
 			"username": []byte("fake_user"),
@@ -37,8 +36,8 @@ func Test_getEnvVars(t *testing.T) {
 			Spec: logstashv1alpha1.LogstashSpec{
 				ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 					{
-						ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch-sample", Namespace: "default"}},
-						ClusterName:           "production",
+						Name: "elasticsearch-sample", Namespace: "default",
+						ClusterName: "production",
 					},
 				},
 			},
@@ -85,10 +84,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
-							},
-							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 						},
 					},
 				},
@@ -114,10 +111,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
-							},
-							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 						},
 					},
 				},
@@ -144,10 +139,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
-							},
-							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 						},
 					},
 				},
@@ -176,10 +169,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "external-cloud-es-ref",
-							},
-							Key: "password",
+							Name: "external-cloud-es-ref",
+							Key:  "password",
 						},
 					},
 				},

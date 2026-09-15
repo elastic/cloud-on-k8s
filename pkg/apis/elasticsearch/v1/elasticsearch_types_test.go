@@ -119,9 +119,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					DeletionTimestamp: tt.deletionTimestamp,
-				},
+				DeletionTimestamp: tt.deletionTimestamp,
 			}
 			require.Equal(t, tt.want, e.IsMarkedForDeletion())
 		})
@@ -494,10 +492,8 @@ func TestGetRestartAllocationDelayAnnotation(t *testing.T) {
 func Test_AssociationConfs(t *testing.T) {
 	// simple es without associations
 	es := &Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es",
-			Namespace: "default",
-		},
+		Name:      "es",
+		Namespace: "default",
 	}
 	assert.Equal(t, 0, len(es.GetAssociations()))
 	assert.Equal(t, 0, len(es.AssocConfs))
@@ -508,13 +504,11 @@ func Test_AssociationConfs(t *testing.T) {
 		Namespace: "default",
 	}
 	esMon := &Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "esmon",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"association.k8s.elastic.co/es-conf-4154131866": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
-				"association.k8s.elastic.co/es-conf-611214426":  `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
-			},
+		Name:      "esmon",
+		Namespace: "default",
+		Annotations: map[string]string{
+			"association.k8s.elastic.co/es-conf-4154131866": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+			"association.k8s.elastic.co/es-conf-611214426":  `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
 		},
 		Spec: ElasticsearchSpec{
 			Monitoring: commonv1.Monitoring{

@@ -13,7 +13,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -85,12 +84,10 @@ func ReconcileConfig(ctx context.Context, driver driver.Interface, ent entv1.Ent
 
 	// Reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   ent.Namespace,
-			Name:        ConfigName(ent.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
+		Namespace:   ent.Namespace,
+		Name:        ConfigName(ent.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFilename:         cfgBytes,
 			ReadinessProbeFilename: readinessProbeBytes,

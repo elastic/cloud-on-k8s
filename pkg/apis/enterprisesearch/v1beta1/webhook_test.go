@@ -304,11 +304,9 @@ func TestWebhook(t *testing.T) {
 
 func mkEnterpriseSearch(uid string) *entv1beta1.EnterpriseSearch {
 	return &entv1beta1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: entv1beta1.EnterpriseSearchSpec{
 			Version: "7.7.0",
 		},

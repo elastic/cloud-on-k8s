@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_FileRealm_MergeWith(t *testing.T) {
@@ -43,7 +42,7 @@ func Test_FileRealm_PasswordHashForUser(t *testing.T) {
 
 func Test_FromSecret(t *testing.T) {
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "fileRealmSecret"},
+		Namespace: "ns", Name: "fileRealmSecret",
 		Data: map[string][]byte{
 			UsersRolesFile: []byte(`role1:user1,user2
 role2:user1

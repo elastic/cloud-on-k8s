@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -34,12 +33,10 @@ func asJSON(obj any) []byte {
 
 func esPod(namespace, clusterName, name, triggerValue string) *corev1.Pod {
 	p := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: clusterName,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			label.ClusterNameLabelName: clusterName,
 		},
 	}
 	if triggerValue != "" {
@@ -73,8 +70,8 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				}},
 			},
@@ -89,8 +86,8 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "unmanaged", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "unmanaged", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				}},
 			},
@@ -105,8 +102,8 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-						Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "es",
+						Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				}},
 			},
@@ -122,14 +119,14 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 4}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 4}}},
 					}),
 				},
 			}},
@@ -144,14 +141,14 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -167,14 +164,14 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.1", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -190,14 +187,14 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.18.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.18.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "9.0.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -213,7 +210,7 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "8.9.0",
 							NodeSets: []esv1.NodeSet{
@@ -258,7 +255,7 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "8.9.0",
 							NodeSets: []esv1.NodeSet{
@@ -305,8 +302,8 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				}},
 			},
@@ -325,18 +322,16 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -355,18 +350,16 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -384,18 +377,16 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -414,22 +405,18 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v2"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v2"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -447,18 +434,16 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartTriggerAnnotation: "v1"},
+						Spec:        esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -480,21 +465,17 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "ns",
-							Name:      "name",
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns",
+						Name:      "name",
+						Spec:      esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -515,12 +496,10 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace:   "ns",
-							Name:        "name",
-							Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
-						},
-						Spec: esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace:   "ns",
+						Name:        "name",
+						Annotations: map[string]string{esv1.RestartAllocationDelayAnnotation: "-10s"},
+						Spec:        esv1.ElasticsearchSpec{Version: "8.19.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},
@@ -538,7 +517,7 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "8.9.0",
 							NodeSets: []esv1.NodeSet{
@@ -564,7 +543,7 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "9.3.0",
 							NodeSets: []esv1.NodeSet{
@@ -581,15 +560,15 @@ func Test_validator_Handle(t *testing.T) {
 			name: "accept creation with FIPS below managed-keystore min when keystore password comes from envFrom secret",
 			fields: fields{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ks-envfrom"},
-					Data:       map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/expected")},
+					Namespace: "ns", Name: "ks-envfrom",
+					Data: map[string][]byte{"KEYSTORE_PASSWORD_FILE": []byte("/expected")},
 				}),
 			},
 			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "9.3.0",
 							NodeSets: []esv1.NodeSet{
@@ -604,7 +583,7 @@ func Test_validator_Handle(t *testing.T) {
 													Name: esv1.ElasticsearchContainerName,
 													EnvFrom: []corev1.EnvFromSource{
 														{SecretRef: &corev1.SecretEnvSource{
-															LocalObjectReference: corev1.LocalObjectReference{Name: "ks-envfrom"},
+															Name: "ks-envfrom",
 														}},
 													},
 												},
@@ -629,7 +608,7 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Create,
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
+						Namespace: "ns", Name: "name",
 						Spec: esv1.ElasticsearchSpec{
 							Version: "9.3.0",
 							NodeSets: []esv1.NodeSet{
@@ -644,7 +623,7 @@ func Test_validator_Handle(t *testing.T) {
 													Name: esv1.ElasticsearchContainerName,
 													EnvFrom: []corev1.EnvFromSource{
 														{SecretRef: &corev1.SecretEnvSource{
-															LocalObjectReference: corev1.LocalObjectReference{Name: "missing-envfrom-secret"},
+															Name: "missing-envfrom-secret",
 														}},
 													},
 												},
@@ -669,14 +648,14 @@ func Test_validator_Handle(t *testing.T) {
 				Operation: admissionv1.Update,
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "7.10.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "7.10.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 				Object: runtime.RawExtension{
 					Raw: asJSON(&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "name"},
-						Spec:       esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
+						Namespace: "ns", Name: "name",
+						Spec: esv1.ElasticsearchSpec{Version: "7.9.0", NodeSets: []esv1.NodeSet{{Name: "set1", Count: 3}}},
 					}),
 				},
 			}},

@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -49,7 +48,7 @@ func Test_validClientAuthentication(t *testing.T) {
 		{
 			name: "client auth disabled: no error",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					FleetServerEnabled: true,
@@ -68,7 +67,7 @@ func Test_validClientAuthentication(t *testing.T) {
 		{
 			name: "client auth enabled, enterprise license: no error",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					FleetServerEnabled: true,
@@ -87,7 +86,7 @@ func Test_validClientAuthentication(t *testing.T) {
 		{
 			name: "client auth enabled, no enterprise license: error",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					FleetServerEnabled: true,
@@ -107,7 +106,7 @@ func Test_validClientAuthentication(t *testing.T) {
 		{
 			name: "client auth enabled, license check error: no error (fail-open)",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					FleetServerEnabled: true,
@@ -148,7 +147,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "valid agent without client auth",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:    "8.15.0",
 					Mode:       agentv1alpha1.AgentStandaloneMode,
@@ -161,7 +160,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, unsupported version, without enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -183,7 +182,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, unsupported version, with enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.15.0",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -205,7 +204,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, version 8.19.18 (below boundary), with enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "8.19.18",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -227,7 +226,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, version 9.3.7 (below boundary), with enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "9.3.7",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -249,7 +248,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, version 9.4.3 (below boundary), with enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "9.4.3",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -271,7 +270,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, supported version, without enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "9.5.0",
 					Mode:               agentv1alpha1.AgentFleetMode,
@@ -293,7 +292,7 @@ func Test_webhookValidator_validate(t *testing.T) {
 		{
 			name: "client auth enabled, supported version, with enterprise license",
 			agent: &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "ns"},
+				Name: "agent", Namespace: "ns",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            "9.5.0",
 					Mode:               agentv1alpha1.AgentFleetMode,

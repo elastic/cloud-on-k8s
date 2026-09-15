@@ -380,14 +380,12 @@ func mockFleetResponsesWithSpace(rs map[request]response, spaceID string) *mockF
 		panic(fmt.Sprintf("unexpected request %+v", r))
 	}
 	return &mockFleetAPI{
-		fleetAPI: fleetAPI{
-			client: &http.Client{
-				Transport: RoundTripFunc(fn),
-			},
-			spacePrefix: spacePrefix,
-			log:         ulog.Log,
+		client: &http.Client{
+			Transport: RoundTripFunc(fn),
 		},
-		callLog:  callLog,
-		requests: rs,
+		spacePrefix: spacePrefix,
+		log:         ulog.Log,
+		callLog:     callLog,
+		requests:    rs,
 	}
 }

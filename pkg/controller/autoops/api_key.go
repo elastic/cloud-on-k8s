@@ -12,7 +12,6 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
@@ -116,11 +115,9 @@ func (r *AgentPolicyReconciler) createAPIKey(
 	metadata := newMetadataFor(&policy, &es, expectedHash)
 
 	apiKeyResp, err := esClient.CreateAPIKey(ctx, esclient.APIKeyCreateRequest{
-		Name: apiKeyName,
-		APIKeyUpdateRequest: esclient.APIKeyUpdateRequest{
-			RoleDescriptors: apiKeySpec.roleDescriptors,
-			Metadata:        metadata,
-		},
+		Name:            apiKeyName,
+		RoleDescriptors: apiKeySpec.roleDescriptors,
+		Metadata:        metadata,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("while creating API key %s: %w", apiKeyName, err)
@@ -274,12 +271,10 @@ func buildAutoOpsESAPIKeySecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es es
 	delete(meta.Labels, commonapikey.MetadataKeyManagedBy)
 
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secretName,
-			Namespace:   policy.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        secretName,
+		Namespace:   policy.GetNamespace(),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			apiKeySecretKey: []byte(encodedKey),
 		},
@@ -340,7 +335,7 @@ func cleanupAutoOpsESAPIKey(
 	}
 	defer esClient.Close()
 
-	apiKeyName := apiKeyNameFor(autoopsv1alpha1.AutoOpsAgentPolicy{ObjectMeta: metav1.ObjectMeta{Namespace: policyNamespace, Name: policyName}}, es)
+	apiKeyName := apiKeyNameFor(autoopsv1alpha1.AutoOpsAgentPolicy{Namespace: policyNamespace, Name: policyName}, es)
 
 	// Check if API key exists
 	activeAPIKeys, err := esClient.GetAPIKeysByName(ctx, apiKeyName)

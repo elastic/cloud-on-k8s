@@ -15,7 +15,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -56,10 +55,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 							},
@@ -79,10 +76,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.11.1",
 							},
@@ -103,10 +98,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								Monitoring: commonv1.Monitoring{
@@ -129,10 +122,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								Monitoring: commonv1.Monitoring{
@@ -156,10 +147,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								Monitoring: commonv1.Monitoring{
@@ -184,10 +173,8 @@ func Test_webhook_Create(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								Monitoring: commonv1.Monitoring{
@@ -242,10 +229,8 @@ func Test_webhook_Update(t *testing.T) {
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 							},
@@ -255,10 +240,8 @@ func Test_webhook_Update(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.1",
 							},
@@ -278,10 +261,8 @@ func Test_webhook_Update(t *testing.T) {
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.1",
 							},
@@ -291,10 +272,8 @@ func Test_webhook_Update(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 							},
@@ -315,16 +294,13 @@ func Test_webhook_Update(t *testing.T) {
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											Resources: corev1.VolumeResourceRequirements{
 												Requests: corev1.ResourceList{
@@ -341,16 +317,13 @@ func Test_webhook_Update(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											Resources: corev1.VolumeResourceRequirements{
 												Requests: corev1.ResourceList{
@@ -377,16 +350,13 @@ func Test_webhook_Update(t *testing.T) {
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											Resources: corev1.VolumeResourceRequirements{
 												Requests: corev1.ResourceList{
@@ -403,16 +373,13 @@ func Test_webhook_Update(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											Resources: corev1.VolumeResourceRequirements{
 												Requests: corev1.ResourceList{
@@ -440,16 +407,13 @@ func Test_webhook_Update(t *testing.T) {
 				OldObject: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											Resources: corev1.VolumeResourceRequirements{
 												Requests: corev1.ResourceList{
@@ -466,16 +430,13 @@ func Test_webhook_Update(t *testing.T) {
 				Object: runtime.RawExtension{
 					Raw: asJSON(
 						&v1alpha1.Logstash{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "webhook-test",
-								Namespace: "ns",
-							},
+							Name:      "webhook-test",
+							Namespace: "ns",
 							Spec: v1alpha1.LogstashSpec{
 								Version: "8.12.0",
 								VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-									{ObjectMeta: metav1.ObjectMeta{
+									{
 										Name: "test-pq",
-									},
 										Spec: corev1.PersistentVolumeClaimSpec{
 											AccessModes: []corev1.PersistentVolumeAccessMode{
 												corev1.ReadWriteOnce,

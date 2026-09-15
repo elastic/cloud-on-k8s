@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +42,7 @@ var _ driver.Interface = fakeDriver{}
 func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
-	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
+	res := corev1.ConfigMap{Namespace: resNsn.Namespace, Name: resNsn.Name}
 	secretWatchName := SecretRefWatchName(resNsn)
 	cmWatchName := ConfigMapRefWatchName(resNsn)
 
@@ -62,11 +61,11 @@ func TestParsePipelinesRef(t *testing.T) {
 	}{
 		{
 			name:         "happy path - secret",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
@@ -77,11 +76,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "happy path - secret already watched",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
@@ -97,7 +96,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
@@ -112,7 +111,7 @@ func TestParsePipelinesRef(t *testing.T) {
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
@@ -125,7 +124,7 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:              "secret not found: error out but watch the future secret",
-			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:         "configFile.yml",
 			runtimeObjs:       []client.Object{},
 			want:              nil,
@@ -135,11 +134,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "missing key in the referenced secret: error out, watch the secret and emit an event",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"unexpected-key": []byte(`- "pipeline.id": "main"`),
 					}},
@@ -151,11 +150,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "invalid config in the referenced secret: error out, watch the secret and emit an event",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("this.is invalid config"),
 					}},
@@ -167,11 +166,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "happy path - configmap",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
+					Namespace: "ns", Name: "my-cm",
 					Data: map[string]string{
 						"configFile.yml": `- "pipeline.id": "main"`,
 					}},
@@ -182,7 +181,7 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:              "configmap not found: error out but watch the future configmap",
-			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			secretKey:         "configFile.yml",
 			runtimeObjs:       []client.Object{},
 			want:              nil,
@@ -192,11 +191,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "missing key in the referenced configmap: error out, watch the configmap and emit an event",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
+					Namespace: "ns", Name: "my-cm",
 					Data: map[string]string{
 						"unexpected-key": `- "pipeline.id": "main"`,
 					}},
@@ -208,11 +207,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "invalid config in the referenced configmap: error out, watch the configmap and emit an event",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
+					Namespace: "ns", Name: "my-cm",
 					Data: map[string]string{
 						"configFile.yml": "this.is invalid config",
 					}},
@@ -224,11 +223,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "switch from secret to configmap: secret watch cleared",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapRef: commonv1.ConfigMapRef{ConfigMapName: "my-cm"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-cm"},
+					Namespace: "ns", Name: "my-cm",
 					Data: map[string]string{
 						"configFile.yml": `- "pipeline.id": "main"`,
 					}},
@@ -240,11 +239,11 @@ func TestParsePipelinesRef(t *testing.T) {
 		},
 		{
 			name:         "switch from configmap to secret: configmap watch cleared",
-			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},

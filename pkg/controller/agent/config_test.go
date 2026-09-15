@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -26,10 +25,8 @@ import (
 var (
 	agentFixture = func() *agentv1alpha1.Agent {
 		return &agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent",
-				Namespace: "ns",
-			},
+			Name:      "agent",
+			Namespace: "ns",
 			Spec: agentv1alpha1.AgentSpec{
 				KibanaRef: commonv1.ObjectSelector{
 					Name:      "kibana",
@@ -93,10 +90,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 			name:  "happy path without ca",
 			agent: *assocWithoutCAFixture().Agent,
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "ns",
-				},
+				Name:      "secret-name",
+				Namespace: "ns",
 				Data: map[string][]byte{
 					"user": []byte("password"),
 				},
@@ -116,10 +111,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 			name:  "happy path with ca",
 			agent: *assocWithCAFixture().Agent,
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "ns",
-				},
+				Name:      "secret-name",
+				Namespace: "ns",
 				Data: map[string][]byte{
 					"user": []byte("password"),
 				},
@@ -149,10 +142,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 func Test_extractClientConnectionSettings(t *testing.T) {
 	// assoc secret all other cases are tested in TestExtractConnectionSettings
 	assocSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "secret-name",
-			Namespace: "ns",
-		},
+		Name:      "secret-name",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"user": []byte("password"),
 		},
@@ -164,10 +155,8 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 	certs, err := certificates.ParsePEMCerts(bytes)
 	require.NoError(t, err)
 	caSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ca-secret-name",
-			Namespace: "ns",
-		},
+		Name:      "ca-secret-name",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"ca.crt": bytes,
 		},
@@ -243,19 +232,13 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 
 func Test_buildOutputConfig_withClientCert(t *testing.T) {
 	agent := &agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "agent",
-			Namespace: "ns",
-		},
+		Name:      "agent",
+		Namespace: "ns",
 		Spec: agentv1alpha1.AgentSpec{
 			ElasticsearchRefs: []agentv1alpha1.Output{
 				{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{
-							Name:      "es",
-							Namespace: "es-ns",
-						},
-					},
+					Name:       "es",
+					Namespace:  "es-ns",
 					OutputName: "default",
 				},
 			},
@@ -276,10 +259,8 @@ func Test_buildOutputConfig_withClientCert(t *testing.T) {
 		Context: context.Background(),
 		Agent:   *agent,
 		Client: k8s.NewFakeClient(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "auth-secret",
-				Namespace: "ns",
-			},
+			Name:      "auth-secret",
+			Namespace: "ns",
 			Data: map[string][]byte{
 				"user": []byte("password"),
 			},

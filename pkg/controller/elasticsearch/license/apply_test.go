@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -134,10 +133,8 @@ func Test_applyLinkedLicense(t *testing.T) {
 			wantErr: false,
 			initialObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.LicenseSecretName("test"),
-						Namespace: "default",
-					},
+					Name:      esv1.LicenseSecretName("test"),
+					Namespace: "default",
 					Data: map[string][]byte{
 						"anything": []byte(fixtures.LicenseSample),
 					},
@@ -176,10 +173,8 @@ func Test_applyLinkedLicense(t *testing.T) {
 			wantErr: true,
 			initialObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.LicenseSecretName("test"),
-						Namespace: "default",
-					},
+					Name:      esv1.LicenseSecretName("test"),
+					Namespace: "default",
 				},
 			},
 		},
@@ -188,10 +183,8 @@ func Test_applyLinkedLicense(t *testing.T) {
 			wantErr: true,
 			initialObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.LicenseSecretName("test"),
-						Namespace: "default",
-					},
+					Name:      esv1.LicenseSecretName("test"),
+					Namespace: "default",
 					Data: map[string][]byte{
 						"anything2": {},
 					},

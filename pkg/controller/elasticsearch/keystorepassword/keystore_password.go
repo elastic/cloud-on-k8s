@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -77,12 +76,10 @@ func ReconcileKeystorePasswordSecret(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   secretName.Namespace,
-			Name:        secretName.Name,
-			Labels:      labels.AddCredentialsLabel(maps.Merge(label.NewLabels(k8s.ExtractNamespacedName(&es)), meta.Labels)),
-			Annotations: meta.Annotations,
-		},
+		Namespace:   secretName.Namespace,
+		Name:        secretName.Name,
+		Labels:      labels.AddCredentialsLabel(maps.Merge(label.NewLabels(k8s.ExtractNamespacedName(&es)), meta.Labels)),
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			KeystorePasswordKey: passwordBytes,
 		},
@@ -118,11 +115,9 @@ func DeleteKeystorePasswordSecret(ctx context.Context, c k8s.Client, es esv1.Ela
 func InjectKeystorePassword(builder *defaults.PodTemplateBuilder, secretName string) *defaults.PodTemplateBuilder {
 	sourcePasswordVolume := corev1.Volume{
 		Name: esvolume.KeystorePasswordSecretVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  secretName,
-				DefaultMode: new(int32(0440)),
-			},
+		Secret: &corev1.SecretVolumeSource{
+			SecretName:  secretName,
+			DefaultMode: new(int32(0440)),
 		},
 	}
 	sourcePasswordMount := corev1.VolumeMount{

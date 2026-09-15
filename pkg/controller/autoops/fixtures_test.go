@@ -14,10 +14,8 @@ import (
 
 func newAutoOpsAgentPolicy(modifiers ...func(*autoopsv1alpha1.AutoOpsAgentPolicy)) autoopsv1alpha1.AutoOpsAgentPolicy {
 	a := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "policy-1",
-			Namespace: "ns-1",
-		},
+		Name:      "policy-1",
+		Namespace: "ns-1",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
@@ -38,10 +36,8 @@ func newAutoOpsAgentPolicy(modifiers ...func(*autoopsv1alpha1.AutoOpsAgentPolicy
 
 func newSecret(modifiers ...func(*corev1.Secret)) *corev1.Secret {
 	s := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "config-secret",
-			Namespace: "ns-1",
-		},
+		Name:      "config-secret",
+		Namespace: "ns-1",
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
@@ -58,11 +54,9 @@ func newSecret(modifiers ...func(*corev1.Secret)) *corev1.Secret {
 
 func newElasticsearch(modifiers ...func(*esv1.Elasticsearch)) *esv1.Elasticsearch {
 	s := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-1",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-1",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Status: esv1.ElasticsearchStatus{
 			Phase: esv1.ElasticsearchReadyPhase,
 		},

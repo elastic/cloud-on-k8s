@@ -35,11 +35,9 @@ const (
 
 func Test_reconcileEsUser(t *testing.T) {
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-foo",
-			Namespace: "default",
-			UID:       "f8d564d9-885e-11e9-896d-08002703f062",
-		},
+		Name:      "es-foo",
+		Namespace: "default",
+		UID:       "f8d564d9-885e-11e9-896d-08002703f062",
 	}
 
 	var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
@@ -75,12 +73,10 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Reconcile updates existing labels",
 			args: args{
 				initialObjects: []client.Object{&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userName,
-						Namespace: "default",
-						Labels: map[string]string{
-							associationLabelName: kibanaFixture.Name,
-						},
+					Name:      userName,
+					Namespace: "default",
+					Labels: map[string]string{
+						associationLabelName: kibanaFixture.Name,
 					},
 				}},
 				kibana: kibanaFixture,
@@ -125,10 +121,8 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Existing secret but different namespace: create new",
 			args: args{
 				initialObjects: []client.Object{&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userSecretName,
-						Namespace: "other",
-					},
+					Name:      userSecretName,
+					Namespace: "other",
 				}},
 				kibana: kibanaFixture,
 				es:     esFixture,
@@ -153,10 +147,8 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Reconcile updates existing resources",
 			args: args{
 				initialObjects: []client.Object{&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      userSecretName,
-						Namespace: "default",
-					},
+					Name:      userSecretName,
+					Namespace: "default",
 				}},
 				kibana: kibanaFixture,
 				es:     esFixture,
@@ -175,28 +167,24 @@ func Test_reconcileEsUser(t *testing.T) {
 			args: args{
 				initialObjects: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "default",
-							Name:      userSecretName,
-							Labels: map[string]string{
-								associationLabelName:      kibanaFixture.Name,
-								associationLabelNamespace: kibanaFixture.Namespace,
-							},
+						Namespace: "default",
+						Name:      userSecretName,
+						Labels: map[string]string{
+							associationLabelName:      kibanaFixture.Name,
+							associationLabelNamespace: kibanaFixture.Namespace,
 						},
 						Data: map[string][]byte{
 							userName: []byte("my-secret-pw"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      userName,
-							Namespace: "default",
-							Labels: map[string]string{
-								associationLabelName:       kibanaFixture.Name,
-								associationLabelNamespace:  kibanaFixture.Namespace,
-								commonv1.TypeLabelName:     esuser.AssociatedUserType,
-								label.ClusterNameLabelName: esFixture.Name,
-							},
+						Name:      userName,
+						Namespace: "default",
+						Labels: map[string]string{
+							associationLabelName:       kibanaFixture.Name,
+							associationLabelNamespace:  kibanaFixture.Namespace,
+							commonv1.TypeLabelName:     esuser.AssociatedUserType,
+							label.ClusterNameLabelName: esFixture.Name,
 						},
 						Data: map[string][]byte{
 							esuser.UserNameField:     []byte(userName),

@@ -134,12 +134,10 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 	if err != nil && apierrors.IsNotFound(err) {
 		newUUID := k8suuid.NewUUID()
 		cfgMap := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: operatorNs,
-				Name:      UUIDCfgMapName,
-				Labels: map[string]string{
-					commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-				},
+			Namespace: operatorNs,
+			Name:      UUIDCfgMapName,
+			Labels: map[string]string{
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 			},
 			Data: map[string]string{
 				UUIDCfgMapKey: string(newUUID),

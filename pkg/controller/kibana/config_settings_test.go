@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -106,7 +105,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: defaultConfig,
 						},
@@ -129,7 +128,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -153,7 +152,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -187,10 +186,8 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 func TestNewConfigSettings(t *testing.T) {
 	defaultKb := mkKibana()
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(defaultKb.Name),
-			Namespace: defaultKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(defaultKb.Name),
+		Namespace: defaultKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encryptedSavedObjects.encryptionKey: thisismyobjectkey"),
 		},
@@ -269,7 +266,7 @@ func TestNewConfigSettings(t *testing.T) {
 					kb := mkKibana()
 					kb.Spec.Version = "8.0.0" // to use service accounts
 					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "test-es"},
+						Name: "test-es",
 					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName:   "auth-secret",
@@ -284,18 +281,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"token": []byte("AAEAAWVsYXN0aWMva2liYW5hL2RlZmF1bHRfa2liYW5hXzRjMWJkZTQzLWFiYjMtNDE0MC1hNDk4LTA4NDRkMDkwZjE3Yjplb3RYYlhDbThtOFgxU2pPelpqdktCcjB3V1NPNHZUQ0FRWU4yWEFNMGRyU1lrYTdNUWJXTHozY1lIVzF3YlZw"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -330,7 +323,7 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "test-es"},
+						Name: "test-es",
 					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
@@ -344,18 +337,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -393,9 +382,7 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ent-ca-secret",
-						},
+						Name: "ent-ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -420,7 +407,7 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-						ObjectSelector: commonv1.ObjectSelector{Name: "test-es"},
+						Name: "test-es",
 					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
@@ -443,28 +430,22 @@ func TestNewConfigSettings(t *testing.T) {
 					existingSecret,
 					// ent certs
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ent-ca-secret",
-						},
+						Name: "ent-ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
 					},
 					// es auth
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
 					},
 					// es certs
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -526,10 +507,8 @@ func TestNewConfigSettings(t *testing.T) {
 			name: "test existing secret does not prevent updates to config, e.g. spec takes precedence even if there is a secret indicating otherwise",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      kbv1.ConfigSecret(defaultKb.Name),
-						Namespace: defaultKb.Namespace,
-					},
+					Name:      kbv1.ConfigSecret(defaultKb.Name),
+					Namespace: defaultKb.Namespace,
 					Data: map[string][]byte{
 						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
@@ -551,10 +530,8 @@ func TestNewConfigSettings(t *testing.T) {
 			name: "test existing secret does not prevent removing items from config in spec",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      kbv1.ConfigSecret(defaultKb.Name),
-						Namespace: defaultKb.Namespace,
-					},
+					Name:      kbv1.ConfigSecret(defaultKb.Name),
+					Namespace: defaultKb.Namespace,
 					Data: map[string][]byte{
 						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
@@ -614,10 +591,8 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	reportKey := "reportKey"
 	savedObjsKey := "savedObjsKey"
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(kb.Name),
-			Namespace: kb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(kb.Name),
+		Namespace: kb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: fmt.Appendf(nil, "%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey),
 		},
@@ -673,48 +648,38 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 
 func mkKibana() kbv1.Kibana {
 	kb := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testkb",
-			Namespace: "testns",
-		},
-		Spec: kbv1.KibanaSpec{Version: "7.6.0"},
+		Name:      "testkb",
+		Namespace: "testns",
+		Spec:      kbv1.KibanaSpec{Version: "7.6.0"},
 	}
 	return kb
 }
 
 func Test_getExistingConfig(t *testing.T) {
 	testKb := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testkb",
-			Namespace: "testns",
-		},
+		Name:      "testkb",
+		Namespace: "testns",
 		Spec: kbv1.KibanaSpec{
 			Version: "7.6.0",
 		},
 	}
 	testValidSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: defaultConfig,
 		},
 	}
 	testNoYaml := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			"notarealkey": []byte(`:-{`),
 		},
 	}
 	testInvalidYaml := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: []byte(`:-{`),
 		},

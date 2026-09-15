@@ -284,11 +284,9 @@ func TestWebhook(t *testing.T) {
 
 func mkKibana(uid string) *kbv1beta1.Kibana {
 	return &kbv1beta1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: kbv1beta1.KibanaSpec{
 			Version: "7.17.0",
 		},

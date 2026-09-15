@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -23,10 +22,8 @@ import (
 func TestClusterFromResourceLabels(t *testing.T) {
 	// test when label is not set
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
+		Name:      "name",
+		Namespace: "namespace",
 	}
 	accessor, err := meta.Accessor(&pod)
 	require.NoError(t, err)

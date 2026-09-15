@@ -13,30 +13,38 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (
-	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
+	sampleStorageClass = storagev1.StorageClass{
+		Name: "sample-sc"}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
+		Name: "sample-claim",
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
+		Name: "sample-claim-2",
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
+
+	// claimWithoutStorageReq declares a storage class but no size, leaving Resources.Requests nil.
+	// That is the shape the autoscaling contract produces, and it is nil rather than empty because
+	// the field is omitempty all the way down.
+	claimWithoutStorageReq = corev1.PersistentVolumeClaim{
+		Name: "sample-claim",
+		Spec: corev1.PersistentVolumeClaimSpec{
+			StorageClassName: new(sampleStorageClass.Name),
+		}}
 )
 
 func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.PersistentVolumeClaim {
@@ -54,8 +62,8 @@ func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName strin
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
-			Spec:       esv1.ElasticsearchSpec{NodeSets: nodeSets},
+			Namespace: "ns", Name: "cluster",
+			Spec: esv1.ElasticsearchSpec{NodeSets: nodeSets},
 		}
 	}
 	type args struct {
@@ -80,7 +88,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -125,7 +133,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -145,7 +153,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -165,7 +173,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -185,7 +193,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, withStorageReq(sampleClaim2, "0.5Gi"),
 						}},
@@ -209,7 +217,7 @@ func Test_validPVCModification(t *testing.T) {
 				// The old StatefulSet "cluster-es-default" still exists with the original storageClass
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-default"},
+						Namespace: "ns", Name: "cluster-es-default",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, // original storageClass "sample-sc"
 						}},
@@ -217,6 +225,140 @@ func Test_validPVCModification(t *testing.T) {
 				validateStorageClass: true,
 			},
 			wantErr: true,
+		},
+		{
+			name: "claim with no resource requests at all: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claimWithoutStorageReq}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claimWithoutStorageReq}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-set1",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			// Moving the size out of the claim and into the shorthand must not read as a
+			// modification to the claim, which is what the storage-request normalisation is for.
+			name: "storage size moved out of the claim into the shorthand: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:                 "set1",
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claimWithoutStorageReq},
+						Resources:            esv1.NodeSetResources{Storage: new(resource.MustParse("1Gi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-set1",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "storage decrease via shorthand vs. existing statefulset: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:                 "set1",
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{claimWithoutStorageReq},
+						Resources:            esv1.NodeSetResources{Storage: new(resource.MustParse("500Mi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-set1",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							sampleClaim,
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			// Regression: when a nodeSet omits volumeClaimTemplates entirely, BuildStatefulSet
+			// injects the default elasticsearch-data claim via AppendDefaultPVCs before applying
+			// the storage shorthand. The validator must mirror that sequence; without it,
+			// proposedClaims is empty and the decrease check is silently skipped.
+			name: "storage decrease via shorthand on nodeSet without explicit VCTs: error",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1"},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:      "set1",
+						Resources: esv1.NodeSetResources{Storage: new(resource.MustParse("500Mi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-set1",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								Name: "elasticsearch-data",
+								Spec: corev1.PersistentVolumeClaimSpec{
+									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									}},
+								},
+							},
+						}},
+					}),
+				validateStorageClass: false,
+			},
+			wantErr: true,
+		},
+		{
+			name: "storage increase via shorthand on nodeSet without explicit VCTs: ok",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "set1"},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{
+						Name:      "set1",
+						Resources: esv1.NodeSetResources{Storage: new(resource.MustParse("5Gi"))},
+					},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-set1",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								Name: "elasticsearch-data",
+								Spec: corev1.PersistentVolumeClaimSpec{
+									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("1Gi"),
+									}},
+								},
+							},
+						}},
+					}),
+				validateStorageClass: false,
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -239,7 +381,7 @@ func Test_validPVCNaming(t *testing.T) {
 	}
 	esWithClaim := func(claimName string, es esv1.Elasticsearch) esv1.Elasticsearch {
 		es.Spec.NodeSets[0].VolumeClaimTemplates = append(es.Spec.NodeSets[0].VolumeClaimTemplates, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: claimName},
+			Name: claimName,
 		})
 		return es
 	}

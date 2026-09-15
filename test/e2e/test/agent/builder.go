@@ -388,18 +388,14 @@ func bind(b Builder, clusterRoleName string) Builder {
 		saName = fmt.Sprintf("%s-sa", b.Agent.Name)
 		b = b.WithPodTemplateServiceAccount(saName)
 		sa := &corev1.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      saName,
-				Namespace: b.Agent.Namespace,
-			},
+			Name:      saName,
+			Namespace: b.Agent.Namespace,
 		}
 		b.AdditionalObjects = append(b.AdditionalObjects, sa)
 	}
 
 	crb := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Agent.Namespace, b.Agent.Name),
-		},
+		Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Agent.Namespace, b.Agent.Name),
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
@@ -431,9 +427,7 @@ func (b Builder) WithSecureSettings(secretNames ...string) Builder {
 
 func (b Builder) WithConfigRef(secretName string) Builder {
 	b.Agent.Spec.ConfigRef = &commonv1.ConfigSource{
-		SecretRef: commonv1.SecretRef{
-			SecretName: secretName,
-		},
+		SecretName: secretName,
 	}
 
 	return b
@@ -457,10 +451,8 @@ func (b Builder) WithClientAuthenticationRequired() Builder {
 
 func (b Builder) WithEmptyDirDataVolume() Builder {
 	b.PodTemplate.Spec.Volumes = append(b.PodTemplate.Spec.Volumes, corev1.Volume{
-		Name: agent.DataVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
+		Name:     agent.DataVolumeName,
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	})
 	return b
 }
@@ -621,17 +613,15 @@ func ApplyYamls(t *testing.T, b Builder, configYaml, podTemplateYaml string) Bui
 
 func ToOutput(selector commonv1.ObjectSelector, outputName string) agentv1alpha1.Output {
 	return agentv1alpha1.Output{
-		ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: selector},
-		OutputName:            outputName,
+		ObjectSelector: selector,
+		OutputName:     outputName,
 	}
 }
 
 func ToOutputWithClientCert(selector commonv1.ObjectSelector, clientCertSecretName, outputName string) agentv1alpha1.Output {
 	return agentv1alpha1.Output{
-		ElasticsearchSelector: commonv1.ElasticsearchSelector{
-			ObjectSelector:              selector,
-			ClientCertificateSecretName: clientCertSecretName,
-		},
-		OutputName: outputName,
+		ObjectSelector:              selector,
+		ClientCertificateSecretName: clientCertSecretName,
+		OutputName:                  outputName,
 	}
 }

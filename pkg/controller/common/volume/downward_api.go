@@ -35,14 +35,12 @@ func (DownwardAPI) Name() string {
 func (d DownwardAPI) Volume() corev1.Volume {
 	downwardAPIVolume := corev1.Volume{
 		Name: volume.DownwardAPIVolumeName,
-		VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: volume.LabelsFile,
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.labels",
-						},
+		DownwardAPI: &corev1.DownwardAPIVolumeSource{
+			Items: []corev1.DownwardAPIVolumeFile{
+				{
+					Path: volume.LabelsFile,
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.labels",
 					},
 				},
 			},

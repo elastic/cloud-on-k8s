@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -20,7 +19,7 @@ import (
 )
 
 func associationFixture(conf *commonv1.AssociationConf) commonv1.Association {
-	withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
+	withAssoc := &beatv1beta1.Beat{Namespace: "test-ns"}
 	esAssoc := beatv1beta1.BeatESAssociation{Beat: withAssoc}
 	esAssoc.SetAssociationConf(conf)
 	return &esAssoc
@@ -51,10 +50,8 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		{
 			name: "association secret data missing",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "test-ns",
-				},
+				Name:      "secret-name",
+				Namespace: "test-ns",
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
 				AuthSecretName: "secret-name",
@@ -66,10 +63,8 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 		{
 			name: "association secret data present",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "test-ns",
-				},
+				Name:      "secret-name",
+				Namespace: "test-ns",
 				Data: map[string][]byte{
 					"secret-key": []byte("123"),
 				},
@@ -137,10 +132,8 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		{
 			name: "association with ca, ca secret present, ca.crt missing",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "test-ns",
-				},
+				Name:      "secret-name",
+				Namespace: "test-ns",
 			}),
 			assoc: associationFixture(&commonv1.AssociationConf{
 				CACertProvided: true,
@@ -152,10 +145,8 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 		{
 			name: "association with ca, ca secret and ca.crt present",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "ca-secret-name",
-					Namespace: "test-ns",
-				},
+				Name:      "ca-secret-name",
+				Namespace: "test-ns",
 				Data: map[string][]byte{
 					certificates.CAFileName: []byte("456"),
 				},
@@ -207,10 +198,8 @@ func Test_writeClientCertSecretToConfigHash(t *testing.T) {
 		{
 			name: "client cert secret with tls.crt and tls.key",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "client-cert-secret",
-					Namespace: "test-ns",
-				},
+				Name:      "client-cert-secret",
+				Namespace: "test-ns",
 				Data: map[string][]byte{
 					certificates.CertFileName: []byte("cert-data"),
 					certificates.KeyFileName:  []byte("key-data"),
@@ -224,10 +213,8 @@ func Test_writeClientCertSecretToConfigHash(t *testing.T) {
 		{
 			name: "client cert secret with only tls.crt",
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "client-cert-secret",
-					Namespace: "test-ns",
-				},
+				Name:      "client-cert-secret",
+				Namespace: "test-ns",
 				Data: map[string][]byte{
 					certificates.CertFileName: []byte("cert-only"),
 				},

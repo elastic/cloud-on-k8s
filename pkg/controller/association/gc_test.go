@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -35,14 +34,12 @@ func newUserSecret(
 	associationNamespaceValue, associationNameValue string,
 ) client.Object {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				associationNameLabel:      associationNameValue,
-				associationNamespaceLabel: associationNamespaceValue,
-				commonv1.TypeLabelName:    esuser.AssociatedUserType,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    esuser.AssociatedUserType,
 		},
 	}
 }
@@ -53,14 +50,12 @@ func newServiceAccountSecret(
 	associationNamespaceValue, associationNameValue string,
 ) client.Object {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				associationNameLabel:      associationNameValue,
-				associationNamespaceLabel: associationNamespaceValue,
-				commonv1.TypeLabelName:    esuser.ServiceAccountTokenType,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    esuser.ServiceAccountTokenType,
 		},
 	}
 }
@@ -74,22 +69,16 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
 		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana1",
-				Namespace: "ns1",
-			},
+			Name:      "kibana1",
+			Namespace: "ns1",
 		},
 		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana2",
-				Namespace: "ns2",
-			},
+			Name:      "kibana2",
+			Namespace: "ns2",
 		},
 		&apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm1",
-				Namespace: "ns1",
-			},
+			Name:      "apm1",
+			Namespace: "ns1",
 		},
 	)
 
@@ -151,22 +140,16 @@ func TestServiceAccountsGarbageCollector_GC(t *testing.T) {
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
 		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana1",
-				Namespace: "ns1",
-			},
+			Name:      "kibana1",
+			Namespace: "ns1",
 		},
 		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana2",
-				Namespace: "ns2",
-			},
+			Name:      "kibana2",
+			Namespace: "ns2",
 		},
 		&apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm1",
-				Namespace: "ns1",
-			},
+			Name:      "apm1",
+			Namespace: "ns1",
 		},
 	)
 

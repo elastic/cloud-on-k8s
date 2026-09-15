@@ -25,7 +25,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
-		test.CheckSpecNotOwnedByOperator(&b.ApmServer, k),
+		test.CheckFieldsNotOwnedByOperator(&b.ApmServer, k, nil),
 	}
 }
 

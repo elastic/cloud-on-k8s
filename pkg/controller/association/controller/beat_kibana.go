@@ -46,8 +46,8 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
+		ElasticsearchRef: getElasticsearchFromKibana,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
-			ElasticsearchRef: getElasticsearchFromKibana,
 			UserSecretSuffix: "beat-kb-user",
 			ESUserRole:       getBeatKibanaRoles,
 		},

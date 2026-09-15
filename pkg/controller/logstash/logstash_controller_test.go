@@ -38,13 +38,13 @@ import (
 
 var (
 	sampleStorageClass = storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
+		Name: "fixed",
 	}
 	fixedStorageClass = storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{Name: "fixed"},
+		Name: "fixed",
 	}
 	resizableStorageClass = storagev1.StorageClass{
-		ObjectMeta:           metav1.ObjectMeta{Name: "resizable"},
+		Name:                 "resizable",
 		AllowVolumeExpansion: new(true),
 	}
 )
@@ -61,7 +61,7 @@ func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 }
 
 func TestReconcileLogstash_Reconcile(t *testing.T) {
-	defaultLabels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "testLogstash"}}).GetIdentityLabels()
+	defaultLabels := (&logstashv1alpha1.Logstash{Name: "testLogstash"}).GetIdentityLabels()
 	tests := []struct {
 		name            string
 		objs            []client.Object
@@ -75,13 +75,11 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "valid unmanaged Logstash does not increment observedGeneration",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash",
-						Namespace:  "test",
-						Generation: 1,
-						Annotations: map[string]string{
-							common.ManagedAnnotation: "false",
-						},
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 1,
+					Annotations: map[string]string{
+						common.ManagedAnnotation: "false",
 					},
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.12.0",
@@ -121,11 +119,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "too long name fails validation, and updates observedGeneration",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstashwithtoolongofanamereallylongname",
-						Namespace:  "test",
-						Generation: 2,
-					},
+					Name:       "testLogstashwithtoolongofanamereallylongname",
+					Namespace:  "test",
+					Generation: 2,
 					Status: logstashv1alpha1.LogstashStatus{
 						ObservedGeneration: 1,
 					},
@@ -155,11 +151,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "Logstash with ready StatefulSet and Pod updates status and creates secrets and service",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash",
-						Namespace:  "test",
-						Generation: 2,
-					},
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.12.0",
 						Count:   1,
@@ -169,11 +163,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
 					Status: appsv1.StatefulSetStatus{
 						AvailableReplicas: 1,
 						Replicas:          1,
@@ -182,10 +174,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Spec: appsv1.StatefulSetSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name:      "logstash-data",
-									Namespace: "test",
-								},
+								Name:      "logstash-data",
+								Namespace: "test",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
@@ -199,12 +189,10 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash-ls",
-						Namespace:  "test",
-						Generation: 2,
-						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
-					},
+					Name:       "testLogstash-ls",
+					Namespace:  "test",
+					Generation: 2,
+					Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 					},
@@ -257,11 +245,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "Logstash with a custom service creates secrets and service",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash",
-						Namespace:  "test",
-						Generation: 2,
-					},
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.12.0",
 						Count:   1,
@@ -281,11 +267,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
 					Status: appsv1.StatefulSetStatus{
 						AvailableReplicas: 1,
 						Replicas:          1,
@@ -294,10 +278,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Spec: appsv1.StatefulSetSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name:      "logstash-data",
-									Namespace: "test",
-								},
+								Name:      "logstash-data",
+								Namespace: "test",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
@@ -311,12 +293,10 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash-ls",
-						Namespace:  "test",
-						Generation: 2,
-						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
-					},
+					Name:       "testLogstash-ls",
+					Namespace:  "test",
+					Generation: 2,
+					Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 					},
@@ -383,11 +363,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "Logstash with a service with no port creates secrets and service",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash",
-						Namespace:  "test",
-						Generation: 2,
-					},
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.12.0",
 						Count:   1,
@@ -405,16 +383,12 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&storagev1.StorageClass{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "default-sc",
-					},
+					Name: "default-sc",
 				},
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
 					Status: appsv1.StatefulSetStatus{
 						AvailableReplicas: 1,
 						Replicas:          1,
@@ -423,10 +397,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Spec: appsv1.StatefulSetSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name:      "logstash-data",
-									Namespace: "test",
-								},
+								Name:      "logstash-data",
+								Namespace: "test",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
@@ -440,12 +412,10 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash-ls",
-						Namespace:  "test",
-						Generation: 2,
-						Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
-					},
+					Name:       "testLogstash-ls",
+					Namespace:  "test",
+					Generation: 2,
+					Labels:     map[string]string{labels.NameLabelName: "testLogstash", VersionLabelName: "8.12.0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 					},
@@ -506,11 +476,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 			name: "Logstash with UpdateStrategy creates StatefulSet with UpdateStrategy",
 			objs: []client.Object{
 				&logstashv1alpha1.Logstash{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       "testLogstash",
-						Namespace:  "test",
-						Generation: 2,
-					},
+					Name:       "testLogstash",
+					Namespace:  "test",
+					Generation: 2,
 					Spec: logstashv1alpha1.LogstashSpec{
 						Version: "8.12.0",
 						Count:   1,
@@ -528,11 +496,9 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					},
 				},
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "3145706383"),
 					Status: appsv1.StatefulSetStatus{
 						AvailableReplicas: 1,
 						Replicas:          1,
@@ -541,10 +507,8 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 					Spec: appsv1.StatefulSetSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{
-									Name:      "logstash-data",
-									Namespace: "test",
-								},
+								Name:      "logstash-data",
+								Namespace: "test",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									StorageClassName: new(sampleStorageClass.Name),
 									Resources: corev1.VolumeResourceRequirements{
@@ -637,7 +601,7 @@ func TestReconcileLogstash_Reconcile(t *testing.T) {
 
 func TestReconcileLogstash_Resize(t *testing.T) {
 	ctx := context.Background()
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "test", Name: "testLogstash"}}
+	request := reconcile.Request{Namespace: "test", Name: "testLogstash"}
 
 	tests := []struct {
 		name            string
@@ -771,17 +735,15 @@ func setupFixtures(initialCapacity string, storage storagev1.StorageClass) *Reco
 
 func createPod() corev1.Pod {
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "testLogstash-ls-0",
-			Namespace:  "test",
-			UID:        uuid.NewUUID(),
-			Generation: 1,
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":               "logstash",
-				"logstash.k8s.elastic.co/name":             "testLogstash",
-				"logstash.k8s.elastic.co/statefulset-name": "testLogstash-ls",
-				"logstash.k8s.elastic.co/version":          "8.12.0",
-			},
+		Name:       "testLogstash-ls-0",
+		Namespace:  "test",
+		UID:        uuid.NewUUID(),
+		Generation: 1,
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":               "logstash",
+			"logstash.k8s.elastic.co/name":             "testLogstash",
+			"logstash.k8s.elastic.co/statefulset-name": "testLogstash-ls",
+			"logstash.k8s.elastic.co/version":          "8.12.0",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -792,18 +754,15 @@ func createPod() corev1.Pod {
 
 func createLogstash(capacity string, storageClassName string) logstashv1alpha1.Logstash {
 	ls := logstashv1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "testLogstash",
-			UID:       uuid.NewUUID(),
-		},
+		Namespace: "test",
+		Name:      "testLogstash",
+		UID:       uuid.NewUUID(),
 		Spec: logstashv1alpha1.LogstashSpec{
 			Version: "8.12.0",
 			Count:   1,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{
+				{
 					Name: "test-pq",
-				},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
@@ -820,17 +779,15 @@ func createLogstash(capacity string, storageClassName string) logstashv1alpha1.L
 }
 
 func TestReconcileLogstash_PauseOrchestration(t *testing.T) {
-	defaultLabels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "testLogstash"}}).GetIdentityLabels()
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "test", Name: "testLogstash"}}
+	defaultLabels := (&logstashv1alpha1.Logstash{Name: "testLogstash"}).GetIdentityLabels()
+	request := reconcile.Request{Namespace: "test", Name: "testLogstash"}
 
 	pausedLogstash := &logstashv1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "testLogstash",
-			Namespace:  "test",
-			Generation: 2,
-			Annotations: map[string]string{
-				common.PauseOrchestrationAnnotation: "true",
-			},
+		Name:       "testLogstash",
+		Namespace:  "test",
+		Generation: 2,
+		Annotations: map[string]string{
+			common.PauseOrchestrationAnnotation: "true",
 		},
 		Spec: logstashv1alpha1.LogstashSpec{
 			Version: "8.12.0",
@@ -848,11 +805,9 @@ func TestReconcileLogstash_PauseOrchestration(t *testing.T) {
 			objs: []client.Object{
 				pausedLogstash,
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
 					Status: appsv1.StatefulSetStatus{
 						ReadyReplicas:   1,
 						CurrentRevision: "rev-a",
@@ -867,11 +822,9 @@ func TestReconcileLogstash_PauseOrchestration(t *testing.T) {
 			objs: []client.Object{
 				pausedLogstash,
 				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testLogstash-ls",
-						Namespace: "test",
-						Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
-					},
+					Name:      "testLogstash-ls",
+					Namespace: "test",
+					Labels:    addLabel(defaultLabels, hash.TemplateHashLabelName, "existing"),
 					Status: appsv1.StatefulSetStatus{
 						ReadyReplicas:   1,
 						CurrentRevision: "rev-a",

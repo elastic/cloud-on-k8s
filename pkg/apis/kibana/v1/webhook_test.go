@@ -237,7 +237,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname"},
+					Name: "esname",
 				}
 				return serialize(t, ent)
 			},
@@ -250,7 +250,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -263,7 +263,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", ServiceName: "esns"},
+					Name: "esname", ServiceName: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -276,7 +276,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				ent := mkKibana(uid)
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{SecretName: "esname"},
+					SecretName: "esname",
 				}
 				return serialize(t, ent)
 			},
@@ -289,7 +289,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Name: "esname"},
+					SecretName: "esname", Name: "esname",
 				}
 				return serialize(t, kb)
 			},
@@ -305,7 +305,7 @@ func TestWebhook(t *testing.T) {
 				kb := mkKibana(uid)
 				kb.Spec.Version = "7.10.0"
 				kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Name: "esname"},
+					SecretName: "esname", Name: "esname",
 				}
 				return serialize(t, kb)
 			},
@@ -321,7 +321,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", Namespace: "esns"},
+					SecretName: "esname", Namespace: "esns",
 				}
 				return serialize(t, kb)
 			},
@@ -336,7 +336,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				kb := mkKibana(uid)
 				kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{SecretName: "esname", ServiceName: "esname"},
+					SecretName: "esname", ServiceName: "esname",
 				}
 				return serialize(t, kb)
 			},
@@ -353,7 +353,7 @@ func TestWebhook(t *testing.T) {
 				ent.Spec.Version = "7.17.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -371,7 +371,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -386,7 +386,7 @@ func TestWebhook(t *testing.T) {
 				ent.Spec.Version = "7.13.0"
 				ent.Spec.Monitoring = commonv1.Monitoring{Metrics: commonv1.MetricsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{Name: "esmonname", Namespace: "esmonns"}}}}
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -406,7 +406,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -426,7 +426,7 @@ func TestWebhook(t *testing.T) {
 					Logs:    commonv1.LogsMonitoring{ElasticsearchRefs: []commonv1.ObjectSelector{{SecretName: "es2monname", ServiceName: "xx"}}},
 				}
 				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
-					ObjectSelector: commonv1.ObjectSelector{Name: "esname", Namespace: "esns"},
+					Name: "esname", Namespace: "esns",
 				}
 				return serialize(t, ent)
 			},
@@ -487,11 +487,9 @@ func TestWebhook(t *testing.T) {
 
 func mkKibana(uid string) *kbv1.Kibana {
 	return &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: kbv1.KibanaSpec{
 			Version: "7.17.0",
 		},

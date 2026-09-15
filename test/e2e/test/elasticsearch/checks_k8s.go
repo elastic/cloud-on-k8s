@@ -56,7 +56,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckClusterUUIDAnnotation(b.Elasticsearch, k),
 	}
 	if !b.skipSpecOwnership {
-		steps = append(steps, test.CheckSpecNotOwnedByOperator(&b.Elasticsearch, k))
+		steps = append(steps, test.CheckFieldsNotOwnedByOperator(&b.Elasticsearch, k, b.allowedOwnedFields))
 	}
 	return steps
 }

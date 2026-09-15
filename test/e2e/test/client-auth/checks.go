@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -98,10 +97,8 @@ func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, cer
 				Test: func(t *testing.T) {
 					t.Helper()
 					secret := corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      secretName,
-							Namespace: namespace,
-						},
+						Name:      secretName,
+						Namespace: namespace,
 						Data: map[string][]byte{
 							certificates.CertFileName: certPEM,
 							certificates.KeyFileName:  keyPEM,
@@ -120,10 +117,8 @@ func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, cer
 				Test: func(t *testing.T) {
 					t.Helper()
 					secret := corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      secretName,
-							Namespace: namespace,
-						},
+						Name:      secretName,
+						Namespace: namespace,
 					}
 					_ = k.Client.Delete(context.Background(), &secret)
 				},

@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -28,10 +27,8 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 	esName := "test-es"
 	configMapName := "test-es-es-scripts"
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esName,
-			Namespace: namespace,
-		},
+		Name:      esName,
+		Namespace: namespace,
 	}
 
 	tests := []struct {
@@ -73,12 +70,10 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			name: "updates existing config map",
 			initialObjects: []client.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        configMapName,
-						Namespace:   namespace,
-						Labels:      map[string]string{"existing-label": "old-value"},
-						Annotations: map[string]string{"existing-annotation": "old-value"},
-					},
+					Name:        configMapName,
+					Namespace:   namespace,
+					Labels:      map[string]string{"existing-label": "old-value"},
+					Annotations: map[string]string{"existing-annotation": "old-value"},
 					Data: map[string]string{
 						"existing-key": "existing-value",
 					},

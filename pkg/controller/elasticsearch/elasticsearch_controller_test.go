@@ -42,10 +42,8 @@ type esBuilder struct {
 func newBuilder(name, namespace string) *esBuilder {
 	return &esBuilder{
 		es: &esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
+			Name:      name,
+			Namespace: namespace,
 		},
 	}
 }

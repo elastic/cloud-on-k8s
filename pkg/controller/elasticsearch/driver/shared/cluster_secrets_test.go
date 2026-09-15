@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -23,8 +22,8 @@ import (
 
 func testElasticsearch(secureSettings ...commonv1.SecretSource) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "ns"},
-		Spec:       esv1.ElasticsearchSpec{SecureSettings: secureSettings},
+		Name: "test-es", Namespace: "ns",
+		Spec: esv1.ElasticsearchSpec{SecureSettings: secureSettings},
 	}
 }
 
@@ -46,7 +45,7 @@ func TestBuildClusterSecrets(t *testing.T) {
 			secureSettings: []commonv1.SecretSource{{SecretName: "my-secure-settings"}},
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secure-settings"},
+					Namespace: "ns", Name: "my-secure-settings",
 					Data: map[string][]byte{
 						"s3.client.default.access_key": []byte("AKIAIOSFODNN7EXAMPLE"),
 						"s3.client.default.secret_key": []byte("wJalrXUtnFEMI/K7MDENG"),
@@ -68,8 +67,8 @@ func TestBuildClusterSecrets(t *testing.T) {
 			secureSettings: []commonv1.SecretSource{{SecretName: "watched-secret"}},
 			objects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "watched-secret"},
-					Data:       map[string][]byte{"key": []byte("value")},
+					Namespace: "ns", Name: "watched-secret",
+					Data: map[string][]byte{"key": []byte("value")},
 				},
 			},
 			wantStringSecrets: map[string]any{"key": "value"},

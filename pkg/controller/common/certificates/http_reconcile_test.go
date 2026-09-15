@@ -56,12 +56,10 @@ var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
 	cert, pemTLS      []byte
-	testES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	testES            = esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
 	testSvc           = corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-service",
-			Namespace: "default",
-		},
+		Name:      "test-service",
+		Namespace: "default",
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "2.2.3.3",
 		},
@@ -113,17 +111,15 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	key := loadFileBytes("tls.key")
 
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
-		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
+		Name: "test-es-name", Namespace: "test-namespace",
+		Kind: esv1.Kind,
 	}
 
 	certificate := &CertificatesSecret{
-		Secret: corev1.Secret{
-			Data: map[string][]byte{
-				CAFileName:   ca,
-				CertFileName: tls,
-				KeyFileName:  key,
-			},
+		Data: map[string][]byte{
+			CAFileName:   ca,
+			CertFileName: tls,
+			KeyFileName:  key,
 		},
 	}
 
@@ -145,11 +141,9 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		wantSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespacedSecretName.Namespace,
-				Name:      namespacedSecretName.Name,
-				Labels:    labels,
-			},
+			Namespace: namespacedSecretName.Namespace,
+			Name:      namespacedSecretName.Name,
+			Labels:    labels,
 			Data: map[string][]byte{
 				CertFileName: tls,
 				CAFileName:   ca,
@@ -269,12 +263,10 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	assert.NoError(t, err, "Failed to encode private key")
 
 	customCertFixture := CertificatesSecret{
-		Secret: corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-			Data: map[string][]byte{
-				CertFileName: tls,
-				KeyFileName:  key,
-			},
+		Name: "my-cert", Namespace: "test-namespace",
+		Data: map[string][]byte{
+			CertFileName: tls,
+			KeyFileName:  key,
 		},
 	}
 	type args struct {
@@ -297,10 +289,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				initialObjects: []client.Object{
 					// es-http-ca-internal uses a new CA (rotated with same private key but different SKI)
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-ca-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-ca-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
 							"tls.crt": EncodePEMCert(testCAWithDifferentSKI.Cert.Raw), // new CA with different SKI
@@ -308,10 +298,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					},
 					// es-http-certs-internal holds cert signed by old CA
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-certs-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-certs-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
 							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain
@@ -352,10 +340,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				initialObjects: []client.Object{
 					// es-http-ca-internal uses a new CA (rotated with same private key AND same SKI)
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-ca-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-ca-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
 							"tls.crt": EncodePEMCert(testCAWithSameSKI.Cert.Raw), // new CA with same SKI
@@ -363,10 +349,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 					},
 					// es-http-certs-internal holds cert signed by old CA (but same SKI)
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-certs-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-certs-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
 							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain (same SKI)
@@ -497,13 +481,11 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				},
 				ca: testCA,
 				custCerts: &CertificatesSecret{
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-						Data: map[string][]byte{
-							CAFileName:   EncodePEMCert(testCA.Cert.Raw),
-							CertFileName: tls,
-							KeyFileName:  key,
-						},
+					Name: "my-cert", Namespace: "test-namespace",
+					Data: map[string][]byte{
+						CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+						CertFileName: tls,
+						KeyFileName:  key,
 					},
 				},
 			},
@@ -598,10 +580,8 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 				svcs: []corev1.Service{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "svc-namespace",
-							Name:      "svc-name",
-						},
+						Namespace: "svc-namespace",
+						Name:      "svc-name",
 						Spec: corev1.ServiceSpec{
 							ClusterIP: "10.11.12.13",
 						},
@@ -776,10 +756,8 @@ func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLe
 	// - ca.crt points to old CA
 	// - tls.crt contains a leaf signed by old CA and old CA in chain
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      InternalCertsSecretName(esv1.ESNamer, testES.Name),
-			Namespace: testES.Namespace,
-		},
+		Name:      InternalCertsSecretName(esv1.ESNamer, testES.Name),
+		Namespace: testES.Namespace,
 		Data: map[string][]byte{
 			KeyFileName:  privateKey,
 			CAFileName:   EncodePEMCert(testCA.Cert.Raw),

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -24,57 +23,37 @@ func TestEqual(t *testing.T) {
 		{
 			name: "same except for typemeta and rv",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expected: true,
 		},
 		{
 			name: "same including typemeta and rv",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			expected: true,
 		},
 		{
 			name: "different specs, different typemeta",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 				Spec: appsv1.StatefulSetSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -84,13 +63,9 @@ func TestEqual(t *testing.T) {
 				},
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expected: false,
 		},
@@ -98,13 +73,9 @@ func TestEqual(t *testing.T) {
 		{
 			name: "different specs, same typemeta",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 				Spec: appsv1.StatefulSetSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -114,13 +85,9 @@ func TestEqual(t *testing.T) {
 				},
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expected: false,
 		},
@@ -140,73 +107,49 @@ func TestDiff(t *testing.T) {
 		{
 			name: "same except for typemeta and rv",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expectDiff: false,
 		},
 		{
 			name: "same including typemeta and rv",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 			},
 			expectDiff: false,
 		},
 		{
 			name: "different labels, same otherwise to ensure we are only ignoring resourceversion",
 			a: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "sset0",
-					Labels: map[string]string{"label0": "val0"},
-				},
+				Name:   "sset0",
+				Labels: map[string]string{"label0": "val0"},
 			},
 			b: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "sset0",
-					Labels: map[string]string{"label1": "val1"},
-				},
+				Name:   "sset0",
+				Labels: map[string]string{"label1": "val1"},
 			},
 			expectDiff: true,
 		},
 		{
 			name: "different specs, different typemeta",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 				Spec: appsv1.StatefulSetSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -216,13 +159,9 @@ func TestDiff(t *testing.T) {
 				},
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expectDiff: true,
 		},
@@ -230,13 +169,9 @@ func TestDiff(t *testing.T) {
 		{
 			name: "different specs, same typemeta",
 			a: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "1",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "1",
 				Spec: appsv1.StatefulSetSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -246,13 +181,9 @@ func TestDiff(t *testing.T) {
 				},
 			},
 			b: &appsv1.StatefulSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind: "StatefulSet",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            "sset0",
-					ResourceVersion: "2",
-				},
+				Kind:            "StatefulSet",
+				Name:            "sset0",
+				ResourceVersion: "2",
 			},
 			expectDiff: true,
 		},

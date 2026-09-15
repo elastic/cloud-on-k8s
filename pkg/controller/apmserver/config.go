@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -69,11 +68,9 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 
 	// reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			Name:      Config(as.Name),
-			Labels:    as.GetIdentityLabels(),
-		},
+		Namespace: as.Namespace,
+		Name:      Config(as.Name),
+		Labels:    as.GetIdentityLabels(),
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,
 		},

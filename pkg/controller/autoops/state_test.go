@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 )
@@ -139,10 +138,8 @@ func TestState_UpdateWithPhase(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-policy",
-					Namespace: "default",
-				},
+				Name:      "test-policy",
+				Namespace: "default",
 				Status: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 					Phase: tt.initialPhase,
 				},
@@ -278,10 +275,8 @@ func TestState_Finalize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-policy",
-					Namespace: "default",
-				},
+				Name:      "test-policy",
+				Namespace: "default",
 				Status: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 					Phase: tt.initialPhase,
 				},

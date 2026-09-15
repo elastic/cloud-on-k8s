@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
@@ -194,9 +193,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(mkAuthSecrets()...)
 			apmServer := &apmv1.ApmServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "apm-server",
-				},
+				Name: "apm-server",
 				Spec: apmv1.ApmServerSpec{
 					Config: &commonv1.Config{Data: tc.configOverrides},
 				},
@@ -223,17 +220,13 @@ func TestNewConfigFromSpec(t *testing.T) {
 func mkAuthSecrets() []client.Object {
 	return []client.Object{
 		&v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-es-elastic-user",
-			},
+			Name: "test-es-elastic-user",
 			Data: map[string][]byte{
 				"elastic": []byte("password"),
 			},
 		},
 		&v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-kb-elastic-user",
-			},
+			Name: "test-kb-elastic-user",
 			Data: map[string][]byte{
 				"apm-kb-user": []byte("password-kb-user"),
 			},

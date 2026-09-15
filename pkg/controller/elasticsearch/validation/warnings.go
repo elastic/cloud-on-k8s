@@ -50,6 +50,11 @@ func deprecatedStackVersionWarning(es esv1.Elasticsearch) field.ErrorList {
 // Shorthand values take precedence at reconciliation time, so overlap means the
 // PodTemplate values are silently shadowed; the warning prompts the user to
 // pick one source of truth.
+//
+// NodeSets driven by an autoscaling policy are warned about too, even though the shorthand there is
+// written by the autoscaling controller rather than the user. The overlap is exactly the case the
+// autoscaling contract asks users to avoid, the shadowed values are the user's own, and removing
+// them from the manifest resolves it without turning autoscaling off.
 func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
 	var out field.ErrorList
 	for i := range es.Spec.NodeSets {
@@ -58,7 +63,7 @@ func shorthandResourcesOverrideWarning(es esv1.Elasticsearch) field.ErrorList {
 			fmt.Sprintf("spec.nodeSets[%d].resources", i),
 			fmt.Sprintf("spec.nodeSets[%d].podTemplate", i),
 			esv1.ElasticsearchContainerName,
-			nodeSet.Resources,
+			nodeSet.Resources.ContainerResources(),
 			nodeSet.PodTemplate,
 		)
 		if warning == "" {

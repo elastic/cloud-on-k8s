@@ -69,10 +69,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_ml_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data", "ml"}},
-								},
+								Name:                 "data_ml_policy",
+								Roles:                []string{"data", "ml"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -93,10 +91,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "ml_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"ml"}},
-								},
+								Name:                 "ml_policy",
+								Roles:                []string{"ml"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -116,17 +112,13 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "ml_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"ml"}},
-								},
+								Name:                 "ml_policy",
+								Roles:                []string{"ml"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -147,17 +139,13 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "ml_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "ml_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "ml_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"ml"}},
-								},
+								Name:                 "ml_policy",
+								Roles:                []string{"ml"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -178,10 +166,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -202,16 +188,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 1, Max: 2},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 1, Max: 2},
 							},
 						},
 					},
@@ -231,9 +213,7 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -254,10 +234,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -278,16 +256,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 0, Max: 0},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 0, Max: 0},
 							},
 						},
 					},
@@ -307,16 +281,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: -1, Max: 2},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: -1, Max: 2},
 							},
 						},
 					},
@@ -336,16 +306,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 0, Max: 0},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 0, Max: 0},
 							},
 						},
 					},
@@ -365,16 +331,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 2, Max: 2},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 2, Max: 2},
 							},
 						},
 					},
@@ -393,16 +355,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 5, Max: 4},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 5, Max: 4},
 							},
 						},
 					},
@@ -422,16 +380,12 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
-								AutoscalingResources: commonv1alpha1.AutoscalingResources{
-									CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("3"), Max: resource.MustParse("2")},
-									MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
-									StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
-									NodeCountRange: commonv1alpha1.CountRange{Min: 2, Max: 4},
-								},
+								Name:           "data_policy",
+								Roles:          []string{"data"},
+								CPURange:       &commonv1alpha1.QuantityRange{Min: resource.MustParse("3"), Max: resource.MustParse("2")},
+								MemoryRange:    &commonv1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("2Gi")},
+								StorageRange:   &commonv1alpha1.QuantityRange{Min: resource.MustParse("5Gi"), Max: resource.MustParse("10Gi")},
+								NodeCountRange: commonv1alpha1.CountRange{Min: 2, Max: 4},
 							},
 						},
 					},
@@ -452,10 +406,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -476,10 +428,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -500,23 +450,15 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name: "data",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
-										Roles:    []string{"data", "remote_cluster_client"},
-										Deciders: nil,
-									},
-								},
+								Name:                 "data",
+								Roles:                []string{"data", "remote_cluster_client"},
+								Deciders:             nil,
 								AutoscalingResources: defaultResources,
 							},
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name: "ml",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
-										Roles:    []string{"ml", "remote_cluster_client"},
-										Deciders: nil,
-									},
-								},
+								Name:                 "ml",
+								Roles:                []string{"ml", "remote_cluster_client"},
+								Deciders:             nil,
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -537,33 +479,21 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name: "data",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
-										Roles:    []string{"data", "remote_cluster_client"},
-										Deciders: nil,
-									},
-								},
+								Name:                 "data",
+								Roles:                []string{"data", "remote_cluster_client"},
+								Deciders:             nil,
 								AutoscalingResources: defaultResources,
 							},
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name: "ml1",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
-										Roles:    []string{"ml", "remote_cluster_client"},
-										Deciders: nil,
-									},
-								},
+								Name:                 "ml1",
+								Roles:                []string{"ml", "remote_cluster_client"},
+								Deciders:             nil,
 								AutoscalingResources: defaultResources,
 							},
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name: "ml2",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{
-										Roles:    []string{"ml"},
-										Deciders: nil,
-									},
-								},
+								Name:                 "ml2",
+								Roles:                []string{"ml"},
+								Deciders:             nil,
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -584,10 +514,8 @@ func TestValidateElasticsearchAutoscaler(t *testing.T) {
 						},
 						AutoscalingPolicySpecs: commonv1alpha1.AutoscalingPolicySpecs{
 							{
-								NamedAutoscalingPolicy: commonv1alpha1.NamedAutoscalingPolicy{
-									Name:              "data_policy",
-									AutoscalingPolicy: commonv1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
-								},
+								Name:                 "data_policy",
+								Roles:                []string{"data"},
 								AutoscalingResources: defaultResources,
 							},
 						},
@@ -625,12 +553,10 @@ func es(
 	version string,
 ) *esv1.Elasticsearch {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "es",
-			Namespace:   "ns",
-			Annotations: annotations,
-		},
-		Spec: esv1.ElasticsearchSpec{Version: version},
+		Name:        "es",
+		Namespace:   "ns",
+		Annotations: annotations,
+		Spec:        esv1.ElasticsearchSpec{Version: version},
 	}
 	for nodeSetName, roles := range nodeSets {
 		cfg := commonv1.NewConfig(map[string]any{})
@@ -652,9 +578,7 @@ func volumeClaimTemplates(volumeClaims []string) []corev1.PersistentVolumeClaim 
 	volumeClaimTemplates := make([]corev1.PersistentVolumeClaim, len(volumeClaims))
 	for i := range volumeClaims {
 		volumeClaimTemplates[i] = corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: volumeClaims[i],
-			},
+			Name: volumeClaims[i],
 		}
 	}
 	return volumeClaimTemplates

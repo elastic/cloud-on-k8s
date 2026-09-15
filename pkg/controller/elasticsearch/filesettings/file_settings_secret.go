@@ -14,7 +14,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -268,12 +267,10 @@ func (f *Secret) buildSecret(hash string) (corev1.Secret, error) {
 	}
 
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   f.es.Namespace,
-			Name:        esv1.FileSettingsSecretName(f.es.Name),
-			Labels:      secretMeta.Labels,
-			Annotations: secretMeta.Annotations,
-		},
+		Namespace:   f.es.Namespace,
+		Name:        esv1.FileSettingsSecretName(f.es.Name),
+		Labels:      secretMeta.Labels,
+		Annotations: secretMeta.Annotations,
 		Data: map[string][]byte{
 			SettingsSecretKey: settingsBytes,
 		},

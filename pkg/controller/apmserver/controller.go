@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -329,13 +328,11 @@ func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedN
 // It reuses the existing token if possible.
 func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, meta metadata.Metadata) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   as.Namespace,
-			Name:        SecretToken(as.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
-		Data: make(map[string][]byte),
+		Namespace:   as.Namespace,
+		Name:        SecretToken(as.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
+		Data:        make(map[string][]byte),
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret

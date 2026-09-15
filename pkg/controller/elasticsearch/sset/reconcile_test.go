@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -27,19 +26,15 @@ import (
 func TestReconcileStatefulSet(t *testing.T) {
 	controllerscheme.SetupScheme()
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-			UID:       types.UID("uid"),
-		},
+		Namespace: "ns",
+		Name:      "es",
+		UID:       types.UID("uid"),
 	}
 	ssetSample := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      "sset",
-			Labels: map[string]string{
-				hash.TemplateHashLabelName: "hash-value",
-			},
+		Namespace: es.Namespace,
+		Name:      "sset",
+		Labels: map[string]string{
+			hash.TemplateHashLabelName: "hash-value",
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: new(int32(3)),

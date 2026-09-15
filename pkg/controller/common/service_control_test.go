@@ -22,10 +22,8 @@ import (
 
 func TestReconcileService(t *testing.T) {
 	owner := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "owner-obj",
-			Namespace: "test",
-		},
+		Name:      "owner-obj",
+		Namespace: "test",
 	}
 
 	existingSvc := mkService(owner)
@@ -50,19 +48,17 @@ func TestReconcileService(t *testing.T) {
 func mkService(owner *kbv1.Kibana) *corev1.Service {
 	trueVal := true
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "owner-svc",
-			Namespace:   "test",
-			Labels:      map[string]string{"lbl1": "lblval1", "lbl2": "lbl2val"},
-			Annotations: map[string]string{"ann1": "annval1", "ann2": "annval2"},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "kibana.k8s.elastic.co/v1",
-					Kind:               "Kibana",
-					Name:               owner.Name,
-					Controller:         &trueVal,
-					BlockOwnerDeletion: &trueVal,
-				},
+		Name:        "owner-svc",
+		Namespace:   "test",
+		Labels:      map[string]string{"lbl1": "lblval1", "lbl2": "lbl2val"},
+		Annotations: map[string]string{"ann1": "annval1", "ann2": "annval2"},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "kibana.k8s.elastic.co/v1",
+				Kind:               "Kibana",
+				Name:               owner.Name,
+				Controller:         &trueVal,
+				BlockOwnerDeletion: &trueVal,
 			},
 		},
 		Spec: corev1.ServiceSpec{

@@ -56,12 +56,10 @@ func HeadlessService(es *esv1.Elasticsearch, ssetName string, meta metadata.Meta
 	}
 
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   nsn.Namespace,
-			Name:        HeadlessServiceName(ssetName),
-			Labels:      mergedMeta.Labels,
-			Annotations: mergedMeta.Annotations,
-		},
+		Namespace:   nsn.Namespace,
+		Name:        HeadlessServiceName(ssetName),
+		Labels:      mergedMeta.Labels,
+		Annotations: mergedMeta.Annotations,
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: corev1.ClusterIPNone,
@@ -100,6 +98,12 @@ func BuildStatefulSet(
 		esvolume.DefaultVolumeClaimTemplates...,
 	)
 
+	// Apply storage shorthand AFTER AppendDefaultPVCs: the default claim must exist before we can
+	// stamp the size onto it. Swapping the calls would silently omit the size when no user VCT is declared.
+	// Keeping the size here rather than in VolumeClaimTemplates lets the storage class and access modes
+	// remain owned solely by whoever declares them.
+	nodeSet.VolumeClaimTemplates = esvolume.ApplyStorageOverride(nodeSet.VolumeClaimTemplates, nodeSet.Resources.Storage)
+
 	// build pod template
 	podTemplate, err := BuildPodTemplateSpec(ctx, client, es, nodeSet, cfg, keystoreResources, setDefaultSecurityContext, policyConfig, meta, actualPodsRestartTriggerAnnotationValue, clientAuthRequired)
 	if err != nil {
@@ -114,12 +118,10 @@ func BuildStatefulSet(
 	claims := preserveExistingVolumeClaimsOwnerRefs(nodeSet.VolumeClaimTemplates, existingClaims)
 
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        statefulSetName,
-			Labels:      mergedMeta.Labels,
-			Annotations: mergedMeta.Annotations,
-		},
+		Namespace:   es.Namespace,
+		Name:        statefulSetName,
+		Labels:      mergedMeta.Labels,
+		Annotations: mergedMeta.Annotations,
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.OnDeleteStatefulSetStrategyType,

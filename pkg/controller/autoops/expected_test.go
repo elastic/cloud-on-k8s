@@ -32,10 +32,8 @@ import (
 
 func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	autoopsFixture := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "autoops-elastic-agent",
-			Namespace: "default",
-		},
+		Name:      "autoops-elastic-agent",
+		Namespace: "default",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
@@ -45,10 +43,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	}
 
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-cluster",
-			Namespace: "default",
-		},
+		Name:      "es-cluster",
+		Namespace: "default",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 			HTTP: commonv1.HTTPConfigWithClientOptions{
@@ -64,12 +60,10 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 	}
 
 	esWithTLSFixtureAndClientAuthenticationEnabled := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-cluster",
-			Namespace: "default",
-			Annotations: map[string]string{
-				annotation.ClientAuthenticationRequiredAnnotation: "true",
-			},
+		Name:      "es-cluster",
+		Namespace: "default",
+		Annotations: map[string]string{
+			annotation.ClientAuthenticationRequiredAnnotation: "true",
 		},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
@@ -97,10 +91,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		{
 			name: "deployment with client auth mounts client cert volume",
 			clientCertSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esFixture),
-					Namespace: "default",
-				},
+				Name:      autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esFixture),
+				Namespace: "default",
 				Data: map[string][]byte{
 					certificates.CertFileName: []byte("test-client-cert"),
 					certificates.KeyFileName:  []byte("test-client-key"),
@@ -131,15 +123,11 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 		{
 			name: "deployment with long names and client auth truncates both cert volume names",
 			clientCertSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "elasticsearch-aws-nonprod-monitoring",
-							Namespace: "apl-ops-intelligence-monitoring",
-						},
-					}),
-					Namespace: "default",
-				},
+				Name: autoopsv1alpha1.ClientCertSecret("autoops-elastic-agent", esv1.Elasticsearch{
+					Name:      "elasticsearch-aws-nonprod-monitoring",
+					Namespace: "apl-ops-intelligence-monitoring",
+				}),
+				Namespace: "default",
 				Data: map[string][]byte{
 					certificates.CertFileName: []byte("test-client-cert"),
 					certificates.KeyFileName:  []byte("test-client-key"),
@@ -193,10 +181,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			// use it to build the config hash.
 			configData := "test-config-data"
 			configMap := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      autoopsv1alpha1.Config(tt.args.autoops.Name, tt.args.es),
-					Namespace: tt.args.autoops.Namespace,
-				},
+				Name:      autoopsv1alpha1.Config(tt.args.autoops.Name, tt.args.es),
+				Namespace: tt.args.autoops.Namespace,
 				Data: map[string]string{
 					autoopsv1alpha1.ConfigFileName: configData,
 				},
@@ -205,10 +191,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			// We need the autoops-secret with all required keys to build the config hash
 			// and this is required to be within the k8s cluster itself.
 			autoopsSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "autoops-secret",
-					Namespace: tt.args.autoops.Namespace,
-				},
+				Name:      "autoops-secret",
+				Namespace: tt.args.autoops.Namespace,
 				Data: map[string][]byte{
 					"autoops-token":                []byte("test-autoops-token"),
 					"autoops-otel-url":             []byte("https://test-otel-url"),
@@ -220,10 +204,8 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 			// We need the ES API key secret as well to build the config hash
 			esAPIKeySecretName := autoopsv1alpha1.APIKeySecret(tt.args.autoops.Name, k8s.ExtractNamespacedName(&tt.args.es))
 			esAPIKeySecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esAPIKeySecretName,
-					Namespace: tt.args.autoops.Namespace,
-				},
+				Name:      esAPIKeySecretName,
+				Namespace: tt.args.autoops.Namespace,
 				Data: map[string][]byte{
 					apiKeySecretKey: []byte("test-es-api-key"),
 				},
@@ -287,12 +269,10 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 
 	name := autoopsv1alpha1.Deployment(policy.GetName(), es)
 	return deployment.WithTemplateHash(appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   policy.GetNamespace(),
-			Labels:      labels,
-			Annotations: annotations,
-		},
+		Name:        name,
+		Namespace:   policy.GetNamespace(),
+		Labels:      labels,
+		Annotations: annotations,
 		Spec: appsv1.DeploymentSpec{
 			Replicas: new(int32(1)),
 			Selector: &metav1.LabelSelector{
@@ -331,12 +311,10 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								PeriodSeconds:       10,
 								SuccessThreshold:    1,
 								TimeoutSeconds:      5,
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Port:   intstr.FromInt(readinessProbePort),
-										Path:   "/health/status",
-										Scheme: corev1.URISchemeHTTP,
-									},
+								HTTPGet: &corev1.HTTPGetAction{
+									Port:   intstr.FromInt(readinessProbePort),
+									Path:   "/health/status",
+									Scheme: corev1.URISchemeHTTP,
 								},
 							},
 							Env: []corev1.EnvVar{
@@ -344,10 +322,8 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Name: "AUTOOPS_TOKEN",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
-											Key: "autoops-token",
+											Name: "autoops-secret",
+											Key:  "autoops-token",
 										},
 									},
 								},
@@ -359,10 +335,8 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Name: "AUTOOPS_OTEL_URL",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
-											Key: "autoops-otel-url",
+											Name: "autoops-secret",
+											Key:  "autoops-otel-url",
 										},
 									},
 								},
@@ -370,9 +344,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Name: "AUTOOPS_ES_API_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
-											},
+											Name:     autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 											Key:      apiKeySecretKey,
 											Optional: new(false),
 										},
@@ -382,10 +354,8 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
-											Key: "cloud-connected-mode-api-key",
+											Name: "autoops-secret",
+											Key:  "cloud-connected-mode-api-key",
 										},
 									},
 								},
@@ -393,9 +363,7 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 									Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "autoops-secret",
-											},
+											Name:     "autoops-secret",
 											Key:      "cloud-connected-mode-api-url",
 											Optional: new(true),
 										},
@@ -447,14 +415,10 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 	volumes := []corev1.Volume{
 		{
 			Name: "config-volume",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: autoopsv1alpha1.Config(policy.GetName(), es),
-					},
-					DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
-					Optional:    new(false),
-				},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				Name:        autoopsv1alpha1.Config(policy.GetName(), es),
+				DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
+				Optional:    new(false),
 			},
 		},
 	}
@@ -462,11 +426,9 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 		volumes = append(volumes, corev1.Volume{
 			Name: caCertVolumeName(es),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: caSecretName,
-					Optional:   new(false),
-				},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: caSecretName,
+				Optional:   new(false),
 			},
 		})
 	}
@@ -474,11 +436,9 @@ func expectedVolumes(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elastics
 		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
 		volumes = append(volumes, corev1.Volume{
 			Name: clientCertVolumeName(es),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientCertSecretName,
-					Optional:   new(false),
-				},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: clientCertSecretName,
+				Optional:   new(false),
 			},
 		})
 	}
@@ -549,10 +509,8 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Name: "AUTOOPS_TOKEN",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "autoops-token",
+							Name: "autoops-secret",
+							Key:  "autoops-token",
 						},
 					},
 				},
@@ -564,10 +522,8 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Name: "AUTOOPS_OTEL_URL",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "autoops-otel-url",
+							Name: "autoops-secret",
+							Key:  "autoops-otel-url",
 						},
 					},
 				},
@@ -575,9 +531,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Name: "AUTOOPS_ES_API_KEY",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "policy-1-autoops-apikey-2334712842",
-							},
+							Name:     "policy-1-autoops-apikey-2334712842",
 							Key:      apiKeySecretKey,
 							Optional: new(false),
 						},
@@ -587,10 +541,8 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
-							Key: "cloud-connected-mode-api-key",
+							Name: "autoops-secret",
+							Key:  "cloud-connected-mode-api-key",
 						},
 					},
 				},
@@ -598,9 +550,7 @@ func Test_autoopsEnvVars(t *testing.T) {
 					Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "autoops-secret",
-							},
+							Name:     "autoops-secret",
 							Key:      "cloud-connected-mode-api-url",
 							Optional: new(true),
 						},
@@ -621,22 +571,16 @@ func Test_autoopsEnvVars(t *testing.T) {
 
 func Test_certVolumeNames(t *testing.T) {
 	shortES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-cluster",
-			Namespace: "default",
-		},
+		Name:      "es-cluster",
+		Namespace: "default",
 	}
 	longES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-aws-nonprod-monitoring",
-			Namespace: "apl-ops-intelligence-monitoring",
-		},
+		Name:      "elasticsearch-aws-nonprod-monitoring",
+		Namespace: "apl-ops-intelligence-monitoring",
 	}
 	otherLongES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-aws-nonprod-monitoring",
-			Namespace: "apl-ops-intelligence-monitorinx",
-		},
+		Name:      "elasticsearch-aws-nonprod-monitoring",
+		Namespace: "apl-ops-intelligence-monitorinx",
 	}
 
 	tests := []struct {
@@ -697,7 +641,7 @@ func Test_certVolumeNames(t *testing.T) {
 			}
 			if tt.checkSecretAndMount {
 				policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-					ObjectMeta: metav1.ObjectMeta{Name: "autoops-elastic-agent"},
+					Name: "autoops-elastic-agent",
 				}
 				wantMountPath := fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", tt.es.Namespace, tt.es.Name)
 

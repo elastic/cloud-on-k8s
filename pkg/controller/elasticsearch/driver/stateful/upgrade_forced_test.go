@@ -14,7 +14,6 @@ import (
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -169,11 +168,10 @@ func Test_Driver_maybeForceUpgradePods(t *testing.T) {
 			}
 			k8sClient := k8s.NewFakeClient(runtimeObjs...)
 			d := &Driver{
-				BaseDriver: driver.BaseDriver{Parameters: driver.Parameters{
-					Client:         k8sClient,
-					Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
-					ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
-				}},
+
+				Client:         k8sClient,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
 			}
 
 			attempted, err := d.maybeForceUpgradePods(context.Background(), tt.actualPods, tt.podsToUpgrade)

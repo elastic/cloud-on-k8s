@@ -291,18 +291,14 @@ func bind(b Builder, clusterRoleName string) Builder {
 		saName = fmt.Sprintf("%s-sa", b.Beat.Name)
 		b = b.WithPodTemplateServiceAccount(saName)
 		sa := &corev1.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      saName,
-				Namespace: b.Beat.Namespace,
-			},
+			Name:      saName,
+			Namespace: b.Beat.Namespace,
 		}
 		b.AdditionalObjects = append(b.AdditionalObjects, sa)
 	}
 
 	crb := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Beat.Namespace, b.Beat.Name),
-		},
+		Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Beat.Namespace, b.Beat.Name),
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
@@ -334,9 +330,7 @@ func (b Builder) WithSecureSettings(secretNames ...string) Builder {
 
 func (b Builder) WithConfigRef(secretName string) Builder {
 	b.Beat.Spec.ConfigRef = &commonv1.ConfigSource{
-		SecretRef: commonv1.SecretRef{
-			SecretName: secretName,
-		},
+		SecretName: secretName,
 	}
 
 	return b

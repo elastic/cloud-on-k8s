@@ -12,13 +12,25 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
+
+func assertConfigVolumeDefaultMode(t *testing.T, pod corev1.PodTemplateSpec) {
+	t.Helper()
+	for _, vol := range pod.Spec.Volumes {
+		if vol.Name == ConfigVolumeName {
+			require.NotNil(t, vol.Secret, "config volume has no Secret source")
+			require.NotNil(t, vol.Secret.DefaultMode, "config volume DefaultMode is nil")
+			require.Equal(t, int32(0444), *vol.Secret.DefaultMode)
+			return
+		}
+	}
+	t.Errorf("config volume %q not found in pod spec", ConfigVolumeName)
+}
 
 func agentContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequirements, bool) {
 	for i := range pod.Spec.Containers {
@@ -32,10 +44,8 @@ func agentContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequire
 func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.PodTemplateSpec {
 	t.Helper()
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(agent.Name),
-			Namespace: agent.Namespace,
-		},
+		Name:      ConfigSecretName(agent.Name),
+		Namespace: agent.Namespace,
 	}
 	params := Params{
 		Context:      context.Background(),
@@ -43,7 +53,7 @@ func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) co
 		Agent:        agent,
 		AgentVersion: version.MustParse(agent.Spec.Version),
 	}
-	got, err := buildPodTemplate(params, nil, EnrollmentAPIKey{}, fnv.New32a(), "", false)
+	got, err := buildPodTemplate(params, nil, EnrollmentAPIKey{}, fnv.New32a(), "", "", false)
 	require.NoError(t, err)
 	return got
 }
@@ -51,10 +61,8 @@ func buildAgentStandalonePodTemplate(t *testing.T, agent agentv1alpha1.Agent) co
 func buildAgentFleetPodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.PodTemplateSpec {
 	t.Helper()
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(agent.Name),
-			Namespace: agent.Namespace,
-		},
+		Name:      ConfigSecretName(agent.Name),
+		Namespace: agent.Namespace,
 	}
 	params := Params{
 		Context:      context.Background(),
@@ -62,14 +70,14 @@ func buildAgentFleetPodTemplate(t *testing.T, agent agentv1alpha1.Agent) corev1.
 		Agent:        agent,
 		AgentVersion: version.MustParse(agent.Spec.Version),
 	}
-	got, err := buildPodTemplate(params, fleetCertsFixture, EnrollmentAPIKey{}, fnv.New32a(), "", false)
+	got, err := buildPodTemplate(params, fleetCertsFixture, EnrollmentAPIKey{}, fnv.New32a(), "", "", false)
 	require.NoError(t, err)
 	return got
 }
 
 func TestAgentStandaloneResources(t *testing.T) {
 	base := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent-test", Namespace: "default"},
+		Name: "agent-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {
@@ -168,13 +176,14 @@ func TestAgentStandaloneResources(t *testing.T) {
 			res, ok := agentContainerResources(pod)
 			require.True(t, ok, "agent container not found")
 			tt.assert(t, res)
+			assertConfigVolumeDefaultMode(t, pod)
 		})
 	}
 }
 
 func TestAgentFleetResources(t *testing.T) {
 	base := agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{Name: "agent-fleet-test", Namespace: "default"},
+		Name: "agent-fleet-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {
@@ -229,6 +238,7 @@ func TestAgentFleetResources(t *testing.T) {
 			res, ok := agentContainerResources(pod)
 			require.True(t, ok, "agent container not found in fleet mode")
 			tt.assert(t, res)
+			assertConfigVolumeDefaultMode(t, pod)
 		})
 	}
 }

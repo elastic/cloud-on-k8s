@@ -33,7 +33,7 @@ func TestResourcesRequirements(t *testing.T) {
 		WithNodeSet(esv1.NodeSet{
 			Name:  "masterdata",
 			Count: int32(1),
-			Resources: commonv1.Resources{
+			Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
 				Requests: commonv1.ResourceAllocations{
 					Memory: new(resource.MustParse("4Gi")),
 					CPU:    new(resource.MustParse("1000m")),
@@ -42,7 +42,7 @@ func TestResourcesRequirements(t *testing.T) {
 					Memory: new(resource.MustParse("4Gi")),
 					CPU:    new(resource.MustParse("1600m")),
 				},
-			},
+			}},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				newPVC("2Gi", test.DefaultStorageClass),
 			},

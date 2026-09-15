@@ -31,11 +31,9 @@ var nsnFixture = types.NamespacedName{
 	Name:      "test-resource",
 }
 var eprFixture = v1alpha1.PackageRegistry{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace:  nsnFixture.Namespace,
-		Name:       nsnFixture.Name,
-		Generation: 2,
-	},
+	Namespace:  nsnFixture.Namespace,
+	Name:       nsnFixture.Name,
+	Generation: 2,
 	Spec: v1alpha1.PackageRegistrySpec{
 		Version: "7.17.8",
 		Count:   1,
@@ -84,12 +82,10 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              nsnFixture.Name,
-						Namespace:         nsnFixture.Namespace,
-						DeletionTimestamp: &timeFixture, Generation: 2,
-						Finalizers: []string{"something"},
-					},
+					Name:              nsnFixture.Name,
+					Namespace:         nsnFixture.Namespace,
+					DeletionTimestamp: &timeFixture, Generation: 2,
+					Finalizers: []string{"something"},
 					Status: v1alpha1.PackageRegistryStatus{
 						ObservedGeneration: 1,
 					},
@@ -116,12 +112,10 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Resource is unmanaged",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							common.ManagedAnnotation: "false",
-						},
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						common.ManagedAnnotation: "false",
 					},
 				}),
 			},
@@ -131,11 +125,9 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "validates on reconcile",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.PackageRegistrySpec{
 						Version: "7.14.0", // unsupported version - below minimum 7.17.8
 					},
@@ -234,7 +226,7 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	tlsCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(v1alpha1.Namer, nsnFixture.Name)},
+		Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(v1alpha1.Namer, nsnFixture.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("cert-data"),
 		},

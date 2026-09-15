@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -22,10 +21,8 @@ func TestMarkPodAsUpdated(t *testing.T) {
 		Name:      "foo",
 	}
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      "foo",
-		},
+		Namespace: "ns1",
+		Name:      "foo",
 	}
 	type args struct {
 		c   k8s.Client

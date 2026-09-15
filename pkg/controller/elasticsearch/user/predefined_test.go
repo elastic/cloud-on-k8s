@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -23,7 +22,7 @@ import (
 )
 
 func Test_reconcileElasticUser(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 	tests := []struct {
 		name              string
 		existingSecrets   []client.Object
@@ -44,8 +43,8 @@ func Test_reconcileElasticUser(t *testing.T) {
 			name: "elastic user secret exists but is invalid: generate a new elastic user",
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
-					Data:       nil, // no password or password removed
+					Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name),
+					Data: nil, // no password or password removed
 				},
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("$2a$10$lwsLdS0ZSyUv73WNdaRaTe8X9oeft4BoqjxtNHHH7LP7m1YImnvr6")),
@@ -62,8 +61,8 @@ func Test_reconcileElasticUser(t *testing.T) {
 			name: "reuse the existing elastic user and password hash",
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
-					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
+					Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name),
+					Data: map[string][]byte{ElasticUserName: []byte("existingPassword")},
 				},
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("$2a$10$lwsLdS0ZSyUv73WNdaRaTe8X9oeft4BoqjxtNHHH7LP7m1YImnvr6")),
@@ -78,8 +77,8 @@ func Test_reconcileElasticUser(t *testing.T) {
 			name: "reuse the password but generate a new hash if the existing one doesn't match",
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
-					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
+					Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name),
+					Data: map[string][]byte{ElasticUserName: []byte("existingPassword")},
 				},
 			},
 			existingFileRealm: filerealm.New().WithUser(ElasticUserName, []byte("does-not-match-password")),
@@ -95,8 +94,8 @@ func Test_reconcileElasticUser(t *testing.T) {
 			name: "reuse the password but generate a new hash if there is none in the file realm",
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name)},
-					Data:       map[string][]byte{ElasticUserName: []byte("existingPassword")},
+					Namespace: es.Namespace, Name: esv1.ElasticUserSecret(es.Name),
+					Data: map[string][]byte{ElasticUserName: []byte("existingPassword")},
 				},
 			},
 			existingFileRealm: filerealm.New(),
@@ -133,7 +132,7 @@ func Test_reconcileElasticUser(t *testing.T) {
 }
 
 func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 	md := metadata.Propagate(&es, metadata.Metadata{Labels: es.GetIdentityLabels()})
 	tests := []struct {
 		name         string
@@ -171,7 +170,7 @@ func Test_reconcileElasticUser_conditionalCreation(t *testing.T) {
 }
 
 func Test_reconcileInternalUsers(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}, Spec: esv1.ElasticsearchSpec{Version: "8.10.0"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es", Spec: esv1.ElasticsearchSpec{Version: "8.10.0"}}
 	tests := []struct {
 		name              string
 		es                func() esv1.Elasticsearch
@@ -197,7 +196,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
+					Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name),
 					Data: map[string][]byte{
 						ControllerUserName: []byte("controllerUserPassword"),
 						ProbeUserName:      []byte("probeUserPassword"),
@@ -221,7 +220,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
+					Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name),
 					Data: map[string][]byte{
 						ControllerUserName: []byte("controllerUserPassword"),
 						ProbeUserName:      []byte("probeUserPassword"),
@@ -247,7 +246,7 @@ func Test_reconcileInternalUsers(t *testing.T) {
 			es:   func() esv1.Elasticsearch { return es },
 			existingSecrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name)},
+					Namespace: es.Namespace, Name: esv1.InternalUsersSecret(es.Name),
 					Data: map[string][]byte{
 						ControllerUserName: []byte("controllerUserPassword"),
 						ProbeUserName:      []byte("probeUserPassword"),

@@ -68,7 +68,7 @@ func TestSecretRevision_Reconcile(t *testing.T) {
 			name:            "creates secret and tracks name",
 			existingObjects: nil,
 			owner: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "owner", Namespace: "default", UID: "uid-1"},
+				Name: "owner", Namespace: "default", UID: "uid-1",
 			},
 			secretToCreate: BuildImmutableSecret("my-config", "default", map[string][]byte{"key": []byte("val")}, nil),
 			wantNamePrefix: "my-config-",
@@ -79,8 +79,8 @@ func TestSecretRevision_Reconcile(t *testing.T) {
 			name: "idempotent on existing secret",
 			existingObjects: []runtime.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "my-config-aabbccdd", Namespace: "default"},
-					Data:       map[string][]byte{"key": []byte("existing")},
+					Name: "my-config-aabbccdd", Namespace: "default",
+					Data: map[string][]byte{"key": []byte("existing")},
 				},
 			},
 			owner: nil,
@@ -164,16 +164,12 @@ func TestSecretRevision_PatchVolumes(t *testing.T) {
 			classifier: secretVolumeClassifier("config-volume"),
 			volumes: []corev1.Volume{
 				{
-					Name: "config-volume",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
-					},
+					Name:   "config-volume",
+					Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
 				},
 				{
-					Name: "other-volume",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "other-secret"},
-					},
+					Name:   "other-volume",
+					Secret: &corev1.SecretVolumeSource{SecretName: "other-secret"},
 				},
 			},
 			newSecretName:  "new-config-a1b2c3d4",
@@ -184,22 +180,16 @@ func TestSecretRevision_PatchVolumes(t *testing.T) {
 			classifier: secretVolumeClassifier("config-volume", "jvm-options-volume"),
 			volumes: []corev1.Volume{
 				{
-					Name: "config-volume",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
-					},
+					Name:   "config-volume",
+					Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
 				},
 				{
-					Name: "jvm-options-volume",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "old-jvm"},
-					},
+					Name:   "jvm-options-volume",
+					Secret: &corev1.SecretVolumeSource{SecretName: "old-jvm"},
 				},
 				{
-					Name: "other-volume",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "other-secret"},
-					},
+					Name:   "other-volume",
+					Secret: &corev1.SecretVolumeSource{SecretName: "other-secret"},
 				},
 			},
 			newSecretName:  "new-immutable-a1b2c3d4",
@@ -228,10 +218,10 @@ func TestSecretRevision_GC(t *testing.T) {
 
 	t.Run("deletes unreferenced secrets", func(t *testing.T) {
 		staleSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "cfg-stale", Namespace: "default", Labels: labels},
+			Name: "cfg-stale", Namespace: "default", Labels: labels,
 		}
 		otherSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "default", Labels: map[string]string{"x": "y"}},
+			Name: "other", Namespace: "default", Labels: map[string]string{"x": "y"},
 		}
 		k8sClient := fake.NewClientBuilder().WithRuntimeObjects(staleSecret, otherSecret).Build()
 		rev := testRevisions(t, k8sClient, nil).ForSecretVolumes(secretVolumeClassifier("config"))
@@ -251,24 +241,20 @@ func TestSecretRevision_GC(t *testing.T) {
 
 	t.Run("protects secrets referenced by ReplicaSets", func(t *testing.T) {
 		rsProtectedSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "cfg-rs-protected", Namespace: "default", Labels: labels},
+			Name: "cfg-rs-protected", Namespace: "default", Labels: labels,
 		}
 		staleSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "cfg-stale", Namespace: "default", Labels: labels},
+			Name: "cfg-stale", Namespace: "default", Labels: labels,
 		}
 		rs := &appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "old-rs", Namespace: "default",
-				Labels: map[string]string{"app": "elasticsearch"},
-			},
+			Name: "old-rs", Namespace: "default",
+			Labels: map[string]string{"app": "elasticsearch"},
 			Spec: appsv1.ReplicaSetSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Volumes: []corev1.Volume{{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{SecretName: "cfg-rs-protected"},
-							},
+							Name:   "config",
+							Secret: &corev1.SecretVolumeSource{SecretName: "cfg-rs-protected"},
 						}},
 					},
 				},
@@ -308,7 +294,7 @@ func TestConfigMapRevision_Reconcile(t *testing.T) {
 			name:            "creates configmap and tracks name",
 			existingObjects: nil,
 			owner: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "owner", Namespace: "default", UID: "uid-2"},
+				Name: "owner", Namespace: "default", UID: "uid-2",
 			},
 			cmToCreate:     BuildImmutableConfigMap("my-scripts", "default", map[string]string{"s.sh": "echo hi"}, nil),
 			wantNamePrefix: "my-scripts-",
@@ -319,8 +305,8 @@ func TestConfigMapRevision_Reconcile(t *testing.T) {
 			name: "idempotent on existing configmap",
 			existingObjects: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Name: "scripts-aabbccdd", Namespace: "default"},
-					Data:       map[string]string{"s.sh": "existing"},
+					Name: "scripts-aabbccdd", Namespace: "default",
+					Data: map[string]string{"s.sh": "existing"},
 				},
 			},
 			owner: nil,
@@ -371,18 +357,14 @@ func TestConfigMapRevision_PatchVolumes(t *testing.T) {
 	volumes := []corev1.Volume{
 		{
 			Name: "scripts-volume",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "old-scripts"},
-				},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				Name: "old-scripts",
 			},
 		},
 		{
 			Name: "other-volume",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "other-configmap"},
-				},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				Name: "other-configmap",
 			},
 		},
 	}
@@ -402,7 +384,7 @@ func TestConfigMapRevision_GC(t *testing.T) {
 
 	t.Run("deletes unreferenced configmaps", func(t *testing.T) {
 		staleConfigMap := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: "scripts-stale", Namespace: "default", Labels: labels},
+			Name: "scripts-stale", Namespace: "default", Labels: labels,
 		}
 		k8sClient := fake.NewClientBuilder().WithRuntimeObjects(staleConfigMap).Build()
 		rev := testRevisions(t, k8sClient, nil).ForConfigMapVolumes(configMapVolumeClassifier("scripts"))
@@ -421,25 +403,21 @@ func TestConfigMapRevision_GC(t *testing.T) {
 
 	t.Run("protects configmaps referenced by ReplicaSets", func(t *testing.T) {
 		rsProtectedCM := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: "scripts-rs-protected", Namespace: "default", Labels: labels},
+			Name: "scripts-rs-protected", Namespace: "default", Labels: labels,
 		}
 		staleCM := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: "scripts-stale", Namespace: "default", Labels: labels},
+			Name: "scripts-stale", Namespace: "default", Labels: labels,
 		}
 		rs := &appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "old-rs", Namespace: "default",
-				Labels: map[string]string{"app": "elasticsearch"},
-			},
+			Name: "old-rs", Namespace: "default",
+			Labels: map[string]string{"app": "elasticsearch"},
 			Spec: appsv1.ReplicaSetSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Volumes: []corev1.Volume{{
 							Name: "scripts",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "scripts-rs-protected"},
-								},
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								Name: "scripts-rs-protected",
 							},
 						}},
 					},
@@ -471,10 +449,10 @@ func TestGCAll(t *testing.T) {
 	}
 
 	oldSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "cfg-11223344", Namespace: "default", Labels: labels},
+		Name: "cfg-11223344", Namespace: "default", Labels: labels,
 	}
 	oldCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "scripts-11223344", Namespace: "default", Labels: labels},
+		Name: "scripts-11223344", Namespace: "default", Labels: labels,
 	}
 
 	k8sClient := fake.NewClientBuilder().WithObjects(oldSecret, oldCM).Build()
@@ -499,45 +477,37 @@ func TestSecretRevision_GC_MultipleVolumes(t *testing.T) {
 
 	// Secrets protected by ReplicaSets referencing different volumes
 	configProtected := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "cfg-config-protected", Namespace: "default", Labels: labels},
+		Name: "cfg-config-protected", Namespace: "default", Labels: labels,
 	}
 	jvmProtected := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "cfg-jvm-protected", Namespace: "default", Labels: labels},
+		Name: "cfg-jvm-protected", Namespace: "default", Labels: labels,
 	}
 	staleSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "cfg-stale", Namespace: "default", Labels: labels},
+		Name: "cfg-stale", Namespace: "default", Labels: labels,
 	}
 	rsConfig := &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "rs-config", Namespace: "default",
-			Labels: map[string]string{"app": "elasticsearch"},
-		},
+		Name: "rs-config", Namespace: "default",
+		Labels: map[string]string{"app": "elasticsearch"},
 		Spec: appsv1.ReplicaSetSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
-						Name: "config",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{SecretName: "cfg-config-protected"},
-						},
+						Name:   "config",
+						Secret: &corev1.SecretVolumeSource{SecretName: "cfg-config-protected"},
 					}},
 				},
 			},
 		},
 	}
 	rsJvm := &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "rs-jvm", Namespace: "default",
-			Labels: map[string]string{"app": "elasticsearch"},
-		},
+		Name: "rs-jvm", Namespace: "default",
+		Labels: map[string]string{"app": "elasticsearch"},
 		Spec: appsv1.ReplicaSetSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{{
-						Name: "jvm-options",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{SecretName: "cfg-jvm-protected"},
-						},
+						Name:   "jvm-options",
+						Secret: &corev1.SecretVolumeSource{SecretName: "cfg-jvm-protected"},
 					}},
 				},
 			},
@@ -572,22 +542,16 @@ func TestForSecretVolumes_WithMixedClassifier(t *testing.T) {
 
 	volumes := []corev1.Volume{
 		{
-			Name: "config-volume",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
-			},
+			Name:   "config-volume",
+			Secret: &corev1.SecretVolumeSource{SecretName: "old-config"},
 		},
 		{
-			Name: "jvm-options-volume",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "old-jvm"},
-			},
+			Name:   "jvm-options-volume",
+			Secret: &corev1.SecretVolumeSource{SecretName: "old-jvm"},
 		},
 		{
-			Name: "dynamic-volume",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "dynamic-secret"},
-			},
+			Name:   "dynamic-volume",
+			Secret: &corev1.SecretVolumeSource{SecretName: "dynamic-secret"},
 		},
 	}
 
@@ -687,20 +651,16 @@ func TestRevisionsBuilder_Build(t *testing.T) {
 
 func TestReplicaSetExtractor_ListPodTemplates(t *testing.T) {
 	rs := &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-rs",
-			Namespace: "default",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "my-rs",
+		Namespace: "default",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Spec: appsv1.ReplicaSetSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{SecretName: "my-config-def456"},
-							},
+							Name:   "config",
+							Secret: &corev1.SecretVolumeSource{SecretName: "my-config-def456"},
 						},
 					},
 				},

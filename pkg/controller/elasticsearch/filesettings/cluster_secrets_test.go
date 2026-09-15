@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -24,10 +23,8 @@ import (
 
 func testES() esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "ns",
-		},
+		Name:      "test-es",
+		Namespace: "ns",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.4.0",
 		},
@@ -165,12 +162,10 @@ func TestReconcileClusterSecrets_PreservesOtherFields(t *testing.T) {
 	require.NoError(t, err)
 
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Namespace: es.Namespace,
-			Annotations: map[string]string{
-				commonannotation.SettingsHashAnnotationName: existingSettings.hash(),
-			},
+		Name:      esv1.FileSettingsSecretName(es.Name),
+		Namespace: es.Namespace,
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName: existingSettings.hash(),
 		},
 		Data: map[string][]byte{
 			SettingsSecretKey: settingsBytes,
@@ -209,17 +204,15 @@ func TestReconcileClusterSecrets_PreservesSCPManagedMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Namespace: es.Namespace,
-			Labels: map[string]string{
-				reconciler.SoftOwnerKindLabel: "StackConfigPolicy",
-			},
-			Annotations: map[string]string{
-				commonannotation.SettingsHashAnnotationName:          existingSettings.hash(),
-				reconciler.SoftOwnerRefsAnnotation:                   `["ns/test-policy"]`,
-				commonannotation.SecureSettingsSecretsAnnotationName: "ns/my-secure-settings",
-			},
+		Name:      esv1.FileSettingsSecretName(es.Name),
+		Namespace: es.Namespace,
+		Labels: map[string]string{
+			reconciler.SoftOwnerKindLabel: "StackConfigPolicy",
+		},
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName:          existingSettings.hash(),
+			reconciler.SoftOwnerRefsAnnotation:                   `["ns/test-policy"]`,
+			commonannotation.SecureSettingsSecretsAnnotationName: "ns/my-secure-settings",
 		},
 		Data: map[string][]byte{
 			SettingsSecretKey: settingsBytes,
@@ -262,12 +255,10 @@ func TestReconcileClusterSecrets_ClearsWhenNil(t *testing.T) {
 	require.NoError(t, err)
 
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Namespace: es.Namespace,
-			Annotations: map[string]string{
-				commonannotation.SettingsHashAnnotationName: existingSettings.hash(),
-			},
+		Name:      esv1.FileSettingsSecretName(es.Name),
+		Namespace: es.Namespace,
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName: existingSettings.hash(),
 		},
 		Data: map[string][]byte{
 			SettingsSecretKey: settingsBytes,
@@ -299,12 +290,10 @@ func TestReconcileClusterSecrets_FailsOnMalformedSettings(t *testing.T) {
 
 	// Create a secret with malformed settings.json
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Namespace: es.Namespace,
-			Annotations: map[string]string{
-				commonannotation.SettingsHashAnnotationName: "some-hash",
-			},
+		Name:      esv1.FileSettingsSecretName(es.Name),
+		Namespace: es.Namespace,
+		Annotations: map[string]string{
+			commonannotation.SettingsHashAnnotationName: "some-hash",
 		},
 		Data: map[string][]byte{
 			SettingsSecretKey: []byte(`{invalid json`),
@@ -333,11 +322,9 @@ func TestReconcileClusterSecrets_FailsOnMissingSettingsKey(t *testing.T) {
 
 	// Create a secret with no settings.json key
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.FileSettingsSecretName(es.Name),
-			Namespace: es.Namespace,
-		},
-		Data: map[string][]byte{},
+		Name:      esv1.FileSettingsSecretName(es.Name),
+		Namespace: es.Namespace,
+		Data:      map[string][]byte{},
 	}
 
 	client := k8s.NewFakeClient(&es, existingSecret)

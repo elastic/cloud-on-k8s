@@ -11,20 +11,19 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	cachemock "github.com/elastic/cloud-on-k8s/v3/pkg/utils/test/mock"
 )
 
 func Test_namespaceFlipRequests(t *testing.T) {
 	apm := func(name, namespace string, esRef, kbRef commonv1.ObjectSelector) *apmv1.ApmServer {
 		return &apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Name: name, Namespace: namespace,
 			Spec: apmv1.ApmServerSpec{
 				ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: esRef},
 				KibanaRef:        kbRef,
@@ -49,10 +48,8 @@ func Test_namespaceFlipRequests(t *testing.T) {
 	}
 
 	r := &Reconciler{
-		AssociationInfo: AssociationInfo{
-			AssociationType:           commonv1.ElasticsearchAssociationType,
-			AssociatedObjListTemplate: func() client.ObjectList { return &apmv1.ApmServerList{} },
-		},
+		AssociationType:           commonv1.ElasticsearchAssociationType,
+		AssociatedObjListTemplate: func() client.ObjectList { return &apmv1.ApmServerList{} },
 	}
 
 	c := cachemock.NewCache(t)
@@ -65,12 +62,52 @@ func Test_namespaceFlipRequests(t *testing.T) {
 
 	reqs := namespaceFlipRequests(c, r)(
 		context.Background(),
-		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "descoped"}},
+		&corev1.Namespace{Name: "descoped"},
 	)
 
 	require.ElementsMatch(t, []reconcile.Request{
-		{NamespacedName: types.NamespacedName{Namespace: "descoped", Name: "in-descoped"}},
-		{NamespacedName: types.NamespacedName{Namespace: "scoped", Name: "cross-ref"}},
-		{NamespacedName: types.NamespacedName{Namespace: "descoped", Name: "default-ns-ref"}},
+		{Namespace: "descoped", Name: "in-descoped"},
+		{Namespace: "scoped", Name: "cross-ref"},
+		{Namespace: "descoped", Name: "default-ns-ref"},
 	}, reqs)
+}
+
+func TestValidateAssociationInfo(t *testing.T) {
+	withUserCreation := &ElasticsearchUserCreation{UserSecretSuffix: "x"}
+	withESRef := func(_ context.Context, _ k8s.Client, assoc commonv1.Association) (bool, commonv1.AssociationRef, error) {
+		return true, assoc.AssociationRef(), nil
+	}
+
+	for _, tt := range []struct {
+		name    string
+		info    AssociationInfo
+		wantErr bool
+	}{
+		{
+			name: "both nil: valid (no user creation, no transitive ES ref)",
+			info: AssociationInfo{AssociationName: "test"},
+		},
+		{
+			name: "ElasticsearchRef set without user creation: valid (transitive RBAC only)",
+			info: AssociationInfo{AssociationName: "test", ElasticsearchRef: withESRef},
+		},
+		{
+			name: "both set: valid",
+			info: AssociationInfo{AssociationName: "test", ElasticsearchRef: withESRef, ElasticsearchUserCreation: withUserCreation},
+		},
+		{
+			name:    "user creation without ElasticsearchRef: invalid",
+			info:    AssociationInfo{AssociationName: "test", ElasticsearchUserCreation: withUserCreation},
+			wantErr: true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAssociationInfo(tt.info)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

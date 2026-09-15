@@ -39,10 +39,8 @@ import (
 var (
 	clusterName = "cluster-name"
 	es          = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: "ns",
-		},
+		Name:      clusterName,
+		Namespace: "ns",
 	}
 	ssetMaster1Replica = sset.TestSset{
 		Name:      "ssetMaster1Replicas",
@@ -398,27 +396,21 @@ func TestHandleDownscale(t *testing.T) {
 func Test_calculateDownscales(t *testing.T) {
 	ssets := es_sset.StatefulSetList{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset0",
-			},
+			Namespace: "ns",
+			Name:      "sset0",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: new(int32(3)),
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset1",
-			},
+			Namespace: "ns",
+			Name:      "sset1",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: new(int32(3))},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset2",
-			},
+			Namespace: "ns",
+			Name:      "sset2",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: new(int32(3))},
 		},
@@ -442,27 +434,21 @@ func Test_calculateDownscales(t *testing.T) {
 			name: "upscale: nothing to do",
 			expectedStatefulSets: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset0",
-					},
+					Namespace: "ns",
+					Name:      "sset0",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(4)),
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset1",
-					},
+					Namespace: "ns",
+					Name:      "sset1",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(5))},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset2",
-					},
+					Namespace: "ns",
+					Name:      "sset2",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(3))},
 				},
@@ -506,27 +492,21 @@ func Test_calculateDownscales(t *testing.T) {
 			name: "downscale 2 out of 3 StatefulSets",
 			expectedStatefulSets: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset0",
-					},
+					Namespace: "ns",
+					Name:      "sset0",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(3)),
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset1",
-					},
+					Namespace: "ns",
+					Name:      "sset1",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(2))},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset2",
-					},
+					Namespace: "ns",
+					Name:      "sset2",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(1))},
 				},
@@ -552,18 +532,14 @@ func Test_calculateDownscales(t *testing.T) {
 			name: "delete actual statefulsets with 0 replicas when not referenced by a nodeSet",
 			expectedStatefulSets: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset2",
-					},
+					Namespace: "ns",
+					Name:      "sset2",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(1))},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset3",
-					},
+					Namespace: "ns",
+					Name:      "sset3",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
@@ -571,28 +547,22 @@ func Test_calculateDownscales(t *testing.T) {
 			actualStatefulSets: es_sset.StatefulSetList{
 				// statefulset with 0 replicas which has no corresponding expected statefulset: should be deleted
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset1",
-					},
+					Namespace: "ns",
+					Name:      "sset1",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
 				// statefulset with 0 replicas which has a corresponding expected statefulset with 1 replica: should be kept
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset2",
-					},
+					Namespace: "ns",
+					Name:      "sset2",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
 				// statefulset with 1 replicas that should be downscaled to 0
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset3",
-					},
+					Namespace: "ns",
+					Name:      "sset3",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(1))},
 				},
@@ -614,10 +584,8 @@ func Test_calculateDownscales(t *testing.T) {
 			},
 			wantDeletions: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset1",
-					},
+					Namespace: "ns",
+					Name:      "sset1",
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
@@ -627,18 +595,14 @@ func Test_calculateDownscales(t *testing.T) {
 			name: "do not delete actual statefulsets with 0 replicas if referenced by a nodeSet",
 			expectedStatefulSets: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      esv1.StatefulSet(clusterName, "nodeset-2"),
-					},
+					Namespace: "ns",
+					Name:      esv1.StatefulSet(clusterName, "nodeset-2"),
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(1))},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
-					},
+					Namespace: "ns",
+					Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
@@ -646,19 +610,15 @@ func Test_calculateDownscales(t *testing.T) {
 			actualStatefulSets: es_sset.StatefulSetList{
 				// statefulset with 0 replicas which has no corresponding expected statefulset and is not referenced through a nodeSet: should be deleted
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
-					},
+					Namespace: "ns",
+					Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
 				// statefulset with 0 replicas which has a corresponding expected statefulset with 0 replica but is used by a nodeSet: should be kept
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
-					},
+					Namespace: "ns",
+					Name:      esv1.StatefulSet(clusterName, "nodeset-3"),
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
@@ -666,10 +626,8 @@ func Test_calculateDownscales(t *testing.T) {
 			wantDownscales: nil, // No downscale expected
 			wantDeletions: es_sset.StatefulSetList{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
-					},
+					Namespace: "ns",
+					Name:      esv1.StatefulSet(clusterName, "nodeset-1"),
 					Spec: appsv1.StatefulSetSpec{
 						Replicas: new(int32(0))},
 				},
@@ -968,14 +926,12 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// simulate an existing v7 master for zen2 to be called
 			v7Pod := corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: es.Namespace,
-					Labels: map[string]string{
-						label.ClusterNameLabelName:             es.Name,
-						string(label.NodeTypesMasterLabelName): "true",
-						label.VersionLabelName:                 "7.1.0",
-						label.StatefulSetNameLabelName:         ssetMasters.Name,
-					},
+				Namespace: es.Namespace,
+				Labels: map[string]string{
+					label.ClusterNameLabelName:             es.Name,
+					string(label.NodeTypesMasterLabelName): "true",
+					label.VersionLabelName:                 "7.1.0",
+					label.StatefulSetNameLabelName:         ssetMasters.Name,
 				},
 			}
 			k8sClient := k8s.NewFakeClient(es.DeepCopy(), &ssetMasters, &ssetData, &v7Pod)
@@ -999,7 +955,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 }
 
 func Test_deleteStatefulSetResources(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "cluster"}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"), metadata.Metadata{})
 	svc := nodespec.HeadlessService(&es, sset.Name, metadata.Metadata{})
@@ -1031,7 +987,7 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 }
 
 func Test_deleteStatefulSets(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "cluster"}
 	tests := []struct {
 		name          string
 		toDelete      es_sset.StatefulSetList

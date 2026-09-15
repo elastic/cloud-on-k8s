@@ -32,12 +32,10 @@ type Params struct {
 
 func New(params Params) appsv1.DaemonSet {
 	return appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Owner.GetNamespace(),
-			Labels:      params.Metadata.Labels,
-			Annotations: params.Metadata.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Owner.GetNamespace(),
+		Labels:      params.Metadata.Labels,
+		Annotations: params.Metadata.Annotations,
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,

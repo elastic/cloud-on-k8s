@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -27,10 +26,8 @@ func TestConfigVolumeName(t *testing.T) {
 
 func TestCAVolumeName(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample",
-			Namespace: "aerospace",
-		},
+		Name:      "sample",
+		Namespace: "aerospace",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.14.0",
 			Monitoring: commonv1.Monitoring{
@@ -64,10 +61,8 @@ func TestCAVolumeName(t *testing.T) {
 
 func TestClientCertVolumeName(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample",
-			Namespace: "aerospace",
-		},
+		Name:      "sample",
+		Namespace: "aerospace",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.14.0",
 			Monitoring: commonv1.Monitoring{

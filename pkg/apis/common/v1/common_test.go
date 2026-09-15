@@ -450,15 +450,15 @@ func TestElasticsearchSelector_WithDefaultNamespace(t *testing.T) {
 }
 
 func TestElasticsearchSelector_IsSet(t *testing.T) {
-	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsSet())
-	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsSet())
+	assert.True(t, ElasticsearchSelector{Name: "n"}.IsSet())
+	assert.True(t, ElasticsearchSelector{SecretName: "s"}.IsSet())
 	assert.False(t, ElasticsearchSelector{}.IsSet())
-	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}, ClientCertificateSecretName: "cc"}.IsSet())
+	assert.True(t, ElasticsearchSelector{Name: "n", ClientCertificateSecretName: "cc"}.IsSet())
 }
 
 func TestElasticsearchSelector_IsExternal(t *testing.T) {
-	assert.False(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{Name: "n"}}.IsExternal())
-	assert.True(t, ElasticsearchSelector{ObjectSelector: ObjectSelector{SecretName: "s"}}.IsExternal())
+	assert.False(t, ElasticsearchSelector{Name: "n"}.IsExternal())
+	assert.True(t, ElasticsearchSelector{SecretName: "s"}.IsExternal())
 }
 
 func TestLocalObjectSelector_IsValid(t *testing.T) {

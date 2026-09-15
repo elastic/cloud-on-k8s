@@ -39,10 +39,8 @@ func TestGetOperatorInfo(t *testing.T) {
 			name: "should update an operator uuid config map when it is empty",
 			initObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      UUIDCfgMapName,
-						Namespace: fakeOperatorNs,
-					},
+					Name:      UUIDCfgMapName,
+					Namespace: fakeOperatorNs,
 				},
 			},
 			assert: func(uuid types.UID) {
@@ -53,10 +51,8 @@ func TestGetOperatorInfo(t *testing.T) {
 			name: "should retrieve an operator uuid config map when it is already defined",
 			initObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      UUIDCfgMapName,
-						Namespace: fakeOperatorNs,
-					},
+					Name:      UUIDCfgMapName,
+					Namespace: fakeOperatorNs,
 					Data: map[string]string{
 						UUIDCfgMapKey: "01010101-0101-4242-0101-010101010101",
 					},

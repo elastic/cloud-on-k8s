@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,11 +19,9 @@ import (
 
 func newPod(name string, uuid types.UID) corev1.Pod {
 	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-			UID:       uuid,
-		},
+		Namespace: "ns",
+		Name:      name,
+		UID:       uuid,
 	}
 }
 

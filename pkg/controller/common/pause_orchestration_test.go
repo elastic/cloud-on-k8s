@@ -77,11 +77,10 @@ func TestIsOrchestrationPaused(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for i, expectedState := range test.expectedState {
 				// testing with a secret, but could be any kind
-				obj := corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+				obj := corev1.Secret{
 					Name:        "bar",
 					Namespace:   "foo",
-					Annotations: test.annotationSequence[i],
-				}}
+					Annotations: test.annotationSequence[i]}
 				actualPauseState := IsOrchestrationPaused(&obj)
 				assert.Equal(t, expectedState, actualPauseState, test.annotationSequence[i])
 			}
@@ -101,7 +100,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	two := int32(2)
 	makeDeployment := func(replicas *int32) *appsv1.Deployment {
 		d := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			Name: resourceName, Namespace: namespace, ResourceVersion: "1",
 			Spec: appsv1.DeploymentSpec{
 				Replicas: replicas,
 			},
@@ -111,7 +110,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	}
 	makeDaemonSet := func(updateStrategy appsv1.DaemonSetUpdateStrategy) *appsv1.DaemonSet {
 		d := &appsv1.DaemonSet{
-			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			Name: resourceName, Namespace: namespace, ResourceVersion: "1",
 			Spec: appsv1.DaemonSetSpec{
 				UpdateStrategy: updateStrategy,
 			},
@@ -121,7 +120,7 @@ func Test_setPausedConditionAndEmitEvent(t *testing.T) {
 	}
 	makeStatefulSet := func(replicas *int32) *appsv1.StatefulSet {
 		d := &appsv1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: namespace, ResourceVersion: "1"},
+			Name: resourceName, Namespace: namespace, ResourceVersion: "1",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: replicas,
 			},

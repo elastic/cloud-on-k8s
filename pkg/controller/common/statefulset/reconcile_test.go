@@ -22,10 +22,8 @@ import (
 
 func TestWithTemplateHash(t *testing.T) {
 	d := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "stat",
-			Namespace: "ns",
-		},
+		Name:      "stat",
+		Namespace: "ns",
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: new(int32(2)),
 		},
@@ -56,12 +54,10 @@ func TestReconcile(t *testing.T) {
 	controllerscheme.SetupScheme()
 	k8sClient := k8s.NewFakeClient()
 	expected := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "stat",
-			Namespace: "ns",
-			Labels: map[string]string{
-				"a": "b",
-			},
+		Name:      "stat",
+		Namespace: "ns",
+		Labels: map[string]string{
+			"a": "b",
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: new(int32(2)),

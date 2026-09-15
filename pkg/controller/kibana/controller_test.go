@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,20 +31,16 @@ import (
 //nolint:thelper
 func TestReconcileKibana_Reconcile(t *testing.T) {
 	sampleElasticsearch := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "test",
-		},
+		Name:      "test-es",
+		Namespace: "test",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "7.17.0",
 		},
 	}
 	sampleKibana := kibanav1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "test-kibana",
-			Namespace:  "test",
-			Generation: 2,
-		},
+		Name:       "test-kibana",
+		Namespace:  "test",
+		Generation: 2,
 		Spec: kibanav1.KibanaSpec{
 			Version: "7.17.0",
 			Count:   1,
@@ -55,10 +50,8 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		},
 	}
 	defaultRequest := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "test-kibana",
-			Namespace: "test",
-		},
+		Name:      "test-kibana",
+		Namespace: "test",
 	}
 	type fields struct {
 		Client k8s.Client
@@ -88,13 +81,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.DeploymentHealth(""),
-					},
+					Selector:           "",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.DeploymentHealth(""),
 					ObservedGeneration: 1,
 				}, kibana.Status)
 			},
@@ -116,13 +107,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, kibana.ObjectMeta.Finalizers, 0)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.RedHealth,
-					},
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
 				}, kibana.Status)
 			},
@@ -149,13 +138,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.DeploymentHealth(""),
-					},
+					Selector:           "",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.DeploymentHealth(""),
 					ObservedGeneration: 2,
 				}, kibana.Status)
 			},
@@ -182,13 +169,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "superlongkibananamecausesvalidationissues"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.DeploymentHealth(""),
-					},
+					Selector:           "",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.DeploymentHealth(""),
 					ObservedGeneration: 1,
 				}, kibana.Status)
 			},
@@ -214,13 +199,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.RedHealth,
-					},
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
 				}, kibana.Status)
 			},
@@ -240,10 +223,8 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 						Version: "",
 					}),
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-es-elastic-user",
-							Namespace: "test",
-						},
+						Name:      "test-es-elastic-user",
+						Namespace: "test",
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
@@ -263,13 +244,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.DeploymentHealth(""),
-					},
+					Selector:           "",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.DeploymentHealth(""),
 					ObservedGeneration: 2,
 				}, kibana.Status)
 			},
@@ -288,19 +267,15 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 						Version:        "7.17.0",
 					})),
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-es-elastic-user",
-							Namespace: "test",
-						},
+						Name:      "test-es-elastic-user",
+						Namespace: "test",
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "ca-secret",
-							Namespace: "test",
-						},
+						Name:      "ca-secret",
+						Namespace: "test",
 						Data: map[string][]byte{
 							"ca.crt": []byte("fake data"),
 						},
@@ -320,13 +295,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					DeploymentStatus: commonv1.DeploymentStatus{
-						Selector:       "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
-						Count:          0,
-						AvailableNodes: 0,
-						Version:        "",
-						Health:         commonv1.RedHealth,
-					},
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Count:              0,
+					AvailableNodes:     0,
+					Version:            "",
+					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
 				}, kibana.Status)
 			},

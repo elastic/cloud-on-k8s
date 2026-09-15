@@ -87,20 +87,18 @@ func Test_getPolicyConfig(t *testing.T) {
 
 func mkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "test-kb-kb-policy-config",
-			Labels: map[string]string{
-				"asset.policy.k8s.elastic.co/on-delete": "delete",
-				"kibana.k8s.elastic.co/name":            "test-kb",
-				"common.k8s.elastic.co/type":            "kibana",
-				"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
-				"eck.k8s.elastic.co/owner-name":         owningPolicyName,
-				"eck.k8s.elastic.co/owner-namespace":    owningPolicyNamespace,
-			},
-			Annotations: map[string]string{
-				"policy.k8s.elastic.co/kibana-config-hash": hashValue,
-			},
+		Namespace: namespace,
+		Name:      "test-kb-kb-policy-config",
+		Labels: map[string]string{
+			"asset.policy.k8s.elastic.co/on-delete": "delete",
+			"kibana.k8s.elastic.co/name":            "test-kb",
+			"common.k8s.elastic.co/type":            "kibana",
+			"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
+			"eck.k8s.elastic.co/owner-name":         owningPolicyName,
+			"eck.k8s.elastic.co/owner-namespace":    owningPolicyNamespace,
+		},
+		Annotations: map[string]string{
+			"policy.k8s.elastic.co/kibana-config-hash": hashValue,
 		},
 		Data: map[string][]byte{
 			"kibana.json": []byte(`{"xpack.canvas.enabled":true}`),

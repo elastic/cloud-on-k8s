@@ -10,7 +10,6 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -49,12 +48,10 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ScriptsConfigMap(kb.Name)}
 	scriptsConfigMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        nsn.Name,
-			Namespace:   kb.Namespace,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        nsn.Name,
+		Namespace:   kb.Namespace,
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string]string{
 			KibanaInitScriptConfigKey: initScript,
 		},

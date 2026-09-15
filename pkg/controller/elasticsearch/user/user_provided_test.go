@@ -17,7 +17,6 @@ import (
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -37,16 +36,16 @@ func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 }
 
 var sampleEsWithAuth = esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+	Namespace: "ns", Name: "es",
 	Spec: esv1.ElasticsearchSpec{
 		Auth: esv1.Auth{
 			FileRealm: []esv1.FileRealmSource{
-				{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-1"}},
-				{SecretRef: v1.SecretRef{SecretName: "filerealm-secret-2"}},
+				{SecretName: "filerealm-secret-1"},
+				{SecretName: "filerealm-secret-2"},
 			},
 			Roles: []esv1.RoleSource{
-				{SecretRef: v1.SecretRef{SecretName: "roles-secret-1"}},
-				{SecretRef: v1.SecretRef{SecretName: "roles-secret-2"}},
+				{SecretName: "roles-secret-1"},
+				{SecretName: "roles-secret-2"},
 			},
 		},
 		Version: "8.10.0",
@@ -54,14 +53,14 @@ var sampleEsWithAuth = esv1.Elasticsearch{
 }
 var sampleUserProvidedFileRealmSecrets = []client.Object{
 	&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "filerealm-secret-1"},
+		Namespace: "ns", Name: "filerealm-secret-1",
 		Data: map[string][]byte{
 			filerealm.UsersFile:      []byte("user1:hash1\nuser2:hash2"),
 			filerealm.UsersRolesFile: []byte("role1:user1,user2\nrole2:user1\nrole3:"),
 		},
 	},
 	&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "filerealm-secret-2"},
+		Namespace: "ns", Name: "filerealm-secret-2",
 		Data: map[string][]byte{
 			// different from 1st secret, should have priority
 			filerealm.UsersFile: []byte("user1:otherhash1\nuser3:hash3"),
@@ -73,13 +72,13 @@ var sampleUserProvidedFileRealmSecrets = []client.Object{
 
 var sampleUserProvidedRolesSecret = []client.Object{
 	&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "roles-secret-1"},
+		Namespace: "ns", Name: "roles-secret-1",
 		Data: map[string][]byte{
 			RolesFile: []byte("role1: rolespec1\nrole2: rolespec2"),
 		},
 	},
 	&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "roles-secret-2"},
+		Namespace: "ns", Name: "roles-secret-2",
 		Data: map[string][]byte{
 			RolesFile: []byte("role1: rolespec1updated\nrole2: rolespec2"), // different from the 1st secret, should have priority
 		},
@@ -125,8 +124,8 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{FileRealm: []esv1.FileRealmSource{
-					{SecretRef: v1.SecretRef{SecretName: "unknown-secret"}},
-					{SecretRef: v1.SecretRef{SecretName: "unknown-secret-2"}},
+					{SecretName: "unknown-secret"},
+					{SecretName: "unknown-secret-2"},
 				}}},
 			},
 			secrets:       nil,
@@ -140,12 +139,12 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{FileRealm: []esv1.FileRealmSource{
-					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
+					{SecretName: "invalid-secret"},
 				}}},
 			},
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
+					Namespace: "ns", Name: "invalid-secret",
 					Data: map[string][]byte{
 						filerealm.UsersFile: []byte("invalid-data"),
 					},
@@ -204,8 +203,8 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{Roles: []esv1.RoleSource{
-					{SecretRef: v1.SecretRef{SecretName: "unknown-secret"}},
-					{SecretRef: v1.SecretRef{SecretName: "unknown-secret-2"}},
+					{SecretName: "unknown-secret"},
+					{SecretName: "unknown-secret-2"},
 				}}},
 			},
 			secrets:     nil,
@@ -219,12 +218,12 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
 				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{Roles: []esv1.RoleSource{
-					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
+					{SecretName: "invalid-secret"},
 				}}},
 			},
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
+					Namespace: "ns", Name: "invalid-secret",
 					Data: map[string][]byte{
 						RolesFile: []byte("[invalid yaml]"),
 					},

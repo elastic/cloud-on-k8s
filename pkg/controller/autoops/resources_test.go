@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -29,11 +28,11 @@ func autoOpsContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequi
 
 func TestAutoOpsResources(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"},
-		Spec:       esv1.ElasticsearchSpec{Version: "9.2.4"},
+		Name: "es-1", Namespace: "ns-1",
+		Spec: esv1.ElasticsearchSpec{Version: "9.2.4"},
 	}
 	base := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "policy-1", Namespace: "ns-1"},
+		Name: "policy-1", Namespace: "ns-1",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version:    "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{SecretName: "config-secret"},

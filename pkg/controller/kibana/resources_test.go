@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -31,8 +30,8 @@ func kibanaContainerResources(pod corev1.PodTemplateSpec) (corev1.ResourceRequir
 
 func newMinimalKibana(spec kbv1.KibanaSpec) kbv1.Kibana {
 	return kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Name: "kibana-test", Namespace: "default"},
-		Spec:       spec,
+		Name: "kibana-test", Namespace: "default",
+		Spec: spec,
 	}
 }
 

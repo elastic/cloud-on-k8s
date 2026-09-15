@@ -254,15 +254,13 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 	expectedLabels := labels.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(owner)))
 	expectedLabels[commonv1.TypeLabelName] = RemoteClusterAPIKeysType
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName.Name,
-			Namespace: secretName.Namespace,
-			Annotations: map[string]string{
-				aliasesAnnotationName: string(aliases),
-			},
-			Labels: expectedLabels,
+		Name:      secretName.Name,
+		Namespace: secretName.Namespace,
+		Annotations: map[string]string{
+			aliasesAnnotationName: string(aliases),
 		},
-		Data: data,
+		Labels: expectedLabels,
+		Data:   data,
 	}
 	if _, err := reconciler.ReconcileSecret(ctx, c, expected, owner); err != nil {
 		if errors.IsConflict(err) {
@@ -284,7 +282,7 @@ func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretNa
 	}
 	results := &reconciler.Results{}
 	if err := c.Delete(ctx,
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName.Name, Namespace: secretName.Namespace}},
+		&corev1.Secret{Name: secretName.Name, Namespace: secretName.Namespace},
 		deleteOptions...,
 	); err != nil {
 		if errors.IsNotFound(err) {
