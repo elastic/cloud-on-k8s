@@ -362,11 +362,22 @@ func computeSSACallData(
 	for _, fn := range fns {
 		for _, block := range fn.Blocks {
 			for _, instr := range block.Instrs {
-				call, ok := instr.(*ssa.Call)
-				if !ok {
+				var common *ssa.CallCommon
+				switch typed := instr.(type) {
+				case *ssa.Call:
+					common = &typed.Call
+				case *ssa.Go:
+					common = &typed.Call
+				case *ssa.Defer:
+					common = &typed.Call
+				default:
 					continue
 				}
-				pos := call.Pos()
+				// Use CallCommon.Pos() (the call's Lparen) rather than the
+				// instruction's own Pos(), which for *ssa.Go/*ssa.Defer is the
+				// go/defer keyword — a different position than what the AST pass
+				// uses as its map key (ast.CallExpr.Lparen).
+				pos := common.Pos()
 				if pos == token.NoPos {
 					continue
 				}
@@ -377,17 +388,17 @@ func computeSSACallData(
 				// passed explicitly as Args[0] and method params start at Args[1].
 				var methodName string
 				var shift int
-				if call.Call.IsInvoke() {
-					if !implementsWriter(call.Call.Value.Type(), clientWriterIface) {
+				if common.IsInvoke() {
+					if !implementsWriter(common.Value.Type(), clientWriterIface) {
 						continue
 					}
-					methodName = call.Call.Method.Name()
+					methodName = common.Method.Name()
 				} else {
-					callee := call.Call.StaticCallee()
-					if callee == nil || len(call.Call.Args) == 0 {
+					callee := common.StaticCallee()
+					if callee == nil || len(common.Args) == 0 {
 						continue
 					}
-					if !implementsWriter(call.Call.Args[0].Type(), clientWriterIface) {
+					if !implementsWriter(common.Args[0].Type(), clientWriterIface) {
 						continue
 					}
 					methodName = normalizeSSAMethodName(callee.Name())
@@ -396,15 +407,15 @@ func computeSSACallData(
 
 				// Classify the client.Object argument for Update and Patch calls.
 				if objIdx, ok := objIdxByMethod[methodName]; ok {
-					if argIdx := objIdx + shift; argIdx < len(call.Call.Args) {
-						argStates[pos] = classifySSAValue(call.Call.Args[argIdx], make(map[ssa.Value]crState), crPathRE)
+					if argIdx := objIdx + shift; argIdx < len(common.Args) {
+						argStates[pos] = classifySSAValue(common.Args[argIdx], make(map[ssa.Value]crState), crPathRE)
 					}
 				}
 
 				// Classify the client.Patch argument for Patch calls.
 				if methodName == "Patch" {
-					if patchArgIdx := patchPatchIdx + shift; patchArgIdx < len(call.Call.Args) {
-						patchSafeties[pos] = classifyPatchSSAValue(call.Call.Args[patchArgIdx], make(map[ssa.Value]patchSafety), clientPkgPath)
+					if patchArgIdx := patchPatchIdx + shift; patchArgIdx < len(common.Args) {
+						patchSafeties[pos] = classifyPatchSSAValue(common.Args[patchArgIdx], make(map[ssa.Value]patchSafety), clientPkgPath)
 					}
 				}
 			}
@@ -679,16 +690,9 @@ func classifyRawPatchTypeSeen(v ssa.Value, seen map[ssa.Value]patchSafety) patch
 	return s
 }
 
-// implementsWriter reports whether t (or *t for non-pointer concrete types)
-// satisfies iface.
+// implementsWriter reports whether t satisfies iface.
 func implementsWriter(t types.Type, iface *types.Interface) bool {
-	if types.Implements(t, iface) {
-		return true
-	}
-	if _, isPtr := t.(*types.Pointer); !isPtr {
-		return types.Implements(types.NewPointer(t), iface)
-	}
-	return false
+	return types.Implements(t, iface)
 }
 
 // lookupType traverses the import graph rooted at pkg to find the named type

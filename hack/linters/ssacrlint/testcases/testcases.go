@@ -531,6 +531,90 @@ func NotFlaggedMethodExprPatchInterfaceVarNonCR(c client.Client, ctx context.Con
 	client.Client.Patch(c, ctx, obj, client.MergeFrom(&corev1.Secret{}))
 }
 
+// NotFlaggedGoPatchJSONType calls Patch in a goroutine with
+// RawPatch(JSONPatchType) on an ECK CR. Before the fix, *ssa.Go was not
+// inspected so patchSafeties had no entry and the call was conservatively
+// flagged. Must not produce a diagnostic.
+func NotFlaggedGoPatchJSONType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	go c.Patch(ctx, cr, client.RawPatch(ktypes.JSONPatchType, []byte(`[{"op":"replace","path":"/spec/x","value":1}]`)))
+}
+
+// FlaggedGoUpdateCR calls Update in a goroutine on an ECK CR. *ssa.Go embeds
+// a CallCommon that the analyzer must inspect to classify the CR argument —
+// must produce a diagnostic.
+func FlaggedGoUpdateCR(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	go c.Update(ctx, cr) // want "on an ECK CR"
+}
+
+// NotFlaggedGoUpdateInterfaceVarNonCR calls Update in a goroutine where the
+// object is an interface variable holding a plain Kubernetes type. Before the
+// fix, *ssa.Go was not inspected so argStates had no entry and the call fell
+// back to crStateUnknown and was falsely reported. Must not produce a
+// diagnostic.
+func NotFlaggedGoUpdateInterfaceVarNonCR(c client.Client, ctx context.Context) {
+	var obj client.Object = &corev1.Secret{}
+	go c.Update(ctx, obj)
+}
+
+// NotFlaggedDeferPatchApplyType calls Patch in a defer statement with
+// RawPatch(ApplyPatchType) on an ECK CR. Before the fix, *ssa.Defer was not
+// inspected so patchSafeties had no entry and the call was conservatively
+// flagged. Must not produce a diagnostic.
+func NotFlaggedDeferPatchApplyType(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	defer c.Patch(ctx, cr, client.RawPatch(ktypes.ApplyPatchType, []byte(`{"spec":{"x":1}}`)))
+}
+
+// FlaggedDeferUpdate calls Update in a defer statement on an ECK CR. *ssa.Defer
+// embeds a CallCommon that the analyzer must inspect to classify the CR
+// argument — must produce a diagnostic.
+func FlaggedDeferUpdate(c client.Client, ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	defer c.Update(ctx, cr) // want "on an ECK CR"
+}
+
+// partialWriterImpl has Update with a value receiver but all remaining
+// client.Writer methods on the pointer receiver only, so partialWriterImpl
+// itself does NOT implement client.Writer — only *partialWriterImpl does. The
+// old implementsWriter widened T→*T unconditionally and falsely matched
+// partialWriterImpl.Update as a client.Writer.Update call.
+type partialWriterImpl struct{}
+
+func (partialWriterImpl) Update(_ context.Context, _ client.Object, _ ...client.UpdateOption) error {
+	return nil
+}
+func (*partialWriterImpl) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+	return nil
+}
+func (*partialWriterImpl) Create(_ context.Context, _ client.Object, _ ...client.CreateOption) error {
+	return nil
+}
+func (*partialWriterImpl) Delete(_ context.Context, _ client.Object, _ ...client.DeleteOption) error {
+	return nil
+}
+func (*partialWriterImpl) Patch(_ context.Context, _ client.Object, _ client.Patch, _ ...client.PatchOption) error {
+	return nil
+}
+func (*partialWriterImpl) DeleteAllOf(_ context.Context, _ client.Object, _ ...client.DeleteAllOfOption) error {
+	return nil
+}
+
+var _ client.Writer = (*partialWriterImpl)(nil)
+
+// NotFlaggedValueReceiverMethodExprUpdate calls Update as a value-receiver
+// method expression on partialWriterImpl. The value type does not implement
+// client.Writer (only *partialWriterImpl does), so this is not a
+// client.Writer.Update call. Before the fix, implementsWriter widened T→*T
+// and falsely flagged this as an unsafe ECK write. Must not produce a
+// diagnostic.
+func NotFlaggedValueReceiverMethodExprUpdate(ctx context.Context) {
+	cr := &fakev1.FakeCR{}
+	w := partialWriterImpl{}
+	partialWriterImpl.Update(w, ctx, cr)
+}
+
 // writerImpl is a minimal concrete client.Writer implementation. It exists so
 // that tests can use pointer-to-concrete-type method expressions
 // ((*writerImpl).Update) to exercise the non-thunk SSA path through
