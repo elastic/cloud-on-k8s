@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	kbvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/volume"
@@ -58,17 +57,18 @@ var (
 	}
 )
 
-// ConfigVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
-func ConfigVolume(kb kbv1.Kibana) volume.SecretVolume {
+// ConfigVolume returns a SecretVolume to hold the Kibana config identified by configSecretName.
+func ConfigVolume(configSecretName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		kbv1.ConfigSecret(kb.Name),
+		configSecretName,
 		kbvolume.InternalConfigVolumeName,
 		kbvolume.InternalConfigVolumeMountPath,
 	)
 }
 
 // NewInitContainer creates an init container to handle kibana configuration and plugins persistence.
-func NewInitContainer(kb kbv1.Kibana) (corev1.Container, error) {
+// configSecretName is the name of the Secret that holds kibana.yml for this pool.
+func NewInitContainer(configSecretName string) (corev1.Container, error) {
 	container := corev1.Container{
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            kbvolume.InitContainerName,
@@ -76,7 +76,7 @@ func NewInitContainer(kb kbv1.Kibana) (corev1.Container, error) {
 		Command:         []string{"/usr/bin/env", "bash", "-c", path.Join(kbvolume.ScriptsVolumeMountPath, KibanaInitScriptConfigKey)},
 		VolumeMounts: []corev1.VolumeMount{
 			ConfigSharedVolume.InitContainerVolumeMount(),
-			ConfigVolume(kb).VolumeMount(),
+			ConfigVolume(configSecretName).VolumeMount(),
 			PluginsSharedVolume.InitContainerVolumeMount(),
 		},
 		Resources: defaultResources,
