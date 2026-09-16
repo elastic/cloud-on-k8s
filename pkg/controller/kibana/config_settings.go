@@ -94,6 +94,32 @@ type CanonicalConfig struct {
 	*settings.CanonicalConfig
 }
 
+// WithPoolOverlay returns a copy of the base config with the pool-specific overlay merged on top.
+// The deep-copy via render+parse ensures mutations don't affect the shared base config.
+// node.roles is never written to kibana.yml — it is set via the NODE_ROLES env var on the pod.
+func (c CanonicalConfig) WithPoolOverlay(overlay *commonv1.Config) (CanonicalConfig, error) {
+	if overlay == nil {
+		return c, nil
+	}
+	// Deep-copy via render+parse so mutations don't affect the shared base config.
+	rendered, err := c.Render()
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	cp, err := settings.ParseConfig(rendered)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	overlayCfg, err := settings.NewCanonicalConfigFrom(overlay.Data)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	if err := cp.MergeWith(overlayCfg); err != nil {
+		return CanonicalConfig{}, err
+	}
+	return CanonicalConfig{cp}, nil
+}
+
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)

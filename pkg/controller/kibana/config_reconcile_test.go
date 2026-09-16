@@ -99,7 +99,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.NewFakeClient(tt.args.initialObjects...)
 
-			err := ReconcileConfigSecret(context.Background(), k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, metadata.Propagate(&tt.args.kb, metadata.Metadata{Labels: tt.args.kb.GetIdentityLabels()}))
+			err := ReconcileConfigSecret(context.Background(), k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, kbv1.ConfigSecret(tt.args.kb.Name), metadata.Propagate(&tt.args.kb, metadata.Metadata{Labels: tt.args.kb.GetIdentityLabels()}))
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList

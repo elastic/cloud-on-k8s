@@ -46,6 +46,7 @@ func buildKibanaPodTemplate(t *testing.T, kb kbv1.Kibana) corev1.PodTemplateSpec
 		"",
 		false,
 		metadata.Metadata{},
+		kbv1.ConfigSecret(kb.Name),
 	)
 	require.NoError(t, err)
 	return got
