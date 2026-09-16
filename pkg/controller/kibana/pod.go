@@ -129,6 +129,7 @@ func NewPodTemplateSpec(
 	basePath string,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
+	configSecretName string,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -158,7 +159,7 @@ func NewPodTemplateSpec(
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb)
+	initContainer, err := initcontainer.NewInitContainer(configSecretName)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
