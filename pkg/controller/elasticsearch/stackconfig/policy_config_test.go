@@ -146,12 +146,10 @@ func TestGetPolicyConfig(t *testing.T) {
 
 func mkConfigSecret(name string, namespace string) corev1.Secret {
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
-			},
+		Name:      name,
+		Namespace: namespace,
+		Annotations: map[string]string{
+			commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: "testhash",
 		},
 		Data: map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(`{"logger.org.elasticsearch.discovery": "DEBUG"}`),
 			stackconfigpolicy.SecretsMountKey: []byte(`[{"secretName": "test1", "mountPath": "/usr/test"}]`)},

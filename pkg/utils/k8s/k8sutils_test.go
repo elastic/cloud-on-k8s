@@ -51,8 +51,8 @@ func TestDeepCopyObject(t *testing.T) {
 		},
 		{
 			name: "valid object",
-			obj:  &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
-			want: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"}},
+			obj:  &corev1.Pod{Name: "test", Namespace: "test"},
+			want: &corev1.Pod{Name: "test", Namespace: "test"},
 		},
 	}
 
@@ -77,7 +77,7 @@ func TestExtractNamespacedName(t *testing.T) {
 	assert.Equal(
 		t,
 		types.NamespacedName{Namespace: "namespace", Name: "name"},
-		ExtractNamespacedName(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "name"}}),
+		ExtractNamespacedName(&corev1.Secret{Namespace: "namespace", Name: "name"}),
 	)
 }
 
@@ -308,7 +308,7 @@ func TestObjectExists(t *testing.T) {
 			name: "existing secret",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "secret-name"}},
+					&corev1.Secret{Namespace: "ns", Name: "secret-name"},
 				),
 				ref:           types.NamespacedName{Namespace: "ns", Name: "secret-name"},
 				typedReceiver: &corev1.Secret{},
@@ -320,7 +320,7 @@ func TestObjectExists(t *testing.T) {
 			name: "non-existing secret",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "secret-name"}},
+					&corev1.Secret{Namespace: "ns", Name: "secret-name"},
 				),
 				ref:           types.NamespacedName{Namespace: "ns", Name: "another-secret-name"},
 				typedReceiver: &corev1.Secret{},
@@ -437,8 +437,8 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "empty selector accepts all namespaces",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"env": "dev"}},
 				),
 				selector: metav1.LabelSelector{},
 			},
@@ -454,9 +454,9 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "selector with MatchLabels filters namespaces",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "prod"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"env": "dev"}},
+					&corev1.Namespace{Name: "ns3", Labels: map[string]string{"env": "prod"}},
 				),
 				selector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"env": "prod"},
@@ -473,9 +473,9 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "selector with MatchExpressions filters namespaces",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "staging"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"env": "dev"}},
+					&corev1.Namespace{Name: "ns3", Labels: map[string]string{"env": "staging"}},
 				),
 				selector: metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -498,8 +498,8 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "selector matches no namespaces",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"env": "dev"}},
 				),
 				selector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"env": "staging"},
@@ -515,9 +515,9 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "selector with both MatchLabels and MatchExpressions",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod", "team": "platform"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"env": "prod", "team": "search"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev", "team": "platform"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod", "team": "platform"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"env": "prod", "team": "search"}},
+					&corev1.Namespace{Name: "ns3", Labels: map[string]string{"env": "dev", "team": "platform"}},
 				),
 				selector: metav1.LabelSelector{
 					MatchLabels: map[string]string{"env": "prod"},
@@ -573,9 +573,9 @@ func TestNamespaceFilterFunc(t *testing.T) {
 			name: "selector with Exists operator",
 			args: args{
 				c: NewFakeClient(
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1", Labels: map[string]string{"env": "prod"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns2", Labels: map[string]string{"team": "platform"}}},
-					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns3", Labels: map[string]string{"env": "dev"}}},
+					&corev1.Namespace{Name: "ns1", Labels: map[string]string{"env": "prod"}},
+					&corev1.Namespace{Name: "ns2", Labels: map[string]string{"team": "platform"}},
+					&corev1.Namespace{Name: "ns3", Labels: map[string]string{"env": "dev"}},
 				),
 				selector: metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -712,7 +712,7 @@ func TestPatchAnnotations(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			obj := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Annotations: tc.initialAnnotations},
+				Name: "test", Namespace: "test", Annotations: tc.initialAnnotations,
 			}
 
 			var inner Client
@@ -761,7 +761,7 @@ func TestPatchAnnotations(t *testing.T) {
 }
 
 func TestPatchAnnotationsOptimisticLock(t *testing.T) {
-	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns"}}
+	cm := &corev1.ConfigMap{Name: "test", Namespace: "ns"}
 	c := NewFakeClient(cm)
 
 	stale := &corev1.ConfigMap{}
@@ -841,7 +841,7 @@ func TestPatchObjectFinalizers(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			obj := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test", Finalizers: tc.initialFinalizers},
+				Name: "test", Namespace: "test", Finalizers: tc.initialFinalizers,
 			}
 
 			var inner Client
@@ -897,7 +897,7 @@ func TestPatchObjectFinalizers(t *testing.T) {
 
 func TestPatchObjectFinalizersOptimisticLock(t *testing.T) {
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "ns", Finalizers: []string{"existing"}},
+		Name: "test", Namespace: "ns", Finalizers: []string{"existing"},
 	}
 	c := NewFakeClient(cm)
 

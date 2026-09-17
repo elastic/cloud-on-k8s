@@ -117,9 +117,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					DeletionTimestamp: tt.deletionTimestamp,
-				},
+				DeletionTimestamp: tt.deletionTimestamp,
 			}
 			require.Equal(t, tt.want, e.IsMarkedForDeletion())
 		})

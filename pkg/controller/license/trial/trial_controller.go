@@ -307,19 +307,15 @@ func namespaceFlipRequests(ch cache.Cache) func(context.Context, *corev1.Namespa
 func trialLicenseRequestForSecret(secret corev1.Secret) (reconcile.Request, bool) {
 	if licensing.IsEnterpriseTrial(secret) {
 		return reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Namespace: secret.GetNamespace(),
-				Name:      secret.GetName(),
-			},
+			Namespace: secret.GetNamespace(),
+			Name:      secret.GetName(),
 		}, true
 	}
 
 	if secret.GetName() == licensing.TrialStatusSecretKey {
 		return reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-				Name:      secret.Annotations[licensing.TrialLicenseSecretName],
-			},
+			Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+			Name:      secret.Annotations[licensing.TrialLicenseSecretName],
 		}, true
 	}
 

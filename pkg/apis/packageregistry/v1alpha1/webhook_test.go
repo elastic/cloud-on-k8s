@@ -218,11 +218,9 @@ func TestWebhook(t *testing.T) {
 
 func mkEPR(uid string) *eprv1alpha1.PackageRegistry {
 	return &eprv1alpha1.PackageRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "webhook-test",
-			UID:         types.UID(uid),
-			Annotations: make(map[string]string),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: eprv1alpha1.PackageRegistrySpec{
 			Version: "8.15.0",
 		},

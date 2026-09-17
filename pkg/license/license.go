@@ -17,7 +17,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -175,13 +174,11 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 		Name:      LicensingCfgMapName,
 	}
 	expected := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
-			Name:      nsn.Name,
-			Labels: map[string]string{
-				commonv1.TypeLabelName:                     Type,
-				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-			},
+		Namespace: nsn.Namespace,
+		Name:      nsn.Name,
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                     Type,
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 		},
 		Data: info.toMap(),
 	}

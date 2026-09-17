@@ -12,7 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -69,10 +68,8 @@ func secretKey(association commonv1.Association, userSuffix string) types.Namesp
 // UserSecretKeySelector creates a SecretKeySelector for the associated user secret.
 func UserSecretKeySelector(association commonv1.Association, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: userSecretObjectName(association, userSuffix),
-		},
-		Key: elasticsearchUserName(association, userSuffix),
+		Name: userSecretObjectName(association, userSuffix),
+		Key:  elasticsearchUserName(association, userSuffix),
 	}
 }
 
@@ -98,13 +95,11 @@ func reconcileEsUserSecret(
 	secKey := secretKey(association, userObjectSuffix)
 	usrKey := UserKey(association, es.Namespace, userObjectSuffix)
 	expectedSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secKey.Name,
-			Namespace:   secKey.Namespace,
-			Labels:      commonlabels.AddCredentialsLabel(maps.Clone(esUserSecretMeta.Labels)),
-			Annotations: esUserSecretMeta.Annotations,
-		},
-		Data: map[string][]byte{},
+		Name:        secKey.Name,
+		Namespace:   secKey.Namespace,
+		Labels:      commonlabels.AddCredentialsLabel(maps.Clone(esUserSecretMeta.Labels)),
+		Annotations: esUserSecretMeta.Annotations,
+		Data:        map[string][]byte{},
 	}
 
 	var password []byte
@@ -140,12 +135,10 @@ func reconcileEsUserSecret(
 	)
 
 	expectedEsUser := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        usrKey.Name,
-			Namespace:   usrKey.Namespace,
-			Labels:      metaUserSecret.Labels,
-			Annotations: metaUserSecret.Annotations,
-		},
+		Name:        usrKey.Name,
+		Namespace:   usrKey.Namespace,
+		Labels:      metaUserSecret.Labels,
+		Annotations: metaUserSecret.Annotations,
 		Data: map[string][]byte{
 			esuser.UserNameField:  []byte(usrKey.Name),
 			esuser.UserRolesField: []byte(userRoles),

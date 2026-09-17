@@ -37,16 +37,12 @@ func Test_newMetadataFor(t *testing.T) {
 		{
 			name: "happy path",
 			policy: &autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
+				Name:      "policy-1",
+				Namespace: "ns-1",
 			},
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "es-1",
-					Namespace: "ns-2",
-				},
+				Name:      "es-1",
+				Namespace: "ns-2",
 			},
 			expectedHash: "hash123",
 			want: map[string]any{
@@ -181,17 +177,13 @@ func Test_maybeUpdateAPIKey_AddsRestrictWatchedResourcesLabel(t *testing.T) {
 	scheme.SetupScheme()
 
 	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "policy-1",
-			Namespace: "ns-1",
-		},
+		Name:      "policy-1",
+		Namespace: "ns-1",
 	}
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-1",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-1",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 	}
 
 	const expectedHash = "hash123"
@@ -201,12 +193,10 @@ func Test_maybeUpdateAPIKey_AddsRestrictWatchedResourcesLabel(t *testing.T) {
 	// Pre-existing secret without the RestrictWatchedResourcesLabelName label - this
 	// simulates a secret created before the label was introduced.
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: policy.Namespace,
-			Labels: map[string]string{
-				PolicyNameLabelKey: policy.Name,
-			},
+		Name:      secretName,
+		Namespace: policy.Namespace,
+		Labels: map[string]string{
+			PolicyNameLabelKey: policy.Name,
 		},
 		Data: map[string][]byte{
 			apiKeySecretKey: []byte("existing-encoded-api-key"),

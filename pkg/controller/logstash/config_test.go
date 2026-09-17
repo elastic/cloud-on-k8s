@@ -513,10 +513,8 @@ config:
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFileName: cfg,
 		},
@@ -525,14 +523,12 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func logstashWithConfigRef(name string, cfg *commonv1.Config, ver string) v1alpha1.Logstash {
 	return v1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ls",
-			Namespace: "ns",
-		},
+		Name:      "ls",
+		Namespace: "ns",
 		Spec: v1alpha1.LogstashSpec{
 			Version:   ver,
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}},
+			ConfigRef: &commonv1.ConfigSource{SecretName: name},
 		},
 	}
 }
@@ -608,7 +604,7 @@ func Test_checkTLSConfig(t *testing.T) {
 func Test_resolveAPIServerConfig(t *testing.T) {
 	secureSecretName := "logstash-secure-settings"
 	secureSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: secureSecretName},
+		Name: secureSecretName,
 		Data: map[string][]byte{
 			"SSL_ENABLED":           []byte("true"),
 			"SSL_KEYSTORE_PASSWORD": []byte("whatever"),
@@ -620,7 +616,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 
 	envFromSecretName := "logstash-env-secret" // #nosec G101
 	envFromSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: envFromSecretName},
+		Name: envFromSecretName,
 		Data: map[string][]byte{
 			"SSL_ENABLED":           []byte("true"),
 			"SSL_KEYSTORE_PASSWORD": []byte("whatever?"),
@@ -632,7 +628,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 
 	envFromConfigMapName := "logstash-env-configmap"
 	envFromConfigMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: envFromConfigMapName},
+		Name: envFromConfigMapName,
 		Data: map[string]string{
 			"SSL_ENABLED":           "true",
 			"SSL_KEYSTORE_PASSWORD": "whatever!",
@@ -791,9 +787,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 										EnvFrom: []corev1.EnvFromSource{
 											{
 												ConfigMapRef: &corev1.ConfigMapEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: envFromConfigMapName,
-													},
+													Name: envFromConfigMapName,
 												},
 											},
 										},
@@ -829,9 +823,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 										EnvFrom: []corev1.EnvFromSource{
 											{
 												SecretRef: &corev1.SecretEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: envFromSecretName,
-													},
+													Name: envFromSecretName,
 												},
 											},
 										},

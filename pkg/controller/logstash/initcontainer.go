@@ -107,10 +107,8 @@ func initConfigContainer(params Params) corev1.Container {
 				Name: APIKeystorePassEnv,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
-						},
-						Key: APIKeystorePassEnv,
+						Name: logstashv1alpha1.ConfigSecretName(params.Logstash.Name),
+						Key:  APIKeystorePassEnv,
 					},
 				},
 			})

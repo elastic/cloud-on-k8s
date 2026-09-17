@@ -29,10 +29,8 @@ import (
 
 func TestNewPodTemplateSpec(t *testing.T) {
 	testHTTPCertsInternalSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-ls-http-certs-internal",
-			Namespace: "default",
-		},
+		Name:      "fake-ls-http-certs-internal",
+		Namespace: "default",
 	}
 
 	meta := metav1.ObjectMeta{
@@ -160,7 +158,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				}},
 			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "logstash-name"}}).GetIdentityLabels()
+				labels := (&logstashv1alpha1.Logstash{Name: "logstash-name"}).GetIdentityLabels()
 				labels[VersionLabelName] = "8.6.1"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"

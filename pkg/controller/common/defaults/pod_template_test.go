@@ -225,10 +225,8 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/probe",
 				},
 			},
 		},
@@ -240,10 +238,8 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 						{
 							Name: containerName,
 							ReadinessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/user-provided",
-									},
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/user-provided",
 								},
 							},
 						},
@@ -258,10 +254,8 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/user-provided",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/user-provided",
 				},
 			},
 		},
@@ -295,10 +289,8 @@ func TestPodTemplateBuilder_WithLivenessProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/probe",
 				},
 			},
 		},
@@ -310,10 +302,8 @@ func TestPodTemplateBuilder_WithLivenessProbe(t *testing.T) {
 						{
 							Name: containerName,
 							LivenessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/user-provided",
-									},
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/user-provided",
 								},
 							},
 						},
@@ -328,10 +318,8 @@ func TestPodTemplateBuilder_WithLivenessProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/user-provided",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/user-provided",
 				},
 			},
 		},
@@ -365,10 +353,8 @@ func TestPodTemplateBuilder_WithStartupProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/probe",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/probe",
 				},
 			},
 		},
@@ -380,10 +366,8 @@ func TestPodTemplateBuilder_WithStartupProbe(t *testing.T) {
 						{
 							Name: containerName,
 							StartupProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/user-provided",
-									},
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/user-provided",
 								},
 							},
 						},
@@ -398,10 +382,8 @@ func TestPodTemplateBuilder_WithStartupProbe(t *testing.T) {
 				},
 			},
 			want: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/user-provided",
-					},
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/user-provided",
 				},
 			},
 		},
@@ -606,58 +588,42 @@ func TestPodTemplateBuilder_WithVolumes(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						{
-							Name: "vol1",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{SecretName: "secret1"},
-							},
+							Name:   "vol1",
+							Secret: &corev1.SecretVolumeSource{SecretName: "secret1"},
 						},
 						{
-							Name: "vol2",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{SecretName: "secret2"},
-							},
+							Name:   "vol2",
+							Secret: &corev1.SecretVolumeSource{SecretName: "secret2"},
 						},
 					},
 				},
 			},
 			volumes: []corev1.Volume{
 				{
-					Name: "vol1",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "dont-override"},
-					},
+					Name:   "vol1",
+					Secret: &corev1.SecretVolumeSource{SecretName: "dont-override"},
 				},
 				{
-					Name: "vol2",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "dont-override"},
-					},
+					Name:   "vol2",
+					Secret: &corev1.SecretVolumeSource{SecretName: "dont-override"},
 				},
 				{
-					Name: "vol3",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "secret3"},
-					},
+					Name:   "vol3",
+					Secret: &corev1.SecretVolumeSource{SecretName: "secret3"},
 				},
 			},
 			want: []corev1.Volume{
 				{
-					Name: "vol1",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "secret1"},
-					},
+					Name:   "vol1",
+					Secret: &corev1.SecretVolumeSource{SecretName: "secret1"},
 				},
 				{
-					Name: "vol2",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "secret2"},
-					},
+					Name:   "vol2",
+					Secret: &corev1.SecretVolumeSource{SecretName: "secret2"},
 				},
 				{
-					Name: "vol3",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{SecretName: "secret3"},
-					},
+					Name:   "vol3",
+					Secret: &corev1.SecretVolumeSource{SecretName: "secret3"},
 				}},
 		},
 	}

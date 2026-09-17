@@ -74,10 +74,10 @@ func TestMinInPods(t *testing.T) {
 			name: "returns the min version of the list",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
@@ -88,8 +88,8 @@ func TestMinInPods(t *testing.T) {
 			name: "all Pods run the same version",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
@@ -100,8 +100,8 @@ func TestMinInPods(t *testing.T) {
 			name: "invalid version: error out",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "invalid"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "invalid"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
@@ -111,8 +111,8 @@ func TestMinInPods(t *testing.T) {
 			name: "no value for the version label: error out",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"another-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"another-label": "7.7.1"}},
 				},
 				labelName: "another-label",
 			},

@@ -22,7 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -652,7 +651,7 @@ func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}}
+	es := esv1.Elasticsearch{Name: "test", Annotations: map[string]string{ESClientTimeoutAnnotation: "1m"}}
 	have := Timeout(context.Background(), es)
 	require.Equal(t, 1*time.Minute, have)
 }

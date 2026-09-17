@@ -29,7 +29,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 		operatorNamespace string
 	}
 
-	kibana := &kbv1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "test-kb-ns"}}
+	kibana := &kbv1.Kibana{Name: "test-kb", Namespace: "test-kb-ns"}
 
 	// Policy config secret whose annotation references a secret in the Kibana's own namespace.
 	kibanaConfigSameNs := MkKibanaConfigSecret("test-kb-ns", "test-policy", "test-policy-ns", "")
@@ -50,7 +50,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 
 	// SCP in the same namespace as the Kibana CR, declaring "shared-secret".
 	sameNsSCP := &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "same-ns-scp", Namespace: "test-kb-ns"},
+		Name: "same-ns-scp", Namespace: "test-kb-ns",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{},
 			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
@@ -61,7 +61,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 
 	// Operator-namespace SCP with an empty selector (matches any resource), declaring "shared-secret".
 	operatorSCP := &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "op-scp", Namespace: "operator-ns"},
+		Name: "op-scp", Namespace: "operator-ns",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{},
 			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
@@ -71,12 +71,12 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 	}
 
 	elasticsearchSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-es-es-file-settings", Namespace: "test-es-ns"},
+		Name: "test-es-es-file-settings", Namespace: "test-es-ns",
 	}
 	addSecureSettingsAnnotationToSecret(elasticsearchSecret, "test-es-ns", "shared-secret")
 
 	esSCP := &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "es-scp", Namespace: "test-es-ns"},
+		Name: "es-scp", Namespace: "test-es-ns",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
@@ -153,7 +153,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 		{
 			name: "Elasticsearch: source declared by governing SCP is allowed",
 			args: args{
-				resource:          &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "test-es-ns"}},
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
 				resourceKind:      esv1.Kind,
 				client:            k8s.NewFakeClient(elasticsearchSecret, esSCP),
 				operatorNamespace: "operator-ns",
@@ -163,7 +163,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 		{
 			name: "Elasticsearch: source rejected when no governing SCP declares it",
 			args: args{
-				resource:          &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es", Namespace: "test-es-ns"}},
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
 				resourceKind:      esv1.Kind,
 				client:            k8s.NewFakeClient(elasticsearchSecret),
 				operatorNamespace: "operator-ns",
@@ -191,7 +191,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 						return s
 					}(),
 					&policyv1alpha1.StackConfigPolicy{
-						ObjectMeta: metav1.ObjectMeta{Name: "scp-a", Namespace: "test-kb-ns"},
+						Name: "scp-a", Namespace: "test-kb-ns",
 						Spec: policyv1alpha1.StackConfigPolicySpec{
 							ResourceSelector: metav1.LabelSelector{},
 							Kibana: policyv1alpha1.KibanaConfigPolicySpec{
@@ -200,7 +200,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 						},
 					},
 					&policyv1alpha1.StackConfigPolicy{
-						ObjectMeta: metav1.ObjectMeta{Name: "scp-b", Namespace: "test-kb-ns"},
+						Name: "scp-b", Namespace: "test-kb-ns",
 						Spec: policyv1alpha1.StackConfigPolicySpec{
 							ResourceSelector: metav1.LabelSelector{},
 							Kibana: policyv1alpha1.KibanaConfigPolicySpec{
@@ -238,7 +238,7 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 
 func Test_allowedSourceKeys(t *testing.T) {
 	policy := &policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{Name: "scp", Namespace: "ns"},
+		Name: "scp", Namespace: "ns",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret"}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{

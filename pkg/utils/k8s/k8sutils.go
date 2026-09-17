@@ -243,10 +243,9 @@ func GetSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) 
 
 // DeleteSecretIfExists deletes the secret identified by key if exists.
 func DeleteSecretIfExists(ctx context.Context, c Client, key types.NamespacedName) error {
-	return DeleteResourceIfExists(ctx, c, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+	return DeleteResourceIfExists(ctx, c, &corev1.Secret{
 		Namespace: key.Namespace,
-		Name:      key.Name,
-	}})
+		Name:      key.Name})
 }
 
 // DeleteResourceIfExists deletes the provided resource if exists.

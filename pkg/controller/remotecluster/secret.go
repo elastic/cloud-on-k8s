@@ -10,7 +10,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -119,19 +118,15 @@ func deleteCertificateAuthorities(
 
 	// Delete local secret
 	if err := r.Client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: local.Namespace,
-			Name:      remoteCASecretName(local.Name, remote),
-		},
+		Namespace: local.Namespace,
+		Name:      remoteCASecretName(local.Name, remote),
 	}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	// Delete remote secret
 	if err := r.Client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: remote.Namespace,
-			Name:      remoteCASecretName(remote.Name, local),
-		},
+		Namespace: remote.Namespace,
+		Name:      remoteCASecretName(remote.Name, local),
 	}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}

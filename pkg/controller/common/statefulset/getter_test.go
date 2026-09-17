@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -28,19 +27,19 @@ func TestGetClaim(t *testing.T) {
 		{
 			name: "return matching claim",
 			claims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim3"}},
+				{Name: "claim1"},
+				{Name: "claim2"},
+				{Name: "claim3"},
 			},
 			claimName: "claim2",
-			want:      &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
+			want:      &corev1.PersistentVolumeClaim{Name: "claim2"},
 		},
 		{
 			name: "return nil if no match",
 			claims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim3"}},
+				{Name: "claim1"},
+				{Name: "claim2"},
+				{Name: "claim3"},
 			},
 			claimName: "claim4",
 			want:      nil,
@@ -58,33 +57,33 @@ func TestGetClaim(t *testing.T) {
 func TestRetrieveActualPVCs(t *testing.T) {
 	// 3 replicas, 2 PVCs each
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset"},
+		Namespace: "ns", Name: "sset",
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: new(int32(3)),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim1"}},
-				{ObjectMeta: metav1.ObjectMeta{Name: "claim2"}},
+				{Name: "claim1"},
+				{Name: "claim2"},
 			},
 		},
 	}
 	pvcs := []corev1.PersistentVolumeClaim{ //nolint:prealloc
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}},
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-0"}},
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-1"}},
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-1"}},
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-2"}},
-		{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-2"}},
+		{Namespace: "ns", Name: "claim1-sset-0"},
+		{Namespace: "ns", Name: "claim2-sset-0"},
+		{Namespace: "ns", Name: "claim1-sset-1"},
+		{Namespace: "ns", Name: "claim2-sset-1"},
+		{Namespace: "ns", Name: "claim1-sset-2"},
+		{Namespace: "ns", Name: "claim2-sset-2"},
 	}
 	expected := map[string][]corev1.PersistentVolumeClaim{
 		"claim1": {
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}},
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-1"}},
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-2"}},
+			{Namespace: "ns", Name: "claim1-sset-0"},
+			{Namespace: "ns", Name: "claim1-sset-1"},
+			{Namespace: "ns", Name: "claim1-sset-2"},
 		},
 		"claim2": {
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-0"}},
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-1"}},
-			{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim2-sset-2"}},
+			{Namespace: "ns", Name: "claim2-sset-0"},
+			{Namespace: "ns", Name: "claim2-sset-1"},
+			{Namespace: "ns", Name: "claim2-sset-2"},
 		},
 	}
 	asClientObjs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
@@ -109,13 +108,13 @@ func TestRetrieveActualPVCs(t *testing.T) {
 		},
 		{
 			name:        "some PVCs are missing: return what can be returned",
-			k8sClient:   k8s.NewFakeClient(&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}}),
+			k8sClient:   k8s.NewFakeClient(&corev1.PersistentVolumeClaim{Namespace: "ns", Name: "claim1-sset-0"}),
 			statefulSet: sset,
-			want:        map[string][]corev1.PersistentVolumeClaim{"claim1": {{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-0"}}}},
+			want:        map[string][]corev1.PersistentVolumeClaim{"claim1": {{Namespace: "ns", Name: "claim1-sset-0"}}},
 		},
 		{
 			name:        "extra PVCs exist but are not expected: don't return them",
-			k8sClient:   k8s.NewFakeClient(asClientObjs(append(pvcs, corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "claim1-sset-3"}}))...),
+			k8sClient:   k8s.NewFakeClient(asClientObjs(append(pvcs, corev1.PersistentVolumeClaim{Namespace: "ns", Name: "claim1-sset-3"}))...),
 			statefulSet: sset,
 			want:        expected,
 		},

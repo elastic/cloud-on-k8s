@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,20 +18,18 @@ import (
 
 func TestRemoveAll(t *testing.T) {
 	sampleObject := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "bar",
-			Finalizers: []string{
-				"finalizer.elasticsearch.k8s.elastic.co/secure-settings-secret",
-				"finalizer.foo.bar.com/secure-settings-secret",
-				"finalizer.elasticsearch.k8s.elastic.co/http-certificates-secret",
-				"finalizer.elasticsearch.k8s.elastic.co/observer",
-				"finalizer.association.apmserver.k8s.elastic.co/external-user",
-				"finalizer.apmserver.k8s.elastic.co/secure-settings-secret",
-				"finalizer.kibana.k8s.elastic.co/secure-settings-secret",
-				"finalizer.association.kibana.k8s.elastic.co/elasticsearch",
-				"finalizer.foo.bar.co/elasticsearch",
-			},
+		Name:      "foo",
+		Namespace: "bar",
+		Finalizers: []string{
+			"finalizer.elasticsearch.k8s.elastic.co/secure-settings-secret",
+			"finalizer.foo.bar.com/secure-settings-secret",
+			"finalizer.elasticsearch.k8s.elastic.co/http-certificates-secret",
+			"finalizer.elasticsearch.k8s.elastic.co/observer",
+			"finalizer.association.apmserver.k8s.elastic.co/external-user",
+			"finalizer.apmserver.k8s.elastic.co/secure-settings-secret",
+			"finalizer.kibana.k8s.elastic.co/secure-settings-secret",
+			"finalizer.association.kibana.k8s.elastic.co/elasticsearch",
+			"finalizer.foo.bar.co/elasticsearch",
 		},
 	}
 	type args struct {
@@ -49,16 +46,12 @@ func TestRemoveAll(t *testing.T) {
 			name: "No Finalizers",
 			args: args{
 				c: k8s.NewFakeClient(&kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "bar",
-					},
+					Name:      "foo",
+					Namespace: "bar",
 				}),
 				obj: &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "bar",
-					},
+					Name:      "foo",
+					Namespace: "bar",
 				},
 			},
 			wantFinalizers: []string{},

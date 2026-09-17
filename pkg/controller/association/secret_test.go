@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -42,7 +41,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 	}
 	refObjectSelector := commonv1.ObjectSelector{Namespace: "a", Name: "b"}
 	unmanagedRefSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
+		Namespace: "a", Name: "b",
 		Data: map[string][]byte{
 			"url":      []byte("https://es.io:9243"),
 			"username": []byte("elastic"),
@@ -94,7 +93,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			args: args{
 				c: func() k8s.Client {
 					return k8s.NewFakeClient(&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
+						Namespace: "a", Name: "b",
 						Data: map[string][]byte{
 							"url":     []byte("https://es.io:9243"),
 							"api-key": []byte("elastic"),
@@ -170,7 +169,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 			args: args{
 				c: func() k8s.Client {
 					return k8s.NewFakeClient(&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "a", Name: "b"},
+						Namespace: "a", Name: "b",
 						Data: map[string][]byte{
 							"url":    []byte("https://es.io:9243"),
 							"apikey": []byte("elastic"),
@@ -202,7 +201,7 @@ func TestGetUnmanagedAssociationConnexionInfoFromSecret(t *testing.T) {
 func TestCopySecret(t *testing.T) {
 	srcNSN := types.NamespacedName{Namespace: "src-ns", Name: "external-es"}
 	externalESSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: srcNSN.Namespace, Name: srcNSN.Name},
+		Namespace: srcNSN.Namespace, Name: srcNSN.Name,
 		Data: map[string][]byte{
 			"ca.crt":   []byte("CACERT"),
 			"url":      []byte("https://es.example.com:9200"),
@@ -309,12 +308,10 @@ func TestCopySecret(t *testing.T) {
 			name:      "last-applied-configuration removed from pre-existing copy on upgrade",
 			srcSecret: externalESSecret,
 			existingTarget: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "dst-ns",
-					Name:      srcNSN.Name,
-					Annotations: map[string]string{
-						corev1.LastAppliedConfigAnnotation: `{"data":{"password":"czNjcjN0","username":"ZWxhc3RpYw=="}}`,
-					},
+				Namespace: "dst-ns",
+				Name:      srcNSN.Name,
+				Annotations: map[string]string{
+					corev1.LastAppliedConfigAnnotation: `{"data":{"password":"czNjcjN0","username":"ZWxhc3RpYw=="}}`,
 				},
 				Data: map[string][]byte{"ca.crt": []byte("CACERT")},
 			},
@@ -327,7 +324,7 @@ func TestCopySecret(t *testing.T) {
 			name:          "owner reference is set on copy",
 			srcSecret:     externalESSecret,
 			keys:          []string{"ca.crt"},
-			owner:         &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "dst-ns", UID: "test-uid"}},
+			owner:         &corev1.ConfigMap{Name: "agent1", Namespace: "dst-ns", UID: "test-uid"},
 			wantCopied:    true,
 			wantKeys:      []string{"ca.crt"},
 			wantOwnerName: "agent1",
@@ -335,11 +332,9 @@ func TestCopySecret(t *testing.T) {
 		{
 			name: "extra labels are merged onto source labels in copy",
 			srcSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: srcNSN.Namespace, Name: srcNSN.Name,
-					Labels: map[string]string{"src-label": "src-value"},
-				},
-				Data: map[string][]byte{"ca.crt": []byte("CACERT")},
+				Namespace: srcNSN.Namespace, Name: srcNSN.Name,
+				Labels: map[string]string{"src-label": "src-value"},
+				Data:   map[string][]byte{"ca.crt": []byte("CACERT")},
 			},
 			extraLabels: map[string]string{"extra-label": "extra-value"},
 			wantCopied:  true,

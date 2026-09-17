@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -554,7 +553,7 @@ func Test_shorthandResourcesOverrideWarning(t *testing.T) {
 func Test_shorthandResourcesOverrideWarning_autoscaled(t *testing.T) {
 	cpu := resource.MustParse("500m")
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+		Name: "es", Namespace: "ns",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.16.0",
 			// "data" is the tier a policy would target; "master" stands in for a hand-managed one.

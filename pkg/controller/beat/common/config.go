@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -178,12 +177,10 @@ func reconcileConfig(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   params.Beat.Namespace,
-			Name:        ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
+		Namespace:   params.Beat.Namespace,
+		Name:        ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},

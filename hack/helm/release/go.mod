@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/hack/helm/release
 
-go 1.26.0
+go 1.27
 
 toolchain go1.27.1
 
@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	google.golang.org/api v0.297.0
+	google.golang.org/api v0.298.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v4 v4.3.0
 )

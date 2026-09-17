@@ -27,19 +27,17 @@ func Test_reconcilePVCOwnerRefs(t *testing.T) {
 
 	esFixture := func(policy esv1.VolumeClaimDeletePolicy) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
-			Spec:       esv1.ElasticsearchSpec{VolumeClaimDeletePolicy: policy},
+			Name: "es", Namespace: "ns",
+			Spec: esv1.ElasticsearchSpec{VolumeClaimDeletePolicy: policy},
 		}
 	}
 
 	pvcFixture := func(name string, ownerRefs ...string) corev1.PersistentVolumeClaim {
 		pvc := corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      name,
-				Labels: map[string]string{
-					label.ClusterNameLabelName: "es",
-				},
+			Namespace: "ns",
+			Name:      name,
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "es",
 			},
 		}
 		for _, ref := range ownerRefs {

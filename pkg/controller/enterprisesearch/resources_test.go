@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -34,7 +33,7 @@ func buildEntPodTemplate(t *testing.T, ent entv1.EnterpriseSearch) corev1.PodTem
 
 func TestEnterpriseSearchResources(t *testing.T) {
 	base := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "ent-test", Namespace: "default"},
+		Name: "ent-test", Namespace: "default",
 	}
 
 	for _, tt := range []struct {

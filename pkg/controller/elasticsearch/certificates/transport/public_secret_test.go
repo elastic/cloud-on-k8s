@@ -17,7 +17,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -32,8 +31,8 @@ import (
 
 func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
-		TypeMeta:   v1.TypeMeta{Kind: esv1.Kind},
+		Name: "test-es-name", Namespace: "test-namespace",
+		Kind: esv1.Kind,
 	}
 
 	ca := genCA(t)

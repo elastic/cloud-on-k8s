@@ -172,11 +172,12 @@ func ReconcileUserProvidedClientCert(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{Namespace: associatedNS, Name: targetSecretName}),
-		Data:       expectedData,
+		Namespace:   associatedNS,
+		Name:        targetSecretName,
+		Data:        expectedData,
+		Labels:      expectedLabels,
+		Annotations: assocMeta.Annotations,
 	}
-	expected.Labels = expectedLabels
-	expected.Annotations = assocMeta.Annotations
 
 	_, err = reconciler.ReconcileSecret(ctx, c, expected, association.Associated())
 	return err

@@ -45,10 +45,8 @@ func renderCustomScript(t *testing.T, parameters keystore.InitContainerParameter
 
 func TestReconcileKeystorePasswordSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+		Namespace: "ns",
+		Name:      "es",
 	}
 	secretNN := types.NamespacedName{
 		Namespace: es.Namespace,
@@ -75,10 +73,8 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 		{
 			name: "existing non-empty password is reused and metadata is reconciled",
 			initialSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: secretNN.Namespace,
-					Name:      secretNN.Name,
-				},
+				Namespace: secretNN.Namespace,
+				Name:      secretNN.Name,
 				Data: map[string][]byte{
 					KeystorePasswordKey: []byte("already-there"),
 				},
@@ -97,10 +93,8 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 		{
 			name: "existing empty password is regenerated",
 			initialSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: secretNN.Namespace,
-					Name:      secretNN.Name,
-				},
+				Namespace: secretNN.Namespace,
+				Name:      secretNN.Name,
 				Data: map[string][]byte{
 					KeystorePasswordKey: {},
 				},
@@ -149,21 +143,17 @@ func TestReconcileKeystorePasswordSecret(t *testing.T) {
 
 func TestDeleteKeystorePasswordSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+		Namespace: "ns",
+		Name:      "es",
 	}
 	secretNN := types.NamespacedName{
 		Namespace: es.Namespace,
 		Name:      esv1.KeystorePasswordSecret(es.Name),
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: secretNN.Namespace,
-			Name:      secretNN.Name,
-		},
-		Data: map[string][]byte{KeystorePasswordKey: []byte("existing")},
+		Namespace: secretNN.Namespace,
+		Name:      secretNN.Name,
+		Data:      map[string][]byte{KeystorePasswordKey: []byte("existing")},
 	}
 	c := k8s.NewFakeClient(secret)
 
@@ -281,11 +271,9 @@ func TestMaybeGarbageCollectKeystorePasswordSecret(t *testing.T) {
 				Name:      esv1.KeystorePasswordSecret(tt.es.Name),
 			}
 			existingSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: secretName.Namespace,
-					Name:      secretName.Name,
-				},
-				Data: map[string][]byte{KeystorePasswordKey: []byte("existing")},
+				Namespace: secretName.Namespace,
+				Name:      secretName.Name,
+				Data:      map[string][]byte{KeystorePasswordKey: []byte("existing")},
 			}
 			c := k8s.NewFakeClient(&tt.es, existingSecret)
 
@@ -305,10 +293,8 @@ func TestMaybeGarbageCollectKeystorePasswordSecret(t *testing.T) {
 
 func TestReconcileKeystorePasswordSecret_UsesDefaultLengthWhenUseLengthDisabled(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
+		Namespace: "ns",
+		Name:      "es",
 	}
 	secretNN := types.NamespacedName{
 		Namespace: es.Namespace,
@@ -352,10 +338,8 @@ func TestInjectKeystorePassword(t *testing.T) {
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
 						{
-							Name: "existing-volume",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
+							Name:     "existing-volume",
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
 					Containers: []corev1.Container{

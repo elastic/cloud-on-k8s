@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,12 +19,10 @@ import (
 
 func newStatefulSet(name string, uid types.UID, generation int64) appsv1.StatefulSet {
 	return appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:  "ns",
-			Name:       name,
-			UID:        uid,
-			Generation: generation,
-		},
+		Namespace:  "ns",
+		Name:       name,
+		UID:        uid,
+		Generation: generation,
 	}
 }
 

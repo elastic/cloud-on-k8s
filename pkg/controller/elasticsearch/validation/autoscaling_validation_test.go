@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -59,10 +58,8 @@ func TestResourcePolicies_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						esv1.ElasticsearchAutoscalingSpecAnnotationName: autoscalingSpec,
-					},
+				Annotations: map[string]string{
+					esv1.ElasticsearchAutoscalingSpecAnnotationName: autoscalingSpec,
 				},
 				Spec: esv1.ElasticsearchSpec{
 					Version: tt.version,
@@ -76,7 +73,7 @@ func TestResourcePolicies_Validate(t *testing.T) {
 				nodeSet := esv1.NodeSet{
 					Name:                 nodeSetName,
 					Config:               &cfg,
-					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}}},
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{Name: "elasticsearch-data"}},
 				}
 				es.Spec.NodeSets = append(es.Spec.NodeSets, nodeSet)
 			}

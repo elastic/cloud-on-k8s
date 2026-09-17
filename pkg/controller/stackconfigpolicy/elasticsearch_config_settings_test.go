@@ -45,10 +45,8 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							SecretMounts: []policyv1alpha1.SecretMount{
@@ -74,10 +72,8 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 							SecretMounts: []policyv1alpha1.SecretMount{
@@ -125,8 +121,8 @@ func Test_reconcileSecretMountSecretsESNamespace(t *testing.T) {
 
 func TestNewElasticsearchConfigSecret(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "9.3.1"},
+		Namespace: "ns", Name: "test-es",
+		Spec: esv1.ElasticsearchSpec{Version: "9.3.1"},
 	}
 
 	tests := []struct {
@@ -225,8 +221,8 @@ func TestNewElasticsearchConfigSecret(t *testing.T) {
 
 func TestElasticsearchConfigAndSecretMountsApplied(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "9.3.1"},
+		Namespace: "ns", Name: "test-es",
+		Spec: esv1.ElasticsearchSpec{Version: "9.3.1"},
 	}
 
 	securityRoles := &commonv1.Config{Data: map[string]any{
@@ -236,15 +232,13 @@ func TestElasticsearchConfigAndSecretMountsApplied(t *testing.T) {
 
 	// pod is identical across all cases - only the roles-and-file-realm secret varies
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns", Name: "test-es-es-default-0",
-			Labels:      map[string]string{eslabel.ClusterNameLabelName: "test-es"},
-			Annotations: map[string]string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: getElasticsearchConfigAndMountsHash(nil, nil)},
-		},
+		Namespace: "ns", Name: "test-es-es-default-0",
+		Labels:      map[string]string{eslabel.ClusterNameLabelName: "test-es"},
+		Annotations: map[string]string{commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: getElasticsearchConfigAndMountsHash(nil, nil)},
 	}
 
 	rolesSecretWithHash := func(h string) *corev1.Secret {
-		s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: esv1.RolesAndFileRealmSecret("test-es")}}
+		s := &corev1.Secret{Namespace: "ns", Name: esv1.RolesAndFileRealmSecret("test-es")}
 		if h != "" {
 			s.Annotations = map[string]string{commonannotation.ElasticsearchRolesHashAnnotation: h}
 		}
@@ -322,17 +316,15 @@ func TestElasticsearchConfigAndSecretMountsApplied(t *testing.T) {
 func getSecretMountSecret(t *testing.T, name string, namespace string, policyName string, policyNamespace string, orphanObjectOnPolicyDeleteStratergy string) *corev1.Secret {
 	t.Helper()
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
-				"common.k8s.elastic.co/type":                "elasticsearch",
-				"asset.policy.k8s.elastic.co/on-delete":     orphanObjectOnPolicyDeleteStratergy,
-				"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
-				"eck.k8s.elastic.co/owner-name":             policyName,
-				"eck.k8s.elastic.co/owner-kind":             policyv1alpha1.Kind,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			"elasticsearch.k8s.elastic.co/cluster-name": "another-es",
+			"common.k8s.elastic.co/type":                "elasticsearch",
+			"asset.policy.k8s.elastic.co/on-delete":     orphanObjectOnPolicyDeleteStratergy,
+			"eck.k8s.elastic.co/owner-namespace":        policyNamespace,
+			"eck.k8s.elastic.co/owner-name":             policyName,
+			"eck.k8s.elastic.co/owner-kind":             policyv1alpha1.Kind,
 		},
 		Data: map[string][]byte{
 			"idfile.txt": []byte("test id file"),

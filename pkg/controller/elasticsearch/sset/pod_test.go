@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -90,9 +89,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 	c := k8s.NewFakeClient(objs...)
 
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "clus0",
-		},
+		Name: "clus0",
 	}
 
 	masters, err := GetActualMastersForCluster(c, es)
@@ -103,10 +100,8 @@ func TestGetActualMastersForCluster(t *testing.T) {
 
 func TestGetActualPodsRestartTriggerAnnotationForCluster(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "clus0",
-			Namespace: "ns0",
-		},
+		Name:      "clus0",
+		Namespace: "ns0",
 	}
 
 	tests := []struct {

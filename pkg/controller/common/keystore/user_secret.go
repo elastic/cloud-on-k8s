@@ -12,7 +12,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -114,13 +113,11 @@ func reconcileSecureSettings(
 
 	// reconcile our managed secret with the user-provided secret content
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secureSettingsSecretName(namer, hasKeystore),
-			Namespace:   hasKeystore.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
-		Data: aggregatedData,
+		Name:        secureSettingsSecretName(namer, hasKeystore),
+		Namespace:   hasKeystore.GetNamespace(),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
+		Data:        aggregatedData,
 	}
 	if len(aggregatedData) == 0 {
 		// no secure settings specified, delete any existing operator-managed settings secret

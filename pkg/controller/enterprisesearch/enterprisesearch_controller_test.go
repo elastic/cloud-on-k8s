@@ -23,7 +23,6 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -32,15 +31,15 @@ import (
 func TestReconcileEnterpriseSearch_Reconcile_Unmanaged(t *testing.T) {
 	// unmanaged resource, should do nothing
 	sample := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample", Annotations: map[string]string{
+		Namespace: "ns", Name: "sample", Annotations: map[string]string{
 			common.ManagedAnnotation: "false",
-		}},
+		},
 		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0"},
 	}
 	r := &ReconcileEnterpriseSearch{
 		Client: k8s.NewFakeClient(&sample),
 	}
-	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	result, err := r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	require.NoError(t, err)
 	require.Equal(t, reconcile.Result{}, result)
 }
@@ -69,7 +68,7 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing.T) {
 	// an Elasticsearch ref is specified, but its configuration is not set: should do nothing
 	sample := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
+		Namespace: "ns", Name: "sample",
 		Spec: entv1.EnterpriseSearchSpec{
 			Version:          "7.7.0",
 			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Namespace: "ns", Name: "es"}},
@@ -81,7 +80,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       fakeRecorder,
 	}
-	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	require.NoError(t, err)
 	// should just requeue until the resource is updated
 	require.Equal(t, reconcile.Result{}, res)
@@ -92,13 +91,13 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 
 func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 	// spec.Version missing from the spec
-	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"}}
+	sample := entv1.EnterpriseSearch{Namespace: "ns", Name: "sample"}
 	fakeRecorder := toolsevents.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
 		Client:   k8s.NewFakeClient(&sample),
 		recorder: fakeRecorder,
 	}
-	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	// should return an error
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "spec.version: Invalid value")
@@ -109,7 +108,7 @@ func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.T) {
-	sample := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample"},
+	sample := entv1.EnterpriseSearch{Namespace: "ns", Name: "sample",
 		Spec: entv1.EnterpriseSearchSpec{
 			Version: "7.7.0",
 			Count:   3,
@@ -118,9 +117,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		Client:         k8s.NewFakeClient(&sample),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
-		},
+		OperatorInfo:   about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 	}
 
 	checkResources := func() {
@@ -162,7 +159,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	}
 
 	// first call
-	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err := r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	require.NoError(t, err)
 	// should requeue for cert expiration
 	require.NotZero(t, res.RequeueAfter)
@@ -170,7 +167,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources()
 
 	// call-again: no-op
-	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -206,7 +203,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	require.NoError(t, err)
 
 	// call again: all resources should be updated to revert our manual changes above
-	res, err = r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
+	res, err = r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
 	require.NoError(t, err)
 	require.NotZero(t, res.RequeueAfter)
 	// all resources should be the same
@@ -215,26 +212,24 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 
 func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t *testing.T) {
 	// associate Enterprise Search 7.7.0 to Elasticsearch 7.7.0
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "some-es"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "some-es"}
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "ent",
-			// initially set read-only mode to 'false', as the reconciliation loop will begin
-			// by ensuring that read-only mode is disabled.
-			Annotations: map[string]string{
-				ReadOnlyModeAnnotationName: "false",
-			},
+		Namespace: "ns",
+		Name:      "ent",
+		// initially set read-only mode to 'false', as the reconciliation loop will begin
+		// by ensuring that read-only mode is disabled.
+		Annotations: map[string]string{
+			ReadOnlyModeAnnotationName: "false",
 		},
 		Spec: entv1.EnterpriseSearchSpec{Version: "7.7.0", ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "some-es"}}}}
 	esTLSCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
+		Namespace: ent.Namespace, Name: "es-tls-certs",
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
 	}
 	esAuthSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "ent-user"},
+		Namespace: ent.Namespace, Name: "ent-user",
 		Data: map[string][]byte{
 			"ent-user-key": []byte("es-user-key"),
 		},
@@ -246,14 +241,12 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		CASecretName:   "es-tls-certs",
 		URL:            "https://elasticsearch-sample-es-http.default.svc:9200"}
 	entSearchPod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ent.Namespace,
-			Name:      "ent-pod1",
-			Labels: map[string]string{
-				EnterpriseSearchNameLabelName: ent.Name,
-				commonv1.TypeLabelName:        Type,
-				VersionLabelName:              "7.7.0",
-			},
+		Namespace: ent.Namespace,
+		Name:      "ent-pod1",
+		Labels: map[string]string{
+			EnterpriseSearchNameLabelName: ent.Name,
+			commonv1.TypeLabelName:        Type,
+			VersionLabelName:              "7.7.0",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -267,9 +260,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
 		dynamicWatches: watches.NewDynamicWatches(),
 		recorder:       toolsevents.NewFakeRecorder(10),
-		Parameters: operator.Parameters{
-			OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
-		},
+		OperatorInfo:   about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 	}
 	results, _ := r.doReconcile(context.Background(), ent)
 	_, err := results.Aggregate()
@@ -560,12 +551,12 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 }
 
 func Test_buildConfigHash(t *testing.T) {
-	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{
-		Namespace: "ns", Name: "ent"}}
+	ent := entv1.EnterpriseSearch{
+		Namespace: "ns", Name: "ent"}
 
 	entWithAssociation := *ent.DeepCopy()
 	esTLSCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: "es-tls-certs"},
+		Namespace: ent.Namespace, Name: "es-tls-certs",
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
@@ -589,7 +580,7 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	tlsCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entv1.Namer, ent.Name)},
+		Namespace: ent.Namespace, Name: certificates.InternalCertsSecretName(entv1.Namer, ent.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("cert-data"),
 		},

@@ -19,7 +19,7 @@ import (
 
 func Test_retrieveAssociatedUsers(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"},
+		Name: "es", Namespace: "ns",
 	}
 	tests := []struct {
 		name    string
@@ -35,11 +35,9 @@ func Test_retrieveAssociatedUsers(t *testing.T) {
 			name: "some associated users secrets",
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: es.Namespace,
-						Name:      "user1",
-						Labels:    AssociatedUserLabels(es),
-					},
+					Namespace: es.Namespace,
+					Name:      "user1",
+					Labels:    AssociatedUserLabels(es),
 					Data: map[string][]byte{
 						UserNameField:     []byte("user1"),
 						PasswordHashField: []byte("passwordHash1"),
@@ -47,11 +45,9 @@ func Test_retrieveAssociatedUsers(t *testing.T) {
 					},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: es.Namespace,
-						Name:      "user2",
-						Labels:    AssociatedUserLabels(es),
-					},
+					Namespace: es.Namespace,
+					Name:      "user2",
+					Labels:    AssociatedUserLabels(es),
 					Data: map[string][]byte{
 						UserNameField:     []byte("user2"),
 						PasswordHashField: []byte("passwordHash2"),

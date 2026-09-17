@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -45,7 +44,7 @@ func TestHasClientAuthenticationRequired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Annotations: tt.annotations}}
+			obj := &corev1.Secret{Annotations: tt.annotations}
 			require.Equal(t, tt.want, HasClientAuthenticationRequired(obj))
 		})
 	}
@@ -72,11 +71,10 @@ func TestSetClientAuthenticationRequiredAnnotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			obj := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			obj := &corev1.Secret{
 				Namespace:   "ns",
 				Name:        "test",
-				Annotations: tt.annotations,
-			}}
+				Annotations: tt.annotations}
 			c := k8s.NewFakeClient(obj)
 
 			require.NoError(t, SetClientAuthenticationRequiredAnnotation(ctx, c, obj))
@@ -108,11 +106,10 @@ func TestRemoveClientAuthenticationRequiredAnnotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			obj := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			obj := &corev1.Secret{
 				Namespace:   "ns",
 				Name:        "test",
-				Annotations: tt.annotations,
-			}}
+				Annotations: tt.annotations}
 			c := k8s.NewFakeClient(obj)
 
 			require.NoError(t, RemoveClientAuthenticationRequiredAnnotation(ctx, c, obj))

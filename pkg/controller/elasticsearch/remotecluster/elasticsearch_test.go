@@ -100,11 +100,9 @@ func newEsWithRemoteClusters(
 	remoteClusters ...esv1.RemoteCluster,
 ) *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        esName,
-			Namespace:   esNamespace,
-			Annotations: annotations,
-		},
+		Name:        esName,
+		Namespace:   esNamespace,
+		Annotations: annotations,
 		Spec: esv1.ElasticsearchSpec{
 			RemoteClusters: remoteClusters,
 		},
@@ -429,11 +427,9 @@ func TestUpdateSettings(t *testing.T) {
 				esClient:       &fakeESClient{existingSettings: emptySettings},
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
 				es: &esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "es1",
-						Namespace:   "ns1",
-						Annotations: nil,
-					},
+					Name:        "es1",
+					Namespace:   "ns1",
+					Annotations: nil,
 				},
 			},
 			wantRequeue:                           false,

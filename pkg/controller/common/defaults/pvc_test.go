@@ -9,19 +9,14 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestAppendDefaultPVCs(t *testing.T) {
 	foo := v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-		},
+		Name: "foo",
 	}
 	bar := v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "bar",
-		},
+		Name: "bar",
 	}
 
 	type args struct {
@@ -49,8 +44,8 @@ func TestAppendDefaultPVCs(t *testing.T) {
 				podSpec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
-							Name:         bar.Name,
-							VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+							Name:     bar.Name,
+							EmptyDir: &v1.EmptyDirVolumeSource{},
 						},
 					},
 				},
@@ -66,10 +61,8 @@ func TestAppendDefaultPVCs(t *testing.T) {
 					Volumes: []v1.Volume{
 						{
 							Name: bar.Name,
-							VolumeSource: v1.VolumeSource{
-								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "my-pre-existing-pvc",
-								},
+							PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "my-pre-existing-pvc",
 							},
 						},
 					},
@@ -86,10 +79,8 @@ func TestAppendDefaultPVCs(t *testing.T) {
 					Volumes: []v1.Volume{
 						{
 							Name: foo.Name,
-							VolumeSource: v1.VolumeSource{
-								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "my-pre-existing-pvc",
-								},
+							PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "my-pre-existing-pvc",
 							},
 						},
 					},
@@ -106,10 +97,8 @@ func TestAppendDefaultPVCs(t *testing.T) {
 					Volumes: []v1.Volume{
 						{
 							Name: foo.Name,
-							VolumeSource: v1.VolumeSource{
-								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "my-pre-existing-pvc",
-								},
+							PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "my-pre-existing-pvc",
 							},
 						},
 					},

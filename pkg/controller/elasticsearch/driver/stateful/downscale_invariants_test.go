@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -19,8 +18,8 @@ import (
 
 func Test_newDownscaleState(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"},
-		Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 4}}},
+		Namespace: ssetMaster3Replicas.Namespace, Name: "name",
+		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 4}}},
 	}
 
 	tests := []struct {
@@ -38,14 +37,12 @@ func Test_newDownscaleState(t *testing.T) {
 			actualPods: []corev1.Pod{
 				// 3 masters running
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: ssetMaster3Replicas.Namespace,
-						Name:      ssetMaster3Replicas.Name + "-0",
-						Labels: map[string]string{
-							label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
-							string(label.NodeTypesMasterLabelName): "true",
-							label.ClusterNameLabelName:             es.Name,
-						},
+					Namespace: ssetMaster3Replicas.Namespace,
+					Name:      ssetMaster3Replicas.Name + "-0",
+					Labels: map[string]string{
+						label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.ClusterNameLabelName:             es.Name,
 					},
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
@@ -61,14 +58,12 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: ssetMaster3Replicas.Namespace,
-						Name:      ssetMaster3Replicas.Name + "-1",
-						Labels: map[string]string{
-							label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
-							string(label.NodeTypesMasterLabelName): "true",
-							label.ClusterNameLabelName:             es.Name,
-						},
+					Namespace: ssetMaster3Replicas.Namespace,
+					Name:      ssetMaster3Replicas.Name + "-1",
+					Labels: map[string]string{
+						label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.ClusterNameLabelName:             es.Name,
 					},
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
@@ -84,14 +79,12 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: ssetMaster3Replicas.Namespace,
-						Name:      ssetMaster3Replicas.Name + "-2",
-						Labels: map[string]string{
-							label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
-							string(label.NodeTypesMasterLabelName): "true",
-							label.ClusterNameLabelName:             es.Name,
-						},
+					Namespace: ssetMaster3Replicas.Namespace,
+					Name:      ssetMaster3Replicas.Name + "-2",
+					Labels: map[string]string{
+						label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.ClusterNameLabelName:             es.Name,
 					},
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
@@ -108,14 +101,12 @@ func Test_newDownscaleState(t *testing.T) {
 				},
 				// 1 master not ready yet
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: ssetMaster3Replicas.Namespace,
-						Name:      ssetMaster3Replicas.Name + "-3",
-						Labels: map[string]string{
-							label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
-							string(label.NodeTypesMasterLabelName): "true",
-							label.ClusterNameLabelName:             es.Name,
-						},
+					Namespace: ssetMaster3Replicas.Namespace,
+					Name:      ssetMaster3Replicas.Name + "-3",
+					Labels: map[string]string{
+						label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.ClusterNameLabelName:             es.Name,
 					},
 				},
 			},

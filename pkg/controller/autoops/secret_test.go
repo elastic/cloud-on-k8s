@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -42,7 +41,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 		{
 			name: "public secret has both ca.crt and tls.crt: uses ca.crt",
 			publicSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
+				Name: publicSecretName, Namespace: "ns-1",
 				Data: map[string][]byte{
 					certificates.CAFileName:   []byte("custom-ca-cert"),
 					certificates.CertFileName: []byte("server-tls-cert"),
@@ -53,7 +52,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 		{
 			name: "public secret has only tls.crt (self-signed): falls back to tls.crt",
 			publicSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
+				Name: publicSecretName, Namespace: "ns-1",
 				Data: map[string][]byte{
 					certificates.CertFileName: []byte("self-signed-cert-with-ca-chain"),
 				},
@@ -63,7 +62,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 		{
 			name: "public secret has ca.crt but not tls.crt: uses ca.crt",
 			publicSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
+				Name: publicSecretName, Namespace: "ns-1",
 				Data: map[string][]byte{
 					certificates.CAFileName: []byte("ca-only-cert"),
 				},
@@ -73,8 +72,8 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 		{
 			name: "public secret has neither ca.crt nor tls.crt: skipped",
 			publicSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
-				Data:       map[string][]byte{},
+				Name: publicSecretName, Namespace: "ns-1",
+				Data: map[string][]byte{},
 			},
 			wantSkip: true,
 		},
@@ -86,7 +85,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 		{
 			name: "ES not ready: skipped",
 			publicSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: publicSecretName, Namespace: "ns-1"},
+				Name: publicSecretName, Namespace: "ns-1",
 				Data: map[string][]byte{
 					certificates.CAFileName: []byte("ca-cert"),
 				},

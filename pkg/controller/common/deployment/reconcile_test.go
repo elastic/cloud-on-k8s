@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -21,10 +20,8 @@ import (
 
 func TestWithTemplateHash(t *testing.T) {
 	d := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dep",
-			Namespace: "ns",
-		},
+		Name:      "dep",
+		Namespace: "ns",
 		Spec: appsv1.DeploymentSpec{
 			Replicas: new(int32(2)),
 		},
@@ -55,12 +52,10 @@ func TestReconcile(t *testing.T) {
 	controllerscheme.SetupScheme()
 	k8sClient := k8s.NewFakeClient()
 	expected := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dep",
-			Namespace: "ns",
-			Labels: map[string]string{
-				"a": "b",
-			},
+		Name:      "dep",
+		Namespace: "ns",
+		Labels: map[string]string{
+			"a": "b",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: new(int32(2)),

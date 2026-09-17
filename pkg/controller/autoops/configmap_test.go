@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -277,10 +276,8 @@ service:
 
 func mkPolicy() autoopsv1alpha1.AutoOpsAgentPolicy {
 	return autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: "default",
-		},
+		Name:      "test-policy",
+		Namespace: "default",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: "9.2.4",
 		},
@@ -289,10 +286,8 @@ func mkPolicy() autoopsv1alpha1.AutoOpsAgentPolicy {
 
 func mkES(sslEnabled bool) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "default",
-		},
+		Name:      "test-es",
+		Namespace: "default",
 		Spec: esv1.ElasticsearchSpec{
 			HTTP: commonv1.HTTPConfigWithClientOptions{
 				TLS: commonv1.TLSWithClientOptions{
@@ -733,13 +728,13 @@ receivers:
 			name: "ConfigRef secret with valid config - merged successfully",
 			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
 				p := mkPolicy()
-				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-config-secret"}}
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretName: "my-config-secret"}
 				return p
 			},
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "my-config-secret", Namespace: "default"},
-					Data:       map[string][]byte{autoopsv1alpha1.ConfigFileName: validConfigRefYAML},
+					Name: "my-config-secret", Namespace: "default",
+					Data: map[string][]byte{autoopsv1alpha1.ConfigFileName: validConfigRefYAML},
 				},
 			},
 			check: func(t *testing.T, cm corev1.ConfigMap) {
@@ -763,13 +758,13 @@ receivers:
 			name: "ConfigRef secret missing expected key - error",
 			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
 				p := mkPolicy()
-				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-config-secret"}}
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretName: "my-config-secret"}
 				return p
 			},
 			secrets: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "my-config-secret", Namespace: "default"},
-					Data:       map[string][]byte{"wrong-key.yml": validConfigRefYAML},
+					Name: "my-config-secret", Namespace: "default",
+					Data: map[string][]byte{"wrong-key.yml": validConfigRefYAML},
 				},
 			},
 			wantErr: true,
@@ -778,7 +773,7 @@ receivers:
 			name: "ConfigRef secret not found - error",
 			policy: func() autoopsv1alpha1.AutoOpsAgentPolicy {
 				p := mkPolicy()
-				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "nonexistent-secret"}}
+				p.Spec.ConfigRef = &commonv1.ConfigSource{SecretName: "nonexistent-secret"}
 				return p
 			},
 			secrets: []client.Object{},

@@ -56,11 +56,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet does not exist yet",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(8))}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(8))}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts1-5", "sts1-6", "sts1-7", "sts2-0", "sts2-1"},
@@ -69,11 +69,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet with no replica",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(0))}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(0))}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -82,10 +82,10 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet removed",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -104,8 +104,8 @@ func Test_podsToCreate(t *testing.T) {
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Namespace: "ns", Name: "es",
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 	k8sClient := k8s.NewFakeClient(&es)
 	ctx := upscaleCtx{
@@ -225,27 +225,25 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	// focus on the special case of handling PVC resize
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", Annotations: map[string]string{
+		Namespace: "ns", Name: "es", Annotations: map[string]string{
 			// simulate annotation already set otherwise we get a conflict when es is updated twice
 			// (first for initial master nodes, then for sset recreation)
 			"elasticsearch.k8s.elastic.co/initial-master-nodes": "sset1-0,sset1-1,sset1-2",
-		}},
+		},
 		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 
 	truePtr := true
 	storageClass := storagev1.StorageClass{
-		ObjectMeta:           metav1.ObjectMeta{Name: "resizeable"},
+		Name:                 "resizeable",
 		AllowVolumeExpansion: &truePtr,
 	}
 
 	// 3 masters, 4 data x 1Gi storage
 	actualStatefulSets := []appsv1.StatefulSet{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset1",
-			},
+			Namespace: "ns",
+			Name:      "sset1",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: new(int32(3)),
 				Template: corev1.PodTemplateSpec{
@@ -258,15 +256,13 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset2",
-			},
+			Namespace: "ns",
+			Name:      "sset2",
 			Spec: appsv1.StatefulSetSpec{
 				Replicas: new(int32(4)),
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+						Name: "elasticsearch-data",
 						Spec: corev1.PersistentVolumeClaimSpec{
 							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -411,19 +407,15 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 
 func Test_adjustZenConfig(t *testing.T) {
 	bootstrappedES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestEsName,
-			Namespace:   TestEsNamespace,
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Name:        TestEsName,
+		Namespace:   TestEsNamespace,
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
+		Spec:        esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 	notBootstrappedES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestEsName,
-			Namespace: TestEsNamespace,
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Name:      TestEsName,
+		Namespace: TestEsNamespace,
+		Spec:      esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 
 	tests := []struct {
@@ -555,13 +547,11 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Test the complete upgrade flow: data nodes upgrade first, then master nodes
 	// starting at 8.16.2 and upgrading to 8.17.1
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/initial-master-nodes": "node-1,node-2,node-3",
-				bootstrap.ClusterUUIDAnnotationName:                 "uuid",
-			},
+		Namespace: "ns",
+		Name:      "es",
+		Annotations: map[string]string{
+			"elasticsearch.k8s.elastic.co/initial-master-nodes": "node-1,node-2,node-3",
+			bootstrap.ClusterUUIDAnnotationName:                 "uuid",
 		},
 		Spec:   esv1.ElasticsearchSpec{Version: "8.16.2"},
 		Status: esv1.ElasticsearchStatus{Version: "8.16.2"},
@@ -697,39 +687,33 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Create pods for both StatefulSets with the old revision
 	masterPods := []corev1.Pod{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-0",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-0",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-1",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-1",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-2",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-2",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -742,26 +726,22 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 
 	dataPods := []corev1.Pod{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "data-sset-0",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-data": "true",
-					"controller-revision-hash":               "data-sset-old",
-				},
+			Name:      "data-sset-0",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-data": "true",
+				"controller-revision-hash":               "data-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "data-sset-1",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-data": "true",
-					"controller-revision-hash":               "data-sset-old",
-				},
+			Name:      "data-sset-1",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-data": "true",
+				"controller-revision-hash":               "data-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,

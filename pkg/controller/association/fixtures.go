@@ -5,8 +5,6 @@
 package association
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
@@ -20,11 +18,9 @@ type testAPMServer struct {
 
 func (t testAPMServer) build() *apmv1.ApmServer {
 	apmServer := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "apm-server-test",
-			Namespace:   "apm-ns",
-			Annotations: make(map[string]string),
-		},
+		Name:        "apm-server-test",
+		Namespace:   "apm-ns",
+		Annotations: make(map[string]string),
 		Spec: apmv1.ApmServerSpec{
 			Image:            "test-image",
 			Count:            1,
@@ -52,7 +48,7 @@ func (t testAPMServer) build() *apmv1.ApmServer {
 }
 
 func (t testAPMServer) withElasticsearchRef() testAPMServer {
-	t.elasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es"}}
+	t.elasticsearchRef = commonv1.ElasticsearchSelector{Name: "es"}
 	return t
 }
 

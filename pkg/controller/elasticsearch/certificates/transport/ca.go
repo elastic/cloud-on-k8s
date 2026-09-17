@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -95,10 +94,8 @@ func ReconcileOrRetrieveCA(
 
 	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.
 	err = driver.K8sClient().Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
-			Namespace: esNSN.Namespace,
-		},
+		Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
+		Namespace: esNSN.Namespace,
 	})
 	if err != nil && !apierrors.IsNotFound(err) {
 		ulog.FromContext(ctx).Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",

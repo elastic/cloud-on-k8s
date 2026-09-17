@@ -13,25 +13,24 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (
-	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
+	sampleStorageClass = storagev1.StorageClass{
+		Name: "sample-sc"}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
+		Name: "sample-claim",
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
+		Name: "sample-claim-2",
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
@@ -42,7 +41,7 @@ var (
 	// That is the shape the autoscaling contract produces, and it is nil rather than empty because
 	// the field is omitempty all the way down.
 	claimWithoutStorageReq = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
+		Name: "sample-claim",
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: new(sampleStorageClass.Name),
 		}}
@@ -63,8 +62,8 @@ func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName strin
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
-			Spec:       esv1.ElasticsearchSpec{NodeSets: nodeSets},
+			Namespace: "ns", Name: "cluster",
+			Spec: esv1.ElasticsearchSpec{NodeSets: nodeSets},
 		}
 	}
 	type args struct {
@@ -89,7 +88,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -134,7 +133,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -154,7 +153,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -174,7 +173,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, sampleClaim2,
 						}},
@@ -194,7 +193,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, withStorageReq(sampleClaim2, "0.5Gi"),
 						}},
@@ -218,7 +217,7 @@ func Test_validPVCModification(t *testing.T) {
 				// The old StatefulSet "cluster-es-default" still exists with the original storageClass
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-default"},
+						Namespace: "ns", Name: "cluster-es-default",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim, // original storageClass "sample-sc"
 						}},
@@ -238,7 +237,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim,
 						}},
@@ -264,7 +263,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim,
 						}},
@@ -288,7 +287,7 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							sampleClaim,
 						}},
@@ -315,10 +314,10 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+								Name: "elasticsearch-data",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 										corev1.ResourceStorage: resource.MustParse("5Gi"),
@@ -345,10 +344,10 @@ func Test_validPVCModification(t *testing.T) {
 				}),
 				k8sClient: k8s.NewFakeClient(
 					&appsv1.StatefulSet{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster-es-set1"},
+						Namespace: "ns", Name: "cluster-es-set1",
 						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+								Name: "elasticsearch-data",
 								Spec: corev1.PersistentVolumeClaimSpec{
 									Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 										corev1.ResourceStorage: resource.MustParse("1Gi"),
@@ -382,7 +381,7 @@ func Test_validPVCNaming(t *testing.T) {
 	}
 	esWithClaim := func(claimName string, es esv1.Elasticsearch) esv1.Elasticsearch {
 		es.Spec.NodeSets[0].VolumeClaimTemplates = append(es.Spec.NodeSets[0].VolumeClaimTemplates, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: claimName},
+			Name: claimName,
 		})
 		return es
 	}

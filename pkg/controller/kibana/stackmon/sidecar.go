@@ -78,13 +78,11 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 	}
 
 	configData := inputConfigData{
-		TemplateParams: stackmon.TemplateParams{
-			Username: username,
-			Password: password,
-			URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
-			IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
-			CAVolume: caVol,
-		},
+		Username: username,
+		Password: password,
+		URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
+		CAVolume: caVol,
 		BasePath: basePath,
 	}
 

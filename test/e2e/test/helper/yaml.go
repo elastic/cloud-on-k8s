@@ -367,11 +367,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ElasticsearchSelector: commonv1.ElasticsearchSelector{
-						ObjectSelector:              tweakServiceRef(ref.ElasticsearchSelector.ObjectSelector, suffix),
-						ClientCertificateSecretName: ref.ElasticsearchSelector.ClientCertificateSecretName,
-					},
-					ClusterName: ref.ClusterName,
+					ObjectSelector:              tweakServiceRef(ref.ElasticsearchSelector.ObjectSelector, suffix),
+					ClientCertificateSecretName: ref.ElasticsearchSelector.ClientCertificateSecretName,
+					ClusterName:                 ref.ClusterName,
 				})
 			}
 

@@ -87,11 +87,12 @@ func (r Reconciler) ReconcileClientCertificate(
 
 	// Build the expected secret with correct metadata
 	expected := corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(secretNSN),
-		Data:       make(map[string][]byte),
+		Namespace:   ownerNSN.Namespace,
+		Name:        secretName,
+		Data:        make(map[string][]byte),
+		Labels:      utilmaps.Merge(maps.Clone(r.Metadata.Labels), extraLabels),
+		Annotations: maps.Clone(r.Metadata.Annotations),
 	}
-	expected.Labels = utilmaps.Merge(maps.Clone(r.Metadata.Labels), extraLabels)
-	expected.Annotations = maps.Clone(r.Metadata.Annotations)
 
 	// Seed with existing data so ensureClientCertificateSecretContents can
 	// reuse still-valid certificates and keys instead of regenerating them.
@@ -141,16 +142,14 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 	bundleData := buildTrustBundleFromSecrets(ctx, allSecrets)
 
 	expected := corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
-			Namespace: ownerNSN.Namespace,
-			Name:      secretName,
-		}),
+		Namespace: ownerNSN.Namespace,
+		Name:      secretName,
 		Data: map[string][]byte{
 			ClientCertificatesTrustBundleFileName: bundleData,
 		},
+		Labels:      maps.Clone(r.Metadata.Labels),
+		Annotations: maps.Clone(r.Metadata.Annotations),
 	}
-	expected.Labels = maps.Clone(r.Metadata.Labels)
-	expected.Annotations = maps.Clone(r.Metadata.Annotations)
 
 	_, err = reconciler.ReconcileSecret(ctx, r.K8sClient, expected, r.Owner)
 	return bundleData, err

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -50,7 +49,7 @@ func TestReconcileUsersAndRoles(t *testing.T) {
 }
 
 func Test_reconcileRolesFileRealmSecret(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 
 	clickAdminsRoles := RolesFileContent{"click_admins": []byte(`run_as: [ 'clicks_watcher_1' ]
   cluster: [ 'monitor' ]
@@ -229,7 +228,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 
 func Test_aggregateRoles(t *testing.T) {
 	esWithOverlap := sampleEsWithAuth.DeepCopy()
-	esWithOverlap.Spec.Auth.Roles = []esv1.RoleSource{{SecretRef: commonv1.SecretRef{SecretName: "user-roles"}}}
+	esWithOverlap.Spec.Auth.Roles = []esv1.RoleSource{{SecretName: "user-roles"}}
 
 	tests := []struct {
 		name         string
@@ -278,8 +277,8 @@ func Test_aggregateRoles(t *testing.T) {
 			es:   *esWithOverlap,
 			makeClient: func() k8s.Client {
 				return k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: sampleEsWithAuth.Namespace, Name: "user-roles"},
-					Data:       map[string][]byte{RolesFile: []byte("shared_role:\n  cluster:\n    - monitor\n")},
+					Namespace: sampleEsWithAuth.Namespace, Name: "user-roles",
+					Data: map[string][]byte{RolesFile: []byte("shared_role:\n  cluster:\n    - monitor\n")},
 				})
 			},
 			policyRoles:  map[string]any{"shared_role": map[string]any{"cluster": []any{"manage"}}},

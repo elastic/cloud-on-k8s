@@ -13,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -65,10 +64,8 @@ func ReconcileTransportCertificatesSecrets(
 // DeleteStatefulSetTransportCertificate removes the Secret which contains the transport certificates of a given Statefulset.
 func DeleteStatefulSetTransportCertificate(ctx context.Context, client k8s.Client, namespace string, ssetName string) error {
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
-		},
+		Namespace: namespace,
+		Name:      esv1.StatefulSetTransportCertificatesSecret(ssetName),
 	}
 	return client.Delete(ctx, &secret)
 }
@@ -230,12 +227,10 @@ func ensureTransportCertificatesSecretExists(
 		},
 	})
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        esv1.StatefulSetTransportCertificatesSecret(ssetName),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Namespace:   es.Namespace,
+		Name:        esv1.StatefulSetTransportCertificatesSecret(ssetName),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 	}
 	// reconcile the secret resource:
 	// - create it if it doesn't exist

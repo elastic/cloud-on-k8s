@@ -30,10 +30,8 @@ var (
 	}
 	// while the associations are optional the HTTP certs Secret has to exist to calculate the config hash and successfully build the pod spec
 	testHTTPCertsInternalSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-apm-apm-http-certs-internal",
-			Namespace: "default",
-		},
+		Name:      "fake-apm-apm-http-certs-internal",
+		Namespace: "default",
 	}
 )
 
@@ -125,8 +123,8 @@ func TestNewPodSpec(t *testing.T) {
 									Name: "SECRET_TOKEN",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
-											Key:                  SecretTokenKey,
+											Name: "token-secret",
+											Key:  SecretTokenKey,
 										},
 									},
 								},

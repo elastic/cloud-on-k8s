@@ -43,10 +43,8 @@ func NewBuilder(name string) Builder {
 
 	// Configuration secret that will be referenced in policy spec
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configSecretName,
-			Namespace: test.Ctx().ManagedNamespace(0),
-		},
+		Name:      configSecretName,
+		Namespace: test.Ctx().ManagedNamespace(0),
 		StringData: map[string]string{
 			"cloud-connected-mode-api-key": "test-api-key",
 			// This is being set to localhost to not attempt to send data upstream.

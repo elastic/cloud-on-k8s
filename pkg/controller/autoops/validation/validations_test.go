@@ -40,10 +40,8 @@ func (e errorLicenseChecker) ValidOperatorLicenseKeyType(context.Context) (licen
 
 func newPolicy(version string) *autoopsv1alpha1.AutoOpsAgentPolicy {
 	return &autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: "default",
-		},
+		Name:      "test-policy",
+		Namespace: "default",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
 			Version: version,
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
@@ -292,13 +290,13 @@ func TestCheckSingleConfigSource(t *testing.T) {
 		{
 			name:         "only ConfigRef set - no error",
 			config:       nil,
-			configRef:    &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef:    &commonv1.ConfigSource{SecretName: "my-secret"},
 			wantErrCount: 0,
 		},
 		{
 			name:         "both Config and ConfigRef set - two Forbidden errors",
 			config:       &commonv1.Config{Data: map[string]any{"key": "value"}},
-			configRef:    &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			configRef:    &commonv1.ConfigSource{SecretName: "my-secret"},
 			wantErrCount: 2,
 		},
 	}

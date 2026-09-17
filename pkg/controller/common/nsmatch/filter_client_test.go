@@ -66,7 +66,7 @@ func makeFilterClient(t *testing.T, delegate client.Client, sel labels.Selector,
 }
 
 func pod(name, ns string) *corev1.Pod {
-	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+	return &corev1.Pod{Name: name, Namespace: ns}
 }
 
 func podNames(list *corev1.PodList) []string {

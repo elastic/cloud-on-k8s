@@ -12,7 +12,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 
@@ -196,13 +195,11 @@ func reconcileRolesFileRealmSecret(
 	annotations[commonannotation.ElasticsearchRolesHashAnnotation] = policyRolesHash
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   RolesFileRealmSecretKey(es).Namespace,
-			Name:        RolesFileRealmSecretKey(es).Name,
-			Labels:      maps.Clone(meta.Labels),
-			Annotations: annotations,
-		},
-		Data: secretData,
+		Namespace:   RolesFileRealmSecretKey(es).Namespace,
+		Name:        RolesFileRealmSecretKey(es).Name,
+		Labels:      maps.Clone(meta.Labels),
+		Annotations: annotations,
+		Data:        secretData,
 	}
 
 	if expected.Labels == nil {

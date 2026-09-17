@@ -38,10 +38,8 @@ func Test_newKibanaConfigSecret(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
@@ -112,10 +110,8 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
@@ -140,10 +136,8 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
@@ -168,10 +162,8 @@ func Test_kibanaConfigApplied(t *testing.T) {
 					},
 				},
 				policy: &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "test-policy-ns",
-					},
+					Name:      "test-policy",
+					Namespace: "test-policy-ns",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 							Config: &commonv1.Config{
@@ -199,14 +191,12 @@ func Test_kibanaConfigApplied(t *testing.T) {
 
 func mkKibanaPod(namespace string, hashapplied bool, hashValue string) *corev1.Pod {
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-kibana-pod",
-			Namespace: namespace,
-			Labels: map[string]string{
-				"kibana.k8s.elastic.co/name": "test-kb",
-			},
-			Annotations: make(map[string]string),
+		Name:      "test-kibana-pod",
+		Namespace: namespace,
+		Labels: map[string]string{
+			"kibana.k8s.elastic.co/name": "test-kb",
 		},
+		Annotations: make(map[string]string),
 	}
 
 	if hashapplied {
@@ -217,20 +207,18 @@ func mkKibanaPod(namespace string, hashapplied bool, hashValue string) *corev1.P
 
 func MkKibanaConfigSecret(namespace string, owningPolicyName string, owningPolicyNamespace string, hashValue string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "test-kb-kb-policy-config",
-			Labels: map[string]string{
-				"asset.policy.k8s.elastic.co/on-delete": "delete",
-				"kibana.k8s.elastic.co/name":            "test-kb",
-				"common.k8s.elastic.co/type":            "kibana",
-				"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
-				"eck.k8s.elastic.co/watched":            "true",
-			},
-			Annotations: map[string]string{
-				"policy.k8s.elastic.co/kibana-config-hash": hashValue,
-				"eck.k8s.elastic.co/owner-refs":            `["` + owningPolicyNamespace + `/` + owningPolicyName + `"]`,
-			},
+		Namespace: namespace,
+		Name:      "test-kb-kb-policy-config",
+		Labels: map[string]string{
+			"asset.policy.k8s.elastic.co/on-delete": "delete",
+			"kibana.k8s.elastic.co/name":            "test-kb",
+			"common.k8s.elastic.co/type":            "kibana",
+			"eck.k8s.elastic.co/owner-kind":         "StackConfigPolicy",
+			"eck.k8s.elastic.co/watched":            "true",
+		},
+		Annotations: map[string]string{
+			"policy.k8s.elastic.co/kibana-config-hash": hashValue,
+			"eck.k8s.elastic.co/owner-refs":            `["` + owningPolicyNamespace + `/` + owningPolicyName + `"]`,
 		},
 		Data: map[string][]byte{
 			"kibana.json": []byte(`{"xpack.canvas.enabled":true}`),

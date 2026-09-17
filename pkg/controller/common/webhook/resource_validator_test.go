@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/stretchr/testify/require"
@@ -41,16 +40,12 @@ func (alwaysBasicLicenseChecker) ValidOperatorLicenseKeyType(context.Context) (l
 
 func testAgentElasticEnterprise(name string) *agentv1alpha1.Agent {
 	return &agentv1alpha1.Agent{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "agent.k8s.elastic.co/v1alpha1",
-			Kind:       "Agent",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "elastic",
-			Annotations: map[string]string{
-				license.Annotation: "enterprise",
-			},
+		APIVersion: "agent.k8s.elastic.co/v1alpha1",
+		Kind:       "Agent",
+		Name:       name,
+		Namespace:  "elastic",
+		Annotations: map[string]string{
+			license.Annotation: "enterprise",
 		},
 		Spec: agentv1alpha1.AgentSpec{
 			Version:    "8.10.0",
@@ -61,10 +56,8 @@ func testAgentElasticEnterprise(name string) *agentv1alpha1.Agent {
 
 func testAgentUnmanaged(name string) *agentv1alpha1.Agent {
 	return &agentv1alpha1.Agent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "unmanaged",
-		},
+		Name:      name,
+		Namespace: "unmanaged",
 		Spec: agentv1alpha1.AgentSpec{
 			Version:    "8.10.0",
 			Deployment: &agentv1alpha1.DeploymentSpec{},

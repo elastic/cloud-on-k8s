@@ -43,10 +43,8 @@ func NewReadinessProbe(v version.Version) *corev1.Probe {
 		PeriodSeconds:       5,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, scriptKey)},
-			},
+		Exec: &corev1.ExecAction{
+			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, scriptKey)},
 		},
 	}
 }

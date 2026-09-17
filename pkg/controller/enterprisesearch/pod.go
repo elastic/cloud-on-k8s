@@ -45,10 +45,8 @@ var (
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			Exec: &corev1.ExecAction{
-				Command: []string{"bash", path.Join(ReadinessProbeMountPath)},
-			},
+		Exec: &corev1.ExecAction{
+			Command: []string{"bash", path.Join(ReadinessProbeMountPath)},
 		},
 	}
 )

@@ -159,10 +159,8 @@ func newRequestsFromMatchedLabels() handler.TypedMapFunc[*corev1.Secret, reconci
 			}
 			return []reconcile.Request{
 				{
-					NamespacedName: types.NamespacedName{
-						Namespace: labels[RemoteClusterNamespaceLabelName],
-						Name:      labels[RemoteClusterNameLabelName],
-					},
+					Namespace: labels[RemoteClusterNamespaceLabelName],
+					Name:      labels[RemoteClusterNameLabelName],
 				},
 			}
 		}
@@ -174,10 +172,8 @@ func newRequestsFromMatchedLabels() handler.TypedMapFunc[*corev1.Secret, reconci
 			// Remote cluster API keys Secret event.
 			return []reconcile.Request{
 				{
-					NamespacedName: types.NamespacedName{
-						Namespace: obj.Namespace,
-						Name:      labels[label.ClusterNameLabelName],
-					},
+					Namespace: obj.Namespace,
+					Name:      labels[label.ClusterNameLabelName],
 				},
 			}
 		}

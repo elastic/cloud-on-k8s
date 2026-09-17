@@ -16,7 +16,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -79,24 +78,24 @@ func deleteCloudConnectedAPIMock(k *test.K8sClient) error {
 	name := cloudConnectedAPIMockName()
 
 	// Delete Service
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+	svc := &corev1.Service{Name: name, Namespace: namespace}
 	if err := k.Client.Delete(ctx, svc); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
 	// Delete Deployment
-	deploy := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+	deploy := &appsv1.Deployment{Name: name, Namespace: namespace}
 	if err := k.Client.Delete(ctx, deploy); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
 	// Delete ConfigMaps
-	mappingsCM := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name + "-mappings", Namespace: namespace}}
+	mappingsCM := &corev1.ConfigMap{Name: name + "-mappings", Namespace: namespace}
 	if err := k.Client.Delete(ctx, mappingsCM); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	filesCM := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name + "-files", Namespace: namespace}}
+	filesCM := &corev1.ConfigMap{Name: name + "-files", Namespace: namespace}
 	if err := k.Client.Delete(ctx, filesCM); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}

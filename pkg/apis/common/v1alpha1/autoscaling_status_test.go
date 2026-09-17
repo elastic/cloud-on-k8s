@@ -29,10 +29,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				return asb
 			},
@@ -78,10 +76,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				return asb
 			},
@@ -128,10 +124,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				asb.ForPolicy("policy1").
 					RecordEvent(
@@ -140,10 +134,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset1-0", NodeCount: 3}, {Name: "nodeset1-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				asb.ForPolicy("policy2").
@@ -153,10 +145,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset2-0", NodeCount: 2}, {Name: "nodeset2-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				return asb
@@ -236,10 +226,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy0",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 				},
 				)
 				asb.ForPolicy("policy1").
@@ -249,10 +237,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset1-0", NodeCount: 3}, {Name: "nodeset1-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				asb.ForPolicy("policy2").
@@ -262,10 +248,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset2-0", NodeCount: 2}, {Name: "nodeset2-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				return asb

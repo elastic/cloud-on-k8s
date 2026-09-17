@@ -36,6 +36,8 @@ import (
 var updatedVersion = test.LatestReleasedVersion8x
 
 func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Builder, []test.Builder, StackResourceVersions) {
+	test.SkipInvalidUpgrade(t, initialVersion, updatedVersion)
+
 	// Single-node ES clusters cannot be green with APM indices (see https://github.com/elastic/apm-server/issues/414).
 	es := elasticsearch.NewBuilder("es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
@@ -76,11 +78,11 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 	}
 	fb = beat.ApplyYamls(t, fb, beatsConfig, beattests.E2EFilebeatPodTemplate)
 
-	esUpdated := es.WithVersion(test.LatestReleasedVersion8x)
-	kbUpdated := kb.WithVersion(test.LatestReleasedVersion8x)
-	apmUpdated := apm.WithVersion(test.LatestReleasedVersion8x)
-	entUpdated := ent.WithVersion(test.LatestReleasedVersion8x)
-	fbUpdated := fb.WithVersion(test.LatestReleasedVersion8x)
+	esUpdated := es.WithVersion(updatedVersion)
+	kbUpdated := kb.WithVersion(updatedVersion)
+	apmUpdated := apm.WithVersion(updatedVersion)
+	entUpdated := ent.WithVersion(updatedVersion)
+	fbUpdated := fb.WithVersion(updatedVersion)
 
 	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
 	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
@@ -119,7 +121,7 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 				ClusterName: "es",
 			},
 		)
-	lsUpdated := ls.WithVersion(test.LatestReleasedVersion8x)
+	lsUpdated := ls.WithVersion(updatedVersion)
 	lsRef := ref(k8s.ExtractNamespacedName(&ls.Logstash))
 
 	initialBuilders = append(initialBuilders, ls)

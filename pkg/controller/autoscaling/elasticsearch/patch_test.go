@@ -69,8 +69,8 @@ func (c *recordingPatchClient) valueJSON(path string) string {
 
 func esWithNodeSets(nodeSets ...esv1.NodeSet) *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns", ResourceVersion: "999"},
-		Spec:       esv1.ElasticsearchSpec{Version: "8.16.0", NodeSets: nodeSets},
+		Name: "es", Namespace: "ns", ResourceVersion: "999",
+		Spec: esv1.ElasticsearchSpec{Version: "8.16.0", NodeSets: nodeSets},
 	}
 }
 

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -26,10 +25,8 @@ import (
 var (
 	testSecureSettingsSecretName = "secure-settings-secret"
 	testSecureSettingsSecret     = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      testSecureSettingsSecretName,
-		},
+		Namespace: "namespace",
+		Name:      testSecureSettingsSecretName,
 		Data: map[string][]byte{
 			"key1": []byte("value1"),
 		},
@@ -38,15 +35,11 @@ var (
 		SecretName: testSecureSettingsSecretName,
 	}
 	testKibana = kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      "kibana",
-		},
+		Namespace: "namespace",
+		Name:      "kibana",
 	}
 	testKibanaWithSecureSettings = kbv1.Kibana{
-		TypeMeta: metav1.TypeMeta{
-			Kind: kbv1.Kind,
-		},
+		Kind:       kbv1.Kind,
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: kbv1.KibanaSpec{
 			SecureSettings: []commonv1.SecretSource{testSecureSettingsSecretRef},

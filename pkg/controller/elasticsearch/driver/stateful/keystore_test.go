@@ -77,19 +77,15 @@ func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 		},
 	}
 	existingKeystorePasswordSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esMeta.Namespace,
-			Name:      keystorePasswordSecretName,
-		},
+		Namespace: esMeta.Namespace,
+		Name:      keystorePasswordSecretName,
 		Data: map[string][]byte{
 			keystorepassword.KeystorePasswordKey: []byte("leftover-password"),
 		},
 	}
 	policyFIPSEnabledConfigSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esMeta.Namespace,
-			Name:      esv1.StackConfigElasticsearchConfigSecretName(esMeta.Name),
-		},
+		Namespace: esMeta.Namespace,
+		Name:      esv1.StackConfigElasticsearchConfigSecretName(esMeta.Name),
 		Data: map[string][]byte{
 			esv1.StackConfigElasticsearchConfigKey: []byte(`{"xpack.security.fips_mode.enabled":true}`),
 		},

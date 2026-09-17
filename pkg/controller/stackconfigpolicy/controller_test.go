@@ -97,14 +97,12 @@ func fetchEvents(recorder *toolsevents.FakeRecorder) []string {
 
 func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es-default-0",
-			Namespace: namespace,
-			Labels: map[string]string{
-				eslabel.ClusterNameLabelName: "test-es",
-			},
-			Annotations: annotations,
+		Name:      "test-es-default-0",
+		Namespace: namespace,
+		Labels: map[string]string{
+			eslabel.ClusterNameLabelName: "test-es",
 		},
+		Annotations: annotations,
 	}
 }
 
@@ -114,10 +112,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Name:      "test-policy",
 	}
 	policyFixture := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-policy",
-		},
+		Namespace: "ns",
+		Name:      "test-policy",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
 			SecureSettings: []commonv1.SecretSource{
@@ -164,26 +160,23 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	esPodFixture := getEsPod("ns", map[string]string{
 		commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 	})
-	esFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	esFixture := esv1.Elasticsearch{
 		Namespace: "ns",
 		Name:      "test-es",
 		Labels:    map[string]string{"label": "test"},
-	},
-		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
 	secretMountsSecretFixture := getSecretMountSecret(t, "test-secret-mount", "ns", "test-policy", "ns", "delete")
 	secretFixture := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es-es-file-settings",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                    "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name":     "test-es",
-				"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
-				"eck.k8s.elastic.co/owner-namespace":            "ns",
-				"eck.k8s.elastic.co/owner-name":                 "test-policy",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
-			},
+		Namespace: "ns",
+		Name:      "test-es-es-file-settings",
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":                    "elasticsearch",
+			"elasticsearch.k8s.elastic.co/cluster-name":     "test-es",
+			"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
+			"eck.k8s.elastic.co/owner-namespace":            "ns",
+			"eck.k8s.elastic.co/owner-name":                 "test-policy",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
@@ -200,17 +193,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanSecretFixture.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "another-es"
 
 	orphanElasticsearchConfigSecretFixture := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
-			Namespace: "ns",
-			Labels: map[string]string{
-				"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
-				"common.k8s.elastic.co/type":                    "elasticsearch",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
-				reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
-				reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
-				reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
-			},
+		Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
+		Namespace: "ns",
+		Labels: map[string]string{
+			"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
+			"common.k8s.elastic.co/type":                    "elasticsearch",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
+			reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
+			reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
 		},
 	}
 
@@ -225,12 +216,11 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanEsFixture.Name = "another-es"
 	orphanEsFixture.Labels["label"] = "another"
 
-	oldVersionEsFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	oldVersionEsFixture := esv1.Elasticsearch{
 		Namespace: "ns",
 		Name:      "test-es",
 		Labels:    map[string]string{"label": "test"},
-	},
-		Spec: esv1.ElasticsearchSpec{Version: "8.0.0"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.0.0"},
 	}
 
 	clusterStateFileSettingsFixture := func(v int64, err error) esclient.FileSettings {
@@ -248,11 +238,10 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		}
 	}
 
-	kibanaFixture := kibanav1.Kibana{ObjectMeta: metav1.ObjectMeta{
+	kibanaFixture := kibanav1.Kibana{
 		Namespace: "ns",
 		Name:      "test-kb",
-		Labels:    map[string]string{"label": "test"},
-	}}
+		Labels:    map[string]string{"label": "test"}}
 
 	kibanaConfigSecretFixture := MkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
 	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns", "shared-secret")
@@ -693,19 +682,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 					// Source secrets in policy namespace (these don't need owner labels, they're just data sources)
 					sourceSecret1 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "test-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"idfile.txt": []byte("test id file"),
 						},
 					}
 					sourceSecret2 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "another-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "another-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"another-file.txt": []byte("another test file"),
 						},
@@ -772,19 +757,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 					// Source secrets in policy namespace (left over from before, not currently used)
 					sourceSecret1 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "test-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"idfile.txt": []byte("test id file"),
 						},
 					}
 					sourceSecret2 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "another-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "another-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"another-file.txt": []byte("another test file"),
 						},
@@ -874,20 +855,16 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 	// Setup: Create an Elasticsearch cluster and multiple StackConfigPolicies with different weights
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es",
-			Labels:    map[string]string{"env": "prod"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+		Namespace: "ns",
+		Name:      "test-es",
+		Labels:    map[string]string{"env": "prod"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
 
 	// Policy with weight 20 (applied first)
 	policy1 := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-high",
-		},
+		Namespace: "ns",
+		Name:      "policy-high",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           20,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -904,10 +881,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Policy with weight 10 (applied second, overrides policy1)
 	policy2 := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-low",
-		},
+		Namespace: "ns",
+		Name:      "policy-low",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           10,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -930,10 +905,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Policy with same weight as policy2 (should cause conflict)
 	policy3Conflicting := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-conflict",
-		},
+		Namespace: "ns",
+		Name:      "policy-conflict",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           10, // Same weight as policy2
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -947,14 +920,12 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Initial empty file settings secret (will be populated by controller)
 	esFileSettingsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es-es-file-settings",
-			Labels: map[string]string{
-				commonv1.TypeLabelName:                          "elasticsearch",
-				eslabel.ClusterNameLabelName:                    "test-es",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
-			},
+		Namespace: "ns",
+		Name:      "test-es-es-file-settings",
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                          "elasticsearch",
+			eslabel.ClusterNameLabelName:                    "test-es",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"1","compatibility":"8.4.0"},"state":{"cluster_settings":{},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
@@ -963,10 +934,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Source secret that will be mounted (exists in policy namespace)
 	sourceSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: "ns",
-		},
+		Name:      "test-secret",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"key1": []byte("value1"),
 		},
@@ -1116,10 +1085,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 			// Reconcile the specified policy
 			got, err := reconciler.Reconcile(context.Background(), reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: "ns",
-					Name:      tt.reconcilePolicy,
-				},
+				Namespace: "ns",
+				Name:      tt.reconcilePolicy,
 			})
 
 			if (err != nil) != tt.wantErr {
@@ -1155,7 +1122,7 @@ func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
 			name: "single policy with all secret types",
 			objects: func() []client.Object {
 				policy := &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-policy"},
+					Namespace: "ns", Name: "test-policy",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
 						SecureSettings:   []commonv1.SecretSource{{SecretName: "shared-secret1"}},
@@ -1174,15 +1141,15 @@ func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
 					},
 				}
 				es := &esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es", Labels: map[string]string{"label": "test"}},
-					Spec:       esv1.ElasticsearchSpec{Version: "8.6.1"},
+					Namespace: "ns", Name: "test-es", Labels: map[string]string{"label": "test"},
+					Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
 				}
 				kb := &kibanav1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-kb", Labels: map[string]string{"label": "test"}},
+					Namespace: "ns", Name: "test-kb", Labels: map[string]string{"label": "test"},
 				}
 				secretMount := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-secret-mount", Namespace: "ns"},
-					Data:       map[string][]byte{"idfile.txt": []byte("test id file")},
+					Name: "test-secret-mount", Namespace: "ns",
+					Data: map[string][]byte{"idfile.txt": []byte("test id file")},
 				}
 				hash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
 				esPod := getEsPod("ns", map[string]string{
@@ -1205,11 +1172,11 @@ func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
 			name: "multiple policies targeting the same cluster",
 			objects: func() []client.Object {
 				es := &esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "test-es", Labels: map[string]string{"env": "prod"}},
-					Spec:       esv1.ElasticsearchSpec{Version: "8.6.1"},
+					Namespace: "ns", Name: "test-es", Labels: map[string]string{"env": "prod"},
+					Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
 				}
 				policy1 := &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "policy-base"},
+					Namespace: "ns", Name: "policy-base",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Weight:           10,
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -1220,7 +1187,7 @@ func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
 					},
 				}
 				policy2 := &policyv1alpha1.StackConfigPolicy{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "policy-override"},
+					Namespace: "ns", Name: "policy-override",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						Weight:           20,
 						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -1345,24 +1312,20 @@ func Test_reconcileRequestForSoftOwnerPolicy(t *testing.T) {
 		{
 			name: "Secret without soft-owner labels returns no requests",
 			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "ns",
-				},
+				Name:      "test-secret",
+				Namespace: "ns",
 			},
 			wantReqs: nil,
 		},
 		{
 			name: "Secret soft-owned by Elasticsearch returns no requests",
 			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "ns",
-					Labels: map[string]string{
-						reconciler.SoftOwnerKindLabel:      esv1.Kind,
-						reconciler.SoftOwnerNameLabel:      "my-es",
-						reconciler.SoftOwnerNamespaceLabel: "ns",
-					},
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel:      esv1.Kind,
+					reconciler.SoftOwnerNameLabel:      "my-es",
+					reconciler.SoftOwnerNamespaceLabel: "ns",
 				},
 			},
 			wantReqs: nil,
@@ -1370,37 +1333,33 @@ func Test_reconcileRequestForSoftOwnerPolicy(t *testing.T) {
 		{
 			name: "Secret soft-owned by StackConfigPolicy returns request for that policy",
 			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "ns",
-					Labels: map[string]string{
-						reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
-						reconciler.SoftOwnerNameLabel:      "my-policy",
-						reconciler.SoftOwnerNamespaceLabel: "policy-ns",
-					},
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+					reconciler.SoftOwnerNameLabel:      "my-policy",
+					reconciler.SoftOwnerNamespaceLabel: "policy-ns",
 				},
 			},
 			wantReqs: []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: "policy-ns", Name: "my-policy"}},
+				{Namespace: "policy-ns", Name: "my-policy"},
 			},
 		},
 		{
 			name: "Secret with multiple soft-owners via annotation returns only StackConfigPolicy requests",
 			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "ns",
-					Labels: map[string]string{
-						reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
-					},
-					Annotations: map[string]string{
-						reconciler.SoftOwnerRefsAnnotation: `["ns1/policy1","ns2/policy2"]`,
-					},
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
+				},
+				Annotations: map[string]string{
+					reconciler.SoftOwnerRefsAnnotation: `["ns1/policy1","ns2/policy2"]`,
 				},
 			},
 			wantReqs: []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: "ns1", Name: "policy1"}},
-				{NamespacedName: types.NamespacedName{Namespace: "ns2", Name: "policy2"}},
+				{Namespace: "ns1", Name: "policy1"},
+				{Namespace: "ns2", Name: "policy2"},
 			},
 		},
 	}

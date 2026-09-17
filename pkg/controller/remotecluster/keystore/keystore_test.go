@@ -28,13 +28,11 @@ const (
 )
 
 var es = &esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:       "myes",
-		Namespace:  testNamespace,
-		UID:        uuid.NewUUID(),
-		Generation: 42,
-	},
-	Spec: esv1.ElasticsearchSpec{},
+	Name:       "myes",
+	Namespace:  testNamespace,
+	UID:        uuid.NewUUID(),
+	Generation: 42,
+	Spec:       esv1.ElasticsearchSpec{},
 }
 
 func TestLoadAPIKeyStore(t *testing.T) {
@@ -54,12 +52,10 @@ func TestLoadAPIKeyStore(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: testNamespace,
-							Name:      "myes-es-remote-api-keys",
-							Annotations: map[string]string{
-								"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{ "rc2" : { "namespace" : "ns2", "name" : "es2", "id": "SecretKeyID2" }, "rc1" : {  "namespace" : "ns1", "name" : "es1", "id": "SecretKeyID1" } }`,
-							},
+						Namespace: testNamespace,
+						Name:      "myes-es-remote-api-keys",
+						Annotations: map[string]string{
+							"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{ "rc2" : { "namespace" : "ns2", "name" : "es2", "id": "SecretKeyID2" }, "rc1" : {  "namespace" : "ns1", "name" : "es1", "id": "SecretKeyID1" } }`,
 						},
 						Data: map[string][]byte{
 							"cluster.remote.rc1.credentials": []byte("SecretKeyValue1"),
@@ -125,28 +121,26 @@ func TestAPIKeyStore_Save(t *testing.T) {
 				Update("ns1", "es1", "rc2", "keyid2", "encodedValue2"),
 			args: args{c: k8s.NewFakeClient()},
 			want: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:       testNamespace,
-					Name:            "myes-es-remote-api-keys",
-					ResourceVersion: "1",
-					Annotations: map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc1":{"namespace":"es1","name":"ns1","id":"keyid1"},"rc2":{"namespace":"es1","name":"ns1","id":"keyid2"}}`,
-					},
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
-						"eck.k8s.elastic.co/credentials":            "true",
-						"eck.k8s.elastic.co/watched":                "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-							Kind:               "Elasticsearch",
-							Name:               "myes",
-							UID:                es.UID,
-							Controller:         new(true),
-							BlockOwnerDeletion: new(true),
-						},
+				Namespace:       testNamespace,
+				Name:            "myes-es-remote-api-keys",
+				ResourceVersion: "1",
+				Annotations: map[string]string{
+					"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc1":{"namespace":"es1","name":"ns1","id":"keyid1"},"rc2":{"namespace":"es1","name":"ns1","id":"keyid2"}}`,
+				},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"eck.k8s.elastic.co/watched":                "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": "myes",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+						Kind:               "Elasticsearch",
+						Name:               "myes",
+						UID:                es.UID,
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Data: map[string][]byte{
@@ -162,27 +156,25 @@ func TestAPIKeyStore_Save(t *testing.T) {
 				Update("ns2", "es2", "rc2", "keyid2", "encodedValue2").
 				Delete("rc1").Delete("rc2"),
 			args: args{c: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:       testNamespace,
-					Name:            "myes-es-remote-api-keys",
-					ResourceVersion: "1",
-					Annotations: map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc1":"keyid1","rc2":"keyid2"}`,
-					},
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":                "elasticsearch",
-						"eck.k8s.elastic.co/credentials":            "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-							Kind:               "Elasticsearch",
-							Name:               "myes",
-							UID:                es.UID,
-							Controller:         new(true),
-							BlockOwnerDeletion: new(true),
-						},
+				Namespace:       testNamespace,
+				Name:            "myes-es-remote-api-keys",
+				ResourceVersion: "1",
+				Annotations: map[string]string{
+					"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc1":"keyid1","rc2":"keyid2"}`,
+				},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": "myes",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+						Kind:               "Elasticsearch",
+						Name:               "myes",
+						UID:                es.UID,
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Data: map[string][]byte{
@@ -200,27 +192,25 @@ func TestAPIKeyStore_Save(t *testing.T) {
 				Update("ns3", "es3", "rc3_1", "keyid3_1", "encodedValue31").
 				Update("ns3", "es3", "rc3_2", "keyid3_2", "encodedValue32"),
 			args: args{c: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:       testNamespace,
-					Name:            "myes-es-remote-api-keys",
-					ResourceVersion: "1",
-					Annotations: map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc2":{"namespace":"es2","name":"ns2","id":"keyid2"},"rc1":{"namespace":"es1","name":"ns1","id":"keyid1"}}`,
-					},
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
-						"eck.k8s.elastic.co/credentials":            "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-							Kind:               "Elasticsearch",
-							Name:               "myes",
-							UID:                es.UID,
-							Controller:         new(true),
-							BlockOwnerDeletion: new(true),
-						},
+				Namespace:       testNamespace,
+				Name:            "myes-es-remote-api-keys",
+				ResourceVersion: "1",
+				Annotations: map[string]string{
+					"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc2":{"namespace":"es2","name":"ns2","id":"keyid2"},"rc1":{"namespace":"es1","name":"ns1","id":"keyid1"}}`,
+				},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": "myes",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+						Kind:               "Elasticsearch",
+						Name:               "myes",
+						UID:                es.UID,
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Data: map[string][]byte{
@@ -230,28 +220,26 @@ func TestAPIKeyStore_Save(t *testing.T) {
 				},
 			})},
 			want: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:       testNamespace,
-					Name:            "myes-es-remote-api-keys",
-					ResourceVersion: "2",
-					Annotations: map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc2":{"namespace":"es2","name":"ns2","id":"keyid2"},"rc3_1":{"namespace":"es3","name":"ns3","id":"keyid3_1"},"rc3_2":{"namespace":"es3","name":"ns3","id":"keyid3_2"}}`,
-					},
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
-						"eck.k8s.elastic.co/credentials":            "true",
-						"eck.k8s.elastic.co/watched":                "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": "myes",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-							Kind:               "Elasticsearch",
-							Name:               "myes",
-							UID:                es.UID,
-							Controller:         new(true),
-							BlockOwnerDeletion: new(true),
-						},
+				Namespace:       testNamespace,
+				Name:            "myes-es-remote-api-keys",
+				ResourceVersion: "2",
+				Annotations: map[string]string{
+					"elasticsearch.k8s.elastic.co/remote-cluster-api-keys": `{"rc2":{"namespace":"es2","name":"ns2","id":"keyid2"},"rc3_1":{"namespace":"es3","name":"ns3","id":"keyid3_1"},"rc3_2":{"namespace":"es3","name":"ns3","id":"keyid3_2"}}`,
+				},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "remote-cluster-api-keys",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"eck.k8s.elastic.co/watched":                "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": "myes",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+						Kind:               "Elasticsearch",
+						Name:               "myes",
+						UID:                es.UID,
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Data: map[string][]byte{

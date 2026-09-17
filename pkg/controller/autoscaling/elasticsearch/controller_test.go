@@ -18,8 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,7 +28,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -50,14 +47,12 @@ var (
 
 	// fakePod is one running pod for online tests == ES considered reachable
 	fakePod = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "testns",
-			Name:      "testes-es-master",
-			Labels: map[string]string{
-				eslabel.HTTPSchemeLabelName:      "http",
-				eslabel.StatefulSetNameLabelName: "sset",
-				eslabel.ClusterNameLabelName:     "testes",
-			},
+		Namespace: "testns",
+		Name:      "testes-es-master",
+		Labels: map[string]string{
+			eslabel.HTTPSchemeLabelName:      "http",
+			eslabel.StatefulSetNameLabelName: "sset",
+			eslabel.ClusterNameLabelName:     "testes",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -266,27 +261,22 @@ func TestReconcile(t *testing.T) {
 			}
 
 			r := &ReconcileElasticsearchAutoscaler{
-				Watches: watches.NewDynamicWatches(),
-				baseReconcileAutoscaling: baseReconcileAutoscaling{
-					Client:           k8sClient,
-					esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
-					Parameters: operator.Parameters{
-						OperatorInfo: about.OperatorInfo{
-							BuildInfo: about.BuildInfo{
-								Version: "1.5.0",
-							},
-						},
+				Watches:          watches.NewDynamicWatches(),
+				Client:           k8sClient,
+				esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
+				OperatorInfo: about.OperatorInfo{
+					BuildInfo: about.BuildInfo{
+						Version: "1.5.0",
 					},
-					recorder:       tt.fields.recorder,
-					licenseChecker: tt.fields.licenseChecker,
 				},
+				recorder:       tt.fields.recorder,
+				licenseChecker: tt.fields.licenseChecker,
 			}
 			got, err := r.Reconcile(
 				context.Background(),
-				reconcile.Request{NamespacedName: types.NamespacedName{
+				reconcile.Request{
 					Namespace: "testns",
-					Name:      "test-autoscaler",
-				}})
+					Name:      "test-autoscaler"})
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("autoscaling.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return

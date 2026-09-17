@@ -16,7 +16,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -138,8 +137,8 @@ func Test_isFleetServerClientAuthRequired(t *testing.T) {
 				Name: FleetServerClientAuth,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret"},
-						Key:                  "client-auth",
+						Name: "my-secret",
+						Key:  "client-auth",
 					},
 				},
 			},
@@ -154,8 +153,8 @@ func Test_isFleetServerClientAuthRequired(t *testing.T) {
 				Name: FleetServerClientAuth,
 				ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "my-configmap"},
-						Key:                  "client-auth",
+						Name: "my-configmap",
+						Key:  "client-auth",
 					},
 				},
 			},
@@ -219,11 +218,9 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 
 	newAgent := func(annotations map[string]string) agentv1alpha1.Agent {
 		return agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        agentName,
-				Namespace:   agentNamespace,
-				Annotations: annotations,
-			},
+			Name:        agentName,
+			Namespace:   agentNamespace,
+			Annotations: annotations,
 			Spec: agentv1alpha1.AgentSpec{
 				FleetServerEnabled: true,
 				Deployment:         &agentv1alpha1.DeploymentSpec{},
@@ -256,8 +253,8 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 				annotation.ClientAuthenticationRequiredAnnotation: "true",
 			}),
 			existingSecrets: []corev1.Secret{
-				{ObjectMeta: metav1.ObjectMeta{Name: operatorClientCertSecretName, Namespace: agentNamespace}},
-				{ObjectMeta: metav1.ObjectMeta{Name: trustBundleSecretName, Namespace: agentNamespace}},
+				{Name: operatorClientCertSecretName, Namespace: agentNamespace},
+				{Name: trustBundleSecretName, Namespace: agentNamespace},
 			},
 			clientAuthRequired: false,
 			wantAnnotation:     false,
@@ -279,10 +276,8 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 			agent:              newAgent(nil),
 			clientAuthRequired: true,
 			fleetCerts: &certificates.CertificatesSecret{
-				Secret: corev1.Secret{
-					Data: map[string][]byte{
-						certificates.CertFileName: []byte("fleet-server-cert-data"),
-					},
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte("fleet-server-cert-data"),
 				},
 			},
 			wantAnnotation:    true,
@@ -364,16 +359,14 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 	readyDeployment := func(version string) []client.Object {
 		return []client.Object{
 			&appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "fleet-server-agent", Namespace: "test"},
-				Status:     appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+				Name: "fleet-server-agent", Namespace: "test",
+				Status: appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
 			},
 			&corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "fleet-server-pod",
-					Namespace: "test",
-					Labels:    map[string]string{NameLabelName: "fleet-server", VersionLabelName: version},
-				},
-				Status: corev1.PodStatus{Phase: corev1.PodRunning},
+				Name:      "fleet-server-pod",
+				Namespace: "test",
+				Labels:    map[string]string{NameLabelName: "fleet-server", VersionLabelName: version},
+				Status:    corev1.PodStatus{Phase: corev1.PodRunning},
 			},
 		}
 	}
@@ -411,7 +404,7 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			agentObj := &agentv1alpha1.Agent{
-				ObjectMeta: metav1.ObjectMeta{Name: "fleet-server", Namespace: "test"},
+				Name: "fleet-server", Namespace: "test",
 				Spec: agentv1alpha1.AgentSpec{
 					Version:            tt.agentVersion,
 					FleetServerEnabled: true,
