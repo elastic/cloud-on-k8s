@@ -17,26 +17,24 @@ func (k *Kibana) GetIdentityLabels() map[string]string {
 	}
 }
 
-// GetPoolIdentityLabels returns the identity labels for a specific Kibana pool.
-// When background task isolation is enabled, a role label is added to distinguish
-// the UI pool from the background tasks pool. When isolation is disabled, the labels
-// are identical to GetIdentityLabels() so that existing resources are unaffected.
 func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
 	labels := k.GetIdentityLabels()
-	if k.BackgroundTasksEnabled() {
-		labels[role.LabelName] = label.RoleLabelValue
+	labels[label.RoleLabelName] = label.RolePrimeValue
+
+	if k.BackgroundTasksEnabled() && role.LabelValue != "" {
+		labels[label.RoleLabelName] = role.LabelValue
 	}
 	return labels
 }
 
 // ActiveRoles returns the list of pools that the controller must reconcile for this Kibana.
 // When BackgroundTasks is not set, a single synthetic "all-roles" pool is returned whose
-// label name is empty (no role label applied) and whose name is empty (single-pool behavior).
+// LabelValue is empty (no role label applied) and whose Name is empty (single-pool behavior).
 // When BackgroundTasks is set, both UIRole and BackgroundTasksRole are returned.
 func (k *Kibana) ActiveRoles() []label.Role {
 	if !k.BackgroundTasksEnabled() {
-		// Single all-roles pool: no role label added, no node.roles rendered.
-		return []label.Role{{Name: "", LabelName: ""}}
+		// Single all-roles pool: no role label, no NODE_ROLES env var.
+		return []label.Role{{Name: "", LabelValue: ""}}
 	}
 	return []label.Role{label.UIRole, label.BackgroundTasksRole}
 }
