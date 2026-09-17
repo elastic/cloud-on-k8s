@@ -20,7 +20,7 @@ The linter reports a call when the receiver implements `client.Writer` and:
   - `client.RawPatch(types.MergePatchType, …)`, `client.RawPatch(types.StrategicMergePatchType, …)`
   - Any patch type the analyzer cannot resolve statically (conservative)
 
-Explicit-field patch types are **not** flagged: `client.RawPatch(types.JSONPatchType, …)`, `client.RawPatch(types.ApplyPatchType, …)`, and `client.Apply`. These only touch the fields they name and cannot claim unintended ownership.
+Explicit-field patch types are **not** flagged: `client.RawPatch(types.JSONPatchType, …)`, `client.RawPatch(types.ApplyPatchType, …)`, `client.RawPatch(types.ApplyCBORPatchType, …)`, and `client.Apply`. These only touch the fields they name and cannot claim unintended ownership.
 
 The linter does not flag sub-resource writes such as `c.Status().Update(...)` and `c.Status().Patch(...)`. `SubResourceWriter` has different method signatures, so it does not implement `client.Writer`. The exclusion follows from the type, not from a check on the method name.
 
