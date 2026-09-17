@@ -29999,11 +29999,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -33084,11 +33084,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/api
-Version : v0.0.0-20260720211330-0afa2a65878a
-Time    : 2026-07-20T21:13:30Z
+Version : v0.0.0-20260803160001-6ac0973c030d
+Time    : 2026-08-03T16:00:01Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260720211330-0afa2a65878a/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260803160001-6ac0973c030d/LICENSE:
 
 
                                  Apache License

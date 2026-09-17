@@ -234,7 +234,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp](https://go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp) | v0.69.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel](https://go.opentelemetry.io/otel) | v1.45.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/exporters/otlp/otlptrace](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace) | v1.45.0 | Apache-2.0 |
-| [go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc) | v1.44.0 | Apache-2.0 |
+| [go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc](https://go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc) | v1.45.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/exporters/stdout/stdoutmetric](https://go.opentelemetry.io/otel/exporters/stdout/stdoutmetric) | v1.44.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/metric](https://go.opentelemetry.io/otel/metric) | v1.45.0 | Apache-2.0 |
 | [go.opentelemetry.io/otel/metric/x](https://go.opentelemetry.io/otel/metric/x) | v0.67.0 | Apache-2.0 |
@@ -260,7 +260,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [gomodules.xyz/jsonpatch/v2](https://gomodules.xyz/jsonpatch/v2) | v2.4.0 | Apache-2.0 |
 | [gonum.org/v1/gonum](https://github.com/gonum/gonum) | v0.17.0 | BSD-3-Clause |
 | [google.golang.org/genproto](https://google.golang.org/genproto) | v0.0.0-20260715232425-e75dac1f907d | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260720211330-0afa2a65878a | Apache-2.0 |
+| [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260803160001-6ac0973c030d | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260819154853-08b0e4226688 | Apache-2.0 |
 | [google.golang.org/grpc](https://google.golang.org/grpc) | v1.83.2 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.12 | BSD-3-Clause |
