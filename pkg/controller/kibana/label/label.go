@@ -23,45 +23,47 @@ const (
 	// Type represents the Kibana type
 	Type = "kibana"
 
-	// RoleLabelPrefix is the prefix for Kibana role labels applied to pods when background task
-	// isolation is enabled. These labels follow the serverless kibana-controller convention.
-	RoleLabelPrefix = "kibana.k8s.elastic.co/role-"
+	// RoleLabelName is the label key applied to pods when background task isolation is enabled.
+	// Its value distinguishes the UI/primary pool ("prime") from the background tasks pool
+	// ("background_tasks").
+	RoleLabelName = "kibana.k8s.elastic.co/role"
 
-	// UIRoleLabelName is the label applied to UI pool pods when background task isolation is enabled.
-	UIRoleLabelName = RoleLabelPrefix + "ui"
+	// RolePrimeValue is the label value for the UI / primary pool (node.roles: ["ui"]).
+	RolePrimeValue = "prime"
 
-	// BackgroundTasksRoleLabelName is the label applied to background tasks pool pods.
-	BackgroundTasksRoleLabelName = RoleLabelPrefix + "background_tasks"
-
-	// RoleLabelValue is the value used for role labels.
-	RoleLabelValue = "true"
+	// RoleBackgroundTasksValue is the label value for the background tasks pool
+	// (node.roles: ["background_tasks"]).
+	RoleBackgroundTasksValue = "background_tasks"
 
 	// NodeRolesConfigKey is the Kibana configuration key that selects which roles a process runs.
 	// ECK manages this key when background task isolation is enabled; users must not set it.
 	NodeRolesConfigKey = "node.roles"
 )
 
-// Role describes a Kibana node role and the Kubernetes label that identifies its pods.
+// Role describes a Kibana node role and its Kubernetes label value.
 // Role labels are only applied when background task isolation is enabled (spec.backgroundTasks is set);
-// existing single-pool Kibana resources are never relabeled.
+// single-pool Kibana resources carry no role label.
 type Role struct {
-	// Name is the Kibana node.roles value (e.g. "ui" or "background_tasks").
+	// Name is the Kibana node.roles value injected via the NODE_ROLES env var
+	// (e.g. "ui" or "background_tasks").
 	Name string
-	// LabelName is the Kubernetes pod label key for this role (e.g. UIRoleLabelName).
-	LabelName string
+	// LabelValue is the value written to the kibana.k8s.elastic.co/role label
+	// (e.g. "prime" or "background_tasks"). Empty for the single-pool (no-split) case.
+	LabelValue string
 }
 
 var (
-	// UIRole describes the Kibana UI pool (node.roles: ["ui"]).
+	// UIRole describes the Kibana UI pool: NODE_ROLES=["ui"], role label value "prime".
 	UIRole = Role{
-		Name:      "ui",
-		LabelName: UIRoleLabelName,
+		Name:       "ui",
+		LabelValue: RolePrimeValue,
 	}
 
-	// BackgroundTasksRole describes the Kibana background tasks pool (node.roles: ["background_tasks"]).
+	// BackgroundTasksRole describes the Kibana background tasks pool:
+	// NODE_ROLES=["background_tasks"], role label value "background_tasks".
 	BackgroundTasksRole = Role{
-		Name:      "background_tasks",
-		LabelName: BackgroundTasksRoleLabelName,
+		Name:       "background_tasks",
+		LabelValue: RoleBackgroundTasksValue,
 	}
 )
 

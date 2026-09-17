@@ -46,7 +46,7 @@ func TestActiveRoles(t *testing.T) {
 		roles := kb.ActiveRoles()
 		require.Len(t, roles, 1)
 		assert.Equal(t, "", roles[0].Name)
-		assert.Equal(t, "", roles[0].LabelName)
+		assert.Equal(t, "", roles[0].LabelValue)
 	})
 
 	t.Run("with backgroundTasks returns UI and BG roles", func(t *testing.T) {
@@ -62,33 +62,25 @@ func TestActiveRoles(t *testing.T) {
 }
 
 func TestGetPoolIdentityLabels(t *testing.T) {
-	t.Run("no backgroundTasks: no role label added", func(t *testing.T) {
-		kb := Kibana{
-			Name: "test-kb"}
-		kb.Spec.Version = "8.17.0"
+	t.Run("no backgroundTasks: single pool always gets role=prime", func(t *testing.T) {
+		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{Version: "8.17.0"}}
 		labels := kb.GetPoolIdentityLabels(label.UIRole)
-		_, hasRoleLabel := labels[label.UIRoleLabelName]
-		assert.False(t, hasRoleLabel, "role label must not be added when backgroundTasks is nil")
-		_, hasBGRoleLabel := labels[label.BackgroundTasksRoleLabelName]
-		assert.False(t, hasBGRoleLabel)
+		assert.Equal(t, label.RolePrimeValue, labels[label.RoleLabelName],
+			"single-pool deployment always carries role=prime so DeploymentSelector can detect upgrade path")
 	})
 
-	t.Run("with backgroundTasks: role label added per pool", func(t *testing.T) {
+	t.Run("with backgroundTasks: UI gets prime, BG gets background_tasks", func(t *testing.T) {
 		count := int32(1)
-		kb := Kibana{
-			Name: "test-kb"}
-		kb.Spec.Version = "8.17.0"
-		kb.Spec.BackgroundTasks = &KibanaBackgroundTasks{Count: &count}
+		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{
+			Version:         "8.17.0",
+			BackgroundTasks: &KibanaBackgroundTasks{Count: &count},
+		}}
 
 		uiLabels := kb.GetPoolIdentityLabels(label.UIRole)
-		assert.Equal(t, label.RoleLabelValue, uiLabels[label.UIRoleLabelName])
-		_, hasBGLabel := uiLabels[label.BackgroundTasksRoleLabelName]
-		assert.False(t, hasBGLabel, "UI pool must not carry the background_tasks role label")
+		assert.Equal(t, label.RolePrimeValue, uiLabels[label.RoleLabelName])
 
 		bgLabels := kb.GetPoolIdentityLabels(label.BackgroundTasksRole)
-		assert.Equal(t, label.RoleLabelValue, bgLabels[label.BackgroundTasksRoleLabelName])
-		_, hasUILabel := bgLabels[label.UIRoleLabelName]
-		assert.False(t, hasUILabel, "background pool must not carry the ui role label")
+		assert.Equal(t, label.RoleBackgroundTasksValue, bgLabels[label.RoleLabelName])
 	})
 }
 

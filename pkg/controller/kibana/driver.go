@@ -221,7 +221,7 @@ func (d *driver) Reconcile(
 
 	var uiDeployment appsv1.Deployment
 	var aggregateAvailable int32
-	var aggregateHealth commonv1.DeploymentHealth = commonv1.GreenHealth
+	aggregateHealth := commonv1.GreenHealth
 
 	// reconciledSecrets tracks which config secrets have already been written this pass
 	// so that pools sharing the base secret don't trigger a redundant write.
@@ -233,30 +233,32 @@ func (d *driver) Reconcile(
 			return results.WithError(err)
 		}
 
-		// D5: detect immutable selector transition.
-		// Enabling or disabling spec.backgroundTasks changes the deployment selector
-		// (adds/removes the role label). Kubernetes rejects selector updates as immutable,
-		// so we delete the stale deployment and requeue; the next pass recreates it with
-		// the correct selector.
-		expectedSelector := kb.GetPoolIdentityLabels(role)
-		var existingForSelector appsv1.Deployment
-		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolDeploymentName}, &existingForSelector); err == nil {
-			if !maps.Equal(existingForSelector.Spec.Selector.MatchLabels, expectedSelector) {
-				logger.Info(
-					"Deployment selector mismatch; deleting to allow recreation with updated selector",
-					"deployment", poolDeploymentName,
-					"existing_selector", existingForSelector.Spec.Selector.MatchLabels,
-					"expected_selector", expectedSelector,
-				)
-				if delErr := d.client.Delete(ctx, &existingForSelector); delErr != nil && !apierrors.IsNotFound(delErr) {
-					return results.WithError(delErr)
-				}
-				k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
-					fmt.Sprintf("Deleted Deployment %s to apply updated selector", poolDeploymentName))
-				return results.WithRequeue()
+		// Detect immutable selector transition.
+		// Kubernetes rejects selector updates as immutable, so we delete the stale deployment and requeue;
+		// the next pass recreates it with the correct selector.
+		var existingDeployment appsv1.Deployment
+		var existingMatchLabels map[string]string
+		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolDeploymentName}, &existingDeployment); err == nil {
+			if existingDeployment.Spec.Selector != nil {
+				existingMatchLabels = existingDeployment.Spec.Selector.MatchLabels
 			}
 		} else if !apierrors.IsNotFound(err) {
 			return results.WithError(err)
+		}
+		selector := d.DeploymentSelector(kb, role, existingMatchLabels)
+		if existingMatchLabels != nil && !maps.Equal(existingMatchLabels, selector) {
+			logger.Info(
+				"Deployment selector mismatch; deleting to allow recreation with updated selector",
+				"deployment", poolDeploymentName,
+				"existing_selector", existingMatchLabels,
+				"expected_selector", selector,
+			)
+			if delErr := d.client.Delete(ctx, &existingDeployment); delErr != nil && !apierrors.IsNotFound(delErr) {
+				return results.WithError(delErr)
+			}
+			k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
+				fmt.Sprintf("Deleted Deployment %s to apply updated selector", poolDeploymentName))
+			return results.WithRequeue()
 		}
 
 		if !reconciledSecrets[poolSecretName] {
@@ -274,7 +276,7 @@ func (d *driver) Reconcile(
 			replicas = new(kb.Spec.Count)
 		}
 
-		dpParams, err := d.deploymentParams(ctx, kb, role, poolSecretName, poolDeploymentName, replicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta)
+		dpParams, err := d.deploymentParams(ctx, kb, role, poolSecretName, poolDeploymentName, replicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -356,6 +358,38 @@ func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalCo
 	return poolCfg, kbv1.BackgroundTasksConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name), nil
 }
 
+// DeploymentSelector returns the label selector to use for a pool deployment.
+//
+// The base case is kb.GetPoolIdentityLabels(role). One exception exists for the ECK upgrade
+// path: when the expected selector would add role=prime to a single-pool (non-split) cluster
+// whose existing deployment does not yet carry that label, the role label is stripped from the
+// result. This avoids an unnecessary delete+recreate for every Kibana that does not use
+// spec.backgroundTasks on operator upgrade.
+//
+// existingMatchLabels is nil when the deployment does not exist yet; in that case the full
+// expected selector is returned.
+func (d *driver) DeploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels map[string]string) map[string]string {
+	expectedByRole := kb.GetPoolIdentityLabels(role)
+
+	if existingMatchLabels == nil {
+		return expectedByRole
+	}
+
+	// ECK upgrade case: expectedByRole wants role=prime, the existing deployment has no role
+	// label at all, and split is not active. Strip the role label so the selectors match and
+	// no delete+recreate is triggered. Pods that roll for unrelated reasons will pick up the
+	// role=prime pod label naturally; the selector can be updated on the next split toggle.
+	if expectedByRole[kblabel.RoleLabelName] == kblabel.RolePrimeValue &&
+		existingMatchLabels[kblabel.RoleLabelName] != kblabel.RolePrimeValue &&
+		!kb.BackgroundTasksEnabled() {
+		result := maps.Clone(expectedByRole)
+		delete(result, kblabel.RoleLabelName)
+		return result
+	}
+
+	return expectedByRole
+}
+
 // garbageCollectBackgroundResources deletes the background tasks Deployment and config Secret
 // when spec.backgroundTasks is no longer set.
 func (d *driver) garbageCollectBackgroundResources(ctx context.Context, kb *kbv1.Kibana) error {
@@ -423,6 +457,7 @@ func (d *driver) deploymentParams(
 	setDefaultSecurityContext bool,
 	operatorNamespace string,
 	meta metadata.Metadata,
+	selector map[string]string,
 ) (deployment.Params, error) {
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
@@ -458,9 +493,9 @@ func (d *driver) deploymentParams(
 
 	// Pool-specific metadata: add role label to pod labels.
 	poolMeta := meta
-	if role.LabelName != "" {
+	if role.LabelValue != "" {
 		poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
-		poolLabels[role.LabelName] = kblabel.RoleLabelValue
+		poolLabels[kblabel.RoleLabelName] = role.LabelValue
 		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 	}
 
@@ -533,8 +568,6 @@ func (d *driver) deploymentParams(
 		return deployment.Params{}, err
 	}
 
-	selector := kb.GetPoolIdentityLabels(role)
-
 	return deployment.Params{
 		Name:                 deploymentName,
 		Namespace:            kb.Namespace,
@@ -588,61 +621,35 @@ func mergePoolPodTemplate(base, pool corev1.PodTemplateSpec) corev1.PodTemplateS
 		merged.Spec.SecurityContext = pool.Spec.SecurityContext
 	}
 
-	// Containers: merge by name; unmatched pool containers are appended.
+	containerName := func(c corev1.Container) string { return c.Name }
 	if len(pool.Spec.Containers) > 0 {
-		merged.Spec.Containers = mergeContainerList(merged.Spec.Containers, pool.Spec.Containers)
+		merged.Spec.Containers = mergeByName(merged.Spec.Containers, pool.Spec.Containers, containerName)
 	}
 	if len(pool.Spec.InitContainers) > 0 {
-		merged.Spec.InitContainers = mergeContainerList(merged.Spec.InitContainers, pool.Spec.InitContainers)
+		merged.Spec.InitContainers = mergeByName(merged.Spec.InitContainers, pool.Spec.InitContainers, containerName)
 	}
-
-	// Volumes: pool additions win for volumes with the same name; novel volumes are appended.
 	if len(pool.Spec.Volumes) > 0 {
-		merged.Spec.Volumes = mergeVolumeList(merged.Spec.Volumes, pool.Spec.Volumes)
+		merged.Spec.Volumes = mergeByName(merged.Spec.Volumes, pool.Spec.Volumes, func(v corev1.Volume) string { return v.Name })
 	}
 
 	return merged
 }
 
-// mergeContainerList merges pool containers into base by name.
-// A pool container that matches a base container by name replaces it entirely.
-// Pool containers with no matching base entry are appended.
-func mergeContainerList(base, pool []corev1.Container) []corev1.Container {
-	result := make([]corev1.Container, len(base))
-	copy(result, base)
-	for _, pc := range pool {
+// mergeByName merges pool items into base by name, replacing on match and appending novel items.
+func mergeByName[T any](base, pool []T, name func(T) string) []T {
+	result := make([]T, 0, len(base)+len(pool))
+	result = append(result, base...)
+	for _, p := range pool {
 		found := false
-		for i, bc := range result {
-			if bc.Name == pc.Name {
-				result[i] = pc
+		for i, b := range result {
+			if name(b) == name(p) {
+				result[i] = p
 				found = true
 				break
 			}
 		}
 		if !found {
-			result = append(result, pc)
-		}
-	}
-	return result
-}
-
-// mergeVolumeList merges pool volumes into base by name.
-// A pool volume that matches a base volume by name replaces it.
-// Novel pool volumes are appended.
-func mergeVolumeList(base, pool []corev1.Volume) []corev1.Volume {
-	result := make([]corev1.Volume, len(base))
-	copy(result, base)
-	for _, pv := range pool {
-		found := false
-		for i, bv := range result {
-			if bv.Name == pv.Name {
-				result[i] = pv
-				found = true
-				break
-			}
-		}
-		if !found {
-			result = append(result, pv)
+			result = append(result, p)
 		}
 	}
 	return result
