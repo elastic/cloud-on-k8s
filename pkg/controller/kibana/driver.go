@@ -547,16 +547,105 @@ func (d *driver) deploymentParams(
 	}, nil
 }
 
-// mergePoolPodTemplate overlays poolTemplate on top of basePodTemplate via strategic merge semantics
-// by simply letting the pool template's non-zero fields win (same approach as Kibana spec merging).
-// For Phase 3 we use the pool template directly; a full strategic merge can be added later.
+// mergePoolPodTemplate overlays the pool-specific template on top of the base template.
+// Each field is merged independently: pool wins when it carries a non-zero value, base is kept
+// otherwise. Metadata maps (labels, annotations) are merged rather than replaced.
+// Containers and init containers are merged by name: a pool container that matches a base
+// container by name overlays individual fields; unmatched pool containers are appended.
 func mergePoolPodTemplate(base, pool corev1.PodTemplateSpec) corev1.PodTemplateSpec {
-	// If the pool template has any spec, use it; otherwise fall back to the base.
-	// This is a simple overlay: pool beats base only when pool has content.
-	if pool.Spec.Containers != nil || pool.Spec.InitContainers != nil || pool.Spec.Volumes != nil {
-		return pool
+	merged := *base.DeepCopy()
+
+	// ObjectMeta: merge maps so pool additions don't wipe base entries.
+	if len(pool.Labels) > 0 {
+		merged.Labels = maps.Clone(merged.Labels)
+		maps.Copy(merged.Labels, pool.Labels)
 	}
-	return base
+	if len(pool.Annotations) > 0 {
+		merged.Annotations = maps.Clone(merged.Annotations)
+		maps.Copy(merged.Annotations, pool.Annotations)
+	}
+
+	// Scheduling fields: pool wins when explicitly set.
+	if pool.Spec.NodeSelector != nil {
+		merged.Spec.NodeSelector = pool.Spec.NodeSelector
+	}
+	if pool.Spec.Affinity != nil {
+		merged.Spec.Affinity = pool.Spec.Affinity
+	}
+	if len(pool.Spec.Tolerations) > 0 {
+		merged.Spec.Tolerations = pool.Spec.Tolerations
+	}
+	if len(pool.Spec.TopologySpreadConstraints) > 0 {
+		merged.Spec.TopologySpreadConstraints = pool.Spec.TopologySpreadConstraints
+	}
+	if pool.Spec.PriorityClassName != "" {
+		merged.Spec.PriorityClassName = pool.Spec.PriorityClassName
+	}
+	if pool.Spec.ServiceAccountName != "" {
+		merged.Spec.ServiceAccountName = pool.Spec.ServiceAccountName
+	}
+	if pool.Spec.SecurityContext != nil {
+		merged.Spec.SecurityContext = pool.Spec.SecurityContext
+	}
+
+	// Containers: merge by name; unmatched pool containers are appended.
+	if len(pool.Spec.Containers) > 0 {
+		merged.Spec.Containers = mergeContainerList(merged.Spec.Containers, pool.Spec.Containers)
+	}
+	if len(pool.Spec.InitContainers) > 0 {
+		merged.Spec.InitContainers = mergeContainerList(merged.Spec.InitContainers, pool.Spec.InitContainers)
+	}
+
+	// Volumes: pool additions win for volumes with the same name; novel volumes are appended.
+	if len(pool.Spec.Volumes) > 0 {
+		merged.Spec.Volumes = mergeVolumeList(merged.Spec.Volumes, pool.Spec.Volumes)
+	}
+
+	return merged
+}
+
+// mergeContainerList merges pool containers into base by name.
+// A pool container that matches a base container by name replaces it entirely.
+// Pool containers with no matching base entry are appended.
+func mergeContainerList(base, pool []corev1.Container) []corev1.Container {
+	result := make([]corev1.Container, len(base))
+	copy(result, base)
+	for _, pc := range pool {
+		found := false
+		for i, bc := range result {
+			if bc.Name == pc.Name {
+				result[i] = pc
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, pc)
+		}
+	}
+	return result
+}
+
+// mergeVolumeList merges pool volumes into base by name.
+// A pool volume that matches a base volume by name replaces it.
+// Novel pool volumes are appended.
+func mergeVolumeList(base, pool []corev1.Volume) []corev1.Volume {
+	result := make([]corev1.Volume, len(base))
+	copy(result, base)
+	for _, pv := range pool {
+		found := false
+		for i, bv := range result {
+			if bv.Name == pv.Name {
+				result[i] = pv
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, pv)
+		}
+	}
+	return result
 }
 
 func (d *driver) buildVolumes(kb *kbv1.Kibana, configSecretName string) ([]commonvolume.VolumeLike, error) {
