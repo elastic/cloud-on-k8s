@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
@@ -42,7 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	umaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.0.0.
@@ -229,6 +230,32 @@ func (d *driver) Reconcile(
 	for i, role := range kb.ActiveRoles() {
 		poolCfg, poolSecretName, poolDeploymentName, err := d.poolParams(kb, role, baseSettings)
 		if err != nil {
+			return results.WithError(err)
+		}
+
+		// D5: detect immutable selector transition.
+		// Enabling or disabling spec.backgroundTasks changes the deployment selector
+		// (adds/removes the role label). Kubernetes rejects selector updates as immutable,
+		// so we delete the stale deployment and requeue; the next pass recreates it with
+		// the correct selector.
+		expectedSelector := kb.GetPoolIdentityLabels(role)
+		var existingForSelector appsv1.Deployment
+		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolDeploymentName}, &existingForSelector); err == nil {
+			if !maps.Equal(existingForSelector.Spec.Selector.MatchLabels, expectedSelector) {
+				logger.Info(
+					"Deployment selector mismatch; deleting to allow recreation with updated selector",
+					"deployment", poolDeploymentName,
+					"existing_selector", existingForSelector.Spec.Selector.MatchLabels,
+					"expected_selector", expectedSelector,
+				)
+				if delErr := d.client.Delete(ctx, &existingForSelector); delErr != nil && !apierrors.IsNotFound(delErr) {
+					return results.WithError(delErr)
+				}
+				k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
+					fmt.Sprintf("Deleted Deployment %s to apply updated selector", poolDeploymentName))
+				return results.WithRequeue()
+			}
+		} else if !apierrors.IsNotFound(err) {
 			return results.WithError(err)
 		}
 
@@ -432,7 +459,7 @@ func (d *driver) deploymentParams(
 	// Pool-specific metadata: add role label to pod labels.
 	poolMeta := meta
 	if role.LabelName != "" {
-		poolLabels := maps.Merge(map[string]string{}, meta.Labels)
+		poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
 		poolLabels[role.LabelName] = kblabel.RoleLabelValue
 		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 	}
@@ -498,7 +525,7 @@ func (d *driver) deploymentParams(
 	kibanaPodSpec.Annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 
 	// add additional annotations related to the StackConfigPolicy
-	kibanaPodSpec.Annotations = maps.Merge(kibanaPodSpec.Annotations, policyAnnotations)
+	kibanaPodSpec.Annotations = umaps.Merge(kibanaPodSpec.Annotations, policyAnnotations)
 
 	// decide the strategy type
 	strategyType, err := d.getStrategyType(kb)
