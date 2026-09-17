@@ -29519,11 +29519,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -29759,11 +29759,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/exporters/otlp/otlptrace
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/otlp/otlptrace@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/exporters/otlp/otlptrace@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30479,11 +30479,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/metric
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/metric@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/metric@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30719,11 +30719,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/metric/x
-Version : v0.66.0
-Time    : 2026-05-27T16:42:37Z
+Version : v0.67.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/metric/x@v0.66.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/metric/x@v0.67.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30959,11 +30959,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/sdk
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/sdk@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/sdk@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31199,11 +31199,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/sdk/metric
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/sdk/metric@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/sdk/metric@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31439,11 +31439,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/otel/trace
-Version : v1.44.0
-Time    : 2026-05-27T16:42:37Z
+Version : v1.45.0
+Time    : 2026-08-03T19:26:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/trace@v1.44.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/otel/trace@v1.45.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31679,11 +31679,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : go.opentelemetry.io/proto/otlp
-Version : v1.10.0
-Time    : 2026-03-09T19:21:30Z
+Version : v1.11.0
+Time    : 2026-07-22T21:40:59Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/proto/otlp@v1.10.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.opentelemetry.io/proto/otlp@v1.11.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -33084,11 +33084,11 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/genproto@v0.0.0-
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/genproto/googleapis/api
-Version : v0.0.0-20260715232425-e75dac1f907d
-Time    : 2026-07-15T23:24:25Z
+Version : v0.0.0-20260720211330-0afa2a65878a
+Time    : 2026-07-20T21:13:30Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260715232425-e75dac1f907d/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/genproto/googleapis/api@v0.0.0-20260720211330-0afa2a65878a/LICENSE:
 
 
                                  Apache License
