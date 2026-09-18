@@ -40,5 +40,119 @@ inputs:
         {{- with .CAVolume }}
         ssl.certificate_authorities: ["{{ CAPath . }}"]
         {{- end }}
+      - id: kibana-background_task_utilization
+        data_stream:
+          type: metrics
+          dataset: kibana.background_task_utilization
+        metricsets:
+          - background_task_utilization
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-task_manager_metrics
+        data_stream:
+          type: metrics
+          dataset: kibana.task_manager_metrics
+        metricsets:
+          - task_manager_metrics
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-cluster_actions
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.cluster_actions
+        metricsets:
+          - cluster_actions
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-cluster_rules
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.cluster_rules
+        metricsets:
+          - cluster_rules
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-node_actions
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.node_actions
+        metricsets:
+          - node_actions
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-node_rules
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.node_rules
+        metricsets:
+          - node_rules
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
 
 # Elasticsearch output configuration is generated
