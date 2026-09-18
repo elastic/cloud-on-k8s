@@ -599,7 +599,7 @@ func Test_validPVCModification(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "autoscaling lookup error: storage decrease still rejected",
+			name: "autoscaling lookup error: storage size validation skipped",
 			args: args{
 				current: esV([]esv1.NodeSet{
 					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
@@ -624,7 +624,7 @@ func Test_validPVCModification(t *testing.T) {
 				}).Build(),
 				validateStorageClass: true,
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "storage increase via shorthand on nodeSet without explicit VCTs: ok",

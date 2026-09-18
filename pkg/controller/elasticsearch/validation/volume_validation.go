@@ -76,28 +76,29 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
 
+	autoscalingLookupErr := false
 	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, k8sClient, proposed)
 	if err != nil {
 		log.Error(
 			err,
-			"Error while trying to check if this cluster is managed by the autoscaling controller, skip volume size validation",
+			"Could not determine whether an autoscaler manages this cluster, skipping volume size validation",
 			"namespace", proposed.Namespace,
 			"es_name", proposed.Name,
 		)
+		autoscalingLookupErr = true
 	}
 
-	skipStorageSizeCheck := false
 	var autoscalingResourceSpecs v1alpha1.AutoscalingPolicySpecs
 	if autoscalingResource != nil {
 		autoscalingResourceSpecs, err = autoscalingResource.GetAutoscalingPolicySpecs()
 		if err != nil {
 			log.Error(
 				err,
-				"Error while getting autoscaling policy specs, skip volume size validation",
+				"Could not get autoscaling policy specifications, skipping volume size validation",
 				"namespace", proposed.Namespace,
 				"es_name", proposed.Name,
 			)
-			skipStorageSizeCheck = true
+			autoscalingLookupErr = true
 		}
 	}
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
@@ -150,19 +151,22 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
+		if autoscalingLookupErr {
+			continue
+		}
 		// Only skip the STS storage-size comparison when this specific NodeSet is covered by a
 		// storage policy. A mixed cluster may have autoscaled data NodeSets alongside manually
 		// managed master NodeSets.
-		if autoscalingResource != nil && !skipStorageSizeCheck {
+		if autoscalingResource != nil {
 			nodeSetSpec, err := proposedNodeSet.GetAutoscalingSpec(autoscalingResourceSpecs)
 			if err != nil && !errors.Is(err, esv1.ErrNodeRolesNotSet) {
-				log.Error(err, "Error while getting autoscaling spec for NodeSet, skip volume size validation",
+				log.Error(err, "Could not get the autoscaling policy for the NodeSet, skipping volume size validation",
 					"namespace", proposed.Namespace, "es_name", proposed.Name, "node_set", proposedNodeSet.Name)
 				continue
 			}
 			if nodeSetSpec != nil && nodeSetSpec.IsStorageDefined() {
 				log.V(1).Info(
-					"NodeSet covered by a storage policy, skip volume size validation",
+					"NodeSet is covered by a storage autoscaling policy, skipping volume size validation",
 					"namespace", proposed.Namespace,
 					"es_name", proposed.Name,
 					"node_set", proposedNodeSet.Name,
