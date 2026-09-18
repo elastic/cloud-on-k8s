@@ -41,12 +41,12 @@ func TestBackgroundTasksEnabled(t *testing.T) {
 }
 
 func TestActiveRoles(t *testing.T) {
-	t.Run("no backgroundTasks returns single empty role", func(t *testing.T) {
+	t.Run("no backgroundTasks returns single prime role with empty name", func(t *testing.T) {
 		kb := Kibana{Spec: KibanaSpec{Version: "8.17.0"}}
 		roles := kb.ActiveRoles()
 		require.Len(t, roles, 1)
-		assert.Equal(t, "", roles[0].Name)
-		assert.Equal(t, "", roles[0].LabelValue)
+		assert.Equal(t, "", roles[0].Name, "empty Name suppresses NODE_ROLES env var")
+		assert.Equal(t, label.RolePrimeValue, roles[0].LabelValue, "LabelValue=prime so the selector label is present for upgrade-path detection")
 	})
 
 	t.Run("with backgroundTasks returns UI and BG roles", func(t *testing.T) {
