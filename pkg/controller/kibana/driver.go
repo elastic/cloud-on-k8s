@@ -245,8 +245,8 @@ func (d *driver) Reconcile(
 		} else if !apierrors.IsNotFound(err) {
 			return results.WithError(err)
 		}
-		selector := d.DeploymentSelector(kb, role, existingMatchLabels)
-		if existingMatchLabels != nil && !maps.Equal(existingMatchLabels, selector) {
+		selector := d.deploymentSelector(kb, role, existingMatchLabels)
+		if existingMatchLabels != nil && !umaps.IsSubset(selector, existingMatchLabels) {
 			logger.Info(
 				"Deployment selector mismatch; deleting to allow recreation with updated selector",
 				"deployment", poolDeploymentName,
@@ -358,7 +358,7 @@ func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalCo
 	return poolCfg, kbv1.BackgroundTasksConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name), nil
 }
 
-// DeploymentSelector returns the label selector to use for a pool deployment.
+// deploymentSelector returns the label selector to use for a pool deployment.
 //
 // The base case is kb.GetPoolIdentityLabels(role). One exception exists for the ECK upgrade
 // path: when the expected selector would add role=prime to a single-pool (non-split) cluster
@@ -368,7 +368,7 @@ func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalCo
 //
 // existingMatchLabels is nil when the deployment does not exist yet; in that case the full
 // expected selector is returned.
-func (d *driver) DeploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels map[string]string) map[string]string {
+func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels map[string]string) map[string]string {
 	expectedByRole := kb.GetPoolIdentityLabels(role)
 
 	if existingMatchLabels == nil {
