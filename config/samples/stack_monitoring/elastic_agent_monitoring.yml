@@ -34,6 +34,7 @@ spec:
     log.level: info
     api.http.host: "0.0.0.0"
     queue.type: memory
+    slowlog.threshold.info: 1s
   elasticsearchRefs:
     - clusterName: test
       name: monitoring
@@ -53,6 +54,7 @@ spec:
     - pipeline.id: main
       config.string: |
         input { exec { command => 'uptime' interval => 10 } }
+        filter { sleep { time => 2  every => 10} }
         output {
           elasticsearch {
             hosts => [ "${TEST_ES_HOSTS}" ]
