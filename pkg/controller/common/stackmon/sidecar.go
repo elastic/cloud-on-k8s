@@ -133,7 +133,12 @@ func NewElasticAgentSidecar(
 		return BeatSidecar{}, err
 	}
 
+	// EmptyDir volume so that Elastic Agent does not write in the container image, which allows ReadOnlyRootFilesystem: true
+	const agentStatePath = "/usr/share/elastic-agent/state"
+	stateVolume := volume.NewEmptyDirVolume(agentName+"-data", agentStatePath)
+
 	volumes := config.volumes
+	volumes = append(volumes, stateVolume)
 	for _, v := range additionalVolumes {
 		if v != nil {
 			volumes = append(volumes, v)
@@ -150,13 +155,15 @@ func NewElasticAgentSidecar(
 		podVolumes = append(podVolumes, v.Volume())
 	}
 
+	env := append(defaults.PodDownwardEnvVars(), corev1.EnvVar{Name: "STATE_PATH", Value: agentStatePath})
+
 	return BeatSidecar{
 		Container: corev1.Container{
 			Name:         agentName,
 			Image:        image,
 			Args:         []string{"-e", "-c", config.filepath},
-			Env:          defaults.PodDownwardEnvVars(),
-			VolumeMounts: volumeMounts, 
+			Env:          env,
+			VolumeMounts: volumeMounts,
 		},
 		ConfigHash:   config.hash,
 		ConfigSecret: config.secret,
