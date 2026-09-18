@@ -19,6 +19,9 @@ spec:
       config:
         node.store.allow_mmap: false
         xpack.security.audit.enabled: true
+        elasticsearch.querylog:
+          enabled: true
+          threshold: 100ms
 ---
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
