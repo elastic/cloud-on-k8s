@@ -13,6 +13,9 @@ type Monitoring struct {
 	// Logs holds references to Elasticsearch clusters which receive log data from an associated resource.
 	// +kubebuilder:validation:Optional
 	Logs LogsMonitoring `json:"logs,omitempty"`
+	// ElasticAgent when set to true uses Elastic Agent sidecars for Stack Monitoring instead of Metricbeat and Filebeat.
+	// +kubebuilder:validation:Optional
+	ElasticAgent bool `json:"elastic_agent,omitempty"`
 }
 
 // MetricsMonitoring holds a list of Elasticsearch clusters which receive monitoring data from
