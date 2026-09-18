@@ -136,7 +136,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, assoc commonv1.As
 	// Elasticsearch certificate might have been generated for a "public" hostname,
 	// and therefore not being valid for the internal URL.
 	outputConfig["ssl.verification_mode"] = "certificate"
-
+	
 	v, err := version.Parse(imageVersion)
 	if err != nil {
 		return nil, nil, nil, err
@@ -203,6 +203,85 @@ func mergeConfig(rawConfig string, config map[string]any) ([]byte, error) {
 	}
 
 	return cfgBytes, nil
+}
+
+// newAgentConfig builds an Elastic Agent configuration.
+// Similar to newBeatConfig but uses the Elastic Agent output format (outputs.default instead of output.elasticsearch).
+func newAgentConfig(
+	ctx context.Context,
+	client k8s.Client,
+	agentName string,
+	imageVersion string,
+	resource monitoring.HasMonitoring,
+	associations []commonv1.Association,
+	baseConfig string,
+	meta metadata.Metadata,
+) (beatConfig, error) {
+	if len(associations) != 1 {
+		// should never happen because of the pre-creation validation
+		return beatConfig{}, errors.New("only one Elasticsearch reference is supported for Stack Monitoring")
+	}
+	assoc := associations[0]
+
+	// build the output section using the shared helper, then re-wrap for Elastic Agent format
+	outputCfg, caVolume, clientCertVolume, err := buildOutputConfig(ctx, client, assoc, imageVersion)
+	if err != nil {
+		return beatConfig{}, err
+	}
+	// Elastic Agent uses "outputs.default" with an explicit "type" field
+	outputCfg["type"] = "elasticsearch"
+	agentOutputConfig := map[string]any{
+		"outputs": map[string]any{
+			"default": outputCfg,
+		},
+	}
+
+	configSecretName := fmt.Sprintf("%s-%s-%s-config", resource.GetName(), string(assoc.AssociationType()), agentName)
+	configName := configVolumeName(resource.GetName(), agentName)
+	configFilename := "agent.yml"
+	configDirPath := fmt.Sprintf("/etc/%s-config", agentName)
+
+	configVolume := volume.NewSecretVolumeWithMountPath(configSecretName, configName, configDirPath)
+	configFilepath := filepath.Join(configDirPath, configFilename)
+	volumes := []volume.VolumeLike{configVolume}
+
+	if caVolume != nil {
+		volumes = append(volumes, caVolume)
+	}
+	if clientCertVolume != nil {
+		volumes = append(volumes, clientCertVolume)
+	}
+
+	configBytes, err := mergeConfig(baseConfig, agentOutputConfig)
+	if err != nil {
+		return beatConfig{}, err
+	}
+
+	configHash := fnv.New32a()
+	_, err = configHash.Write(configBytes)
+	if err != nil {
+		return beatConfig{}, err
+	}
+
+	meta = meta.Merge(metadata.Metadata{Labels: resource.GetIdentityLabels()})
+	configSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        configSecretName,
+			Namespace:   resource.GetNamespace(),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
+		},
+		Data: map[string][]byte{
+			configFilename: configBytes,
+		},
+	}
+
+	return beatConfig{
+		filepath: configFilepath,
+		hash:     configHash,
+		secret:   configSecret,
+		volumes:  volumes,
+	}, nil
 }
 
 func RenderTemplate(v semver.Version, configTemplate string, params any) (string, error) {

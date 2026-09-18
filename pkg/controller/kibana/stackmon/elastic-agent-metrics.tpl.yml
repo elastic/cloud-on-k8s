@@ -1,0 +1,44 @@
+inputs:
+  - type: kibana/metrics
+    id: kibana-monitoring
+    streams:
+      - id: kibana-stats
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.stats
+        metricsets:
+          - stats
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: kibana-status
+        data_stream:
+          type: metrics
+          dataset: kibana.stack_monitoring.status
+        metricsets:
+          - status
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        {{- with .BasePath }}
+        basepath: {{ . }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+
+# Elasticsearch output configuration is generated

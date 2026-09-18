@@ -113,6 +113,57 @@ func NewBeatSidecar(ctx context.Context, client k8s.Client, beatName string, ima
 	}, nil
 }
 
+// NewElasticAgentSidecar builds an Elastic Agent sidecar container to monitor an Elastic Stack application.
+// Used in place of NewMetricBeatSidecar / NewFileBeatSidecar for stack versions >= 8.0.0.
+func NewElasticAgentSidecar(
+	ctx context.Context,
+	client k8s.Client,
+	agentName string,
+	resource monitoring.HasMonitoring,
+	imageVersion semver.Version,
+	associations []commonv1.Association,
+	baseConfig string,
+	meta metadata.Metadata,
+	additionalVolumes ...volume.VolumeLike,
+) (BeatSidecar, error) {
+	image := container.ImageRepository(container.AgentImageFor(imageVersion), imageVersion)
+
+	config, err := newAgentConfig(ctx, client, agentName, imageVersion.String(), resource, associations, baseConfig, meta)
+	if err != nil {
+		return BeatSidecar{}, err
+	}
+
+	volumes := config.volumes
+	for _, v := range additionalVolumes {
+		if v != nil {
+			volumes = append(volumes, v)
+		}
+	}
+
+	volumeMounts := make([]corev1.VolumeMount, len(volumes))
+	for i, v := range volumes {
+		volumeMounts[i] = v.VolumeMount()
+	}
+
+	podVolumes := make([]corev1.Volume, 0, len(volumes))
+	for _, v := range volumes {
+		podVolumes = append(podVolumes, v.Volume())
+	}
+
+	return BeatSidecar{
+		Container: corev1.Container{
+			Name:         agentName,
+			Image:        image,
+			Args:         []string{"-e", "-c", config.filepath},
+			Env:          defaults.PodDownwardEnvVars(),
+			VolumeMounts: volumeMounts, 
+		},
+		ConfigHash:   config.hash,
+		ConfigSecret: config.secret,
+		Volumes:      podVolumes,
+	}, nil
+}
+
 // CAVolume returns a volume containing the CA certificate for the monitored resource if TLS is enabled.
 // If TLS is not enabled or no (self-signed) CA is in use, it returns nil.
 func CAVolume(

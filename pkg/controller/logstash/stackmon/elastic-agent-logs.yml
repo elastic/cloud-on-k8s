@@ -1,0 +1,22 @@
+inputs:
+  - type: filestream
+    id: logstash-server-logs
+    data_stream:
+      type: logs
+      dataset: logstash.log
+    paths:
+      - /usr/share/logstash/logs/logstash-plain.log
+      - /usr/share/logstash/logs/logstash-json.log
+      - /usr/share/logstash/logs/logstash-deprecation.log
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: logstash-slowlog-logs
+    data_stream:
+      type: logs
+      dataset: logstash.slowlog
+    paths:
+      - /usr/share/logstash/logs/logstash-slowlog-plain.log
+      - /usr/share/logstash/logs/logstash-slowlog-json.log
+    close.on_state_change.inactive: 2h
+
+# Elasticsearch output configuration is generated

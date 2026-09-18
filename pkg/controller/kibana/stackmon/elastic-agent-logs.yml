@@ -1,0 +1,19 @@
+inputs:
+  - type: filestream
+    id: kibana-server-logs
+    data_stream:
+      type: logs
+      dataset: kibana.log
+    paths:
+      - /usr/share/kibana/logs/kibana.json
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: kibana-audit-logs
+    data_stream:
+      type: logs
+      dataset: kibana.audit
+    paths:
+      - /usr/share/kibana/logs/kibana_audit.json
+    close.on_state_change.inactive: 2h
+
+# Elasticsearch output configuration is generated

@@ -1,0 +1,46 @@
+inputs:
+  - type: logstash/metrics
+    id: logstash-monitoring
+    streams:
+      - id: logstash-node
+        data_stream:
+          type: metrics
+          dataset: logstash.stack_monitoring.node
+        metricsets:
+          - node
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        {{- if ne .Username "" }}
+        username: {{ .Username }}
+        {{- end }}
+        {{- if ne .Password "" }}
+        password: {{ sanitizeJSON .Password }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+      - id: logstash-node_stats
+        data_stream:
+          type: metrics
+          dataset: logstash.stack_monitoring.node_stats
+        metricsets:
+          - node_stats
+        period: 10s
+        xpack.enabled: true
+        hosts: ["{{ .URL }}"]
+        {{- if ne .Username "" }}
+        username: {{ .Username }}
+        {{- end }}
+        {{- if ne .Password "" }}
+        password: {{ sanitizeJSON .Password }}
+        {{- end }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+
+# Elasticsearch output configuration is generated

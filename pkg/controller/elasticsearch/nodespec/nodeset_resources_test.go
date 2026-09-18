@@ -317,7 +317,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 
 			template, err := BuildPodTemplateSpec(
 				t.Context(), client, es, nodeSet, cfg,
-				nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
+				nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false, false,
 			)
 			require.NoError(t, err)
 
@@ -382,7 +382,7 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 
 	_, err = BuildPodTemplateSpec(
 		t.Context(), client, es, nodeSet, cfg,
-		nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false,
+		nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false, false,
 	)
 	require.NoError(t, err)
 

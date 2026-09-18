@@ -102,8 +102,72 @@ func Filebeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, meta metad
 	return stackmon.NewFileBeatSidecar(ctx, client, &kb, kb.Spec.Version, filebeatConfig, nil, meta)
 }
 
-// WithMonitoring updates the Kibana Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the Kibana pod and injects the volumes for the beat configurations and the ES CA certificates.
+func ElasticAgentMetrics(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	if !kb.Spec.ElasticsearchRef.IsSet() {
+		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg) //nolint:staticcheck
+	}
+	associatedEsNsn := kb.Spec.ElasticsearchRef.NamespacedName()
+	if associatedEsNsn.Namespace == "" {
+		associatedEsNsn.Namespace = kb.Namespace
+	}
+
+	var username, password string
+	if esAssoc := kb.EsAssociation(); esAssoc.AssociationRef().IsExternal() {
+		info, err := association.GetUnmanagedAssociationConnectionInfoFromSecret(client, esAssoc)
+		if err != nil {
+			return stackmon.BeatSidecar{}, err
+		}
+		username, password = info.Username, info.Password
+	} else {
+		var err error
+		username = user.MonitoringUserName
+		password, err = user.GetMonitoringUserPassword(client, associatedEsNsn)
+		if err != nil {
+			return stackmon.BeatSidecar{}, err
+		}
+	}
+
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	caVol, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&kb), kbv1.KBNamer, commonv1.KbMonitoringAssociationType, kb.Spec.HTTP.TLS.Enabled())
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	type inputConfigData struct {
+		stackmon.TemplateParams
+		BasePath string
+	}
+	configData := inputConfigData{
+		TemplateParams: stackmon.TemplateParams{
+			Username: username,
+			Password: password,
+			URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort),
+			IsSSL:    kb.Spec.HTTP.TLS.Enabled(),
+			CAVolume: caVol,
+		},
+		BasePath: basePath,
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, elasticAgentMetricsConfigTemplate, configData)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", &kb, v, monitoring.GetMetricsAssociation(&kb), cfg, meta, caVol)
+}
+
+func ElasticAgentLogs(ctx context.Context, client k8s.Client, kb kbv1.Kibana, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	v, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", &kb, v, monitoring.GetLogsAssociation(&kb), elasticAgentLogsConfig, meta)
+}
+
+// WithMonitoring updates the Kibana Pod template builder to deploy monitoring sidecar containers.
 func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&kb)
 	if err != nil {
@@ -117,41 +181,51 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&kb) {
-		b, err := Metricbeat(ctx, client, kb, basePath, meta)
+		var b stackmon.BeatSidecar
+		if kb.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentMetrics(ctx, client, kb, basePath, meta)
+		} else {
+			b, err = Metricbeat(ctx, client, kb, basePath, meta)
+			if err == nil {
+				metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
+				volumes = append(volumes, metricbeatLogsVolume.Volume())
+				b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
-
-		// Add metricbeat logs volume
-		metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
-		volumes = append(volumes, metricbeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
-
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
 	if monitoring.IsLogsDefined(&kb) {
-		b, err := Filebeat(ctx, client, kb, meta)
-		if err != nil {
-			return nil, err
-		}
-
-		// Add filebeat logs volume
-		filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
-		volumes = append(volumes, filebeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
-
-		// create a logs volume shared between Kibana and Filebeat
+		// create a logs volume shared between Kibana and the monitoring sidecar
 		logsVolume := volume.NewEmptyDirVolume(kibanaLogsVolumeName, kibanaLogsMountPath)
 		volumes = append(volumes, logsVolume.Volume())
-		filebeat := b.Container
-		filebeat.VolumeMounts = append(filebeat.VolumeMounts, logsVolume.VolumeMount())
 		builder.WithVolumeMounts(logsVolume.VolumeMount())
 
+		var b stackmon.BeatSidecar
+		if kb.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentLogs(ctx, client, kb, meta)
+			if err != nil {
+				return nil, err
+			}
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, logsVolume.VolumeMount())
+		} else {
+			b, err = Filebeat(ctx, client, kb, meta)
+			if err != nil {
+				return nil, err
+			}
+			filebeatLogsVolume := volume.NewEmptyDirVolume("filebeat-logs", "/usr/share/filebeat/logs")
+			volumes = append(volumes, filebeatLogsVolume.Volume())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, logsVolume.VolumeMount())
+		}
+
 		volumes = append(volumes, b.Volumes...)
-		builder.WithContainers(filebeat)
+		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 
