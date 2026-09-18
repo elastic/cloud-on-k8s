@@ -21,12 +21,14 @@ import (
 
 // Params to specify a Deployment specification.
 type Params struct {
-	Name                 string
-	Namespace            string
-	Selector             map[string]string
-	Metadata             metadata.Metadata
-	PodTemplateSpec      corev1.PodTemplateSpec
-	Replicas             int32
+	Name            string
+	Namespace       string
+	Selector        map[string]string
+	Metadata        metadata.Metadata
+	PodTemplateSpec corev1.PodTemplateSpec
+	// Replicas is the desired replica count. When nil, ECK does not set Spec.Replicas,
+	// allowing an external HPA to own the replica count without interference.
+	Replicas             *int32
 	RevisionHistoryLimit *int32
 	Strategy             appsv1.DeploymentStrategy
 }
@@ -44,7 +46,7 @@ func New(params Params) appsv1.Deployment {
 				MatchLabels: params.Selector,
 			},
 			Template: params.PodTemplateSpec,
-			Replicas: &params.Replicas,
+			Replicas: params.Replicas,
 			Strategy: params.Strategy,
 		},
 	}
@@ -69,6 +71,12 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
+			if expected.Spec.Replicas == nil {
+				// Replicas are managed externally (e.g. by an HPA): adopt the current count
+				// so the hash comparison is stable and ECK does not fight the HPA.
+				expected.Spec.Replicas = reconciled.Spec.Replicas
+				expected = WithTemplateHash(expected)
+			}
 			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
 				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
 				// compare hash of the deployment at the time it was built

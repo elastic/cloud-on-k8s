@@ -375,7 +375,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			got, err := d.deploymentParams(context.Background(), kb, kblabel.Role{}, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), new(kb.Spec.Count), tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -435,7 +435,7 @@ func expectedDeploymentParams() deployment.Params {
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"}},
-		Replicas:  1,
+		Replicas:  new(int32(1)),
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -850,6 +850,7 @@ func mkService() corev1.Service {
 			Selector: map[string]string{
 				kblabel.KibanaNameLabelName: "kibana-test",
 				commonv1.TypeLabelName:      kblabel.Type,
+				kblabel.RoleLabelName:       kblabel.RolePrimeValue,
 			},
 		},
 	}
@@ -962,7 +963,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &driver{}
-			volumes, err := d.buildVolumes(tt.kb)
+			volumes, err := d.buildVolumes(tt.kb, kbv1.ConfigSecret(tt.kb.Name))
 			tt.assertions(t, volumes, err)
 		})
 	}

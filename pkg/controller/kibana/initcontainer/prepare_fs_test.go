@@ -11,22 +11,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 )
 
 func TestNewInitContainer(t *testing.T) {
-	defaultKibana := kbv1.Kibana{
-		Name:      "test",
-		Namespace: "test-ns",
-		Spec: kbv1.KibanaSpec{
-			Version: "7.10.0",
-		},
-	}
-	olderKibana := defaultKibana
-	olderKibana.Spec.Version = "7.8.0"
 	type args struct {
-		kb kbv1.Kibana
+		configSecretName string
 	}
 	tests := []struct {
 		name    string
@@ -37,7 +27,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "newer Kibana without default security context includes plugins volume",
 			args: args{
-				kb: defaultKibana,
+				configSecretName: "test-kb-config",
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -66,7 +56,7 @@ func TestNewInitContainer(t *testing.T) {
 		{
 			name: "older Kibana without default security context includes plugins volume",
 			args: args{
-				kb: olderKibana,
+				configSecretName: "test-kb-config",
 			},
 			want: corev1.Container{
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -96,7 +86,7 @@ func TestNewInitContainer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewInitContainer(tt.args.kb)
+			got, err := NewInitContainer(tt.args.configSecretName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewInitContainer() error = %v, wantErr %v", err, tt.wantErr)
 				return
