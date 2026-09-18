@@ -165,8 +165,7 @@ func ElasticAgentLogs(ctx context.Context, client k8s.Client, es esv1.Elasticsea
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy monitoring sidecar containers.
-// If useElasticAgent is true, Elastic Agent sidecars are used; otherwise Metricbeat and Filebeat are used.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool, useElasticAgent bool) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return nil, err
@@ -180,7 +179,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 
 	if monitoring.IsMetricsDefined(&es) {
 		var b stackmon.BeatSidecar
-		if useElasticAgent {
+		if es.Spec.Monitoring.ElasticAgent {
 			b, err = ElasticAgentMetrics(ctx, client, es, meta, clientAuthenticationRequired)
 		} else {
 			b, err = Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
@@ -203,7 +202,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		builder.WithEnv(fileLogStyleEnvVar())
 
 		var b stackmon.BeatSidecar
-		if useElasticAgent {
+		if es.Spec.Monitoring.ElasticAgent {
 			b, err = ElasticAgentLogs(ctx, client, es, meta)
 			if err != nil {
 				return nil, err

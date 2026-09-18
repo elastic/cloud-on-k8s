@@ -36,7 +36,7 @@ var (
 )
 
 // ReconcileConfigSecrets reconciles the secrets holding the monitoring sidecar configuration
-func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool, useElasticAgent bool) error {
+func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elas
 
 	if monitoring.IsMetricsDefined(&es) {
 		var b stackmon.BeatSidecar
-		if useElasticAgent {
+		if es.Spec.Monitoring.ElasticAgent {
 			b, err = ElasticAgentMetrics(ctx, client, es, meta, clientAuthenticationRequired)
 		} else {
 			b, err = Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
@@ -62,7 +62,7 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elas
 
 	if monitoring.IsLogsDefined(&es) {
 		var b stackmon.BeatSidecar
-		if useElasticAgent {
+		if es.Spec.Monitoring.ElasticAgent {
 			b, err = ElasticAgentLogs(ctx, client, es, meta)
 		} else {
 			b, err = Filebeat(ctx, client, es, meta)
