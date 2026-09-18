@@ -232,5 +232,26 @@ inputs:
         ssl.certificate: "{{ ClientCertPath . }}"
         ssl.key: "{{ ClientKeyPath . }}"
         {{- end }}
+      {{- if isVersionGTE "9.4.0" }}
+      - id: elasticsearch-security_stats
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.security_stats
+        metricsets:
+          - security_stats
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      {{- end }}
 
 # Elasticsearch output configuration is generated
