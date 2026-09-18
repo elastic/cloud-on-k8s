@@ -1,46 +1,474 @@
 inputs:
-  - type: logstash/metrics
-    id: logstash-monitoring
+  - id: logstash-cel
+    type: cel
     streams:
-      - id: logstash-node
+      - id: cel-logstash.health_report
         data_stream:
+          dataset: logstash.health_report
           type: metrics
-          dataset: logstash.stack_monitoring.node
-        metricsets:
-          - node
-        period: 10s
-        xpack.enabled: true
-        hosts: ["{{ .URL }}"]
+        config_version: '1'
+        interval: 30s
+        resource.url: {{ .URL }}/_health_report
+        {{- if .IsSSL }}
+        resource.ssl:
+          verification_mode: "certificate"
+          {{- with .CAVolume }}
+          certificate_authorities: ["{{ CAPath . }}"]
+          {{- end }}
+        {{- else }}
+        resource.ssl: null
+        {{- end }}
         {{- if ne .Username "" }}
-        username: {{ .Username }}
+        auth.basic.user: {{ .Username }}
         {{- end }}
         {{- if ne .Password "" }}
-        password: {{ sanitizeJSON .Password }}
+        auth.basic.password: {{ sanitizeJSON .Password }}
         {{- end }}
-        ssl.enabled: {{ .IsSSL }}
-        ssl.verification_mode: "certificate"
-        {{- with .CAVolume }}
-        ssl.certificate_authorities: ["{{ CAPath . }}"]
-        {{- end }}
-      - id: logstash-node_stats
+        redact:
+          fields: null
+        program: |
+          get(state.url)
+          .as(resp, bytes(resp.Body)
+          .decode_json().as(body,
+            [
+                [{
+                    "logstash.node": {
+                    "name":body.name,
+                    "address":body.http_address,
+                    "uuid":body.id,
+                    "version":body.version,
+                    "status":body.status,
+                    "symptom":body.symptom,
+                    },
+                }],
+                body.indicators.pipelines.indicators.as(pipelines,
+                      pipelines.map(pipeline_name, pipelines[pipeline_name].as(pipeline, {
+                            "logstash": {
+                                "node": {
+                                    "name": body.name,
+                                    "version": body.version,
+                                    "address": body.http_address,
+                                    "uuid": body.id
+                                },
+                                "pipeline": {
+                                    "id":pipeline_name,
+                                    "status":pipeline.status,
+                                    "symptom":pipeline.symptom,
+                                    "state": has(pipeline.details.status.state) ? pipeline.details.status.state : "",
+                                    "flow": has(pipeline.details.flow) ? pipeline.details.flow : {},
+                                    "diagnosis": has(pipeline.diagnosis) ? pipeline.diagnosis[0] : {},
+                                    "impacts": has(pipeline.impacts) ? pipeline.impacts[0] : {},
+                                }
+                            }
+                        }
+                    ))
+                )
+            ].as(entries, {
+                "events": entries.flatten()
+            })
+            )
+          )
+      - id: cel-logstash.node
         data_stream:
+          dataset: logstash.node
           type: metrics
-          dataset: logstash.stack_monitoring.node_stats
-        metricsets:
-          - node_stats
-        period: 10s
-        xpack.enabled: true
-        hosts: ["{{ .URL }}"]
+        config_version: '2'
+        interval: 30s
+        resource.url: {{ .URL }}/_node/stats?graph=true&vertices=true
+        {{- if .IsSSL }}
+        resource.ssl:
+          verification_mode: "certificate"
+          {{- with .CAVolume }}
+          certificate_authorities: ["{{ CAPath . }}"]
+          {{- end }}
+        {{- else }}
+        resource.ssl: null
+        {{- end }}
         {{- if ne .Username "" }}
-        username: {{ .Username }}
+        auth.basic.user: {{ .Username }}
         {{- end }}
         {{- if ne .Password "" }}
-        password: {{ sanitizeJSON .Password }}
+        auth.basic.password: {{ sanitizeJSON .Password }}
         {{- end }}
-        ssl.enabled: {{ .IsSSL }}
-        ssl.verification_mode: "certificate"
-        {{- with .CAVolume }}
-        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        redact:
+          fields: null
+        program: |
+          get(state.url)
+          .as(resp, bytes(resp.Body)
+          .decode_json().as(body,
+            {
+              "logstash":{
+                "elasticsearch": has(body.pipelines)
+                ? {
+                    "cluster":{
+                      "id":body.pipelines.map(pipeline_name, pipeline_name != ".monitoring-logstash", has(body.pipelines[pipeline_name].vertices)
+                        ? body.pipelines[pipeline_name].vertices.map(vertex, has(vertex.cluster_uuid), vertex.cluster_uuid)
+                        : []).flatten(),
+                     }
+                  }
+                : {},
+                "node":{
+                  "stats":{
+                     "events":body.events,
+                     "jvm":{
+                        "uptime_in_millis":body.jvm.uptime_in_millis,
+                        "mem":[body.jvm['mem']].drop("pools")[0],
+                        "threads":body.jvm.threads
+                      },
+                     "queue":body.queue,
+                     "reloads":body.reloads,
+                     "process":body.process,
+                     "os":{
+                      "cpu":body.process.cpu,
+                      "cgroup":has(body.os.group) ? body.os.cgroup : {},
+                     },
+                     "logstash":{
+                       "ephemeral_id":body.ephemeral_id,
+                       "host":body.host,
+                       "http_address":body.http_address,
+                       "name":body.name,
+                       "pipeline":body.pipeline,
+                       "pipelines":body.pipelines.map(pipeline, pipeline != '.monitoring-logstash', [pipeline]).flatten(),
+                       "snapshot":body.snapshot,
+                       "status":body.status,
+                       "uuid":body.id,
+                       "version":body.version,
+                      }
+                  }}
+                }})
+          )
+          .as(eve, {
+            "events":[eve]
+          })
+      - id: cel-logstash.pipeline
+        data_stream:
+          dataset: logstash.pipeline
+          type: metrics
+        config_version: '2'
+        interval: 30s
+        resource.url: {{ .URL }}/_node
+        {{- if .IsSSL }}
+        resource.ssl:
+          verification_mode: "certificate"
+          {{- with .CAVolume }}
+          certificate_authorities: ["{{ CAPath . }}"]
+          {{- end }}
+        {{- else }}
+        resource.ssl: null
         {{- end }}
+        {{- if ne .Username "" }}
+        auth.basic.user: {{ .Username }}
+        {{- end }}
+        {{- if ne .Password "" }}
+        auth.basic.password: {{ sanitizeJSON .Password }}
+        {{- end }}
+        redact:
+          fields: null
+        program: |
+          get(state.url + "/stats?graph=true&vertices=true").as(resp, bytes(resp.Body).decode_json().as(body,
+            body.pipelines.map(pipeline_name, pipeline_name != ".monitoring-logstash", {
+              "name": pipeline_name,
+              "info": get(state.url + "/pipelines/" + pipeline_name).as(resp,
+                bytes(resp.Body).decode_json().as(pipes,
+                  has(pipes.pipelines) ?
+                    pipes.pipelines[pipeline_name]
+                  :
+                    []
+                )
+              ),
+              "elasticsearch.cluster.id": has(body.pipelines[pipeline_name].vertices) ?
+                body.pipelines[pipeline_name].vertices.map(vertex, has(vertex.cluster_uuid), vertex.cluster_uuid)
+              :
+                [],
+              "host":{
+                "name":body.name,
+                "address":body.http_address,
+              },
+              "total":{
+                "flow":body.pipelines[pipeline_name].flow,
+                "time":{
+                  "queue_push_duration": {
+                    "ms": has(body.pipelines[pipeline_name].events.queue_push_duration_in_millis) ?
+                      body.pipelines[pipeline_name].events.queue_push_duration_in_millis
+                    :
+                      [],
+                  },
+                  "duration":{
+                    "ms": has(body.pipelines[pipeline_name].events.duration_in_millis) ?
+                      body.pipelines[pipeline_name].events.duration_in_millis
+                    :
+                      [],
+                  },
+                },
+                "reloads":{
+                  "successes":body.pipelines[pipeline_name].reloads.successes,
+                  "failures":body.pipelines[pipeline_name].reloads.failures
+                },
+                "batch":{
+                  "event_count":{
+                    "current": body.pipelines[pipeline_name].?batch.event_count.current.orValue([]),
+                    "average.last_1_minute": body.pipelines[pipeline_name].?batch.event_count.average.last_1_minute.orValue([]),
+                    "p50.last_1_minute": body.pipelines[pipeline_name].?batch.event_count.p50.last_1_minute.orValue([]),
+                    "p90.last_1_minute": body.pipelines[pipeline_name].?batch.event_count.p90.last_1_minute.orValue([]),
+                  },
+                  "byte_size":{
+                    "current": body.pipelines[pipeline_name].?batch.byte_size.current.orValue([]),
+                    "average.last_1_minute": body.pipelines[pipeline_name].?batch.byte_size.average.last_1_minute.orValue([]),
+                    "p50.last_1_minute": body.pipelines[pipeline_name].?batch.byte_size.p50.last_1_minute.orValue([]),
+                    "p90.last_1_minute": body.pipelines[pipeline_name].?batch.byte_size.p90.last_1_minute.orValue([]),
+                    "max.last_1_minute": body.pipelines[pipeline_name].?batch.byte_size.max.last_1_minute.orValue([]),
+                  },
+                },
+                "events":{
+                  "out": has(body.pipelines[pipeline_name].events.out) ?
+                    body.pipelines[pipeline_name].events.out
+                  :
+                    [],
+                  "in": has(body.pipelines[pipeline_name].events.out) ?
+                    body.pipelines[pipeline_name].events['in']
+                  :
+                    [],
+                  "filtered": has(body.pipelines[pipeline_name].events.filtered) ?
+                    body.pipelines[pipeline_name].events.filtered
+                  :
+                    [],
+                },
+                "queues":{
+                  "type": has(body.pipelines[pipeline_name].queue.type) ?
+                    body.pipelines[pipeline_name].queue.type
+                  :
+                    [],
+                  "events": has(body.pipelines[pipeline_name].queue.events_count) ?
+                    body.pipelines[pipeline_name].queue.events_count
+                  :
+                    [],
+                  "current_size":{
+                    "bytes": has(body.pipelines[pipeline_name].queue.queue_size_in_bytes) ?
+                      body.pipelines[pipeline_name].queue.queue_size_in_bytes
+                    :
+                      [],
+                  },
+                  "max_size":{
+                    "bytes": has(body.pipelines[pipeline_name].queue.max_queue_size_in_bytes) ?
+                      body.pipelines[pipeline_name].queue.max_queue_size_in_bytes
+                    :
+                      [],
+                  }
+                }
+              }
+            }))).as(pipelines, {
+              "events": pipelines.map(pipeline, {
+                "logstash": {"pipeline":pipeline}
+              })
+            })
+      - id: cel-logstash.plugins
+        data_stream:
+          dataset: logstash.plugins
+          type: metrics
+        config_version: '2'
+        interval: 1m
+        resource.url: {{ .URL }}/_node
+        {{- if .IsSSL }}
+        resource.ssl:
+          verification_mode: "certificate"
+          {{- with .CAVolume }}
+          certificate_authorities: ["{{ CAPath . }}"]
+          {{- end }}
+        {{- else }}
+        resource.ssl: null
+        {{- end }}
+        {{- if ne .Username "" }}
+        auth.basic.user: {{ .Username }}
+        {{- end }}
+        {{- if ne .Password "" }}
+        auth.basic.password: {{ sanitizeJSON .Password }}
+        {{- end }}
+        redact:
+          fields: null
+        program: |
+          get(state.url + "/stats?graph=true&vertices=true").as(resp, bytes(resp.Body).decode_json().as(body,
+            body.pipelines.map(pipeline_name, pipeline_name != ".monitoring-logstash", body.pipelines[pipeline_name].with({
+              "name":pipeline_name,
+              "pipeline_source_map":
+                get(state.url + "/pipelines/" + pipeline_name + "?graph=true&vertices=true").as(resp,
+                  bytes(resp.Body).decode_json().as(pipes,
+                    has(pipes.pipeline) ?
+                      pipes.pipelines.map(pipeline_name,
+                        has(pipes.pipelines) && has(pipes.pipelines[pipeline_name].graph) && pipes.pipelines != null && pipes.pipelines[pipeline_name].graph.graph.vertices != null,
+                        pipes.pipelines[pipeline_name].graph.graph.vertices.map(vertex, vertex.type == "plugin", {
+                          "plugin_id": vertex.id,
+                          "source": vertex.meta.source,
+                        })
+                      ).drop("graph").flatten()
+                    :
+                      []
+                )
+              ),
+              "es_cluster_id": has(body.pipelines[pipeline_name].vertices) ?
+                body.pipelines[pipeline_name].vertices.map(vertex, has(vertex.cluster_uuid), vertex.cluster_uuid)
+              :
+                [],
+              "es_cluster_id_map": has(body.pipelines[pipeline_name].vertices) ?
+                body.pipelines[pipeline_name].vertices.map(vertex, has(vertex.cluster_uuid), {
+                  "plugin_id": vertex.id,
+                  "cluster_id": vertex.cluster_uuid,
+                })
+              :
+                [],
+              "counter_map": has(body.pipelines[pipeline_name].vertices) ?
+                body.pipelines[pipeline_name].vertices.map(vertex, has(vertex.long_counters) || has(vertex.double_gauges),
+                ((has(vertex.long_counters) ? vertex.long_counters : []) + (has(vertex.double_gauges) ? vertex.double_gauges : [])).map(counter, {
+                  "plugin_id": vertex.id,
+                  "name": counter.name,
+                  "value": counter.value
+                }))
+              :
+                [],
+              "outputs": body.pipelines[pipeline_name].plugins.outputs,
+              "inputs": body.pipelines[pipeline_name].plugins.inputs,
+              "filters": body.pipelines[pipeline_name].plugins.filters,
+              "codecs": body.pipelines[pipeline_name].plugins.codecs,
+              "host":{
+                "name": body.name,
+                "address": body.http_address,
+              }
+            })))).as(events, events.map(event, {
+              "inputs": event.inputs.map(input, has(event.hash), {
+                "name": event.name,
+                "id": event.hash,
+                "host": event.host,
+                "elasticsearch.cluster.id": event.es_cluster_id,
+                "plugin": {
+                  "type": "input",
+                  "input": {
+                    "source":event.pipeline_source_map.map(tuple, (tuple.plugin_id == input.id), tuple.source).flatten().as(source, (source.size() != 0) ? source[0] : ""),
+                    "elasticsearch.cluster.id": event.es_cluster_id_map.map(tuple, tuple.plugin_id == input.id, tuple.cluster_id),
+                    "metrics": {
+                      input.name: event.counter_map.flatten().filter(tuple, tuple.plugin_id == input.id).as(counter_map, zip(
+                        counter_map.map(tuple, tuple.name),
+                        counter_map.map(tuple, tuple.value)
+                      ))
+                     },
+                    "name": input.name,
+                    "id": input.id,
+                    "flow": has(input.flow) ?
+                      input.flow
+                    :
+                      {},
+                    "events": {
+                      "out": input.events.out,
+                    },
+                    "time": {
+                      "queue_push_duration": {
+                        "ms": input.events.queue_push_duration_in_millis
+                      }
+                    }
+                  }
+                }
+              }.drop_empty()),
+              "codecs": event.codecs.map(codec, has(event.hash), {
+                "name": event.name,
+                "id": event.hash,
+                "host": event.host,
+                "elasticsearch.cluster.id": event.es_cluster_id,
+                "plugin": {
+                  "type": "codec",
+                  "codec": {
+                    "id":codec.id,
+                    "name":codec.name,
+                    "flow": has(codec.flow) ? codec.flow : {},
+                    "decode": has(codec.decode) ?
+                      {
+                        "duration":{
+                          "ms":codec.decode.duration_in_millis
+                        },
+                        "in":codec.decode.writes_in,
+                        "out":codec.decode.out,
+                      } :
+                      {},
+                    "encode": has(codec.encode) ?
+                      {
+                        "in":codec.encode.writes_in,
+                        "duration":{
+                          "ms":codec.encode.duration_in_millis
+                        }
+                      } :
+                      {}
+                  }
+                }
+              }.drop_empty()),
+              "filters": event.filters.map(filter, has(event.hash), {
+                "name": event.name,
+                "id": event.hash,
+                "host": event.host,
+                "elasticsearch.cluster.id": event.es_cluster_id,
+                "plugin": {
+                  "type": "filter",
+                  "filter": {
+                    "source":event.pipeline_source_map.map(tuple, (tuple.plugin_id == filter.id), tuple.source).flatten().as(source, (source.size() != 0) ? source[0] : ""),
+                    "id": filter.id,
+                    "name": filter.name,
+                    "elasticsearch.cluster.id": event.es_cluster_id_map.map(tuple, tuple.plugin_id == filter.id, tuple.cluster_id),
+                    "metrics": {
+                      filter.name: event.counter_map.flatten().filter(tuple, tuple.plugin_id == filter.id).as(counter_map, zip(
+                        counter_map.map(tuple, tuple.name),
+                        counter_map.map(tuple, tuple.value)
+                      ))
+                    },
+                    "flow": has(filter.flow) ?
+                      filter.flow
+                    :
+                      {},
+                    "events": {
+                      "in": filter.events['in'],
+                      "out": filter.events.out,
+                    },
+                    "time": {
+                      "duration": {
+                        "ms": filter.events.duration_in_millis
+                      }
+                    }
+                  }
+                }
+              }.drop_empty()),
+              "outputs": event.outputs.map(output, has(event.hash), {
+                "name": event.name,
+                "id": event.hash,
+                "host": event.host,
+                "elasticsearch.cluster.id": event.es_cluster_id,
+                "plugin": {
+                  "type": "output",
+                  "output": {
+                    "id": output.id,
+                    "name": output.name,
+                    "source":event.pipeline_source_map.map(tuple, (tuple.plugin_id == output.id), tuple.source).flatten().as(source, (source.size() != 0) ? source[0] : ""),
+                    "elasticsearch.cluster.id": event.es_cluster_id_map.map(tuple, tuple.plugin_id == output.id, tuple.cluster_id),
+                    "metrics": {
+                      output.name: event.counter_map.flatten().filter(tuple, tuple.plugin_id == output.id).as(counter_map, zip(
+                        counter_map.map(tuple, tuple.name),
+                        counter_map.map(tuple, tuple.value)
+                      ))
+                    },
+                    "flow": has(output.flow) ?
+                      output.flow
+                    :
+                      {},
+                    "events":{
+                      "in":output.events['in'],
+                      "out":output.events.out,
+                    },
+                    "time":{
+                      "duration":{
+                        "ms":output.events.duration_in_millis
+                      }
+                    }
+                  }
+                }
+              }.drop_empty())
+            }).collate(["filters", "outputs", "inputs", "codecs"])).as(plugins, {
+              "events": plugins.map(plugin, {
+                "logstash":{"pipeline":plugin}
+              })
+            })
 
 # Elasticsearch output configuration is generated
