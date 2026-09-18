@@ -27,14 +27,16 @@ func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
 	return labels
 }
 
-// ActiveRoles returns the list of pools that the controller must reconcile for this Kibana.
-// When BackgroundTasks is not set, a single synthetic "all-roles" pool is returned whose
-// LabelValue is empty (no role label applied) and whose Name is empty (single-pool behavior).
-// When BackgroundTasks is set, both UIRole and BackgroundTasksRole are returned.
+// ActiveRoles returns the list of pools the controller must reconcile for this Kibana.
+// Without split: one synthetic role with LabelValue=prime and an empty Name. The Deployment
+// gets the role=prime selector label so DeploymentSelector can detect ECK upgrades, but no
+// NODE_ROLES env var is injected (empty Name means the single pod runs all roles).
+// With split: UIRole (prime) and BackgroundTasksRole are returned, each becoming its own Deployment.
 func (k *Kibana) ActiveRoles() []label.Role {
 	if !k.BackgroundTasksEnabled() {
-		// Single all-roles pool: no role label, no NODE_ROLES env var.
-		return []label.Role{{Name: "", LabelValue: ""}}
+		// LabelValue=prime ensures the selector label is present for upgrade-path detection.
+		// Name="" suppresses the NODE_ROLES env var — the pod runs all Kibana roles.
+		return []label.Role{{Name: "", LabelValue: label.RolePrimeValue}}
 	}
 	return []label.Role{label.UIRole, label.BackgroundTasksRole}
 }
