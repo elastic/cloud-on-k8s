@@ -235,14 +235,13 @@ var (
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
 				},
 				{
-					// metrics-* covers data streams written by Elastic Agent (e.g. metrics-elasticsearch.cluster_stats-default).
-					// auto_configure is required for data stream backing index creation.
-					Names:      []string{"metrics-*"},
+					// metrics-* covers data streams written by Elastic Agent for ECK-managed stack components.
+ 					Names:      []string{"metrics-elasticsearch*", "metrics-kibana*", "metrics-logstash*", "metrics-beat*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
 				},
 				{
-					// logs-* covers log data streams written by Elastic Agent (e.g. logs-kibana.log-default).
-					Names:      []string{"logs-*"},
+					// logs-elastic* above already covers Elasticsearch logs; these cover the other ECK components.
+ 					Names:      []string{"logs-kibana*", "logs-logstash*", "logs-beat*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
 				},
 			},
