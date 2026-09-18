@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -59,11 +65,53 @@ func withStorageClass(claim corev1.PersistentVolumeClaim, storageClassName strin
 	return *c
 }
 
+func withAccessMode(claim corev1.PersistentVolumeClaim, mode corev1.PersistentVolumeAccessMode) corev1.PersistentVolumeClaim {
+	c := claim.DeepCopy()
+	c.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{mode}
+	return *c
+}
+
+// nodeSetWithRoles returns a NodeSet with the given name, roles, and VolumeClaimTemplates.
+func nodeSetWithRoles(name string, roles []string, vcts []corev1.PersistentVolumeClaim) esv1.NodeSet {
+	return esv1.NodeSet{
+		Name:                 name,
+		Config:               &commonv1.Config{Data: map[string]any{"node.roles": roles}},
+		VolumeClaimTemplates: vcts,
+	}
+}
+
+// autoscalerWithStoragePolicy returns an ElasticsearchAutoscaler that targets "cluster" and has a
+// single policy covering the given roles with a storage range.
+func autoscalerWithStoragePolicy(roles []string) *esav1alpha1.ElasticsearchAutoscaler {
+	return &esav1alpha1.ElasticsearchAutoscaler{
+		Namespace: "ns", Name: "autoscaler",
+		Spec: esav1alpha1.ElasticsearchAutoscalerSpec{
+			ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"},
+			AutoscalingPolicySpecs: v1alpha1.AutoscalingPolicySpecs{
+				{
+					Name:  "storage-policy",
+					Roles: roles,
+					StorageRange: &v1alpha1.QuantityRange{
+						Min: resource.MustParse("1Gi"),
+						Max: resource.MustParse("100Gi"),
+					},
+				},
+			},
+		},
+	}
+}
+
 func Test_validPVCModification(t *testing.T) {
 	es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
 			Namespace: "ns", Name: "cluster",
 			Spec: esv1.ElasticsearchSpec{NodeSets: nodeSets},
+		}
+	}
+	esV := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			Namespace: "ns", Name: "cluster",
+			Spec: esv1.ElasticsearchSpec{Version: "8.0.0", NodeSets: nodeSets},
 		}
 	}
 	type args struct {
@@ -329,6 +377,254 @@ func Test_validPVCModification(t *testing.T) {
 				validateStorageClass: false,
 			},
 			wantErr: true,
+		},
+		{
+			name: "autoscaler active + stale storage size in proposed: ok (autoscaler controls size)",
+			args: args{
+				current: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				proposed: esV([]esv1.NodeSet{
+					// autoscaler already bumped the STS to 10Gi; user re-applies the old manifest with stale 1Gi - must be accepted
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				k8sClient: k8s.NewFakeClient(
+					autoscalerWithStoragePolicy([]string{"data"}),
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"), // autoscaler already bumped it
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "autoscaler active + proposed size matches STS: ok",
+			args: args{
+				current: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				proposed: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				k8sClient: k8s.NewFakeClient(
+					autoscalerWithStoragePolicy([]string{"data"}),
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "autoscaler active + NodeSet not covered by storage policy: storage decrease rejected",
+			args: args{
+				current: esV([]esv1.NodeSet{
+					nodeSetWithRoles("master", []string{"master"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				proposed: esV([]esv1.NodeSet{
+					nodeSetWithRoles("master", []string{"master"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				k8sClient: k8s.NewFakeClient(
+					autoscalerWithStoragePolicy([]string{"data"}), // policy covers "data", not "master"
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-master",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"),
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + NodeSet missing node.roles config: storage decrease still rejected",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					autoscalerWithStoragePolicy([]string{"data"}),
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"),
+						}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "mixed cluster: autoscaled NodeSet accepts stale size, unmanaged NodeSet rejects decrease",
+			args: args{
+				current: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+					nodeSetWithRoles("master", []string{"master"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				proposed: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+					nodeSetWithRoles("master", []string{"master"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				k8sClient: k8s.NewFakeClient(
+					autoscalerWithStoragePolicy([]string{"data"}),
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"),
+						}},
+					},
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-master",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"),
+						}},
+					},
+				),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + storage class changed: error (immutable even with autoscaler)",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{withStorageClass(sampleClaim, "other-sc")}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&esav1alpha1.ElasticsearchAutoscaler{
+						Namespace: "ns", Name: "autoscaler",
+						Spec: esav1alpha1.ElasticsearchAutoscalerSpec{ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"}},
+					},
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + access mode changed: error (immutable even with autoscaler)",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{withAccessMode(sampleClaim, corev1.ReadWriteMany)}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&esav1alpha1.ElasticsearchAutoscaler{
+						Namespace: "ns", Name: "autoscaler",
+						Spec: esav1alpha1.ElasticsearchAutoscalerSpec{ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"}},
+					},
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + nodeSet name reuse while STS exists: error",
+			args: args{
+				// NodeSet "default" is not in current (renamed away), but old STS still exists.
+				current: es([]esv1.NodeSet{
+					{Name: "default-new", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "default", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&esav1alpha1.ElasticsearchAutoscaler{
+						Namespace: "ns", Name: "autoscaler",
+						Spec: esav1alpha1.ElasticsearchAutoscalerSpec{ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"}},
+					},
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-default",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + claim removed: error (identity immutable even with autoscaler)",
+			args: args{
+				current: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+				}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&esav1alpha1.ElasticsearchAutoscaler{
+						Namespace: "ns", Name: "autoscaler",
+						Spec: esav1alpha1.ElasticsearchAutoscalerSpec{ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"}},
+					},
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim, sampleClaim2}},
+					}),
+				validateStorageClass: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "autoscaler active + new NodeSet no STS yet: ok (initial creation path)",
+			args: args{
+				current: es([]esv1.NodeSet{}),
+				proposed: es([]esv1.NodeSet{
+					{Name: "data", VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim}},
+				}),
+				k8sClient: k8s.NewFakeClient(
+					&esav1alpha1.ElasticsearchAutoscaler{
+						Namespace: "ns", Name: "autoscaler",
+						Spec: esav1alpha1.ElasticsearchAutoscalerSpec{ElasticsearchRef: esav1alpha1.ElasticsearchRef{Name: "cluster"}},
+					},
+					// no StatefulSet: this is the initial creation case
+				),
+				validateStorageClass: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "autoscaling lookup error: storage size validation skipped",
+			args: args{
+				current: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				proposed: esV([]esv1.NodeSet{
+					nodeSetWithRoles("data", []string{"data"}, []corev1.PersistentVolumeClaim{sampleClaim}),
+				}),
+				k8sClient: k8s.NewFakeClientBuilder(
+					&appsv1.StatefulSet{
+						Namespace: "ns", Name: "cluster-es-data",
+						Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							withStorageReq(sampleClaim, "10Gi"), // autoscaler had bumped it
+						}},
+					},
+				).WithInterceptorFuncs(interceptor.Funcs{
+					List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+						if _, ok := list.(*esav1alpha1.ElasticsearchAutoscalerList); ok {
+							return errors.New("transient list error")
+						}
+						return c.List(ctx, list, opts...)
+					},
+				}).Build(),
+				validateStorageClass: true,
+			},
+			wantErr: false,
 		},
 		{
 			name: "storage increase via shorthand on nodeSet without explicit VCTs: ok",
