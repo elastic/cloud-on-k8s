@@ -185,6 +185,15 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, nil
 	}
 
+	// Best-effort: stamp ownerRefs on PVCs while the ES CR still exists. On clusters with legacy
+	// finalizers this is guaranteed to run before GC; on clusters without finalizers it may not
+	// fire before the CR is removed, but normal reconciliation covers the steady state.
+	if es.IsMarkedForDeletion() {
+		if err := stateful.ReconcilePVCOwnerRefs(ctx, r.Client, es); err != nil {
+			return reconcile.Result{}, tracing.CaptureError(ctx, err)
+		}
+	}
+
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(ctx, r.Client, &es); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
