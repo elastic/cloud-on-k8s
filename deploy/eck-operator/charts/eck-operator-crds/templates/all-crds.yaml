@@ -3277,6 +3277,10 @@ spec:
                   Metricbeat and/or Filebeat sidecars are configured and send monitoring data to an
                   Elasticsearch monitoring cluster running in the same Kubernetes cluster.
                 properties:
+                  elastic_agent:
+                    description: ElasticAgent when set to true uses Elastic Agent
+                      sidecars for Stack Monitoring instead of Metricbeat and Filebeat.
+                    type: boolean
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
                       receive log data from an associated resource.
@@ -5154,6 +5158,10 @@ spec:
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
+                  elastic_agent:
+                    description: ElasticAgent when set to true uses Elastic Agent
+                      sidecars for Stack Monitoring instead of Metricbeat and Filebeat.
+                    type: boolean
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
                       receive log data from an associated resource.
@@ -9765,6 +9773,10 @@ spec:
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
+                  elastic_agent:
+                    description: ElasticAgent when set to true uses Elastic Agent
+                      sidecars for Stack Monitoring instead of Metricbeat and Filebeat.
+                    type: boolean
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
                       receive log data from an associated resource.
@@ -10783,6 +10795,10 @@ spec:
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
+                  elastic_agent:
+                    description: ElasticAgent when set to true uses Elastic Agent
+                      sidecars for Stack Monitoring instead of Metricbeat and Filebeat.
+                    type: boolean
                   logs:
                     description: Logs holds references to Elasticsearch clusters which
                       receive log data from an associated resource.

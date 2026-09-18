@@ -12,6 +12,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -24,9 +25,17 @@ var (
 	// filebeatConfigTemplate is a configuration template for Filebeat to collect Elasticsearch logs
 	//go:embed filebeat.tpl.yml
 	filebeatConfigTemplate string
+
+	// elasticAgentMetricsConfigTemplate is a configuration template for Elastic Agent to collect ES metrics
+	//go:embed elastic-agent-metrics.tpl.yml
+	elasticAgentMetricsConfigTemplate string
+
+	// elasticAgentLogsConfigTemplate is a configuration template for Elastic Agent to collect ES logs
+	//go:embed elastic-agent-logs.tpl.yml
+	elasticAgentLogsConfigTemplate string
 )
 
-// ReconcileConfigSecrets reconciles the secrets holding beats configuration
+// ReconcileConfigSecrets reconciles the secrets holding the monitoring sidecar configuration
 func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) error {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
@@ -37,22 +46,30 @@ func ReconcileConfigSecrets(ctx context.Context, client k8s.Client, es esv1.Elas
 	}
 
 	if monitoring.IsMetricsDefined(&es) {
-		b, err := Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
+		var b stackmon.BeatSidecar
+		if es.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentMetrics(ctx, client, es, meta, clientAuthenticationRequired)
+		} else {
+			b, err = Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
+		}
 		if err != nil {
 			return err
 		}
-
 		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &es); err != nil {
 			return err
 		}
 	}
 
 	if monitoring.IsLogsDefined(&es) {
-		b, err := Filebeat(ctx, client, es, meta)
+		var b stackmon.BeatSidecar
+		if es.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentLogs(ctx, client, es, meta)
+		} else {
+			b, err = Filebeat(ctx, client, es, meta)
+		}
 		if err != nil {
 			return err
 		}
-
 		if _, err := reconciler.ReconcileSecret(ctx, client, b.ConfigSecret, &es); err != nil {
 			return err
 		}

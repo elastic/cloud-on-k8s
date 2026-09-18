@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	commonstackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -153,7 +154,12 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsLogsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version, meta)
+		var sideCar commonstackmon.BeatSidecar
+		if params.Beat.Spec.Monitoring.ElasticAgent {
+			sideCar, err = beat_stackmon.ElasticAgentLogs(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version, meta)
+		} else {
+			sideCar, err = beat_stackmon.Filebeat(params.Context, params.Client, &params.Beat, params.Beat.Spec.Version, meta)
+		}
 		if err != nil {
 			return podTemplate, err
 		}
@@ -163,12 +169,14 @@ func buildPodTemplate(
 		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
 			return podTemplate, err
 		}
-		// Add shared volume for logs consumption.
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "filebeat-logs",
-			ReadOnly:  false,
-			MountPath: "/usr/share/filebeat/logs",
-		})
+		if !params.Beat.Spec.Monitoring.ElasticAgent {
+			// Share the filebeat logs volume into the main container (Beats path).
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      beat_stackmon.FilebeatLogsVolumeName,
+				ReadOnly:  false,
+				MountPath: beat_stackmon.FilebeatLogsVolumeMountPath,
+			})
+		}
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{
@@ -179,7 +187,12 @@ func buildPodTemplate(
 	}
 
 	if monitoring.IsMetricsDefined(&params.Beat) {
-		sideCar, err := beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, meta)
+		var sideCar commonstackmon.BeatSidecar
+		if params.Beat.Spec.Monitoring.ElasticAgent {
+			sideCar, err = beat_stackmon.ElasticAgentMetrics(params.Context, params.Client, &params.Beat, meta)
+		} else {
+			sideCar, err = beat_stackmon.MetricBeat(params.Context, params.Client, &params.Beat, meta)
+		}
 		if err != nil {
 			return podTemplate, err
 		}
@@ -189,7 +202,7 @@ func buildPodTemplate(
 		if _, err := reconciler.ReconcileSecret(params.Context, params.Client, sideCar.ConfigSecret, &params.Beat); err != nil {
 			return podTemplate, err
 		}
-		// Add shared volume for Unix socket between containers.
+		// Add shared volume for Unix socket between containers (used by both Metricbeat and Elastic Agent).
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "shared-data",
 			ReadOnly:  false,

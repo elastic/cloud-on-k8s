@@ -63,7 +63,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 	}
 
 	input := stackmon.TemplateParams{
-		URL:              fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		URL:              fmt.Sprintf("%s://${POD_IP}:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		Username:         username,
 		Password:         password,
 		IsSSL:            es.Spec.HTTP.TLS.Enabled(),
@@ -107,8 +107,74 @@ func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, met
 	return fileBeat, nil
 }
 
-// WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
+func ElasticAgentMetrics(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) (stackmon.BeatSidecar, error) {
+	username := user.MonitoringUserName
+	password, err := user.GetMonitoringUserPassword(client, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	caVolume, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&es), esv1.ESNamer, commonv1.EsMonitoringAssociationType, es.Spec.HTTP.TLS.Enabled())
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	var clientCertVolume volume.VolumeLike
+	if clientAuthenticationRequired {
+		clientCertVolume = volume.NewSecretVolumeWithMountPath(
+			certificates.OperatorClientCertSecretName(esv1.ESNamer, es.Name),
+			"elastic-agent-metrics-es-client-cert",
+			"/mnt/elastic-internal/es-monitoring-client-certs",
+		)
+	}
+
+	input := stackmon.TemplateParams{
+		URL:              fmt.Sprintf("%s://${POD_IP}:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		Username:         username,
+		Password:         password,
+		IsSSL:            es.Spec.HTTP.TLS.Enabled(),
+		CAVolume:         caVolume,
+		ClientCertVolume: clientCertVolume,
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, elasticAgentMetricsConfigTemplate, input)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", &es, v, monitoring.GetMetricsAssociation(&es), cfg, meta, caVolume, clientCertVolume)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	return sidecar, nil
+}
+
+func ElasticAgentLogs(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, elasticAgentLogsConfigTemplate, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", &es, v, monitoring.GetLogsAssociation(&es), cfg, meta)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	return sidecar, nil
+}
+
+// WithMonitoring updates the Elasticsearch Pod template builder to deploy monitoring sidecar containers.
 func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
@@ -122,16 +188,20 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&es) {
-		b, err := Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
+		var b stackmon.BeatSidecar
+		if es.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentMetrics(ctx, client, es, meta, clientAuthenticationRequired)
+		} else {
+			b, err = Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
+			if err == nil {
+				metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
+				volumes = append(volumes, metricbeatLogsVolume.Volume())
+				b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
-
-		// Add metricbeat logs volume
-		metricbeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
-		volumes = append(volumes, metricbeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
-
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
@@ -141,23 +211,27 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		// enable Stack logging to write Elasticsearch logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		b, err := Filebeat(ctx, client, es, meta)
-		if err != nil {
-			return nil, err
+		var b stackmon.BeatSidecar
+		if es.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentLogs(ctx, client, es, meta)
+			if err != nil {
+				return nil, err
+			}
+			// share the ES logs volume into the Elastic Agent logs container
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, esvolume.DefaultLogsVolumeMount)
+		} else {
+			b, err = Filebeat(ctx, client, es, meta)
+			if err != nil {
+				return nil, err
+			}
+			filebeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.FilebeatLogsVolumeName, beatstackmon.FilebeatLogsVolumeMountPath)
+			volumes = append(volumes, filebeatLogsVolume.Volume())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, esvolume.DefaultLogsVolumeMount)
 		}
 
-		// Add filebeat logs volume
-		filebeatLogsVolume := volume.NewEmptyDirVolume(beatstackmon.FilebeatLogsVolumeName, beatstackmon.FilebeatLogsVolumeMountPath)
-		volumes = append(volumes, filebeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
-
 		volumes = append(volumes, b.Volumes...)
-		filebeat := b.Container
-
-		// share the ES logs volume into the Filebeat container
-		filebeat.VolumeMounts = append(filebeat.VolumeMounts, esvolume.DefaultLogsVolumeMount)
-
-		builder.WithContainers(filebeat)
+		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 

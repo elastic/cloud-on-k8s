@@ -199,8 +199,8 @@ var (
 			},
 		},
 		AutoOpsUserRoleName: AutoOpsUserRole,
-		// StackMonitoringUserRole is a dedicated role for Stack Monitoring with Metricbeat and Filebeat used for the
-		// user sending monitoring data.
+		// StackMonitoringUserRole is a dedicated role for Stack Monitoring used for the user sending monitoring data.
+		// Covers both the legacy Beats (Metricbeat/Filebeat) and the Elastic Agent monitoring sidecars.
 		// See: https://www.elastic.co/guide/en/beats/filebeat/7.14/privileges-to-publish-monitoring.html.
 		StackMonitoringUserRole: esclient.Role{
 			Cluster: []string{
@@ -227,11 +227,21 @@ var (
 				},
 				{
 					// logs-elastic* covers data streams for ES-managed log datasets (e.g. logs-elasticsearch.querylog-*)
-					// that are shipped by the Filebeat sidecar starting with ES 9.4. Uses a broad pattern to
+					// that are shipped by the Filebeat/Elastic Agent sidecar starting with ES 9.4. Uses a broad pattern to
 					// accommodate additional datasets that will follow the same naming convention.
 					// auto_configure is required because data streams need it to create backing indices from
 					// the managed index template on first write.
 					Names:      []string{"logs-elastic*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
+				},
+				{
+					// metrics-* covers data streams written by Elastic Agent for ECK-managed stack components.
+ 					Names:      []string{"metrics-elasticsearch*", "metrics-kibana*", "metrics-logstash*", "metrics-beat*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
+				},
+				{
+					// logs-elastic* above already covers Elasticsearch logs; these cover the other ECK components.
+ 					Names:      []string{"logs-kibana*", "logs-logstash*", "logs-beat*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
 				},
 			},

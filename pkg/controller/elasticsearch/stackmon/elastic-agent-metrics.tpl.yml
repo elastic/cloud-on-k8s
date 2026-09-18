@@ -1,0 +1,257 @@
+inputs:
+  - type: elasticsearch/metrics
+    id: elasticsearch-monitoring
+    streams:
+      - id: elasticsearch-ccr
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.ccr
+        metricsets:
+          - ccr
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-cluster_stats
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.cluster_stats
+        metricsets:
+          - cluster_stats
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-enrich
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.enrich
+        metricsets:
+          - enrich
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-index
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.index
+        metricsets:
+          - index
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-index_recovery
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.index_recovery
+        metricsets:
+          - index_recovery
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-index_summary
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.index_summary
+        metricsets:
+          - index_summary
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      {{- if isVersionGTE "8.7.0" }}
+      - id: elasticsearch-ingest_pipeline
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.ingest_pipeline
+        metricsets:
+          - ingest_pipeline
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      {{- end }}
+      - id: elasticsearch-ml_job
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.ml_job
+        metricsets:
+          - ml_job
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-node
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.node
+        metricsets:
+          - node
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-node_stats
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.node_stats
+        metricsets:
+          - node_stats
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-pending_tasks
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.pending_tasks
+        metricsets:
+          - pending_tasks
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      - id: elasticsearch-shard
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.shard
+        metricsets:
+          - shard
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      {{- if isVersionGTE "9.4.0" }}
+      - id: elasticsearch-security_stats
+        data_stream:
+          type: metrics
+          dataset: elasticsearch.stack_monitoring.security_stats
+        metricsets:
+          - security_stats
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        username: {{ .Username }}
+        password: {{ sanitizeJSON .Password }}
+        ssl.enabled: {{ .IsSSL }}
+        ssl.verification_mode: "certificate"
+        {{- with .CAVolume }}
+        ssl.certificate_authorities: ["{{ CAPath . }}"]
+        {{- end }}
+        {{- with .ClientCertVolume }}
+        ssl.certificate: "{{ ClientCertPath . }}"
+        ssl.key: "{{ ClientKeyPath . }}"
+        {{- end }}
+      {{- end }}
+
+# Elasticsearch output configuration is generated
