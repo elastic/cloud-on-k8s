@@ -147,7 +147,12 @@ func ElasticAgentMetrics(ctx context.Context, client k8s.Client, es esv1.Elastic
 		return stackmon.BeatSidecar{}, err
 	}
 
-	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", &es, v, monitoring.GetMetricsAssociation(&es), cfg, meta, caVolume, clientCertVolume)
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", &es, v, monitoring.GetMetricsAssociation(&es), cfg, meta, caVolume, clientCertVolume)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	return sidecar, nil
 }
 
 func ElasticAgentLogs(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
@@ -161,7 +166,12 @@ func ElasticAgentLogs(ctx context.Context, client k8s.Client, es esv1.Elasticsea
 		return stackmon.BeatSidecar{}, err
 	}
 
-	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", &es, v, monitoring.GetLogsAssociation(&es), cfg, meta)
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", &es, v, monitoring.GetLogsAssociation(&es), cfg, meta)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	return sidecar, nil
 }
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy monitoring sidecar containers.
