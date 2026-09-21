@@ -145,8 +145,15 @@ func NewPodTemplateSpec(
 		Labels:      labels,
 		Annotations: DefaultAnnotations,
 	})
-	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources).
+
+	var tb corev1.PodTemplateSpec
+	if kb.BackgroundTasksEnabled() {
+		tb = kb.Spec.BackgroundTasks.PodTemplate
+	} else {
+		tb = kb.Spec.PodTemplate
+	}
+
+	builder := defaults.NewPodTemplateBuilder(tb, kbv1.KibanaContainerName).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
@@ -154,6 +161,12 @@ func NewPodTemplateSpec(
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports)
+
+	if kb.BackgroundTasksEnabled() && !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
+		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.BackgroundTasks.Resources)
+	} else {
+		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources)
+	}
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
@@ -174,7 +187,7 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
+	canEnableSecurityContext := v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	if canEnableSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).

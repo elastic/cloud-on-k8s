@@ -338,7 +338,7 @@ func (d *driver) Reconcile(
 //
 // Both pools share the same config secret unless spec.backgroundTasks.config is set, in which
 // case the background tasks pool gets its own secret with the overlay merged on top.
-func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (CanonicalConfig, string, string, error) {
+func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (cfg CanonicalConfig, secretName string, deploymentName string, rErr error) {
 	if role.Name == "" || role.Name == kblabel.UIRole.Name {
 		// Single all-roles pool or UI pool: use the base config and base names.
 		return base, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), nil
@@ -485,10 +485,7 @@ func (d *driver) deploymentParams(
 	// For the background tasks pool, use the pool-specific pod template and resources.
 	kbForPool := *kb
 	if role.Name == kblabel.BackgroundTasksRole.Name && kb.Spec.BackgroundTasks != nil {
-		kbForPool.Spec.PodTemplate = mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
-		if !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
-			kbForPool.Spec.Resources = kb.Spec.BackgroundTasks.Resources
-		}
+		kb.Spec.BackgroundTasks.PodTemplate = mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
 	}
 
 	// Pool-specific metadata: add role label to pod labels.
