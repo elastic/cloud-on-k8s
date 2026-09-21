@@ -16,8 +16,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 
 | Name | Version | Licence |
 | --- | --- | --- |
-| [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.23.2 | Apache-2.0 |
-| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.67.1 | Apache-2.0 |
+| [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.23.3 | Apache-2.0 |
+| [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.68.0 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.1 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v1.0.0 | MIT |
@@ -40,7 +40,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/hashicorp/go-multierror](https://github.com/hashicorp/go-multierror) | v1.1.1 | MPL-2.0 |
 | [github.com/hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) | v2.0.7 | MPL-2.0 |
 | [github.com/hashicorp/vault/api](https://github.com/hashicorp/vault) | v1.23.0 | MPL-2.0 |
-| [github.com/magiconair/properties](https://github.com/magiconair/properties) | v1.18.11 | BSD-2-Clause |
+| [github.com/magiconair/properties](https://github.com/magiconair/properties) | v1.18.12 | BSD-2-Clause |
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.24.1 | Apache-2.0 |

@@ -5,7 +5,7 @@ go 1.27
 toolchain go1.27.1
 
 require (
-	cloud.google.com/go/storage v1.67.1
+	cloud.google.com/go/storage v1.68.0
 	github.com/elastic/cloud-on-k8s/v3 v3.5.0
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
@@ -24,7 +24,7 @@ exclude github.com/docker/docker v24.0.0+incompatible
 require (
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go v0.123.0 // indirect
-	cloud.google.com/go/auth v0.23.2 // indirect
+	cloud.google.com/go/auth v0.23.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.12.0 // indirect

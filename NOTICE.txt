@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/auth
-Version : v0.23.2
-Time    : 2026-08-20T18:56:12Z
+Version : v0.23.3
+Time    : 2026-09-17T18:22:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.23.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.23.3/LICENSE:
 
 
                                  Apache License
@@ -222,11 +222,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.23.2/L
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/storage
-Version : v1.67.1
-Time    : 2026-09-08T04:34:46Z
+Version : v1.68.0
+Time    : 2026-09-17T06:22:09Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.67.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/storage@v1.68.0/LICENSE:
 
 
                                  Apache License
@@ -3439,11 +3439,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/magiconair/properties
-Version : v1.18.11
-Time    : 2026-07-23T07:36:47Z
+Version : v1.18.12
+Time    : 2026-09-16T14:43:08Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.18.11/LICENSE.md:
+Contents of probable licence file $GOMODCACHE/github.com/magiconair/properties@v1.18.12/LICENSE.md:
 
 Copyright (c) 2013-2020, Frank Schroeder
 
