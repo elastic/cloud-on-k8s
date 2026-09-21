@@ -24,7 +24,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.47.0 | Apache-2.0 |
 | [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.20.5 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.113.1 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.113.2 | Apache-2.0 |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.2 | Apache-2.0 |
@@ -57,7 +57,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.57.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20260813180055-c1d0aacb2297 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.298.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.299.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.37.0 | Apache-2.0 |
 | [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.0 | Apache-2.0 |
@@ -77,7 +77,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cel.dev/expr](https://cel.dev/expr) | v0.25.2 | Apache-2.0 |
 | [cloud.google.com/go](https://cloud.google.com/go) | v0.123.0 | Apache-2.0 |
 | [cloud.google.com/go/auth/oauth2adapt](https://cloud.google.com/go/auth/oauth2adapt) | v0.2.8 | Apache-2.0 |
-| [cloud.google.com/go/compute/metadata](https://cloud.google.com/go/compute/metadata) | v0.9.0 | Apache-2.0 |
+| [cloud.google.com/go/compute/metadata](https://cloud.google.com/go/compute/metadata) | v0.9.1 | Apache-2.0 |
 | [cloud.google.com/go/iam](https://cloud.google.com/go/iam) | v1.12.0 | Apache-2.0 |
 | [cloud.google.com/go/logging](https://cloud.google.com/go/logging) | v1.19.0 | Apache-2.0 |
 | [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v1.2.0 | Apache-2.0 |
@@ -88,7 +88,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.12.0 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage](https://github.com/Azure/azure-sdk-for-go) | v1.8.1 | MIT |
 | [github.com/AzureAD/microsoft-authentication-library-for-go](https://github.com/AzureAD/microsoft-authentication-library-for-go) | v1.8.0 | MIT |
-| [github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v1.33.0 | Apache-2.0 |
+| [github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v1.34.0 | Apache-2.0 |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.57.0 | Apache-2.0 |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.57.0 | Apache-2.0 |
 | [github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping](https://github.com/GoogleCloudPlatform/opentelemetry-operations-go) | v0.57.0 | Apache-2.0 |
@@ -126,7 +126,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/evanphx/json-patch](https://github.com/evanphx/json-patch) | v5.6.0+incompatible | BSD-3-Clause |
 | [github.com/evanphx/json-patch/v5](https://github.com/evanphx/json-patch) | v5.9.11 | BSD-3-Clause |
 | [github.com/fatih/color](https://github.com/fatih/color) | v1.19.0 | MIT |
-| [github.com/felixge/httpsnoop](https://github.com/felixge/httpsnoop) | v1.0.4 | MIT |
+| [github.com/felixge/httpsnoop](https://github.com/felixge/httpsnoop) | v1.1.0 | MIT |
 | [github.com/frankban/quicktest](https://github.com/frankban/quicktest) | v1.14.6 | MIT |
 | [github.com/fsnotify/fsnotify](https://github.com/fsnotify/fsnotify) | v1.10.0 | BSD-3-Clause |
 | [github.com/fxamacker/cbor/v2](https://github.com/fxamacker/cbor) | v2.9.1 | MIT |
@@ -163,9 +163,9 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/google/gofuzz](https://github.com/google/gofuzz) | v1.2.0 | Apache-2.0 |
 | [github.com/google/martian/v3](https://github.com/google/martian) | v3.3.3 | Apache-2.0 |
 | [github.com/google/pprof](https://github.com/google/pprof) | v0.0.0-20260402051712-545e8a4df936 | Apache-2.0 |
-| [github.com/google/s2a-go](https://github.com/google/s2a-go) | v0.1.9 | Apache-2.0 |
-| [github.com/googleapis/enterprise-certificate-proxy](https://github.com/googleapis/enterprise-certificate-proxy) | v0.3.20 | Apache-2.0 |
-| [github.com/googleapis/gax-go/v2](https://github.com/googleapis/gax-go) | v2.24.0 | BSD-3-Clause |
+| [github.com/google/s2a-go](https://github.com/google/s2a-go) | v0.1.10 | Apache-2.0 |
+| [github.com/googleapis/enterprise-certificate-proxy](https://github.com/googleapis/enterprise-certificate-proxy) | v0.3.22 | Apache-2.0 |
+| [github.com/googleapis/gax-go/v2](https://github.com/googleapis/gax-go) | v2.24.1 | BSD-3-Clause |
 | [github.com/gorilla/websocket](https://github.com/gorilla/websocket) | v1.5.4-0.20250319132907-e064f32e3674 | BSD-2-Clause |
 | [github.com/grpc-ecosystem/grpc-gateway/v2](https://github.com/grpc-ecosystem/grpc-gateway) | v2.29.0 | BSD-3-Clause |
 | [github.com/hashicorp/errwrap](https://github.com/hashicorp/errwrap) | v1.1.0 | MPL-2.0 |
@@ -217,7 +217,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/sourcegraph/conc](https://github.com/sourcegraph/conc) | v0.3.1-0.20240121214520-5f936abd7ae8 | MIT |
 | [github.com/spf13/afero](https://github.com/spf13/afero) | v1.15.0 | Apache-2.0 |
 | [github.com/spf13/cast](https://github.com/spf13/cast) | v1.10.0 | MIT |
-| [github.com/spiffe/go-spiffe/v2](https://github.com/spiffe/go-spiffe) | v2.7.0 | Apache-2.0 |
+| [github.com/spiffe/go-spiffe/v2](https://github.com/spiffe/go-spiffe) | v2.8.1 | Apache-2.0 |
 | [github.com/stretchr/objx](https://github.com/stretchr/objx) | v0.5.3 | MIT |
 | [github.com/subosito/gotenv](https://github.com/subosito/gotenv) | v1.6.0 | MIT |
 | [github.com/tidwall/gjson](https://github.com/tidwall/gjson) | v1.19.0 | MIT |
@@ -247,13 +247,13 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.4 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.5 | MIT |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.41.0 | BSD-3-Clause |
-| [golang.org/x/net](https://golang.org/x/net) | v0.58.0 | BSD-3-Clause |
-| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.36.0 | BSD-3-Clause |
+| [golang.org/x/net](https://golang.org/x/net) | v0.59.0 | BSD-3-Clause |
+| [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.37.0 | BSD-3-Clause |
 | [golang.org/x/sync](https://golang.org/x/sync) | v0.23.0 | BSD-3-Clause |
 | [golang.org/x/sys](https://golang.org/x/sys) | v0.48.0 | BSD-3-Clause |
 | [golang.org/x/term](https://golang.org/x/term) | v0.46.0 | BSD-3-Clause |
 | [golang.org/x/text](https://golang.org/x/text) | v0.42.0 | BSD-3-Clause |
-| [golang.org/x/time](https://golang.org/x/time) | v0.15.0 | BSD-3-Clause |
+| [golang.org/x/time](https://golang.org/x/time) | v0.16.0 | BSD-3-Clause |
 | [golang.org/x/tools](https://golang.org/x/tools) | v0.49.0 | BSD-3-Clause |
 | [golang.org/x/tools/go/expect](https://golang.org/x/tools/go/expect) | v0.1.1-deprecated | BSD-3-Clause |
 | [golang.org/x/tools/go/packages/packagestest](https://golang.org/x/tools/go/packages/packagestest) | v0.1.1-deprecated | BSD-3-Clause |
@@ -261,8 +261,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [gonum.org/v1/gonum](https://github.com/gonum/gonum) | v0.17.0 | BSD-3-Clause |
 | [google.golang.org/genproto](https://google.golang.org/genproto) | v0.0.0-20260715232425-e75dac1f907d | Apache-2.0 |
 | [google.golang.org/genproto/googleapis/api](https://google.golang.org/genproto/googleapis/api) | v0.0.0-20260803160001-6ac0973c030d | Apache-2.0 |
-| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260819154853-08b0e4226688 | Apache-2.0 |
-| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.83.2 | Apache-2.0 |
+| [google.golang.org/genproto/googleapis/rpc](https://google.golang.org/genproto/googleapis/rpc) | v0.0.0-20260921155816-b14227669459 | Apache-2.0 |
+| [google.golang.org/grpc](https://google.golang.org/grpc) | v1.84.0 | Apache-2.0 |
 | [google.golang.org/protobuf](https://google.golang.org/protobuf) | v1.36.12 | BSD-3-Clause |
 | [gopkg.in/check.v1](https://gopkg.in/check.v1) | v1.0.0-20201130134442-10cb98267c6c | BSD-2-Clause |
 | [gopkg.in/evanphx/json-patch.v4](https://gopkg.in/evanphx/json-patch.v4) | v4.13.0 | BSD-3-Clause |
