@@ -157,7 +157,7 @@ func Test_calculateRemovalsAllowed(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calculateRemovalsAllowed(tt.nodesReady, tt.desiredNodes, tt.maxUnavailable)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("calculateRemovalsAllowed() got = %d, want = %d", got, tt.want)
+				t.Errorf("calculateRemovalsAllowed() got = %v, want = %v", got, tt.want)
 			}
 		})
 	}
