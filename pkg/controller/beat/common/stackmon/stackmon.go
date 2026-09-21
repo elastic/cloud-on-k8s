@@ -22,12 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// ElasticAgentLogsVolumeName and ElasticAgentLogsVolumeMountPath are the volume used for Elastic Agent's own log directory.
-const (
-	ElasticAgentLogsVolumeName      string = "elastic-agent-logs-logs"
-	ElasticAgentLogsVolumeMountPath string = "/usr/share/elastic-agent/logs"
-)
-
 const (
 	FilebeatLogsVolumeName      string = "filebeat-logs"
 	FilebeatLogsVolumeMountPath string = "/usr/share/filebeat/logs"
@@ -168,11 +162,6 @@ func ElasticAgentLogs(ctx context.Context, client k8s.Client, resource monitorin
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-
-	// Add shared volume for agent's own log directory.
-	agentLogsVolume := volume.NewEmptyDirVolume(ElasticAgentLogsVolumeName, ElasticAgentLogsVolumeMountPath)
-	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, agentLogsVolume.VolumeMount())
-	sidecar.Volumes = append(sidecar.Volumes, agentLogsVolume.Volume())
 
 	return sidecar, nil
 }

@@ -5,9 +5,7 @@ inputs:
       type: logs
       dataset: beat.log
     paths:
-      - /var/log/*.log
       - /usr/share/filebeat/logs/*
-      - /usr/share/filebeat/data/registry/filebeat/*.json
     close.on_state_change.inactive: 2h
 
 # Elasticsearch output configuration is generated

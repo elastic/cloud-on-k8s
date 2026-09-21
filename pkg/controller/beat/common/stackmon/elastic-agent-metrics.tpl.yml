@@ -8,7 +8,6 @@ inputs:
         metricsets:
           - stats
         period: 10s
-        xpack.enabled: true
         hosts: ["{{ .URL }}"]
         {{ with .ClusterUUID -}}
         cluster_uuid: "{{ . }}"
@@ -20,7 +19,6 @@ inputs:
         metricsets:
           - state
         period: 10s
-        xpack.enabled: true
         hosts: ["{{ .URL }}"]
         {{ with .ClusterUUID -}}
         cluster_uuid: "{{ . }}"

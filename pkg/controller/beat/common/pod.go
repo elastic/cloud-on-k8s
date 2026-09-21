@@ -176,6 +176,14 @@ func buildPodTemplate(
 				ReadOnly:  false,
 				MountPath: beat_stackmon.FilebeatLogsVolumeMountPath,
 			})
+		} else {
+			// Share the filebeat logs volume into both the main container and the elastic-agent sidecar.
+			// All beats are configured to write logs to /usr/share/filebeat/logs so the sidecar can
+			// read them from a single consistent path regardless of beat type.
+			filebeatLogsVolume := volume.NewEmptyDirVolume(beat_stackmon.FilebeatLogsVolumeName, beat_stackmon.FilebeatLogsVolumeMountPath)
+			volumes = append(volumes, filebeatLogsVolume.Volume())
+			volumeMounts = append(volumeMounts, filebeatLogsVolume.VolumeMount())
+			sideCar.Container.VolumeMounts = append(sideCar.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
 		}
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
