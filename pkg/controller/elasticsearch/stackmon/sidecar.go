@@ -63,7 +63,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 	}
 
 	input := stackmon.TemplateParams{
-		URL:              fmt.Sprintf("%s://${POD_IP}:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		URL:              fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		Username:         username,
 		Password:         password,
 		IsSSL:            es.Spec.HTTP.TLS.Enabled(),
@@ -134,7 +134,7 @@ func ElasticAgentMetrics(ctx context.Context, client k8s.Client, es esv1.Elastic
 	}
 
 	input := stackmon.TemplateParams{
-		URL:              fmt.Sprintf("%s://${POD_IP}:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		URL:              fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
 		Username:         username,
 		Password:         password,
 		IsSSL:            es.Spec.HTTP.TLS.Enabled(),
