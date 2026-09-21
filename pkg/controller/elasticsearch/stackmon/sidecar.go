@@ -151,7 +151,7 @@ func ElasticAgentMetrics(ctx context.Context, client k8s.Client, es esv1.Elastic
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	sidecar.Container.SecurityContext = securitycontext.DefaultElasticAgentSecurityContext(v)
 	return sidecar, nil
 }
 
@@ -170,7 +170,7 @@ func ElasticAgentLogs(ctx context.Context, client k8s.Client, es esv1.Elasticsea
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	sidecar.Container.SecurityContext = securitycontext.DefaultBeatSecurityContext(v)
+	sidecar.Container.SecurityContext = securitycontext.DefaultElasticAgentSecurityContext(v)
 	return sidecar, nil
 }
 

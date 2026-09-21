@@ -56,3 +56,12 @@ func DefaultBeatSecurityContext(ver version.Version) *corev1.SecurityContext {
 	sc.RunAsNonRoot = new(true)
 	return sc
 }
+
+// DefaultElasticAgentSecurityContext returns a security context for elastic-agent sidecar containers.
+// The elastic-agent image uses a named user ("elastic-agent") rather than a numeric UID, so we
+// must set RunAsUser explicitly to allow Kubernetes to verify the runAsNonRoot constraint.
+func DefaultElasticAgentSecurityContext(ver version.Version) *corev1.SecurityContext {
+	sc := DefaultBeatSecurityContext(ver)
+	sc.RunAsUser = new(int64(1000))
+	return sc
+}
