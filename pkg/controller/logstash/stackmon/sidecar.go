@@ -74,8 +74,48 @@ func Filebeat(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.
 	return stackmon.NewFileBeatSidecar(ctx, client, &logstash, logstash.Spec.Version, filebeatConfig, nil, meta)
 }
 
-// WithMonitoring updates the Logstash Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
-// in the Logstash pod and injects the volumes for the beat configurations and the ES CA certificates.
+func ElasticAgentMetrics(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	useTLS := apiServer.UseTLS()
+	protocol := "http"
+	if useTLS {
+		protocol = "https"
+	}
+
+	v, err := version.Parse(logstash.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	caVol, err := stackmon.CAVolume(client, k8s.ExtractNamespacedName(&logstash), logstashv1alpha1.Namer, commonv1.LogstashMonitoringAssociationType, useTLS)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	input := stackmon.TemplateParams{
+		URL:      fmt.Sprintf("%s://localhost:%d", protocol, network.HTTPPort),
+		Username: apiServer.Username,
+		Password: apiServer.Password,
+		IsSSL:    useTLS,
+		CAVolume: caVol,
+	}
+
+	cfg, err := stackmon.RenderTemplate(v, elasticAgentMetricsConfigTemplate, input)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", &logstash, v, monitoring.GetMetricsAssociation(&logstash), cfg, meta, caVol)
+}
+
+func ElasticAgentLogs(ctx context.Context, client k8s.Client, logstash logstashv1alpha1.Logstash, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	v, err := version.Parse(logstash.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	return stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", &logstash, v, monitoring.GetLogsAssociation(&logstash), elasticAgentLogsConfig, meta)
+}
+
+// WithMonitoring updates the Logstash Pod template builder to deploy monitoring sidecar containers.
 func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, logstash logstashv1alpha1.Logstash, apiServer configs.APIServer, meta metadata.Metadata) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&logstash)
 	if err != nil {
@@ -89,16 +129,20 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	var volumes []corev1.Volume
 
 	if monitoring.IsMetricsDefined(&logstash) {
-		b, err := Metricbeat(ctx, client, logstash, apiServer, meta)
+		var b stackmon.BeatSidecar
+		if logstash.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentMetrics(ctx, client, logstash, apiServer, meta)
+		} else {
+			b, err = Metricbeat(ctx, client, logstash, apiServer, meta)
+			if err == nil {
+				metricbeatLogsVolume := commonvolume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
+				volumes = append(volumes, metricbeatLogsVolume.Volume())
+				b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
-
-		// Add metricbeat logs volume
-		metricbeatLogsVolume := commonvolume.NewEmptyDirVolume(beatstackmon.MetricbeatLogsVolumeName, beatstackmon.MetricbeatLogsVolumeMountPath)
-		volumes = append(volumes, metricbeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
-
 		volumes = append(volumes, b.Volumes...)
 		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
@@ -108,21 +152,26 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 		// Set environment variable to tell Logstash container to write logs to disk
 		builder.WithEnv(fileLogStyleEnvVar())
 
-		b, err := Filebeat(ctx, client, logstash, meta)
-		if err != nil {
-			return nil, err
+		var b stackmon.BeatSidecar
+		if logstash.Spec.Monitoring.ElasticAgent {
+			b, err = ElasticAgentLogs(ctx, client, logstash, meta)
+			if err != nil {
+				return nil, err
+			}
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, volume.DefaultLogsVolume.VolumeMount())
+		} else {
+			b, err = Filebeat(ctx, client, logstash, meta)
+			if err != nil {
+				return nil, err
+			}
+			filebeatLogsVolume := commonvolume.NewEmptyDirVolume(beatstackmon.FilebeatLogsVolumeName, beatstackmon.FilebeatLogsVolumeMountPath)
+			volumes = append(volumes, filebeatLogsVolume.Volume())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
+			b.Container.VolumeMounts = append(b.Container.VolumeMounts, volume.DefaultLogsVolume.VolumeMount())
 		}
 
-		// Add filebeat logs volume
-		filebeatLogsVolume := commonvolume.NewEmptyDirVolume(beatstackmon.FilebeatLogsVolumeName, beatstackmon.FilebeatLogsVolumeMountPath)
-		volumes = append(volumes, filebeatLogsVolume.Volume())
-		b.Container.VolumeMounts = append(b.Container.VolumeMounts, filebeatLogsVolume.VolumeMount())
-
-		filebeat := b.Container
-		// Add the logs volume mount from the logstash container
-		filebeat.VolumeMounts = append(filebeat.VolumeMounts, volume.DefaultLogsVolume.VolumeMount())
 		volumes = append(volumes, b.Volumes...)
-		builder.WithContainers(filebeat)
+		builder.WithContainers(b.Container)
 		configHash.Write(b.ConfigHash.Sum(nil))
 	}
 

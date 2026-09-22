@@ -131,6 +131,18 @@ func buildBeatConfig(
 		return nil, err
 	}
 
+	// if logs monitoring is enabled, configure the beat to write logs to the shared filebeat logs path.
+	if monitoring.IsLogsDefined(&params.Beat) {
+		if err = cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"logging.to_stderr":  false,
+			"logging.to_syslog":  false,
+			"logging.to_files":   true,
+			"logging.files.path": "/usr/share/filebeat/logs",
+		})); err != nil {
+			return nil, err
+		}
+	}
+
 	// if metrics monitoring is enabled, then
 	// 1. enable the metrics http endpoint for the metricsbeat sidecar to consume
 	// 2. set http.host to a unix socket

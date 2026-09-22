@@ -1,0 +1,57 @@
+inputs:
+  - type: filestream
+    id: elasticsearch-server-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.server
+    paths:
+      - /usr/share/elasticsearch/logs/*_server.json
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: elasticsearch-gc-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.gc
+    paths:
+      - /usr/share/elasticsearch/logs/gc.log.[0-9]*
+      - /usr/share/elasticsearch/logs/gc.log
+      - /usr/share/elasticsearch/logs/gc.output.[0-9]*
+      - /usr/share/elasticsearch/logs/gc.output
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: elasticsearch-audit-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.audit
+    paths:
+      - /usr/share/elasticsearch/logs/*_audit.json
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: elasticsearch-slowlog-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.slowlog
+    paths:
+      - /usr/share/elasticsearch/logs/*_index_search_slowlog.json
+      - /usr/share/elasticsearch/logs/*_index_indexing_slowlog.json
+    close.on_state_change.inactive: 2h
+  - type: filestream
+    id: elasticsearch-deprecation-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.deprecation
+    paths:
+      - /usr/share/elasticsearch/logs/*_deprecation.json
+    close.on_state_change.inactive: 2h
+  {{- if isVersionGTE "9.4.0" }}
+  - type: filestream
+    id: elasticsearch-query-logs
+    data_stream:
+      type: logs
+      dataset: elasticsearch.query
+    paths:
+      - /usr/share/elasticsearch/logs/*_querylog.json
+    close.on_state_change.inactive: 2h
+  {{- end }}
+
+# Elasticsearch output configuration is generated

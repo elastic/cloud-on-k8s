@@ -39,6 +39,14 @@ var (
 	//go:embed metricbeat.tpl.yml
 	metricbeatConfigTemplate string
 
+	// elasticAgentMetricsConfigTemplate is a configuration template for Elastic Agent to collect Beat metrics
+	//go:embed elastic-agent-metrics.tpl.yml
+	elasticAgentMetricsConfigTemplate string
+
+	// elasticAgentLogsConfig is a static configuration for Elastic Agent to collect Beat logs
+	//go:embed elastic-agent-logs.yml
+	elasticAgentLogsConfig string
+
 	// ErrMonitoringClusterUUIDUnavailable will be returned when the UUID for the Beat ElasticsearchRef cluster
 	// has not yet been assigned a UUID.  This could happen on a newly created Elasticsearch cluster.
 	ErrMonitoringClusterUUIDUnavailable = errors.New("cluster UUID for Beats stack monitoring is unavailable")
@@ -100,6 +108,60 @@ func MetricBeat(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, meta
 	metricbeatLogsVolume := volume.NewEmptyDirVolume(MetricbeatLogsVolumeName, MetricbeatLogsVolumeMountPath)
 	sidecar.Volumes = append(sidecar.Volumes, metricbeatLogsVolume.Volume())
 	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, metricbeatLogsVolume.VolumeMount())
+
+	return sidecar, nil
+}
+
+func ElasticAgentMetrics(ctx context.Context, client k8s.Client, beat *v1beta1.Beat, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	if err := beat.ElasticsearchRef().IsValid(); err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	uuid, err := associatedESUUID(ctx, client, beat)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	data := struct {
+		ClusterUUID string
+		URL         string
+	}{
+		ClusterUUID: uuid,
+		URL:         fmt.Sprintf("http+%s", GetStackMonitoringSocketURL(beat)),
+	}
+
+	v, err := version.Parse(beat.Spec.Version)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+	cfg, err := stackmon.RenderTemplate(v, elasticAgentMetricsConfigTemplate, data)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-metrics", beat, v, monitoring.GetMetricsAssociation(beat), cfg, meta)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	// Add shared volume for Unix socket between containers.
+	sharedDataVolume := volume.NewEmptyDirVolume("shared-data", "/var/shared")
+	sidecar.Container.VolumeMounts = append(sidecar.Container.VolumeMounts, sharedDataVolume.VolumeMount())
+	sidecar.Volumes = append(sidecar.Volumes, sharedDataVolume.Volume())
+
+	return sidecar, nil
+}
+
+func ElasticAgentLogs(ctx context.Context, client k8s.Client, resource monitoring.HasMonitoring, ver string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+	v, err := version.Parse(ver)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	sidecar, err := stackmon.NewElasticAgentSidecar(ctx, client, "elastic-agent-logs", resource, v, monitoring.GetLogsAssociation(resource), elasticAgentLogsConfig, meta)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
 
 	return sidecar, nil
 }

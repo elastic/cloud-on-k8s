@@ -207,7 +207,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3826168075"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1166273486"
   }
  },
  "spec": {
@@ -471,7 +471,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3784706159"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3263151202"
   }
  },
  "spec": {
@@ -707,7 +707,7 @@ setup.template.settings:
 {
  "metadata": {
   "annotations": {
-   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "3685568186"
+   "elasticsearch.k8s.elastic.co/monitoring-config-hash": "1527788255"
   }
  },
  "spec": {

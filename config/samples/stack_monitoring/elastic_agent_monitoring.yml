@@ -1,0 +1,130 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: monitoring
+spec:
+  monitoring:
+    elastic_agent: true
+    metrics:
+      elasticsearchRefs:
+        - name: monitoring
+    logs:
+      elasticsearchRefs:
+        - name: monitoring
+  version: 9.5.1
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        node.store.allow_mmap: false
+        xpack.security.audit.enabled: true
+        elasticsearch.querylog:
+          enabled: true
+          threshold: 100ms
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+spec:
+  count: 1
+  version: 9.5.1
+  config:
+    log.level: info
+    api.http.host: "0.0.0.0"
+    queue.type: memory
+    slowlog.threshold.info: 1s
+  elasticsearchRefs:
+    - clusterName: test
+      name: monitoring
+  podTemplate:
+    spec:
+      containers:
+        - name: logstash
+  monitoring:
+    elastic_agent: true
+    metrics:
+      elasticsearchRefs:
+        - name: monitoring
+    logs:
+      elasticsearchRefs:
+        - name: monitoring
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input { exec { command => 'uptime' interval => 10 } }
+        filter { sleep { time => 2  every => 10} }
+        output {
+          elasticsearch {
+            hosts => [ "${TEST_ES_HOSTS}" ]
+            ssl_enabled => true
+            ssl_certificate_authorities => "${TEST_ES_SSL_CERTIFICATE_AUTHORITY}"
+            user => "${TEST_ES_USER}"
+            password => "${TEST_ES_PASSWORD}"
+            data_stream_dataset => "logstash.generated"
+          }
+        }
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  monitoring:
+    elastic_agent: true
+    metrics:
+      elasticsearchRefs:
+        - name: monitoring
+    logs:
+      elasticsearchRefs:
+        - name: monitoring
+  version: 9.5.1
+  elasticsearchRef:
+    name: monitoring
+  count: 2
+  config:
+    xpack.security.audit.enabled: true
+    xpack.fleet.packages:
+      - name: elasticsearch
+        version: latest
+      - name: kibana
+        version: latest
+      - name: logstash
+        version: latest
+      - name: beat
+        version: latest
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: heartbeat
+spec:
+  type: heartbeat
+  version: 9.5.1
+  elasticsearchRef:
+    name: monitoring
+  monitoring:
+    elastic_agent: true
+    metrics:
+      elasticsearchRefs:
+        - name: monitoring
+    logs:
+      elasticsearchRefs:
+        - name: monitoring
+  config:
+    heartbeat.monitors:
+    - name: Elasticsearch
+      type: tcp
+      schedule: '@every 1s'
+      hosts: ["monitoring-es-http.default.svc:9200"]
+    - name: Kibana
+      type: tcp
+      schedule: '@every 1s'
+      hosts: ["kibana-kb-http.default.svc:5601"]
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        securityContext:
+          runAsUser: 0

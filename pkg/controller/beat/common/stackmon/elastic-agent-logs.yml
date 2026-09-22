@@ -1,0 +1,11 @@
+inputs:
+  - type: filestream
+    id: beat-logs
+    data_stream:
+      type: logs
+      dataset: beat.log
+    paths:
+      - /usr/share/filebeat/logs/*
+    close.on_state_change.inactive: 2h
+
+# Elasticsearch output configuration is generated

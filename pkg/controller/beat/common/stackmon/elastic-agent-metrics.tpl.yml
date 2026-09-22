@@ -1,0 +1,27 @@
+inputs:
+  - type: beat/metrics
+    streams:
+      - id: beat-stats
+        data_stream:
+          type: metrics
+          dataset: beat.stack_monitoring.stats
+        metricsets:
+          - stats
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        {{ with .ClusterUUID -}}
+        cluster_uuid: "{{ . }}"
+        {{- end }}
+      - id: beat-state
+        data_stream:
+          type: metrics
+          dataset: beat.stack_monitoring.state
+        metricsets:
+          - state
+        period: 10s
+        hosts: ["{{ .URL }}"]
+        {{ with .ClusterUUID -}}
+        cluster_uuid: "{{ . }}"
+        {{- end }}
+
+# Elasticsearch output configuration is generated
