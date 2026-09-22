@@ -49,13 +49,6 @@ import (
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.0.0.
 var minSupportedVersion = version.From(7, 0, 0)
 
-const (
-	// nodeRolesEnvVarName is the Kibana container env var that selects which roles a process runs.
-	// Its format is a JSON array string, e.g. `["ui"]` or `["background_tasks"]`.
-	// This matches the approach used by the serverless kibana-controller; the env var takes
-	// precedence over node.roles in kibana.yml so ECK never writes node.roles to the config file.
-	nodeRolesEnvVarName = "NODE_ROLES"
-)
 
 type driver struct {
 	client         k8s.Client
@@ -503,7 +496,7 @@ func (d *driver) deploymentParams(
 		for i, c := range kibanaPodSpec.Spec.Containers {
 			if c.Name == kbv1.KibanaContainerName {
 				kibanaPodSpec.Spec.Containers[i].Env = append(
-					[]corev1.EnvVar{{Name: nodeRolesEnvVarName, Value: nodeRolesValue}},
+					[]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: nodeRolesValue}},
 					kibanaPodSpec.Spec.Containers[i].Env...,
 				)
 				break
