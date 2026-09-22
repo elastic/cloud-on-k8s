@@ -4,7 +4,7 @@ navigation_title: "Known issues"
 
 # Elastic Cloud on Kubernetes known issues [elastic-cloud-kubernetes-known-issues]
 
-Known issues are significant defects or limitations that may impact your implementation. These issues are actively being worked on and will be addressed in a future release. Review the Elastic Cloud on Kubernetes known issues to help you make informed decisions, such as upgrading to a new version.
+Known issues are significant defects or limitations that may impact your implementation. These issues are actively being worked on and will be addressed in a future release. Review the {{eck}} known issues to help you make informed decisions, such as upgrading to a new version.
 
 % Use the following template to add entries to this page.
 
@@ -15,6 +15,40 @@ Known issues are significant defects or limitations that may impact your impleme
 % Workaround
 % Workaround description.
 
+## {{stack}} on ECK [eck-restrictions-elastic-stack]
+
+:::{dropdown} Vector search performance degradation on Ubuntu 24.04
+{{es}} versions 8.16.x, 8.17.0 through 8.17.4, 8.18.0, and 9.0.0 through 9.0.1 might experience significant vector search performance degradation when running on Ubuntu 24.04 with Multi-Gen LRU (MGLRU) enabled.
+
+Ubuntu 24.04 enables MGLRU by default.
+An interaction between MGLRU and Lucene read-advice behavior can cause excessive major page faults and I/O during vector operations, which slows vector search and delays Lucene index merges.
+
+This issue applies to self-managed {{es}} deployments, including deployments orchestrated using {{eck}} (ECK) when the underlying hosts are running Ubuntu 24.04 with MGLRU enabled.
+
+For more information, refer to [elasticsearch#126308](https://github.com/elastic/elasticsearch/pull/126308).
+
+**Workaround**
+
+Upgrade {{es}} in the deployment to a version that contains the fix:
+
+* 8.16.x and 8.17.0 through 8.17.4: upgrade to 8.17.5 or later
+* 8.18.0: upgrade to 8.18.1 or later
+* 9.0.0 through 9.0.1: upgrade to 9.0.4 or later
+
+If you cannot upgrade immediately, you can temporarily disable MGLRU on affected Ubuntu 24.04 nodes:
+
+```bash
+sudo sh -c 'echo n > /sys/kernel/mm/lru_gen/enabled'
+```
+
+After you upgrade {{es}}, re-enable MGLRU:
+
+```bash
+sudo sh -c 'echo y > /sys/kernel/mm/lru_gen/enabled'
+```
+
+Disabling MGLRU is only a temporary workaround.
+Re-enable it after you upgrade {{es}} since it provides memory management benefits for other workloads.
 :::
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
