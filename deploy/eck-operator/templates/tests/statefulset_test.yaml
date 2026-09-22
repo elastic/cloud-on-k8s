@@ -496,3 +496,41 @@ tests:
         notMatchRegex:
           path: data["eck.yaml"]
           pattern: "cache-startup-timeout"
+  - it: should render enforce-rbac-on-refs as all when refs.enforceRBAC is all
+    set:
+      refs.enforceRBAC: all
+    asserts:
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "enforce-rbac-on-refs: all"
+  - it: should render enforce-rbac-on-refs as true when refs.enforceRBAC is true
+    set:
+      refs.enforceRBAC: true
+    asserts:
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "enforce-rbac-on-refs: true"
+  - it: should render enforce-rbac-on-refs as legacy when refs.enforceRBAC is legacy
+    set:
+      refs.enforceRBAC: legacy
+    asserts:
+      - template: configmap.yaml
+        matchRegex:
+          path: data["eck.yaml"]
+          pattern: "enforce-rbac-on-refs: legacy"
+  - it: should omit enforce-rbac-on-refs when refs.enforceRBAC is false (default)
+    asserts:
+      - template: configmap.yaml
+        notMatchRegex:
+          path: data["eck.yaml"]
+          pattern: "enforce-rbac-on-refs"
+  - it: should omit enforce-rbac-on-refs when refs.enforceRBAC is explicitly false
+    set:
+      refs.enforceRBAC: false
+    asserts:
+      - template: configmap.yaml
+        notMatchRegex:
+          path: data["eck.yaml"]
+          pattern: "enforce-rbac-on-refs"

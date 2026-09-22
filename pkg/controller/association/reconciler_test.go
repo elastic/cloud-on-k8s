@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -258,6 +260,12 @@ func (a denyAllAccessReviewer) AccessAllowed(_ context.Context, _ string, _ stri
 	return false, nil
 }
 
+type errorAccessReviewer struct{}
+
+func (e errorAccessReviewer) AccessAllowed(_ context.Context, _ string, _ string, _ runtime.Object) (bool, error) {
+	return false, errors.New("SAR API error")
+}
+
 func testReconciler(runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: kbAssociationInfo,
@@ -271,6 +279,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 			},
 		},
 		PasswordGenerator:      fixtures.MustTestRandomGenerator(24),
+		RBACOnRefsMode:         operator.RBACOnRefsModeOff,
 		referencedResourceKind: esv1.Kind,
 	}
 }
@@ -388,19 +397,70 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 }
 
 func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
+	// Kibana→EntSearch association info: no ElasticsearchRef, no user creation — pure non-ES direct association.
+	entObj := entv1.EnterpriseSearch{Namespace: "entns", Name: "entname"}
+	entHTTPCerts := corev1.Secret{
+		Namespace: "entns", Name: "entname-ent-http-certs-public",
+		Data: map[string][]byte{"ca.crt": []byte("ca"), "tls.crt": []byte("tls")},
+	}
+	entHTTPSvc := corev1.Service{
+		Namespace: "entns", Name: "entname-ent-http",
+		Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Name: "https", Port: 3002}}},
+	}
+	kbEntAssocInfo := AssociationInfo{
+		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
+		ReferencedObjTemplate: func() client.Object { return &entv1.EnterpriseSearch{} },
+		ExternalServiceURL: func(c k8s.Client, assoc commonv1.Association) (string, error) {
+			nsn := types.NamespacedName{Namespace: assoc.AssociationRef().GetNamespace(), Name: "entname-ent-http"}
+			return ServiceURL(c, nsn, "https", "")
+		},
+		ReferencedResourceVersion: func(_ k8s.Client, _ commonv1.Association) (string, bool, error) {
+			return "", false, nil
+		},
+		ReferencedResourceNamer:           entv1.Namer,
+		AssociationName:                   "kb-ent",
+		AssociatedShortName:               "kb",
+		AssociationType:                   commonv1.EntAssociationType,
+		AssociationConfAnnotationNameBase: commonv1.EntConfigAnnotationNameBase,
+		Labels: func(associated types.NamespacedName) map[string]string {
+			return map[string]string{
+				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
+				"kibanaassociation.k8s.elastic.co/namespace": associated.Namespace,
+				"kibanaassociation.k8s.elastic.co/type":      commonv1.EntAssociationType,
+			}
+		},
+		AssociationResourceNameLabelName:      "enterprisesearch.k8s.elastic.co/name",
+		AssociationResourceNamespaceLabelName: "enterprisesearch.k8s.elastic.co/namespace",
+	}
+	newEntReconciler := func(rbacMode operator.RBACOnRefsMode, reviewer rbac.AccessReviewer, rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+		kb := sampleKibanaNoEsRef()
+		kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "entname", Namespace: "entns"}
+		return Reconciler{
+			AssociationInfo: kbEntAssocInfo,
+			Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
+			accessReviewer:  reviewer,
+			watches:         watches.NewDynamicWatches(),
+			recorder:        rec,
+			OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+			RBACOnRefsMode:  rbacMode,
+		}, k8s.ExtractNamespacedName(&kb)
+	}
+
 	for _, tt := range []struct {
 		name             string
 		setup            func(*toolsevents.FakeRecorder) (Reconciler, types.NamespacedName)
 		wantWarningEvent bool
+		wantErr          bool
 		checkResult      func(*testing.T, Reconciler, kbv1.Kibana)
 	}{
 		{
-			name: "ES association denied: blocks (pending), conf cleared, user deleted",
+			name: "ES association denied in true mode: blocks (pending), conf cleared, user deleted",
 			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
 				kb := sampleAssociatedKibana()
 				require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
 				r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, esHTTPService())
 				r.accessReviewer = denyAllAccessReviewer{}
+				r.Parameters.RBACOnRefsMode = operator.RBACOnRefsModeTrue
 				r.recorder = rec
 				return r, k8s.ExtractNamespacedName(&kb)
 			},
@@ -412,6 +472,100 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 				var secret corev1.Secret
 				err := r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
 				require.True(t, apierrors.IsNotFound(err))
+			},
+		},
+		{
+			// ES is the direct ref; resolveESAndCheckRBAC handles enforcement (always unbinds).
+			// The new direct-association block is skipped (same NamespacedName). Verify all mode
+			// still blocks and cleans up, proving the ES path covers this case.
+			name: "ES association denied in all mode: blocks (pending), conf cleared, user deleted",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				kb := sampleAssociatedKibana()
+				require.NotEmpty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace, esHTTPService())
+				r.accessReviewer = denyAllAccessReviewer{}
+				r.Parameters.RBACOnRefsMode = operator.RBACOnRefsModeAll
+				r.recorder = rec
+				return r, k8s.ExtractNamespacedName(&kb)
+			},
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.AssociationStatus)
+				require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				var secret corev1.Secret
+				err := r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
+				require.True(t, apierrors.IsNotFound(err))
+			},
+		},
+		{
+			name: "non-ES association denied in true mode: warns but establishes",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeTrue, denyAllAccessReviewer{}, rec)
+			},
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationEstablished, kb.Status.EnterpriseSearchAssociationStatus)
+			},
+		},
+		{
+			name: "non-ES association denied in legacy mode: warns but establishes",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeLegacy, denyAllAccessReviewer{}, rec)
+			},
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationEstablished, kb.Status.EnterpriseSearchAssociationStatus)
+			},
+		},
+		{
+			name: "non-ES association denied in all mode: blocks (pending)",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeAll, denyAllAccessReviewer{}, rec)
+			},
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.EnterpriseSearchAssociationStatus)
+			},
+		},
+		{
+			name: "non-ES association in off mode: no warning, establishes",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeOff, rbac.NewPermissiveAccessReviewer(), rec)
+			},
+			wantWarningEvent: false,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationEstablished, kb.Status.EnterpriseSearchAssociationStatus)
+			},
+		},
+		{
+			// SAR API errors block the association even in warn-only modes (fail-safe). No Warning
+			// event is emitted because CheckAndUnbind returns before reaching the event-emit path.
+			name: "non-ES association SAR error in true mode: blocks (pending), reconcile returns error",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeTrue, errorAccessReviewer{}, rec)
+			},
+			wantWarningEvent: false,
+			wantErr:          true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.EnterpriseSearchAssociationStatus)
+			},
+		},
+		{
+			name: "non-ES association SAR error in legacy mode: blocks (pending), reconcile returns error",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				return newEntReconciler(operator.RBACOnRefsModeLegacy, errorAccessReviewer{}, rec)
+			},
+			wantWarningEvent: false,
+			wantErr:          true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.EnterpriseSearchAssociationStatus)
 			},
 		},
 		{
@@ -433,7 +587,11 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 			recorder := toolsevents.NewFakeRecorder(10)
 			r, nsn := tt.setup(recorder)
 			_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nsn})
-			require.NoError(t, err)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			var updatedKibana kbv1.Kibana
 			require.NoError(t, r.Get(context.Background(), nsn, &updatedKibana))
 			gotWarning := strings.HasPrefix(fetchEvent(recorder), corev1.EventTypeWarning)

@@ -307,6 +307,24 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	if assocStatus != "" || err != nil {
 		return assocStatus, results.WithError(err)
 	}
+	// esRefResolved is true when resolveESAndCheckRBAC found and RBAC-checked a non-external ES ref.
+	esRefResolved := esAssocRef != nil && !esAssocRef.IsExternal()
+
+	var directAssociationsUnbinder Unbinder
+	enforcementAllAssoc := r.Parameters.RBACOnRefsMode.EnforcementAllAssociations()
+	if enforcementAllAssoc {
+		directAssociationsUnbinder = r
+	}
+	// Enforce RBAC against the directly-referenced object, unless the ElasticsearchRef block
+	// already checked the same object (direct ES association — avoids a duplicate SAR).
+	// The kind check is necessary as two different resource kinds can share a namespace and name.
+	_, refObjIsES := referencedObj.(*esv1.Elasticsearch)
+	if !refObjIsES || !esRefResolved || esAssocRef.NamespacedName() != assocRef.NamespacedName() {
+		if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, referencedObj,
+			directAssociationsUnbinder, r.recorder); err != nil || (!allowed && enforcementAllAssoc) {
+			return commonv1.AssociationPending, results.WithError(err)
+		}
+	}
 
 	// metadata to propagate to children
 	assocMeta := metadata.Propagate(association, metadata.Metadata{Labels: r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())})
@@ -712,16 +730,17 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
 func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler {
-	return NewTestAssociationReconcilerWithReviewer(assocInfo, rbac.NewPermissiveAccessReviewer(), runtimeObjs...)
+	return NewTestAssociationReconcilerWithReviewer(assocInfo, rbac.NewPermissiveAccessReviewer(), operator.RBACOnRefsModeOff, runtimeObjs...)
 }
 
-func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewer rbac.AccessReviewer, runtimeObjs ...client.Object) Reconciler {
+func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewer rbac.AccessReviewer, rbacOnRefsMode operator.RBACOnRefsMode, runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  reviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
+		RBACOnRefsMode:  rbacOnRefsMode,
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
 				Version: "1.5.0",
