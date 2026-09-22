@@ -35,20 +35,20 @@ Upgrade {{es}} in the deployment to a version that contains the fix:
 * 8.18.0: upgrade to 8.18.1 or later
 * 9.0.0 through 9.0.1: upgrade to 9.0.4 or later
 
-If you cannot upgrade immediately, you can temporarily disable MGLRU on affected Ubuntu 24.04 nodes:
+If you cannot upgrade immediately, you can temporarily turn off MGLRU on affected Ubuntu 24.04 nodes:
 
 ```bash
 sudo sh -c 'echo n > /sys/kernel/mm/lru_gen/enabled'
 ```
 
-After you upgrade {{es}}, re-enable MGLRU:
+After you upgrade {{es}}, turn on MGLRU:
 
 ```bash
 sudo sh -c 'echo y > /sys/kernel/mm/lru_gen/enabled'
 ```
 
-Disabling MGLRU is only a temporary workaround.
-Re-enable it after you upgrade {{es}} since it provides memory management benefits for other workloads.
+Turning off MGLRU is only a temporary workaround.
+Turn it on after you upgrade {{es}} because it provides memory management benefits for other workloads.
 :::
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
