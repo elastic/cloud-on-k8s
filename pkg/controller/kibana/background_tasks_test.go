@@ -311,12 +311,12 @@ func TestNodeRolesEnvVar(t *testing.T) {
 			require.NoError(t, err)
 
 			env := findKibanaContainerEnv(params.PodTemplateSpec.Spec)
-			nodeRoles, found := findEnvVar(env, nodeRolesEnvVarName)
+			nodeRoles, found := findEnvVar(env, kblabel.NodeRolesEnvVar)
 			assert.Equal(t, tc.wantPresent, found, "NODE_ROLES presence mismatch")
-			if tc.wantPresent {
+if tc.wantPresent {
 				assert.Equal(t, tc.wantNodeRoles, nodeRoles.Value)
 				// Verify it is the first env var so it can be overridden by user-supplied vars.
-				assert.Equal(t, nodeRolesEnvVarName, env[0].Name, "NODE_ROLES must be first env var")
+				assert.Equal(t, kblabel.NodeRolesEnvVar, env[0].Name, "NODE_ROLES must be first env var")
 			}
 		})
 	}

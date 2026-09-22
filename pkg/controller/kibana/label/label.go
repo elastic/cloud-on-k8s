@@ -38,6 +38,10 @@ const (
 	// NodeRolesConfigKey is the Kibana configuration key that selects which roles a process runs.
 	// ECK manages this key when background task isolation is enabled; users must not set it.
 	NodeRolesConfigKey = "node.roles"
+
+	// NodeRolesEnvVar is the Kibana container environment variable that overrides node.roles.
+	// ECK injects this when background task isolation is active (spec.backgroundTasks is set).
+	NodeRolesEnvVar = "NODE_ROLES"
 )
 
 // Role describes a Kibana node role and its Kubernetes label value.

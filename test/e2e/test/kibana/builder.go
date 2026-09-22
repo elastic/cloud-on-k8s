@@ -282,6 +282,13 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
+func (b Builder) WithBackgroundTasks(count int32) Builder {
+	b.Kibana.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+		Count: &count,
+	}
+	return b
+}
+
 func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
 	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
 		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
