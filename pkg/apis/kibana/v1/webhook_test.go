@@ -478,6 +478,89 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
 		},
+		// --- background tasks checks ---
+		{
+			Name:      "backgroundTasks-valid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				count := int32(2)
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: &count}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-version-too-old",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.15.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookFailed("spec.backgroundTasks requires Kibana >= 8.16.0"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-in-spec-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"node.roles": []string{"ui"}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"node.roles": []string{"background_tasks"}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
+			Name:      "backgroundTasks-negative-count-rejected",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				count := int32(-1)
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: &count}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("count must be >= 0"),
+		},
+		{
+			Name:      "backgroundTasks-nil-count-allowed-for-hpa",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				// nil Count means user-managed replicas (HPA scenario).
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(kbv1.Validate)

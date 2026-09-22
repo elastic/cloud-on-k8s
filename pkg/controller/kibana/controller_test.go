@@ -107,7 +107,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, kibana.ObjectMeta.Finalizers, 0)
 				require.Equal(t, kibanav1.KibanaStatus{
-					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=prime",
 					Count:              0,
 					AvailableNodes:     0,
 					Version:            "",
@@ -199,7 +199,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=prime",
 					Count:              0,
 					AvailableNodes:     0,
 					Version:            "",
@@ -295,7 +295,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				err := f.Client.Get(context.Background(), types.NamespacedName{Namespace: "test", Name: "test-kibana"}, &kibana)
 				require.NoError(t, err)
 				require.Equal(t, kibanav1.KibanaStatus{
-					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana",
+					Selector:           "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=prime",
 					Count:              0,
 					AvailableNodes:     0,
 					Version:            "",

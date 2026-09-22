@@ -129,6 +129,7 @@ func NewPodTemplateSpec(
 	basePath string,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
+	configSecretName string,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -144,8 +145,15 @@ func NewPodTemplateSpec(
 		Labels:      labels,
 		Annotations: DefaultAnnotations,
 	})
-	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources).
+
+	var tb corev1.PodTemplateSpec
+	if kb.BackgroundTasksEnabled() {
+		tb = kb.Spec.BackgroundTasks.PodTemplate
+	} else {
+		tb = kb.Spec.PodTemplate
+	}
+
+	builder := defaults.NewPodTemplateBuilder(tb, kbv1.KibanaContainerName).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
@@ -154,11 +162,17 @@ func NewPodTemplateSpec(
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
 		WithPorts(ports)
 
+	if kb.BackgroundTasksEnabled() && !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
+		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.BackgroundTasks.Resources)
+	} else {
+		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources)
+	}
+
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb)
+	initContainer, err := initcontainer.NewInitContainer(configSecretName)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -173,7 +187,7 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
+	canEnableSecurityContext := v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	if canEnableSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
