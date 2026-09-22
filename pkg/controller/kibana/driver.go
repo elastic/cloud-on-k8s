@@ -482,12 +482,6 @@ func (d *driver) deploymentParams(
 		return deployment.Params{}, err
 	}
 
-	// For the background tasks pool, use the pool-specific pod template and resources.
-	kbForPool := *kb
-	if role.Name == kblabel.BackgroundTasksRole.Name && kb.Spec.BackgroundTasks != nil {
-		kb.Spec.BackgroundTasks.PodTemplate = mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
-	}
-
 	// Pool-specific metadata: add role label to pod labels.
 	poolMeta := meta
 	if role.LabelValue != "" {
@@ -496,7 +490,7 @@ func (d *driver) deploymentParams(
 		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 	}
 
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, kbForPool, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -575,81 +569,6 @@ func (d *driver) deploymentParams(
 		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
-}
-
-// mergePoolPodTemplate overlays the pool-specific template on top of the base template.
-// Each field is merged independently: pool wins when it carries a non-zero value, base is kept
-// otherwise. Metadata maps (labels, annotations) are merged rather than replaced.
-// Containers and init containers are merged by name: a pool container that matches a base
-// container by name overlays individual fields; unmatched pool containers are appended.
-func mergePoolPodTemplate(base, pool corev1.PodTemplateSpec) corev1.PodTemplateSpec {
-	merged := *base.DeepCopy()
-
-	// ObjectMeta: merge maps so pool additions don't wipe base entries.
-	if len(pool.Labels) > 0 {
-		merged.Labels = maps.Clone(merged.Labels)
-		maps.Copy(merged.Labels, pool.Labels)
-	}
-	if len(pool.Annotations) > 0 {
-		merged.Annotations = maps.Clone(merged.Annotations)
-		maps.Copy(merged.Annotations, pool.Annotations)
-	}
-
-	// Scheduling fields: pool wins when explicitly set.
-	if pool.Spec.NodeSelector != nil {
-		merged.Spec.NodeSelector = pool.Spec.NodeSelector
-	}
-	if pool.Spec.Affinity != nil {
-		merged.Spec.Affinity = pool.Spec.Affinity
-	}
-	if len(pool.Spec.Tolerations) > 0 {
-		merged.Spec.Tolerations = pool.Spec.Tolerations
-	}
-	if len(pool.Spec.TopologySpreadConstraints) > 0 {
-		merged.Spec.TopologySpreadConstraints = pool.Spec.TopologySpreadConstraints
-	}
-	if pool.Spec.PriorityClassName != "" {
-		merged.Spec.PriorityClassName = pool.Spec.PriorityClassName
-	}
-	if pool.Spec.ServiceAccountName != "" {
-		merged.Spec.ServiceAccountName = pool.Spec.ServiceAccountName
-	}
-	if pool.Spec.SecurityContext != nil {
-		merged.Spec.SecurityContext = pool.Spec.SecurityContext
-	}
-
-	containerName := func(c corev1.Container) string { return c.Name }
-	if len(pool.Spec.Containers) > 0 {
-		merged.Spec.Containers = mergeByName(merged.Spec.Containers, pool.Spec.Containers, containerName)
-	}
-	if len(pool.Spec.InitContainers) > 0 {
-		merged.Spec.InitContainers = mergeByName(merged.Spec.InitContainers, pool.Spec.InitContainers, containerName)
-	}
-	if len(pool.Spec.Volumes) > 0 {
-		merged.Spec.Volumes = mergeByName(merged.Spec.Volumes, pool.Spec.Volumes, func(v corev1.Volume) string { return v.Name })
-	}
-
-	return merged
-}
-
-// mergeByName merges pool items into base by name, replacing on match and appending novel items.
-func mergeByName[T any](base, pool []T, name func(T) string) []T {
-	result := make([]T, 0, len(base)+len(pool))
-	result = append(result, base...)
-	for _, p := range pool {
-		found := false
-		for i, b := range result {
-			if name(b) == name(p) {
-				result[i] = p
-				found = true
-				break
-			}
-		}
-		if !found {
-			result = append(result, p)
-		}
-	}
-	return result
 }
 
 func (d *driver) buildVolumes(kb *kbv1.Kibana, configSecretName string) ([]commonvolume.VolumeLike, error) {
