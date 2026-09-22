@@ -154,8 +154,8 @@ type KibanaBackgroundTasks struct {
 
 	// PodTemplate provides customization options for the background tasks pool pods.
 	// It is applied as a strategic-merge overlay on top of spec.podTemplate.
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 }
 

@@ -171,6 +171,147 @@ func TestPoolParams(t *testing.T) {
 	})
 }
 
+// ---- mergePoolPodTemplate ---------------------------------------------------
+
+func TestMergePoolPodTemplate(t *testing.T) {
+	base := corev1.PodTemplateSpec{
+		Labels:      map[string]string{"base-label": "base"},
+		Annotations: map[string]string{"base-ann": "base"},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{"base-node": "sel"},
+			Tolerations:  []corev1.Toleration{{Key: "base-tol"}},
+			Containers: []corev1.Container{
+				{Name: "kibana", Image: "base-image", Command: []string{"base"}},
+				{Name: "sidecar", Image: "sidecar-image"},
+			},
+			Volumes: []corev1.Volume{
+				{Name: "vol-a", EmptyDir: &corev1.EmptyDirVolumeSource{}},
+			},
+		},
+	}
+
+	t.Run("empty overlay returns base unchanged", func(t *testing.T) {
+		got, err := mergePoolPodTemplate(base, corev1.PodTemplateSpec{})
+		require.NoError(t, err)
+		assert.Equal(t, base, got)
+	})
+
+	t.Run("nodeSelector from overlay merge with base", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{NodeSelector: map[string]string{"pool-node": "sel"}}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"base-node": "sel", "pool-node": "sel"}, got.Spec.NodeSelector)
+		// Base toleration still intact.
+		assert.Equal(t, base.Spec.Tolerations, got.Spec.Tolerations)
+	})
+
+	t.Run("tolerations from overlay replace base", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{Tolerations: []corev1.Toleration{{Key: "pool-tol"}}}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		require.Len(t, got.Spec.Tolerations, 1)
+		assert.Equal(t, "pool-tol", got.Spec.Tolerations[0].Key)
+		// Base nodeSelector still intact.
+		assert.Equal(t, base.Spec.NodeSelector, got.Spec.NodeSelector)
+	})
+
+	t.Run("affinity from overlay wins; base fields not in pool survive", func(t *testing.T) {
+		aff := &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{}}
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{Affinity: aff}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, aff, got.Spec.Affinity)
+		assert.Equal(t, base.Spec.NodeSelector, got.Spec.NodeSelector)
+	})
+
+	t.Run("labels are merged not replaced", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Labels: map[string]string{"pool-label": "pool"}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, "base", got.Labels["base-label"], "base label must survive")
+		assert.Equal(t, "pool", got.Labels["pool-label"], "pool label must be added")
+	})
+
+	t.Run("annotations are merged not replaced", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Annotations: map[string]string{"pool-ann": "pool"}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, "base", got.Annotations["base-ann"], "base annotation must survive")
+		assert.Equal(t, "pool", got.Annotations["pool-ann"], "pool annotation must be added")
+	})
+
+	t.Run("overlay label overwrites base label with same key", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Labels: map[string]string{"base-label": "overridden"}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, "overridden", got.Labels["base-label"])
+	})
+
+	t.Run("container with same name replaces base container", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "kibana", Image: "pool-image", Command: []string{"pool"}}},
+		}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		require.Len(t, got.Spec.Containers, 2, "sidecar must be preserved")
+		var kib corev1.Container
+		for _, c := range got.Spec.Containers {
+			if c.Name == "kibana" {
+				kib = c
+			}
+		}
+		assert.Equal(t, "pool-image", kib.Image)
+		assert.Equal(t, []string{"pool"}, kib.Command)
+	})
+
+	t.Run("novel container in pool is appended", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{Name: "extra", Image: "extra-image"}},
+		}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Len(t, got.Spec.Containers, 3)
+		names := make([]string, 0, 3)
+		for _, c := range got.Spec.Containers {
+			names = append(names, c.Name)
+		}
+		assert.Contains(t, names, "extra")
+		assert.Contains(t, names, "kibana")
+		assert.Contains(t, names, "sidecar")
+	})
+
+	t.Run("volume with same name replaces base volume", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{{Name: "vol-a", HostPath: &corev1.HostPathVolumeSource{Path: "/new"}}},
+		}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		require.Len(t, got.Spec.Volumes, 1)
+		assert.NotNil(t, got.Spec.Volumes[0].HostPath)
+		assert.Equal(t, "/new", got.Spec.Volumes[0].HostPath.Path)
+	})
+
+	t.Run("novel volume in pool is appended", func(t *testing.T) {
+		pool := corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{{Name: "vol-b", EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		}}
+		got, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Len(t, got.Spec.Volumes, 2)
+	})
+
+	t.Run("base is not mutated", func(t *testing.T) {
+		original := base.DeepCopy()
+		pool := corev1.PodTemplateSpec{
+			Labels: map[string]string{"x": "y"},
+			Spec:   corev1.PodSpec{NodeSelector: map[string]string{"x": "y"}},
+		}
+		_, err := mergePoolPodTemplate(base, pool)
+		require.NoError(t, err)
+		assert.Equal(t, *original, base)
+	})
+}
+
 // ---- GC methods -------------------------------------------------------------
 
 func TestGarbageCollectBackgroundResources(t *testing.T) {
@@ -313,7 +454,7 @@ func TestNodeRolesEnvVar(t *testing.T) {
 			env := findKibanaContainerEnv(params.PodTemplateSpec.Spec)
 			nodeRoles, found := findEnvVar(env, kblabel.NodeRolesEnvVar)
 			assert.Equal(t, tc.wantPresent, found, "NODE_ROLES presence mismatch")
-if tc.wantPresent {
+			if tc.wantPresent {
 				assert.Equal(t, tc.wantNodeRoles, nodeRoles.Value)
 				// Verify it is the first env var so it can be overridden by user-supplied vars.
 				assert.Equal(t, kblabel.NodeRolesEnvVar, env[0].Name, "NODE_ROLES must be first env var")
