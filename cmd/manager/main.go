@@ -234,7 +234,7 @@ func Command() *cobra.Command {
 	cmd.Flags().String(
 		operator.EnforceRBACOnRefsFlag,
 		string(operator.RBACOnRefsModeOff),
-		`Restrict cross-namespace resource association through RBAC. Accepts: false (off), true/legacy (non-ES associations warn but proceed), all (full enforcement). The bare flag is equivalent to --enforce-rbac-on-refs=true.`,
+		`Restrict cross-namespace resource association through RBAC. Accepts: false (off), true/legacy (direct and transitive Elasticsearch references are enforced; other targets only warn), all (full enforcement). The bare flag is equivalent to --enforce-rbac-on-refs=true.`,
 	)
 	cmd.Flags().Lookup(operator.EnforceRBACOnRefsFlag).NoOptDefVal = string(operator.RBACOnRefsModeTrue)
 	cmd.Flags().String(
