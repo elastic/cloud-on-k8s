@@ -17,38 +17,20 @@ Known issues are significant defects or limitations that may impact your impleme
 
 ## {{stack}} on ECK [eck-restrictions-elastic-stack]
 
-:::{dropdown} Vector search performance degradation on Ubuntu 24.04
-{{es}} versions 8.16.x, 8.17.0 through 8.17.4, 8.18.0, and 9.0.0 through 9.0.1 might experience significant vector search performance degradation when running on Ubuntu 24.04 with Multi-Gen LRU (MGLRU) enabled.
+:::{dropdown} Vector search performance can degrade on Linux systems running kernel 6.1 or later when Multi-Gen LRU (MGLRU) is enabled
+Affected {{es}} versions can experience significant vector search slowdowns and delayed Lucene index merges.
+MGLRU was introduced in Linux kernel 6.1 and is enabled by default in some Linux distributions, including Ubuntu 24.04.
+An interaction between MGLRU and Lucene's read advice behavior can result in excessive major page faults and I/O activity during vector operations.
 
-Ubuntu 24.04 enables MGLRU by default.
-An interaction between MGLRU and Lucene read-advice behavior can cause excessive major page faults and I/O during vector operations, which slows vector search and delays Lucene index merges.
-
-This issue applies to self-managed {{es}} deployments, including deployments orchestrated using {{eck}} (ECK) when the underlying hosts are running Ubuntu 24.04 with MGLRU enabled.
-
-For more information, refer to [elasticsearch#126308](https://github.com/elastic/elasticsearch/pull/126308).
-
-**Workaround**
-
-Upgrade {{es}} in the deployment to a version that contains the fix:
-
-* 8.16.x and 8.17.0 through 8.17.4: upgrade to 8.17.5 or later
-* 8.18.0: upgrade to 8.18.1 or later
-* 9.0.0 through 9.0.1: upgrade to 9.0.4 or later
-
-If you cannot upgrade immediately, you can temporarily turn off MGLRU on affected Ubuntu 24.04 nodes:
+To determine whether MGLRU is enabled, run:
 
 ```bash
-sudo sh -c 'echo n > /sys/kernel/mm/lru_gen/enabled'
+cat /sys/kernel/mm/lru_gen/enabled`
 ```
 
-After you upgrade {{es}}, turn on MGLRU:
+A value of `0x0007` indicates that MGLRU and all of its currently supported features are enabled.
 
-```bash
-sudo sh -c 'echo y > /sys/kernel/mm/lru_gen/enabled'
-```
-
-Turning off MGLRU is only a temporary workaround.
-Turn it on after you upgrade {{es}} because it provides memory management benefits for other workloads.
+For more information, refer to [elasticsearch#124499](https://github.com/elastic/elasticsearch/issues/124499)
 :::
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
