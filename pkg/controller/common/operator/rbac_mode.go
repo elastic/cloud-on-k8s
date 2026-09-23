@@ -26,18 +26,18 @@ const (
 // values (e.g. "0", "f", "F", "FALSE") map to RBACOnRefsModeOff.
 func ParseRBACOnRefsMode(v string) (RBACOnRefsMode, error) {
 	switch RBACOnRefsMode(v) {
-	case RBACOnRefsModeOff, RBACOnRefsModeTrue, RBACOnRefsModeLegacy, RBACOnRefsModeAll:
+	case RBACOnRefsModeLegacy, RBACOnRefsModeAll:
 		return RBACOnRefsMode(v), nil
-	default:
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return RBACOnRefsModeOff, fmt.Errorf("invalid value %q, expected one of: false, true, legacy, all", v)
-		}
-		if b {
-			return RBACOnRefsModeTrue, nil
-		}
-		return RBACOnRefsModeOff, nil
 	}
+
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return RBACOnRefsModeOff, fmt.Errorf("invalid value %q, expected one of: false, true, legacy, all", v)
+	}
+	if b {
+		return RBACOnRefsModeTrue, nil
+	}
+	return RBACOnRefsModeOff, nil
 }
 
 // EnforcementEnabled returns true when any RBAC check is active.
