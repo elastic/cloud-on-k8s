@@ -25,7 +25,7 @@ const (
 // strconv.ParseBool (e.g. "1", "t", "T", "TRUE") map to RBACOnRefsModeTrue and falsy
 // values (e.g. "0", "f", "F", "FALSE") map to RBACOnRefsModeOff.
 func ParseRBACOnRefsMode(v string) (RBACOnRefsMode, error) {
-	switch RBACOnRefsMode(v) {
+	switch RBACOnRefsMode(v) { //nolint:exhaustive
 	case RBACOnRefsModeLegacy, RBACOnRefsModeAll:
 		return RBACOnRefsMode(v), nil
 	}
