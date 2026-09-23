@@ -65,20 +65,44 @@ func TestRBACOnRefsMode_Methods(t *testing.T) {
 
 func TestRBACOnRefsMode_StartupMessage(t *testing.T) {
 	for _, tt := range []struct {
-		mode      RBACOnRefsMode
-		wantEmpty bool
+		mode         RBACOnRefsMode
+		wantContains []string
 	}{
-		{RBACOnRefsModeOff, true},
-		{RBACOnRefsModeTrue, false},
-		{RBACOnRefsModeLegacy, false},
-		{RBACOnRefsModeAll, false},
+		{
+			mode: RBACOnRefsModeOff,
+		},
+		{
+			mode: RBACOnRefsModeTrue,
+			wantContains: []string{
+				"subject to change",
+				"emit a warning",
+				"--enforce-rbac-on-refs=all",
+			},
+		},
+		{
+			mode: RBACOnRefsModeLegacy,
+			wantContains: []string{
+				"deprecated",
+				"will be removed",
+				"identical to --enforce-rbac-on-refs=true",
+			},
+		},
+		{
+			mode: RBACOnRefsModeAll,
+			wantContains: []string{
+				"active for all cross-namespace associations",
+				"will be blocked",
+			},
+		},
 	} {
 		t.Run(string(tt.mode), func(t *testing.T) {
-			w := tt.mode.StartupMessage()
-			if tt.wantEmpty {
-				require.Empty(t, w)
-			} else {
-				require.NotEmpty(t, w)
+			message := tt.mode.StartupMessage()
+			if len(tt.wantContains) == 0 {
+				require.Empty(t, message)
+				return
+			}
+			for _, expected := range tt.wantContains {
+				require.Contains(t, message, expected)
 			}
 		})
 	}
