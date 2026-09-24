@@ -8,10 +8,10 @@ plans:
   serviceAccount: true
   enforceSecurityPolicies: true
   gke:
-    region: europe-west1
+    region: us-east4
     fallbackRegions:
       - europe-west4
-      - us-east4
+      - europe-west1
     # Attach, format, and provision the raw Local SSD as fixed-size local PVs.
     localNvmeSsdBlock: true
     nodeCountPerZone: 1
@@ -27,10 +27,10 @@ plans:
   # diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
     autopilot: true
-    region: europe-west1
+    region: europe-west4
     fallbackRegions:
-      - europe-west4
       - us-east4
+      - europe-west1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: gke-dev
   operation: create
