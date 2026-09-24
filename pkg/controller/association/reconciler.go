@@ -299,7 +299,27 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return status, results.WithError(err)
 	}
 
-	// Resolve the (possibly transitive) ES ref and enforce RBAC against it before any side-effecting operations.
+	var directAssociationsUnbinder Unbinder
+	enforcementAllAssoc := r.Parameters.RBACOnRefsMode.EnforcementAllAssociations()
+	if enforcementAllAssoc {
+		directAssociationsUnbinder = r
+	}
+	// Check RBAC for the directly-referenced object before calling resolveESAndCheckRBAC.
+	// resolveESAndCheckRBAC can return early if the transitive ES is missing or in error.
+	// That early return is unrelated to the direct association. Without this check first,
+	// a denied direct reference may never be unbound.
+	// Skip this check when the direct reference is an Elasticsearch. For a direct ES association,
+	// the transitive target is the same object. resolveESAndCheckRBAC always checks it.
+	// If both run, the function emits a duplicate warning.
+	_, refObjIsES := referencedObj.(*esv1.Elasticsearch)
+	if !refObjIsES {
+		if allowed, err := CheckAndUnbind(ctx, r.accessReviewer, association, referencedObj,
+			directAssociationsUnbinder, r.recorder); err != nil || (!allowed && enforcementAllAssoc) {
+			return commonv1.AssociationPending, results.WithError(err)
+		}
+	}
+
+	// Resolve the (possibly transitive) ES reference and check RBAC before any side-effecting operations.
 	// esAssocRef is nil in two cases: ElasticsearchRef is not configured at all, or ElasticsearchRef returns
 	// !found with ElasticsearchUserCreation==nil (e.g. Fleet Server in manual-setup mode with no ES ref).
 	// The ElasticsearchUserCreation==nil guard below prevents any dereference in either path.
@@ -496,9 +516,10 @@ func (r *Reconciler) getElasticsearch(
 	return es, "", nil
 }
 
-// resolveESAndCheckRBAC resolves the (possibly transitive) Elasticsearch reference for the association
-// and checks RBAC against it. It returns the resolved ref and ES object for use by the caller.
-// A non-empty status or a non-nil error means the caller should return immediately.
+// resolveESAndCheckRBAC finds the Elasticsearch reference for the association.
+// The reference may be direct or transitive. The function checks RBAC against the resolved ES.
+// It returns the resolved reference and ES object for the caller.
+// A non-empty status or a non-nil error means the caller must return immediately.
 func (r *Reconciler) resolveESAndCheckRBAC(ctx context.Context, association commonv1.Association) (commonv1.AssociationRef, esv1.Elasticsearch, commonv1.AssociationStatus, error) {
 	if r.ElasticsearchRef == nil {
 		return nil, esv1.Elasticsearch{}, "", nil
@@ -509,11 +530,12 @@ func (r *Reconciler) resolveESAndCheckRBAC(ctx context.Context, association comm
 	}
 	if !found {
 		if r.ElasticsearchUserCreation != nil {
-			// Transitive ES not yet established; without it we cannot create the ES user.
+			// The transitive ES is not yet established. Without it the function cannot create the ES user.
 			return nil, esv1.Elasticsearch{}, commonv1.AssociationPending, RemoveAssociationConf(ctx, r.Client, association)
 		}
-		// No ES ref and no user creation required (e.g. Fleet Server with no ES ref
-		// configured - manual setup). Skip the transitive RBAC check and proceed.
+		// No ES reference is set. No user creation is required.
+		// Example: Fleet Server in manual-setup mode with no ES reference.
+		// Skip the transitive RBAC check.
 		return nil, esv1.Elasticsearch{}, "", nil
 	}
 	if esAssocRef.IsExternal() {
@@ -712,16 +734,17 @@ func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedNa
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
 func NewTestAssociationReconciler(assocInfo AssociationInfo, runtimeObjs ...client.Object) Reconciler {
-	return NewTestAssociationReconcilerWithReviewer(assocInfo, rbac.NewPermissiveAccessReviewer(), runtimeObjs...)
+	return NewTestAssociationReconcilerWithReviewer(assocInfo, rbac.NewPermissiveAccessReviewer(), operator.RBACOnRefsModeOff, runtimeObjs...)
 }
 
-func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewer rbac.AccessReviewer, runtimeObjs ...client.Object) Reconciler {
+func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewer rbac.AccessReviewer, rbacOnRefsMode operator.RBACOnRefsMode, runtimeObjs ...client.Object) Reconciler {
 	return Reconciler{
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  reviewer,
 		watches:         watches.NewDynamicWatches(),
 		recorder:        toolsevents.NewFakeRecorder(10),
+		RBACOnRefsMode:  rbacOnRefsMode,
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
 				Version: "1.5.0",

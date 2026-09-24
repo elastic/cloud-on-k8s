@@ -66,7 +66,7 @@ func TestCheckAndUnbind(t *testing.T) {
 		accessReviewer rbac.AccessReviewer
 		associated     commonv1.Association
 		object         runtime.Object
-		unbinder       fakeUnbinder
+		unbinder       Unbinder // interface type: nil literal produces a true nil interface
 		recorder       *toolsevents.FakeRecorder
 	}
 	tests := []struct {
@@ -75,39 +75,48 @@ func TestCheckAndUnbind(t *testing.T) {
 		want, wantErr, wantEvent, wantFakeUnbinderCalled bool
 	}{
 		{
-			name: "Association not allowed, ensure unbinder is called",
+			name: "denied with unbinder: unbinder called, event emitted, returns false",
 			args: args{
-				associated: apmServer,
-				object:     es,
-				accessReviewer: &fakeAccessReviewer{
-					allowed: false,
-				},
-				unbinder: fakeUnbinder{},
-				recorder: toolsevents.NewFakeRecorder(10),
+				associated:     apmServer,
+				object:         es,
+				accessReviewer: &fakeAccessReviewer{allowed: false},
+				unbinder:       &fakeUnbinder{},
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: true,
 			wantEvent:              true,
 			want:                   false,
 		},
 		{
-			name: "Association allowed, ensure unbinder is not called",
+			name: "allowed with unbinder: unbinder not called, no event, returns true",
 			args: args{
-				associated: apmServer,
-				object:     es,
-				accessReviewer: &fakeAccessReviewer{
-					allowed: true,
-				},
-				unbinder: fakeUnbinder{},
-				recorder: toolsevents.NewFakeRecorder(10),
+				associated:     apmServer,
+				object:         es,
+				accessReviewer: &fakeAccessReviewer{allowed: true},
+				unbinder:       &fakeUnbinder{},
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: false,
 			wantEvent:              false,
 			want:                   true,
 		},
+		{
+			name: "denied with nil unbinder: event emitted, no unbind called, returns false without error",
+			args: args{
+				associated:     apmServer,
+				object:         es,
+				accessReviewer: &fakeAccessReviewer{allowed: false},
+				unbinder:       nil,
+				recorder:       toolsevents.NewFakeRecorder(10),
+			},
+			wantFakeUnbinderCalled: false,
+			wantEvent:              true,
+			want:                   false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckAndUnbind(context.Background(), tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder, tt.args.recorder)
+			got, err := CheckAndUnbind(context.Background(), tt.args.accessReviewer, tt.args.associated, tt.args.object, tt.args.unbinder, tt.args.recorder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckAndUnbind() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -115,8 +124,14 @@ func TestCheckAndUnbind(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("CheckAndUnbind() = %v, want %v", got, tt.want)
 			}
-			if tt.args.unbinder.called != tt.wantFakeUnbinderCalled {
-				t.Errorf("fakeUnbinder.called = %v, want %v", tt.args.unbinder.called, tt.wantFakeUnbinderCalled)
+			if tt.args.unbinder != nil {
+				fu, ok := tt.args.unbinder.(*fakeUnbinder)
+				if !ok {
+					t.Fatalf("unbinder is not *fakeUnbinder: %T", tt.args.unbinder)
+				}
+				if fu.called != tt.wantFakeUnbinderCalled {
+					t.Errorf("fakeUnbinder.called = %v, want %v", fu.called, tt.wantFakeUnbinderCalled)
+				}
 			}
 			event := fetchEvent(tt.args.recorder)
 			if len(event) > 0 != tt.wantEvent {

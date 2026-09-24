@@ -231,11 +231,12 @@ func Command() *cobra.Command {
 		"",
 		"Set the distribution channel to report through telemetry.",
 	)
-	cmd.Flags().Bool(
+	cmd.Flags().String(
 		operator.EnforceRBACOnRefsFlag,
-		false, // Set to false for backward compatibility
-		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+		string(operator.RBACOnRefsModeOff),
+		`Restrict cross-namespace resource association through RBAC. Accepts: false (off), true/legacy (direct and transitive Elasticsearch references are enforced; other targets only warn), all (full enforcement). The bare flag is equivalent to --enforce-rbac-on-refs=true.`,
 	)
+	cmd.Flags().Lookup(operator.EnforceRBACOnRefsFlag).NoOptDefVal = string(operator.RBACOnRefsModeTrue)
 	cmd.Flags().String(
 		operator.ProbesBindAddressFlag,
 		":8081",
@@ -825,10 +826,17 @@ func startOperator(ctx context.Context) error {
 		}
 	}
 
-	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
+	rbacMode, err := operator.ParseRBACOnRefsMode(viper.GetString(operator.EnforceRBACOnRefsFlag))
+	if err != nil {
+		return err
+	}
+	if w := rbacMode.StartupMessage(); w != "" {
+		log.Info(w)
+	}
+	params.RBACOnRefsMode = rbacMode
 
 	var accessReviewer rbac.AccessReviewer
-	if enforceRbacOnRefs {
+	if rbacMode.EnforcementEnabled() {
 		accessReviewer = rbac.NewSubjectAccessReviewer(clientset)
 	} else {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
