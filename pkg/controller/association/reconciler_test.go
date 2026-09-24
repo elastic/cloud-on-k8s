@@ -476,8 +476,8 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 		},
 		{
 			// ES is the direct ref; resolveESAndCheckRBAC handles enforcement (always unbinds).
-			// The new direct-association block is skipped (same NamespacedName). Verify all mode
-			// still blocks and cleans up, proving the ES path covers this case.
+			// The direct-association block is skipped because refObjIsES is true.
+			// Verify that all mode still blocks and cleans up via the ES path.
 			name: "ES association denied in all mode: blocks (pending), conf cleared, user deleted",
 			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
 				kb := sampleAssociatedKibana()
@@ -521,14 +521,32 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 			},
 		},
 		{
-			name: "non-ES association denied in all mode: blocks (pending)",
+			// Use a Kibana with a pre-existing EntSearch conf annotation to verify that
+			// Unbind is called and RemoveAssociationConf clears the annotation on denial.
+			name: "non-ES association denied in all mode: blocks (pending), conf cleared",
 			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
-				return newEntReconciler(operator.RBACOnRefsModeAll, denyAllAccessReviewer{}, rec)
+				kb := sampleKibanaNoEsRef()
+				kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "entname", Namespace: "entns"}
+				kb.Annotations = map[string]string{
+					kb.EntAssociation().AssociationConfAnnotationName(): assocConf(
+						"entauth", "entkey", false, "ent-ca", "https://entname-ent-http.entns.svc:3002",
+					),
+				}
+				return Reconciler{
+					AssociationInfo: kbEntAssocInfo,
+					Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
+					accessReviewer:  denyAllAccessReviewer{},
+					watches:         watches.NewDynamicWatches(),
+					recorder:        rec,
+					OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+					RBACOnRefsMode:  operator.RBACOnRefsModeAll,
+				}, k8s.ExtractNamespacedName(&kb)
 			},
 			wantWarningEvent: true,
 			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
 				t.Helper()
 				require.Equal(t, commonv1.AssociationPending, kb.Status.EnterpriseSearchAssociationStatus)
+				require.Empty(t, kb.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
 			},
 		},
 		{
