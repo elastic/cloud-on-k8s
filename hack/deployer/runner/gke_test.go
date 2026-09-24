@@ -57,7 +57,10 @@ func (f *fakeClusterContext) delete() error {
 	f.deleteCalls++
 	return f.deleteErr
 }
-func (f *fakeClusterContext) bindRoles(Plan) error {
+func (f *fakeClusterContext) bindRolesCmd() (string, error) {
+	return "kubectl create clusterrolebinding ...", nil
+}
+func (f *fakeClusterContext) bindRoles() error {
 	f.bindRolesCalls++
 	return nil
 }
@@ -375,6 +378,26 @@ func TestGKEDriverCreate(t *testing.T) {
 				require.Zero(t, fakes[2].existsCalls)
 				require.Zero(t, fakes[0].createCalls+fakes[1].createCalls+fakes[2].createCalls)
 				require.Equal(t, 1, fakes[1].credentialsCalls)
+				require.Zero(t, fakes[1].bindRolesCalls)
+			},
+		},
+		{
+			name: "existing cluster recovered from interrupted run is fully configured",
+			plan: Plan{ClusterName: "existing-cluster", Gke: &GKESettings{}},
+			fakes: []*fakeClusterContext{
+				{regionName: "europe-west1"},
+				{regionName: "europe-west4", existsValue: true},
+				{regionName: "us-east4"},
+			},
+			configure: func(d *GKEDriver) {
+				d.createStorageClassFn = func() error { return nil }
+			},
+			check: func(t *testing.T, fakes []*fakeClusterContext) {
+				t.Helper()
+				require.Zero(t, fakes[0].createCalls+fakes[1].createCalls+fakes[2].createCalls)
+				require.Equal(t, 1, fakes[1].credentialsCalls)
+				require.Equal(t, 1, fakes[1].bindRolesCalls)
+				require.Equal(t, 1, fakes[1].copyStorageCalls)
 			},
 		},
 		{

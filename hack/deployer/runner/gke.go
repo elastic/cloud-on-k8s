@@ -70,7 +70,8 @@ type clusterContext interface {
 	create(Plan) (string, error)
 	updateLabels() error
 	delete() error
-	bindRoles(Plan) error
+	bindRolesCmd() (string, error)
+	bindRoles() error
 	copyBuiltInStorageClasses() error
 	getCredentials() error
 	listClusters(string, time.Time) ([]string, error)
@@ -231,14 +232,14 @@ func (d *GKEDriver) create() error {
 	}
 	if existing != nil {
 		log.Printf("not creating as cluster exists in region %s", existing.region())
-		return d.finishCreate(existing, false)
+		return d.finishCreate(existing)
 	}
 
 	cCtx, err := createInRegions(d.plan, d.clusters)
 	if err != nil {
 		return err
 	}
-	return d.finishCreate(cCtx, true)
+	return d.finishCreate(cCtx)
 }
 
 func findExistingCluster(clusters []clusterContext) (clusterContext, error) {
@@ -284,15 +285,12 @@ func isCapacityError(output string) bool {
 		strings.Contains(output, gkeQuotaErrorIndicator)
 }
 
-func (d *GKEDriver) finishCreate(cCtx clusterContext, created bool) error {
-	// Existing clusters skip label updates and role binding. A previous partial run
-	// may therefore leave an existing cluster under-configured; this is a known limitation.
-	if created {
-		if err := d.configureCreatedCluster(cCtx); err != nil {
+func (d *GKEDriver) finishCreate(cCtx clusterContext) error {
+	if d.plan.Gke.Autopilot {
+		// Gcloud does not support labels when creating Autopilot clusters.
+		if err := cCtx.updateLabels(); err != nil {
 			return err
 		}
-	} else {
-		log.Printf("warning: existing cluster found; skipping label and role setup; cluster may be under-configured if a previous run was interrupted")
 	}
 
 	if d.plan.Gke.Private {
@@ -308,10 +306,19 @@ func (d *GKEDriver) finishCreate(cCtx clusterContext, created bool) error {
 			" --region %s "+
 			" --project %s",
 			d.plan.ClusterName, cCtx.region(), d.plan.Gke.GCloudProject)
+		bindRolesCmd, err := cCtx.bindRolesCmd()
+		if err != nil {
+			return err
+		}
+		log.Printf("bind roles manually from an authorized VM with the following command:\n$ %s\n", bindRolesCmd)
 		return nil
 	}
 
 	if err := cCtx.getCredentials(); err != nil {
+		return err
+	}
+
+	if err := cCtx.bindRoles(); err != nil {
 		return err
 	}
 
@@ -348,16 +355,6 @@ func (d *GKEDriver) finishCreate(cCtx clusterContext, created bool) error {
 		return err
 	}
 	return nil
-}
-
-func (d *GKEDriver) configureCreatedCluster(cCtx clusterContext) error {
-	// Gcloud does not support labels when creating Autopilot clusters.
-	if d.plan.Gke.Autopilot {
-		if err := cCtx.updateLabels(); err != nil {
-			return err
-		}
-	}
-	return cCtx.bindRoles(d.plan)
 }
 
 func (d *GKEDriver) delete() error {
@@ -580,15 +577,22 @@ func (c gkeClusterContext) username(unqualified bool) (string, error) {
 	return user, nil
 }
 
-func (c gkeClusterContext) bindRoles(plan Plan) error {
+func (c gkeClusterContext) bindRolesCmd() (string, error) {
 	user, err := c.username(false)
 	if err != nil {
-		return err
+		return "", err
 	}
-	cmd := fmt.Sprintf("kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s", user)
-	if plan.Gke.Private {
-		log.Printf("this is a private cluster, please bind roles manually from an authorized VM with the following command:\n$ %s\n", cmd)
-		return nil
+	cmd := fmt.Sprintf(
+		"kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s --dry-run=client -o yaml | kubectl apply -f -",
+		user,
+	)
+	return cmd, nil
+}
+
+func (c gkeClusterContext) bindRoles() error {
+	cmd, err := c.bindRolesCmd()
+	if err != nil {
+		return err
 	}
 	log.Println("Binding roles...")
 	return exec.NewCommand(cmd).Run()
