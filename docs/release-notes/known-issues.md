@@ -30,7 +30,7 @@ cat /sys/kernel/mm/lru_gen/enabled
 
 A value of `0x0007` indicates that MGLRU and all of its currently supported features are enabled.
 
-For more information, refer to [elasticsearch#124499](https://github.com/elastic/elasticsearch/issues/124499)
+Upgrade Elasticsearch to a fixed version: 8.17.5 or later, 8.18.1 or later, or 9.0.4 or later. For more information, refer to [elasticsearch#124499](https://github.com/elastic/elasticsearch/issues/124499)
 :::
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
