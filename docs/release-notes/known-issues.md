@@ -4,7 +4,7 @@ navigation_title: "Known issues"
 
 # Elastic Cloud on Kubernetes known issues [elastic-cloud-kubernetes-known-issues]
 
-Known issues are significant defects or limitations that may impact your implementation. These issues are actively being worked on and will be addressed in a future release. Review the Elastic Cloud on Kubernetes known issues to help you make informed decisions, such as upgrading to a new version.
+Known issues are significant defects or limitations that may impact your implementation. These issues are actively being worked on and will be addressed in a future release. Review the {{eck}} known issues to help you make informed decisions, such as upgrading to a new version.
 
 % Use the following template to add entries to this page.
 
@@ -15,6 +15,22 @@ Known issues are significant defects or limitations that may impact your impleme
 % Workaround
 % Workaround description.
 
+## {{stack}} on ECK [eck-restrictions-elastic-stack]
+
+:::{dropdown} Vector search performance can degrade on Linux systems running kernel 6.1 or later when Multi-Gen LRU (MGLRU) is enabled
+Affected {{es}} versions can experience significant vector search slowdowns and delayed Lucene index merges.
+MGLRU was introduced in Linux kernel 6.1 and is enabled by default in some Linux distributions, including Ubuntu 24.04.
+An interaction between MGLRU and Lucene's read advice behavior can result in excessive major page faults and I/O activity during vector operations.
+
+To determine whether MGLRU is enabled, run:
+
+```bash
+cat /sys/kernel/mm/lru_gen/enabled
+```
+
+A value of `0x0007` indicates that MGLRU and all of its currently supported features are enabled.
+
+Upgrade Elasticsearch to a fixed version: 8.17.5 or later, 8.18.1 or later, or 9.0.4 or later. For more information, refer to [elasticsearch#124499](https://github.com/elastic/elasticsearch/issues/124499)
 :::
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]

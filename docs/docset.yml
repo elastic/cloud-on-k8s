@@ -13,3 +13,4 @@ toc:
 subs:
   eck:   "Elastic Cloud on Kubernetes"
   es:   "Elasticsearch"
+  stack:   "Elastic Stack"
