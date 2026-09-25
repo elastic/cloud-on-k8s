@@ -25,7 +25,7 @@ An interaction between MGLRU and Lucene's read advice behavior can result in exc
 To determine whether MGLRU is enabled, run:
 
 ```bash
-cat /sys/kernel/mm/lru_gen/enabled`
+cat /sys/kernel/mm/lru_gen/enabled
 ```
 
 A value of `0x0007` indicates that MGLRU and all of its currently supported features are enabled.
