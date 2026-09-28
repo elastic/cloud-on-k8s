@@ -345,7 +345,7 @@ func (h *helper) installOperatorUnderTest() error {
 		return err
 	}
 
-	if _, _, err := h.kubectl("apply", "-f", manifestFile, "--server-side"); err != nil {
+	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
 		return fmt.Errorf("failed to apply operator manifest: %w", err)
 	}
 
@@ -367,7 +367,7 @@ func (h *helper) installMonitoringOperator() error {
 		return err
 	}
 
-	if _, _, err := h.kubectl("apply", "-f", manifestFile, "--server-side"); err != nil {
+	if _, _, err := h.kubectl("apply", "-f", manifestFile); err != nil {
 		return fmt.Errorf("failed to apply monitoring operator manifest: %w", err)
 	}
 
@@ -405,7 +405,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	_, _, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml", "--server-side")
+	_, _, err := h.kubectl("apply", "-f", "config/crds/v1/all-crds.yaml")
 	return err
 }
 
