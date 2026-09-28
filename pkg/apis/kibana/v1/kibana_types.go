@@ -141,8 +141,8 @@ type KibanaBackgroundTasks struct {
 
 	// Config holds Kibana configuration specific to the background tasks pool.
 	// The node.roles setting is managed by ECK and must not be set here.
-	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the
@@ -154,8 +154,8 @@ type KibanaBackgroundTasks struct {
 
 	// PodTemplate provides customization options for the background tasks pool pods.
 	// It is applied as a strategic-merge overlay on top of spec.podTemplate.
-	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 }
 

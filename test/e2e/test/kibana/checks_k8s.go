@@ -69,7 +69,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return steps.WithSteps(test.StepList{
 		checks.CheckPods(b, k),
 		checks.CheckServices(b, k),
-		checks.CheckServicesEndpoints(b, k),
+		checks.CheckServicesEndpoints(deploymentCountSubject{Builder: b, count: b.Kibana.Spec.Count}, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
 		test.CheckFieldsNotOwnedByOperator(&b.Kibana, k, nil),
@@ -208,6 +208,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				map[string]string{
 					"kibana.k8s.elastic.co/name": kb.Name,
 					"common.k8s.elastic.co/type": "kibana",
+					"kibana.k8s.elastic.co/role": "prime",
 				},
 			); err != nil {
 				return err

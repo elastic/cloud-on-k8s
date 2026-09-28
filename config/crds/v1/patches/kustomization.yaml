@@ -42,6 +42,12 @@ patches:
       kind: CustomResourceDefinition
       name: kibanas.kibana.k8s.elastic.co
     path: remove-pod-template-patch.yaml
+  - target:
+      group: apiextensions.k8s.io
+      version: v1
+      kind: CustomResourceDefinition
+      name: kibanas.kibana.k8s.elastic.co
+    path: kibana-patches.yaml
   # custom patches for EnterpriseSearch
   - target:
       group: apiextensions.k8s.io

@@ -43,7 +43,7 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 
 	name := "test-kb-bg-split"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
