@@ -3754,11 +3754,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.71.0
-Time    : 2026-08-31T08:47:38Z
+Version : v0.72.0
+Time    : 2026-09-28T08:33:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.71.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.72.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -27079,11 +27079,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.6.2
-Time    : 2025-04-11T05:38:16Z
+Version : v0.6.3
+Time    : 2026-08-31T09:02:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.6.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.6.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

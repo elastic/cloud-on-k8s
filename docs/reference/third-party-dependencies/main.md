@@ -44,7 +44,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/pkg/errors](https://github.com/pkg/errors) | v0.9.1 | BSD-2-Clause |
 | [github.com/pmezard/go-difflib](https://github.com/pmezard/go-difflib) | v1.0.1-0.20181226105442-5d4384ee4fb2 | BSD-3-Clause |
 | [github.com/prometheus/client_golang](https://github.com/prometheus/client_golang) | v1.24.1 | Apache-2.0 |
-| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.71.0 | Apache-2.0 |
+| [github.com/prometheus/common](https://github.com/prometheus/common) | v0.72.0 | Apache-2.0 |
 | [github.com/spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | Apache-2.0 |
 | [github.com/spf13/pflag](https://github.com/spf13/pflag) | v1.0.10 | BSD-3-Clause |
 | [github.com/spf13/viper](https://github.com/spf13/viper) | v1.21.0 | MIT |
@@ -206,7 +206,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/pkg/browser](https://github.com/pkg/browser) | v0.0.0-20240102092130-5ac0b6a4141c | BSD-2-Clause |
 | [github.com/planetscale/vtprotobuf](https://github.com/planetscale/vtprotobuf) | v0.6.1-0.20240319094008-0393e58bdf10 | BSD-3-Clause |
 | [github.com/prashantv/gostub](https://github.com/prashantv/gostub) | v1.1.0 | MIT |
-| [github.com/prometheus/client_model](https://github.com/prometheus/client_model) | v0.6.2 | Apache-2.0 |
+| [github.com/prometheus/client_model](https://github.com/prometheus/client_model) | v0.6.3 | Apache-2.0 |
 | [github.com/prometheus/procfs](https://github.com/prometheus/procfs) | v0.21.1 | Apache-2.0 |
 | [github.com/rogpeppe/go-internal](https://github.com/rogpeppe/go-internal) | v1.14.1 | BSD-3-Clause |
 | [github.com/ryanuber/go-glob](https://github.com/ryanuber/go-glob) | v1.0.0 | MIT |
