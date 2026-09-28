@@ -45,14 +45,14 @@ const (
 )
 
 // Role describes a Kibana node role and its Kubernetes label value.
-// Role labels are only applied when background task isolation is enabled (spec.backgroundTasks is set);
-// single-pool Kibana resources carry no role label.
+// The role label is applied to all pools. Single-pool Kibana always carries LabelValue "prime";
+// in split mode, UIRole carries "prime" and BackgroundTasksRole carries "background_tasks".
 type Role struct {
 	// Name is the Kibana node.roles value injected via the NODE_ROLES env var
-	// (e.g. "ui" or "background_tasks").
+	// (e.g. "ui" or "background_tasks"). Empty for the single-pool case (no NODE_ROLES injection).
 	Name string
 	// LabelValue is the value written to the kibana.k8s.elastic.co/role label
-	// (e.g. "prime" or "background_tasks"). Empty for the single-pool (no-split) case.
+	// (e.g. "prime" or "background_tasks").
 	LabelValue string
 }
 
