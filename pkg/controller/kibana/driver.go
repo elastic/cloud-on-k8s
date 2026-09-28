@@ -345,7 +345,7 @@ func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalCo
 		return base, kbv1.ConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name), nil
 	}
 
-	poolCfg, err := base.WithPoolOverlay(overlay)
+	poolCfg, err := base.WithOverlay(overlay)
 	if err != nil {
 		return CanonicalConfig{}, "", "", err
 	}
@@ -484,7 +484,8 @@ func (d *driver) deploymentParams(
 		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 	}
 
-	// For the background tasks pool, use the pool-specific pod template and resources.
+	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
+	// spec.podTemplate before passing the spec to NewPodTemplateSpec.
 	kbForPool := *kb
 	if role.Name == kblabel.BackgroundTasksRole.Name && kb.Spec.BackgroundTasks != nil {
 		merged, err := mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
@@ -576,8 +577,8 @@ func (d *driver) deploymentParams(
 }
 
 // mergePoolPodTemplate produces the final PodTemplateSpec for one pool by layering overlay on top of base.
-// base is the operator-built template shared by all pools (image, probes, config secret, stackmon sidecars, etc.).
-// overlay is the user-supplied spec.backgroundTasks.podTemplate, carrying only the fields that should differ
+// base is spec.podTemplate — the user-supplied top-level pod template shared by all pools.
+// overlay is spec.backgroundTasks.podTemplate, carrying only the fields that should differ
 // per pool (scheduling constraints, resource overrides, extra sidecars, …).
 //
 // Fields are merged via Kubernetes strategic merge patch, which honours the patch strategy annotations on

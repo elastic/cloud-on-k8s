@@ -147,8 +147,12 @@ func NewPodTemplateSpec(
 	})
 
 	var tb corev1.PodTemplateSpec
+	resourcesOverrides := kb.Spec.Resources
 	if kb.BackgroundTasksEnabled() {
 		tb = kb.Spec.BackgroundTasks.PodTemplate
+		if !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
+			resourcesOverrides = kb.Spec.BackgroundTasks.Resources
+		}
 	} else {
 		tb = kb.Spec.PodTemplate
 	}
@@ -160,13 +164,8 @@ func NewPodTemplateSpec(
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath, v)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
+		WithResourcesAndOverrides(DefaultResources, resourcesOverrides).
 		WithPorts(ports)
-
-	if kb.BackgroundTasksEnabled() && !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
-		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.BackgroundTasks.Resources)
-	} else {
-		builder = builder.WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources)
-	}
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())

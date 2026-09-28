@@ -56,7 +56,7 @@ func newTestDriver(t *testing.T, objects ...client.Object) *driver {
 
 // ---- WithPoolOverlay --------------------------------------------------------
 
-func TestWithPoolOverlay(t *testing.T) {
+func TestWithOverlay(t *testing.T) {
 	// Use simple non-dotted keys — ucfg treats dots as path separators so dotted
 	// keys in map literals produce nested structures, not flat string keys.
 	base := CanonicalConfig{settings.MustCanonicalConfig(map[string]any{
@@ -65,7 +65,7 @@ func TestWithPoolOverlay(t *testing.T) {
 	})}
 
 	t.Run("nil overlay returns base unchanged", func(t *testing.T) {
-		got, err := base.WithPoolOverlay(nil)
+		got, err := base.WithOverlay(nil)
 		require.NoError(t, err)
 		// Identity: nil overlay returns the original config, not a copy.
 		assert.Equal(t, base.CanonicalConfig, got.CanonicalConfig)
@@ -73,7 +73,7 @@ func TestWithPoolOverlay(t *testing.T) {
 
 	t.Run("overlay adds new key while preserving base", func(t *testing.T) {
 		overlay := &commonv1.Config{Data: map[string]any{"newkey": "newvalue"}}
-		got, err := base.WithPoolOverlay(overlay)
+		got, err := base.WithOverlay(overlay)
 		require.NoError(t, err)
 
 		rendered, err := got.Render()
@@ -87,7 +87,7 @@ func TestWithPoolOverlay(t *testing.T) {
 
 	t.Run("overlay replaces existing key", func(t *testing.T) {
 		overlay := &commonv1.Config{Data: map[string]any{"shared": "overridden"}}
-		got, err := base.WithPoolOverlay(overlay)
+		got, err := base.WithOverlay(overlay)
 		require.NoError(t, err)
 
 		rendered, err := got.Render()
@@ -101,7 +101,7 @@ func TestWithPoolOverlay(t *testing.T) {
 
 	t.Run("overlay does not inject node.roles into YAML", func(t *testing.T) {
 		overlay := &commonv1.Config{Data: map[string]any{"extra": "v"}}
-		got, err := base.WithPoolOverlay(overlay)
+		got, err := base.WithOverlay(overlay)
 		require.NoError(t, err)
 
 		rendered, err := got.Render()
@@ -114,7 +114,7 @@ func TestWithPoolOverlay(t *testing.T) {
 		require.NoError(t, err)
 
 		overlay := &commonv1.Config{Data: map[string]any{"shared": "overridden"}}
-		_, err = base.WithPoolOverlay(overlay)
+		_, err = base.WithOverlay(overlay)
 		require.NoError(t, err)
 
 		afterRendered, err := base.Render()
