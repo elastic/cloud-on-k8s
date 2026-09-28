@@ -354,7 +354,13 @@ func (b Builder) Spec() any {
 	return b.Kibana.Spec
 }
 
+// Count returns the total expected pod count across all active pools.
+// When background task isolation is enabled, UI pods and BG pods are summed so
+// that shared test helpers (CheckPods, CheckStatus) operate on the full fleet.
 func (b Builder) Count() int32 {
+	if b.Kibana.Spec.BackgroundTasks != nil && b.Kibana.Spec.BackgroundTasks.Count != nil {
+		return b.Kibana.Spec.Count + *b.Kibana.Spec.BackgroundTasks.Count
+	}
 	return b.Kibana.Spec.Count
 }
 
