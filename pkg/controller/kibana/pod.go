@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -14,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/go-ucfg"
@@ -124,6 +126,7 @@ func NewPodTemplateSpec(
 	ctx context.Context,
 	client k8sclient.Client,
 	kb kbv1.Kibana,
+	role kblabel.Role,
 	keystore *keystore.Resources,
 	volumes []volume.VolumeLike,
 	basePath string,
@@ -146,25 +149,19 @@ func NewPodTemplateSpec(
 		Annotations: DefaultAnnotations,
 	})
 
-	var tb corev1.PodTemplateSpec
-	resourcesOverrides := kb.Spec.Resources
-	if kb.BackgroundTasksEnabled() {
-		tb = kb.Spec.BackgroundTasks.PodTemplate
-		if !kb.Spec.BackgroundTasks.Resources.IsEmpty() {
-			resourcesOverrides = kb.Spec.BackgroundTasks.Resources
-		}
-	} else {
-		tb = kb.Spec.PodTemplate
+	pt, err := getPodTemplateSpecForRole(kb, role)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(tb, kbv1.KibanaContainerName).
+	builder := defaults.NewPodTemplateBuilder(pt, kbv1.KibanaContainerName).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath, v)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
-		WithResourcesAndOverrides(DefaultResources, resourcesOverrides).
+		WithResourcesAndOverrides(DefaultResources, kb.GetResourcesForRole(role)).
 		WithPorts(ports)
 
 	for _, volume := range volumes {
@@ -343,4 +340,68 @@ func withEPRCertsVolume(builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, us
 		}
 	}
 	return builder, nil
+}
+
+func getPodTemplateSpecForRole(kb kbv1.Kibana, role kblabel.Role) (corev1.PodTemplateSpec, error) {
+	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
+	// spec.podTemplate.
+	if kb.BackgroundTasksEnabled() && role.Name == kblabel.BackgroundTasksRole.Name {
+		merged, err := mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		return merged, nil
+	}
+
+	return kb.Spec.PodTemplate, nil
+}
+
+// mergePoolPodTemplate produces the final PodTemplateSpec for one pool by layering overlay on top of base.
+// base is spec.podTemplate — the user-supplied top-level pod template shared by all pools.
+// overlay is spec.backgroundTasks.podTemplate, carrying only the fields that should differ
+// per pool (scheduling constraints, resource overrides, extra sidecars, …).
+//
+// Fields are merged via Kubernetes strategic merge patch, which honours the patch strategy annotations on
+// PodSpec (e.g. replaceKeys on securityContext, atomic on tolerations) and preserves base fields that the
+// overlay leaves unset. Container and volume lists are keyed by name, so an overlay container replaces its
+// base counterpart and novel names are appended.
+//
+// One caveat: strategic merge patch treats a missing slice in the overlay as an explicit nil, which would
+// drop the base containers/volumes. The nil-preservation block below restores them when the overlay omits
+// those lists entirely.
+func mergePoolPodTemplate(base, overlay corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
+	var out corev1.PodTemplateSpec
+
+	baseJSON, err := json.Marshal(base)
+	if err != nil {
+		return out, err
+	}
+	overlayJSON, err := json.Marshal(overlay)
+	if err != nil {
+		return out, err
+	}
+
+	merged, err := strategicpatch.StrategicMergePatch(baseJSON, overlayJSON, corev1.PodTemplateSpec{})
+	if err != nil {
+		return out, err
+	}
+
+	err = json.Unmarshal(merged, &out)
+	if err != nil {
+		return out, err
+	}
+
+	// A missing slice in the overlay JSON unmarshals as nil, which strategic merge patch treats as
+	// an explicit deletion. Restore the base slices so an overlay that omits containers or volumes
+	// does not silently drop them.
+	if overlay.Spec.Containers == nil {
+		out.Spec.Containers = base.Spec.Containers
+	}
+	if overlay.Spec.InitContainers == nil {
+		out.Spec.InitContainers = base.Spec.InitContainers
+	}
+	if overlay.Spec.Volumes == nil {
+		out.Spec.Volumes = base.Spec.Volumes
+	}
+	return out, nil
 }

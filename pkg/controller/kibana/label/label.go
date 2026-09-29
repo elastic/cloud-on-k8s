@@ -69,6 +69,14 @@ var (
 		Name:       "background_tasks",
 		LabelValue: RoleBackgroundTasksValue,
 	}
+
+	// SinglePoolRole is the synthetic role used when background task isolation is disabled.
+	// LabelValue "prime" ensures the selector label is present for upgrade-path detection.
+	// Name "" suppresses NODE_ROLES injection — the pod runs all Kibana roles.
+	SinglePoolRole = Role{
+		Name:       "",
+		LabelValue: RolePrimeValue,
+	}
 )
 
 // NewLabels constructs a new set of labels from Kibana definition.

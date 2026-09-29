@@ -160,7 +160,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 						},
 					},
 					Version: "7.4.0",
-				}},
+				},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				labels := (&kbv1.Kibana{Name: "kibana-name"}).GetIdentityLabels()
 				labels[kblabel.KibanaVersionLabelName] = "7.4.0"
@@ -562,7 +563,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md, kbv1.ConfigSecret(tt.kb.Name))
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, kblabel.SinglePoolRole, tt.keystore, []commonvolume.VolumeLike{}, bp, true, md, kbv1.ConfigSecret(tt.kb.Name))
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})
@@ -722,7 +723,7 @@ func TestWithEPRCertsVolume(t *testing.T) {
 			bp, err := GetKibanaBasePath(tt.kb)
 			require.NoError(t, err)
 			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
-			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, nil, []commonvolume.VolumeLike{}, bp, true, md, kbv1.ConfigSecret(tt.kb.Name))
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, kblabel.SinglePoolRole, nil, []commonvolume.VolumeLike{}, bp, true, md, kbv1.ConfigSecret(tt.kb.Name))
 			assert.NoError(t, err)
 			tt.assertions(got)
 		})

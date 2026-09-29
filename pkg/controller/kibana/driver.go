@@ -6,7 +6,6 @@ package kibana
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"maps"
@@ -17,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -484,18 +482,7 @@ func (d *driver) deploymentParams(
 		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 	}
 
-	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
-	// spec.podTemplate before passing the spec to NewPodTemplateSpec.
-	kbForPool := *kb
-	if role.Name == kblabel.BackgroundTasksRole.Name && kb.Spec.BackgroundTasks != nil {
-		merged, err := mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
-		if err != nil {
-			return deployment.Params{}, err
-		}
-		kb.Spec.BackgroundTasks.PodTemplate = merged
-	}
-
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, kbForPool, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -574,56 +561,6 @@ func (d *driver) deploymentParams(
 		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
-}
-
-// mergePoolPodTemplate produces the final PodTemplateSpec for one pool by layering overlay on top of base.
-// base is spec.podTemplate — the user-supplied top-level pod template shared by all pools.
-// overlay is spec.backgroundTasks.podTemplate, carrying only the fields that should differ
-// per pool (scheduling constraints, resource overrides, extra sidecars, …).
-//
-// Fields are merged via Kubernetes strategic merge patch, which honours the patch strategy annotations on
-// PodSpec (e.g. replaceKeys on securityContext, atomic on tolerations) and preserves base fields that the
-// overlay leaves unset. Container and volume lists are keyed by name, so an overlay container replaces its
-// base counterpart and novel names are appended.
-//
-// One caveat: strategic merge patch treats a missing slice in the overlay as an explicit nil, which would
-// drop the base containers/volumes. The nil-preservation block below restores them when the overlay omits
-// those lists entirely.
-func mergePoolPodTemplate(base, overlay corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
-	var out corev1.PodTemplateSpec
-
-	baseJSON, err := json.Marshal(base)
-	if err != nil {
-		return out, err
-	}
-	overlayJSON, err := json.Marshal(overlay)
-	if err != nil {
-		return out, err
-	}
-
-	merged, err := strategicpatch.StrategicMergePatch(baseJSON, overlayJSON, corev1.PodTemplateSpec{})
-	if err != nil {
-		return out, err
-	}
-
-	err = json.Unmarshal(merged, &out)
-	if err != nil {
-		return out, err
-	}
-
-	// A missing slice in the overlay JSON unmarshals as nil, which strategic merge patch treats as
-	// an explicit deletion. Restore the base slices so an overlay that omits containers or volumes
-	// does not silently drop them.
-	if overlay.Spec.Containers == nil {
-		out.Spec.Containers = base.Spec.Containers
-	}
-	if overlay.Spec.InitContainers == nil {
-		out.Spec.InitContainers = base.Spec.InitContainers
-	}
-	if overlay.Spec.Volumes == nil {
-		out.Spec.Volumes = base.Spec.Volumes
-	}
-	return out, nil
 }
 
 func (d *driver) buildVolumes(kb *kbv1.Kibana, configSecretName string) ([]commonvolume.VolumeLike, error) {
