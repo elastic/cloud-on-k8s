@@ -16,6 +16,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -41,6 +42,7 @@ func buildKibanaPodTemplate(t *testing.T, kb kbv1.Kibana) corev1.PodTemplateSpec
 		context.Background(),
 		k8s.NewFakeClient(),
 		kb,
+		kblabel.SinglePoolRole,
 		nil,
 		[]commonvolume.VolumeLike{},
 		"",

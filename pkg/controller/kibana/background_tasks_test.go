@@ -514,3 +514,107 @@ func TestGetPoolIdentityLabels_SplitOnOff(t *testing.T) {
 		assert.NotEqual(t, uiLabels[kblabel.RoleLabelName], bgLabels[kblabel.RoleLabelName])
 	})
 }
+
+// ---- getPodTemplateSpecForRole ----------------------------------------------
+
+func TestGetPodTemplateSpecForRole(t *testing.T) {
+	basePodTemplate := corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "kibana", Image: "base-image"},
+			},
+			NodeName: "base-node",
+		},
+	}
+
+	bgOverlay := corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "kibana", Image: "overlay-image"},
+			},
+			NodeSelector: map[string]string{"role": "bg"},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		kb        kbv1.Kibana
+		role      kblabel.Role
+		wantImage string            // expected image on the kibana container
+		wantNode  string            // expected NodeName (base field preserved by merge)
+		wantNS    map[string]string // expected NodeSelector, nil means not checked
+	}{
+		{
+			name: "single-pool: returns spec.podTemplate unchanged",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{PodTemplate: basePodTemplate},
+			},
+			role:      kblabel.SinglePoolRole,
+			wantImage: "base-image",
+			wantNode:  "base-node",
+		},
+		{
+			name: "split, UIRole: returns spec.podTemplate unchanged",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					PodTemplate:     basePodTemplate,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{PodTemplate: bgOverlay},
+				},
+			},
+			role:      kblabel.UIRole,
+			wantImage: "base-image",
+			wantNode:  "base-node",
+		},
+		{
+			name: "split, SinglePoolRole: BackgroundTasks set but role has no name, returns spec.podTemplate",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					PodTemplate:     basePodTemplate,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{PodTemplate: bgOverlay},
+				},
+			},
+			role:      kblabel.SinglePoolRole,
+			wantImage: "base-image",
+			wantNode:  "base-node",
+		},
+		{
+			name: "split, BGRole, empty overlay: returns spec.podTemplate unchanged",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					PodTemplate:     basePodTemplate,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
+				},
+			},
+			role:      kblabel.BackgroundTasksRole,
+			wantImage: "base-image",
+			wantNode:  "base-node",
+		},
+		{
+			name: "split, BGRole: overlay container image replaces base; base-only fields preserved",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					PodTemplate:     basePodTemplate,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{PodTemplate: bgOverlay},
+				},
+			},
+			role:      kblabel.BackgroundTasksRole,
+			wantImage: "overlay-image",
+			wantNode:  "base-node", // base NodeName preserved; overlay did not set it
+			wantNS:    map[string]string{"role": "bg"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getPodTemplateSpecForRole(tt.kb, tt.role)
+			require.NoError(t, err)
+
+			require.Len(t, got.Spec.Containers, 1)
+			assert.Equal(t, tt.wantImage, got.Spec.Containers[0].Image)
+			assert.Equal(t, tt.wantNode, got.Spec.NodeName)
+			if tt.wantNS != nil {
+				assert.Equal(t, tt.wantNS, got.Spec.NodeSelector)
+			}
+		})
+	}
+}
