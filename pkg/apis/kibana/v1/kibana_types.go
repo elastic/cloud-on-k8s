@@ -604,7 +604,7 @@ func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.A
 
 func (k *Kibana) GetResourcesForRole(role label.Role) commonv1.Resources {
 	if k.BackgroundTasksEnabled() &&
-		role.Name == label.BackgroundTasksRole.Name &&
+		role.IsBackgroundTasks() &&
 		!k.Spec.BackgroundTasks.Resources.IsEmpty() {
 		return k.Spec.BackgroundTasks.Resources
 	}
