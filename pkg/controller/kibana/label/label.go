@@ -23,7 +23,7 @@ const (
 	// Type represents the Kibana type
 	Type = "kibana"
 
-	// RoleLabelName is the label key applied to pods when background task isolation is enabled.
+	// RoleLabelName is the label key applied to pods.
 	// Its value distinguishes the UI/primary pool ("prime") from the background tasks pool
 	// ("background_tasks").
 	RoleLabelName = "kibana.k8s.elastic.co/role"

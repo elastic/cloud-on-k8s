@@ -110,8 +110,8 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 }
 
 // TestKibanaBackgroundTasksEnableDisable verifies that toggling spec.backgroundTasks on/off:
-// - enabling: creates the BG Deployment and recreates the UI Deployment (selector update)
-// - disabling: removes the BG Deployment and the UI Deployment recovers
+// - enabling: creates the BG Deployment
+// - disabling: removes the BG Deployment
 func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 	skipIfBackgroundTasksUnsupported(t)
 
