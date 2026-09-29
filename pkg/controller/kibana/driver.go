@@ -331,7 +331,7 @@ func (d *driver) Reconcile(
 // Both pools share the same config secret unless spec.backgroundTasks.config is set, in which
 // case the background tasks pool gets its own secret with the overlay merged on top.
 func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (cfg CanonicalConfig, secretName string, deploymentName string, rErr error) {
-	if role.IsSinglePool() || role.IsIU() {
+	if role.IsSinglePool() || role.IsIU() || (role == kblabel.Role{}) {
 		// Single all-roles pool or UI pool: use the base config and base names.
 		return base, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), nil
 	}
@@ -474,11 +474,9 @@ func (d *driver) deploymentParams(
 	}
 
 	// Pool-specific metadata: add role label to pod labels.
-	poolMeta := meta
-
 	poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
 	poolLabels[kblabel.RoleLabelName] = role.LabelValue
-	poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
+	poolMeta := metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 
 	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
 	if err != nil {
@@ -488,7 +486,7 @@ func (d *driver) deploymentParams(
 	// When background task isolation is active, set NODE_ROLES on the Kibana container.
 	// Kibana reads this env var to determine which roles it runs, taking precedence over
 	// kibana.yml. This matches how the serverless kibana-controller assigns roles.
-	if role.IsSinglePool() {
+	if role.IsBackgroundTasks() || role.IsIU() {
 		nodeRolesValue := fmt.Sprintf(`["%s"]`, role.Name)
 		for i, c := range kibanaPodSpec.Spec.Containers {
 			if c.Name == kbv1.KibanaContainerName {

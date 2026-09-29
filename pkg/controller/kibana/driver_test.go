@@ -147,7 +147,9 @@ func Test_getStrategyType(t *testing.T) {
 				getPods("test", 1, "8.5.0"),
 				append(
 					getPods("test", 1, "8.4.0"),
-					getPods("test", 1, "8.3.0")...)...),
+					getPods("test", 1, "8.3.0")...,
+				)...,
+			),
 			clientError:  false,
 			wantErr:      false,
 			wantStrategy: appsv1.RecreateDeploymentStrategyType,
@@ -375,7 +377,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, kblabel.Role{}, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), new(kb.Spec.Count), tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
+			got, err := d.deploymentParams(context.Background(), kb, kblabel.SinglePoolRole, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), new(kb.Spec.Count), tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -434,7 +436,7 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"}},
+		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "kibana.k8s.elastic.co/role": "prime"}},
 		Replicas:  new(int32(1)),
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
@@ -442,6 +444,7 @@ func expectedDeploymentParams() deployment.Params {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
+					"kibana.k8s.elastic.co/role":    "prime",
 					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
@@ -492,7 +495,7 @@ func expectedDeploymentParams() deployment.Params {
 						Name: "kibana-scripts",
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							Name:        "test-kb-scripts",
-							DefaultMode: new(int32(0755)),
+							DefaultMode: new(int32(0o755)),
 							Optional:    new(false),
 						},
 					},
