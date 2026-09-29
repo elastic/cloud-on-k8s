@@ -170,7 +170,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	// Compute the base config once; per-pool copies apply node.roles on top.
+	// Compute the base config once; per-pool copies and apply the role env var in container.
 	baseSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
 	if err != nil {
 		return results.WithError(err)
@@ -369,8 +369,7 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 
 	// ECK upgrade case: expectedByRole wants role=prime, the existing deployment has no role
 	// label at all, and split is not active. Strip the role label so the selectors match and
-	// no delete+recreate is triggered. Pods that roll for unrelated reasons will pick up the
-	// role=prime pod label naturally; the selector can be updated on the next split toggle.
+	// no delete+recreate is triggered. The selector can be updated on the next split toggle.
 	if expectedByRole[kblabel.RoleLabelName] == kblabel.RolePrimeValue &&
 		existingMatchLabels[kblabel.RoleLabelName] != kblabel.RolePrimeValue &&
 		!kb.BackgroundTasksEnabled() {
