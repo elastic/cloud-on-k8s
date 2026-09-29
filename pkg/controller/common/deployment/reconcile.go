@@ -73,7 +73,9 @@ func Reconcile(
 		NeedsUpdate: func() bool {
 			if expected.Spec.Replicas == nil {
 				// Replicas are managed externally (e.g. by an HPA): adopt the current count
-				// so the hash comparison is stable and ECK does not fight the HPA.
+				// before recomputing the hash. This prevents ECK from resetting replicas to nil
+				// on every reconcile. One annotation-only write still occurs after each HPA scale
+				// event to re-anchor the hash at the new replica count.
 				expected.Spec.Replicas = reconciled.Spec.Replicas
 				expected = WithTemplateHash(expected)
 			}
