@@ -262,7 +262,7 @@ func (d *driver) Reconcile(
 
 		// Determine replica count for this pool.
 		var replicas *int32
-		if role.Name == kblabel.BackgroundTasksRole.Name && kb.Spec.BackgroundTasks != nil {
+		if kb.BackgroundTasksEnabled() && role.IsBackgroundTasks() {
 			replicas = kb.Spec.BackgroundTasks.Count // nil means HPA-managed
 		} else {
 			replicas = new(kb.Spec.Count)
@@ -296,7 +296,7 @@ func (d *driver) Reconcile(
 		}
 
 		// Populate background tasks pool status.
-		if role.Name == kblabel.BackgroundTasksRole.Name {
+		if role.IsBackgroundTasks() {
 			bgPoolStatus := &kbv1.KibanaPoolStatus{
 				Selector:       poolStatus.Selector,
 				Count:          poolStatus.Count,
@@ -331,7 +331,7 @@ func (d *driver) Reconcile(
 // Both pools share the same config secret unless spec.backgroundTasks.config is set, in which
 // case the background tasks pool gets its own secret with the overlay merged on top.
 func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (cfg CanonicalConfig, secretName string, deploymentName string, rErr error) {
-	if role.Name == "" || role.Name == kblabel.UIRole.Name {
+	if role.IsSinglePool() || role.IsIU() {
 		// Single all-roles pool or UI pool: use the base config and base names.
 		return base, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), nil
 	}
@@ -476,11 +476,10 @@ func (d *driver) deploymentParams(
 
 	// Pool-specific metadata: add role label to pod labels.
 	poolMeta := meta
-	if role.LabelValue != "" {
-		poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
-		poolLabels[kblabel.RoleLabelName] = role.LabelValue
-		poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
-	}
+
+	poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
+	poolLabels[kblabel.RoleLabelName] = role.LabelValue
+	poolMeta = metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 
 	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
 	if err != nil {
@@ -490,7 +489,7 @@ func (d *driver) deploymentParams(
 	// When background task isolation is active, set NODE_ROLES on the Kibana container.
 	// Kibana reads this env var to determine which roles it runs, taking precedence over
 	// kibana.yml. This matches how the serverless kibana-controller assigns roles.
-	if role.Name != "" {
+	if role.IsSinglePool() {
 		nodeRolesValue := fmt.Sprintf(`["%s"]`, role.Name)
 		for i, c := range kibanaPodSpec.Spec.Containers {
 			if c.Name == kbv1.KibanaContainerName {

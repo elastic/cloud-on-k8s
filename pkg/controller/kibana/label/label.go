@@ -79,6 +79,18 @@ var (
 	}
 )
 
+func (r Role) IsIU() bool {
+	return r == UIRole
+}
+
+func (r Role) IsBackgroundTasks() bool {
+	return r == BackgroundTasksRole
+}
+
+func (r Role) IsSinglePool() bool {
+	return r == SinglePoolRole
+}
+
 // NewLabels constructs a new set of labels from Kibana definition.
 func NewLabels(kb types.NamespacedName) map[string]string {
 	return map[string]string{
