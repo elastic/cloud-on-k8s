@@ -418,6 +418,11 @@ func TestNodeRolesEnvVar(t *testing.T) {
 			wantPresent: false,
 		},
 		{
+			name:        "Single-pool mode injects no NODE_ROLES",
+			role:        kblabel.SinglePoolRole,
+			wantPresent: false,
+		},
+		{
 			name:          "UIRole injects NODE_ROLES=[\"ui\"]",
 			role:          kblabel.UIRole,
 			wantNodeRoles: `["ui"]`,
