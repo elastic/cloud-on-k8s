@@ -9216,6 +9216,7 @@ spec:
                       Count of background task Kibana instances. When nil, ECK does not manage the replica count
                       of the Deployment, allowing an HPA to target it directly.
                     format: int32
+                    minimum: 0
                     type: integer
                   podTemplate:
                     description: |-
