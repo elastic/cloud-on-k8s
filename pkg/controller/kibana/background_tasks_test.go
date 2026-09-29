@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -620,6 +621,110 @@ func TestGetPodTemplateSpecForRole(t *testing.T) {
 			if tt.wantNS != nil {
 				assert.Equal(t, tt.wantNS, got.Spec.NodeSelector)
 			}
+		})
+	}
+}
+
+// ---- upgradeStopNeeded ------------------------------------------------------
+
+func makePod(name, version string, role kblabel.Role) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				kblabel.KibanaVersionLabelName: version,
+				kblabel.RoleLabelName:          role.LabelValue,
+			},
+		},
+	}
+}
+
+func TestUpgradeStopNeeded(t *testing.T) {
+	const (
+		old = "8.17.0"
+		new = "8.18.0"
+	)
+
+	kbSingle := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: new}}
+	kbSplit := kbv1.Kibana{Spec: kbv1.KibanaSpec{
+		Version:         new,
+		BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
+	}}
+
+	tests := []struct {
+		name string
+		kb   kbv1.Kibana
+		pods []corev1.Pod
+		want bool
+	}{
+		{
+			name: "single-pool, no pods: not needed",
+			kb:   kbSingle,
+			pods: nil,
+			want: false,
+		},
+		{
+			name: "single-pool, stale pod: not needed (Recreate handles single Deployment)",
+			kb:   kbSingle,
+			pods: []corev1.Pod{makePod("kb-0", old, kblabel.SinglePoolRole)},
+			want: false,
+		},
+		{
+			name: "split, no pods: not needed",
+			kb:   kbSplit,
+			pods: nil,
+			want: false,
+		},
+		{
+			name: "split, all pods at new version: not needed",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePod("kb-ui-0", new, kblabel.UIRole),
+				makePod("kb-bg-0", new, kblabel.BackgroundTasksRole),
+			},
+			want: false,
+		},
+		{
+			name: "split, both pools stale: needed",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePod("kb-ui-0", old, kblabel.UIRole),
+				makePod("kb-bg-0", old, kblabel.BackgroundTasksRole),
+			},
+			want: true,
+		},
+		{
+			// Unequal shutdown times: UI pool drained first, BG pod still terminating.
+			// The stop phase must remain active until ALL stale pods are gone.
+			name: "split, UI pod gone but BG pod still stale: needed",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePod("kb-bg-0", old, kblabel.BackgroundTasksRole),
+			},
+			want: true,
+		},
+		{
+			// Mirror case: BG pool drained first, UI pod still terminating.
+			name: "split, BG pod gone but UI pod still stale: needed",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePod("kb-ui-0", old, kblabel.UIRole),
+			},
+			want: true,
+		},
+		{
+			name: "split, pod with missing version label: needed (treated as stale)",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				{ObjectMeta: metav1.ObjectMeta{Name: "kb-ui-0"}},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, upgradeStopNeeded(&tt.kb, tt.pods))
 		})
 	}
 }

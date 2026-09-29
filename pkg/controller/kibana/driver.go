@@ -211,6 +211,12 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
+	// When split is active and any pod carries a stale version, enter the stop phase:
+	// scale both pools to zero before starting any new-version pods. Without this,
+	// the UI Deployment can start new pods while old background-task pods still run,
+	// violating Kibana's requirement that all outdated instances stop first.
+	stopNeeded := upgradeStopNeeded(kb, existingPods)
+
 	var aggregateAvailable int32
 	aggregateHealth := commonv1.GreenHealth
 
@@ -261,7 +267,9 @@ func (d *driver) Reconcile(
 
 		// Determine replica count for this pool.
 		var replicas *int32
-		if kb.BackgroundTasksEnabled() && role.IsBackgroundTasks() {
+		if stopNeeded {
+			replicas = new(int32(0)) // drain both pools before starting the new version
+		} else if kb.BackgroundTasksEnabled() && role.IsBackgroundTasks() {
 			replicas = kb.Spec.BackgroundTasks.Count // nil means HPA-managed
 		} else {
 			replicas = new(kb.Spec.Count)
@@ -298,6 +306,11 @@ func (d *driver) Reconcile(
 				Health:         poolStatus.Health,
 			}
 		}
+	}
+
+	if stopNeeded {
+		// Both pools are being drained. Requeue so the controller re-checks once pods terminate.
+		results = results.WithRequeue()
 	}
 
 	if kb.BackgroundTasksEnabled() {
@@ -398,6 +411,26 @@ func (d *driver) garbageCollectBGConfigSecret(ctx context.Context, kb *kbv1.Kiba
 		return err
 	}
 	return nil
+}
+
+// upgradeStopNeeded reports whether the controller must scale both pools to zero before starting
+// the new version. It returns true when background task isolation is active and at least one
+// running pod (including terminating pods) carries a stale version label.
+//
+// Single-pool Kibana does not need this: the Recreate strategy on one Deployment already
+// terminates all old pods before starting new ones. With two separate Deployments the
+// strategies are independent, so an explicit cross-pool stop phase is required.
+func upgradeStopNeeded(kb *kbv1.Kibana, pods []corev1.Pod) bool {
+	if !kb.BackgroundTasksEnabled() {
+		return false
+	}
+	for _, pod := range pods {
+		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
+		if !ok || ver != kb.Spec.Version {
+			return true
+		}
+	}
+	return false
 }
 
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
