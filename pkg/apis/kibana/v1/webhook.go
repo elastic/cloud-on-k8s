@@ -35,7 +35,6 @@ var (
 		checkAssociations,
 		checkBackgroundTasksVersion,
 		checkBackgroundTasksNodeRoles,
-		checkBackgroundTasksCount,
 		commonv1.PauseOrchestrationAnnotationCheck[*Kibana](),
 	}
 
@@ -200,19 +199,4 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 		}
 	}
 	return errs
-}
-
-// checkBackgroundTasksCount rejects a negative backgroundTasks.count.
-func checkBackgroundTasksCount(k *Kibana) field.ErrorList {
-	if k.Spec.BackgroundTasks == nil || k.Spec.BackgroundTasks.Count == nil {
-		return nil
-	}
-	if *k.Spec.BackgroundTasks.Count < 0 {
-		return field.ErrorList{field.Invalid(
-			field.NewPath("spec").Child("backgroundTasks").Child("count"),
-			*k.Spec.BackgroundTasks.Count,
-			"count must be >= 0",
-		)}
-	}
-	return nil
 }

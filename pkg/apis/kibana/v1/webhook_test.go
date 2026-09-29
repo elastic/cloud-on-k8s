@@ -536,19 +536,6 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
 		},
 		{
-			Name:      "backgroundTasks-negative-count-rejected",
-			Operation: admissionv1.Create,
-			Object: func(t *testing.T, uid string) []byte {
-				t.Helper()
-				k := mkKibana(uid)
-				k.Spec.Version = "8.17.0"
-				count := int32(-1)
-				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: &count}
-				return serialize(t, k)
-			},
-			Check: test.ValidationWebhookFailed("count must be >= 0"),
-		},
-		{
 			Name:      "backgroundTasks-nil-count-allowed-for-hpa",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

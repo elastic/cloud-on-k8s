@@ -211,7 +211,6 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	var uiDeployment appsv1.Deployment
 	var aggregateAvailable int32
 	aggregateHealth := commonv1.GreenHealth
 
@@ -219,7 +218,7 @@ func (d *driver) Reconcile(
 	// so that pools sharing the base secret don't trigger a redundant write.
 	reconciledSecrets := map[string]bool{}
 
-	for i, role := range kb.ActiveRoles() {
+	for _, role := range kb.ActiveRoles() {
 		poolCfg, poolSecretName, poolDeploymentName, err := d.poolParams(kb, role, baseSettings)
 		if err != nil {
 			return results.WithError(err)
@@ -289,33 +288,21 @@ func (d *driver) Reconcile(
 			aggregateHealth = poolStatus.Health
 		}
 
-		if i == 0 {
-			// First pool is always the UI/single pool — it drives the scale sub-resource.
-			uiDeployment = reconciledDp
+		if role.IsPrime() {
 			state.Kibana.Status.DeploymentStatus = poolStatus
-		}
-
-		// Populate background tasks pool status.
-		if role.IsBackgroundTasks() {
-			bgPoolStatus := &kbv1.KibanaPoolStatus{
+		} else if role.IsBackgroundTasks() {
+			state.Kibana.Status.BackgroundTasks = &kbv1.KibanaPoolStatus{
 				Selector:       poolStatus.Selector,
 				Count:          poolStatus.Count,
 				AvailableNodes: poolStatus.AvailableNodes,
 				Health:         poolStatus.Health,
 			}
-			state.Kibana.Status.BackgroundTasks = bgPoolStatus
 		}
 	}
 
 	if kb.BackgroundTasksEnabled() {
-		// Aggregate across all pools; UI pool count/selector already set above.
-		uiStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, uiDeployment, existingPods, kblabel.KibanaVersionLabelName)
-		if err != nil {
-			return results.WithError(err)
-		}
-		uiStatus.AvailableNodes = aggregateAvailable
-		uiStatus.Health = aggregateHealth
-		state.Kibana.Status.DeploymentStatus = uiStatus
+		// replace with the aggregated health as top level health
+		state.Kibana.Status.DeploymentStatus.Health = aggregateHealth
 	} else {
 		// Single pool: clear background tasks status.
 		state.Kibana.Status.BackgroundTasks = nil

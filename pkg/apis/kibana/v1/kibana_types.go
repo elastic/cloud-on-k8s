@@ -138,6 +138,7 @@ type KibanaBackgroundTasks struct {
 	// Count of background task Kibana instances. When nil, ECK does not manage the replica count
 	// of the Deployment, allowing an HPA to target it directly.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=0
 	Count *int32 `json:"count,omitempty"`
 
 	// Config holds Kibana configuration specific to the background tasks pool.
