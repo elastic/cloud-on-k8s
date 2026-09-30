@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : cloud.google.com/go/auth
-Version : v0.23.3
-Time    : 2026-09-17T18:22:24Z
+Version : v0.24.0
+Time    : 2026-09-24T19:36:54Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.23.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/cloud.google.com/go/auth@v0.24.0/LICENSE:
 
 
                                  Apache License
@@ -562,11 +562,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2
-Version : v1.47.0
-Time    : 2026-09-09T18:16:59Z
+Version : v1.47.1
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.47.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.47.1/LICENSE.txt:
 
 
                                  Apache License
@@ -774,11 +774,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2@v1.47
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/credentials
-Version : v1.20.5
-Time    : 2026-09-14T19:03:55Z
+Version : v1.20.6
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.20.5/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/credentials@v1.20.6/LICENSE.txt:
 
 
                                  Apache License
@@ -986,11 +986,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/crede
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/s3
-Version : v1.113.2
-Time    : 2026-09-21T18:31:36Z
+Version : v1.113.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.113.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/s3@v1.113.4/LICENSE.txt:
 
 
                                  Apache License
@@ -3754,11 +3754,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golan
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.71.0
-Time    : 2026-08-31T08:47:38Z
+Version : v0.72.0
+Time    : 2026-09-28T08:33:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.71.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.72.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5320,11 +5320,11 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.37.0
-Time    : 2026-08-26T17:04:45Z
+Version : v0.37.1
+Time    : 2026-09-23T20:45:45Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.37.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.37.1/LICENSE:
 
 
                                  Apache License
@@ -5532,11 +5532,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.37.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.37.0
-Time    : 2026-08-26T16:56:42Z
+Version : v0.37.1
+Time    : 2026-09-23T20:28:20Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.37.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.37.1/LICENSE:
 
 
                                  Apache License
@@ -5744,11 +5744,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.37.0/LICENS
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.37.0
-Time    : 2026-08-26T17:15:48Z
+Version : v0.37.1
+Time    : 2026-09-23T21:10:43Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.37.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.37.1/LICENSE:
 
 
                                  Apache License
@@ -11406,11 +11406,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/aws/p
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/internal/configsources
-Version : v1.5.3
-Time    : 2026-09-09T18:16:59Z
+Version : v1.5.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.5.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/configsources@v1.5.4/LICENSE.txt:
 
 
                                  Apache License
@@ -11618,11 +11618,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/inter
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-Version : v2.8.3
-Time    : 2026-09-09T18:16:59Z
+Version : v2.8.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.8.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2@v2.8.4/LICENSE.txt:
 
 
                                  Apache License
@@ -11830,11 +11830,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/inter
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/internal/v4a
-Version : v1.5.3
-Time    : 2026-09-09T18:16:59Z
+Version : v1.5.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/v4a@v1.5.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/internal/v4a@v1.5.4/LICENSE.txt:
 
 
                                  Apache License
@@ -12254,11 +12254,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/servi
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/internal/checksum
-Version : v1.11.3
-Time    : 2026-09-09T18:16:59Z
+Version : v1.11.5
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/checksum@v1.11.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/checksum@v1.11.5/LICENSE.txt:
 
 
                                  Apache License
@@ -12466,11 +12466,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/servi
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-Version : v1.14.3
-Time    : 2026-09-09T18:16:59Z
+Version : v1.14.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.14.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url@v1.14.4/LICENSE.txt:
 
 
                                  Apache License
@@ -12678,11 +12678,11 @@ Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/servi
 
 --------------------------------------------------------------------------------
 Module  : github.com/aws/aws-sdk-go-v2/service/internal/s3shared
-Version : v1.20.3
-Time    : 2026-09-09T18:16:59Z
+Version : v1.20.4
+Time    : 2026-09-24T18:17:37Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/s3shared@v1.20.3/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/aws/aws-sdk-go-v2/service/internal/s3shared@v1.20.4/LICENSE.txt:
 
 
                                  Apache License
@@ -27079,11 +27079,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.6.2
-Time    : 2025-04-11T05:38:16Z
+Version : v0.6.3
+Time    : 2026-08-31T09:02:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.6.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.6.3/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -35439,11 +35439,11 @@ Contents of probable licence file $GOMODCACHE/k8s.io/kube-openapi@v0.0.0-2026072
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/streaming
-Version : v0.37.0
+Version : v0.37.1
 Time    : 2026-08-09T03:36:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/streaming@v0.37.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/streaming@v0.37.1/LICENSE:
 
 
                                  Apache License
