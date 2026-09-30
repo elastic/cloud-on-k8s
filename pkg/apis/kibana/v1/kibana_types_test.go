@@ -41,12 +41,12 @@ func TestBackgroundTasksEnabled(t *testing.T) {
 }
 
 func TestActiveRoles(t *testing.T) {
-	t.Run("no backgroundTasks returns single prime role with empty name", func(t *testing.T) {
+	t.Run("no backgroundTasks returns single primary role with empty name", func(t *testing.T) {
 		kb := Kibana{Spec: KibanaSpec{Version: "8.17.0"}}
 		roles := kb.ActiveRoles()
 		require.Len(t, roles, 1)
 		assert.Equal(t, "", roles[0].Name, "empty Name suppresses NODE_ROLES env var")
-		assert.Equal(t, label.RolePrimeValue, roles[0].LabelValue, "LabelValue=prime so the selector label is present for upgrade-path detection")
+		assert.Equal(t, label.RolePrimaryValue, roles[0].LabelValue, "LabelValue=primary so the selector label is present for upgrade-path detection")
 	})
 
 	t.Run("with backgroundTasks returns UI and BG roles", func(t *testing.T) {
@@ -62,14 +62,14 @@ func TestActiveRoles(t *testing.T) {
 }
 
 func TestGetPoolIdentityLabels(t *testing.T) {
-	t.Run("no backgroundTasks: single pool always gets role=prime", func(t *testing.T) {
+	t.Run("no backgroundTasks: single pool always gets role=primary", func(t *testing.T) {
 		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{Version: "8.17.0"}}
 		labels := kb.GetPoolIdentityLabels(label.UIRole)
-		assert.Equal(t, label.RolePrimeValue, labels[label.RoleLabelName],
-			"single-pool deployment always carries role=prime so DeploymentSelector can detect upgrade path")
+		assert.Equal(t, label.RolePrimaryValue, labels[label.RoleLabelName],
+			"single-pool deployment always carries role=primary so DeploymentSelector can detect upgrade path")
 	})
 
-	t.Run("with backgroundTasks: UI gets prime, BG gets background_tasks", func(t *testing.T) {
+	t.Run("with backgroundTasks: UI gets primary, BG gets background_tasks", func(t *testing.T) {
 		count := int32(1)
 		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{
 			Version:         "8.17.0",
@@ -77,7 +77,7 @@ func TestGetPoolIdentityLabels(t *testing.T) {
 		}}
 
 		uiLabels := kb.GetPoolIdentityLabels(label.UIRole)
-		assert.Equal(t, label.RolePrimeValue, uiLabels[label.RoleLabelName])
+		assert.Equal(t, label.RolePrimaryValue, uiLabels[label.RoleLabelName])
 
 		bgLabels := kb.GetPoolIdentityLabels(label.BackgroundTasksRole)
 		assert.Equal(t, label.RoleBackgroundTasksValue, bgLabels[label.RoleLabelName])

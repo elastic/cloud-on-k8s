@@ -393,7 +393,7 @@ func TestHandleDeploymentSelectorMismatch(t *testing.T) {
 	newSelector := map[string]string{
 		kblabel.KibanaNameLabelName:  "test",
 		"common.k8s.elastic.co/type": "kibana",
-		kblabel.RoleLabelName:        kblabel.RolePrimeValue,
+		kblabel.RoleLabelName:        kblabel.RolePrimaryValue,
 	}
 	legacyDp := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
@@ -653,18 +653,18 @@ func TestServiceSelector(t *testing.T) {
 		wantRole    string          // "" means role label must be absent
 	}{
 		{
-			name:     "no existing service: returns full selector with role=prime",
+			name:     "no existing service: returns full selector with role=primary",
 			kb:       kbNoSplit(),
-			wantRole: kblabel.RolePrimeValue,
+			wantRole: kblabel.RolePrimaryValue,
 		},
 		{
-			name: "split disabled, existing has role=prime: no change",
+			name: "split disabled, existing has role=primary: no change",
 			kb:   kbNoSplit(),
 			existingSvc: svcWith(map[string]string{
 				kblabel.KibanaNameLabelName: "mykb",
-				kblabel.RoleLabelName:       kblabel.RolePrimeValue,
+				kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
 			}),
-			wantRole: kblabel.RolePrimeValue,
+			wantRole: kblabel.RolePrimaryValue,
 		},
 		{
 			name: "split disabled, existing has no role label: strips role (ECK upgrade path)",
@@ -675,17 +675,17 @@ func TestServiceSelector(t *testing.T) {
 			wantRole: "", // absent
 		},
 		{
-			name: "split enabled, existing has no role label: keeps role=prime (exception does not apply)",
+			name: "split enabled, existing has no role label: keeps role=primary (exception does not apply)",
 			kb:   kbSplit(),
 			existingSvc: svcWith(map[string]string{
 				kblabel.KibanaNameLabelName: "mykb",
 			}),
-			wantRole: kblabel.RolePrimeValue,
+			wantRole: kblabel.RolePrimaryValue,
 		},
 		{
-			name:     "split enabled, no existing service: returns full selector with role=prime",
+			name:     "split enabled, no existing service: returns full selector with role=primary",
 			kb:       kbSplit(),
-			wantRole: kblabel.RolePrimeValue,
+			wantRole: kblabel.RolePrimaryValue,
 		},
 	}
 
@@ -714,19 +714,19 @@ func TestServiceSelector(t *testing.T) {
 // ---- Deployment selector labels (via GetPoolIdentityLabels) -----------------
 
 func TestGetPoolIdentityLabels_SplitOnOff(t *testing.T) {
-	t.Run("split disabled: single pool always gets role=prime", func(t *testing.T) {
+	t.Run("split disabled: single pool always gets role=primary", func(t *testing.T) {
 		kb := &kbv1.Kibana{Name: "x"}
 		labels := kb.GetPoolIdentityLabels(kblabel.UIRole)
-		assert.Equal(t, kblabel.RolePrimeValue, labels[kblabel.RoleLabelName])
+		assert.Equal(t, kblabel.RolePrimaryValue, labels[kblabel.RoleLabelName])
 	})
 
-	t.Run("split enabled: UI selector gets prime, BG selector gets background_tasks", func(t *testing.T) {
+	t.Run("split enabled: UI selector gets primary, BG selector gets background_tasks", func(t *testing.T) {
 		kb := &kbv1.Kibana{
 			Name: "x",
 			Spec: kbv1.KibanaSpec{BackgroundTasks: &kbv1.KibanaBackgroundTasks{}},
 		}
 		uiLabels := kb.GetPoolIdentityLabels(kblabel.UIRole)
-		assert.Equal(t, kblabel.RolePrimeValue, uiLabels[kblabel.RoleLabelName])
+		assert.Equal(t, kblabel.RolePrimaryValue, uiLabels[kblabel.RoleLabelName])
 
 		bgLabels := kb.GetPoolIdentityLabels(kblabel.BackgroundTasksRole)
 		assert.Equal(t, kblabel.RoleBackgroundTasksValue, bgLabels[kblabel.RoleLabelName])
