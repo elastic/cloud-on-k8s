@@ -828,7 +828,7 @@ func TestNewService(t *testing.T) {
 					HTTP: tc.httpConf,
 				},
 			}
-			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetPoolIdentityLabels(kblabel.UIRole))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
