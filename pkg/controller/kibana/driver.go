@@ -234,28 +234,27 @@ func (d *driver) Reconcile(
 		// Kubernetes rejects selector updates as immutable, so we delete the stale deployment and requeue;
 		// the next pass recreates it with the correct selector.
 		var existingDeployment appsv1.Deployment
-		var existingMatchLabels map[string]string
+		var existingSelector map[string]string
 		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolDeploymentName}, &existingDeployment); err == nil {
 			if existingDeployment.Spec.Selector != nil {
-				existingMatchLabels = existingDeployment.Spec.Selector.MatchLabels
+				existingSelector = existingDeployment.Spec.Selector.MatchLabels
 			}
 		} else if !apierrors.IsNotFound(err) {
 			return results.WithError(err)
 		}
-		selector := d.deploymentSelector(kb, role, existingMatchLabels)
-		if existingMatchLabels != nil && !umaps.IsSubset(selector, existingMatchLabels) {
-			logger.Info(
-				"Deployment selector mismatch; deleting to allow recreation with updated selector",
-				"deployment", poolDeploymentName,
-				"existing_selector", existingMatchLabels,
-				"expected_selector", selector,
-			)
-			if delErr := d.client.Delete(ctx, &existingDeployment); delErr != nil && !apierrors.IsNotFound(delErr) {
-				return results.WithError(delErr)
+		selector := d.deploymentSelector(kb, role, existingSelector)
+		mismatch, herr := d.handleDeploymentSelectorMismatch(ctx, kb, &existingDeployment, existingSelector, selector, poolDeploymentName)
+		if herr != nil {
+			return results.WithError(herr)
+		}
+		if mismatch.mismatch {
+			if mismatch.requeue {
+				return results.WithRequeue()
 			}
-			k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
-				fmt.Sprintf("Deleted Deployment %s to apply updated selector", poolDeploymentName))
-			return results.WithRequeue()
+
+			// When a mismatch is found and orchestration is paused, deletion is deferred and the caller returns without requeue.
+			// If the split is enabled while on pause, the reconciliation should end here.
+			return results
 		}
 
 		if !reconciledSecrets[poolSecretName] {
@@ -381,9 +380,62 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 	return expectedByRole
 }
 
+// selectorMismatchResult is the outcome of handleDeploymentSelectorMismatch.
+// When mismatch is false the caller continues normally; when true the caller must return
+// immediately, adding a requeue to results only when requeue is also true.
+type selectorMismatchResult struct {
+	mismatch bool
+	requeue  bool
+}
+
+// handleDeploymentSelectorMismatch detects an immutable selector transition for a pool deployment.
+// When a mismatch is found and orchestration is paused, deletion is deferred and the caller returns
+// without requeue. Otherwise the stale deployment is deleted so the next reconcile can recreate it
+// with the correct selector, and the caller returns with requeue.
+func (d *driver) handleDeploymentSelectorMismatch(
+	ctx context.Context,
+	kb *kbv1.Kibana,
+	existingDeployment *appsv1.Deployment,
+	existingMatchLabels map[string]string,
+	selector map[string]string,
+	deploymentName string,
+) (selectorMismatchResult, error) {
+	if existingMatchLabels == nil || umaps.IsSubset(selector, existingMatchLabels) {
+		return selectorMismatchResult{}, nil
+	}
+	logger := ulog.FromContext(ctx)
+	if common.IsOrchestrationPaused(kb) {
+		logger.Info(
+			"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
+			"deployment", deploymentName,
+		)
+		return selectorMismatchResult{mismatch: true}, nil
+	}
+	logger.Info(
+		"Deployment selector mismatch; deleting to allow recreation with updated selector",
+		"deployment", deploymentName,
+		"existing_selector", existingMatchLabels,
+		"expected_selector", selector,
+	)
+	if delErr := d.client.Delete(ctx, existingDeployment); delErr != nil && !apierrors.IsNotFound(delErr) {
+		return selectorMismatchResult{mismatch: true}, delErr
+	}
+
+	k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
+		fmt.Sprintf("Deleted Deployment %s to apply updated selector", deploymentName))
+
+	return selectorMismatchResult{mismatch: true, requeue: true}, nil
+}
+
 // garbageCollectBackgroundResources deletes the background tasks Deployment and config Secret
 // when spec.backgroundTasks is no longer set.
+// Deletion is skipped while orchestration is paused so that disabling the split on a paused
+// Kibana does not remove the background Deployment until the user resumes orchestration.
 func (d *driver) garbageCollectBackgroundResources(ctx context.Context, kb *kbv1.Kibana) error {
+	if common.IsOrchestrationPaused(kb) {
+		return nil
+	}
+
 	bgDpName := kbv1.BackgroundTasksDeployment(kb.Name)
 	var bgDp appsv1.Deployment
 	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: bgDpName}, &bgDp); err == nil {
