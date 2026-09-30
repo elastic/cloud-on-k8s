@@ -266,11 +266,12 @@ func (d *driver) Reconcile(
 
 		// Determine replica count for this pool.
 		var replicas *int32
-		if stopNeeded {
+		switch {
+		case stopNeeded:
 			replicas = new(int32(0)) // drain both pools before starting the new version
-		} else if kb.BackgroundTasksEnabled() && role.IsBackgroundTasks() {
+		case kb.BackgroundTasksEnabled() && role.IsBackgroundTasks():
 			replicas = kb.Spec.BackgroundTasks.Count // nil means HPA-managed
-		} else {
+		default:
 			replicas = new(kb.Spec.Count)
 		}
 
