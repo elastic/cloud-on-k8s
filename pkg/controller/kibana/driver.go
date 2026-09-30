@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -175,12 +176,6 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	// Compute the base config once; per-pool copies and apply the role env var in container.
-	baseSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	basePath, err := GetKibanaBasePath(*kb)
 	if err != nil {
 		return results.WithError(err)
@@ -230,7 +225,12 @@ func (d *driver) Reconcile(
 	reconciledSecrets := map[string]bool{}
 
 	for _, role := range kb.ActiveRoles() {
-		poolCfg, poolSecretName, poolDeploymentName, err := d.poolParams(kb, role, baseSettings)
+		poolParams, err := d.poolParams(kb, role)
+		if err != nil {
+			return results.WithError(err)
+		}
+
+		poolConfig, err := NewConfigSettings(ctx, d.client, *kb, poolParams.Config, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -240,7 +240,7 @@ func (d *driver) Reconcile(
 		// the next pass recreates it with the correct selector.
 		var existingDeployment appsv1.Deployment
 		var existingSelector map[string]string
-		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolDeploymentName}, &existingDeployment); err == nil {
+		if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolParams.DeploymentName}, &existingDeployment); err == nil {
 			if existingDeployment.Spec.Selector != nil {
 				existingSelector = existingDeployment.Spec.Selector.MatchLabels
 			}
@@ -248,7 +248,7 @@ func (d *driver) Reconcile(
 			return results.WithError(err)
 		}
 		selector := d.deploymentSelector(kb, role, existingSelector)
-		mismatch, herr := d.handleDeploymentSelectorMismatch(ctx, kb, &existingDeployment, existingSelector, selector, poolDeploymentName)
+		mismatch, herr := d.handleDeploymentSelectorMismatch(ctx, kb, &existingDeployment, existingSelector, selector, poolParams.DeploymentName)
 		if herr != nil {
 			return results.WithError(herr)
 		}
@@ -262,16 +262,16 @@ func (d *driver) Reconcile(
 			return results
 		}
 
-		if !reconciledSecrets[poolSecretName] {
-			if err = ReconcileConfigSecret(ctx, d.client, *kb, poolCfg, poolSecretName, meta); err != nil {
+		if !reconciledSecrets[poolParams.SecretName] {
+			if err = ReconcileConfigSecret(ctx, d.client, *kb, poolConfig, poolParams.SecretName, meta); err != nil {
 				return results.WithError(err)
 			}
-			reconciledSecrets[poolSecretName] = true
+			reconciledSecrets[poolParams.SecretName] = true
 		}
 
 		// Determine replica count for this pool.
 		replicas, oldReplicas := d.deploymentReplicas(logger, stopNeeded, kb, role, &existingDeployment)
-		dpParams, err := d.deploymentParams(ctx, kb, role, poolSecretName, poolDeploymentName, replicas, oldReplicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
+		dpParams, err := d.deploymentParams(ctx, kb, role, poolParams.SecretName, poolParams.DeploymentName, replicas, oldReplicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -320,30 +320,41 @@ func (d *driver) Reconcile(
 	return results
 }
 
-// poolParams returns the per-pool config, secret name, and deployment name for a given role.
-// node.roles is NOT injected into kibana.yml — it is set via NODE_ROLES env var on the pod,
-// matching the approach used by the serverless kibana-controller.
-//
-// Both pools share the same config secret unless spec.backgroundTasks.config is set, in which
-// case the background tasks pool gets its own secret with the overlay merged on top.
-func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (cfg CanonicalConfig, secretName string, deploymentName string, rErr error) {
+type poolParameters struct {
+	Config         CanonicalConfig
+	SecretName     string
+	DeploymentName string
+}
+
+func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role) (params poolParameters, rErr error) {
+	var specConfigData map[string]any
+	if kb.Spec.Config != nil {
+		specConfigData = kb.Spec.Config.Data
+	}
+	pcg, err := settings.NewCanonicalConfigFrom(specConfigData)
+	if err != nil {
+		return poolParameters{}, err
+	}
+	primaryPoolConfig := CanonicalConfig{pcg}
+
 	if role.IsSinglePool() || role.IsUI() || (role == kblabel.Role{}) {
 		// Single all-roles pool or UI pool: use the base config and base names.
-		return base, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), nil
+		return poolParameters{Config: primaryPoolConfig, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.KBNamer.Suffix(kb.Name)}, nil
 	}
 
 	// Background tasks pool: only create a separate secret when there is an overlay.
 	overlay := kb.Spec.BackgroundTasks.Config // kb.Spec.BackgroundTasks is non-nil when BG role is active
 	if overlay == nil {
 		// No overlay — share the base secret; no separate BG secret needed.
-		return base, kbv1.ConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name), nil
+		return poolParameters{Config: primaryPoolConfig, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.BackgroundTasksDeployment(kb.Name)}, nil
 	}
 
-	poolCfg, err := base.WithOverlay(overlay)
+	poolCfg, err := primaryPoolConfig.WithOverlay(overlay)
 	if err != nil {
-		return CanonicalConfig{}, "", "", err
+		return poolParameters{}, err
 	}
-	return poolCfg, kbv1.BackgroundTasksConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name), nil
+
+	return poolParameters{Config: poolCfg, SecretName: kbv1.BackgroundTasksConfigSecret(kb.Name), DeploymentName: kbv1.BackgroundTasksDeployment(kb.Name)}, nil
 }
 
 // deploymentSelector returns the label selector to use for a pool deployment.

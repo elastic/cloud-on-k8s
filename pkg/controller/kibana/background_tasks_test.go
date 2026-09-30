@@ -128,49 +128,121 @@ func TestWithOverlay(t *testing.T) {
 // ---- poolParams -------------------------------------------------------------
 
 func TestPoolParams(t *testing.T) {
-	baseCfg := CanonicalConfig{settings.MustCanonicalConfig(map[string]any{"server.host": "0.0.0.0"})}
+	overlay := &commonv1.Config{Data: map[string]any{"xpack.extra": "v"}}
 
-	t.Run("empty role returns base config and base names", func(t *testing.T) {
-		kb := &kbv1.Kibana{Name: "mykb", Spec: kbv1.KibanaSpec{Version: "8.17.0"}}
-		d := &driver{}
-		cfg, secretName, deployName, err := d.poolParams(kb, kblabel.Role{}, baseCfg)
-		require.NoError(t, err)
-		assert.Equal(t, baseCfg.CanonicalConfig, cfg.CanonicalConfig)
-		assert.Equal(t, kbv1.ConfigSecret("mykb"), secretName)
-		assert.Equal(t, kbv1.KBNamer.Suffix("mykb"), deployName)
-	})
+	tests := []struct {
+		name               string
+		kb                 *kbv1.Kibana
+		role               kblabel.Role
+		wantSecretName     string
+		wantDeploymentName string
+		wantConfig         map[string]string // key -> expected string value in the resulting config
+		wantAbsentKeys     []string          // keys that must not be in the resulting config
+	}{
+		{
+			name:               "empty role: base secret and deployment names",
+			kb:                 &kbv1.Kibana{Name: "mykb", Spec: kbv1.KibanaSpec{Version: "8.17.0"}},
+			role:               kblabel.Role{},
+			wantSecretName:     kbv1.ConfigSecret("mykb"),
+			wantDeploymentName: kbv1.KBNamer.Suffix("mykb"),
+		},
+		{
+			name:               "UIRole: base secret and deployment names",
+			kb:                 kbWithBG(nil, nil),
+			role:               kblabel.UIRole,
+			wantSecretName:     kbv1.ConfigSecret("test"),
+			wantDeploymentName: kbv1.KBNamer.Suffix("test"),
+		},
+		{
+			name:               "BackgroundTasksRole, no overlay: shares base secret",
+			kb:                 kbWithBG(nil, nil),
+			role:               kblabel.BackgroundTasksRole,
+			wantSecretName:     kbv1.ConfigSecret("test"),
+			wantDeploymentName: kbv1.BackgroundTasksDeployment("test"),
+		},
+		{
+			name:               "BackgroundTasksRole, overlay: dedicated BG secret",
+			kb:                 kbWithBG(nil, overlay),
+			role:               kblabel.BackgroundTasksRole,
+			wantSecretName:     kbv1.BackgroundTasksConfigSecret("test"),
+			wantDeploymentName: kbv1.BackgroundTasksDeployment("test"),
+		},
+		{
+			name:               "BackgroundTasksRole, overlay: config contains overlay key",
+			kb:                 kbWithBG(nil, overlay),
+			role:               kblabel.BackgroundTasksRole,
+			wantSecretName:     kbv1.BackgroundTasksConfigSecret("test"),
+			wantDeploymentName: kbv1.BackgroundTasksDeployment("test"),
+			wantConfig:         map[string]string{"xpack.extra": "v"},
+		},
+		{
+			name:               "UIRole, primary config: primary values returned, BG overlay does not leak",
+			kb:                 kbWithPrimary(kbWithBG(nil, overlay), map[string]any{"server.name": "primary", "logging.root.level": "info"}),
+			role:               kblabel.UIRole,
+			wantSecretName:     kbv1.ConfigSecret("test"),
+			wantDeploymentName: kbv1.KBNamer.Suffix("test"),
+			wantConfig:         map[string]string{"server.name": "primary", "logging.root.level": "info"},
+			wantAbsentKeys:     []string{"xpack.extra"},
+		},
+		{
+			name:               "BackgroundTasksRole, primary config, no overlay: inherits primary values",
+			kb:                 kbWithPrimary(kbWithBG(nil, nil), map[string]any{"server.name": "primary"}),
+			role:               kblabel.BackgroundTasksRole,
+			wantSecretName:     kbv1.ConfigSecret("test"),
+			wantDeploymentName: kbv1.BackgroundTasksDeployment("test"),
+			wantConfig:         map[string]string{"server.name": "primary"},
+		},
+		{
+			name: "BackgroundTasksRole, primary and overlay: overlay overwrites shared key, keeps the rest",
+			kb: kbWithPrimary(
+				kbWithBG(nil, &commonv1.Config{Data: map[string]any{"server.name": "bg", "xpack.extra": "v"}}),
+				map[string]any{"server.name": "primary", "logging.root.level": "info"},
+			),
+			role:               kblabel.BackgroundTasksRole,
+			wantSecretName:     kbv1.BackgroundTasksConfigSecret("test"),
+			wantDeploymentName: kbv1.BackgroundTasksDeployment("test"),
+			wantConfig: map[string]string{
+				"server.name":        "bg",   // overwritten by overlay
+				"logging.root.level": "info", // inherited from primary
+				"xpack.extra":        "v",    // added by overlay
+			},
+		},
+		{
+			name: "UIRole, primary and overlay: primary is untouched by overlay",
+			kb: kbWithPrimary(
+				kbWithBG(nil, &commonv1.Config{Data: map[string]any{"server.name": "bg"}}),
+				map[string]any{"server.name": "primary"},
+			),
+			role:               kblabel.UIRole,
+			wantSecretName:     kbv1.ConfigSecret("test"),
+			wantDeploymentName: kbv1.KBNamer.Suffix("test"),
+			wantConfig:         map[string]string{"server.name": "primary"},
+		},
+	}
 
-	t.Run("UIRole returns base config and base names", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		d := &driver{}
-		cfg, secretName, deployName, err := d.poolParams(kb, kblabel.UIRole, baseCfg)
-		require.NoError(t, err)
-		assert.Equal(t, baseCfg.CanonicalConfig, cfg.CanonicalConfig)
-		assert.Equal(t, kbv1.ConfigSecret("test"), secretName)
-		assert.Equal(t, kbv1.KBNamer.Suffix("test"), deployName)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, err := (&driver{}).poolParams(tt.kb, tt.role)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantSecretName, params.SecretName)
+			assert.Equal(t, tt.wantDeploymentName, params.DeploymentName)
+			for k, want := range tt.wantConfig {
+				got, err := params.Config.String(k)
+				require.NoError(t, err, "key %q", k)
+				assert.Equal(t, want, got, "key %q", k)
+			}
+			for _, k := range tt.wantAbsentKeys {
+				_, err := params.Config.String(k)
+				assert.Error(t, err, "key %q must be absent", k)
+			}
+		})
+	}
+}
 
-	t.Run("BackgroundTasksRole without overlay shares base secret", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		d := &driver{}
-		cfg, secretName, deployName, err := d.poolParams(kb, kblabel.BackgroundTasksRole, baseCfg)
-		require.NoError(t, err)
-		// Same config pointer — no deep copy done for the no-overlay case.
-		assert.Equal(t, baseCfg.CanonicalConfig, cfg.CanonicalConfig)
-		// Uses shared base secret, not a separate BG secret.
-		assert.Equal(t, kbv1.ConfigSecret("test"), secretName)
-		assert.Equal(t, kbv1.BackgroundTasksDeployment("test"), deployName)
-	})
-
-	t.Run("BackgroundTasksRole with overlay gets dedicated secret", func(t *testing.T) {
-		overlay := &commonv1.Config{Data: map[string]any{"xpack.extra": "v"}}
-		kb := kbWithBG(nil, overlay)
-		d := &driver{}
-		_, secretName, deployName, err := d.poolParams(kb, kblabel.BackgroundTasksRole, baseCfg)
-		require.NoError(t, err)
-		assert.Equal(t, kbv1.BackgroundTasksConfigSecret("test"), secretName)
-		assert.Equal(t, kbv1.BackgroundTasksDeployment("test"), deployName)
-	})
+// kbWithPrimary sets spec.config (the primary pool config) on kb and returns it.
+func kbWithPrimary(kb *kbv1.Kibana, data map[string]any) *kbv1.Kibana {
+	kb.Spec.Config = &commonv1.Config{Data: data}
+	return kb
 }
 
 // ---- mergePoolPodTemplate ---------------------------------------------------
