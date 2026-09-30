@@ -396,7 +396,7 @@ func TestHandleDeploymentSelectorMismatch(t *testing.T) {
 	}
 	legacyDp := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{Name: dpName, Namespace: "default"},
+			Name: dpName, Namespace: "default",
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: legacyLabels},
 			},
@@ -477,23 +477,21 @@ func TestGarbageCollectBGPauseGuard(t *testing.T) {
 
 	existingBGDeployment := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{Name: bgDpName, Namespace: "default"},
+			Name: bgDpName, Namespace: "default",
 		}
 	}
 	existingBGSecret := func() *corev1.Secret {
 		return &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: bgSecretName, Namespace: "default"},
+			Name: bgSecretName, Namespace: "default",
 		}
 	}
 
 	kbPaused := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test", Namespace: "default",
-			Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
-		},
+		Name: "test", Namespace: "default",
+		Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
 	}
 	kbActive := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		Name: "test", Namespace: "default",
 	}
 
 	t.Run("paused: GC skipped, deployment and secret survive", func(t *testing.T) {
@@ -781,25 +779,23 @@ func TestGetPodTemplateSpecForRole(t *testing.T) {
 
 func makePod(name, version string, role kblabel.Role) corev1.Pod {
 	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-			Labels: map[string]string{
-				kblabel.KibanaVersionLabelName: version,
-				kblabel.RoleLabelName:          role.LabelValue,
-			},
+		Name: name,
+		Labels: map[string]string{
+			kblabel.KibanaVersionLabelName: version,
+			kblabel.RoleLabelName:          role.LabelValue,
 		},
 	}
 }
 
 func TestUpgradeStopNeeded(t *testing.T) {
 	const (
-		old = "8.17.0"
-		new = "8.18.0"
+		oldVersion = "8.17.0"
+		newVersion = "8.18.0"
 	)
 
-	kbSingle := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: new}}
+	kbSingle := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: newVersion}}
 	kbSplit := kbv1.Kibana{Spec: kbv1.KibanaSpec{
-		Version:         new,
+		Version:         newVersion,
 		BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
 	}}
 
@@ -818,7 +814,7 @@ func TestUpgradeStopNeeded(t *testing.T) {
 		{
 			name: "single-pool, stale pod: not needed (Recreate handles single Deployment)",
 			kb:   kbSingle,
-			pods: []corev1.Pod{makePod("kb-0", old, kblabel.SinglePoolRole)},
+			pods: []corev1.Pod{makePod("kb-0", oldVersion, kblabel.SinglePoolRole)},
 			want: false,
 		},
 		{
@@ -831,8 +827,8 @@ func TestUpgradeStopNeeded(t *testing.T) {
 			name: "split, all pods at new version: not needed",
 			kb:   kbSplit,
 			pods: []corev1.Pod{
-				makePod("kb-ui-0", new, kblabel.UIRole),
-				makePod("kb-bg-0", new, kblabel.BackgroundTasksRole),
+				makePod("kb-ui-0", newVersion, kblabel.UIRole),
+				makePod("kb-bg-0", newVersion, kblabel.BackgroundTasksRole),
 			},
 			want: false,
 		},
@@ -840,8 +836,8 @@ func TestUpgradeStopNeeded(t *testing.T) {
 			name: "split, both pools stale: needed",
 			kb:   kbSplit,
 			pods: []corev1.Pod{
-				makePod("kb-ui-0", old, kblabel.UIRole),
-				makePod("kb-bg-0", old, kblabel.BackgroundTasksRole),
+				makePod("kb-ui-0", oldVersion, kblabel.UIRole),
+				makePod("kb-bg-0", oldVersion, kblabel.BackgroundTasksRole),
 			},
 			want: true,
 		},
@@ -851,7 +847,7 @@ func TestUpgradeStopNeeded(t *testing.T) {
 			name: "split, UI pod gone but BG pod still stale: needed",
 			kb:   kbSplit,
 			pods: []corev1.Pod{
-				makePod("kb-bg-0", old, kblabel.BackgroundTasksRole),
+				makePod("kb-bg-0", oldVersion, kblabel.BackgroundTasksRole),
 			},
 			want: true,
 		},
@@ -860,7 +856,7 @@ func TestUpgradeStopNeeded(t *testing.T) {
 			name: "split, BG pod gone but UI pod still stale: needed",
 			kb:   kbSplit,
 			pods: []corev1.Pod{
-				makePod("kb-ui-0", old, kblabel.UIRole),
+				makePod("kb-ui-0", oldVersion, kblabel.UIRole),
 			},
 			want: true,
 		},
@@ -868,7 +864,7 @@ func TestUpgradeStopNeeded(t *testing.T) {
 			name: "split, pod with missing version label: needed (treated as stale)",
 			kb:   kbSplit,
 			pods: []corev1.Pod{
-				{ObjectMeta: metav1.ObjectMeta{Name: "kb-ui-0"}},
+				{Name: "kb-ui-0"},
 			},
 			want: true,
 		},
