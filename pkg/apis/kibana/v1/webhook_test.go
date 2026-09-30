@@ -536,6 +536,22 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
 		},
 		{
+			Name:      "backgroundTasks-node-roles-in-bg-config-forbidden-canonical",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"node": map[string]any{"roles": []string{"background_tasks"}}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
 			Name:      "backgroundTasks-nil-count-allowed-for-hpa",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
