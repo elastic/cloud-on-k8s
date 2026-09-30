@@ -133,8 +133,11 @@ func (d *driver) Reconcile(
 	// metadata to propagate to children
 	meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 
-	// Service selector: point only at UI-role pods when split mode is active.
-	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb, meta), kb)
+	svcSelector, err := d.serviceSelector(ctx, kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb, meta, svcSelector), kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -372,6 +375,23 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 	}
 
 	return expectedByRole
+}
+
+// serviceSelector fetches the existing Kibana HTTP Service (if any) and returns the label
+// selector to use for it. It applies the same ECK upgrade-path exception as deploymentSelector:
+// when the existing Service has no role label yet and split mode is inactive, the role label
+// is omitted so that the Service is not needlessly updated on every reconcile during an
+// operator upgrade. Returns the full expected selector (including role=prime) when the Service
+// does not exist yet.
+func (d *driver) serviceSelector(ctx context.Context, kb *kbv1.Kibana) (map[string]string, error) {
+	var existingSvc corev1.Service
+	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.HTTPService(kb.Name)}, &existingSvc); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		return d.deploymentSelector(kb, kblabel.UIRole, nil), nil
+	}
+	return d.deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
 }
 
 func (d *driver) deploymentReplicas(logger logr.Logger, stopNeeded bool, kb *kbv1.Kibana, role kblabel.Role, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
@@ -728,7 +748,7 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana, configSecretName string) ([]commo
 	return volumes, nil
 }
 
-func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
+func NewService(kb kbv1.Kibana, meta metadata.Metadata, selector map[string]string) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
 		Spec:       kb.Spec.HTTP.Service.Spec,
@@ -737,9 +757,6 @@ func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
 	svc.ObjectMeta.Namespace = kb.Namespace
 	svc.ObjectMeta.Name = kbv1.HTTPService(kb.Name)
 
-	// When background task isolation is active, the service must select only UI-role pods
-	// so that HTTP traffic never lands on background_tasks-only nodes.
-	selector := kb.GetPoolIdentityLabels(kblabel.UIRole)
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),

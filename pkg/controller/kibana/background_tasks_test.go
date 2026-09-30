@@ -623,29 +623,92 @@ func TestNodeRolesEnvVar(t *testing.T) {
 
 // ---- Service selector -------------------------------------------------------
 
-func TestNewService_BackgroundTasksSplit(t *testing.T) {
-	t.Run("split disabled: service selector has role=prime (single-pool)", func(t *testing.T) {
-		kb := kbv1.Kibana{
-			Name: "mykb", Namespace: "default",
-			Spec: kbv1.KibanaSpec{Version: "8.17.0"},
-		}
-		svc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
-		assert.Equal(t, kblabel.RolePrimeValue, svc.Spec.Selector[kblabel.RoleLabelName],
-			"service always selects role=prime pods; the single pool carries that label too")
-		assert.Equal(t, "mykb", svc.Spec.Selector[kblabel.KibanaNameLabelName])
-	})
+func TestServiceSelector(t *testing.T) {
+	kbNoSplit := func() *kbv1.Kibana {
+		return &kbv1.Kibana{Name: "mykb", Namespace: "default", Spec: kbv1.KibanaSpec{Version: "8.17.0"}}
+	}
+	kbSplit := func() *kbv1.Kibana {
+		return &kbv1.Kibana{Name: "mykb", Namespace: "default", Spec: kbv1.KibanaSpec{
+			Version:         "8.17.0",
+			BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
+		}}
+	}
 
-	t.Run("split enabled: selector targets UI-role (prime) pods only", func(t *testing.T) {
-		kb := kbv1.Kibana{
-			Name: "mykb", Namespace: "default",
-			Spec: kbv1.KibanaSpec{
-				Version:         "8.17.0",
-				BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
-			},
-		}
-		svc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
-		assert.Equal(t, kblabel.RolePrimeValue, svc.Spec.Selector[kblabel.RoleLabelName], "role=prime must be in selector")
-	})
+	svcWith := func(selector map[string]string) *corev1.Service {
+		svc := &corev1.Service{}
+		svc.Name = kbv1.HTTPService("mykb")
+		svc.Namespace = "default"
+		svc.Spec.Selector = selector
+		return svc
+	}
+
+	driverWith := func(objects ...client.Object) *driver {
+		return &driver{client: k8s.NewFakeClient(objects...)}
+	}
+
+	tests := []struct {
+		name        string
+		kb          *kbv1.Kibana
+		existingSvc *corev1.Service // nil means no service in API server
+		wantRole    string          // "" means role label must be absent
+	}{
+		{
+			name:     "no existing service: returns full selector with role=prime",
+			kb:       kbNoSplit(),
+			wantRole: kblabel.RolePrimeValue,
+		},
+		{
+			name: "split disabled, existing has role=prime: no change",
+			kb:   kbNoSplit(),
+			existingSvc: svcWith(map[string]string{
+				kblabel.KibanaNameLabelName: "mykb",
+				kblabel.RoleLabelName:       kblabel.RolePrimeValue,
+			}),
+			wantRole: kblabel.RolePrimeValue,
+		},
+		{
+			name: "split disabled, existing has no role label: strips role (ECK upgrade path)",
+			kb:   kbNoSplit(),
+			existingSvc: svcWith(map[string]string{
+				kblabel.KibanaNameLabelName: "mykb",
+			}),
+			wantRole: "", // absent
+		},
+		{
+			name: "split enabled, existing has no role label: keeps role=prime (exception does not apply)",
+			kb:   kbSplit(),
+			existingSvc: svcWith(map[string]string{
+				kblabel.KibanaNameLabelName: "mykb",
+			}),
+			wantRole: kblabel.RolePrimeValue,
+		},
+		{
+			name:     "split enabled, no existing service: returns full selector with role=prime",
+			kb:       kbSplit(),
+			wantRole: kblabel.RolePrimeValue,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objects []client.Object
+			if tt.existingSvc != nil {
+				objects = append(objects, tt.existingSvc)
+			}
+			d := driverWith(objects...)
+
+			sel, err := d.serviceSelector(context.Background(), tt.kb)
+			require.NoError(t, err)
+
+			if tt.wantRole == "" {
+				_, hasRole := sel[kblabel.RoleLabelName]
+				assert.False(t, hasRole, "role label must be absent")
+			} else {
+				assert.Equal(t, tt.wantRole, sel[kblabel.RoleLabelName])
+			}
+			assert.Equal(t, "mykb", sel[kblabel.KibanaNameLabelName])
+		})
+	}
 }
 
 // ---- Deployment selector labels (via GetPoolIdentityLabels) -----------------
