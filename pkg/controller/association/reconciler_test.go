@@ -550,6 +550,38 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 			},
 		},
 		{
+			name: "non-ES association denied in all mode with watch error: still unbinds, error returned",
+			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
+				kb := sampleKibanaNoEsRef()
+				kb.Spec.EnterpriseSearchRef = commonv1.ObjectSelector{Name: "entname", Namespace: "entns"}
+				kb.Annotations = map[string]string{
+					kb.EntAssociation().AssociationConfAnnotationName(): assocConf(
+						"entauth", "entkey", false, "ent-ca", "https://entname-ent-http.entns.svc:3002",
+					),
+				}
+				info := kbEntAssocInfo
+				info.AdditionalSecrets = func(_ context.Context, _ k8s.Client, _ commonv1.Association) ([]AdditionalSecret, error) {
+					return nil, errors.New("simulated watch setup failure")
+				}
+				return Reconciler{
+					AssociationInfo: info,
+					Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
+					accessReviewer:  denyAllAccessReviewer{},
+					watches:         watches.NewDynamicWatches(),
+					recorder:        rec,
+					OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
+					RBACOnRefsMode:  operator.RBACOnRefsModeAll,
+				}, k8s.ExtractNamespacedName(&kb)
+			},
+			wantErr:          true,
+			wantWarningEvent: true,
+			checkResult: func(t *testing.T, _ Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Equal(t, commonv1.AssociationPending, kb.Status.EnterpriseSearchAssociationStatus)
+				require.Empty(t, kb.Annotations[kb.EntAssociation().AssociationConfAnnotationName()])
+			},
+		},
+		{
 			name: "non-ES association in off mode: no warning, establishes",
 			setup: func(rec *toolsevents.FakeRecorder) (Reconciler, types.NamespacedName) {
 				return newEntReconciler(operator.RBACOnRefsModeOff, rbac.NewPermissiveAccessReviewer(), rec)

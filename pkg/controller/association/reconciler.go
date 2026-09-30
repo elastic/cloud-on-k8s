@@ -237,12 +237,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
-	// reconcile watches for all associations of this type
-	if err := r.reconcileWatches(ctx, associatedKey, associations); err != nil {
-		return reconcile.Result{}, tracing.CaptureError(ctx, err)
-	}
-
 	results := reconciler.NewResult(ctx)
+	// Watch setup can depend on transitive association configuration. Keep reconciling
+	// if it fails so a denied reference can still be unbound on this pass.
+	results.WithError(r.reconcileWatches(ctx, associatedKey, associations))
 	newStatusMap := commonv1.AssociationStatusMap{}
 	for _, association := range associations {
 		newStatus, assocResults := r.reconcileAssociation(ctx, association)
