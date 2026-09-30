@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -598,7 +599,8 @@ func TestNodeRolesEnvVar(t *testing.T) {
 				kbv1.ConfigSecret(kb.Name),
 				kbv1.KBNamer.Suffix(kb.Name),
 				replicas,
-				nil,
+				nil, // replicasAnnotationValue
+				nil, // policyAnnotations
 				"",
 				true,
 				"",
@@ -873,6 +875,254 @@ func TestUpgradeStopNeeded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, upgradeStopNeeded(&tt.kb, tt.pods))
+		})
+	}
+}
+
+// ---- deploymentReplicas -----------------------------------------------------
+
+func TestDeploymentReplicas(t *testing.T) {
+	ptr := func(n int32) *int32 { return &n }
+
+	kbSplit := func(bgCount *int32) *kbv1.Kibana {
+		return &kbv1.Kibana{Spec: kbv1.KibanaSpec{
+			Count:           3,
+			BackgroundTasks: &kbv1.KibanaBackgroundTasks{Count: bgCount},
+		}}
+	}
+	kbSingle := &kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 3}}
+
+	dp := func(replicas *int32, annotations map[string]string) *appsv1.Deployment {
+		d := &appsv1.Deployment{}
+		d.Name = "test-dp"
+		d.Annotations = annotations
+		d.Spec.Replicas = replicas
+		return d
+	}
+	ann := func(v string) map[string]string {
+		return map[string]string{replicasAnnotationName: v}
+	}
+
+	// getBackgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
+	tests := []struct {
+		name       string
+		stopNeeded bool
+		kb         *kbv1.Kibana
+		role       kblabel.Role
+		existingDp *appsv1.Deployment
+		wantNew    *int32
+		wantOld    *int32
+	}{
+		// ---- no stop phase --------------------------------------------------
+		{
+			name:       "single-pool: returns kb.Spec.Count",
+			kb:         kbSingle,
+			role:       kblabel.SinglePoolRole,
+			existingDp: dp(ptr(3), nil),
+			wantNew:    ptr(3),
+		},
+		{
+			name:       "BG, explicit count: Count wins",
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(2), nil),
+			wantNew:    ptr(2),
+		},
+		{
+			name:       "BG, explicit count ignores annotation: Count wins over annotation",
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("5")),
+			wantNew:    ptr(2),
+		},
+		{
+			name:       "BG, Count nil, HPA value: HPA replicas win",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(4), nil),
+			wantNew:    ptr(4),
+		},
+		{
+			name:       "BG, Count nil, HPA zeroed, annotation: annotation wins as last resort",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("5")),
+			wantNew:    ptr(5),
+		},
+		{
+			name:       "BG, Count nil, no HPA value, no annotation: returns nil",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(nil, nil),
+			wantNew:    nil,
+		},
+		{
+			name:       "BG, Count nil, HPA zeroed, malformed annotation: returns nil",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("not-a-number")),
+			wantNew:    nil,
+		},
+		// ---- stop phase -----------------------------------------------------
+		{
+			name:       "stop, UI role: scales to zero, no oldValue",
+			stopNeeded: true,
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.UIRole,
+			existingDp: dp(ptr(3), nil),
+			wantNew:    ptr(0),
+			wantOld:    nil,
+		},
+		{
+			name:       "stop, BG, explicit count: Count saved as oldValue",
+			stopNeeded: true,
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(2), nil),
+			wantNew:    ptr(0),
+			wantOld:    ptr(2),
+		},
+		{
+			name:       "stop, BG, explicit count ignores annotation: Count wins over annotation",
+			stopNeeded: true,
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("4")),
+			wantNew:    ptr(0),
+			wantOld:    ptr(2),
+		},
+		{
+			name:       "stop, BG, Count nil, HPA value: HPA replicas saved as oldValue",
+			stopNeeded: true,
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(4), nil),
+			wantNew:    ptr(0),
+			wantOld:    ptr(4),
+		},
+		{
+			name:       "stop, BG, Count nil, HPA zeroed, annotation: annotation saved as oldValue",
+			stopNeeded: true,
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("4")),
+			wantNew:    ptr(0),
+			wantOld:    ptr(4),
+		},
+		{
+			name:       "stop, BG, Count nil, no HPA, no annotation: oldValue is nil",
+			stopNeeded: true,
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(nil, nil),
+			wantNew:    ptr(0),
+			wantOld:    nil,
+		},
+		{
+			name:       "stop, BG, Count nil, HPA zeroed, malformed annotation: oldValue is nil",
+			stopNeeded: true,
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("not-a-number")),
+			wantNew:    ptr(0),
+			wantOld:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &driver{}
+			gotNew, gotOld := d.deploymentReplicas(logr.Discard(), tt.stopNeeded, tt.kb, tt.role, tt.existingDp)
+			assert.Equal(t, tt.wantNew, gotNew)
+			assert.Equal(t, tt.wantOld, gotOld)
+		})
+	}
+}
+
+// ---- deploymentParams: replicas annotation ----------------------------------
+
+func TestDeploymentParamsReplicasAnnotation(t *testing.T) {
+	ptr := func(n int32) *int32 { return &n }
+
+	// Kibana with background tasks enabled (needed for BG-role calls to succeed).
+	kbWithBG := func() *kbv1.Kibana {
+		kb := kibanaFixture()
+		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: ptr(2)}
+		return kb
+	}
+
+	// bgConfigSecret is needed when deploymentParams is called with BackgroundTasksRole,
+	// because it fetches the config secret by name from the API server.
+	bgConfigSecret := &corev1.Secret{
+		Data: map[string][]byte{"kibana.yml": []byte("server.name: test")},
+	}
+	bgConfigSecret.Name = kbv1.BackgroundTasksConfigSecret("test")
+	bgConfigSecret.Namespace = "default"
+
+	tests := []struct {
+		name                string
+		role                kblabel.Role
+		replicasAnnotation  *int32
+		wantAnnotationValue string // "" means the key must be absent
+	}{
+		{
+			name:                "BG role, non-nil value: annotation written",
+			role:                kblabel.BackgroundTasksRole,
+			replicasAnnotation:  ptr(5),
+			wantAnnotationValue: "5",
+		},
+		{
+			name:               "BG role, nil value: annotation absent",
+			role:               kblabel.BackgroundTasksRole,
+			replicasAnnotation: nil,
+		},
+		{
+			name:               "SinglePool role, non-nil value: annotation absent",
+			role:               kblabel.SinglePoolRole,
+			replicasAnnotation: ptr(5),
+		},
+		{
+			name:               "UI role, non-nil value: annotation absent",
+			role:               kblabel.UIRole,
+			replicasAnnotation: ptr(5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := kbWithBG()
+
+			initialObjects := append(defaultInitialObjects(), bgConfigSecret)
+			c := k8s.NewFakeClient(initialObjects...)
+			w := watches.NewDynamicWatches()
+			d, err := newDriver(c, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			require.NoError(t, err)
+
+			configSecret := kbv1.ConfigSecret(kb.Name)
+			dpName := kbv1.KBNamer.Suffix(kb.Name)
+			if tt.role == kblabel.BackgroundTasksRole {
+				configSecret = kbv1.BackgroundTasksConfigSecret(kb.Name)
+				dpName = kbv1.BackgroundTasksDeployment(kb.Name)
+			}
+			replicas := ptr(kb.Spec.Count)
+			meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+			got, err := d.deploymentParams(
+				context.Background(), kb, tt.role,
+				configSecret, dpName,
+				replicas, tt.replicasAnnotation,
+				nil, "", false, "",
+				meta, kb.GetIdentityLabels(),
+			)
+			require.NoError(t, err)
+
+			val, exists := got.Metadata.Annotations[replicasAnnotationName]
+			if tt.wantAnnotationValue == "" {
+				assert.False(t, exists, "expected annotation to be absent, got %q", val)
+			} else {
+				assert.True(t, exists, "expected annotation to be present")
+				assert.Equal(t, tt.wantAnnotationValue, val)
+			}
 		})
 	}
 }

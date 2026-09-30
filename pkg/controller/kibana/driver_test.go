@@ -377,7 +377,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, kblabel.SinglePoolRole, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), new(kb.Spec.Count), tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
+			got, err := d.deploymentParams(context.Background(), kb, kblabel.SinglePoolRole, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), new(kb.Spec.Count), nil, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
 			if tt.wantErr {
 				require.Error(t, err)
 				return

@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"maps"
+	"strconv"
 
+	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -265,17 +267,8 @@ func (d *driver) Reconcile(
 		}
 
 		// Determine replica count for this pool.
-		var replicas *int32
-		switch {
-		case stopNeeded:
-			replicas = new(int32(0)) // drain both pools before starting the new version
-		case kb.BackgroundTasksEnabled() && role.IsBackgroundTasks():
-			replicas = kb.Spec.BackgroundTasks.Count // nil means HPA-managed
-		default:
-			replicas = new(kb.Spec.Count)
-		}
-
-		dpParams, err := d.deploymentParams(ctx, kb, role, poolSecretName, poolDeploymentName, replicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
+		replicas, oldReplicas := d.deploymentReplicas(logger, stopNeeded, kb, role, &existingDeployment)
+		dpParams, err := d.deploymentParams(ctx, kb, role, poolSecretName, poolDeploymentName, replicas, oldReplicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -379,6 +372,56 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 	}
 
 	return expectedByRole
+}
+
+func (d *driver) deploymentReplicas(logger logr.Logger, stopNeeded bool, kb *kbv1.Kibana, role kblabel.Role, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+	// replicasFromAnnotation returns the replica count saved in the maintenance annotation
+	// when present. This preserves the saved count across multiple
+	// reconciles that occur while the stop phase is active.
+	replicasFromAnnotation := func() *int32 {
+		if existingDeployment == nil {
+			return nil
+		}
+		if v, exists := existingDeployment.Annotations[replicasAnnotationName]; exists {
+			i, err := strconv.ParseInt(v, 10, 32)
+			if err != nil {
+				logger.Error(err, "ignoring malformed replicas annotation", "annotation", replicasAnnotationName, "value", v)
+				return nil
+			}
+			return new(int32(i))
+		}
+		return nil
+	}
+
+	getBackgroundReplicas := func() *int32 {
+		if kb.Spec.BackgroundTasks.Count != nil {
+			return kb.Spec.BackgroundTasks.Count
+		}
+
+		if existingDeployment.Spec.Replicas != nil && *existingDeployment.Spec.Replicas > 0 {
+			return existingDeployment.Spec.Replicas // get the HPA decided value
+		}
+
+		return replicasFromAnnotation() // restore from annotation
+	}
+
+	switch {
+	case stopNeeded:
+		newValue = new(int32(0)) // drain both pools before starting the new version
+
+		// Return the old value if the deployment is background tasks. It will be stored in annotation.
+		if role.IsBackgroundTasks() {
+			oldValue = getBackgroundReplicas()
+		}
+
+	case kb.BackgroundTasksEnabled() && role.IsBackgroundTasks():
+		newValue = getBackgroundReplicas()
+
+	default:
+		newValue = new(kb.Spec.Count)
+	}
+
+	return newValue, oldValue
 }
 
 // selectorMismatchResult is the outcome of handleDeploymentSelectorMismatch.
@@ -516,6 +559,7 @@ func (d *driver) deploymentParams(
 	configSecretName string,
 	deploymentName string,
 	replicas *int32,
+	replicasAnnotationValue *int32,
 	policyAnnotations map[string]string,
 	basePath string,
 	setDefaultSecurityContext bool,
@@ -618,6 +662,13 @@ func (d *driver) deploymentParams(
 	strategyType, err := d.getStrategyType(kb)
 	if err != nil {
 		return deployment.Params{}, err
+	}
+
+	// add the replicas Deployment's annotation if needed.
+	if role.IsBackgroundTasks() && replicasAnnotationValue != nil {
+		poolMeta = poolMeta.Merge(metadata.Metadata{Annotations: map[string]string{
+			replicasAnnotationName: fmt.Sprintf("%d", *replicasAnnotationValue),
+		}})
 	}
 
 	return deployment.Params{
