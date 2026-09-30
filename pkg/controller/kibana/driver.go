@@ -497,6 +497,10 @@ func (d *driver) garbageCollectBackgroundResources(ctx context.Context, kb *kbv1
 // needed — either because spec.backgroundTasks was cleared or because spec.backgroundTasks.config
 // was cleared (both pools now share the base secret).
 func (d *driver) garbageCollectBGConfigSecret(ctx context.Context, kb *kbv1.Kibana) error {
+	if common.IsOrchestrationPaused(kb) {
+		return nil
+	}
+
 	bgSecretName := kbv1.BackgroundTasksConfigSecret(kb.Name)
 	var bgSecret corev1.Secret
 	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: bgSecretName}, &bgSecret); err == nil {
