@@ -2046,7 +2046,7 @@ KibanaSpec holds the specification of a Kibana instance.
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. Elasticsearch) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
 | *`monitoring`* __[Monitoring](#monitoring)__ | Monitoring enables you to collect and ship log and monitoring data of this Kibana.<br>See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.<br>Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different<br>Elasticsearch monitoring clusters running in the same Kubernetes cluster. |
-| *`backgroundTasks`* __[KibanaBackgroundTasks](#kibanabackgroundtasks)__ | BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])<br>in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].<br>When nil, Kibana runs a single Deployment with all roles (current behavior).<br>Requires Kibana >= 8.16.0. |
+| *`backgroundTasks`* __[KibanaBackgroundTasks](#kibanabackgroundtasks)__ | BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])<br>in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].<br>When nil, Kibana runs a single Deployment with all roles.<br>Requires Kibana >= 8.16.0. |
 
 
 

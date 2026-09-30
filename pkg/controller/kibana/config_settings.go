@@ -120,7 +120,14 @@ func (c CanonicalConfig) WithOverlay(overlay *commonv1.Config) (CanonicalConfig,
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
+//
+// userSettings is deliberately passed in by the caller and NOT read from kb.Spec.Config here.
+// The background tasks pool config (spec.backgroundTasks.config) is an overlay on top of the
+// primary spec.config, so the caller must first merge the overlay into the primary settings
+// (see poolParams) to obtain the pool's user settings. Those merged user settings are then
+// applied here, right before kibanaConfigFromPolicy, so that a StackConfigPolicy still takes
+// precedence over both the primary config and the background tasks overlay.
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, userSettings CanonicalConfig, v version.Version, ipFamily corev1.IPFamily, kibanaConfigFromPolicy *settings.CanonicalConfig) (CanonicalConfig, error) {
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -131,16 +138,6 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 	// hack to support pre-7.6.0 Kibana configs as it errors out with unsupported keys, ideally we would not unpack empty values and could skip this
 	err = filterConfigSettings(kb, reusableSettings)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	// parse user-provided settings
-	specConfig := kb.Spec.Config
-	if specConfig == nil {
-		specConfig = &commonv1.Config{}
-	}
-	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -201,7 +198,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	}
 
 	// Kibana settings from a StackConfigPolicy takes precedence over user provided settings, merge them last.
-	if err = cfg.MergeWith(userSettings, kibanaConfigFromPolicy); err != nil {
+	if err = cfg.MergeWith(userSettings.CanonicalConfig, kibanaConfigFromPolicy); err != nil {
 		return CanonicalConfig{}, err
 	}
 
