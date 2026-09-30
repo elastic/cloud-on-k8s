@@ -381,6 +381,158 @@ func TestGarbageCollectBGConfigSecret(t *testing.T) {
 	})
 }
 
+// ---- Pause-guard paths ------------------------------------------------------
+
+func TestHandleDeploymentSelectorMismatch(t *testing.T) {
+	dpName := kbv1.KBNamer.Suffix("test")
+	legacyLabels := map[string]string{
+		kblabel.KibanaNameLabelName:  "test",
+		"common.k8s.elastic.co/type": "kibana",
+	}
+	newSelector := map[string]string{
+		kblabel.KibanaNameLabelName:  "test",
+		"common.k8s.elastic.co/type": "kibana",
+		kblabel.RoleLabelName:        kblabel.RolePrimeValue,
+	}
+	legacyDp := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: dpName, Namespace: "default"},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: legacyLabels},
+			},
+		}
+	}
+
+	kbPaused := kbWithBG(nil, nil)
+	kbPaused.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+	kbActive := kbWithBG(nil, nil)
+
+	t.Run("paused: mismatch detected but deployment not deleted", func(t *testing.T) {
+		dp := legacyDp()
+		fakeClient := k8s.NewFakeClient(dp)
+		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+
+		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbPaused, dp, legacyLabels, newSelector, dpName)
+
+		require.NoError(t, err)
+		assert.True(t, res.mismatch)
+		assert.False(t, res.requeue)
+		var got appsv1.Deployment
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+	})
+
+	t.Run("not paused: mismatch triggers deletion and requeue", func(t *testing.T) {
+		dp := legacyDp()
+		fakeClient := k8s.NewFakeClient(dp)
+		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+
+		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, newSelector, dpName)
+
+		require.NoError(t, err)
+		assert.True(t, res.mismatch)
+		assert.True(t, res.requeue)
+		var got appsv1.Deployment
+		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
+	})
+
+	t.Run("no mismatch: not handled, deployment untouched", func(t *testing.T) {
+		dp := legacyDp()
+		fakeClient := k8s.NewFakeClient(dp)
+		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+
+		// selector equals existingMatchLabels — no mismatch
+		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, legacyLabels, dpName)
+
+		require.NoError(t, err)
+		assert.False(t, res.mismatch)
+		assert.False(t, res.requeue)
+		var got appsv1.Deployment
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+	})
+
+	t.Run("resume after pause: deletion happens on next call", func(t *testing.T) {
+		dp := legacyDp()
+		fakeClient := k8s.NewFakeClient(dp)
+		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+
+		// First call: paused — deployment survives.
+		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbPaused, dp, legacyLabels, newSelector, dpName)
+		require.NoError(t, err)
+		assert.True(t, res.mismatch)
+		var got appsv1.Deployment
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+
+		// Second call: not paused — deployment deleted.
+		res, err = d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, newSelector, dpName)
+		require.NoError(t, err)
+		assert.True(t, res.mismatch)
+		assert.True(t, res.requeue)
+		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
+	})
+}
+
+func TestGarbageCollectBGPauseGuard(t *testing.T) {
+	bgDpName := kbv1.BackgroundTasksDeployment("test")
+	bgSecretName := kbv1.BackgroundTasksConfigSecret("test")
+
+	existingBGDeployment := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: bgDpName, Namespace: "default"},
+		}
+	}
+	existingBGSecret := func() *corev1.Secret {
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: bgSecretName, Namespace: "default"},
+		}
+	}
+
+	kbPaused := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test", Namespace: "default",
+			Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
+		},
+	}
+	kbActive := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+	}
+
+	t.Run("paused: GC skipped, deployment and secret survive", func(t *testing.T) {
+		fakeClient := k8s.NewFakeClient(existingBGDeployment(), existingBGSecret())
+		d := &driver{client: fakeClient}
+		require.NoError(t, d.garbageCollectBackgroundResources(context.Background(), kbPaused))
+
+		var dp appsv1.Deployment
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGDeployment()), &dp))
+		var sec corev1.Secret
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGSecret()), &sec))
+	})
+
+	t.Run("not paused: deployment and secret deleted", func(t *testing.T) {
+		fakeClient := k8s.NewFakeClient(existingBGDeployment(), existingBGSecret())
+		d := &driver{client: fakeClient}
+		require.NoError(t, d.garbageCollectBackgroundResources(context.Background(), kbActive))
+
+		var dp appsv1.Deployment
+		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGDeployment()), &dp)))
+		var sec corev1.Secret
+		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGSecret()), &sec)))
+	})
+
+	t.Run("resume after pause: deletion happens on next call", func(t *testing.T) {
+		fakeClient := k8s.NewFakeClient(existingBGDeployment(), existingBGSecret())
+		d := &driver{client: fakeClient}
+
+		// First call: paused — resources survive.
+		require.NoError(t, d.garbageCollectBackgroundResources(context.Background(), kbPaused))
+		var dp appsv1.Deployment
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGDeployment()), &dp))
+
+		// Second call: not paused — resources deleted.
+		require.NoError(t, d.garbageCollectBackgroundResources(context.Background(), kbActive))
+		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(existingBGDeployment()), &dp)))
+	})
+}
+
 // ---- NODE_ROLES env var injection -------------------------------------------
 
 func findKibanaContainerEnv(spec corev1.PodSpec) []corev1.EnvVar {
