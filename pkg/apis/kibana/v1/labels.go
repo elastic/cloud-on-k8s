@@ -19,7 +19,7 @@ func (k *Kibana) GetIdentityLabels() map[string]string {
 
 func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
 	labels := k.GetIdentityLabels()
-	labels[label.RoleLabelName] = label.RolePrimeValue
+	labels[label.RoleLabelName] = label.RolePrimaryValue
 
 	if k.BackgroundTasksEnabled() && role.LabelValue != "" {
 		labels[label.RoleLabelName] = role.LabelValue
@@ -28,7 +28,7 @@ func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
 }
 
 // ActiveRoles returns the list of pools the controller must reconcile for this Kibana.
-// Without split: SinglePoolRole — role=prime selector label, no NODE_ROLES injection.
+// Without split: SinglePoolRole — role=primary selector label, no NODE_ROLES injection.
 // With split: UIRole and BackgroundTasksRole, each becoming its own Deployment.
 func (k *Kibana) ActiveRoles() []label.Role {
 	if !k.BackgroundTasksEnabled() {

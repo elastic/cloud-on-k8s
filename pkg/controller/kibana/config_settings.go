@@ -94,9 +94,8 @@ type CanonicalConfig struct {
 	*settings.CanonicalConfig
 }
 
-// WithOverlay returns a copy of the base config with the pool-specific overlay merged on top.
+// WithOverlay returns a copy of the base config with the overlay merged on top.
 // The deep-copy via render+parse ensures mutations don't affect the shared base config.
-// node.roles is never written to kibana.yml — it is set via the NODE_ROLES env var on the pod.
 func (c CanonicalConfig) WithOverlay(overlay *commonv1.Config) (CanonicalConfig, error) {
 	if overlay == nil {
 		return c, nil

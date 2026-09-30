@@ -52,9 +52,9 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
-				Name: "UI Deployment should exist with role=prime selector",
+				Name: "UI Deployment should exist with role=primary selector",
 				Test: test.Eventually(func() error {
-					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimeValue)
+					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimaryValue)
 				}),
 			},
 			{
@@ -64,9 +64,9 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 				}),
 			},
 			{
-				Name: "UI pods should carry role=prime label",
+				Name: "UI pods should carry role=primary label",
 				Test: test.Eventually(func() error {
-					return checkPodsRoleLabel(k, kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name, kblabel.RolePrimeValue, 1)
+					return checkPodsRoleLabel(k, kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name, kblabel.RolePrimaryValue, 1)
 				}),
 			},
 			{
@@ -78,7 +78,7 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 			{
 				Name: "UI pods should have NODE_ROLES=[\"ui\"]",
 				Test: test.Eventually(func() error {
-					return checkPodsNodeRolesEnv(k, kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name, kblabel.RolePrimeValue, `["ui"]`)
+					return checkPodsNodeRolesEnv(k, kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name, kblabel.RolePrimaryValue, `["ui"]`)
 				}),
 			},
 			{
@@ -136,9 +136,9 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 		return test.StepList{
 			// After enabling: both Deployments should exist.
 			{
-				Name: "After enabling split: UI Deployment should have role=prime selector",
+				Name: "After enabling split: UI Deployment should have role=primary selector",
 				Test: test.Eventually(func() error {
-					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimeValue)
+					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimaryValue)
 				}),
 			},
 			{
@@ -173,7 +173,7 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 			{
 				Name: "After disabling split: single Deployment should be healthy",
 				Test: test.Eventually(func() error {
-					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimeValue)
+					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimaryValue)
 				}),
 			},
 		}

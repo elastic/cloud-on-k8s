@@ -208,7 +208,7 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 				map[string]string{
 					"kibana.k8s.elastic.co/name": kb.Name,
 					"common.k8s.elastic.co/type": "kibana",
-					"kibana.k8s.elastic.co/role": "prime",
+					"kibana.k8s.elastic.co/role": "primary",
 				},
 			); err != nil {
 				return err

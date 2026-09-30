@@ -436,7 +436,7 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "kibana.k8s.elastic.co/role": "prime"}},
+		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "kibana.k8s.elastic.co/role": "primary"}},
 		Replicas:  new(int32(1)),
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
@@ -444,7 +444,7 @@ func expectedDeploymentParams() deployment.Params {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
-					"kibana.k8s.elastic.co/role":    "prime",
+					"kibana.k8s.elastic.co/role":    "primary",
 					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
@@ -853,7 +853,7 @@ func mkService() corev1.Service {
 			Selector: map[string]string{
 				kblabel.KibanaNameLabelName: "kibana-test",
 				commonv1.TypeLabelName:      kblabel.Type,
-				kblabel.RoleLabelName:       kblabel.RolePrimeValue,
+				kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
 			},
 		},
 	}

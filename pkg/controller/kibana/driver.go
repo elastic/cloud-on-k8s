@@ -292,7 +292,7 @@ func (d *driver) Reconcile(
 			aggregateHealth = poolStatus.Health
 		}
 
-		if role.IsPrime() {
+		if role.IsPrimary() {
 			state.Kibana.Status.DeploymentStatus = poolStatus
 		} else if role.IsBackgroundTasks() {
 			state.Kibana.Status.BackgroundTasks = &kbv1.KibanaPoolStatus{
@@ -327,7 +327,7 @@ func (d *driver) Reconcile(
 // Both pools share the same config secret unless spec.backgroundTasks.config is set, in which
 // case the background tasks pool gets its own secret with the overlay merged on top.
 func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalConfig) (cfg CanonicalConfig, secretName string, deploymentName string, rErr error) {
-	if role.IsSinglePool() || role.IsIU() || (role == kblabel.Role{}) {
+	if role.IsSinglePool() || role.IsUI() || (role == kblabel.Role{}) {
 		// Single all-roles pool or UI pool: use the base config and base names.
 		return base, kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name), nil
 	}
@@ -349,7 +349,7 @@ func (d *driver) poolParams(kb *kbv1.Kibana, role kblabel.Role, base CanonicalCo
 // deploymentSelector returns the label selector to use for a pool deployment.
 //
 // The base case is kb.GetPoolIdentityLabels(role). One exception exists for the ECK upgrade
-// path: when the expected selector would add role=prime to a single-pool (non-split) cluster
+// path: when the expected selector would add role=primary to a single-pool (non-split) cluster
 // whose existing deployment does not yet carry that label, the role label is stripped from the
 // result. This avoids an unnecessary delete+recreate for every Kibana that does not use
 // spec.backgroundTasks on operator upgrade.
@@ -363,11 +363,11 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 		return expectedByRole
 	}
 
-	// ECK upgrade case: expectedByRole wants role=prime, the existing deployment has no role
+	// ECK upgrade case: expectedByRole wants role=primary, the existing deployment has no role
 	// label at all, and split is not active. Strip the role label so the selectors match and
 	// no delete+recreate is triggered. The selector can be updated on the next split toggle.
-	if expectedByRole[kblabel.RoleLabelName] == kblabel.RolePrimeValue &&
-		existingMatchLabels[kblabel.RoleLabelName] != kblabel.RolePrimeValue &&
+	if expectedByRole[kblabel.RoleLabelName] == kblabel.RolePrimaryValue &&
+		existingMatchLabels[kblabel.RoleLabelName] != kblabel.RolePrimaryValue &&
 		!kb.BackgroundTasksEnabled() {
 		result := maps.Clone(expectedByRole)
 		delete(result, kblabel.RoleLabelName)
@@ -381,7 +381,7 @@ func (d *driver) deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existing
 // selector to use for it. It applies the same ECK upgrade-path exception as deploymentSelector:
 // when the existing Service has no role label yet and split mode is inactive, the role label
 // is omitted so that the Service is not needlessly updated on every reconcile during an
-// operator upgrade. Returns the full expected selector (including role=prime) when the Service
+// operator upgrade. Returns the full expected selector (including role=primary) when the Service
 // does not exist yet.
 func (d *driver) serviceSelector(ctx context.Context, kb *kbv1.Kibana) (map[string]string, error) {
 	var existingSvc corev1.Service
@@ -500,13 +500,10 @@ func (d *driver) garbageCollectBackgroundResources(ctx context.Context, kb *kbv1
 		return nil
 	}
 
-	bgDpName := kbv1.BackgroundTasksDeployment(kb.Name)
-	var bgDp appsv1.Deployment
-	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: bgDpName}, &bgDp); err == nil {
-		if err := d.client.Delete(ctx, &bgDp); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-	} else if !apierrors.IsNotFound(err) {
+	if err := k8s.DeleteResourceIfExists(ctx, d.client, &appsv1.Deployment{
+		Namespace: kb.Namespace,
+		Name:      kbv1.BackgroundTasksDeployment(kb.Name),
+	}); err != nil {
 		return err
 	}
 
@@ -521,16 +518,10 @@ func (d *driver) garbageCollectBGConfigSecret(ctx context.Context, kb *kbv1.Kiba
 		return nil
 	}
 
-	bgSecretName := kbv1.BackgroundTasksConfigSecret(kb.Name)
-	var bgSecret corev1.Secret
-	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: bgSecretName}, &bgSecret); err == nil {
-		if err := d.client.Delete(ctx, &bgSecret); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-	} else if !apierrors.IsNotFound(err) {
-		return err
-	}
-	return nil
+	return k8s.DeleteResourceIfExists(ctx, d.client, &corev1.Secret{
+		Namespace: kb.Namespace,
+		Name:      kbv1.BackgroundTasksConfigSecret(kb.Name),
+	})
 }
 
 // upgradeStopNeeded reports whether the controller must scale both pools to zero before starting
@@ -626,8 +617,8 @@ func (d *driver) deploymentParams(
 
 	// When background task isolation is active, set NODE_ROLES on the Kibana container.
 	// Kibana reads this env var to determine which roles it runs, taking precedence over
-	// kibana.yml. This matches how the serverless kibana-controller assigns roles.
-	if role.IsBackgroundTasks() || role.IsIU() {
+	// kibana.yml.
+	if role.IsBackgroundTasks() || role.IsUI() {
 		nodeRolesValue := fmt.Sprintf(`["%s"]`, role.Name)
 		for i, c := range kibanaPodSpec.Spec.Containers {
 			if c.Name == kbv1.KibanaContainerName {

@@ -24,12 +24,12 @@ const (
 	Type = "kibana"
 
 	// RoleLabelName is the label key applied to pods.
-	// Its value distinguishes the UI/primary pool ("prime") from the background tasks pool
+	// Its value distinguishes the UI/primary pool ("primary") from the background tasks pool
 	// ("background_tasks").
 	RoleLabelName = "kibana.k8s.elastic.co/role"
 
-	// RolePrimeValue is the label value for the UI / primary pool (node.roles: ["ui"]).
-	RolePrimeValue = "prime"
+	// RolePrimaryValue is the label value for the UI / primary pool (node.roles: ["ui"]).
+	RolePrimaryValue = "primary"
 
 	// RoleBackgroundTasksValue is the label value for the background tasks pool
 	// (node.roles: ["background_tasks"]).
@@ -45,22 +45,22 @@ const (
 )
 
 // Role describes a Kibana node role and its Kubernetes label value.
-// The role label is applied to all pools. Single-pool Kibana always carries LabelValue "prime";
-// in split mode, UIRole carries "prime" and BackgroundTasksRole carries "background_tasks".
+// The role label is applied to all pools. Single-pool Kibana always carries LabelValue "primary";
+// in split mode, UIRole carries "primary" and BackgroundTasksRole carries "background_tasks".
 type Role struct {
 	// Name is the Kibana node.roles value injected via the NODE_ROLES env var
 	// (e.g. "ui" or "background_tasks"). Empty for the single-pool case (no NODE_ROLES injection).
 	Name string
 	// LabelValue is the value written to the kibana.k8s.elastic.co/role label
-	// (e.g. "prime" or "background_tasks").
+	// (e.g. "primary" or "background_tasks").
 	LabelValue string
 }
 
 var (
-	// UIRole describes the Kibana UI pool: NODE_ROLES=["ui"], role label value "prime".
+	// UIRole describes the Kibana UI pool: NODE_ROLES=["ui"], role label value "primary".
 	UIRole = Role{
 		Name:       "ui",
-		LabelValue: RolePrimeValue,
+		LabelValue: RolePrimaryValue,
 	}
 
 	// BackgroundTasksRole describes the Kibana background tasks pool:
@@ -71,15 +71,15 @@ var (
 	}
 
 	// SinglePoolRole is the synthetic role used when background task isolation is disabled.
-	// LabelValue "prime" ensures the selector label is present for upgrade-path detection.
+	// LabelValue "primary" ensures the selector label is present for upgrade-path detection.
 	// Name "" suppresses NODE_ROLES injection — the pod runs all Kibana roles.
 	SinglePoolRole = Role{
 		Name:       "",
-		LabelValue: RolePrimeValue,
+		LabelValue: RolePrimaryValue,
 	}
 )
 
-func (r Role) IsIU() bool {
+func (r Role) IsUI() bool {
 	return r == UIRole
 }
 
@@ -91,7 +91,7 @@ func (r Role) IsSinglePool() bool {
 	return r == SinglePoolRole
 }
 
-func (r Role) IsPrime() bool {
+func (r Role) IsPrimary() bool {
 	return r == SinglePoolRole || r == UIRole
 }
 
