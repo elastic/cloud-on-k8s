@@ -6,9 +6,9 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -22,7 +22,9 @@ import (
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/repo/v1"
+	"oras.land/oras-go/v2/errdef"
 )
 
 const (
@@ -39,12 +41,29 @@ type ReleaseConfig struct {
 	ChartsRepoURL string
 	// CredentialsFilePath is the path to the Google credentials JSON file.
 	CredentialsFilePath string
-	// DryRun determines whether to run the release without making any changes to the GCS bucket or the Helm repository index file.
+	// DryRun determines whether to run the release without making any changes to the GCS bucket, the Helm repository index file,
+	// or the OCI registry. Reads, such as fetching the existing index or checking whether charts are already published, still happen.
 	DryRun bool
-	// Force determines if uploading charts should overwrite existing charts in the GCS bucket even if they are not SNAPSHOT versions.
+	// Force determines if uploading charts should overwrite existing charts in the GCS bucket and the OCI registry even if they are not SNAPSHOT versions.
 	Force bool
 	// KeepTmpDir determines whether the temporary directory should be kept or not
 	KeepTmpDir bool
+	// OCIRegistry is the OCI registry to push Helm charts to (e.g. "docker.elastic.co/eck").
+	OCIRegistry string
+	// OCIUsername and OCIPassword are the OCI registry credentials. When empty, the credentials from the local
+	// Helm registry config or Docker config are used.
+	OCIUsername string
+	OCIPassword string
+	// IsProdRelease indicates this is a production release. Charts cannot be overwritten in production
+	// unless Force is set.
+	IsProdRelease bool
+	// SkipChartRepo skips the traditional HTTP chart repo channel (GCS upload + index update). Useful when only OCI publishing is needed.
+	SkipChartRepo bool
+	// SkipOCIRegistry skips pushing charts to the OCI registry. Useful when only GCS publishing is needed.
+	SkipOCIRegistry bool
+	// OCIChartsDigestsFilePath is an optional path to a file where pushed OCI chart digest refs are written,
+	// one per line in the format "registry/chart:version@sha256:...". The file is truncated if it exists. Empty to skip.
+	OCIChartsDigestsFilePath string
 }
 
 // Release runs the Helm charts release.
@@ -67,15 +86,48 @@ func Release(conf ReleaseConfig) error {
 		return fmt.Errorf("while reading charts: %w", err)
 	}
 
-	if err := uploadCharts(ctx, conf, tempDir, charts); err != nil {
-		return fmt.Errorf("while uploading charts: %w", err)
+	if err := checkChartsVersions(conf.IsProdRelease, charts); err != nil {
+		return err
 	}
 
-	if err := updateIndex(ctx, conf, tempDir); err != nil {
-		return fmt.Errorf("while updating index: %w", err)
+	packagedCharts, err := packageCharts(tempDir, charts)
+	if err != nil {
+		return fmt.Errorf("while packaging charts: %w", err)
+	}
+
+	if !conf.SkipChartRepo {
+		if err := uploadChartsToGCS(ctx, conf, packagedCharts); err != nil {
+			return fmt.Errorf("while uploading charts: %w", err)
+		}
+
+		if err := updateIndex(ctx, conf, tempDir); err != nil {
+			return fmt.Errorf("while updating index: %w", err)
+		}
+	}
+
+	if !conf.SkipOCIRegistry {
+		if err := pushChartsToOCI(conf, packagedCharts); err != nil {
+			return fmt.Errorf("while uploading charts to OCI registry: %w", err)
+		}
 	}
 
 	return nil
+}
+
+// checkChartsVersions returns an error if this is a production release and any chart has a SNAPSHOT version.
+// All offending charts are reported at once so the release fails before anything is packaged or published.
+func checkChartsVersions(isProdRelease bool, charts []chart) error {
+	if !isProdRelease {
+		return nil
+	}
+
+	var err error
+	for _, c := range charts {
+		if strings.HasSuffix(c.Version, "-SNAPSHOT") {
+			err = errors.Join(err, fmt.Errorf("chart (%s) has a SNAPSHOT version (%s) and cannot be released to production", c.Name, c.Version))
+		}
+	}
+	return err
 }
 
 // readCharts reads all Helm charts in the given directory based on the presence of the Chart.yaml file.
@@ -112,26 +164,27 @@ func readCharts(dir string) ([]chart, error) {
 	return charts, nil
 }
 
-// uploadCharts packages a chart into a chart archive and upload it to the GCS bucket.
-func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, charts []chart) error {
+// packageCharts packages each chart into a chart archive in the given temporary directory.
+func packageCharts(tempDir string, charts []chart) ([]packagedChart, error) {
+	packagedCharts := make([]packagedChart, 0, len(charts))
 	for _, chart := range charts {
 		// prepare a temp directory for the chart sources
 		tempChartDirPath := filepath.Join(tempDir, chart.Name)
 		err := os.Mkdir(tempChartDirPath, 0755)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// copy the chart sources into this temp directory
 		err = copy(chart.srcPath, tempChartDirPath)
 		if err != nil {
-			return fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
+			return nil, fmt.Errorf("while copying chart (%s) to temporary directory: %w", chart.Name, err)
 		}
 
 		// generates Chart.lock by doing the equivalent of 'helm update dependency', which will not download or update anything
 		// as all dependencies are local without repository
-		man := &downloader.Manager{Out: ioutil.Discard, ChartPath: tempChartDirPath}
+		man := &downloader.Manager{Out: io.Discard, ChartPath: tempChartDirPath}
 		if err := man.Update(); err != nil {
-			return fmt.Errorf("while updating chart (%s) dependencies to generate Chart.lock: %w", chart.Name, err)
+			return nil, fmt.Errorf("while updating chart (%s) dependencies to generate Chart.lock: %w", chart.Name, err)
 		}
 
 		// package the chart into a chart archive
@@ -139,53 +192,63 @@ func uploadCharts(ctx context.Context, conf ReleaseConfig, tempDir string, chart
 		chartPackage.Destination = filepath.Join(tempDir, chart.Name)
 		chartPackagePath, err := chartPackage.Run(tempChartDirPath, map[string]any{})
 		if err != nil {
-			return fmt.Errorf("while packaging helm chart (%s): %w", chart.Name, err)
+			return nil, fmt.Errorf("while packaging helm chart (%s): %w", chart.Name, err)
 		}
-		// upload the chart archive to the bucket
-		if err := copyChartToGCSBucket(ctx, conf, chart, chartPackagePath); err != nil {
-			return err
-		}
+		packagedCharts = append(packagedCharts, packagedChart{
+			chart:       chart,
+			packagePath: chartPackagePath,
+		})
 	}
-	return nil
+	return packagedCharts, nil
 }
 
 // copy copies a given source to a given destination.
 func copy(source, destination string) error {
-	var err error = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+	walkErr := filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		relPath := strings.Replace(path, source, "", 1)
 		if relPath == "" {
 			return nil
 		}
 		if info.IsDir() {
 			return os.Mkdir(filepath.Join(destination, relPath), 0755)
-		} else {
-			var data, err = os.ReadFile(filepath.Join(source, relPath))
-			if err != nil {
-				return err
-			}
-			return os.WriteFile(filepath.Join(destination, relPath), data, 0777)
 		}
+
+		data, err := os.ReadFile(filepath.Join(source, relPath))
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destination, relPath), data, 0777)
 	})
-	return err
+	return walkErr
+}
+
+// uploadChartsToGCS uploads the packaged chart archives to the GCS bucket.
+func uploadChartsToGCS(ctx context.Context, conf ReleaseConfig, charts []packagedChart) error {
+	for _, chart := range charts {
+		if err := copyChartToGCSBucket(ctx, conf, chart); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // copyChartToGCSBucket copies a given chart archive to the GCS bucket.
-// Only SNAPSHOT charts can be overwritten, otherwise an error is returned.
-func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, chartPackagePath string) error {
+// Non-SNAPSHOT charts cannot be overwritten in the prod bucket unless forced, otherwise an error is returned.
+func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart packagedChart) error {
 	repoURL, err := url.Parse(conf.ChartsRepoURL)
 	if err != nil {
 		return fmt.Errorf("while parsing url (%s): %w", conf.ChartsRepoURL, err)
 	}
 
 	// read the file to copy on disk
-	chartPackageFile, err := os.Open(chartPackagePath)
+	chartPackageFile, err := os.Open(chart.packagePath)
 	if err != nil {
-		return fmt.Errorf("while opening chart (%s): %w", chartPackagePath, err)
+		return fmt.Errorf("while opening chart (%s): %w", chart.packagePath, err)
 	}
 	defer chartPackageFile.Close()
 
 	// trail the first / from the repo url path
-	chartArchiveDest := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chart.Name, filepath.Base(chartPackagePath))
+	chartArchiveDest := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chart.Name, filepath.Base(chart.packagePath))
 
 	log.Printf("Writing chart archive to bucket path (%s)\n", chartArchiveDest)
 
@@ -199,14 +262,13 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 
 	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
 	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
-	isProdHelmRepo := !strings.HasSuffix(conf.Bucket, "-dev")
-	shouldNotOverwrite := shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, conf.Force)
+	shouldNotOverwrite := shouldNotOverwrite(isNonSnapshot, conf.IsProdRelease, conf.Force)
 	if shouldNotOverwrite {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
 
 	if conf.DryRun {
-		log.Printf("Not uploading (%s) to %s as dry-run is set", chartPackagePath, chartArchiveDest)
+		log.Printf("Not uploading (%s) to %s as dry-run is set", chart.packagePath, chartArchiveDest)
 		return nil
 	}
 
@@ -216,26 +278,22 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart chart, 
 		return fmt.Errorf("while copying data to bucket: %w", err)
 	}
 	if err := chartArchiveWriter.Close(); err != nil {
-		switch errType := err.(type) {
-		case *googleapi.Error:
+		if errType, ok := errors.AsType[*googleapi.Error](err); ok {
 			if errType.Code == http.StatusPreconditionFailed && shouldNotOverwrite {
-				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chartPackagePath)
+				return fmt.Errorf("file %s already exists in remote bucket; manually remove for this operation to succeed", chart.packagePath)
 			}
-			return fmt.Errorf("while writing data to bucket: %w", err)
-		default:
-			return fmt.Errorf("while writing data to bucket: %w", err)
 		}
+		return fmt.Errorf("while writing data to bucket: %w", err)
 	}
-
 	return nil
 }
 
-// shouldNotOverwrite determines if a chart should not be overwritten in the bucket.
-func shouldNotOverwrite(isNonSnapshot, isProdHelmRepo, force bool) bool {
+// shouldNotOverwrite determines if a chart should not be overwritten in the bucket or the OCI registry.
+func shouldNotOverwrite(isNonSnapshot, isProdRelease, force bool) bool {
 	if force {
 		return false
 	}
-	return isNonSnapshot && isProdHelmRepo
+	return isNonSnapshot && isProdRelease
 }
 
 // updateIndex updates the Helm repo index by merging the existing index in the bucket
@@ -314,5 +372,103 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 		return fmt.Errorf("while finalizing upload of index.yaml: %w", err)
 	}
 
+	return nil
+}
+
+// pushChartsToOCI pushes the packaged chart archives to the OCI registry.
+// Non-SNAPSHOT charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
+// If outputDigestsFileWriter is non-nil, the digest ref of each pushed chart is written to it in the format
+// "registry/chart:version@sha256:...", one line per packaged chart.
+func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
+	var digestsFileWriter io.Writer
+	if outputDigestsFilePath := conf.OCIChartsDigestsFilePath; outputDigestsFilePath != "" {
+		f, err := os.OpenFile(outputDigestsFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("while opening OCI charts digests file (%s): %w", outputDigestsFilePath, err)
+		}
+		defer f.Close()
+		if !conf.DryRun {
+			digestsFileWriter = f
+		}
+	}
+
+	// the registry client doesn't take a context, so the timeout is enforced per HTTP request instead
+	ociClientOpts := []registry.ClientOption{
+		registry.ClientOptHTTPClient(&http.Client{
+			Transport: registry.NewTransport(false),
+			Timeout:   timeout,
+		}),
+	}
+	if conf.OCIUsername != "" && conf.OCIPassword != "" {
+		ociClientOpts = append(ociClientOpts, registry.ClientOptBasicAuth(conf.OCIUsername, conf.OCIPassword))
+	}
+	ociClient, err := registry.NewClient(ociClientOpts...)
+	if err != nil {
+		return fmt.Errorf("while creating OCI registry client: %w", err)
+	}
+
+	for _, chart := range charts {
+		if err := pushChartToOCI(ociClient, conf, digestsFileWriter, chart); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWriter io.Writer, chart packagedChart) error {
+	// The "-chart" suffix keeps chart repositories from colliding with container image repositories of the same name
+	// (e.g. docker.elastic.co/eck/eck-operator).
+	chartRef := fmt.Sprintf("%s/%s-chart:%s", conf.OCIRegistry, chart.Name, chart.Version)
+
+	// check that the chart does not already exist for non-SNAPSHOT chart when publishing to prod OCI registry
+	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
+	if shouldNotOverwrite(isNonSnapshot, conf.IsProdRelease, conf.Force) {
+		_, err := client.Resolve(chartRef)
+		switch {
+		case err == nil:
+			return fmt.Errorf("chart (%s) already exists in OCI registry (%s); remove it or use --force to overwrite", chartRef, conf.OCIRegistry)
+		case errors.Is(err, errdef.ErrNotFound):
+		// chart doesn't exist
+		default:
+			return fmt.Errorf("while checking if chart (%s) already exists in OCI registry (%s): %w", chartRef, conf.OCIRegistry, err)
+		}
+	}
+
+	if conf.DryRun {
+		log.Printf("Not pushing chart (%s) to OCI registry as dry-run is set", chartRef)
+		return nil
+	}
+
+	log.Printf("Pushing chart (%s) to OCI registry\n", chartRef)
+	f, err := os.Open(chart.packagePath)
+	if err != nil {
+		return fmt.Errorf("while opening chart archive (%s): %w", chart.packagePath, err)
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("while stating chart archive (%s): %w", chart.packagePath, err)
+	}
+	chartBytes, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("while reading chart archive (%s): %w", chart.Name, err)
+	}
+
+	result, err := client.Push(chartBytes, chartRef,
+		registry.PushOptCreationTime(stat.ModTime().Format(time.RFC3339)),
+		registry.PushOptStrictMode(false),
+	)
+	if err != nil {
+		return fmt.Errorf("while pushing chart (%s) to OCI registry: %w", chartRef, err)
+	}
+	log.Printf("Pushed chart (%s) to OCI registry: digest=%s", chartRef, result.Manifest.Digest)
+
+	if outputDigestsFileWriter != nil {
+		digestRef := fmt.Sprintf("%s@%s", chartRef, result.Manifest.Digest)
+		if _, err := fmt.Fprintln(outputDigestsFileWriter, digestRef); err != nil {
+			return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
+		}
+	}
 	return nil
 }

@@ -28,7 +28,8 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-operator
+      - releaser --env=dev --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-dev-operator-oci-artifacts-digest.txt
+      - buildkite-agent artifact upload eck-helm-dev-operator-oci-artifacts-digest.txt
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:b90a995bbbcd08e2ddfbace72c6317c6581414eed0008e7013c51231f85c9b4f
       memory: "2G"
@@ -48,7 +49,8 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-stack
+      - releaser --env=dev --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-dev-stack-oci-artifacts-digest.txt
+      - buildkite-agent artifact upload eck-helm-dev-stack-oci-artifacts-digest.txt
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:b90a995bbbcd08e2ddfbace72c6317c6581414eed0008e7013c51231f85c9b4f
       memory: "2G"
@@ -65,7 +67,8 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-operator
+      - releaser --env=prod --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-prod-operator-oci-artifacts-digest.txt
+      - buildkite-agent artifact upload eck-helm-prod-operator-oci-artifacts-digest.txt
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:b90a995bbbcd08e2ddfbace72c6317c6581414eed0008e7013c51231f85c9b4f
       memory: "2G"
@@ -78,10 +81,12 @@ steps:
     depends_on:
       - "eck-operator-prod-helm"
       - "build-helm-releaser-tool"
+    key: "eck-stack-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-stack
+      - releaser --env=prod --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-prod-stack-oci-artifacts-digest.txt
+      - buildkite-agent artifact upload eck-helm-prod-stack-oci-artifacts-digest.txt
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:b90a995bbbcd08e2ddfbace72c6317c6581414eed0008e7013c51231f85c9b4f
       memory: "2G"
