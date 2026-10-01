@@ -913,7 +913,7 @@ func TestGetPodTemplateSpecForRole(t *testing.T) {
 	}
 }
 
-// ---- upgradeStopNeeded ------------------------------------------------------
+// ---- shouldScaleAllPoolsToZeroForUpgrade ------------------------------------------------------
 
 func makePod(name, version string, role kblabel.Role) corev1.Pod {
 	return corev1.Pod{
@@ -925,7 +925,7 @@ func makePod(name, version string, role kblabel.Role) corev1.Pod {
 	}
 }
 
-func TestUpgradeStopNeeded(t *testing.T) {
+func TestShouldScaleAllPoolsToZeroForUpgrade(t *testing.T) {
 	const (
 		oldVersion = "8.17.0"
 		newVersion = "8.18.0"
@@ -1010,7 +1010,7 @@ func TestUpgradeStopNeeded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, upgradeStopNeeded(&tt.kb, tt.pods))
+			assert.Equal(t, tt.want, shouldScaleAllPoolsToZeroForUpgrade(&tt.kb, tt.pods))
 		})
 	}
 }
