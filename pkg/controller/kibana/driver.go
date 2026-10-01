@@ -216,7 +216,7 @@ func (d *driver) Reconcile(
 	// scale both pools to zero before starting any new-version pods. Without this,
 	// the UI Deployment can start new pods while old background-task pods still run,
 	// violating Kibana's requirement that all outdated instances stop first.
-	stopNeeded := upgradeStopNeeded(kb, existingPods)
+	scaleToZero := shouldScaleAllPoolsToZeroForUpgrade(kb, existingPods)
 
 	var (
 		aggregateAvailable int32
@@ -274,7 +274,7 @@ func (d *driver) Reconcile(
 		}
 
 		// Determine replica count for this pool.
-		replicas, oldReplicas := d.deploymentReplicas(logger, stopNeeded, kb, role, &existingDeployment)
+		replicas, oldReplicas := d.deploymentReplicas(logger, scaleToZero, kb, role, &existingDeployment)
 		dpParams, err := d.deploymentParams(ctx, kb, role, poolParams.SecretName, poolParams.DeploymentName, replicas, oldReplicas, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta, selector)
 		if err != nil {
 			return results.WithError(err)
@@ -300,7 +300,7 @@ func (d *driver) Reconcile(
 		buildStatus(state, kb, role, poolStatus, aggregateHealth, aggregateAvailable, aggregateCount)
 	}
 
-	if stopNeeded {
+	if scaleToZero {
 		// Both pools are being drained. Requeue so the controller re-checks once pods terminate.
 		results = results.WithRequeue()
 	}
@@ -433,7 +433,7 @@ func (d *driver) serviceSelector(ctx context.Context, kb *kbv1.Kibana) (map[stri
 	return d.deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
 }
 
-func (d *driver) deploymentReplicas(logger logr.Logger, stopNeeded bool, kb *kbv1.Kibana, role kblabel.Role, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+func (d *driver) deploymentReplicas(logger logr.Logger, scaleToZero bool, kb *kbv1.Kibana, role kblabel.Role, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
 	// replicasFromAnnotation returns the replica count saved in the maintenance annotation
 	// when present. This preserves the saved count across multiple
 	// reconciles that occur while the stop phase is active.
@@ -465,7 +465,7 @@ func (d *driver) deploymentReplicas(logger logr.Logger, stopNeeded bool, kb *kbv
 	}
 
 	switch {
-	case stopNeeded:
+	case scaleToZero:
 		newValue = new(int32(0)) // drain both pools before starting the new version
 
 		// Return the old value if the deployment is background tasks. It will be stored in annotation.
@@ -563,14 +563,14 @@ func (d *driver) garbageCollectBGConfigSecret(ctx context.Context, kb *kbv1.Kiba
 	})
 }
 
-// upgradeStopNeeded reports whether the controller must scale both pools to zero before starting
+// shouldScaleAllPoolsToZeroForUpgrade reports whether the controller must scale both pools to zero before starting
 // the new version. It returns true when background task isolation is active and at least one
 // running pod (including terminating pods) carries a stale version label.
 //
 // Single-pool Kibana does not need this: the Recreate strategy on one Deployment already
 // terminates all old pods before starting new ones. With two separate Deployments the
 // strategies are independent, so an explicit cross-pool stop phase is required.
-func upgradeStopNeeded(kb *kbv1.Kibana, pods []corev1.Pod) bool {
+func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) bool {
 	if !kb.BackgroundTasksEnabled() {
 		return false
 	}
