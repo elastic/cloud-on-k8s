@@ -9,6 +9,7 @@ package kb
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
@@ -88,17 +90,30 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 				}),
 			},
 			{
-				Name: "KibanaStatus.BackgroundTasks should be populated",
+				Name: "Kibana status should report both pools and aggregate them at the top level",
 				Test: test.Eventually(func() error {
 					var kb kbv1.Kibana
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
 						return err
 					}
-					if kb.Status.BackgroundTasks == nil {
-						return fmt.Errorf("KibanaStatus.BackgroundTasks is nil")
+					if kb.Status.Pools == nil {
+						return fmt.Errorf("status.pools is nil")
 					}
-					if kb.Status.BackgroundTasks.AvailableNodes != 1 {
-						return fmt.Errorf("expected 1 available background tasks node, got %d", kb.Status.BackgroundTasks.AvailableNodes)
+					if err := checkPoolStatus(kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
+						return err
+					}
+					if err := checkPoolStatus(kb.Status.Pools.BackgroundTasks, "backgroundTasks", kblabel.RoleBackgroundTasksValue, 1); err != nil {
+						return err
+					}
+					// top-level status aggregates both pools: sum of counts/available nodes, AND of healths
+					if kb.Status.Count != 2 {
+						return fmt.Errorf("expected aggregate count 2, got %d", kb.Status.Count)
+					}
+					if kb.Status.AvailableNodes != 2 {
+						return fmt.Errorf("expected 2 aggregate available nodes, got %d", kb.Status.AvailableNodes)
+					}
+					if kb.Status.Health != commonv1.GreenHealth {
+						return fmt.Errorf("expected green aggregate health, got %s", kb.Status.Health)
 					}
 					return nil
 				}),
@@ -147,6 +162,22 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 					return checkDeploymentExists(k, kbBuilder.Kibana.Namespace, kbv1.BackgroundTasksDeployment(kbBuilder.Kibana.Name))
 				}),
 			},
+			{
+				Name: "After enabling split: status.pools should report both pools",
+				Test: test.Eventually(func() error {
+					var kb kbv1.Kibana
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
+						return err
+					}
+					if kb.Status.Pools == nil {
+						return fmt.Errorf("status.pools is nil")
+					}
+					if err := checkPoolStatus(kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
+						return err
+					}
+					return checkPoolStatus(kb.Status.Pools.BackgroundTasks, "backgroundTasks", kblabel.RoleBackgroundTasksValue, 1)
+				}),
+			},
 		}
 	}
 
@@ -176,6 +207,19 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 					return checkDeploymentSelector(k, kbBuilder.Kibana.Namespace, kbv1.Deployment(kbBuilder.Kibana.Name), kblabel.RolePrimaryValue)
 				}),
 			},
+			{
+				Name: "After disabling split: status.pools should be cleared",
+				Test: test.Eventually(func() error {
+					var kb kbv1.Kibana
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
+						return err
+					}
+					if kb.Status.Pools != nil {
+						return fmt.Errorf("status.pools should be nil when the split is disabled, got %+v", kb.Status.Pools)
+					}
+					return nil
+				}),
+			},
 		}
 	}
 
@@ -186,6 +230,27 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 			WithSteps(kbWithoutBG.MutationTestSteps(k)).
 			WithSteps(disabledStepsFn(k))
 	}, esBuilder, kbBuilder).RunSequential(t)
+}
+
+// checkPoolStatus asserts that a per-pool status reports the expected replica count, green health
+// and a selector scoped to the given role.
+func checkPoolStatus(pool *kbv1.KibanaPoolStatus, poolName, wantRole string, wantCount int32) error {
+	if pool == nil {
+		return fmt.Errorf("status.pools.%s is nil", poolName)
+	}
+	if pool.Count != wantCount {
+		return fmt.Errorf("status.pools.%s: expected count %d, got %d", poolName, wantCount, pool.Count)
+	}
+	if pool.AvailableNodes != wantCount {
+		return fmt.Errorf("status.pools.%s: expected %d available nodes, got %d", poolName, wantCount, pool.AvailableNodes)
+	}
+	if pool.Health != commonv1.GreenHealth {
+		return fmt.Errorf("status.pools.%s: expected green health, got %s", poolName, pool.Health)
+	}
+	if !strings.Contains(pool.Selector, fmt.Sprintf("%s=%s", kblabel.RoleLabelName, wantRole)) {
+		return fmt.Errorf("status.pools.%s: selector %q does not match role %s", poolName, pool.Selector, wantRole)
+	}
+	return nil
 }
 
 // checkDeploymentSelector asserts that the named Deployment's matchLabels contain the expected role value.

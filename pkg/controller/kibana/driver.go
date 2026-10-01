@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -217,8 +218,11 @@ func (d *driver) Reconcile(
 	// violating Kibana's requirement that all outdated instances stop first.
 	stopNeeded := upgradeStopNeeded(kb, existingPods)
 
-	var aggregateAvailable int32
-	aggregateHealth := commonv1.GreenHealth
+	var (
+		aggregateAvailable int32
+		aggregateCount     int32
+		aggregateHealth    = commonv1.GreenHealth
+	)
 
 	// reconciledSecrets tracks which config secrets have already been written this pass
 	// so that pools sharing the base secret don't trigger a redundant write.
@@ -288,20 +292,12 @@ func (d *driver) Reconcile(
 		}
 
 		aggregateAvailable += poolStatus.AvailableNodes
+		aggregateCount += poolStatus.Count
 		if poolStatus.Health != commonv1.GreenHealth {
 			aggregateHealth = poolStatus.Health
 		}
 
-		if role.IsPrimary() {
-			state.Kibana.Status.DeploymentStatus = poolStatus
-		} else if role.IsBackgroundTasks() {
-			state.Kibana.Status.BackgroundTasks = &kbv1.KibanaPoolStatus{
-				Selector:       poolStatus.Selector,
-				Count:          poolStatus.Count,
-				AvailableNodes: poolStatus.AvailableNodes,
-				Health:         poolStatus.Health,
-			}
-		}
+		buildStatus(state, kb, role, poolStatus, aggregateHealth, aggregateAvailable, aggregateCount)
 	}
 
 	if stopNeeded {
@@ -309,15 +305,47 @@ func (d *driver) Reconcile(
 		results = results.WithRequeue()
 	}
 
-	if kb.BackgroundTasksEnabled() {
-		// replace with the aggregated health as top level health
-		state.Kibana.Status.DeploymentStatus.Health = aggregateHealth
-	} else {
-		// Single pool: clear background tasks status.
-		state.Kibana.Status.BackgroundTasks = nil
+	return results
+}
+
+func buildStatus(state *State, kb *kbv1.Kibana, role kblabel.Role, poolStatus commonv1.DeploymentStatus, aggregateHealth commonv1.DeploymentHealth, aggregateAvailable, aggregateCount int32) {
+	if kb.BackgroundTasksEnabled() && state.Kibana.Status.Pools == nil {
+		state.Kibana.Status.Pools = &kbv1.KibanaPoolsStatuses{}
 	}
 
-	return results
+	switch {
+	case role.IsSinglePool():
+		state.Kibana.Status.DeploymentStatus = poolStatus
+	case role.IsPrimary():
+		state.Kibana.Status.DeploymentStatus = poolStatus
+		state.Kibana.Status.Pools.Primary = &kbv1.KibanaPoolStatus{
+			Selector:       poolStatus.Selector,
+			Count:          poolStatus.Count,
+			AvailableNodes: poolStatus.AvailableNodes,
+			Health:         poolStatus.Health,
+		}
+	case role.IsBackgroundTasks():
+		state.Kibana.Status.Pools.BackgroundTasks = &kbv1.KibanaPoolStatus{
+			Selector:       poolStatus.Selector,
+			Count:          poolStatus.Count,
+			AvailableNodes: poolStatus.AvailableNodes,
+			Health:         poolStatus.Health,
+		}
+	}
+
+	// replace with aggregate in top level
+	if !role.IsSinglePool() {
+		state.Kibana.Status.DeploymentStatus.Health = aggregateHealth
+		state.Kibana.Status.DeploymentStatus.AvailableNodes = aggregateAvailable
+		state.Kibana.Status.DeploymentStatus.Count = aggregateCount
+		state.Kibana.Status.DeploymentStatus.Health = aggregateHealth
+		state.Kibana.Status.DeploymentStatus.Selector = metav1.FormatLabelSelector(&metav1.LabelSelector{
+			MatchLabels: kb.GetIdentityLabels(), // without the role label
+		})
+	} else {
+		// Single pool: clear pools status.
+		state.Kibana.Status.Pools = nil
+	}
 }
 
 type poolParameters struct {

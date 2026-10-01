@@ -161,6 +161,19 @@ type KibanaBackgroundTasks struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 }
 
+// KibanaPoolsStatuses reports the observed state of a all Kibana pools (UI and background tasks).
+type KibanaPoolsStatuses struct {
+	// BackgroundTasks reports the state of the background tasks Deployment.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	BackgroundTasks *KibanaPoolStatus `json:"backgroundTasks,omitempty"`
+
+	// Primary reports the state of the primary Deployment.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	Primary *KibanaPoolStatus `json:"primary,omitempty"`
+}
+
 // KibanaPoolStatus reports the observed state of a single Kibana pool (UI or background tasks).
 type KibanaPoolStatus struct {
 	// Selector is the label selector used to find all pods in this pool.
@@ -199,10 +212,10 @@ type KibanaStatus struct {
 	// controller has not yet processed the changes contained in the Kibana specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// BackgroundTasks reports the state of the background tasks Deployment.
+	// Pools reports the state of the background tasks and primary Deployments.
 	// Only set when spec.backgroundTasks is configured.
 	// +optional
-	BackgroundTasks *KibanaPoolStatus `json:"backgroundTasks,omitempty"`
+	Pools *KibanaPoolsStatuses `json:"pools,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
