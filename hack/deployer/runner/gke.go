@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"strings"
 	"time"
 
@@ -35,6 +36,8 @@ overrides:
   gke:
     gCloudProject: %s
 `
+	gkeCapacityErrorIndicator = "does not have enough resources available to fulfill request"
+	gkeQuotaErrorIndicator    = "insufficient quota to satisfy the request"
 )
 
 var (
@@ -53,8 +56,56 @@ type GKEDriverFactory struct {
 
 type GKEDriver struct {
 	plan        Plan
-	ctx         map[string]any
+	clusters    []clusterContext
 	vaultClient vault.Client
+	// overrides for testing
+	newBucketManagerFn   func(Plan, clusterContext) (bucket.Manager, error)
+	createStorageClassFn func() error
+}
+
+type clusterContext interface {
+	region() string
+	values() map[string]any
+	exists() (bool, error)
+	create(Plan) (string, error)
+	updateLabels() error
+	delete() error
+	bindRolesCmd() (string, error)
+	bindRoles() error
+	copyBuiltInStorageClasses() error
+	getCredentials() error
+	listClusters(string, time.Time) ([]string, error)
+	withClusterName(string) clusterContext
+	withProject(string) clusterContext
+}
+
+type gkeClusterContext map[string]any
+
+func (c gkeClusterContext) region() string {
+	region, _ := c["Region"].(string)
+	return region
+}
+
+func (c gkeClusterContext) values() map[string]any {
+	return c
+}
+
+func (c gkeClusterContext) clone() gkeClusterContext {
+	cloned := make(gkeClusterContext, len(c))
+	maps.Copy(cloned, c)
+	return cloned
+}
+
+func (c gkeClusterContext) withClusterName(name string) clusterContext {
+	cloned := c.clone()
+	cloned["ClusterName"] = name
+	return cloned
+}
+
+func (c gkeClusterContext) withProject(project string) clusterContext {
+	cloned := c.clone()
+	cloned[GoogleCloudProjectCtxKey] = project
+	return cloned
 }
 
 func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
@@ -84,14 +135,15 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 		return nil, err
 	}
 
-	return &GKEDriver{
-		plan: plan,
-		ctx: map[string]any{
+	regions := gkeRegions(plan.Gke.Region, plan.Gke.FallbackRegions)
+	clusters := make([]clusterContext, 0, len(regions))
+	for _, region := range regions {
+		clusters = append(clusters, gkeClusterContext{
 			GoogleCloudProjectCtxKey: plan.Gke.GCloudProject,
 			"ClusterName":            plan.ClusterName,
 			"PVCPrefix":              pvcPrefix,
 			"PlanId":                 plan.Id,
-			"Region":                 plan.Gke.Region,
+			"Region":                 region,
 			"KubernetesVersion":      plan.KubernetesVersion,
 			"MachineType":            plan.MachineType,
 			"LocalSSDOption":         localSSDOption,
@@ -99,9 +151,31 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"NodeCountPerZone":       plan.Gke.NodeCountPerZone,
 			"ClusterIPv4CIDR":        clusterIPv4CIDR,
 			"ServicesIPv4CIDR":       servicesIPv4CIDR,
-		},
+		})
+	}
+
+	return &GKEDriver{
+		plan:        plan,
+		clusters:    clusters,
 		vaultClient: c,
 	}, nil
+}
+
+func gkeRegions(primary string, fallbacks []string) []string {
+	seen := make(map[string]struct{}, len(fallbacks)+1)
+	regions := make([]string, 0, len(fallbacks)+1)
+
+	seen[primary] = struct{}{}
+	regions = append(regions, primary)
+
+	for _, region := range fallbacks {
+		if _, exists := seen[region]; exists {
+			continue
+		}
+		seen[region] = struct{}{}
+		regions = append(regions, region)
+	}
+	return regions
 }
 
 func gkeLocalSSDOption(settings *GKESettings) (string, error) {
@@ -135,96 +209,170 @@ func configureGKELocalSSD(plan Plan) Plan {
 func (d *GKEDriver) Execute() error {
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
+		d.plan.ServiceAccount, false, d.plan.Gke.GCloudProject,
 	); err != nil {
-		return err
-	}
-
-	exists, err := d.clusterExists()
-	if err != nil {
 		return err
 	}
 
 	switch d.plan.Operation {
 	case DeleteAction:
-		// Track bucket deletion errors separately: cluster deletion should proceed even if bucket
-		// deletion fails, but the error must still be returned so the exit code is non-zero.
-		bucketErr := deleteBucketIfConfigured(d.plan, d.newBucketManager)
-		if bucketErr != nil {
-			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
-		}
-		if exists {
-			err = d.delete()
-		} else {
-			log.Printf("not deleting as cluster doesn't exist")
-		}
-		err = errors.Join(err, bucketErr)
+		return d.delete()
 	case CreateAction:
-		if exists {
-			log.Printf("not creating as cluster exists")
-		} else {
-			if err := d.create(); err != nil {
-				return err
-			}
-
-			if err := d.bindRoles(); err != nil {
-				return err
-			}
-		}
-
-		if d.plan.Gke.Private {
-			log.Printf("a private cluster has been created, please retrieve credentials manually and create storage class and provider if needed")
-			log.Printf("to authorize a VM to access this cluster run the following command:\n"+
-				"$ gcloud container clusters update %s"+
-				" --region %s "+
-				"--enable-master-authorized-networks"+
-				" --master-authorized-networks  <VM IP>/32",
-				d.plan.ClusterName, d.plan.Gke.Region)
-			log.Printf("you can then retrieve the credentials with the following command:\n"+
-				"$ gcloud container clusters get-credentials %s"+
-				" --region %s "+
-				" --project %s",
-				d.plan.ClusterName, d.plan.Gke.Region, d.plan.Gke.GCloudProject)
-			return nil
-		}
-
-		if err := d.GetCredentials(); err != nil {
-			return err
-		}
-
-		if err := d.copyBuiltInStorageClasses(); err != nil {
-			return err
-		}
-
-		if err := setupDisks(d.plan); err != nil {
-			return err
-		}
-		if err := createStorageClass(); err != nil {
-			return err
-		}
-		if d.plan.EnforceSecurityPolicies {
-			if err := kyverno.Install(); err != nil {
-				return err
-			}
-			// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI.
-			// Retry because `rollout status` (used in kyverno.Install) only guarantees the pods are available,
-			// not that the webhook server is ready to accept connections yet.
-			if err := retry.UntilSuccess(
-				func() error { return apply(kyverno.GKEPolicies) },
-				2*time.Minute,
-				5*time.Second,
-			); err != nil {
-				return err
-			}
-		}
-		if err := createBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
-			return err
-		}
+		return d.create()
 	default:
-		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
+		return fmt.Errorf("unknown operation %s", d.plan.Operation)
+	}
+}
+
+func (d *GKEDriver) create() error {
+	// A previous run may have created the cluster in any configured region.
+	existing, err := findExistingCluster(d.clusters)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		log.Printf("not creating as cluster exists in region %s", existing.region())
+		return d.finishCreate(existing)
 	}
 
-	return err
+	cCtx, err := createInRegions(d.plan, d.clusters)
+	if err != nil {
+		return err
+	}
+	return d.finishCreate(cCtx)
+}
+
+func findExistingCluster(clusters []clusterContext) (clusterContext, error) {
+	for _, cCtx := range clusters {
+		exists, err := cCtx.exists()
+		if err != nil {
+			return nil, fmt.Errorf("check cluster in region %s: %w", cCtx.region(), err)
+		}
+		if exists {
+			return cCtx, nil
+		}
+	}
+	return nil, nil
+}
+
+func createInRegions(plan Plan, clusters []clusterContext) (clusterContext, error) {
+	if len(clusters) == 0 {
+		return nil, errors.New("no GKE regions configured")
+	}
+
+	var errs error
+	for _, cCtx := range clusters {
+		output, err := cCtx.create(plan)
+		if err != nil {
+			region := cCtx.region()
+			createErr := fmt.Errorf("create cluster in region %s: %w", region, err)
+			if deleteErr := cCtx.delete(); deleteErr != nil {
+				return nil, errors.Join(errs, createErr, fmt.Errorf("clean up failed creation in region %s: %w", region, deleteErr))
+			}
+			if !isCapacityError(output) {
+				return nil, errors.Join(errs, createErr)
+			}
+			errs = errors.Join(errs, createErr)
+			continue
+		}
+		return cCtx, nil
+	}
+	return nil, errs
+}
+
+func isCapacityError(output string) bool {
+	return strings.Contains(output, gkeCapacityErrorIndicator) ||
+		strings.Contains(output, gkeQuotaErrorIndicator)
+}
+
+func (d *GKEDriver) finishCreate(cCtx clusterContext) error {
+	if d.plan.Gke.Autopilot {
+		// Gcloud does not support labels when creating Autopilot clusters.
+		if err := cCtx.updateLabels(); err != nil {
+			return err
+		}
+	}
+
+	if d.plan.Gke.Private {
+		log.Printf("a private cluster has been created, please retrieve credentials manually and create storage class and provider if needed")
+		log.Printf("to authorize a VM to access this cluster run the following command:\n"+
+			"$ gcloud container clusters update %s"+
+			" --region %s "+
+			"--enable-master-authorized-networks"+
+			" --master-authorized-networks  <VM IP>/32",
+			d.plan.ClusterName, cCtx.region())
+		log.Printf("you can then retrieve the credentials with the following command:\n"+
+			"$ gcloud container clusters get-credentials %s"+
+			" --region %s "+
+			" --project %s",
+			d.plan.ClusterName, cCtx.region(), d.plan.Gke.GCloudProject)
+		bindRolesCmd, err := cCtx.bindRolesCmd()
+		if err != nil {
+			return err
+		}
+		log.Printf("bind roles manually from an authorized VM with the following command:\n$ %s\n", bindRolesCmd)
+		return nil
+	}
+
+	if err := cCtx.getCredentials(); err != nil {
+		return err
+	}
+
+	if err := cCtx.bindRoles(); err != nil {
+		return err
+	}
+
+	if err := cCtx.copyBuiltInStorageClasses(); err != nil {
+		return err
+	}
+
+	if err := setupDisks(d.plan); err != nil {
+		return err
+	}
+	createStorageClassFn := createStorageClass
+	if d.createStorageClassFn != nil {
+		createStorageClassFn = d.createStorageClassFn
+	}
+	if err := createStorageClassFn(); err != nil {
+		return err
+	}
+	if d.plan.EnforceSecurityPolicies {
+		if err := kyverno.Install(); err != nil {
+			return err
+		}
+		// apply extra policies to prevent use of unlabeled storage classes which might escape garbage collection in CI.
+		// Retry because `rollout status` (used in kyverno.Install) only guarantees the pods are available,
+		// not that the webhook server is ready to accept connections yet.
+		if err := retry.UntilSuccess(
+			func() error { return apply(kyverno.GKEPolicies) },
+			2*time.Minute,
+			5*time.Second,
+		); err != nil {
+			return err
+		}
+	}
+	if err := createBucketIfConfigured(d.plan, d.bucketManagerFactory(d.plan, cCtx)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *GKEDriver) delete() error {
+	var errs error
+	for _, cCtx := range d.clusters {
+		// Try bucket cleanup for every configured region because bucket templates may
+		// include Region and the cluster may already have been deleted. The GCS manager
+		// used here is idempotent, so repeated deletion of the same bucket is safe.
+		if err := deleteBucketIfConfigured(d.plan, d.bucketManagerFactory(d.plan, cCtx)); err != nil {
+			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", err)
+			errs = errors.Join(errs, fmt.Errorf("delete bucket in region %s: %w", cCtx.region(), err))
+		}
+		if err := cCtx.delete(); err != nil {
+			log.Printf("warning: cluster deletion failed in region %s, will continue: %v", cCtx.region(), err)
+			errs = errors.Join(errs, fmt.Errorf("delete cluster in region %s: %w", cCtx.region(), err))
+		}
+	}
+	return errs
 }
 
 const (
@@ -233,7 +381,7 @@ const (
 
 // copyBuiltInStorageClasses adds the "labels" parameter to copies of the built-in  GCE storage classes.
 // These labels are automatically applied to GCE Persistent Disks provisioned using these storage classes.
-func (d *GKEDriver) copyBuiltInStorageClasses() error {
+func (c gkeClusterContext) copyBuiltInStorageClasses() error {
 	storageClassesYaml, err := exec.NewCommand("kubectl get sc -o yaml").WithoutStreaming().Output()
 	if err != nil {
 		return err
@@ -248,7 +396,7 @@ func (d *GKEDriver) copyBuiltInStorageClasses() error {
 		existingClassNames[sc.Name] = struct{}{}
 	}
 
-	labels, err := d.resourcesLabels()
+	labels, err := c.resourcesLabels()
 	if err != nil {
 		return err
 	}
@@ -310,22 +458,30 @@ func copyWithPrefixAndLabels(sc storagev1.StorageClass, labels string) storagev1
 	return copied
 }
 
-func (d *GKEDriver) resourcesLabels() (string, error) {
-	username, err := d.username(true)
+func (c gkeClusterContext) resourcesLabels() (string, error) {
+	username, err := c.username(true)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf(
 		"username=%s,cluster_name=%s,plan_id=%s,region=%s",
-		username, d.ctx["ClusterName"], d.ctx["PlanId"], d.ctx["Region"],
+		username, c["ClusterName"], c["PlanId"], c["Region"],
 	), nil
 }
 
-func (d *GKEDriver) clusterExists() (bool, error) {
+func (c gkeClusterContext) fullLabels() (string, error) {
+	labels, err := c.resourcesLabels()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels), nil
+}
+
+func (c gkeClusterContext) exists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
 	cmd := "gcloud container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
-	contains, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
+	contains, err := exec.NewCommand(cmd).AsTemplate(c).WithoutStreaming().OutputContainsAny("Not found")
 	if contains {
 		return false, nil
 	}
@@ -333,32 +489,39 @@ func (d *GKEDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GKEDriver) create() error {
+func (c gkeClusterContext) listClusters(prefix string, before time.Time) ([]string, error) {
+	listCtx := c.clone()
+	listCtx["Date"] = before.Format(time.RFC3339)
+	listCtx["E2EClusterNamePrefix"] = prefix
+	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`
+	return exec.NewCommand(cmd).AsTemplate(listCtx).OutputList()
+}
+
+func (c gkeClusterContext) create(plan Plan) (string, error) {
 	log.Println("Creating cluster...")
 
-	opts := []string{}
+	var opts []string
 
-	if d.plan.Gke.NetworkPolicy {
-		if d.plan.Gke.Autopilot {
-			return fmt.Errorf("--enable-network-policy must not be set if autopilot is enabled")
+	if plan.Gke.NetworkPolicy {
+		if plan.Gke.Autopilot {
+			return "", fmt.Errorf("--enable-network-policy must not be set if autopilot is enabled")
 		}
 		opts = append(opts, "--enable-network-policy")
 	}
 
-	if d.plan.Gke.Private {
+	if plan.Gke.Private {
 		opts = append(opts, "--create-subnetwork name={{.ClusterName}}-private-subnet", "--enable-master-authorized-networks", "--enable-ip-alias", "--enable-private-nodes", "--enable-private-endpoint", "--master-ipv4-cidr", "172.16.0.32/28")
 	} else {
 		opts = append(opts, "--create-subnetwork range={{.ClusterIPv4CIDR}}", "--cluster-ipv4-cidr={{.ClusterIPv4CIDR}}", "--services-ipv4-cidr={{.ServicesIPv4CIDR}}")
 	}
 
-	labels, err := d.resourcesLabels()
+	labels, err := c.fullLabels()
 	if err != nil {
-		return err
+		return "", err
 	}
-	labels = fmt.Sprintf("%s,%s", strings.Join(toList(elasticTags), ","), labels)
 
 	var createGKEClusterCommand string
-	if !d.plan.Gke.Autopilot {
+	if !plan.Gke.Autopilot {
 		createGKEClusterCommand = `gcloud container --quiet --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 			`--labels "` + labels + `" --region {{.Region}} --no-enable-basic-auth --cluster-version {{.KubernetesVersion}} ` +
 			`--machine-type {{.MachineType}} --disk-type pd-ssd --disk-size 100 ` +
@@ -376,27 +539,31 @@ func (d *GKEDriver) create() error {
 			strings.Join(opts, " ")
 	}
 
-	err = exec.NewCommand(createGKEClusterCommand).
-		AsTemplate(d.ctx).
-		Run()
+	output, err := exec.NewCommand(createGKEClusterCommand).
+		AsTemplate(c).
+		Output()
 
+	if err != nil {
+		return output, err
+	}
+
+	return output, nil
+}
+
+func (c gkeClusterContext) updateLabels() error {
+	labels, err := c.fullLabels()
 	if err != nil {
 		return err
 	}
-
-	// Since gcloud doesn't support labels at creation time for autopilot clusters, update the labels after creation.
-	if d.plan.Gke.Autopilot {
-		return exec.NewCommand(`gcloud container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
-			AsTemplate(d.ctx).
-			Run()
-	}
-	return nil
+	return exec.NewCommand(`gcloud container --quiet --project {{.GCloudProject}} clusters update {{.ClusterName}} --region {{.Region}} --update-labels="` + labels + `"`).
+		AsTemplate(c).
+		Run()
 }
 
 // username attempts to extract the username from the current account.
 // When used in labels the "unqualified" parameter should be set to true, it's because only lowercase letters ([a-z]),
 // numeric characters ([0-9]), underscores (_) and dashes (-) are allowed as label values.
-func (d *GKEDriver) username(unqualified bool) (string, error) {
+func (c gkeClusterContext) username(unqualified bool) (string, error) {
 	user, err := exec.NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).WithoutStreaming().Output()
 	if err != nil {
 		return "", err
@@ -410,15 +577,22 @@ func (d *GKEDriver) username(unqualified bool) (string, error) {
 	return user, nil
 }
 
-func (d *GKEDriver) bindRoles() error {
-	user, err := d.username(false)
+func (c gkeClusterContext) bindRolesCmd() (string, error) {
+	user, err := c.username(false)
+	if err != nil {
+		return "", err
+	}
+	cmd := fmt.Sprintf(
+		"kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s --dry-run=client -o yaml | kubectl apply -f -",
+		user,
+	)
+	return cmd, nil
+}
+
+func (c gkeClusterContext) bindRoles() error {
+	cmd, err := c.bindRolesCmd()
 	if err != nil {
 		return err
-	}
-	cmd := fmt.Sprintf("kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=%s", user)
-	if d.plan.Gke.Private {
-		log.Printf("this is a private cluster, please bind roles manually from an authorized VM with the following command:\n$ %s\n", cmd)
-		return nil
 	}
 	log.Println("Binding roles...")
 	return exec.NewCommand(cmd).Run()
@@ -431,37 +605,51 @@ func (d *GKEDriver) GetCredentials() error {
 	if err != nil {
 		return fmt.Errorf("while retrieving list of credentialed gcloud accounts: %w", err)
 	}
-	gcloudProjectInt, ok := d.ctx[GoogleCloudProjectCtxKey]
-	if !ok {
+	if d.plan.Gke.GCloudProject == "" {
 		return fmt.Errorf("while retrieving google cloud project: missing key %s", GoogleCloudProjectCtxKey)
-	}
-	gCloudProject, ok := gcloudProjectInt.(string)
-	if !ok {
-		return fmt.Errorf("while retrieving google cloud project: key %s was not a string, was %T ", GoogleCloudProjectCtxKey, gcloudProjectInt)
 	}
 	// If there's no authenticated user, or the authenticated user doesn't exist in the configured project
 	// then we need to authenticate with what's within vault.
-	if len(out) == 0 || (len(out) > 0 && !strings.Contains(out[0], gCloudProject)) {
+	if len(out) == 0 || (len(out) > 0 && !strings.Contains(out[0], d.plan.Gke.GCloudProject)) {
 		if err := authToGCP(
 			d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-			d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
+			d.plan.ServiceAccount, false, d.plan.Gke.GCloudProject,
 		); err != nil {
 			return fmt.Errorf("while authenticating to GCP: %w", err)
 		}
 	}
 	log.Println("Getting credentials...")
+	return getCredentialsFromClusters(d.clusters)
+}
+
+func getCredentialsFromClusters(clusters []clusterContext) error {
+	var errs error
+	for _, cCtx := range clusters {
+		if err := cCtx.getCredentials(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("region %s: %w", cCtx.region(), err))
+			continue
+		}
+		return nil
+	}
+	if errs == nil {
+		return errors.New("no regions configured")
+	}
+	return fmt.Errorf("failed to get credentials from configured regions: %w", errs)
+}
+
+func (c gkeClusterContext) getCredentials() error {
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
-	return exec.NewCommand(cmd).AsTemplate(d.ctx).Run()
+	return exec.NewCommand(cmd).AsTemplate(c).Run()
 }
 
 // waitForClusterOperations waits for any running GKE cluster operations to complete.
 // GKE does not allow cluster deletion while operations like auto-upgrades, auto-repairs,
 // or node pool modifications are in progress. Attempting to delete during such operations
 // results in: "Cluster is running incompatible operation" error.
-func (d *GKEDriver) waitForClusterOperations() error {
+func (c gkeClusterContext) waitForClusterOperations() error {
 	log.Println("Checking for running cluster operations...")
 	cmd := `gcloud container operations list --project {{.GCloudProject}} --region {{.Region}} --filter="targetLink~{{.ClusterName}} AND status=RUNNING" --format="value(name)"`
-	operations, err := exec.NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputList()
+	operations, err := exec.NewCommand(cmd).AsTemplate(c).WithoutStreaming().OutputList()
 	if err != nil {
 		return fmt.Errorf("while listing cluster operations: %w", err)
 	}
@@ -469,7 +657,7 @@ func (d *GKEDriver) waitForClusterOperations() error {
 	for _, op := range operations {
 		log.Printf("Waiting for operation %s to complete...", op)
 		waitCmd := fmt.Sprintf(`gcloud container operations wait %s --project {{.GCloudProject}} --region {{.Region}}`, op)
-		if err := exec.NewCommand(waitCmd).AsTemplate(d.ctx).Run(); err != nil {
+		if err := exec.NewCommand(waitCmd).AsTemplate(c).Run(); err != nil {
 			return fmt.Errorf("while waiting for operation %s: %w", op, err)
 		}
 	}
@@ -477,7 +665,7 @@ func (d *GKEDriver) waitForClusterOperations() error {
 	return nil
 }
 
-func (d *GKEDriver) delete() error {
+func (c gkeClusterContext) delete() error {
 	// Retry deletion up to 3 times to handle transient failures. GKE cluster deletion can fail
 	// due to race conditions where new operations start between our check and delete attempt,
 	// or due to temporary API errors.
@@ -488,8 +676,15 @@ func (d *GKEDriver) delete() error {
 		if attempt > 1 {
 			log.Printf("Retrying cluster deletion (attempt %d/%d)...", attempt, maxDeleteAttempts)
 		}
+		if exists, err := c.exists(); err != nil {
+			lastErr = err
+			log.Printf("Error checking for cluster existence: %v", err)
+			continue
+		} else if !exists {
+			return nil
+		}
 
-		if err := d.waitForClusterOperations(); err != nil {
+		if err := c.waitForClusterOperations(); err != nil {
 			lastErr = err
 			log.Printf("Error waiting for cluster operations: %v", err)
 			continue
@@ -497,7 +692,7 @@ func (d *GKEDriver) delete() error {
 
 		log.Println("Deleting cluster...")
 		cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-		if err := exec.NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+		if err := exec.NewCommand(cmd).AsTemplate(c).Run(); err != nil {
 			lastErr = err
 			log.Printf("Error deleting cluster: %v", err)
 			continue
@@ -514,22 +709,22 @@ func (d *GKEDriver) delete() error {
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
 	diskCmd := `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err := exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	disks, err := exec.NewCommand(diskCmd).AsTemplate(c).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
-	if err := d.deleteDisks(disks); err != nil {
+	if err := c.deleteDisks(disks); err != nil {
 		return err
 	}
 	deletedDisks := len(disks)
 
 	// This is the "legacy" way to detect orphaned disks. Keep using it while all disks do not have labels.
 	diskCmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
-	disks, err = exec.NewCommand(diskCmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	disks, err = exec.NewCommand(diskCmd).AsTemplate(c).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
-	if err := d.deleteDisks(disks); err != nil {
+	if err := c.deleteDisks(disks); err != nil {
 		return err
 	}
 	deletedDisks += len(disks)
@@ -542,7 +737,7 @@ func (d *GKEDriver) delete() error {
 	return nil
 }
 
-func (d *GKEDriver) deleteDisks(disks []string) error {
+func (c gkeClusterContext) deleteDisks(disks []string) error {
 	for _, disk := range disks {
 		nameZone := strings.Split(disk, ",")
 		if len(nameZone) != 2 {
@@ -553,7 +748,7 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 		cmd := `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := exec.NewCommand(cmd).
 			AsTemplate(map[string]any{
-				GoogleCloudProjectCtxKey: d.plan.Gke.GCloudProject,
+				GoogleCloudProjectCtxKey: c[GoogleCloudProjectCtxKey],
 				"Name":                   name,
 				"Zone":                   zone,
 			}).
@@ -565,64 +760,81 @@ func (d *GKEDriver) deleteDisks(disks []string) error {
 	return nil
 }
 
-func (d *GKEDriver) newBucketManager() (bucket.Manager, error) {
+func (d *GKEDriver) newBucketManager(plan Plan, c clusterContext) (bucket.Manager, error) {
 	// Use VaultManager for pre-provisioned buckets
-	if d.plan.Bucket.FromVault {
+	if plan.Bucket.FromVault {
 		return newVaultBucketManager(GKEDriverID, d.vaultClient)
 	}
 
 	// Use GCSManager for dynamic bucket creation
-	if err := bucket.ValidateShellArg(d.plan.Gke.GCloudProject, "GCP project"); err != nil {
+	if err := bucket.ValidateShellArg(plan.Gke.GCloudProject, "GCP project"); err != nil {
 		return nil, err
 	}
-	if d.plan.Bucket.StorageClass != "" {
-		if err := bucket.ValidateShellArg(d.plan.Bucket.StorageClass, "storage class"); err != nil {
+	if plan.Bucket.StorageClass != "" {
+		if err := bucket.ValidateShellArg(plan.Bucket.StorageClass, "storage class"); err != nil {
 			return nil, err
 		}
 	}
-	cfg, err := newBucketConfig(d.plan, d.ctx, d.plan.Gke.Region)
+	cfg, err := newBucketConfig(plan, c.values(), c.region())
 	if err != nil {
 		return nil, err
 	}
-	return bucket.NewGCSManager(cfg, d.plan.Gke.GCloudProject, d.plan.Bucket.StorageClass), nil
+	return bucket.NewGCSManager(cfg, plan.Gke.GCloudProject, plan.Bucket.StorageClass), nil
+}
+
+func (d *GKEDriver) bucketManagerFactory(plan Plan, c clusterContext) func() (bucket.Manager, error) {
+	return func() (bucket.Manager, error) {
+		if d.newBucketManagerFn != nil {
+			return d.newBucketManagerFn(plan, c)
+		}
+		return d.newBucketManager(plan, c)
+	}
 }
 
 func (d *GKEDriver) Cleanup(prefix string, olderThan time.Duration) error {
-	if d.ctx[GoogleCloudProjectCtxKey] == "" {
+	if d.plan.Gke.GCloudProject == "" {
 		gCloudProject, err := vault.Get(d.vaultClient, GKEVaultPath, GKEProjectVaultFieldName)
 		if err != nil {
 			return err
 		}
-		d.ctx[GoogleCloudProjectCtxKey] = gCloudProject
+		d.plan.Gke.GCloudProject = gCloudProject
 	}
 
 	if err := authToGCP(
 		d.vaultClient, GKEVaultPath, GKEServiceAccountVaultFieldName,
-		d.plan.ServiceAccount, false, d.ctx[GoogleCloudProjectCtxKey],
+		d.plan.ServiceAccount, false, d.plan.Gke.GCloudProject,
 	); err != nil {
 		return err
 	}
+	return d.cleanup(prefix, olderThan)
+}
 
+func (d *GKEDriver) cleanup(prefix string, olderThan time.Duration) error {
+	var errs error
 	sinceDate := time.Now().Add(-olderThan)
-	d.ctx["Date"] = sinceDate.Format(time.RFC3339)
-	d.ctx["E2EClusterNamePrefix"] = prefix
-
-	cmd := `gcloud container clusters list --verbosity error --region={{.Region}} --format="value(name)" --filter="createTime<{{.Date}} AND name~{{.E2EClusterNamePrefix}}.*"`
-	clusters, err := exec.NewCommand(cmd).AsTemplate(d.ctx).OutputList()
-	if err != nil {
-		return err
-	}
-
-	for _, cluster := range clusters {
-		d.plan.ClusterName = cluster
-		d.ctx["ClusterName"] = cluster
-		if err := deleteBucketIfConfigured(d.plan, d.newBucketManager); err != nil {
-			log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
-		}
-		if err = d.delete(); err != nil {
-			log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+	for _, cCtx := range d.clusters {
+		cleanupCtx := cCtx.withProject(d.plan.Gke.GCloudProject)
+		clusters, err := cleanupCtx.listClusters(prefix, sinceDate)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("list clusters in region %s: %w", cleanupCtx.region(), err))
 			continue
 		}
+
+		for _, cluster := range clusters {
+			clusterCtx := cleanupCtx.withClusterName(cluster)
+			clusterPlan := d.plan
+			clusterPlan.ClusterName = cluster
+			if err := deleteBucketIfConfigured(clusterPlan, d.bucketManagerFactory(clusterPlan, clusterCtx)); err != nil {
+				log.Printf("warning: bucket deletion failed for cluster %s, will continue: %v", cluster, err)
+				errs = errors.Join(errs, fmt.Errorf("delete bucket for cluster %s in region %s: %w", cluster, clusterCtx.region(), err))
+			}
+			if err = clusterCtx.delete(); err != nil {
+				log.Printf("while deleting cluster %s: %v", cluster, err.Error())
+				errs = errors.Join(errs, fmt.Errorf("delete cluster %s in region %s: %w", cluster, clusterCtx.region(), err))
+				continue
+			}
+		}
 	}
-	return nil
+
+	return errs
 }
