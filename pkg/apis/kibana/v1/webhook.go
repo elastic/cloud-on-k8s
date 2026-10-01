@@ -211,6 +211,7 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 		config, err := common.NewCanonicalConfigFrom(vld.Config.Data)
 		if err != nil {
 			errs = append(errs, field.Invalid(vld.Path, vld.Config, cfgInvalidMsg))
+			continue
 		}
 
 		if keys := config.HasKeys([]string{label.NodeRolesConfigKey}); len(keys) > 0 {
