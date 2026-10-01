@@ -13,6 +13,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 const (
@@ -23,6 +24,11 @@ const (
 	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
 	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
 )
+
+// BackgroundTasksMinVersion is the minimum Kibana version that supports background task isolation
+// via spec.backgroundTasks. It is set to 8.16.0 because that is when /api/status became available
+// as an unauthenticated readiness probe endpoint; background-only nodes do not serve /login.
+var BackgroundTasksMinVersion = version.From(8, 16, 0)
 
 // +kubebuilder:object:root=true
 
@@ -116,6 +122,68 @@ type KibanaSpec struct {
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
+
+	// BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
+	// in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
+	// When nil, Kibana runs a single Deployment with all roles.
+	// Requires Kibana >= 8.16.0.
+	// +kubebuilder:validation:Optional
+	BackgroundTasks *KibanaBackgroundTasks `json:"backgroundTasks,omitempty"`
+}
+
+// KibanaBackgroundTasks defines the configuration for the Kibana background tasks pool.
+// When set, ECK creates a dedicated Deployment with node.roles: ["background_tasks"] and
+// pins the primary (UI) Deployment to node.roles: ["ui"].
+type KibanaBackgroundTasks struct {
+	// Count of background task Kibana instances. When nil, ECK does not manage the replica count
+	// of the Deployment, allowing an HPA to target it directly.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=0
+	Count *int32 `json:"count,omitempty"`
+
+	// Config holds Kibana configuration specific to the background tasks pool.
+	// The node.roles setting is managed by ECK and must not be set here.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the
+	// background tasks pool. When set, these values override any CPU or memory resource settings
+	// specified in PodTemplate for the primary Kibana container. To set resources on other containers,
+	// use PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options for the background tasks pool pods.
+	// It is applied as a strategic-merge overlay on top of spec.podTemplate.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+}
+
+// KibanaPoolsStatuses reports the observed state of a all Kibana pools (UI and background tasks).
+type KibanaPoolsStatuses struct {
+	// BackgroundTasks reports the state of the background tasks Deployment.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	BackgroundTasks *KibanaPoolStatus `json:"backgroundTasks,omitempty"`
+
+	// Primary reports the state of the primary Deployment.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	Primary *KibanaPoolStatus `json:"primary,omitempty"`
+}
+
+// KibanaPoolStatus reports the observed state of a single Kibana pool (UI or background tasks).
+type KibanaPoolStatus struct {
+	// Selector is the label selector used to find all pods in this pool.
+	Selector string `json:"selector,omitempty"`
+	// Count is the number of observed instances in this pool.
+	Count int32 `json:"count"`
+	// AvailableNodes is the number of available replicas in this pool.
+	AvailableNodes int32 `json:"availableNodes,omitempty"`
+	// Health of this pool.
+	Health commonv1.DeploymentHealth `json:"health,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana
@@ -143,11 +211,23 @@ type KibanaStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Kibana
 	// controller has not yet processed the changes contained in the Kibana specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Pools reports the state of the background tasks and primary Deployments.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	Pools *KibanaPoolsStatuses `json:"pools,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
 func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
+}
+
+// BackgroundTasksEnabled reports whether the background tasks pool is configured.
+// When true, the controller creates a second Deployment with node.roles: ["background_tasks"]
+// and restricts the primary Deployment to node.roles: ["ui"].
+func (k *Kibana) BackgroundTasksEnabled() bool {
+	return k.Spec.BackgroundTasks != nil
 }
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
@@ -534,4 +614,14 @@ func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.A
 		Kibana: k,
 		ref:    esRef.WithDefaultNamespace(k.Namespace),
 	}
+}
+
+func (k *Kibana) GetResourcesForRole(role label.Role) commonv1.Resources {
+	if k.BackgroundTasksEnabled() &&
+		role.IsBackgroundTasks() &&
+		!k.Spec.BackgroundTasks.Resources.IsEmpty() {
+		return k.Spec.BackgroundTasks.Resources
+	}
+
+	return k.Spec.Resources
 }

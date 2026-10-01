@@ -16,3 +16,23 @@ func (k *Kibana) GetIdentityLabels() map[string]string {
 		label.KibanaNameLabelName: k.Name,
 	}
 }
+
+func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
+	labels := k.GetIdentityLabels()
+	labels[label.RoleLabelName] = label.RolePrimaryValue
+
+	if k.BackgroundTasksEnabled() && role.LabelValue != "" {
+		labels[label.RoleLabelName] = role.LabelValue
+	}
+	return labels
+}
+
+// ActiveRoles returns the list of pools the controller must reconcile for this Kibana.
+// Without split: SinglePoolRole — role=primary selector label, no NODE_ROLES injection.
+// With split: UIRole and BackgroundTasksRole, each becoming its own Deployment.
+func (k *Kibana) ActiveRoles() []label.Role {
+	if !k.BackgroundTasksEnabled() {
+		return []label.Role{label.SinglePoolRole}
+	}
+	return []label.Role{label.UIRole, label.BackgroundTasksRole}
+}

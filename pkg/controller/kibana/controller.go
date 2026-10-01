@@ -40,13 +40,15 @@ import (
 const (
 	controllerName           = "kibana-controller"
 	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
+	replicasAnnotationName   = "kibana.k8s.elastic.co/prev-replicas"
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+	c, err := common.NewNamespacedController(
+		mgr, controllerName, reconciler, params,
 		watches.ReconcileObjectsInNamespace(
 			mgr.GetCache(),
 			func() client.ObjectList { return &kbv1.KibanaList{} },
@@ -241,7 +243,8 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
 		k8s.EmitEvent(r.recorder, current, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Kibana health degraded")
 	}
-	ulog.FromContext(ctx).V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info(
+		"Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", state.Kibana.Namespace,
 		"kibana_name", state.Kibana.Name,

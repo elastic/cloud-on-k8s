@@ -154,7 +154,7 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		},
 		Metadata:             meta,
 		PodTemplateSpec:      builder.PodTemplate,
-		Replicas:             1,
+		Replicas:             new(int32(1)),
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil
 }

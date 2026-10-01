@@ -52,7 +52,7 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1.EnterpriseSearch,
 	return deployment.Params{
 		Name:                 DeploymentName(ent.Name),
 		Namespace:            ent.Namespace,
-		Replicas:             ent.Spec.Count,
+		Replicas:             new(ent.Spec.Count),
 		Selector:             ent.GetIdentityLabels(),
 		Metadata:             meta,
 		RevisionHistoryLimit: ent.Spec.RevisionHistoryLimit,

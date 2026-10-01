@@ -9198,6 +9198,105 @@ spec:
           spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
+              backgroundTasks:
+                description: |-
+                  BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
+                  in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
+                  When nil, Kibana runs a single Deployment with all roles.
+                  Requires Kibana >= 8.16.0.
+                properties:
+                  config:
+                    description: |-
+                      Config holds Kibana configuration specific to the background tasks pool.
+                      The node.roles setting is managed by ECK and must not be set here.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  count:
+                    description: |-
+                      Count of background task Kibana instances. When nil, ECK does not manage the replica count
+                      of the Deployment, allowing an HPA to target it directly.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  podTemplate:
+                    description: |-
+                      PodTemplate provides customization options for the background tasks pool pods.
+                      It is applied as a strategic-merge overlay on top of spec.podTemplate.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  resources:
+                    description: |-
+                      Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the
+                      background tasks pool. When set, these values override any CPU or memory resource settings
+                      specified in PodTemplate for the primary Kibana container. To set resources on other containers,
+                      use PodTemplate.
+                    properties:
+                      limits:
+                        description: Limits is the shorthand for the main container's
+                          CPU and memory limits.
+                        properties:
+                          cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              CPU overrides the main container's CPU request/limit when the parent Resources
+                              is merged into a PodTemplate. A nil value means "do not override": any CPU
+                              value already set on the main container in the PodTemplate is passed through
+                              unchanged. Setting this field to nil does not unset a CPU value present in
+                              the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                              A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              Memory overrides the main container's memory request/limit when the parent
+                              Resources is merged into a PodTemplate. A nil value means "do not override":
+                              any memory value already set on the main container in the PodTemplate is
+                              passed through unchanged. Setting this field to nil does not unset a memory
+                              value present in the PodTemplate; to remove it, edit the PodTemplate's
+                              container resources.
+                              A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                      requests:
+                        description: Requests is the shorthand for the main container's
+                          CPU and memory requests.
+                        properties:
+                          cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              CPU overrides the main container's CPU request/limit when the parent Resources
+                              is merged into a PodTemplate. A nil value means "do not override": any CPU
+                              value already set on the main container in the PodTemplate is passed through
+                              unchanged. Setting this field to nil does not unset a CPU value present in
+                              the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                              A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              Memory overrides the main container's memory request/limit when the parent
+                              Resources is merged into a PodTemplate. A nil value means "do not override":
+                              any memory value already set on the main container in the PodTemplate is
+                              passed through unchanged. Setting this field to nil does not unset a memory
+                              value present in the PodTemplate; to remove it, edit the PodTemplate's
+                              container resources.
+                              A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
+                type: object
               config:
                 description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
@@ -10001,6 +10100,62 @@ spec:
                 description: PackageRegistryAssociationStatus is the status of any
                   auto-linking to Elastic Package Registry.
                 type: string
+              pools:
+                description: |-
+                  Pools reports the state of the background tasks and primary Deployments.
+                  Only set when spec.backgroundTasks is configured.
+                properties:
+                  backgroundTasks:
+                    description: |-
+                      BackgroundTasks reports the state of the background tasks Deployment.
+                      Only set when spec.backgroundTasks is configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in this pool.
+                        format: int32
+                        type: integer
+                      count:
+                        description: Count is the number of observed instances in
+                          this pool.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of this pool.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods in this pool.
+                        type: string
+                    required:
+                    - count
+                    type: object
+                  primary:
+                    description: |-
+                      Primary reports the state of the primary Deployment.
+                      Only set when spec.backgroundTasks is configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in this pool.
+                        format: int32
+                        type: integer
+                      count:
+                        description: Count is the number of observed instances in
+                          this pool.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of this pool.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods in this pool.
+                        type: string
+                    required:
+                    - count
+                    type: object
+                type: object
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string
