@@ -10108,31 +10108,6 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
-              backgroundTasks:
-                description: |-
-                  BackgroundTasks reports the state of the background tasks Deployment.
-                  Only set when spec.backgroundTasks is configured.
-                properties:
-                  availableNodes:
-                    description: AvailableNodes is the number of available replicas
-                      in this pool.
-                    format: int32
-                    type: integer
-                  count:
-                    description: Count is the number of observed instances in this
-                      pool.
-                    format: int32
-                    type: integer
-                  health:
-                    description: Health of this pool.
-                    type: string
-                  selector:
-                    description: Selector is the label selector used to find all pods
-                      in this pool.
-                    type: string
-                required:
-                - count
-                type: object
               conditions:
                 description: Conditions holds the current service state of the deployment.
                 items:
@@ -10188,6 +10163,62 @@ spec:
                 description: PackageRegistryAssociationStatus is the status of any
                   auto-linking to Elastic Package Registry.
                 type: string
+              pools:
+                description: |-
+                  Pools reports the state of the background tasks and primary Deployments.
+                  Only set when spec.backgroundTasks is configured.
+                properties:
+                  backgroundTasks:
+                    description: |-
+                      BackgroundTasks reports the state of the background tasks Deployment.
+                      Only set when spec.backgroundTasks is configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in this pool.
+                        format: int32
+                        type: integer
+                      count:
+                        description: Count is the number of observed instances in
+                          this pool.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of this pool.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods in this pool.
+                        type: string
+                    required:
+                    - count
+                    type: object
+                  primary:
+                    description: |-
+                      Primary reports the state of the primary Deployment.
+                      Only set when spec.backgroundTasks is configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in this pool.
+                        format: int32
+                        type: integer
+                      count:
+                        description: Count is the number of observed instances in
+                          this pool.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of this pool.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods in this pool.
+                        type: string
+                    required:
+                    - count
+                    type: object
+                type: object
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string

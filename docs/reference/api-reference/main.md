@@ -2019,6 +2019,23 @@ pins the primary (UI) Deployment to node.roles: ["ui"].
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customization options for the background tasks pool pods.<br>It is applied as a strategic-merge overlay on top of spec.podTemplate. |
 
 
+### KibanaPoolStatus  [#kibanapoolstatus]
+
+KibanaPoolStatus reports the observed state of a single Kibana pool (UI or background tasks).
+
+:::{admonition} Appears In:
+* [KibanaPoolsStatuses](#kibanapoolsstatuses)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`selector`* __string__ | Selector is the label selector used to find all pods in this pool. |
+| *`count`* __integer__ | Count is the number of observed instances in this pool. |
+| *`availableNodes`* __integer__ | AvailableNodes is the number of available replicas in this pool. |
+| *`health`* __[DeploymentHealth](#deploymenthealth)__ | Health of this pool. |
+
+
 
 
 ### KibanaSpec  [#kibanaspec]

@@ -203,24 +203,25 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			// Selector is a string built from a map, it is validated with a dedicated function.
 			// The expected value is hardcoded on purpose to ensure there is no regression in the way the set of labels
 			// is created.
-			if err := test.CheckSelector(
-				kb.Status.Selector,
-				map[string]string{
-					"kibana.k8s.elastic.co/name": kb.Name,
-					"common.k8s.elastic.co/type": "kibana",
-					"kibana.k8s.elastic.co/role": "primary",
-				},
-			); err != nil {
+			// When background task isolation is enabled, the top-level selector covers all pools, so it
+			// carries no role label; the per-pool selectors (status.pools) are role-scoped instead.
+			expectedSelector := map[string]string{
+				"kibana.k8s.elastic.co/name": kb.Name,
+				"common.k8s.elastic.co/type": "kibana",
+			}
+			if b.Kibana.Spec.BackgroundTasks == nil {
+				expectedSelector["kibana.k8s.elastic.co/role"] = "primary"
+			}
+			if err := test.CheckSelector(kb.Status.Selector, expectedSelector); err != nil {
 				return err
 			}
 			kb.Status.Selector = ""
 
 			// don't check the association statuses that may vary across tests
-			// Count is the UI pool's replica count (drives the scale sub-resource).
-			// AvailableNodes is the controller-aggregated count across all active pools.
+			// Count and AvailableNodes are controller-aggregated across all active pools.
 			expected := kbv1.KibanaStatus{
 				DeploymentStatus: commonv1.DeploymentStatus{
-					Count:          b.Kibana.Spec.Count,
+					Count:          b.Count(),
 					AvailableNodes: b.Count(),
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
