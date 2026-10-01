@@ -28,6 +28,7 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func (d *Driver) handleUpgrades(
@@ -56,7 +57,7 @@ func (d *Driver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	rollingUpgradeCandidates, err := podsToRollingUpgrade(ctx, d.Client, expectedResources.StatefulSets(), statefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -66,7 +67,7 @@ func (d *Driver) handleUpgrades(
 		return results.WithError(err)
 	}
 
-	isTriggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, podsToUpgrade)
+	isTriggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, rollingUpgradeCandidates)
 
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
@@ -99,7 +100,7 @@ func (d *Driver) handleUpgrades(
 		esState,
 		nodeShutdown,
 		expectedMasters,
-		podsToUpgrade,
+		rollingUpgradeCandidates,
 		healthyPods,
 		currentPods,
 		isTriggeredRestart,
@@ -126,7 +127,7 @@ func (d *Driver) handleUpgrades(
 		// Some Pods have just been deleted, we don't need to try to enable shards allocation.
 		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
-	if len(podsToUpgrade) > len(deletedPods) {
+	if len(rollingUpgradeCandidates) > len(deletedPods) {
 		// Some Pods have not been updated, ensure that we retry later
 		results.WithReconciliationState(shared.DefaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
@@ -254,6 +255,34 @@ func healthyPods(
 		}
 	}
 	return healthyPods, nil
+}
+
+// podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the ones the downscale wants to remove: Pods
+// of a StatefulSet that is not expected anymore, and Pods whose ordinal is at or above the expected number of replicas.
+// Deleting such a Pod for a rolling upgrade disrupts the remove-type shutdown that is migrating its shards away (its
+// record may even be replaced by a restart-type one): the removal has to be requested again once the Pod is back, and
+// shards with no other copy stay unavailable if it does not come back.
+func podsToRollingUpgrade(
+	ctx context.Context,
+	client k8s.Client,
+	expectedStatefulSets es_sset.StatefulSetList,
+	actualStatefulSets es_sset.StatefulSetList,
+) ([]corev1.Pod, error) {
+	toUpgrade, err := podsToUpgrade(client, actualStatefulSets)
+	if err != nil {
+		return nil, err
+	}
+	// the downscale state only matters to the budget filter, which is not applied here: this is the whole set of Pods
+	// the downscale wants to remove, not the ones it is allowed to remove now
+	downscales, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
+	leaving := set.Make(leavingNodeNames(downscales)...)
+	staying := make([]corev1.Pod, 0, len(toUpgrade))
+	for _, pod := range toUpgrade {
+		if !leaving.Has(pod.Name) {
+			staying = append(staying, pod)
+		}
+	}
+	return staying, nil
 }
 
 // podsToUpgrade returns all Pods of all StatefulSets where the controller-revision-hash label compared to the sset's
