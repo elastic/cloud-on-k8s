@@ -212,14 +212,15 @@ type RemoteClusterServer struct {
 }
 
 // VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
-// Inspired by https://github.com/kubernetes/enhancements/pull/2440
+// Implemented via the StatefulSet PersistentVolumeClaimRetentionPolicy (https://github.com/kubernetes/enhancements/pull/2440).
 type VolumeClaimDeletePolicy string
 
 const (
-	// DeleteOnScaledownAndClusterDeletionPolicy remove PersistentVolumeClaims when the corresponding Elasticsearch node is removed.
+	// DeleteOnScaledownAndClusterDeletionPolicy removes PersistentVolumeClaims on scale down and on cluster deletion
+	// (StatefulSet WhenScaled=Delete, WhenDeleted=Delete).
 	DeleteOnScaledownAndClusterDeletionPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownAndClusterDeletion"
-	// DeleteOnScaledownOnlyPolicy removes PersistentVolumeClaims on scale down of Elasticsearch nodes but retains all
-	// current PersistenVolumeClaims when the Elasticsearch cluster has been deleted.
+	// DeleteOnScaledownOnlyPolicy removes PersistentVolumeClaims on scale down but retains all PersistentVolumeClaims
+	// when the Elasticsearch cluster is deleted (StatefulSet WhenScaled=Delete, WhenDeleted=Retain).
 	DeleteOnScaledownOnlyPolicy VolumeClaimDeletePolicy = "DeleteOnScaledownOnly"
 )
 
