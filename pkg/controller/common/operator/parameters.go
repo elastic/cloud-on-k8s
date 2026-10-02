@@ -59,4 +59,6 @@ type Parameters struct {
 	// per-kind controllers whenever a namespace's match-state changes. Nil in
 	// legacy / static-resolution modes.
 	NamespaceMatcher *nsmatch.NamespaceMatcher
+	// RBACOnRefsMode is the enforcement level for cross-namespace reference access checks.
+	RBACOnRefsMode RBACOnRefsMode
 }
