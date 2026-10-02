@@ -7,10 +7,11 @@ cross_links:
   - apm-agent-go
   - docs-content
   - kibana
+  - elasticsearch
+  - elastic-agent
 toc:
   - toc: reference
   - toc: release-notes
 subs:
   eck:   "Elastic Cloud on Kubernetes"
   es:   "Elasticsearch"
-  stack:   "Elastic Stack"
