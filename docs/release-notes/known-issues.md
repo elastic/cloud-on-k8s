@@ -6,6 +6,9 @@ navigation_title: "Known issues"
 
 Known issues are significant defects or limitations that may impact your implementation. These issues are actively being worked on and will be addressed in a future release. Review the Elastic Cloud on Kubernetes known issues to help you make informed decisions, such as upgrading to a new version.
 
+For known issues related to specific {{product.elastic-stack}} applications, refer to the appropriate release notes.
+For example, [{{es}}](elasticsearch://release-notes/known-issues.md), [{{product.kibana}}](kibana://release-notes/known-issues.md), and [{{product.elastic-agent}}](elastic-agent://release-notes/known-issues.md).
+
 % Use the following template to add entries to this page.
 
 % :::{dropdown} Title of known issue
