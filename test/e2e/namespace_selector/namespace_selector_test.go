@@ -19,6 +19,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
@@ -29,9 +30,9 @@ import (
 // when it gains the label matched by the namespace selector, without requiring an operator restart.
 //
 // The test requires an enterprise license. It labels only ns1 at startup, configures the operator
-// with a matchLabels selector for "eck-visible=true", waits for the restart, confirms ES in ns1 is
-// reconciled and ES in ns2 is ignored, then adds the label to ns2 and asserts the operator reconciles
-// ES in ns2 without restarting.
+// with a matchLabels selector for "eck-visible=true", waits for every operator Pod to run with it, confirms
+// ES in ns1 is reconciled and ES in ns2 is ignored, then adds the label to ns2 and asserts the operator
+// reconciles ES in ns2 without restarting.
 //
 // NOTE: this test mutates global operator configuration and must not run in parallel
 // with other tests in the same test run.
@@ -61,10 +62,11 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 	originalConfig, err := helper.GetOperatorConfig(k.Client)
 	require.NoError(t, err)
 
-	var restartCount int32
+	var expectedConfig map[string]any
+	var leaderIdentity string
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
-	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, &restartCount, ns1, ns2)
+	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, ns1, ns2)
 
 	test.StepList{}.
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
@@ -76,34 +78,24 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 			},
 		}).
 		WithStep(test.Step{
-			Name: "record baseline operator restart count",
-			Test: func(t *testing.T) {
-				restartCount, err = helper.OperatorRestartCount(k)
-				require.NoError(t, err)
-			},
-		}).
-		WithStep(test.Step{
 			Name: "switch operator to eck-visible=true namespace-selector",
 			Test: func(t *testing.T) {
 				require.NoError(t, helper.UpdateOperatorConfig(k.Client, func(cfg map[string]any) {
-					delete(cfg, "namespaces")
-					cfg["namespace-selector"] = map[string]any{
+					delete(cfg, operator.NamespacesFlag)
+					cfg[operator.NamespaceSelectorFlag] = map[string]any{
 						"matchLabels": map[string]any{
 							eckVisibleLabel: "true",
 						},
 					}
 				}))
+				expectedConfig, err = helper.GetOperatorConfig(k.Client)
+				require.NoError(t, err)
 			},
 		}).
 		WithStep(test.Step{
-			Name: "wait for operator restart with new namespace-selector config",
-			Test: waitForOperatorRestart(k, &restartCount, 30*time.Second),
-		}).
-		WithStep(test.Step{
-			Name: "record post-restart count as the no-restart baseline",
+			Name: "wait for every operator Pod to run with the new namespace-selector config",
 			Test: func(t *testing.T) {
-				restartCount, err = helper.OperatorRestartCount(k)
-				require.NoError(t, err)
+				waitForOperatorConfig(t, t.Context(), k, expectedConfig)
 			},
 		}).
 		WithSteps(esNs1.InitTestSteps(k)).
@@ -118,6 +110,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 				require.NoError(t, k.CheckPodCount(0, test.ESPodListOptions(ns2, esNs2.Elasticsearch.Name)...))
 			},
 		}).
+		WithStep(recordOperatorLeader(k, &leaderIdentity)).
 		WithStep(test.Step{
 			Name: "add eck-visible=true to ns2 to trigger dynamic namespace pickup",
 			Test: func(t *testing.T) {
@@ -125,20 +118,7 @@ func TestNamespaceSelectorDynamicLabelChange(t *testing.T) {
 			},
 		}).
 		WithSteps(test.CheckTestSteps(esNs2, k)).
-		WithStep(test.Step{
-			Name: "assert operator did not restart to pick up the newly labeled namespace",
-			Skip: func() bool {
-				// the chaos job randomly deletes operator Pods and flips replica counts, which
-				// resets/bumps restart counts independently of the namespace-selector behaviour
-				// under test, making this assertion meaningless (and flaky) in that mode.
-				return test.Ctx().DeployChaosJob
-			},
-			Test: func(t *testing.T) {
-				postLabelRestartCount, err := helper.OperatorRestartCount(k)
-				require.NoError(t, err)
-				require.Equal(t, restartCount, postLabelRestartCount, "operator must not restart when a namespace gains the selector label")
-			},
-		}).
+		WithStep(assertOperatorLeaderUnchanged(k, &leaderIdentity, "operator must not restart when a namespace gains the selector label")).
 		WithSteps(esNs1.DeletionTestSteps(k)).
 		WithSteps(esNs2.DeletionTestSteps(k)).
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
@@ -185,10 +165,11 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 	originalConfig, err := helper.GetOperatorConfig(k.Client)
 	require.NoError(t, err)
 
-	var restartCount int32
+	var expectedConfig map[string]any
+	var leaderIdentity string
 
 	// Always restore namespace labels and operator config on exit, even on test failure.
-	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, &restartCount, esNamespace, kbNamespace)
+	registerNamespaceSelectorCleanup(t, k, eckVisibleLabel, originalConfig, esNamespace, kbNamespace)
 
 	// kbAssociationStatusIs returns a step waiting for the Kibana Elasticsearch association
 	// status to reach the expected value.
@@ -222,34 +203,24 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 			},
 		}).
 		WithStep(test.Step{
-			Name: "record baseline operator restart count",
-			Test: func(t *testing.T) {
-				restartCount, err = helper.OperatorRestartCount(k)
-				require.NoError(t, err)
-			},
-		}).
-		WithStep(test.Step{
 			Name: "switch operator to eck-visible=true namespace-selector",
 			Test: func(t *testing.T) {
 				require.NoError(t, helper.UpdateOperatorConfig(k.Client, func(cfg map[string]any) {
-					delete(cfg, "namespaces")
-					cfg["namespace-selector"] = map[string]any{
+					delete(cfg, operator.NamespacesFlag)
+					cfg[operator.NamespaceSelectorFlag] = map[string]any{
 						"matchLabels": map[string]any{
 							eckVisibleLabel: "true",
 						},
 					}
 				}))
+				expectedConfig, err = helper.GetOperatorConfig(k.Client)
+				require.NoError(t, err)
 			},
 		}).
 		WithStep(test.Step{
-			Name: "wait for operator restart with new namespace-selector config",
-			Test: waitForOperatorRestart(k, &restartCount, 30*time.Second),
-		}).
-		WithStep(test.Step{
-			Name: "record post-restart count as the no-restart baseline",
+			Name: "wait for every operator Pod to run with the new namespace-selector config",
 			Test: func(t *testing.T) {
-				restartCount, err = helper.OperatorRestartCount(k)
-				require.NoError(t, err)
+				waitForOperatorConfig(t, t.Context(), k, expectedConfig)
 			},
 		}).
 		WithSteps(esBuilder.InitTestSteps(k)).
@@ -259,6 +230,7 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 		WithSteps(kbBuilder.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(kbBuilder, k)).
 		WithStep(kbAssociationStatusIs(commonv1.AssociationEstablished)).
+		WithStep(recordOperatorLeader(k, &leaderIdentity)).
 		WithStep(test.Step{
 			Name: "remove the eck-visible label from the Elasticsearch namespace",
 			Test: func(t *testing.T) {
@@ -273,20 +245,7 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 			},
 		}).
 		WithStep(kbAssociationStatusIs(commonv1.AssociationEstablished)).
-		WithStep(test.Step{
-			Name: "assert operator did not restart during the namespace scope changes",
-			Skip: func() bool {
-				// the chaos job randomly deletes operator Pods and flips replica counts, which
-				// resets/bumps restart counts independently of the namespace-selector behaviour
-				// under test, making this assertion meaningless (and flaky) in that mode.
-				return test.Ctx().DeployChaosJob
-			},
-			Test: func(t *testing.T) {
-				postLabelRestartCount, err := helper.OperatorRestartCount(k)
-				require.NoError(t, err)
-				require.Equal(t, restartCount, postLabelRestartCount, "operator must not restart when namespaces flip in and out of the selector scope")
-			},
-		}).
+		WithStep(assertOperatorLeaderUnchanged(k, &leaderIdentity, "operator must not restart when namespaces flip in and out of the selector scope")).
 		WithSteps(kbBuilder.DeletionTestSteps(k)).
 		WithSteps(esBuilder.DeletionTestSteps(k)).
 		WithStep(licenseTestContext.DeleteAllEnterpriseLicenseSecrets()).
@@ -295,9 +254,8 @@ func TestNamespaceSelectorDynamicLabelChangeAssociation(t *testing.T) {
 
 // registerNamespaceSelectorCleanup registers a t.Cleanup that restores the namespace labels and operator
 // config on test exit, even on test failure. It removes `labelToDelete` from the given namespaces, restores
-// originalConfig and waits for the operator to restart to pick up the restored config. restartCount is
-// dereferenced at cleanup time, so it must point to the latest recorded pre-restore restart count.
-func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDelete string, originalConfig map[string]any, restartCount *int32, namespaces ...string) {
+// originalConfig and waits for every operator Pod to run with the restored config.
+func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDelete string, originalConfig map[string]any, namespaces ...string) {
 	t.Helper()
 	t.Cleanup(func() {
 		// restore original config
@@ -311,9 +269,10 @@ func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDe
 			return nil
 		})(t)
 
-		// Ensure that the operator restarts.
-		logf.Log.Info("Waiting for operator restart after config change")
-		waitForOperatorRestart(k, restartCount, 1*time.Minute)(t)
+		// Ensure that every operator Pod restarted with the restored config.
+		logf.Log.Info("Waiting for every operator Pod to run with the restored config")
+		// t.Context() is already canceled when cleanup functions run.
+		waitForOperatorConfig(t, context.Background(), k, originalConfig)
 
 		// Clean up the namespace labels only after the operator config has been successfully restored,
 		// so the operator is back to its original (non namespace-selector) configuration before the
@@ -324,30 +283,62 @@ func registerNamespaceSelectorCleanup(t *testing.T, k *test.K8sClient, labelToDe
 	})
 }
 
-// waitForOperatorRestart waits for the operator to restart by checking restart count of pod. [chaosSleepDuration] is used
-// only when chaos job is deployed.
-func waitForOperatorRestart(k *test.K8sClient, restartCount *int32, chaosSleepDuration time.Duration) func(*testing.T) {
-	return func(t *testing.T) {
-		test.UntilSuccess(
-			func() error {
-				if test.Ctx().DeployChaosJob {
-					// In chaos mode restart counting is unreliable, so we cannot wait for a restart-count increment.
-					// Instead just wait and hope the ECK operator has restarted.
-					time.Sleep(chaosSleepDuration)
-					return nil
-				}
+// waitForOperatorConfig waits for every operator Pod to run with the namespace-related settings of expectedConfig.
+// Waiting for all replicas, not just one, matters when the operator runs multiple replicas (e.g. the chaos job scales
+// the operator up): kubelets refresh the ConfigMap volume on each node independently, so a standby replica still
+// running with the previous config could otherwise acquire the leader lease and reconcile with it.
+func waitForOperatorConfig(t *testing.T, ctx context.Context, k *test.K8sClient, expectedConfig map[string]any) {
+	t.Helper()
+	test.UntilSuccess(
+		func() error {
+			return helper.CheckOperatorPodsLoadedConfig(ctx, k, expectedConfig, operator.NamespacesFlag, operator.NamespaceSelectorFlag)
+		},
+		// kubelet ConfigMap propagation + file watcher poll (15s) + pod recreation
+		3*time.Minute,
+	)(t)
+}
 
-				newCount, err := helper.OperatorRestartCount(k)
+// recordOperatorLeader returns a step recording the identity of the current operator leader into leaderIdentity. It
+// waits for the leader election Lease to be live, so that the identity of a terminated leader is never recorded.
+func recordOperatorLeader(k *test.K8sClient, leaderIdentity *string) test.Step {
+	return test.Step{
+		Name: "record the operator leader identity",
+		Test: func(t *testing.T) {
+			test.Eventually(func() error {
+				identity, live, err := helper.OperatorLeader(t.Context(), k)
 				if err != nil {
 					return err
 				}
-				if newCount <= *restartCount {
-					return fmt.Errorf("waiting for operator restart after (current restarts: %d)", newCount)
+				if !live {
+					return fmt.Errorf("operator leader election Lease held by %s is not live", identity)
 				}
+				*leaderIdentity = identity
 				return nil
-			},
-			// kubelet ConfigMap propagation + file watcher poll (15s) + pod recreation
-			3*time.Minute,
-		)(t)
+			})(t)
+		},
+	}
+}
+
+// assertOperatorLeaderUnchanged returns a step asserting that the operator leader election Lease is still held by the
+// leader recorded in leaderIdentity. As only the leader reconciles resources and a new leader acquires the Lease with a
+// new identity, an unchanged holder proves that the namespace scope changes in between were handled by the operator
+// process recorded before them, i.e. without an operator restart.
+func assertOperatorLeaderUnchanged(k *test.K8sClient, leaderIdentity *string, msg string) test.Step {
+	return test.Step{
+		Name: "assert the operator leader did not change, i.e. the operator did not restart",
+		Test: func(t *testing.T) {
+			var identity string
+			test.Eventually(func() error {
+				var err error
+				identity, _, err = helper.OperatorLeader(t.Context(), k)
+				return err
+			})(t)
+			if identity != *leaderIdentity && test.Ctx().DeployChaosJob {
+				// the chaos job randomly deletes operator Pods and scales the operator, which replaces the leader
+				// independently of the namespace-selector behaviour under test, making the result inconclusive.
+				t.Skipf("operator leader changed from %s to %s, likely because of the chaos job", *leaderIdentity, identity)
+			}
+			require.Equal(t, *leaderIdentity, identity, msg)
+		},
 	}
 }
