@@ -7,6 +7,8 @@ cross_links:
   - apm-agent-go
   - docs-content
   - kibana
+  - elasticsearch
+  - elastic-agent
 toc:
   - toc: reference
   - toc: release-notes
