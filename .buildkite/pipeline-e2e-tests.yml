@@ -22,7 +22,7 @@ steps:
               TESTS_MATCH: TestSmoke
           DEF
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:ff3818b53f850d8511a7dc9d77186d4e28bc2c5585504e10c95d0dfa1cd58840
           memory: "2G"
 
       # for nightly builds from main
@@ -35,7 +35,7 @@ steps:
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat ../nightly-main-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:ff3818b53f850d8511a7dc9d77186d4e28bc2c5585504e10c95d0dfa1cd58840
           memory: "2G"
 
       # for all tags
@@ -46,5 +46,5 @@ steps:
           cd .buildkite/e2e/pipeline-gen && go build -o pipeline-gen
           cat ../release-branch-matrix.yaml | ./pipeline-gen | buildkite-agent pipeline upload
         agents:
-          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+          image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:ff3818b53f850d8511a7dc9d77186d4e28bc2c5585504e10c95d0dfa1cd58840
           memory: "2G"
