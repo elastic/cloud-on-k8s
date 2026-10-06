@@ -5,7 +5,11 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
+	"net/http"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -106,4 +110,28 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 		true,
 	)
 	return esClient, nil
+}
+
+// DoRequest sends a request with the given JSON body (may be nil) to Elasticsearch and returns the response body.
+// It returns an error if the response status code is not 2xx.
+func DoRequest(ctx context.Context, esClient client.Client, method, path string, body []byte) ([]byte, error) {
+	if esClient == nil {
+		return nil, errors.New("nil Elasticsearch client")
+	}
+	req, err := http.NewRequestWithContext(ctx, method, path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := esClient.Request(ctx, req)
+	if resp != nil {
+		// the response is also returned with an error if the status code is not 2xx
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, nil
+	}
+	return io.ReadAll(resp.Body)
 }

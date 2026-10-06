@@ -9,8 +9,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -26,12 +30,18 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 		if state.masterRemovalInProgress {
 			return 0, OneMasterAtATimeInvariant
 		}
-		if state.runningMasters == 1 {
+		requestedDeletes = 1 // only one removal allowed for masters
+		podName := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-1)
+		// the removal of another master is in progress if it is draining, unless this master is draining as well
+		if len(state.drainingMasters) > 0 && !state.drainingMasters.Has(podName) {
+			return 0, OneMasterAtATimeInvariant
+		}
+		// a draining master is not running, removing it does not remove the last running master
+		if cost, _ := state.removalCost(statefulSet, requestedDeletes); state.runningMasters == 1 && cost == 1 {
 			return 0, AtLeastOneRunningMasterInvariant
 		}
-		requestedDeletes = 1 // only one removal allowed for masters
 	}
-	allowedDeletes := state.getMaxNodesToRemove(requestedDeletes)
+	allowedDeletes := state.getMaxNodesToRemove(statefulSet, requestedDeletes)
 
 	if allowedDeletes == 0 {
 		return 0, RespectMaxUnavailableInvariant
@@ -49,13 +59,29 @@ type downscaleState struct {
 	removalsAllowed *int32
 	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
 	masterRemovalInProgress bool
+	// drainingNodes are the not ready, non-terminating Pods of the nodes the downscale is draining. Their remove-type
+	// shutdown closed their readiness port, so removing them does not consume the budget. Terminating Pods may be
+	// stopping and are conservatively accounted as running nodes.
+	drainingNodes set.StringSet
+	// drainingRemovalsAllowed indicates how many draining nodes can be removed, so that they are not all removed at once,
+	// nil indicates that any number of removals is allowed.
+	drainingRemovalsAllowed *int32
+	// drainingMasters are the draining master Pods that are the next to be removed from their StatefulSet: their removal
+	// is in progress, even if they are ready or terminating, as the shutdown of a terminating Pod is kept.
+	drainingMasters set.StringSet
 }
 
 // newDownscaleState creates a new downscaleState.
-func newDownscaleState(actualPods []corev1.Pod, es esv1.Elasticsearch) *downscaleState {
+func newDownscaleState(
+	actualPods []corev1.Pod,
+	actualStatefulSets es_sset.StatefulSetList,
+	es esv1.Elasticsearch,
+	drainingNodes set.StringSet,
+) *downscaleState {
 	// retrieve the number of masters running ready
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
+	maxUnavailable := es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()
 
 	return &downscaleState{
 		masterRemovalInProgress: false,
@@ -63,8 +89,48 @@ func newDownscaleState(actualPods []corev1.Pod, es esv1.Elasticsearch) *downscal
 		removalsAllowed: calculateRemovalsAllowed(
 			int32(len(nodesReady)), //nolint:gosec // G115: node count cannot realistically overflow int32
 			es.Spec.NodeCount(),
-			es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()),
+			maxUnavailable),
+		drainingNodes:           notReadyDrainingNodes(actualPods, drainingNodes),
+		drainingRemovalsAllowed: calculateDrainingRemovalsAllowed(maxUnavailable),
+		drainingMasters:         drainingMasterNodes(actualStatefulSets, drainingNodes),
 	}
+}
+
+// drainingMasterNodes returns the names of the Pods with the highest ordinal of the given master StatefulSets that are
+// draining. A draining master that is not the next to be removed from its StatefulSet does not have its removal in
+// progress, otherwise a shutdown registered on it would block every master removal.
+func drainingMasterNodes(statefulSets es_sset.StatefulSetList, drainingNodes set.StringSet) set.StringSet {
+	var masters set.StringSet
+	for _, statefulSet := range statefulSets {
+		replicas := sset.GetReplicas(statefulSet)
+		if replicas == 0 || !label.IsMasterNodeSet(statefulSet) {
+			continue
+		}
+		podName := sset.PodName(statefulSet.Name, replicas-1)
+		if !drainingNodes.Has(podName) {
+			continue
+		}
+		if masters == nil {
+			masters = set.Make()
+		}
+		masters.Add(podName)
+	}
+	return masters
+}
+
+// notReadyDrainingNodes returns the names of the not ready and non-terminating Pods of the given draining nodes.
+func notReadyDrainingNodes(pods []corev1.Pod, drainingNodes set.StringSet) set.StringSet {
+	var notReady set.StringSet
+	for _, pod := range pods {
+		if !drainingNodes.Has(pod.Name) || k8s.IsPodReady(pod) || !pod.DeletionTimestamp.IsZero() {
+			continue
+		}
+		if notReady == nil {
+			notReady = set.Make()
+		}
+		notReady.Add(pod.Name)
+	}
+	return notReady
 }
 
 func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *int32) *int32 {
@@ -78,15 +144,52 @@ func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *in
 	return &removalsAllowed
 }
 
-func (s *downscaleState) getMaxNodesToRemove(noMoreThan int32) int32 {
-	if s.removalsAllowed == nil {
-		return noMoreThan
+// calculateDrainingRemovalsAllowed returns how many draining nodes can be removed: maxUnavailable, but at least one so
+// that draining nodes are removed when maxUnavailable is 0.
+func calculateDrainingRemovalsAllowed(maxUnavailable *int32) *int32 {
+	if maxUnavailable == nil {
+		return nil
 	}
+	return new(max(*maxUnavailable, 1))
+}
 
-	if noMoreThan > *s.removalsAllowed {
-		return *s.removalsAllowed
+// removalCost returns the budget and the draining removals consumed by removing the given number of Pods with the
+// highest ordinals of the given StatefulSet: the Pods of draining nodes are already unavailable and only consume a
+// draining removal.
+func (s *downscaleState) removalCost(statefulSet appsv1.StatefulSet, removals int32) (cost int32, drainingRemovals int32) {
+	replicas := sset.GetReplicas(statefulSet)
+	for ordinal := replicas - removals; ordinal < replicas; ordinal++ {
+		if s.drainingNodes.Has(sset.PodName(statefulSet.Name, ordinal)) {
+			drainingRemovals++
+		} else {
+			cost++
+		}
 	}
-	return noMoreThan
+	return cost, drainingRemovals
+}
+
+func (s *downscaleState) getMaxNodesToRemove(statefulSet appsv1.StatefulSet, noMoreThan int32) int32 {
+	replicas := sset.GetReplicas(statefulSet)
+	var removals, cost, drainingRemovals int32
+	for removals < noMoreThan {
+		// consider the next Pod with the highest ordinal
+		podName := sset.PodName(statefulSet.Name, replicas-1-removals)
+		if s.drainingNodes.Has(podName) {
+			drainingRemovals++
+		} else {
+			cost++
+		}
+		if !withinLimit(cost, s.removalsAllowed) || !withinLimit(drainingRemovals, s.drainingRemovalsAllowed) {
+			break
+		}
+		removals++
+	}
+	return removals
+}
+
+// withinLimit returns true if the given value does not exceed the given limit, nil indicating no limit.
+func withinLimit(value int32, limit *int32) bool {
+	return limit == nil || value <= *limit
 }
 
 // recordNodeRemoval updates the state to consider n-replica downscale of the given statefulSet.
@@ -95,12 +198,16 @@ func (s *downscaleState) recordNodeRemoval(statefulSet appsv1.StatefulSet, accou
 		return
 	}
 
+	cost, drainingRemovals := s.removalCost(statefulSet, accountedRemovals)
 	if label.IsMasterNodeSet(statefulSet) {
 		s.masterRemovalInProgress = true
-		s.runningMasters--
+		s.runningMasters -= int(cost)
 	}
 
 	if s.removalsAllowed != nil {
-		*s.removalsAllowed -= accountedRemovals
+		*s.removalsAllowed -= cost
+	}
+	if s.drainingRemovalsAllowed != nil {
+		*s.drainingRemovalsAllowed -= drainingRemovals
 	}
 }

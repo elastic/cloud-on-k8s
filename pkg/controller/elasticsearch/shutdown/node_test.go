@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var (
@@ -335,6 +336,84 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ShutdownStatus() got = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
+	podToNodeID := map[string]string{
+		"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+		"pod-2": "D_E3ZVdyQlOmc81NAUOD8w",
+	}
+	tests := []struct {
+		name        string
+		typ         esclient.ShutdownType
+		fixture     string
+		podToNodeID map[string]string
+		podNames    []string
+		want        set.StringSet
+		wantErr     bool
+	}{
+		{
+			name:        "node with a shutdown of the same type",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make("pod-1"),
+		},
+		{
+			name:        "node with a shutdown of another type",
+			typ:         esclient.Remove,
+			fixture:     singleRestartShutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "node with a shutdown that is not requested",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "node with a shutdown that is not in the cluster",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: map[string]string{"pod-2": "D_E3ZVdyQlOmc81NAUOD8w"},
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "handles initialisation errors",
+			typ:         esclient.Remove,
+			fixture:     "not json",
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1"},
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			})
+			ns := &NodeShutdown{
+				c:           client,
+				typ:         tt.typ,
+				podToNodeID: tt.podToNodeID,
+				log:         log.Log.WithName("test"),
+			}
+			got, err := ns.NodesWithShutdown(context.Background(), tt.podNames)
+			require.Equal(t, tt.wantErr, err != nil, "NodesWithShutdown() error = %v", err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

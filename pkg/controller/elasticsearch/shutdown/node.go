@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
@@ -137,6 +138,25 @@ func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (Nod
 		Status:      shutdown.Status,
 		Explanation: shutdown.ShardMigration.Explanation,
 	}, nil
+}
+
+// NodesWithShutdown returns the given nodes that are members of the cluster and have a shutdown of the type of this
+// instance registered.
+func (ns *NodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error) {
+	if err := ns.initOnce(ctx); err != nil {
+		return nil, err
+	}
+	nodes := set.Make()
+	for _, podName := range podNames {
+		nodeID, inCluster := ns.podToNodeID[podName]
+		if !inCluster {
+			continue
+		}
+		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
+			nodes.Add(podName)
+		}
+	}
+	return nodes, nil
 }
 
 func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdown) {

@@ -42,8 +42,9 @@ type fakeESClient struct { //nolint:maligned
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
 	GetClusterRoutingAllocationCallCount int
 
-	Shutdowns            map[string]esclient.NodeShutdown
-	DeleteShutdownCalled bool
+	Shutdowns             map[string]esclient.NodeShutdown
+	PutShutdownCalledWith []string
+	DeleteShutdownCalled  bool
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -102,7 +103,8 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, _ string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
+	f.PutShutdownCalledWith = append(f.PutShutdownCalledWith, nodeID)
 	return nil
 }
 
