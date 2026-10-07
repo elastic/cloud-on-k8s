@@ -42,6 +42,9 @@ telemetry:
   disabled: false
   interval: 15s
 
+# a verbosity of 1 is required by e2e tests relying on the "Effective configuration" log line emitted
+# at operator startup to check the configuration the operator runs with (see parseEffectiveConfig in
+# test/e2e/test/helper/config.go)
 config:
   logVerbosity: "1"
   metricsPort: "9090"
