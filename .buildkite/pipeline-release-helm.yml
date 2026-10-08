@@ -1,6 +1,8 @@
 env:
   HELM_DRY_RUN: ${HELM_DRY_RUN:-true}
   HELM_FORCE: ${HELM_FORCE:-false}
+  HELM_SKIP_CHART_REPO: ${HELM_SKIP_CHART_REPO:-false}
+  HELM_SKIP_OCI_REGISTRY: ${HELM_SKIP_OCI_REGISTRY:-false}
 
 steps:
 
@@ -29,7 +31,7 @@ steps:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=dev --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-dev-operator-oci-artifacts-digest.txt
-      - buildkite-agent artifact upload eck-helm-dev-operator-oci-artifacts-digest.txt
+      - if [ -f eck-helm-dev-operator-oci-artifacts-digest.txt ]; then buildkite-agent artifact upload eck-helm-dev-operator-oci-artifacts-digest.txt; fi
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
       memory: "2G"
@@ -50,7 +52,7 @@ steps:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=dev --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-dev-stack-oci-artifacts-digest.txt
-      - buildkite-agent artifact upload eck-helm-dev-stack-oci-artifacts-digest.txt
+      - if [ -f eck-helm-dev-stack-oci-artifacts-digest.txt ]; then buildkite-agent artifact upload eck-helm-dev-stack-oci-artifacts-digest.txt; fi
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
       memory: "2G"
@@ -68,7 +70,7 @@ steps:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=prod --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-prod-operator-oci-artifacts-digest.txt
-      - buildkite-agent artifact upload eck-helm-prod-operator-oci-artifacts-digest.txt
+      - if [ -f eck-helm-prod-operator-oci-artifacts-digest.txt ]; then buildkite-agent artifact upload eck-helm-prod-operator-oci-artifacts-digest.txt; fi
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
       memory: "2G"
@@ -86,7 +88,7 @@ steps:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
       - releaser --env=prod --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-prod-stack-oci-artifacts-digest.txt
-      - buildkite-agent artifact upload eck-helm-prod-stack-oci-artifacts-digest.txt
+      - if [ -f eck-helm-prod-stack-oci-artifacts-digest.txt ]; then buildkite-agent artifact upload eck-helm-prod-stack-oci-artifacts-digest.txt; fi
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
       memory: "2G"
