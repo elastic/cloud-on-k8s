@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	ver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -72,7 +71,7 @@ func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, err
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
 
 	// Get Kibana base path if configured
-	basePath, err := kibana.GetKibanaBasePath(kb)
+	basePath, err := kbv1.GetKibanaBasePath(kb)
 	if err != nil {
 		return "", err
 	}

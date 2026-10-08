@@ -5,6 +5,7 @@
 package v1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -37,6 +38,7 @@ var (
 		checkAssociations,
 		checkBackgroundTasksVersion,
 		checkBackgroundTasksNodeRoles,
+		checkBackgroundTasksBasePath,
 		commonv1.PauseOrchestrationAnnotationCheck[*Kibana](),
 	}
 
@@ -220,4 +222,58 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 	}
 
 	return errs
+}
+
+// checkBackgroundTasksBasePath rejects configurations where the background tasks pool would serve
+// Kibana under a different base path than the primary pool. The base path can be set through the
+// server.basePath/server.rewriteBasePath configuration settings or through the SERVER_BASEPATH/
+// SERVER_REWRITEBASEPATH env vars of the Kibana container; spec.backgroundTasks may repeat the
+// primary values but must not change the resolved base path: both pools are reached through the
+// same HTTP Service and share resources rendered from the primary base path.
+func checkBackgroundTasksBasePath(k *Kibana) field.ErrorList {
+	if k.Spec.BackgroundTasks == nil {
+		return nil
+	}
+
+	primarySpecPath := field.NewPath("spec")
+	primaryBasePathConfig, fErr := getBasePathConfig(primarySpecPath, k.Spec.PodTemplate.Spec, k.Spec.Config)
+	if fErr != nil {
+		return fErr
+	}
+
+	bgSpecPath := field.NewPath("spec").Child("backgroundTasks")
+	bgBasePathConfig, fErr := getBasePathConfig(bgSpecPath, k.Spec.BackgroundTasks.PodTemplate.Spec, k.Spec.BackgroundTasks.Config)
+	if fErr != nil {
+		return fErr
+	}
+
+	if bgBasePathConfig == (basePathConfig{}) {
+		return nil
+	}
+
+	if primaryBasePathConfig.GetBasePath() != bgBasePathConfig.GetBasePath() {
+		return field.ErrorList{field.Forbidden(
+			bgSpecPath,
+			"the background tasks pool must use the same base path as the primary pool: overriding server.basePath, server.rewriteBasePath or the SERVER_BASEPATH/SERVER_REWRITEBASEPATH env vars with a different value is not supported",
+		)}
+	}
+	return nil
+}
+
+func getBasePathConfig(fieldBasePath *field.Path, podSpec v1.PodSpec, config *commonv1.Config) (basePathConfig, field.ErrorList) {
+	index, container := getKibanaContainerWithIndex(podSpec)
+	cfgFromEnv, err := getKibanaBasePathFromContainerEnv(container)
+	if err != nil {
+		return basePathConfig{}, field.ErrorList{field.Invalid(fieldBasePath.Child("podTemplate", "spec", "containers").Index(index).Child("env"), err.Error(), cfgInvalidMsg)}
+	}
+
+	if cfgFromEnv.GetBasePath() != "" {
+		return cfgFromEnv, nil
+	}
+
+	cfgFromConfig, err := getKibanaBasePathFromConfig(config)
+	if err != nil {
+		return basePathConfig{}, field.ErrorList{field.Invalid(fieldBasePath.Child("config"), err.Error(), cfgInvalidMsg)}
+	}
+	return cfgFromConfig, nil
 }

@@ -564,6 +564,140 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
+		{
+			Name:      "backgroundTasks-base-path-differs-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.basePath": "/tasks", "server.rewriteBasePath": true},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-only-on-bg-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server": map[string]any{"basePath": "/tasks", "rewriteBasePath": true}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-differs-in-bg-pod-template-env-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env: []corev1.EnvVar{
+							{Name: "SERVER_BASEPATH", Value: "/tasks"},
+							{Name: "SERVER_REWRITEBASEPATH", Value: "true"},
+						},
+					}}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-rewrite-disabled-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.rewriteBasePath": false},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-same-base-path-repeated-in-bg-but-different-rewrite-not-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.basePath": "/primary"},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-inherited-from-primary-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-same-base-path-via-bg-env-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env: []corev1.EnvVar{
+							{Name: "SERVER_BASEPATH", Value: "/primary"},
+							{Name: "SERVER_REWRITEBASEPATH", Value: "true"},
+						},
+					}}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(kbv1.Validate)

@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
@@ -18,15 +17,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/go-ucfg"
-
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/initcontainer"
@@ -37,13 +32,9 @@ import (
 )
 
 const (
-	defaultFSGroup = 1000
-	defaultFSUser  = 1000
-	// basePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
-	basePathEnvName = "SERVER_BASEPATH"
-	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
-	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
-	nodeExtraCACerts       = "NODE_EXTRA_CA_CERTS"
+	defaultFSGroup   = 1000
+	defaultFSUser    = 1000
+	nodeExtraCACerts = "NODE_EXTRA_CA_CERTS"
 )
 
 var (
@@ -86,14 +77,6 @@ var (
 	// StatusReadinessProbeSupportedVersion is the version from which Kibana exposes an unauthenticated /api/status endpoint suitable for readiness probes.
 	StatusReadinessProbeSupportedVersion = version.From(8, 16, 0)
 )
-
-// basePathConfig is used to get the base path from the Kibana configuration.
-type basePathConfig struct {
-	Server struct {
-		RewriteBasePath bool   `config:"rewriteBasePath"`
-		BasePath        string `config:"basePath"`
-	}
-}
 
 func readinessProbePath(basePath string, v version.Version) string {
 	if v.GTE(StatusReadinessProbeSupportedVersion) {
@@ -245,73 +228,8 @@ func getUserNodeExtraCACerts(kb kbv1.Kibana) string {
 	return ""
 }
 
-// GetKibanaContainer returns the Kibana container from the given podSpec.
-func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
-	return pod.ContainerByName(podSpec, kbv1.KibanaContainerName)
-}
-
-func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
-	kbContainer := GetKibanaContainer(podSpec)
-	if kbContainer == nil {
-		return "", nil
-	}
-
-	envMap := make(map[string]string)
-	for _, envVar := range kbContainer.Env {
-		if envVar.Name == basePathEnvName || envVar.Name == rewriteBasePathEnvName {
-			envMap[envVar.Name] = envVar.Value
-		}
-	}
-
-	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
-	if rewriteBasePath, ok := envMap[rewriteBasePathEnvName]; ok {
-		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
-		}
-		if rewriteBasePathBool {
-			return envMap[basePathEnvName], nil
-		}
-	}
-
-	return "", nil
-}
-
 func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP}}
-}
-
-func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
-	// We only support the case where both base path and rewrite base path are set in the ENV or the config
-	// We will not support the case where base path is set in the ENV and rewrite base path is set in the config or vice versa
-	kbBasePath, err := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec)
-	if err != nil {
-		return "", err
-	}
-
-	if kbBasePath != "" {
-		return kbBasePath, nil
-	}
-
-	if kb.Spec.Config == nil {
-		return "", nil
-	}
-
-	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data, settings.Options...)
-	if err != nil {
-		return "", err
-	}
-
-	kbCfg := basePathConfig{}
-	if err := kbucfgConfig.Unpack(&kbCfg); err != nil {
-		return "", err
-	}
-
-	if kbCfg.Server.RewriteBasePath {
-		return kbCfg.Server.BasePath, nil
-	}
-
-	return "", nil
 }
 
 // withEPRCertsVolume sets NODE_EXTRA_CA_CERTS environment variable to point to either ca.crt or combined-ca-bundle.crt if the user has already set NODE_EXTRA_CA_CERTS in the podTemplate.

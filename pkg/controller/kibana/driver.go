@@ -177,7 +177,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	basePath, err := GetKibanaBasePath(*kb)
+	basePath, err := kbv1.GetKibanaBasePath(*kb)
 	if err != nil {
 		return results.WithError(err)
 	}
