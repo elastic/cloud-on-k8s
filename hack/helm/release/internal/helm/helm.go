@@ -48,7 +48,7 @@ type ReleaseConfig struct {
 	Force bool
 	// KeepTmpDir determines whether the temporary directory should be kept or not
 	KeepTmpDir bool
-	// OCIRegistry is the OCI registry to push Helm charts to (e.g. "docker.elastic.co/eck").
+	// OCIRegistry is the OCI registry to push Helm charts to (e.g. "docker.elastic.co/eck-charts").
 	OCIRegistry string
 	// OCIUsername and OCIPassword are the OCI registry credentials. When empty, the credentials from the local
 	// Helm registry config or Docker config are used.
@@ -417,9 +417,7 @@ func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
 }
 
 func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWriter io.Writer, chart packagedChart) error {
-	// The "-chart" suffix keeps chart repositories from colliding with container image repositories of the same name
-	// (e.g. docker.elastic.co/eck/eck-operator).
-	chartRef := fmt.Sprintf("%s/%s-chart:%s", conf.OCIRegistry, chart.Name, chart.Version)
+	chartRef := fmt.Sprintf("%s/%s:%s", conf.OCIRegistry, chart.Name, chart.Version)
 
 	// check that the chart does not already exist for non-SNAPSHOT chart when publishing to prod OCI registry
 	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
@@ -458,7 +456,6 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 
 	result, err := client.Push(chartBytes, chartRef,
 		registry.PushOptCreationTime(stat.ModTime().Format(time.RFC3339)),
-		registry.PushOptStrictMode(false),
 	)
 	if err != nil {
 		return fmt.Errorf("while pushing chart (%s) to OCI registry: %w", chartRef, err)

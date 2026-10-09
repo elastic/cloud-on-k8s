@@ -27,14 +27,14 @@ Flags:
 
 Each environment has a fixed set of release targets:
 
-| Env    | GCS bucket                | Helm repository                    | OCI registry                      |
-|--------|---------------------------|------------------------------------|-----------------------------------|
-| `dev`  | `elastic-helm-charts-dev` | `https://helm-dev.elastic.co/helm` | `docker.elastic.co/eck-snapshots` |
-| `prod` | `elastic-helm-charts`     | `https://helm.elastic.co/helm`     | `docker.elastic.co/eck`           |
+| Env    | GCS bucket                | Helm repository                    | OCI registry                             |
+|--------|---------------------------|------------------------------------|------------------------------------------|
+| `dev`  | `elastic-helm-charts-dev` | `https://helm-dev.elastic.co/helm` | `docker.elastic.co/eck-charts-snapshots` |
+| `prod` | `elastic-helm-charts`     | `https://helm.elastic.co/helm`     | `docker.elastic.co/eck-charts`           |
 
 With `--enable-vault` (the default), the OCI registry credentials are read from Vault (`docker-registry-elastic`) and kept in memory. With `--enable-vault=false`, the local Helm registry or Docker login is used (e.g. via `docker login docker.elastic.co`).
 
-Charts are pushed to the OCI registry with a `-chart` suffix appended to the repository name (e.g. `docker.elastic.co/eck/eck-operator-chart:1.0.0`). This avoids collisions with container image repositories of the same name.
+Charts are pushed to dedicated OCI namespaces, separate from the `eck` and `eck-snapshots` namespaces that hold the operator container images. Each repository name equals the chart name (e.g. `docker.elastic.co/eck-charts/eck-operator:1.0.0`), which Helm requires when a chart is consumed as a dependency of another chart.
 
 ### Structure
 

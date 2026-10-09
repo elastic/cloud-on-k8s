@@ -38,9 +38,10 @@ const (
 	devRepoURL  = "https://helm-dev.elastic.co/helm"
 	prodRepoURL = "https://helm.elastic.co/helm"
 
-	// OCI registries
-	devOCIRegistry  = "docker.elastic.co/eck-snapshots"
-	prodOCIRegistry = "docker.elastic.co/eck"
+	// OCI registries. Charts live in dedicated namespaces, separate from the operator images in eck and eck-snapshots,
+	// so that each repository name matches the chart name as Helm requires for chart dependencies.
+	devOCIRegistry  = "docker.elastic.co/eck-charts-snapshots"
+	prodOCIRegistry = "docker.elastic.co/eck-charts"
 
 	// Environment flag options
 	devEnvironment  = "dev"

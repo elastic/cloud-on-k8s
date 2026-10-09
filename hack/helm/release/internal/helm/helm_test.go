@@ -180,12 +180,12 @@ func TestPushChartToOCI(t *testing.T) {
 	snapshot := newChart("eck-operator", "1.0.0-SNAPSHOT")
 
 	const (
-		prodRegistry   = "registry.example.invalid/eck"
-		devRegistry    = "registry.example.invalid/eck-snapshots"
-		operatorRef    = prodRegistry + "/eck-operator-chart:1.0.0"
-		crdsRef        = prodRegistry + "/eck-operator-crds-chart:1.0.0"
-		snapshotRef    = prodRegistry + "/eck-operator-chart:1.0.0-SNAPSHOT"
-		devOperatorRef = devRegistry + "/eck-operator-chart:1.0.0"
+		prodRegistry   = "registry.example.invalid/eck-charts"
+		devRegistry    = "registry.example.invalid/eck-charts-snapshots"
+		operatorRef    = prodRegistry + "/eck-operator:1.0.0"
+		crdsRef        = prodRegistry + "/eck-operator-crds:1.0.0"
+		snapshotRef    = prodRegistry + "/eck-operator:1.0.0-SNAPSHOT"
+		devOperatorRef = devRegistry + "/eck-operator:1.0.0"
 		digestSuffix   = "@sha256:abc123\n"
 	)
 
