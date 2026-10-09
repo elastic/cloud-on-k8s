@@ -229,8 +229,23 @@ func copy(source, destination string) error {
 
 // uploadChartsToGCS uploads the packaged chart archives to the GCS bucket.
 func uploadChartsToGCS(ctx context.Context, conf ReleaseConfig, charts []packagedChart) error {
+	repoURL, err := url.Parse(conf.ChartsRepoURL)
+	if err != nil {
+		return fmt.Errorf("while parsing url (%s): %w", conf.ChartsRepoURL, err)
+	}
+	// trail the first / from the repo url path
+	repoPath := strings.TrimPrefix(repoURL.Path, "/")
+
+	// create gcs client
+	gcsClient, err := storage.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("while creating gcs storage client: %w", err)
+	}
+	defer gcsClient.Close()
+	bucket := gcsClient.Bucket(conf.Bucket)
+
 	for _, chart := range charts {
-		if err := copyChartToGCSBucket(ctx, conf, chart); err != nil {
+		if err := copyChartToGCSBucket(ctx, conf, bucket, repoPath, chart); err != nil {
 			return err
 		}
 	}
@@ -239,12 +254,7 @@ func uploadChartsToGCS(ctx context.Context, conf ReleaseConfig, charts []package
 
 // copyChartToGCSBucket copies a given chart archive to the GCS bucket.
 // Charts cannot be overwritten in the prod bucket unless forced, otherwise an error is returned.
-func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart packagedChart) error {
-	repoURL, err := url.Parse(conf.ChartsRepoURL)
-	if err != nil {
-		return fmt.Errorf("while parsing url (%s): %w", conf.ChartsRepoURL, err)
-	}
-
+func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, bucket *storage.BucketHandle, repoPath string, chart packagedChart) error {
 	// read the file to copy on disk
 	chartPackageFile, err := os.Open(chart.packagePath)
 	if err != nil {
@@ -252,18 +262,11 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart package
 	}
 	defer chartPackageFile.Close()
 
-	// trail the first / from the repo url path
-	chartArchiveDest := filepath.Join(strings.TrimPrefix(repoURL.Path, "/"), chart.Name, filepath.Base(chart.packagePath))
+	chartArchiveDest := filepath.Join(repoPath, chart.Name, filepath.Base(chart.packagePath))
 
 	log.Printf("Writing chart archive to bucket path (%s)\n", chartArchiveDest)
 
-	// create gcs client
-	gcsClient, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("while creating gcs storage client: %w", err)
-	}
-	defer gcsClient.Close()
-	chartArchiveObj := gcsClient.Bucket(conf.Bucket).Object(chartArchiveDest)
+	chartArchiveObj := bucket.Object(chartArchiveDest)
 
 	// specify that the object must not exist when publishing to prod Helm repo
 	shouldNotOverwrite := conf.shouldNotOverwrite()
