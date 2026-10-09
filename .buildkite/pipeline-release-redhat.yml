@@ -7,7 +7,7 @@ steps:
       - make build
       - buildkite-agent artifact upload bin/operatorhub
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:21bc06ab763adb828e8e8348d228aca3c80aaad5972506c69f54c0769dee8a56
       memory: "4G"
 
   - label: ":docker: push container"
@@ -20,7 +20,7 @@ steps:
         cd hack/operatorhub
         operatorhub container push
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:21bc06ab763adb828e8e8348d228aca3c80aaad5972506c69f54c0769dee8a56
       memory: "4G"
 
   - label: ":docker: preflight container check"
@@ -32,7 +32,7 @@ steps:
     commands:
       - .buildkite/scripts/release/redhat-preflight.sh
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:21bc06ab763adb828e8e8348d228aca3c80aaad5972506c69f54c0769dee8a56
       memory: "4G"
 
   - label: ":docker: publish container"
@@ -47,7 +47,7 @@ steps:
         cd hack/operatorhub
         operatorhub container publish
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:21bc06ab763adb828e8e8348d228aca3c80aaad5972506c69f54c0769dee8a56
       memory: "4G"
 
   - label: ":redhat: generate and create-pr"
@@ -62,5 +62,5 @@ steps:
         operatorhub generate-manifests
         operatorhub bundle create-pr
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:5e1d1ba74e278d78b72eb6d908e58efe60011693dbb49595a6443e5a4bcecee8
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:21bc06ab763adb828e8e8348d228aca3c80aaad5972506c69f54c0769dee8a56
       memory: "4G"
