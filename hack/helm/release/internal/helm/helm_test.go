@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -106,12 +105,6 @@ func Test_readCharts(t *testing.T) {
 	}
 }
 
-var errWriteFailed = errors.New("write failed")
-
-type errWriter struct{}
-
-func (e *errWriter) Write(_ []byte) (int, error) { return 0, errWriteFailed }
-
 // mockOCIClient is a test double for ociPusher. Resolve reports the refs in existing as found, and every
 // resolved and pushed ref is recorded.
 // When pushResult is nil, Push returns errPushCalled so tests can confirm a push was attempted
@@ -145,7 +138,16 @@ func (m *mockOCIClient) Push(_ []byte, ref string, _ ...registry.PushOption) (*r
 	return nil, errPushCalled
 }
 
-func TestPushChartToOCI(t *testing.T) {
+// digestsFileMode controls how OCIChartsDigestsFilePath is set in TestPushChartsToOCI.
+type digestsFileMode int
+
+const (
+	digestsFileSet        digestsFileMode = iota // path to a file in a temp dir
+	digestsFileUnset                             // empty path, no file is written
+	digestsFileUnopenable                        // path under a missing directory, so the file cannot be opened
+)
+
+func TestPushChartsToOCI(t *testing.T) {
 	dir := t.TempDir()
 	newChart := func(name, version string) packagedChart {
 		path := filepath.Join(dir, fmt.Sprintf("%s-%s.tgz", name, version))
@@ -181,8 +183,7 @@ func TestPushChartToOCI(t *testing.T) {
 		existing         []string
 		resolveErr       error
 		pushFails        bool // Push returns errPushCalled instead of a successful result
-		failDigestWriter bool // inject a writer that always errors to test write-failure propagation
-		nilDigestWriter  bool // pass nil as the digest writer to exercise the nil-guard
+		digestsFile      digestsFileMode
 		wantErr          error
 		wantErrContains  string
 		wantResolvedRefs []string
@@ -258,19 +259,17 @@ func TestPushChartToOCI(t *testing.T) {
 			wantPushedRefs:   []string{operatorRef},
 		},
 		{
-			name:             "write error on digest file is propagated",
+			name:             "no digests file is written when the path is not set",
 			charts:           []packagedChart{operator},
-			failDigestWriter: true,
-			wantErr:          errWriteFailed,
+			digestsFile:      digestsFileUnset,
 			wantResolvedRefs: []string{operatorRef},
 			wantPushedRefs:   []string{operatorRef},
 		},
 		{
-			name:             "nil digest writer skips digest output without error",
-			charts:           []packagedChart{operator},
-			nilDigestWriter:  true,
-			wantResolvedRefs: []string{operatorRef},
-			wantPushedRefs:   []string{operatorRef},
+			name:            "digests file open error aborts before any push",
+			charts:          []packagedChart{operator},
+			digestsFile:     digestsFileUnopenable,
+			wantErrContains: "while opening OCI charts digests file",
 		},
 	}
 
@@ -285,36 +284,31 @@ func TestPushChartToOCI(t *testing.T) {
 			if tt.dev {
 				conf.OCIRegistry = devRegistry
 			}
-			var buf strings.Builder
-			var digestsWriter io.Writer = &buf
-			switch {
-			case tt.failDigestWriter:
-				digestsWriter = &errWriter{}
-			case tt.nilDigestWriter:
-				digestsWriter = nil
+			digestsFile := filepath.Join(t.TempDir(), "digests.txt")
+			switch tt.digestsFile {
+			case digestsFileSet:
+				conf.OCIChartsDigestsFilePath = digestsFile
+			case digestsFileUnset:
+			case digestsFileUnopenable:
+				conf.OCIChartsDigestsFilePath = filepath.Join(filepath.Dir(digestsFile), "missing", "digests.txt")
 			}
 			client := &mockOCIClient{existing: tt.existing, resolveErr: tt.resolveErr, pushResult: &successResult}
 			if tt.pushFails {
 				client.pushResult = nil
 			}
 
-			var err error
-			for _, c := range tt.charts {
-				if err = pushChartToOCI(client, conf, digestsWriter, c); err != nil {
-					break
-				}
-			}
+			err := pushChartsToOCI(client, conf, tt.charts)
 			switch {
 			case tt.wantErr != nil:
 				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("pushChartToOCI() error = %v, want errors.Is match for %v", err, tt.wantErr)
+					t.Errorf("pushChartsToOCI() error = %v, want errors.Is match for %v", err, tt.wantErr)
 				}
 			case tt.wantErrContains != "":
 				if err == nil || !strings.Contains(err.Error(), tt.wantErrContains) {
-					t.Errorf("pushChartToOCI() error = %v, want error containing %q", err, tt.wantErrContains)
+					t.Errorf("pushChartsToOCI() error = %v, want error containing %q", err, tt.wantErrContains)
 				}
 			case err != nil:
-				t.Errorf("pushChartToOCI() unexpected error: %s", err)
+				t.Errorf("pushChartsToOCI() unexpected error: %s", err)
 			}
 			if !cmp.Equal(client.resolvedRefs, tt.wantResolvedRefs, cmpopts.EquateEmpty()) {
 				t.Errorf("resolved refs diff: %s", cmp.Diff(tt.wantResolvedRefs, client.resolvedRefs, cmpopts.EquateEmpty()))
@@ -322,7 +316,11 @@ func TestPushChartToOCI(t *testing.T) {
 			if !cmp.Equal(client.pushedRefs, tt.wantPushedRefs, cmpopts.EquateEmpty()) {
 				t.Errorf("pushed refs diff: %s", cmp.Diff(tt.wantPushedRefs, client.pushedRefs, cmpopts.EquateEmpty()))
 			}
-			if got := buf.String(); got != tt.wantDigestOutput {
+			got, readErr := os.ReadFile(digestsFile)
+			if exists, wantExists := readErr == nil, tt.digestsFile == digestsFileSet; exists != wantExists {
+				t.Errorf("digests file exists = %v, want %v (read error: %v)", exists, wantExists, readErr)
+			}
+			if string(got) != tt.wantDigestOutput {
 				t.Errorf("digest output = %q, want %q", got, tt.wantDigestOutput)
 			}
 		})

@@ -106,7 +106,11 @@ func Release(conf ReleaseConfig) error {
 	}
 
 	if !conf.SkipOCIRegistry {
-		if err := pushChartsToOCI(conf, packagedCharts); err != nil {
+		ociClient, err := newOCIClient(conf)
+		if err != nil {
+			return fmt.Errorf("while creating OCI registry client: %w", err)
+		}
+		if err := pushChartsToOCI(ociClient, conf, packagedCharts); err != nil {
 			return fmt.Errorf("while uploading charts to OCI registry: %w", err)
 		}
 	}
@@ -375,21 +379,29 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 
 // pushChartsToOCI pushes the packaged chart archives to the OCI registry.
 // Charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
-// If outputDigestsFileWriter is non-nil, the digest ref of each pushed chart is written to it in the format
-// "registry/chart:version@sha256:...", one line per packaged chart.
-func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
-	var digestsFileWriter io.Writer
+// If conf.OCIChartsDigestsFilePath is set, the digest ref of each pushed chart is written to it in the format
+// "registry/chart:version@sha256:...", one line per pushed chart.
+func pushChartsToOCI(client ociPusher, conf ReleaseConfig, charts []packagedChart) error {
+	digestsFileWriter := io.Discard
 	if outputDigestsFilePath := conf.OCIChartsDigestsFilePath; outputDigestsFilePath != "" {
 		f, err := os.OpenFile(outputDigestsFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			return fmt.Errorf("while opening OCI charts digests file (%s): %w", outputDigestsFilePath, err)
 		}
 		defer f.Close()
-		if !conf.DryRun {
-			digestsFileWriter = f
-		}
+		digestsFileWriter = f
 	}
 
+	for _, chart := range charts {
+		if err := pushChartToOCI(client, conf, digestsFileWriter, chart); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// newOCIClient creates an OCI registry client, using the credentials from conf if set.
+func newOCIClient(conf ReleaseConfig) (*registry.Client, error) {
 	// the registry client doesn't take a context, so the timeout is enforced per HTTP request instead
 	ociClientOpts := []registry.ClientOption{
 		registry.ClientOptHTTPClient(&http.Client{
@@ -400,17 +412,7 @@ func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
 	if conf.OCIUsername != "" && conf.OCIPassword != "" {
 		ociClientOpts = append(ociClientOpts, registry.ClientOptBasicAuth(conf.OCIUsername, conf.OCIPassword))
 	}
-	ociClient, err := registry.NewClient(ociClientOpts...)
-	if err != nil {
-		return fmt.Errorf("while creating OCI registry client: %w", err)
-	}
-
-	for _, chart := range charts {
-		if err := pushChartToOCI(ociClient, conf, digestsFileWriter, chart); err != nil {
-			return err
-		}
-	}
-	return nil
+	return registry.NewClient(ociClientOpts...)
 }
 
 func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWriter io.Writer, chart packagedChart) error {
@@ -458,11 +460,9 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 	}
 	log.Printf("Pushed chart (%s) to OCI registry: digest=%s", chartRef, result.Manifest.Digest)
 
-	if outputDigestsFileWriter != nil {
-		digestRef := fmt.Sprintf("%s@%s", chartRef, result.Manifest.Digest)
-		if _, err := fmt.Fprintln(outputDigestsFileWriter, digestRef); err != nil {
-			return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
-		}
+	digestRef := fmt.Sprintf("%s@%s", chartRef, result.Manifest.Digest)
+	if _, err := fmt.Fprintln(outputDigestsFileWriter, digestRef); err != nil {
+		return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
 	}
 	return nil
 }
