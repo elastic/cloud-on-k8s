@@ -437,24 +437,12 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 	}
 
 	log.Printf("Pushing chart (%s) to OCI registry\n", chartRef)
-	f, err := os.Open(chart.packagePath)
+	chartBytes, err := os.ReadFile(chart.packagePath)
 	if err != nil {
-		return fmt.Errorf("while opening chart archive (%s): %w", chart.packagePath, err)
-	}
-	defer f.Close()
-
-	stat, err := f.Stat()
-	if err != nil {
-		return fmt.Errorf("while stating chart archive (%s): %w", chart.packagePath, err)
-	}
-	chartBytes, err := io.ReadAll(f)
-	if err != nil {
-		return fmt.Errorf("while reading chart archive (%s): %w", chart.Name, err)
+		return fmt.Errorf("while reading chart archive (%s): %w", chart.packagePath, err)
 	}
 
-	result, err := client.Push(chartBytes, chartRef,
-		registry.PushOptCreationTime(stat.ModTime().Format(time.RFC3339)),
-	)
+	result, err := client.Push(chartBytes, chartRef)
 	if err != nil {
 		return fmt.Errorf("while pushing chart (%s) to OCI registry: %w", chartRef, err)
 	}
