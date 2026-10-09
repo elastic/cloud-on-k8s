@@ -25,49 +25,28 @@ import (
 func TestShouldNotOverwrite(t *testing.T) {
 	tests := []struct {
 		name          string
-		isNonSnapshot bool
 		isProdRelease bool
 		force         bool
 		want          bool
 	}{
 		{
-			name:          "Non-snapshot, prod release, no force",
-			isNonSnapshot: true,
+			name:          "prod release, no force",
 			isProdRelease: true,
-			force:         false,
 			want:          true,
 		},
 		{
-			name:          "Non-snapshot, prod release, force true",
-			isNonSnapshot: true,
+			name:          "prod release, force",
 			isProdRelease: true,
 			force:         true,
 			want:          false,
 		},
 		{
-			name:          "Snapshot, prod release, no force",
-			isNonSnapshot: false,
-			isProdRelease: true,
-			force:         false,
-			want:          false,
-		},
-		{
-			name:          "Non-snapshot, dev release, no force",
-			isNonSnapshot: true,
+			name:          "dev release, no force",
 			isProdRelease: false,
-			force:         false,
 			want:          false,
 		},
 		{
-			name:          "Snapshot, dev release, no force",
-			isNonSnapshot: false,
-			isProdRelease: false,
-			force:         false,
-			want:          false,
-		},
-		{
-			name:          "Non-snapshot, dev release, force true",
-			isNonSnapshot: true,
+			name:          "dev release, force",
 			isProdRelease: false,
 			force:         true,
 			want:          false,
@@ -76,8 +55,8 @@ func TestShouldNotOverwrite(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shouldNotOverwrite(tt.isNonSnapshot, tt.isProdRelease, tt.force)
-			if got != tt.want {
+			conf := ReleaseConfig{IsProdRelease: tt.isProdRelease, Force: tt.force}
+			if got := conf.shouldNotOverwrite(); got != tt.want {
 				t.Errorf("shouldNotOverwrite() = %v, want %v", got, tt.want)
 			}
 		})
@@ -177,14 +156,12 @@ func TestPushChartToOCI(t *testing.T) {
 	}
 	operator := newChart("eck-operator", "1.0.0")
 	crds := newChart("eck-operator-crds", "1.0.0")
-	snapshot := newChart("eck-operator", "1.0.0-SNAPSHOT")
 
 	const (
 		prodRegistry   = "registry.example.invalid/eck-charts"
 		devRegistry    = "registry.example.invalid/eck-charts-snapshots"
 		operatorRef    = prodRegistry + "/eck-operator:1.0.0"
 		crdsRef        = prodRegistry + "/eck-operator-crds:1.0.0"
-		snapshotRef    = prodRegistry + "/eck-operator:1.0.0-SNAPSHOT"
 		devOperatorRef = devRegistry + "/eck-operator:1.0.0"
 		digestSuffix   = "@sha256:abc123\n"
 	)
@@ -213,14 +190,14 @@ func TestPushChartToOCI(t *testing.T) {
 		wantDigestOutput string
 	}{
 		{
-			name:             "prod non-snapshot not yet pushed",
+			name:             "prod chart not yet pushed",
 			charts:           []packagedChart{operator, crds},
 			wantResolvedRefs: []string{operatorRef, crdsRef},
 			wantPushedRefs:   []string{operatorRef, crdsRef},
 			wantDigestOutput: operatorRef + digestSuffix + crdsRef + digestSuffix,
 		},
 		{
-			name:             "prod non-snapshot already pushed",
+			name:             "prod chart already pushed",
 			charts:           []packagedChart{operator},
 			existing:         []string{operatorRef},
 			wantErrContains:  "chart (" + operatorRef + ") already exists in OCI registry (" + prodRegistry + "); remove it or use --force to overwrite",
@@ -243,14 +220,7 @@ func TestPushChartToOCI(t *testing.T) {
 			wantResolvedRefs: []string{operatorRef},
 		},
 		{
-			name:             "prod snapshot is not checked",
-			charts:           []packagedChart{snapshot},
-			existing:         []string{snapshotRef},
-			wantPushedRefs:   []string{snapshotRef},
-			wantDigestOutput: snapshotRef + digestSuffix,
-		},
-		{
-			name:             "dev non-snapshot is not checked",
+			name:             "dev chart is not checked",
 			charts:           []packagedChart{operator},
 			dev:              true,
 			existing:         []string{devOperatorRef},
@@ -267,9 +237,9 @@ func TestPushChartToOCI(t *testing.T) {
 		},
 		{
 			name:             "dry-run checks but does not push",
-			charts:           []packagedChart{operator, snapshot},
+			charts:           []packagedChart{operator, crds},
 			dryRun:           true,
-			wantResolvedRefs: []string{operatorRef},
+			wantResolvedRefs: []string{operatorRef, crdsRef},
 		},
 		{
 			name:             "dry-run reports an existing chart",
@@ -280,24 +250,27 @@ func TestPushChartToOCI(t *testing.T) {
 			wantResolvedRefs: []string{operatorRef},
 		},
 		{
-			name:           "push error is propagated",
-			charts:         []packagedChart{snapshot},
-			pushFails:      true,
-			wantErr:        errPushCalled,
-			wantPushedRefs: []string{snapshotRef},
+			name:             "push error is propagated",
+			charts:           []packagedChart{operator},
+			pushFails:        true,
+			wantErr:          errPushCalled,
+			wantResolvedRefs: []string{operatorRef},
+			wantPushedRefs:   []string{operatorRef},
 		},
 		{
 			name:             "write error on digest file is propagated",
-			charts:           []packagedChart{snapshot},
+			charts:           []packagedChart{operator},
 			failDigestWriter: true,
 			wantErr:          errWriteFailed,
-			wantPushedRefs:   []string{snapshotRef},
+			wantResolvedRefs: []string{operatorRef},
+			wantPushedRefs:   []string{operatorRef},
 		},
 		{
-			name:            "nil digest writer skips digest output without error",
-			charts:          []packagedChart{snapshot},
-			nilDigestWriter: true,
-			wantPushedRefs:  []string{snapshotRef},
+			name:             "nil digest writer skips digest output without error",
+			charts:           []packagedChart{operator},
+			nilDigestWriter:  true,
+			wantResolvedRefs: []string{operatorRef},
+			wantPushedRefs:   []string{operatorRef},
 		},
 	}
 

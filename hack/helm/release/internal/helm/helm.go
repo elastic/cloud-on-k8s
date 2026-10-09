@@ -234,7 +234,7 @@ func uploadChartsToGCS(ctx context.Context, conf ReleaseConfig, charts []package
 }
 
 // copyChartToGCSBucket copies a given chart archive to the GCS bucket.
-// Non-SNAPSHOT charts cannot be overwritten in the prod bucket unless forced, otherwise an error is returned.
+// Charts cannot be overwritten in the prod bucket unless forced, otherwise an error is returned.
 func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart packagedChart) error {
 	repoURL, err := url.Parse(conf.ChartsRepoURL)
 	if err != nil {
@@ -261,9 +261,8 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart package
 	defer gcsClient.Close()
 	chartArchiveObj := gcsClient.Bucket(conf.Bucket).Object(chartArchiveDest)
 
-	// specify that the object must not exist for non-SNAPSHOT chart when publishing to prod Helm repo
-	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
-	shouldNotOverwrite := shouldNotOverwrite(isNonSnapshot, conf.IsProdRelease, conf.Force)
+	// specify that the object must not exist when publishing to prod Helm repo
+	shouldNotOverwrite := conf.shouldNotOverwrite()
 	if shouldNotOverwrite {
 		chartArchiveObj = chartArchiveObj.If(storage.Conditions{DoesNotExist: true})
 	}
@@ -289,12 +288,10 @@ func copyChartToGCSBucket(ctx context.Context, conf ReleaseConfig, chart package
 	return nil
 }
 
-// shouldNotOverwrite determines if a chart should not be overwritten in the bucket or the OCI registry.
-func shouldNotOverwrite(isNonSnapshot, isProdRelease, force bool) bool {
-	if force {
-		return false
-	}
-	return isNonSnapshot && isProdRelease
+// shouldNotOverwrite determines if charts should not be overwritten in the bucket or the OCI registry.
+// Prod releases contain only non-SNAPSHOT charts, as enforced by checkChartsVersions.
+func (conf ReleaseConfig) shouldNotOverwrite() bool {
+	return conf.IsProdRelease && !conf.Force
 }
 
 // updateIndex updates the Helm repo index by merging the existing index in the bucket
@@ -377,7 +374,7 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 }
 
 // pushChartsToOCI pushes the packaged chart archives to the OCI registry.
-// Non-SNAPSHOT charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
+// Charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
 // If outputDigestsFileWriter is non-nil, the digest ref of each pushed chart is written to it in the format
 // "registry/chart:version@sha256:...", one line per packaged chart.
 func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
@@ -419,9 +416,8 @@ func pushChartsToOCI(conf ReleaseConfig, charts []packagedChart) error {
 func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWriter io.Writer, chart packagedChart) error {
 	chartRef := fmt.Sprintf("%s/%s:%s", conf.OCIRegistry, chart.Name, chart.Version)
 
-	// check that the chart does not already exist for non-SNAPSHOT chart when publishing to prod OCI registry
-	isNonSnapshot := !strings.HasSuffix(chart.Version, "-SNAPSHOT")
-	if shouldNotOverwrite(isNonSnapshot, conf.IsProdRelease, conf.Force) {
+	// check that the chart does not already exist when publishing to prod OCI registry
+	if conf.shouldNotOverwrite() {
 		_, err := client.Resolve(chartRef)
 		switch {
 		case err == nil:
