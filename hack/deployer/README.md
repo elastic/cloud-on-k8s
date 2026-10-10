@@ -43,6 +43,24 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
   compatibility with existing deployer configurations. New configurations
   should use `localNvmeSsdBlock`.
 
+  **Fallback regions**
+
+  GKE cluster creation can fail in the configured region. Set `fallbackRegions`
+  to retry creation in alternative regions before failing:
+
+  ```yaml
+  overrides:
+    gke:
+      fallbackRegions:
+        - europe-west4
+        - us-east4
+  ```
+
+  Regions are tried in order, and failed attempts are cleaned up before the next
+  region is tried. Once creation succeeds, setup continues in that region.
+  Cluster deletion and periodic cleanup scan every configured region. If all
+  regions fail, the creation errors are returned.
+
 * AKS
 
   * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
