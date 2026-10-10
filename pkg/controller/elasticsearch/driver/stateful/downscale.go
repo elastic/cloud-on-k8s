@@ -27,6 +27,7 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
@@ -51,8 +52,19 @@ func HandleDownscale(
 	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
+	// Retrieve the desired leaving nodes that are draining: Elasticsearch closes their readiness port as soon as their
+	// shutdown is registered, so removing them must not consume the budget. Nodes that stay are not considered: a
+	// shutdown registered outside of the operator for a node that stays must not allow more removals.
+	var draining set.StringSet
+	if len(desiredLeavingNodes) > 0 {
+		draining, err = downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, desiredLeavingNodes)
+		if err != nil {
+			return results.WithError(err)
+		}
+	}
+
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
-	downscaleState := newDownscaleState(actualPods, downscaleCtx.es)
+	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)
 
 	// compute the list of StatefulSet downscales and deletions to perform
 	downscales, deletions := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
@@ -99,7 +111,7 @@ func podsToDownscale(
 	actualStatefulSets es_sset.StatefulSetList,
 	downscaleFilter downscaleFilter,
 ) ([]ssetDownscale, es_sset.StatefulSetList) {
-	downscaleState := newDownscaleState(actualPods, es)
+	downscaleState := newDownscaleState(actualPods, actualStatefulSets, es, nil)
 	// compute the list of StatefulSet downscales and deletions to perform
 	return calculateDownscales(ctx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
 }
