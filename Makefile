@@ -232,7 +232,7 @@ upgrade-test: docker-build docker-push
 #############################
 
 install-crds: generate-manifests
-	kubectl apply -f $(ALL_V1_CRDS)
+	kubectl apply -f "$(ALL_V1_CRDS)"
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature

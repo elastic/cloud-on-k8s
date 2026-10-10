@@ -200,7 +200,7 @@ func expectedDeploymentParams() testParams {
 					AutomountServiceAccountToken: ptrFalse(),
 				},
 			},
-			Replicas: 0,
+			Replicas: new(int32(0)),
 		},
 	}
 }

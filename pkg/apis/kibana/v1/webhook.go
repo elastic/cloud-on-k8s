@@ -11,14 +11,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	common "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 const (
 	// WebhookPath is the HTTP path for the Kibana validating webhook.
-	WebhookPath = "/validate-kibana-k8s-elastic-co-v1-kibana"
+	WebhookPath   = "/validate-kibana-k8s-elastic-co-v1-kibana"
+	cfgInvalidMsg = "Configuration invalid"
 )
 
 // +kubebuilder:webhook:path=/validate-kibana-k8s-elastic-co-v1-kibana,mutating=false,failurePolicy=ignore,groups=kibana.k8s.elastic.co,resources=kibanas,verbs=create;update,versions=v1,name=elastic-kb-validation-v1.k8s.elastic.co,sideEffects=None,admissionReviewVersions=v1,matchPolicy=Exact
@@ -32,6 +35,8 @@ var (
 		checkSupportedVersion,
 		checkMonitoring,
 		checkAssociations,
+		checkBackgroundTasksVersion,
+		checkBackgroundTasksNodeRoles,
 		commonv1.PauseOrchestrationAnnotationCheck[*Kibana](),
 	}
 
@@ -66,6 +71,18 @@ func (k *Kibana) validate(old *Kibana) (admission.Warnings, error) {
 		k.Spec.PodTemplate,
 	); resourcesWarning != "" {
 		warnings = append(warnings, resourcesWarning)
+	}
+
+	if k.Spec.BackgroundTasks != nil {
+		if bgResourcesWarning := commonv1.PodTemplateResourcesOverrideWarning(
+			"spec.backgroundTasks.resources",
+			"spec.backgroundTasks.podTemplate",
+			KibanaContainerName,
+			k.Spec.BackgroundTasks.Resources,
+			k.Spec.BackgroundTasks.PodTemplate,
+		); bgResourcesWarning != "" {
+			warnings = append(warnings, bgResourcesWarning)
+		}
 	}
 
 	if old != nil {
@@ -133,4 +150,74 @@ func checkAssociations(k *Kibana) field.ErrorList {
 	err4 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("enterpriseSearchRef"), k.Spec.EnterpriseSearchRef)
 	err5 := commonv1.CheckLocalAssociationRefs(field.NewPath("spec").Child("packageRegistryRef"), k.Spec.PackageRegistryRef)
 	return append(err1, append(err2, append(err3, append(err4, err5...)...)...)...)
+}
+
+// checkBackgroundTasksVersion rejects spec.backgroundTasks on Kibana versions that predate
+// BackgroundTasksMinVersion (8.16.0). The readiness probe relies on /api/status, which is
+// only available without authentication from 8.16.0 onwards; background-only pods do not
+// serve /login, so earlier versions would not pass the readiness check.
+func checkBackgroundTasksVersion(k *Kibana) field.ErrorList {
+	if k.Spec.BackgroundTasks == nil {
+		return nil
+	}
+	v, err := version.Parse(k.Spec.Version)
+	if err != nil {
+		// version format already validated by checkSupportedVersion; skip here.
+		return nil
+	}
+	if !v.GTE(BackgroundTasksMinVersion) {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("backgroundTasks"),
+			k.Spec.Version,
+			"spec.backgroundTasks requires Kibana >= 8.16.0",
+		)}
+	}
+	return nil
+}
+
+// checkBackgroundTasksNodeRoles rejects configurations where the user sets node.roles in
+// spec.config or spec.backgroundTasks.config. ECK owns node.roles when background task
+// isolation is enabled.
+func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
+	var errs field.ErrorList
+	if k.Spec.BackgroundTasks == nil {
+		// No isolation: node.roles is user-controlled; no error.
+		return nil
+	}
+
+	specConfigPath := field.NewPath("spec").Child("config")
+	bgConfigPath := field.NewPath("spec").Child("backgroundTasks").Child("config")
+
+	for _, vld := range []struct {
+		Config        *commonv1.Config
+		Path          *field.Path
+		DetailMessage string
+	}{
+		{
+			Config:        k.Spec.Config,
+			Path:          specConfigPath,
+			DetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.config",
+		},
+		{
+			Config:        k.Spec.BackgroundTasks.Config,
+			Path:          bgConfigPath,
+			DetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.backgroundTasks.config",
+		},
+	} {
+		if vld.Config == nil {
+			continue
+		}
+
+		config, err := common.NewCanonicalConfigFrom(vld.Config.Data)
+		if err != nil {
+			errs = append(errs, field.Invalid(vld.Path, vld.Config, cfgInvalidMsg))
+			continue
+		}
+
+		if keys := config.HasKeys([]string{label.NodeRolesConfigKey}); len(keys) > 0 {
+			errs = append(errs, field.Forbidden(vld.Path, vld.DetailMessage))
+		}
+	}
+
+	return errs
 }
