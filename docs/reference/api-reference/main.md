@@ -1707,7 +1707,7 @@ UpscaleOperation provides an overview of in progress changes applied by the oper
 ### VolumeClaimDeletePolicy (string)  [#volumeclaimdeletepolicy]
 
 VolumeClaimDeletePolicy describes the delete policy for handling PersistentVolumeClaims that hold Elasticsearch data.
-Inspired by https://github.com/kubernetes/enhancements/pull/2440
+Implemented via the StatefulSet PersistentVolumeClaimRetentionPolicy (https://github.com/kubernetes/enhancements/pull/2440).
 
 :::{admonition} Appears In:
 * [ElasticsearchSpec](#elasticsearchspec)
