@@ -5,7 +5,9 @@
 package v1alpha1
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,6 +134,8 @@ func (psb *AutoscalingPolicyStatusBuilder) Build() AutoscalingPolicyStatus {
 		}
 		i++
 	}
+	// Map iteration order is random: sort the states to get a stable status.
+	slices.SortFunc(policyStates, func(a, b PolicyState) int { return cmp.Compare(a.Type, b.Type) })
 	return AutoscalingPolicyStatus{
 		Name:                   psb.policyName,
 		NodeSetNodeCount:       psb.nodeSetsResources.NodeSetNodeCount,
@@ -255,6 +259,9 @@ func (asb *AutoscalingStatusBuilder) Build() ElasticsearchAutoscalerStatus {
 		policyStates[i] = policyStateBuilder.Build()
 		i++
 	}
+	// Map iteration order is random: sort the policies to get a stable status.
+	// A different order would update the status and trigger a new reconciliation.
+	slices.SortFunc(policyStates, func(a, b AutoscalingPolicyStatus) int { return cmp.Compare(a.Name, b.Name) })
 
 	now := metav1.Now()
 	var conditions commonv1.Conditions
