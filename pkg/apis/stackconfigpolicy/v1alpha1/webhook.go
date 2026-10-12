@@ -6,6 +6,8 @@ package v1alpha1
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -13,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 )
 
 const (
@@ -27,6 +30,7 @@ var (
 	defaultChecks = []func(*StackConfigPolicy) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
+		checkReservedPKIRealmInConfig,
 		validSettings,
 	}
 )
@@ -66,6 +70,65 @@ func checkNoUnknownFields(policy *StackConfigPolicy) field.ErrorList {
 
 func checkNameLength(policy *StackConfigPolicy) field.ErrorList {
 	return commonv1.CheckNameLength(policy)
+}
+
+// ValidateReservedRoleMappingNames rejects new role mapping names that start with eck_managed_pki_. Names already in
+// old (nil on creation) are allowed, since they may predate the reservation. It runs at admission only, not in
+// Validate, so existing policies that use the prefix are still applied at reconcile time.
+func ValidateReservedRoleMappingNames(policy *StackConfigPolicy, old *StackConfigPolicy) error {
+	if errs := checkReservedRoleMappingNames(policy, old); len(errs) > 0 {
+		return apierrors.NewInvalid(groupKind, policy.Name, errs)
+	}
+	return nil
+}
+
+func checkReservedRoleMappingNames(policy *StackConfigPolicy, old *StackConfigPolicy) field.ErrorList {
+	roleMappings := policy.Spec.Elasticsearch.SecurityRoleMappings
+	if roleMappings == nil {
+		return nil
+	}
+	var oldRoleMappings map[string]any
+	if old != nil && old.Spec.Elasticsearch.SecurityRoleMappings != nil {
+		oldRoleMappings = old.Spec.Elasticsearch.SecurityRoleMappings.Data
+	}
+
+	var reservedNames []string
+	for name := range roleMappings.Data {
+		if _, existing := oldRoleMappings[name]; existing {
+			continue
+		}
+		if strings.HasPrefix(name, commonv1.ECKPKIRoleMappingPrefix) {
+			reservedNames = append(reservedNames, name)
+		}
+	}
+	slices.Sort(reservedNames)
+
+	path := field.NewPath("spec").Child("elasticsearch").Child("securityRoleMappings")
+	var errors field.ErrorList
+	for _, name := range reservedNames {
+		errors = append(errors, field.Invalid(
+			path.Key(name),
+			name,
+			fmt.Sprintf("names beginning with %q are reserved for ECK-managed PKI role mappings", commonv1.ECKPKIRoleMappingPrefix),
+		))
+	}
+	return errors
+}
+
+// checkReservedPKIRealmInConfig rejects config under the reserved eck_managed_pki realm or using its reserved order.
+// Unlike reserved role mapping names, it also runs at reconcile time. A colliding role mapping is only withheld (see
+// withholdNameCollisions), but realm settings would change ECK's realm, and a duplicate order would stop
+// Elasticsearch from starting.
+func checkReservedPKIRealmInConfig(policy *StackConfigPolicy) field.ErrorList {
+	if policy.Spec.Elasticsearch.Config == nil {
+		return nil
+	}
+	configPath := field.NewPath("spec").Child("elasticsearch").Child("config")
+	cfg, err := settings.NewCanonicalConfigFrom(policy.Spec.Elasticsearch.Config.Data)
+	if err != nil {
+		return field.ErrorList{field.Invalid(configPath, policy.Spec.Elasticsearch.Config, "Configuration invalid")}
+	}
+	return commonv1.CheckReservedPKIRealmConfig(configPath, cfg)
 }
 
 func validSettings(policy *StackConfigPolicy) field.ErrorList {

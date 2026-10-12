@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -99,6 +100,35 @@ func TestReconcileClientCertificate_OperatorCert(t *testing.T) {
 
 		require.Equal(t, secret1.Data[CertFileName], secret2.Data[CertFileName])
 		require.Equal(t, secret1.Data[KeyFileName], secret2.Data[KeyFileName])
+	})
+
+	t.Run("generates a new key when renewing expired cert", func(t *testing.T) {
+		// Start with a valid cert+key.
+		secret := &corev1.Secret{Data: make(map[string][]byte)}
+		ctx := context.Background()
+		require.NoError(t, ensureClientCertificateSecretContents(ctx, secret, internalClientCertCommonName, owner.Name, RotationParams{
+			Validity:     DefaultCertValidity,
+			RotateBefore: DefaultRotateBefore,
+		}))
+		originalKey := secret.Data[KeyFileName]
+		existingKey := privateKeyIfValid(ctx, secret)
+		require.NotNil(t, existingKey)
+
+		// Replace the cert with an expired one (same key). isClientCertificateValid will return
+		// false (cert expired) → renewal is triggered. A fresh key pair must be generated.
+		expiredTemplate := createClientCertTemplate(internalClientCertCommonName, owner.Name,
+			existingKey.Public(), -time.Hour)
+		expiredCertBytes, err := createSelfSignedClientCert(*expiredTemplate, existingKey)
+		require.NoError(t, err)
+		secret.Data[CertFileName] = EncodePEMCert(expiredCertBytes)
+
+		require.NoError(t, ensureClientCertificateSecretContents(ctx, secret, internalClientCertCommonName, owner.Name, RotationParams{
+			Validity:     DefaultCertValidity,
+			RotateBefore: DefaultRotateBefore,
+		}))
+
+		require.NotEqual(t, originalKey, secret.Data[KeyFileName], "a new private key must be generated on cert renewal")
+		require.NotEqual(t, EncodePEMCert(expiredCertBytes), secret.Data[CertFileName], "cert must be renewed")
 	})
 }
 

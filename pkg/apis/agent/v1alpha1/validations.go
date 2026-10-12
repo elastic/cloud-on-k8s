@@ -35,6 +35,7 @@ var (
 		checkSingleESRefInFleetMode,
 		checkAssociations,
 		checkClientAuthentication,
+		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
 
@@ -306,6 +307,22 @@ func checkAssociations(a *Agent) field.ErrorList {
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
 	err3 := commonv1.CheckFleetServerSelectorRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
 	return append(append(err1, err2...), err3...)
+}
+
+func checkNoPKIAuthentication(a *Agent) field.ErrorList {
+	if !a.Spec.FleetModeEnabled() {
+		return nil
+	}
+	resourceType := "fleet-managed Elastic Agent"
+	if a.Spec.FleetServerEnabled {
+		resourceType = "Fleet server"
+	}
+	var errs field.ErrorList
+	for i, ref := range a.Spec.ElasticsearchRefs {
+		errs = append(errs, commonv1.CheckNoPKIAuthenticationMode(
+			field.NewPath("spec").Child("elasticsearchRefs").Index(i), ref.ElasticsearchSelector, resourceType)...)
+	}
+	return errs
 }
 
 func checkClientAuthentication(a *Agent) field.ErrorList {

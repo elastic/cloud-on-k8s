@@ -44,7 +44,7 @@ func NewMergedESConfig(
 	userConfig commonv1.Config,
 	esConfigFromStackConfigPolicy *common.CanonicalConfig,
 	remoteClusterServerEnabled, remoteClusterClientEnabled bool,
-	clusterHasZoneAwareness, clientAuthenticationRequired bool,
+	clusterHasZoneAwareness, clientAuthenticationRequired, pkiRealmEnabled bool,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -66,6 +66,24 @@ func NewMergedESConfig(
 	// This is done after merging to preserve any user-specified CAs (append-only).
 	if clientAuthenticationRequired {
 		if err := appendClientTrustBundle(config); err != nil {
+			return CanonicalConfig{}, err
+		}
+	}
+
+	// Configure the ECK-managed PKI realm when the user opts in with spec.auth.pki.enabled and mTLS is required.
+	// Because it is opt-in, clusters that do not use PKI are not restarted and do not accept certificate
+	// authentication. Once it is enabled, switching a component's authenticationMode only changes role mappings.
+	//
+	// The realm trusts the ECK client trust bundle, like the HTTP layer, so it validates every certificate mTLS
+	// accepts. Roles are granted only by role mappings bound to each association's public key fingerprint.
+	// Client certificate rotation rewrites the bundle, so the realm must reload its truststore
+	// (elastic/elasticsearch#160416, covered by PKIAuthMinVersion).
+	if pkiRealmEnabled && clientAuthenticationRequired && ver.GTE(commonv1.PKIAuthMinVersion) {
+		pkiRealmCfg := map[string]any{
+			esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder:                  commonv1.ECKPKIRealmOrder,
+			esv1.XPackSecurityAuthcRealmsPKIECKPKICertificateAuthorities: []string{clientTrustBundlePath()},
+		}
+		if err := config.MergeWith(common.MustCanonicalConfig(pkiRealmCfg)); err != nil {
 			return CanonicalConfig{}, err
 		}
 	}
@@ -218,11 +236,13 @@ func HasClientAuthenticationRequired(cfg CanonicalConfig) bool {
 	return val == "required"
 }
 
+// clientTrustBundlePath returns the in-pod path of the ECK client trust bundle file.
+func clientTrustBundlePath() string {
+	return path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName)
+}
+
 // appendClientTrustBundle appends the client trust bundle path to the HTTP SSL certificate authorities.
 // This preserves any user-specified CAs while ensuring the trust bundle is included.
 func appendClientTrustBundle(config *common.CanonicalConfig) error {
-	return config.AppendString(
-		esv1.XPackSecurityHttpSslCertificateAuthorities,
-		path.Join(volume.ClientCertificatesTrustBundleMountPath, certificates.ClientCertificatesTrustBundleFileName),
-	)
+	return config.AppendString(esv1.XPackSecurityHttpSslCertificateAuthorities, clientTrustBundlePath())
 }

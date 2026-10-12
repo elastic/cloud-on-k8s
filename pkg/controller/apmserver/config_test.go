@@ -111,6 +111,24 @@ func TestNewConfigFromSpec(t *testing.T) {
 			version: version.MinFor(8, 0, 0),
 		},
 		{
+			name: "with PKI auth: no username/password, only ssl cert paths",
+			esAssocConf: &commonv1.AssociationConf{
+				AuthSecretName:       commonv1.NoAuthRequiredValue,
+				CASecretName:         "test-es-http-ca-public",
+				CACertProvided:       true,
+				URL:                  "https://test-es-http.default.svc:9200",
+				ClientCertSecretName: "test-client-cert",
+			},
+			wantConf: map[string]any{
+				"apm-server.auth.secret_token":                     "${SECRET_TOKEN}",
+				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
+				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/ca.crt"},
+				"output.elasticsearch.ssl.certificate":             "config/elasticsearch-client-certs/tls.crt",
+				"output.elasticsearch.ssl.key":                     "config/elasticsearch-client-certs/tls.key",
+			},
+			version: version.MinFor(8, 0, 0),
+		},
+		{
 			name: "missing auth secret",
 			esAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "wrong-secret",

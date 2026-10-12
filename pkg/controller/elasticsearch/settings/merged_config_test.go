@@ -6,6 +6,7 @@ package settings
 
 import (
 	"bytes"
+	"math"
 	"path"
 	"reflect"
 	"testing"
@@ -27,6 +28,11 @@ func TestNewMergedESConfig(t *testing.T) {
 	nodeML := "node.ml"
 	xPackSecurityAuthcRealmsActiveDirectoryAD1Order := "xpack.security.authc.realms.active_directory.ad1.order"
 
+	// eckPKIRealmCfg captures the ECK-managed PKI realm settings.
+	type eckPKIRealmCfg struct {
+		Order                  int      `yaml:"order"`
+		CertificateAuthorities []string `yaml:"certificate_authorities"`
+	}
 	// elasticsearchCfg captures some of the fields we want to validate in these tests
 	type elasticsearchCfg struct {
 		Discovery struct {
@@ -38,6 +44,25 @@ func TestNewMergedESConfig(t *testing.T) {
 		Network struct {
 			PublishHost string `yaml:"publish_host"`
 		} `yaml:"network"`
+		Xpack struct {
+			Security struct {
+				Authc struct {
+					Realms struct {
+						Pki struct {
+							EckPki *eckPKIRealmCfg `yaml:"eck_managed_pki"`
+						} `yaml:"pki"`
+					} `yaml:"realms"`
+				} `yaml:"authc"`
+			} `yaml:"security"`
+		} `yaml:"xpack"`
+	}
+	// eckPKIRealm renders cfg and returns the decoded eck_managed_pki realm section, or nil when absent.
+	eckPKIRealm := func(cfg CanonicalConfig) *eckPKIRealmCfg {
+		cfgBytes, err := cfg.Render()
+		require.NoError(t, err)
+		esCfg := &elasticsearchCfg{}
+		require.NoError(t, yaml.Unmarshal(cfgBytes, esCfg))
+		return esCfg.Xpack.Security.Authc.Realms.Pki.EckPki
 	}
 
 	policyCfg := common.MustCanonicalConfig(map[string]any{
@@ -55,6 +80,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		remoteClusterClientEnabled   bool
 		clusterHasZoneAwareness      bool
 		clientAuthenticationRequired bool
+		pkiRealmEnabled              bool
 		cfgData                      map[string]any
 		policyCfgData                *common.CanonicalConfig
 		assert                       func(cfg CanonicalConfig)
@@ -399,6 +425,53 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
+			name:                         "eck_managed_pki realm injected last in the realm chain with the client trust bundle as certificate_authorities when enabled and client authentication required",
+			version:                      "9.6.0",
+			ipFamily:                     corev1.IPv4Protocol,
+			cfgData:                      map[string]any{},
+			clientAuthenticationRequired: true,
+			pkiRealmEnabled:              true,
+			assert: func(cfg CanonicalConfig) {
+				realm := eckPKIRealm(cfg)
+				require.NotNil(t, realm, "eck_managed_pki realm must be present")
+				// The highest order keeps the realm from shadowing token-based user realms such as JWT or Kerberos.
+				require.Equal(t, math.MaxInt32, realm.Order)
+				// The realm trusts exactly the ECK client trust bundle, not the wider http.ssl CA list.
+				require.Equal(t, []string{trustBundlePath}, realm.CertificateAuthorities)
+			},
+		},
+		{
+			name:                         "eck_managed_pki realm not injected when not enabled even though client authentication required",
+			version:                      "9.6.0",
+			ipFamily:                     corev1.IPv4Protocol,
+			cfgData:                      map[string]any{},
+			clientAuthenticationRequired: true,
+			assert: func(cfg CanonicalConfig) {
+				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be present unless spec.auth.pki.enabled is set")
+			},
+		},
+		{
+			name:            "eck_managed_pki realm not injected when client authentication not required",
+			version:         "9.6.0",
+			ipFamily:        corev1.IPv4Protocol,
+			cfgData:         map[string]any{},
+			pkiRealmEnabled: true,
+			assert: func(cfg CanonicalConfig) {
+				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be present when client authentication is not required")
+			},
+		},
+		{
+			name:                         "eck_managed_pki realm not injected below ES 9.6 even when client authentication required",
+			version:                      "9.5.0",
+			ipFamily:                     corev1.IPv4Protocol,
+			cfgData:                      map[string]any{},
+			clientAuthenticationRequired: true,
+			pkiRealmEnabled:              true,
+			assert: func(cfg CanonicalConfig) {
+				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be injected for ES versions below 9.6")
+			},
+		},
+		{
 			name:     "configuration is adjusted for IP family",
 			version:  "7.6.0",
 			ipFamily: corev1.IPv6Protocol,
@@ -417,7 +490,7 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, tt.httpConfig, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled, tt.clusterHasZoneAwareness, tt.clientAuthenticationRequired)
+			cfg, err := NewMergedESConfig("clusterName", ver, tt.ipFamily, tt.httpConfig, commonv1.Config{Data: tt.cfgData}, tt.policyCfgData, tt.remoteClusterServerEnabled, tt.remoteClusterClientEnabled, tt.clusterHasZoneAwareness, tt.clientAuthenticationRequired, tt.pkiRealmEnabled)
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})

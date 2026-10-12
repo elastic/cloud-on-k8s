@@ -43,7 +43,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 			// If TLS is not enabled, the API keystore password is not set.
 			lsConfigKeys = []string{"logstash.yml"}
 		}
-		expected := []test.ExpectedSecret{ //nolint:prealloc
+		expected := []test.ExpectedSecret{
 			{
 				Name: logstashName + "-ls-config",
 				Keys: lsConfigKeys,
@@ -81,6 +81,11 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					},
 				},
 			)
+			// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+			// skip the check to avoid a hang in CheckSecretsContent.
+			if ref.AuthenticationMode == v1.AuthenticationModePKI {
+				continue
+			}
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: fmt.Sprintf("%s-%s-%s-%s-logstash-user", lsNamespace, lsName, esNamespace, ref.Name),

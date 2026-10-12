@@ -183,3 +183,37 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), beatWrapped, testPodBuilder).RunSequential(t)
 }
+
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for Beat: Filebeat ships
+// events to Elasticsearch with its client certificate only, and switching it back to credentials cleans up the
+// eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-beat-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	fileBeatConfig := E2EFilebeatConfig
+	if !SupportsFingerprintIdentity(version.MustParse(test.Ctx().ElasticStackVersion)) {
+		fileBeatConfig = E2EFilebeatConfigPRE810
+	}
+
+	testPodBuilder := beat.NewPodBuilder(name)
+
+	beatBuilder := beat.NewBuilder(name).
+		WithType("filebeat").
+		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(filebeat.Type),
+			beat.HasEventFromPod(testPodBuilder.Pod.Name),
+		)
+	beatBuilder = beat.ApplyYamls(t, beatBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
+	beatBuilder.Beat.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+
+	beatMutated := beatBuilder.DeepCopy().WithMutatedFrom(&beatBuilder)
+	beatMutated.Beat.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, beatBuilder, beatMutated, testPodBuilder)
+}

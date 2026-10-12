@@ -121,8 +121,8 @@ func (f *Secret) Reset() *Secret {
 }
 
 // ApplyPolicy replaces the SCP-managed settings state.
-// cluster_secrets is owned exclusively by the ES controller and is preserved
-// by updateState regardless of what policy is applied.
+// cluster_secrets and ECK-generated PKI role mappings are owned by the ES controller
+// and are preserved by updateState regardless of what policy is applied.
 // Unlike SetClusterSecrets, corruption is not checked here because ApplyPolicy
 // replaces the full SCP-managed state — corrupted prior settings are safely discarded.
 func (f *Secret) ApplyPolicy(policy policyv1alpha1.ElasticsearchConfigPolicySpec, secretSources []commonv1.NamespacedSecretSource) error {
@@ -130,6 +130,41 @@ func (f *Secret) ApplyPolicy(policy policyv1alpha1.ElasticsearchConfigPolicySpec
 		return err
 	}
 	f.secureSettingsSources = secretSources
+	return nil
+}
+
+// currentECKPKIMappings returns the ECK-generated PKI role mappings of the loaded settings, or nil if there are none.
+func (f *Secret) currentECKPKIMappings() map[string]any {
+	eck, _ := partitionRoleMappings(f.settings.State.RoleMappings)
+	return eck
+}
+
+// currentUserRoleMappings returns the user-defined role mappings of the loaded settings, or nil if there are none.
+func (f *Secret) currentUserRoleMappings() map[string]any {
+	_, user := partitionRoleMappings(f.settings.State.RoleMappings)
+	return user
+}
+
+// pkiMappingsUnchanged reports whether the incoming PKI mappings are identical to those
+// already stored in the file-settings Secret, so the write can be skipped.
+func (f *Secret) pkiMappingsUnchanged(incoming *commonv1.Config) bool {
+	var incomingData map[string]any
+	if incoming != nil {
+		incomingData = incoming.Data
+	}
+	return reflect.DeepEqual(f.currentECKPKIMappings(), incomingData)
+}
+
+// SetPKIRoleMappings replaces the ECK-generated PKI role mappings, preserving user-defined ones.
+func (f *Secret) SetPKIRoleMappings(pkiMappings *commonv1.Config) error {
+	if f.settingsCorrupted {
+		return fmt.Errorf("cannot patch role_mappings: current file settings in %s are malformed", esv1.FileSettingsSecretName(f.es.Name))
+	}
+	var eckEntries map[string]any
+	if pkiMappings != nil {
+		eckEntries = pkiMappings.Data
+	}
+	f.settings.State.RoleMappings = mergeRoleMappings(&commonv1.Config{Data: f.currentUserRoleMappings()}, eckEntries)
 	return nil
 }
 

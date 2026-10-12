@@ -59,6 +59,13 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			ESUserRole: func(_ commonv1.Associated) (string, error) {
 				return esuser.SuperUserBuiltinRole, nil
 			},
+			SupportsAuthentication: entSupportsAuthentication,
 		},
 	})
+}
+
+// entSupportsAuthentication reports whether Enterprise Search supports the given authentication mode towards
+// Elasticsearch. Enterprise Search always sends Basic Auth, so PKI is not supported.
+func entSupportsAuthentication(_ commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	return mode == commonv1.AuthenticationModeCredentials
 }

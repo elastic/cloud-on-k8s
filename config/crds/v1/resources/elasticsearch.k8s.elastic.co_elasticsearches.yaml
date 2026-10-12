@@ -82,6 +82,16 @@ spec:
                           type: string
                       type: object
                     type: array
+                  pki:
+                    description: PKI configures the ECK-managed PKI realm.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enabled specifies whether to configure the ECK-managed PKI realm, which components with
+                          elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.
+                          Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication.
+                        type: boolean
+                    type: object
                   roles:
                     description: Roles to propagate to the Elasticsearch cluster.
                     items:

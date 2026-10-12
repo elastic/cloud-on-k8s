@@ -112,7 +112,14 @@ func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
 	}
 	errs = append(errs, validateClientAuthentication(config, index)...)
+	errs = append(errs, validateReservedPKIRealm(config, index)...)
 	return errs
+}
+
+// validateReservedPKIRealm rejects nodeSet config under the realm name eck_managed_pki, or using its realm order,
+// both of which are reserved for the realm ECK generates when spec.auth.pki.enabled is set.
+func validateReservedPKIRealm(config *common.CanonicalConfig, index int) field.ErrorList {
+	return commonv1.CheckReservedPKIRealmConfig(field.NewPath("spec").Child("nodeSets").Index(index).Child("config"), config)
 }
 
 // validateClientAuthentication reports mandatory HTTP client authentication
@@ -245,7 +252,8 @@ func validZoneAwarenessAffinityWarnings(es esv1.Elasticsearch) field.ErrorList {
 // settingsWarningsAndErrors splits noUnsupportedSettings results. Reserved-key
 // violations and unsupported xpack.security.http.ssl.client_authentication
 // values (Forbidden) are surfaced as non-blocking admission warnings; Invalid
-// config (unparseable canonical config) must deny admission.
+// config (unparseable canonical config, settings under the reserved eck_managed_pki
+// realm or using its reserved order) must deny admission.
 func settingsWarningsAndErrors(es esv1.Elasticsearch) (admission.Warnings, field.ErrorList) {
 	var (
 		admissionWarnings admission.Warnings

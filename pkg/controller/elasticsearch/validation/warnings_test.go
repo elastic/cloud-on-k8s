@@ -166,6 +166,88 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			},
 			expectErrors: true,
 		},
+		{
+			name: "reserved eck_managed_pki realm name (flat key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "reserved eck_managed_pki realm name (nested key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack": map[string]any{
+										"security": map[string]any{
+											"authc": map[string]any{
+												"realms": map[string]any{
+													"pki": map[string]any{
+														"eck_managed_pki": map[string]any{"order": 1},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "other pki realm name is allowed",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.pki.my_pki.order": 2,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "reserved eck_managed_pki realm order is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -216,6 +298,25 @@ func Test_settingsWarningsAndErrors(t *testing.T) {
 		require.Empty(t, blocking)
 		require.Len(t, warns, 1)
 		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
+	})
+	t.Run("reserved eck_managed_pki realm name is a blocking error", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "9.6.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Contains(t, blocking[0].Detail, "eck_managed_pki")
 	})
 }
 

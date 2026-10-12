@@ -86,6 +86,26 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	test.RunMutations(t, []test.Builder{esWithLicense, kbBuilder}, []test.Builder{esMutatedWrapped})
 }
 
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for Kibana: Kibana
+// authenticates to Elasticsearch with its client certificate only, and switching it back to credentials cleans up
+// the eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-kb-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+	kbBuilder.Kibana.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+
+	kbMutated := kbBuilder.DeepCopy().WithMutatedFrom(&kbBuilder)
+	kbMutated.Kibana.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, kbBuilder, kbMutated)
+}
+
 // TestClientAuthRequiredCustomCertificate tests that Kibana works with a user-provided client certificate
 // when Elasticsearch requires client authentication.
 func TestClientAuthRequiredCustomCertificate(t *testing.T) {

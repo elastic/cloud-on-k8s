@@ -760,6 +760,17 @@ func Test_checkAssociations(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "PKI with user-provided client certificate: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					Name:                        "es",
+					ClientCertificateSecretName: "client-cert",
+					AuthenticationMode:          commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: false,
+		},
+		{
 			name: "no name or secret name with namespace: NOK",
 			args: args{
 				b: &Agent{
@@ -1069,6 +1080,94 @@ func Test_checkNoDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, checkNoDowngrade(tt.args.prev, tt.args.curr), "checkNoDowngrade(%v, %v)", tt.args.prev, tt.args.curr)
+		})
+	}
+}
+
+func Test_checkNoPKIAuthentication(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		a       *Agent
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name: "standalone with PKI: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentStandaloneMode,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "fleet server with PKI: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode:               AgentFleetMode,
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "PKI authentication mode is not supported for Fleet server",
+		},
+		{
+			name: "fleet-managed agent with PKI: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentFleetMode,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "PKI authentication mode is not supported for fleet-managed Elastic Agent",
+		},
+		{
+			name: "fleet server without PKI: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode:               AgentFleetMode,
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []Output{
+						{
+							Name: "es"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "fleet mode without ES refs: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentFleetMode,
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkNoPKIAuthentication(tt.a)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+			var detail string
+			if len(got) > 0 {
+				detail = got[0].Detail
+			}
+			assert.Contains(t, detail, tt.wantMsg)
 		})
 	}
 }

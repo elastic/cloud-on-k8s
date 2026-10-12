@@ -231,6 +231,17 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
+// filterWithPKIMode returns those associations that use PKI authentication mode.
+func filterWithPKIMode(associations []commonv1.Association) []commonv1.Association {
+	var r []commonv1.Association
+	for _, a := range associations {
+		if a.AssociationRef().GetAuthenticationMode() == commonv1.AuthenticationModePKI {
+			r = append(r, a)
+		}
+	}
+	return r
+}
+
 // copySecret copies the source secret into targetNamespace under destName, hashing the
 // (filtered) source data into secHash. Keys restricts which data keys are included; all keys
 // are copied when empty. extraLabels are merged onto the source labels. owner is set as the

@@ -91,6 +91,16 @@ func Test_buildBeatConfig(t *testing.T) {
 		ClientCertSecretName: "client-cert-secret",
 	})
 
+	withAssocPKIAuth := *withAssocWithCA.DeepCopy()
+	esAssocPKIAuth := beatv1beta1.BeatESAssociation{Beat: &withAssocPKIAuth}
+	esAssocPKIAuth.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       commonv1.NoAuthRequiredValue,
+		CACertProvided:       true,
+		CASecretName:         "secret2",
+		URL:                  "url",
+		ClientCertSecretName: "client-cert-secret",
+	})
+
 	withAssocWithCAWithConfig := *withAssocWithCA.DeepCopy()
 	withAssocWithCAWithConfig.Spec.Config = userCfg
 
@@ -209,6 +219,21 @@ output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/t
 			}(),
 			want: merge(outputYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
 output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
+			name:   "PKI auth: no username/password, only ssl cert paths",
+			client: k8s.NewFakeClient(),
+			beat:   withAssocPKIAuth,
+			want: merge(
+				settings.MustParseConfig([]byte(`output:
+  elasticsearch:
+    hosts:
+    - url
+`)),
+				outputCAYaml,
+				settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`)),
+			),
 		},
 		{
 			name: "no association, user config, with metrics monitoring enabled",

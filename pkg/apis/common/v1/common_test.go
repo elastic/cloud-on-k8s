@@ -356,6 +356,15 @@ func TestElasticsearchSelector_IsValid(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "PKI and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+				AuthenticationMode:          AuthenticationModePKI,
+			},
+			wantErr: false,
+		},
+		{
 			name: "clientCertificateSecretName without name: KO",
 			selector: ElasticsearchSelector{
 				ClientCertificateSecretName: "cc",
@@ -381,6 +390,21 @@ func TestElasticsearchSelector_IsValid(t *testing.T) {
 			name: "inherits ObjectSelector validation - secretName and serviceName: KO",
 			selector: ElasticsearchSelector{
 				ObjectSelector: ObjectSelector{SecretName: "s", ServiceName: "c"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI without name: KO",
+			selector: ElasticsearchSelector{
+				AuthenticationMode: AuthenticationModePKI,
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI with secretName (external ref): KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector:     ObjectSelector{SecretName: "s"},
+				AuthenticationMode: AuthenticationModePKI,
 			},
 			wantErr: true,
 		},
