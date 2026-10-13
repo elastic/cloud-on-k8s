@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
@@ -130,4 +131,18 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 				"AutoOps CA secret should contain the expected CA certificate")
 		})
 	}
+}
+
+func TestBuildAutoOpsESCASecretDoesNotMutatePolicyLabels(t *testing.T) {
+	policy := newAutoOpsAgentPolicy(func(p *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		p.Labels = map[string]string{"user-label": "value"}
+	})
+	es := newElasticsearch()
+
+	secret := buildAutoOpsESCASecret(policy, *es, "ca-secret", []byte("ca-cert"))
+
+	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
+	assert.Equal(t, "value", secret.Labels["user-label"])
+	// the policy's own labels must not be polluted with the secret's labels
+	assert.Equal(t, map[string]string{"user-label": "value"}, policy.Labels)
 }

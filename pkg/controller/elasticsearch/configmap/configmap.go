@@ -42,12 +42,18 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 		return err
 	}
 
+	// merge into a copy of meta: the caller reuses meta.Labels for other resources (eg. the StatefulSets),
+	// which must not inherit the watched label
+	cmMeta := meta.Merge(metadata.Metadata{Labels: map[string]string{
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+	}})
+
 	nsn := types.NamespacedName{Name: esv1.ScriptsConfigMap(es.Name), Namespace: es.Namespace}
 	scriptsConfigMap := corev1.ConfigMap{
 		Name:        nsn.Name,
 		Namespace:   nsn.Namespace,
-		Labels:      meta.Labels,
-		Annotations: meta.Annotations,
+		Labels:      cmMeta.Labels,
+		Annotations: cmMeta.Annotations,
 		Data: map[string]string{
 			nodespec.LegacyReadinessProbeScriptConfigKey: nodespec.LegacyReadinessProbeScript,
 			nodespec.ReadinessPortProbeScriptConfigKey:   nodespec.ReadinessPortProbeScript,
@@ -57,8 +63,6 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(es),
 		},
 	}
-
-	scriptsConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	return reconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }

@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -161,6 +162,9 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			}
 			assert.Equal(t, len(file.Data), 1)
 			assert.Equal(t, tt.expectedContent, file.Data[volume.UnicastHostsFile])
+			assert.Equal(t, map[string]string{
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+			}, file.Labels)
 		})
 	}
 }

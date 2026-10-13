@@ -252,7 +252,8 @@ func autoopsModules(raw map[string]any) []any {
 func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, userCfg, userSecretCfg *settings.CanonicalConfig) (corev1.ConfigMap, error) {
 	labels := resourceLabelsFor(policy, es)
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      maps.Merge(policy.GetLabels(), labels),
+		// merge into labels (a fresh map) so that policy.GetLabels() is not mutated
+		Labels:      maps.MergePreservingExistingKeys(labels, policy.GetLabels()),
 		Annotations: policy.GetAnnotations(),
 	})
 	meta.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
