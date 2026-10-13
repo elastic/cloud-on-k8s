@@ -16,8 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/go-logr/logr"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -181,9 +179,23 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	// Determine replica count for this pool.
-	replicas, oldReplicas := deploymentReplicas(logger, poolParams.ScaleToZero, kb, poolParams.Role, &existingDeployment)
+	replicas, oldReplicas := deploymentReplicas(ctx, d.client, kb, poolParams, &existingDeployment)
 
-	dpParams, err := d.deploymentParams(ctx, kb, poolParams.Role, poolParams.SecretName, poolParams.DeploymentName, replicas, oldReplicas, podAnnotations, poolParams.BasePath, poolParams.OperatorParameters.SetDefaultSecurityContext, poolParams.OperatorParameters.OperatorNamespace, meta, expectedSelector)
+	dpParams, err := d.deploymentParams(
+		ctx,
+		kb,
+		poolParams.Role,
+		poolParams.SecretName,
+		poolParams.DeploymentName,
+		replicas,
+		oldReplicas,
+		podAnnotations,
+		poolParams.BasePath,
+		poolParams.OperatorParameters.SetDefaultSecurityContext,
+		poolParams.OperatorParameters.OperatorNamespace,
+		meta,
+		expectedSelector,
+	)
 	if err != nil {
 		return "", nil, err
 	}
@@ -245,10 +257,13 @@ func serviceSelector(ctx context.Context, client k8s.Client, kb *kbv1.Kibana) (m
 	return deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
 }
 
-func deploymentReplicas(logger logr.Logger, scaleToZero bool, kb *kbv1.Kibana, role kblabel.Role, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+	logger := ulog.FromContext(ctx)
+
 	// replicasFromAnnotation returns the replica count saved in the maintenance annotation
-	// when present. This preserves the saved count across multiple
-	// reconciles that occur while the stop phase is active.
+	// when present, and removes the annotation so the saved count is consumed only once.
+	// During the stop phase the returned value is persisted back into the annotation by the
+	// subsequent deployment reconciliation.
 	replicasFromAnnotation := func() *int32 {
 		if existingDeployment == nil {
 			return nil
@@ -259,6 +274,7 @@ func deploymentReplicas(logger logr.Logger, scaleToZero bool, kb *kbv1.Kibana, r
 				logger.Error(err, "ignoring malformed replicas annotation", "annotation", replicasAnnotationName, "value", v)
 				return nil
 			}
+
 			return new(int32(i))
 		}
 		return nil
@@ -277,16 +293,22 @@ func deploymentReplicas(logger logr.Logger, scaleToZero bool, kb *kbv1.Kibana, r
 	}
 
 	switch {
-	case scaleToZero:
+	case pm.ScaleToZero:
 		newValue = new(int32(0)) // drain both pools before starting the new version
 
 		// Return the old value if the deployment is background tasks. It will be stored in annotation.
-		if role.IsBackgroundTasks() {
+		if pm.Role.IsBackgroundTasks() {
 			oldValue = getBackgroundReplicas()
 		}
 
-	case kb.BackgroundTasksEnabled() && role.IsBackgroundTasks():
+	case kb.BackgroundTasksEnabled() && pm.Role.IsBackgroundTasks():
 		newValue = getBackgroundReplicas()
+
+		// Delete the annotation since it is no longer needed.
+		if err := k8s.PatchAnnotations(ctx, client, existingDeployment, nil, replicasAnnotationName); err != nil {
+			// keep the annotation for the next reconciliation; the value read remains valid
+			logger.Error(err, "failed to remove replicas annotation", "annotation", replicasAnnotationName, "deployment", existingDeployment.Name)
+		}
 
 	default:
 		newValue = new(kb.Spec.Count)

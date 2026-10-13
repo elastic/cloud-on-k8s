@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -1183,13 +1182,14 @@ func TestDeploymentReplicas(t *testing.T) {
 
 	// getBackgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
 	tests := []struct {
-		name       string
-		stopNeeded bool
-		kb         *kbv1.Kibana
-		role       kblabel.Role
-		existingDp *appsv1.Deployment
-		wantNew    *int32
-		wantOld    *int32
+		name            string
+		scaleToZero     bool
+		kb              *kbv1.Kibana
+		role            kblabel.Role
+		existingDp     *appsv1.Deployment
+		wantNew        *int32
+		wantOld        *int32
+		wantAnnRemoved bool // the replicas annotation must be removed from the deployment
 	}{
 		// ---- no stop phase --------------------------------------------------
 		{
@@ -1207,11 +1207,12 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    ptr(2),
 		},
 		{
-			name:       "BG, explicit count ignores annotation: Count wins over annotation",
-			kb:         kbSplit(ptr(2)),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("5")),
-			wantNew:    ptr(2),
+			name:           "BG, explicit count ignores annotation: Count wins over annotation",
+			kb:             kbSplit(ptr(2)),
+			role:           kblabel.BackgroundTasksRole,
+			existingDp:     dp(ptr(0), ann("5")),
+			wantNew:        ptr(2),
+			wantAnnRemoved: true,
 		},
 		{
 			name:       "BG, Count nil, HPA value: HPA replicas win",
@@ -1221,11 +1222,12 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    ptr(4),
 		},
 		{
-			name:       "BG, Count nil, HPA zeroed, annotation: annotation wins as last resort",
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("5")),
-			wantNew:    ptr(5),
+			name:           "BG, Count nil, HPA zeroed, annotation: annotation wins as last resort",
+			kb:             kbSplit(nil),
+			role:           kblabel.BackgroundTasksRole,
+			existingDp:     dp(ptr(0), ann("5")),
+			wantNew:        ptr(5),
+			wantAnnRemoved: true,
 		},
 		{
 			name:       "BG, Count nil, no HPA value, no annotation: returns nil",
@@ -1235,83 +1237,91 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    nil,
 		},
 		{
-			name:       "BG, Count nil, HPA zeroed, malformed annotation: returns nil",
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("not-a-number")),
-			wantNew:    nil,
+			name:           "BG, Count nil, HPA zeroed, malformed annotation: returns nil, annotation still removed",
+			kb:             kbSplit(nil),
+			role:           kblabel.BackgroundTasksRole,
+			existingDp:     dp(ptr(0), ann("not-a-number")),
+			wantNew:        nil,
+			wantAnnRemoved: true,
 		},
 		// ---- stop phase -----------------------------------------------------
 		{
-			name:       "stop, UI role: scales to zero, no oldValue",
-			stopNeeded: true,
-			kb:         kbSplit(ptr(2)),
-			role:       kblabel.UIRole,
-			existingDp: dp(ptr(3), nil),
-			wantNew:    ptr(0),
-			wantOld:    nil,
+			name:        "stop, UI role: scales to zero, no oldValue",
+			scaleToZero: true,
+			kb:          kbSplit(ptr(2)),
+			role:        kblabel.UIRole,
+			existingDp:  dp(ptr(3), nil),
+			wantNew:     ptr(0),
+			wantOld:     nil,
 		},
 		{
-			name:       "stop, BG, explicit count: Count saved as oldValue",
-			stopNeeded: true,
-			kb:         kbSplit(ptr(2)),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(2), nil),
-			wantNew:    ptr(0),
-			wantOld:    ptr(2),
+			name:        "stop, BG, explicit count: Count saved as oldValue",
+			scaleToZero: true,
+			kb:          kbSplit(ptr(2)),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(2), nil),
+			wantNew:     ptr(0),
+			wantOld:     ptr(2),
 		},
 		{
-			name:       "stop, BG, explicit count ignores annotation: Count wins over annotation",
-			stopNeeded: true,
-			kb:         kbSplit(ptr(2)),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("4")),
-			wantNew:    ptr(0),
-			wantOld:    ptr(2),
+			name:        "stop, BG, explicit count ignores annotation: Count wins over annotation",
+			scaleToZero: true,
+			kb:          kbSplit(ptr(2)),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(0), ann("4")),
+			wantNew:     ptr(0),
+			wantOld:     ptr(2),
 		},
 		{
-			name:       "stop, BG, Count nil, HPA value: HPA replicas saved as oldValue",
-			stopNeeded: true,
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(4), nil),
-			wantNew:    ptr(0),
-			wantOld:    ptr(4),
+			name:        "stop, BG, Count nil, HPA value: HPA replicas saved as oldValue",
+			scaleToZero: true,
+			kb:          kbSplit(nil),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(4), nil),
+			wantNew:     ptr(0),
+			wantOld:     ptr(4),
 		},
 		{
-			name:       "stop, BG, Count nil, HPA zeroed, annotation: annotation saved as oldValue",
-			stopNeeded: true,
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("4")),
-			wantNew:    ptr(0),
-			wantOld:    ptr(4),
+			name:        "stop, BG, Count nil, HPA zeroed, annotation: annotation saved as oldValue and kept",
+			scaleToZero: true,
+			kb:          kbSplit(nil),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(0), ann("4")),
+			wantNew:     ptr(0),
+			wantOld:     ptr(4),
 		},
 		{
-			name:       "stop, BG, Count nil, no HPA, no annotation: oldValue is nil",
-			stopNeeded: true,
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(nil, nil),
-			wantNew:    ptr(0),
-			wantOld:    nil,
+			name:        "stop, BG, Count nil, no HPA, no annotation: oldValue is nil",
+			scaleToZero: true,
+			kb:          kbSplit(nil),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(nil, nil),
+			wantNew:     ptr(0),
+			wantOld:     nil,
 		},
 		{
-			name:       "stop, BG, Count nil, HPA zeroed, malformed annotation: oldValue is nil",
-			stopNeeded: true,
-			kb:         kbSplit(nil),
-			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(0), ann("not-a-number")),
-			wantNew:    ptr(0),
-			wantOld:    nil,
+			name:        "stop, BG, Count nil, HPA zeroed, malformed annotation: oldValue is nil",
+			scaleToZero: true,
+			kb:          kbSplit(nil),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(0), ann("not-a-number")),
+			wantNew:     ptr(0),
+			wantOld:     nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotNew, gotOld := deploymentReplicas(logr.Discard(), tt.stopNeeded, tt.kb, tt.role, tt.existingDp)
+			_, hadAnn := tt.existingDp.Annotations[replicasAnnotationName]
+			fakeClient := k8s.NewFakeClient(tt.existingDp)
+			gotNew, gotOld := deploymentReplicas(context.Background(), fakeClient, tt.kb, poolParameters{Role: tt.role, ScaleToZero: tt.scaleToZero}, tt.existingDp)
 			assert.Equal(t, tt.wantNew, gotNew)
 			assert.Equal(t, tt.wantOld, gotOld)
+
+			var updatedDp appsv1.Deployment
+			require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(tt.existingDp), &updatedDp))
+			_, annExists := updatedDp.Annotations[replicasAnnotationName]
+			assert.Equal(t, hadAnn && !tt.wantAnnRemoved, annExists)
 		})
 	}
 }
