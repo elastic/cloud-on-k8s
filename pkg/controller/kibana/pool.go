@@ -329,6 +329,9 @@ func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) boo
 		return false
 	}
 	for _, pod := range pods {
+		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+			continue
+		}
 		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
 		if !ok || ver != kb.Spec.Version {
 			return true

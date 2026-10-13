@@ -1078,6 +1078,12 @@ func TestShouldScaleAllPoolsToZeroForUpgrade(t *testing.T) {
 		BackgroundTasks: &kbv1.KibanaBackgroundTasks{},
 	}}
 
+	makePodInPhase := func(name, version string, role kblabel.Role, phase corev1.PodPhase) corev1.Pod {
+		p := makePod(name, version, role)
+		p.Status.Phase = phase
+		return p
+	}
+
 	tests := []struct {
 		name string
 		kb   kbv1.Kibana
@@ -1147,6 +1153,41 @@ func TestShouldScaleAllPoolsToZeroForUpgrade(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			// Terminal pods never restart, so they cannot run stale code: they must not
+			// keep the stop phase active.
+			name: "split, stale pod in Failed phase: not needed (terminal pods ignored)",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePodInPhase("kb-bg-0", oldVersion, kblabel.BackgroundTasksRole, corev1.PodFailed),
+			},
+			want: false,
+		},
+		{
+			name: "split, stale pod in Succeeded phase: not needed (terminal pods ignored)",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePodInPhase("kb-bg-0", oldVersion, kblabel.BackgroundTasksRole, corev1.PodSucceeded),
+			},
+			want: false,
+		},
+		{
+			name: "split, Failed stale pod plus running stale pod: needed (running pod still counts)",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				makePodInPhase("kb-bg-0", oldVersion, kblabel.BackgroundTasksRole, corev1.PodFailed),
+				makePodInPhase("kb-ui-0", oldVersion, kblabel.UIRole, corev1.PodRunning),
+			},
+			want: true,
+		},
+		{
+			name: "split, Failed pod with missing version label: not needed (terminal pods ignored)",
+			kb:   kbSplit,
+			pods: []corev1.Pod{
+				{Name: "kb-ui-0", Status: corev1.PodStatus{Phase: corev1.PodFailed}},
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1182,10 +1223,10 @@ func TestDeploymentReplicas(t *testing.T) {
 
 	// getBackgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
 	tests := []struct {
-		name            string
-		scaleToZero     bool
-		kb              *kbv1.Kibana
-		role            kblabel.Role
+		name           string
+		scaleToZero    bool
+		kb             *kbv1.Kibana
+		role           kblabel.Role
 		existingDp     *appsv1.Deployment
 		wantNew        *int32
 		wantOld        *int32
