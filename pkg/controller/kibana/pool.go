@@ -252,6 +252,8 @@ func serviceSelector(ctx context.Context, client k8s.Client, kb *kbv1.Kibana) (m
 		if !apierrors.IsNotFound(err) {
 			return nil, err
 		}
+		// kblabel.UIRole is used directly: the HTTP service is only created for the UI role
+		// and only ever targets the primary pool.
 		return deploymentSelector(kb, kblabel.UIRole, nil), nil
 	}
 	return deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
