@@ -178,8 +178,9 @@ func checkBackgroundTasksVersion(k *Kibana) field.ErrorList {
 }
 
 // checkBackgroundTasksNodeRoles rejects configurations where the user sets node.roles in
-// spec.config or spec.backgroundTasks.config. ECK owns node.roles when background task
-// isolation is enabled.
+// spec.config or spec.backgroundTasks.config, or the NODE_ROLES env var on the Kibana
+// container of spec.podTemplate or spec.backgroundTasks.podTemplate. ECK owns node.roles
+// when background task isolation is enabled.
 func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 	var errs field.ErrorList
 	if k.Spec.BackgroundTasks == nil {
@@ -187,37 +188,52 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 		return nil
 	}
 
-	specConfigPath := field.NewPath("spec").Child("config")
-	bgConfigPath := field.NewPath("spec").Child("backgroundTasks").Child("config")
+	specPath := field.NewPath("spec")
+	bgSpecPath := field.NewPath("spec").Child("backgroundTasks")
 
 	for _, vld := range []struct {
-		Config        *commonv1.Config
-		Path          *field.Path
-		DetailMessage string
+		Config           *commonv1.Config
+		PodSpec          v1.PodSpec
+		Path             *field.Path
+		DetailMessage    string
+		EnvDetailMessage string
 	}{
 		{
-			Config:        k.Spec.Config,
-			Path:          specConfigPath,
-			DetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.config",
+			Config:           k.Spec.Config,
+			PodSpec:          k.Spec.PodTemplate.Spec,
+			Path:             specPath,
+			DetailMessage:    "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.config",
+			EnvDetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set via the NODE_ROLES env var in spec.podTemplate",
 		},
 		{
-			Config:        k.Spec.BackgroundTasks.Config,
-			Path:          bgConfigPath,
-			DetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.backgroundTasks.config",
+			Config:           k.Spec.BackgroundTasks.Config,
+			PodSpec:          k.Spec.BackgroundTasks.PodTemplate.Spec,
+			Path:             bgSpecPath,
+			DetailMessage:    "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.backgroundTasks.config",
+			EnvDetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set via the NODE_ROLES env var in spec.backgroundTasks.podTemplate",
 		},
 	} {
-		if vld.Config == nil {
-			continue
+		if vld.Config != nil {
+			config, err := common.NewCanonicalConfigFrom(vld.Config.Data)
+			if err != nil {
+				errs = append(errs, field.Invalid(vld.Path.Child("config"), vld.Config, cfgInvalidMsg))
+			} else if keys := config.HasKeys([]string{label.NodeRolesConfigKey}); len(keys) > 0 {
+				errs = append(errs, field.Forbidden(vld.Path.Child("config"), vld.DetailMessage))
+			}
 		}
 
-		config, err := common.NewCanonicalConfigFrom(vld.Config.Data)
-		if err != nil {
-			errs = append(errs, field.Invalid(vld.Path, vld.Config, cfgInvalidMsg))
+		index, container := getKibanaContainerWithIndex(vld.PodSpec)
+		if container == nil {
 			continue
 		}
-
-		if keys := config.HasKeys([]string{label.NodeRolesConfigKey}); len(keys) > 0 {
-			errs = append(errs, field.Forbidden(vld.Path, vld.DetailMessage))
+		for _, envVar := range container.Env {
+			if envVar.Name == label.NodeRolesEnvVar {
+				errs = append(errs, field.Forbidden(
+					vld.Path.Child("podTemplate", "spec", "containers").Index(index).Child("env"),
+					vld.EnvDetailMessage,
+				))
+				break
+			}
 		}
 	}
 
