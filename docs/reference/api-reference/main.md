@@ -1979,6 +1979,9 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 % TODO add function to crd-ref-docs return anchor used in links docs-v3 does not seem to produce valid markdown anchors
 ## kibana.k8s.elastic.co/v1 [#kibanak8selasticcov1]
 
+or more contributor license agreements. Licensed under the Elastic License 2.0;
+you may not use this file except in compliance with the Elastic License 2.0.
+
 Package v1 contains API schema definitions for managing Kibana resources.
 
 ### Resource Types
