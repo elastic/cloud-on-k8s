@@ -263,7 +263,7 @@ func withEPRCertsVolume(builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, us
 func getPodTemplateSpecForRole(kb kbv1.Kibana, role kblabel.Role) (corev1.PodTemplateSpec, error) {
 	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
 	// spec.podTemplate.
-	if kb.BackgroundTasksEnabled() && role.IsBackgroundTasks() {
+	if role.IsBackgroundTasks() {
 		merged, err := mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
@@ -314,12 +314,6 @@ func mergePoolPodTemplate(base, overlay corev1.PodTemplateSpec) (corev1.PodTempl
 	// does not silently drop them.
 	if overlay.Spec.Containers == nil {
 		out.Spec.Containers = base.Spec.Containers
-	}
-	if overlay.Spec.InitContainers == nil {
-		out.Spec.InitContainers = base.Spec.InitContainers
-	}
-	if overlay.Spec.Volumes == nil {
-		out.Spec.Volumes = base.Spec.Volumes
 	}
 	return out, nil
 }

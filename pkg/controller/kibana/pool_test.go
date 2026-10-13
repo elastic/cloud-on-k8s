@@ -775,33 +775,41 @@ func TestNodeRolesEnvVar(t *testing.T) {
 	// Use the existing kibanaFixture (7.17.0) + initialObjects for deploymentParams.
 	// The NODE_ROLES injection is independent of the Kibana version.
 	objs := defaultInitialObjects()
-	kb := kibanaFixture()
 
 	cases := []struct {
 		name          string
 		role          kblabel.Role
+		kb            *kbv1.Kibana
 		wantNodeRoles string
 		wantPresent   bool
 	}{
 		{
 			name:        "empty role (single-pool mode) injects no NODE_ROLES",
 			role:        kblabel.Role{},
+			kb:          kibanaFixture(),
 			wantPresent: false,
 		},
 		{
 			name:        "Single-pool mode injects no NODE_ROLES",
 			role:        kblabel.SinglePoolRole,
+			kb:          kibanaFixture(),
 			wantPresent: false,
 		},
 		{
 			name:          "UIRole injects NODE_ROLES=[\"ui\"]",
 			role:          kblabel.UIRole,
+			kb:            kibanaFixture(),
 			wantNodeRoles: `["ui"]`,
 			wantPresent:   true,
 		},
 		{
-			name:          "BackgroundTasksRole injects NODE_ROLES=[\"background_tasks\"]",
-			role:          kblabel.BackgroundTasksRole,
+			name: "BackgroundTasksRole injects NODE_ROLES=[\"background_tasks\"]",
+			role: kblabel.BackgroundTasksRole,
+			kb: func() *kbv1.Kibana {
+				kb := kibanaFixture()
+				kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
+				return kb
+			}(),
 			wantNodeRoles: `["background_tasks"]`,
 			wantPresent:   true,
 		},
@@ -810,21 +818,21 @@ func TestNodeRolesEnvVar(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := newTestDriver(t, objs...)
-			replicas := new(kb.Spec.Count)
+			replicas := new(tc.kb.Spec.Count)
 			params, err := d.deploymentParams(
 				context.Background(),
-				kb,
+				tc.kb,
 				tc.role,
-				kbv1.ConfigSecret(kb.Name),
-				kbv1.KBNamer.Suffix(kb.Name),
+				kbv1.ConfigSecret(tc.kb.Name),
+				kbv1.KBNamer.Suffix(tc.kb.Name),
 				replicas,
 				nil, // replicasAnnotationValue
 				nil, // policyAnnotations
 				"",
 				true,
 				"",
-				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
-				kb.GetIdentityLabels(),
+				metadata.Propagate(tc.kb, metadata.Metadata{Labels: tc.kb.GetIdentityLabels()}),
+				tc.kb.GetIdentityLabels(),
 			)
 			require.NoError(t, err)
 

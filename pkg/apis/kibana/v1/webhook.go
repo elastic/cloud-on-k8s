@@ -5,6 +5,8 @@
 package v1
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -188,6 +190,8 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 		return nil
 	}
 
+	const detailsPrefix = "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set"
+
 	specPath := field.NewPath("spec")
 	bgSpecPath := field.NewPath("spec").Child("backgroundTasks")
 
@@ -202,15 +206,15 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 			Config:           k.Spec.Config,
 			PodSpec:          k.Spec.PodTemplate.Spec,
 			Path:             specPath,
-			DetailMessage:    "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.config",
-			EnvDetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set via the NODE_ROLES env var in spec.podTemplate",
+			DetailMessage:    fmt.Sprintf("%s %s", detailsPrefix, "in spec.config"),
+			EnvDetailMessage: fmt.Sprintf("%s %s", detailsPrefix, "via the NODE_ROLES env var in spec.podTemplate"),
 		},
 		{
 			Config:           k.Spec.BackgroundTasks.Config,
 			PodSpec:          k.Spec.BackgroundTasks.PodTemplate.Spec,
 			Path:             bgSpecPath,
-			DetailMessage:    "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set in spec.backgroundTasks.config",
-			EnvDetailMessage: "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set via the NODE_ROLES env var in spec.backgroundTasks.podTemplate",
+			DetailMessage:    fmt.Sprintf("%s %s", detailsPrefix, "in spec.backgroundTasks.config"),
+			EnvDetailMessage: fmt.Sprintf("%s %s", detailsPrefix, "via the NODE_ROLES env var in spec.backgroundTasks.podTemplate"),
 		},
 	} {
 		if vld.Config != nil {

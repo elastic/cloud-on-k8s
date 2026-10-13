@@ -378,7 +378,7 @@ func (d *driver) deploymentParams(
 	// When background task isolation is active, set NODE_ROLES on the Kibana container.
 	// Kibana reads this env var to determine which roles it runs, taking precedence over
 	// kibana.yml.
-	if role.IsBackgroundTasks() || role.IsUI() {
+	if role.Name != "" {
 		nodeRolesValue := fmt.Sprintf(`["%s"]`, role.Name)
 		for i, c := range kibanaPodSpec.Spec.Containers {
 			if c.Name == kbv1.KibanaContainerName {

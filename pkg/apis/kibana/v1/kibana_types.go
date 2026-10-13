@@ -161,7 +161,7 @@ type KibanaBackgroundTasks struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 }
 
-// KibanaPoolsStatuses reports the observed state of a all Kibana pools (UI and background tasks).
+// KibanaPoolsStatuses reports the observed state of all Kibana pools (UI and background tasks).
 type KibanaPoolsStatuses struct {
 	// BackgroundTasks reports the state of the background tasks Deployment.
 	// Only set when spec.backgroundTasks is configured.
@@ -617,8 +617,7 @@ func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.A
 }
 
 func (k *Kibana) GetResourcesForRole(role label.Role) commonv1.Resources {
-	if k.BackgroundTasksEnabled() &&
-		role.IsBackgroundTasks() &&
+	if role.IsBackgroundTasks() &&
 		!k.Spec.BackgroundTasks.Resources.IsEmpty() {
 		return k.Spec.BackgroundTasks.Resources
 	}

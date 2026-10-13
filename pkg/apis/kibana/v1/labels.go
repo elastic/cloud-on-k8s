@@ -19,11 +19,7 @@ func (k *Kibana) GetIdentityLabels() map[string]string {
 
 func (k *Kibana) GetPoolIdentityLabels(role label.Role) map[string]string {
 	labels := k.GetIdentityLabels()
-	labels[label.RoleLabelName] = label.RolePrimaryValue
-
-	if k.BackgroundTasksEnabled() && role.LabelValue != "" {
-		labels[label.RoleLabelName] = role.LabelValue
-	}
+	labels[label.RoleLabelName] = role.LabelValue
 	return labels
 }
 
