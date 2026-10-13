@@ -25,7 +25,7 @@ ECK 3.5.0 includes changes that modify the Fleet-server pod spec, triggering a r
 ::::
 
 ::::{dropdown} Rolling restart of {{es}} and {{product.kibana}} pods during operator upgrade
-ECK 3.5.0 adds the `eck.k8s.elastic.co/watched: "true"` label to the Secrets, Services, and ConfigMaps that the operator manages. This label supports the new opt-in `--restrict-watched-resources` operator flag. Due to a bug, the label also leaked into the {{es}} pod template and the {{product.kibana}} Deployment. Because this changes their pod specs, their pods restart during the operator upgrade.
+ECK 3.5.0 adds the `eck.k8s.elastic.co/watched: "true"` label to the Secrets, Services, and ConfigMaps that the operator manages. This label supports the new opt-in `--restrict-watched-resources` operator flag. Due to a bug, the label also leaked into the {{es}} and {{product.kibana}} pod templates. Because this changes their pod specs, their pods restart during the operator upgrade.
 
 **Impact**<br> All {{es}} and {{product.kibana}} pods will be restarted as part of the operator upgrade. The `--restrict-watched-resources` flag is disabled by default and does not need to be enabled for this restart to occur.
 
