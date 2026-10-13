@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,6 +23,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
@@ -223,7 +225,8 @@ func TestPoolParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params, err := (&driver{}).poolParams(tt.kb, tt.role)
+			opParams := operator.Parameters{OperatorNamespace: "op-ns", SetDefaultSecurityContext: true}
+			params, err := poolParams(opParams, tt.kb, tt.role, "/base-path", true)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantSecretName, params.SecretName)
 			assert.Equal(t, tt.wantDeploymentName, params.DeploymentName)
@@ -236,6 +239,11 @@ func TestPoolParams(t *testing.T) {
 				_, err := params.Config.String(k)
 				assert.Error(t, err, "key %q must be absent", k)
 			}
+			// Passthrough fields must be propagated verbatim.
+			assert.Equal(t, tt.role, params.Role)
+			assert.Equal(t, "/base-path", params.BasePath)
+			assert.True(t, params.ScaleToZero)
+			assert.Equal(t, opParams, params.OperatorParameters)
 		})
 	}
 }
@@ -457,16 +465,83 @@ func TestGarbageCollectBGConfigSecret(t *testing.T) {
 
 // ---- Pause-guard paths ------------------------------------------------------
 
-func TestHandleDeploymentSelectorMismatch(t *testing.T) {
+func TestDeploymentSelector(t *testing.T) {
+	kbNoSplit := &kbv1.Kibana{Name: "test", Spec: kbv1.KibanaSpec{Version: "8.17.0"}}
+	kbSplit := kbWithBG(nil, nil)
+
+	fullSelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+		kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
+	}
+	legacySelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+	}
+	bgSelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+		kblabel.RoleLabelName:       kblabel.RoleBackgroundTasksValue,
+	}
+
+	tests := []struct {
+		name     string
+		kb       *kbv1.Kibana
+		role     kblabel.Role
+		existing map[string]string
+		want     map[string]string
+	}{
+		{
+			name:     "no existing deployment: full selector with role label",
+			kb:       kbNoSplit,
+			role:     kblabel.SinglePoolRole,
+			existing: nil,
+			want:     fullSelector,
+		},
+		{
+			name:     "split off, existing without role label: role stripped (ECK upgrade path)",
+			kb:       kbNoSplit,
+			role:     kblabel.SinglePoolRole,
+			existing: legacySelector,
+			want:     legacySelector,
+		},
+		{
+			name:     "split off, existing already has role=primary: full selector kept",
+			kb:       kbNoSplit,
+			role:     kblabel.SinglePoolRole,
+			existing: fullSelector,
+			want:     fullSelector,
+		},
+		{
+			name:     "split on, existing without role label: role kept (exception does not apply)",
+			kb:       kbSplit,
+			role:     kblabel.UIRole,
+			existing: legacySelector,
+			want:     fullSelector,
+		},
+		{
+			name:     "split on, BG role: background_tasks selector regardless of existing",
+			kb:       kbSplit,
+			role:     kblabel.BackgroundTasksRole,
+			existing: legacySelector,
+			want:     bgSelector,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, deploymentSelector(tt.kb, tt.role, tt.existing))
+		})
+	}
+}
+
+// ---- reconcilePoolDeployment --------------------------------------------------
+
+func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 	dpName := kbv1.KBNamer.Suffix("test")
 	legacyLabels := map[string]string{
-		kblabel.KibanaNameLabelName:  "test",
-		"common.k8s.elastic.co/type": "kibana",
-	}
-	newSelector := map[string]string{
-		kblabel.KibanaNameLabelName:  "test",
-		"common.k8s.elastic.co/type": "kibana",
-		kblabel.RoleLabelName:        kblabel.RolePrimaryValue,
+		kblabel.KibanaNameLabelName: "test",
+		commonv1.TypeLabelName:      "kibana",
 	}
 	legacyDp := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
@@ -477,51 +552,45 @@ func TestHandleDeploymentSelectorMismatch(t *testing.T) {
 		}
 	}
 
+	// Split enabled: the expected UI selector includes role=primary while the existing
+	// deployment has no role label, so a selector mismatch must be detected.
 	kbPaused := kbWithBG(nil, nil)
 	kbPaused.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
 	kbActive := kbWithBG(nil, nil)
 
-	t.Run("paused: mismatch detected but deployment not deleted", func(t *testing.T) {
+	poolParamsFor := func(kb *kbv1.Kibana) poolParameters {
+		pp, err := poolParams(operator.Parameters{}, kb, kblabel.UIRole, "", false)
+		require.NoError(t, err)
+		return pp
+	}
+	meta := metadata.Metadata{Labels: kbActive.GetIdentityLabels()}
+
+	t.Run("paused: mismatch detected, deployment not deleted, Defer returned", func(t *testing.T) {
 		dp := legacyDp()
 		fakeClient := k8s.NewFakeClient(dp)
 		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
 
-		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbPaused, dp, legacyLabels, newSelector, dpName)
+		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 
 		require.NoError(t, err)
-		assert.True(t, res.mismatch)
-		assert.False(t, res.requeue)
+		assert.Equal(t, Defer, res)
+		assert.Nil(t, reconciledDp)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 	})
 
-	t.Run("not paused: mismatch triggers deletion and requeue", func(t *testing.T) {
+	t.Run("not paused: mismatch triggers deletion and Requeue", func(t *testing.T) {
 		dp := legacyDp()
 		fakeClient := k8s.NewFakeClient(dp)
 		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
 
-		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, newSelector, dpName)
+		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 
 		require.NoError(t, err)
-		assert.True(t, res.mismatch)
-		assert.True(t, res.requeue)
+		assert.Equal(t, Requeue, res)
+		assert.Nil(t, reconciledDp)
 		var got appsv1.Deployment
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
-	})
-
-	t.Run("no mismatch: not handled, deployment untouched", func(t *testing.T) {
-		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(dp)
-		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
-
-		// selector equals existingMatchLabels — no mismatch
-		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, legacyLabels, dpName)
-
-		require.NoError(t, err)
-		assert.False(t, res.mismatch)
-		assert.False(t, res.requeue)
-		var got appsv1.Deployment
-		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 	})
 
 	t.Run("resume after pause: deletion happens on next call", func(t *testing.T) {
@@ -530,18 +599,96 @@ func TestHandleDeploymentSelectorMismatch(t *testing.T) {
 		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
 
 		// First call: paused — deployment survives.
-		res, err := d.handleDeploymentSelectorMismatch(context.Background(), kbPaused, dp, legacyLabels, newSelector, dpName)
+		res, _, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
-		assert.True(t, res.mismatch)
+		assert.Equal(t, Defer, res)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 
 		// Second call: not paused — deployment deleted.
-		res, err = d.handleDeploymentSelectorMismatch(context.Background(), kbActive, dp, legacyLabels, newSelector, dpName)
+		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
-		assert.True(t, res.mismatch)
-		assert.True(t, res.requeue)
+		assert.Equal(t, Requeue, res)
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
+	})
+}
+
+func TestReconcilePoolDeployment(t *testing.T) {
+	newDriverFor := func(t *testing.T, kb *kbv1.Kibana, objects ...client.Object) *driver {
+		t.Helper()
+		d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+		require.NoError(t, err)
+		return d
+	}
+
+	t.Run("creates deployment and reconciles the pool config secret", func(t *testing.T) {
+		kb := kibanaFixture()
+		kb.Spec.Config = &commonv1.Config{Data: map[string]any{"server.name": "from-spec"}}
+		d := newDriverFor(t, kb, defaultInitialObjects()...)
+
+		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
+		require.NoError(t, err)
+		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+		reconciledSecrets := map[string]struct{}{}
+		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, pp, nil, meta, reconciledSecrets)
+		require.NoError(t, err)
+
+		assert.Equal(t, poolDeploymentResult(""), res)
+		require.NotNil(t, reconciledDp)
+		assert.Equal(t, kbv1.KBNamer.Suffix(kb.Name), reconciledDp.Name)
+		assert.Equal(t, int32(1), *reconciledDp.Spec.Replicas)
+
+		// The deployment must exist in the API server.
+		var dp appsv1.Deployment
+		require.NoError(t, d.client.Get(context.Background(),
+			types.NamespacedName{Namespace: "default", Name: kbv1.KBNamer.Suffix(kb.Name)}, &dp))
+
+		// The config secret must have been rewritten from the pool config.
+		var sec corev1.Secret
+		require.NoError(t, d.client.Get(context.Background(),
+			types.NamespacedName{Namespace: "default", Name: kbv1.ConfigSecret(kb.Name)}, &sec))
+		assert.Contains(t, string(sec.Data[SettingsFilename]), "from-spec")
+
+		// The secret must be recorded as reconciled for this pass.
+		assert.Contains(t, reconciledSecrets, kbv1.ConfigSecret(kb.Name))
+	})
+
+	t.Run("skips secret write when it was already reconciled in this pass", func(t *testing.T) {
+		kb := kibanaFixture()
+		kb.Spec.Config = &commonv1.Config{Data: map[string]any{"server.name": "from-spec"}}
+		d := newDriverFor(t, kb, defaultInitialObjects()...)
+
+		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
+		require.NoError(t, err)
+		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+		// Pretend an earlier pool sharing the same secret already wrote it.
+		reconciledSecrets := map[string]struct{}{kbv1.ConfigSecret(kb.Name): {}}
+		_, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, pp, nil, meta, reconciledSecrets)
+		require.NoError(t, err)
+		require.NotNil(t, reconciledDp)
+
+		// The secret must keep its initial content (see defaultInitialObjects): no second write.
+		var sec corev1.Secret
+		require.NoError(t, d.client.Get(context.Background(),
+			types.NamespacedName{Namespace: "default", Name: kbv1.ConfigSecret(kb.Name)}, &sec))
+		assert.Equal(t, "server.name: test", string(sec.Data["kibana.yml"]))
+	})
+
+	t.Run("scaleToZero pool params produce a zero-replicas deployment", func(t *testing.T) {
+		kb := kibanaFixture()
+		d := newDriverFor(t, kb, defaultInitialObjects()...)
+
+		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", true)
+		require.NoError(t, err)
+		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+		_, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, pp, nil, meta, map[string]struct{}{})
+		require.NoError(t, err)
+		require.NotNil(t, reconciledDp)
+		require.NotNil(t, reconciledDp.Spec.Replicas)
+		assert.Equal(t, int32(0), *reconciledDp.Spec.Replicas)
 	})
 }
 
@@ -715,10 +862,6 @@ func TestServiceSelector(t *testing.T) {
 		return svc
 	}
 
-	driverWith := func(objects ...client.Object) *driver {
-		return &driver{client: k8s.NewFakeClient(objects...)}
-	}
-
 	tests := []struct {
 		name        string
 		kb          *kbv1.Kibana
@@ -768,9 +911,8 @@ func TestServiceSelector(t *testing.T) {
 			if tt.existingSvc != nil {
 				objects = append(objects, tt.existingSvc)
 			}
-			d := driverWith(objects...)
 
-			sel, err := d.serviceSelector(context.Background(), tt.kb)
+			sel, err := serviceSelector(context.Background(), k8s.NewFakeClient(objects...), tt.kb)
 			require.NoError(t, err)
 
 			if tt.wantRole == "" {
@@ -1167,8 +1309,7 @@ func TestDeploymentReplicas(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &driver{}
-			gotNew, gotOld := d.deploymentReplicas(logr.Discard(), tt.stopNeeded, tt.kb, tt.role, tt.existingDp)
+			gotNew, gotOld := deploymentReplicas(logr.Discard(), tt.stopNeeded, tt.kb, tt.role, tt.existingDp)
 			assert.Equal(t, tt.wantNew, gotNew)
 			assert.Equal(t, tt.wantOld, gotOld)
 		})
@@ -1369,4 +1510,108 @@ func TestBuildStatus(t *testing.T) {
 		assert.Equal(t, int32(2), state.Kibana.Status.DeploymentStatus.Count)
 		assert.Equal(t, int32(1), state.Kibana.Status.DeploymentStatus.AvailableNodes)
 	})
+}
+
+func TestReconcileServicePauseGuard(t *testing.T) {
+	// Selector of a Service created by an older ECK version, before the role label existed.
+	rolelessSelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+	}
+	fullSelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+		kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
+	}
+
+	mkSvc := func(selector map[string]string) *corev1.Service {
+		svc := &corev1.Service{}
+		svc.Name = kbv1.HTTPService("test")
+		svc.Namespace = "default"
+		svc.Spec.Selector = selector
+		return svc
+	}
+	mkKb := func(split, paused bool) *kbv1.Kibana {
+		kb := &kbv1.Kibana{}
+		kb.Name = "test"
+		kb.Namespace = "default"
+		kb.Spec.Version = "8.17.0"
+		if split {
+			kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+		}
+		if paused {
+			kb.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+		}
+		return kb
+	}
+
+	tests := []struct {
+		name     string
+		split    bool
+		paused   bool
+		existing *corev1.Service // nil: the Service does not exist yet
+		// wantSelector is the selector of the Service in the API server after reconciliation.
+		wantSelector map[string]string
+	}{
+		{
+			// Split enabled means the upgrade-path exception does not apply, so the expected
+			// selector includes role=primary and differs from the roleless existing one.
+			name:         "paused, selector differs: reconciliation skipped",
+			split:        true,
+			paused:       true,
+			existing:     mkSvc(rolelessSelector),
+			wantSelector: rolelessSelector,
+		},
+		{
+			name:         "paused, same selector: reconciliation proceeds",
+			split:        true,
+			paused:       true,
+			existing:     mkSvc(fullSelector),
+			wantSelector: fullSelector,
+		},
+		{
+			name:         "not paused, selector differs: selector updated",
+			split:        true,
+			paused:       false,
+			existing:     mkSvc(rolelessSelector),
+			wantSelector: fullSelector,
+		},
+		{
+			name:         "paused, no existing service: service created with full selector",
+			split:        true,
+			paused:       true,
+			existing:     nil,
+			wantSelector: fullSelector,
+		},
+		{
+			// Split disabled: the ECK upgrade-path exception strips the role label, the
+			// selectors match and the roleless Service is left untouched.
+			name:         "not paused, split off, roleless existing: selector kept roleless",
+			split:        false,
+			paused:       false,
+			existing:     mkSvc(rolelessSelector),
+			wantSelector: rolelessSelector,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objs []client.Object
+			if tt.existing != nil {
+				objs = append(objs, tt.existing)
+			}
+			client := k8s.NewFakeClient(objs...)
+
+			kb := mkKb(tt.split, tt.paused)
+			meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+			got, err := reconcileService(t.Context(), client, kb, meta)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantSelector, got.Spec.Selector)
+
+			var inAPIServer corev1.Service
+			require.NoError(t, client.Get(context.Background(),
+				types.NamespacedName{Namespace: "default", Name: kbv1.HTTPService("test")}, &inAPIServer))
+			assert.Equal(t, tt.wantSelector, inAPIServer.Spec.Selector)
+		})
+	}
 }
