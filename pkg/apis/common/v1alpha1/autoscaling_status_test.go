@@ -406,15 +406,15 @@ func TestAutoscalingStatusBuilder_Build_Order(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			asb := NewAutoscalingStatusBuilder()
+			for _, policy := range tt.policies {
+				policyBuilder := asb.ForPolicy(policy.name)
+				for _, event := range policy.events {
+					policyBuilder.RecordEvent(event, "message")
+				}
+			}
 			// The builder is backed by maps, build the status several times to catch a random iteration order.
 			for range 100 {
-				asb := NewAutoscalingStatusBuilder()
-				for _, policy := range tt.policies {
-					policyBuilder := asb.ForPolicy(policy.name)
-					for _, event := range policy.events {
-						policyBuilder.RecordEvent(event, "message")
-					}
-				}
 				status := asb.Build()
 				gotPolicies := make([]string, 0, len(status.AutoscalingPolicyStatuses))
 				for _, policyStatus := range status.AutoscalingPolicyStatuses {
