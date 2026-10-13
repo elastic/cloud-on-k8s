@@ -29,7 +29,7 @@ ECK 3.5.0 adds the `eck.k8s.elastic.co/watched: "true"` label to the Secrets, Se
 
 **Impact**<br> All {{es}} and {{product.kibana}} pods will be restarted as part of the operator upgrade. The `--restrict-watched-resources` flag is disabled by default and does not need to be enabled for this restart to occur.
 
-**Action**<br> No action required. Be aware that {{es}} and {{product.kibana}} pods will restart during the upgrade.
+**Action**<br> No action required. Be aware that {{es}} and {{product.kibana}} pods will restart during the upgrade. A future ECK release that fixes this bug removes the label again, which causes another restart of these pods.
 
 For more information, check [PR #9359](https://github.com/elastic/cloud-on-k8s/pull/9359) and [Issue #9786](https://github.com/elastic/cloud-on-k8s/issues/9786).
 ::::
