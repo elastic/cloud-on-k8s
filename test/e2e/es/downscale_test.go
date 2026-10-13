@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
@@ -59,18 +60,9 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 		WithNamedESDataNodes(2, "data-new", elasticsearch.DefaultResources)
 
 	// add a NodeSet whose Pod cannot be scheduled, so that one Pod is not ready during the removal
-	pendingNodeSet := esv1.NodeSet{
-		Name:        "pending",
-		Count:       1,
-		Config:      &commonv1.Config{Data: elasticsearch.DataRoleCfg(initial.Elasticsearch.Spec.Version)},
-		PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
-	}
-	pendingNodeSet.PodTemplate.Spec.NodeSelector = map[string]string{"cannot": "be-scheduled"}
+	pendingNodeSet, fixedNodeSet := pendingNodeSets(initial)
 	renamedWithPending := renamed.DeepCopy().WithNodeSet(pendingNodeSet)
-
 	// eventually let the Pod be scheduled: a NodeSet whose Pods never joined the cluster cannot be removed
-	fixedNodeSet := *pendingNodeSet.DeepCopy()
-	fixedNodeSet.PodTemplate.Spec.NodeSelector = nil
 	fixed := renamed.DeepCopy().WithNodeSet(fixedNodeSet)
 
 	esName := initial.Elasticsearch.Name
@@ -82,104 +74,23 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 	}
 	var esClient esclient.Client
 	leavingPods := test.NewPodRestartChecker("leaving Elasticsearch", test.ESPodListOptionsByNodeSet(esNamespace, esName, "data")...)
-	var reconciledGeneration int64
+
+	// one primary on each leaving node, without replicas: Elasticsearch considers a node holding only a replica that
+	// cannot move as safe to remove
+	pinnedIndexSettings := fmt.Sprintf(
+		`{"settings": {"number_of_shards": 2, "number_of_replicas": 0, "index.routing.allocation.total_shards_per_node": 1, "index.routing.allocation.exclude._name": "%s-*"}}`,
+		esv1.StatefulSet(esName, "data-new"),
+	)
 
 	test.StepList{}.
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
-		WithStep(test.Step{
-			Name: "Create an index that cannot be migrated to the new data nodes",
-			Test: test.Eventually(func() error {
-				var err error
-				if esClient, err = elasticsearch.NewElasticsearchClient(initial.Elasticsearch, k); err != nil {
-					return err
-				}
-				// the index may already exist if a previous attempt only failed to read the response
-				if _, err := elasticsearch.DoRequest(ctx, esClient, http.MethodGet, "/"+pinnedIndex, nil); err == nil {
-					return nil
-				}
-				// one primary on each leaving node, without replicas: Elasticsearch considers a node holding only a
-				// replica that cannot move as safe to remove
-				settings := fmt.Sprintf(
-					`{"settings": {"number_of_shards": 2, "number_of_replicas": 0, "index.routing.allocation.total_shards_per_node": 1, "index.routing.allocation.exclude._name": "%s-*"}}`,
-					esv1.StatefulSet(esName, "data-new"),
-				)
-				_, err = elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex, []byte(settings))
-				return err
-			}),
-		}).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the new data nodes", pinnedIndexSettings)).
 		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
 		WithSteps(leavingPods.RecordUIDs(k)).
 		WithSteps(renamedWithPending.UpgradeTestSteps(k)).
-		WithStep(test.Step{
-			Name: "Leaving nodes should have a remove-type shutdown",
-			Test: test.Eventually(func() error {
-				return checkRemoveShutdowns(ctx, esClient, leavingNodes)
-			}),
-		}).
-		WithStep(test.Step{
-			Name: "Leaving nodes should not be ready",
-			Test: test.Eventually(func() error {
-				return checkPodsNotReady(k, esNamespace, leavingNodes)
-			}),
-		}).
-		WithStep(test.Step{
-			// a spec change that does not affect the Pods, to make sure the operator reconciles while the leaving Pods
-			// are not ready rather than the shutdowns being kept because it is not reconciling
-			Name: "Change the StatefulSets revision history limit",
-			Test: test.Eventually(func() error {
-				var es esv1.Elasticsearch
-				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&initial.Elasticsearch), &es); err != nil {
-					return err
-				}
-				es.Spec.RevisionHistoryLimit = new(int32(5))
-				if err := k.Client.Update(ctx, &es); err != nil {
-					return err
-				}
-				reconciledGeneration = es.Generation
-				return nil
-			}),
-		}).
-		WithStep(test.Step{
-			Name: "The operator should reconcile the change",
-			Test: test.Eventually(func() error {
-				var es esv1.Elasticsearch
-				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&initial.Elasticsearch), &es); err != nil {
-					return err
-				}
-				if es.Status.ObservedGeneration < reconciledGeneration {
-					return fmt.Errorf("observed generation %d, expected %d", es.Status.ObservedGeneration, reconciledGeneration)
-				}
-				return nil
-			}),
-		}).
-		WithStep(test.Step{
-			// the shutdowns used to be cancelled by the next reconciliation once their Pods were not ready, then
-			// requested again, so the state is sampled over several reconciliations
-			Name: "Shutdowns of the leaving nodes should not be cancelled",
-			Test: func(t *testing.T) {
-				t.Helper()
-				require.Never(t, func() bool {
-					err := checkRemoveShutdowns(ctx, esClient, leavingNodes)
-					if err == nil {
-						err = checkPodsNotReady(k, esNamespace, leavingNodes)
-					}
-					if err != nil {
-						t.Log(err)
-					}
-					// errors while querying Elasticsearch or the API server are not considered as a cancellation
-					return errors.Is(err, errNoRemoveShutdown) || errors.Is(err, errPodReady)
-				}, shutdownsKeptFor, 2*time.Second, "a shutdown of the leaving nodes was cancelled")
-			},
-		}).
-		WithStep(test.Step{
-			Name: "Leaving Pods should not have been restarted",
-			Test: func(t *testing.T) {
-				t.Helper()
-				require.NoError(t, leavingPods.CheckNotRestarted(ctx, k))
-			},
-		}).
+		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, leavingNodes, leavingPods)).
 		WithStep(test.Step{
 			Name: "Allow the index to be migrated to the new data nodes",
 			Test: test.Eventually(func() error {
@@ -212,6 +123,202 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 		RunSequential(t)
 }
 
+// TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady removes a master node while the Pod of a data NodeSet cannot
+// be scheduled. The not ready Pods use up the budget, but the draining master is the only unavailable master, so its
+// removal does not consume the budget: it must be removed once drained, without waiting for the other Pod to be ready.
+func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
+	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
+	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
+		t.SkipNow()
+	}
+
+	ctx := t.Context()
+	k := test.NewK8sClientOrFatal()
+
+	initial := elasticsearch.NewBuilder("test-downscale-master-shutdown").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	downscaled := initial.WithNoESTopology().
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	// add a NodeSet whose Pod cannot be scheduled: with 3 desired nodes and maxUnavailable 1, the not ready leaving
+	// master and the pending Pod use up the budget
+	pendingNodeSet, fixedNodeSet := pendingNodeSets(initial)
+	downscaledWithPending := downscaled.DeepCopy().WithNodeSet(pendingNodeSet)
+	fixed := downscaled.DeepCopy().WithNodeSet(fixedNodeSet)
+
+	esName := initial.Elasticsearch.Name
+	esNamespace := initial.Elasticsearch.Namespace
+	masterStatefulSet := esv1.StatefulSet(esName, "masterdata")
+	leavingNode := sset.PodName(masterStatefulSet, 2)
+	pendingPod := sset.PodName(esv1.StatefulSet(esName, "pending"), 0)
+	var esClient esclient.Client
+	masterPods := test.NewPodRestartChecker("master Elasticsearch", test.ESPodListOptionsByNodeSet(esNamespace, esName, "masterdata")...)
+
+	// a single primary on the leaving master, without replicas
+	pinnedIndexSettings := fmt.Sprintf(
+		`{"settings": {"number_of_shards": 1, "number_of_replicas": 0, "index.routing.allocation.require._name": "%s"}}`,
+		leavingNode,
+	)
+
+	test.StepList{}.
+		WithSteps(initial.InitTestSteps(k)).
+		WithSteps(initial.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the remaining master nodes", pinnedIndexSettings)).
+		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
+		WithSteps(masterPods.RecordUIDs(k)).
+		WithSteps(downscaledWithPending.UpgradeTestSteps(k)).
+		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, []string{leavingNode}, masterPods)).
+		WithStep(test.Step{
+			Name: "Allow the index to be migrated to the remaining master nodes",
+			Test: test.Eventually(func() error {
+				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
+					[]byte(`{"index.routing.allocation.require._name": null}`))
+				return err
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "Leaving master should be removed while the pending Pod is still not ready",
+			// the removal must not wait for the pending Pod: stop retrying as soon as it is ready
+			Test: test.RetryOnError(func() error {
+				if err := checkPodsNotReady(k, esNamespace, []string{pendingPod}); err != nil {
+					return err
+				}
+				var statefulSet appsv1.StatefulSet
+				if err := k.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: masterStatefulSet}, &statefulSet); err != nil {
+					return err
+				}
+				if replicas := sset.GetReplicas(statefulSet); replicas != 2 {
+					return fmt.Errorf("StatefulSet %s has %d replicas", masterStatefulSet, replicas)
+				}
+				return nil
+			}, func(err error) bool { return !errors.Is(err, errPodReady) }, test.Ctx().TestTimeout),
+		}).
+		WithSteps(fixed.UpgradeTestSteps(k)).
+		WithSteps(test.CheckTestSteps(fixed, k)).
+		WithSteps(fixed.DeletionTestSteps(k)).
+		RunSequential(t)
+}
+
+// pendingNodeSets returns a data NodeSet whose Pod cannot be scheduled, and the same NodeSet once its Pod can be scheduled.
+func pendingNodeSets(b elasticsearch.Builder) (pending esv1.NodeSet, fixed esv1.NodeSet) {
+	pending = esv1.NodeSet{
+		Name:        "pending",
+		Count:       1,
+		Config:      &commonv1.Config{Data: elasticsearch.DataRoleCfg(b.Elasticsearch.Spec.Version)},
+		PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
+	}
+	pending.PodTemplate.Spec.NodeSelector = map[string]string{"cannot": "be-scheduled"}
+	fixed = *pending.DeepCopy()
+	fixed.PodTemplate.Spec.NodeSelector = nil
+	return pending, fixed
+}
+
+// createPinnedIndexStep returns a step that creates the pinned index with the given settings, which must prevent its
+// shards from being migrated to the given nodes. It also initializes the given Elasticsearch client.
+func createPinnedIndexStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder, esClient *esclient.Client, nodes, settings string) test.Step {
+	return test.Step{
+		Name: "Create an index that cannot be migrated to " + nodes,
+		Test: test.Eventually(func() error {
+			var err error
+			if *esClient, err = elasticsearch.NewElasticsearchClient(b.Elasticsearch, k); err != nil {
+				return err
+			}
+			// the index may already exist if a previous attempt only failed to read the response
+			if _, err := elasticsearch.DoRequest(ctx, *esClient, http.MethodGet, "/"+pinnedIndex, nil); err == nil {
+				return nil
+			}
+			_, err = elasticsearch.DoRequest(ctx, *esClient, http.MethodPut, "/"+pinnedIndex, []byte(settings))
+			return err
+		}),
+	}
+}
+
+// shutdownsKeptSteps returns the steps that check that the given leaving nodes get a remove-type shutdown, become not
+// ready, and keep their shutdown over several reconciliations without being restarted.
+func shutdownsKeptSteps(
+	ctx context.Context,
+	k *test.K8sClient,
+	b elasticsearch.Builder,
+	esClient *esclient.Client,
+	leavingNodes []string,
+	leavingPods *test.PodRestartChecker,
+) test.StepList {
+	esNamespace := b.Elasticsearch.Namespace
+	var reconciledGeneration int64
+	return test.StepList{
+		{
+			Name: "Leaving nodes should have a remove-type shutdown",
+			Test: test.Eventually(func() error {
+				return checkRemoveShutdowns(ctx, *esClient, leavingNodes)
+			}),
+		},
+		{
+			Name: "Leaving nodes should not be ready",
+			Test: test.Eventually(func() error {
+				return checkPodsNotReady(k, esNamespace, leavingNodes)
+			}),
+		},
+		{
+			// a spec change that does not affect the Pods, to make sure the operator reconciles while the leaving Pods
+			// are not ready rather than the shutdowns being kept because it is not reconciling
+			Name: "Change the StatefulSets revision history limit",
+			Test: test.Eventually(func() error {
+				var es esv1.Elasticsearch
+				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+					return err
+				}
+				es.Spec.RevisionHistoryLimit = new(int32(5))
+				if err := k.Client.Update(ctx, &es); err != nil {
+					return err
+				}
+				reconciledGeneration = es.Generation
+				return nil
+			}),
+		},
+		{
+			Name: "The operator should reconcile the change",
+			Test: test.Eventually(func() error {
+				var es esv1.Elasticsearch
+				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
+					return err
+				}
+				if es.Status.ObservedGeneration < reconciledGeneration {
+					return fmt.Errorf("observed generation %d, expected %d", es.Status.ObservedGeneration, reconciledGeneration)
+				}
+				return nil
+			}),
+		},
+		{
+			// the shutdowns used to be cancelled by the next reconciliation once their Pods were not ready, then
+			// requested again, so the state is sampled over several reconciliations
+			Name: "Shutdowns of the leaving nodes should not be cancelled",
+			Test: func(t *testing.T) {
+				t.Helper()
+				require.Never(t, func() bool {
+					err := checkRemoveShutdowns(ctx, *esClient, leavingNodes)
+					if err == nil {
+						err = checkPodsNotReady(k, esNamespace, leavingNodes)
+					}
+					if err != nil {
+						t.Log(err)
+					}
+					// errors while querying Elasticsearch or the API server are not considered as a cancellation
+					return errors.Is(err, errNoRemoveShutdown) || errors.Is(err, errPodReady)
+				}, shutdownsKeptFor, 2*time.Second, "a shutdown of the leaving nodes was cancelled")
+			},
+		},
+		{
+			Name: "Leaving Pods should not have been restarted",
+			Test: func(t *testing.T) {
+				t.Helper()
+				require.NoError(t, leavingPods.CheckNotRestarted(ctx, k))
+			},
+		},
+	}
+}
+
 var (
 	// errNoRemoveShutdown is returned by checkRemoveShutdowns when a node has no remove-type shutdown.
 	errNoRemoveShutdown = errors.New("no remove-type shutdown")
@@ -230,10 +337,10 @@ func checkRemoveShutdowns(ctx context.Context, esClient esclient.Client, nodeNam
 	if err != nil {
 		return err
 	}
-	removing := map[string]bool{}
+	removing := set.Make()
 	for _, s := range shutdowns.Nodes {
 		if s.Is(esclient.Remove) {
-			removing[s.NodeID] = true
+			removing.Add(s.NodeID)
 		}
 	}
 	nameToID := map[string]string{}
@@ -245,7 +352,7 @@ func checkRemoveShutdowns(ctx context.Context, esClient esclient.Client, nodeNam
 		if !inCluster {
 			return fmt.Errorf("node %s is not in the cluster: %w", name, errNoRemoveShutdown)
 		}
-		if !removing[id] {
+		if !removing.Has(id) {
 			return fmt.Errorf("node %s: %w", name, errNoRemoveShutdown)
 		}
 	}

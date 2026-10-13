@@ -8,7 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -52,9 +56,8 @@ func HandleDownscale(
 	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
-	// Retrieve the desired leaving nodes that are draining: Elasticsearch closes their readiness port as soon as their
-	// shutdown is registered, so removing them must not consume the budget. Nodes that stay are not considered: a
-	// shutdown registered outside of the operator for a node that stays must not allow more removals.
+	// Retrieve the desired leaving nodes that are draining, ready or not, see newDownscaleState. Nodes that stay are
+	// ignored, so that a shutdown registered outside of the operator does not allow more removals.
 	var draining set.StringSet
 	if len(desiredLeavingNodes) > 0 {
 		draining, err = downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, desiredLeavingNodes)
@@ -67,7 +70,7 @@ func HandleDownscale(
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)
 
 	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
+	downscales, deletions, heldReasons := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
@@ -75,32 +78,95 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// initiate shutdown of nodes that should be removed
-	// if leaving nodes is empty this should cancel any ongoing shutdowns
+	// request the shutdowns of the nodes to remove, and keep those of the draining nodes even if they cannot be removed
+	// now: cancelling them would make the nodes ready only to drain them again. With no such nodes, cancel the shutdowns
+	// of the non-terminating nodes.
 	leavingNodes := leavingNodeNames(downscales)
+	keptNodes := draining.Diff(set.Make(leavingNodes...)).AsSortedSlice()
+	shutdownNodes := slices.Concat(leavingNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
-	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, leavingNodes, terminatingNodes); err != nil {
+	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes); err != nil {
 		return results.WithError(err)
 	}
+	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)
+	if err != nil {
+		return results.WithError(err)
+	}
+	// report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
+	// downscale fails
+	defer reportShutdownStalled(downscaleCtx, statuses)
 
+	var requeue bool
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale)
+		downscaleRequeue, err := attemptDownscale(downscaleCtx, downscale, statuses)
 		if err != nil {
 			return results.WithError(err)
 		}
-		if requeue {
-			// retry downscaling this statefulset later
-			results.WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress"))
-		}
+		// retry downscaling this statefulset later
+		requeue = requeue || downscaleRequeue
 	}
 
-	// Ensure that the status mention the delayed nodes
+	// Report the delayed nodes and why they are held in a single reason, as only the first one of a priority is kept.
+	reason := "Downscale in progress"
 	if delayedLeavingNodes, _ := stringsutil.Difference(desiredLeavingNodes, leavingNodes); len(delayedLeavingNodes) > 0 {
 		sort.Strings(delayedLeavingNodes)
-		results.WithReconciliationState(shared.DefaultRequeue.WithReason(fmt.Sprintf("Downscale in progress, delayed nodes: %s", delayedLeavingNodes)))
+		// the held reasons are only reported with delayed nodes: a downscale is only held when fewer nodes than
+		// requested are removed, which delays the others
+		reason = fmt.Sprintf("%s, delayed nodes: %s%s", reason, delayedLeavingNodes, formatHeldReasons(heldReasons))
+		requeue = true
+	}
+	if requeue {
+		results.WithReconciliationState(shared.DefaultRequeue.WithReason(reason))
 	}
 	return results
+}
+
+// formatHeldReasons formats the reasons why the downscale of StatefulSets is held, sorted by StatefulSet name.
+func formatHeldReasons(heldReasons map[string]string) string {
+	var sb strings.Builder
+	for _, name := range slices.Sorted(maps.Keys(heldReasons)) {
+		fmt.Fprintf(&sb, ", %s: %s", name, heldReasons[name])
+	}
+	return sb.String()
+}
+
+// shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
+// also reports them in the downscale status through the observer, whether or not the nodes are removed. Shard migration
+// registers no shutdown, its statuses are retrieved by calculatePerformableDownscale.
+func shutdownStatuses(downscaleCtx downscaleContext, nodes []string) (map[string]shutdown.NodeShutdownStatus, error) {
+	withShutdown, err := downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, nodes)
+	if err != nil {
+		return nil, err
+	}
+	statuses := make(map[string]shutdown.NodeShutdownStatus, len(withShutdown))
+	for _, node := range withShutdown.AsSortedSlice() {
+		status, err := downscaleCtx.nodeShutdown.ShutdownStatus(downscaleCtx.parentCtx, node)
+		if err != nil {
+			return nil, fmt.Errorf("while checking shutdown status: %w", err)
+		}
+		statuses[node] = status
+	}
+	return statuses, nil
+}
+
+// reportShutdownStalled reports the first stalled shutdown of the given statuses, in node name order, through the phase
+// and an event, as it can require user interaction.
+func reportShutdownStalled(downscaleCtx downscaleContext, statuses map[string]shutdown.NodeShutdownStatus) {
+	for _, node := range slices.Sorted(maps.Keys(statuses)) {
+		if statuses[node].Status != esclient.ShutdownStalled {
+			continue
+		}
+		downscaleCtx.reconcileState.
+			UpdateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase).
+			AddEvent(
+				corev1.EventTypeWarning,
+				events.EventReasonStalled,
+				events.EventActionShutdown,
+				fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", statuses[node].Explanation),
+			)
+		return
+	}
 }
 
 func podsToDownscale(
@@ -113,7 +179,8 @@ func podsToDownscale(
 ) ([]ssetDownscale, es_sset.StatefulSetList) {
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, es, nil)
 	// compute the list of StatefulSet downscales and deletions to perform
-	return calculateDownscales(ctx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
+	downscales, deletions, _ := calculateDownscales(ctx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
+	return downscales, deletions
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
@@ -127,8 +194,9 @@ func deleteStatefulSets(ctx context.Context, toDelete es_sset.StatefulSetList, k
 }
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of StatefulSets
-// that can be downscaled (replica decrease) or deleted (no replicas).
-func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions es_sset.StatefulSetList) {
+// that can be downscaled (replica decrease) or deleted (no replicas), and why the held downscales are held, by
+// StatefulSet name.
+func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions es_sset.StatefulSetList, heldReasons map[string]string) {
 	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
@@ -147,7 +215,13 @@ func calculateDownscales(ctx context.Context, state downscaleState, expectedStat
 		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
 			requestedDeletes := actualReplicas - expectedReplicas
-			allowedDeletes := downscaleFilter(ctx, &state, actualSset, requestedDeletes)
+			allowedDeletes, heldReason := downscaleFilter(ctx, &state, actualSset, requestedDeletes)
+			if heldReason != "" {
+				if heldReasons == nil {
+					heldReasons = map[string]string{}
+				}
+				heldReasons[actualSset.Name] = heldReason
+			}
 			if allowedDeletes == 0 {
 				continue
 			}
@@ -162,39 +236,42 @@ func calculateDownscales(ctx context.Context, state downscaleState, expectedStat
 			// nothing to do
 		}
 	}
-	return downscales, deletions
+	return downscales, deletions, heldReasons
 }
 
-type downscaleFilter func(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, _ int32) int32
+// downscaleFilter returns how many of the requested deletes are allowed, and the reason why the others are held.
+type downscaleFilter func(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, _ int32) (int32, string)
 
 // noDownscaleFilter is a filter which does not remove any Pod. It can be used to compute the full list of
 // Pods which are expected to be deleted.
-func noDownscaleFilter(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) int32 {
-	return requestedDeletes
+func noDownscaleFilter(_ context.Context, _ *downscaleState, _ appsv1.StatefulSet, requestedDeletes int32) (int32, string) {
+	return requestedDeletes, ""
 }
 
 // downscaleBudgetFilter is a filter which relies on checkDownscaleInvariants.
 // It ensures that we only downscale nodes we're allowed to.
 // Note that this function may have side effects on the downscaleState and should not be considered as idempotent.
-func downscaleBudgetFilter(ctx context.Context, state *downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) int32 {
-	allowedDeletes, reason := checkDownscaleInvariants(*state, actualSset, requestedDeletes)
-	if allowedDeletes == 0 {
+func downscaleBudgetFilter(ctx context.Context, state *downscaleState, actualSset appsv1.StatefulSet, requestedDeletes int32) (int32, string) {
+	removals, reason := checkDownscaleInvariants(*state, actualSset, requestedDeletes)
+	if removals.count == 0 {
 		ssetLogger(ctx, actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
-		return 0
+		return 0, reason
 	}
-	state.recordNodeRemoval(actualSset, allowedDeletes)
-	return allowedDeletes
+	state.recordNodeRemoval(actualSset, removals)
+	return removals.count, reason
 }
 
 // attemptDownscale attempts to decrement the number of replicas of the given StatefulSet.
 // Nodes whose data migration is not over will not be removed.
 // A boolean is returned to indicate if a requeue should be scheduled if the entire downscale could not be performed.
+// statuses are the shutdown statuses returned by shutdownStatuses.
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
+	statuses map[string]shutdown.NodeShutdownStatus,
 ) (bool, error) {
 	// adjust the theoretical downscale to one we can safely perform
-	performable, err := calculatePerformableDownscale(ctx, downscale)
+	performable, err := calculatePerformableDownscale(ctx, downscale, statuses)
 	if err != nil {
 		return true, err
 	}
@@ -236,9 +313,11 @@ func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es es
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
 // which cannot be safely deleted yet.
 // It returns the updated downscale and a boolean indicating whether a requeue should be done.
+// statuses are the shutdown statuses returned by shutdownStatuses.
 func calculatePerformableDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
+	statuses map[string]shutdown.NodeShutdownStatus,
 ) (ssetDownscale, error) {
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
@@ -249,24 +328,21 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		response, err := ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, node)
-		if err != nil {
-			return performableDownscale, fmt.Errorf("while checking shutdown status: %w", err)
+		response, ok := statuses[node]
+		if !ok {
+			// with shard migration, retrieving a status requires requests, so it is only done for the inspected nodes
+			var err error
+			response, err = ctx.nodeShutdown.ShutdownStatus(ctx.parentCtx, node)
+			if err != nil {
+				return performableDownscale, fmt.Errorf("while checking shutdown status: %w", err)
+			}
 		}
 		switch response.Status {
 		case esclient.ShutdownComplete:
 			// shutdown including data migration over: allow pod to be removed
 			performableDownscale.targetReplicas--
 		case esclient.ShutdownStalled:
-			// shutdown stalled this can require user interaction: bubble up via event
-			ctx.reconcileState.
-				UpdateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase).
-				AddEvent(
-					corev1.EventTypeWarning,
-					events.EventReasonStalled,
-					events.EventActionShutdown,
-					fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", response.Explanation),
-				)
+			// reported by reportShutdownStalled
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			return performableDownscale, nil
 		case esclient.ShutdownInProgress:
@@ -294,6 +370,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale) error {
 		"Scaling replicas down",
 		"from", downscale.initialReplicas,
 		"to", downscale.targetReplicas,
+		"nodes", downscale.leavingNodeNames(),
 	)
 
 	if label.IsMasterNodeSet(downscale.statefulSet) {

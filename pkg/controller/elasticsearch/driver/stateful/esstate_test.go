@@ -43,8 +43,11 @@ type fakeESClient struct { //nolint:maligned
 	GetClusterRoutingAllocationCallCount int
 
 	Shutdowns             map[string]esclient.NodeShutdown
+	GetShutdownErr        error
 	PutShutdownCalledWith []string
-	DeleteShutdownCalled  bool
+	// RegisterPutShutdowns makes PutShutdown register the shutdown in Shutdowns
+	RegisterPutShutdowns bool
+	DeleteShutdownCalled bool
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -103,12 +106,23 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, typ esclient.ShutdownType, _ string, _ *time.Duration) error {
 	f.PutShutdownCalledWith = append(f.PutShutdownCalledWith, nodeID)
+	if !f.RegisterPutShutdowns {
+		return nil
+	}
+	// register the shutdown, so that it can be retrieved as Elasticsearch would
+	if f.Shutdowns == nil {
+		f.Shutdowns = map[string]esclient.NodeShutdown{}
+	}
+	f.Shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: string(typ), Status: esclient.ShutdownInProgress}
 	return nil
 }
 
 func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.ShutdownResponse, error) {
+	if f.GetShutdownErr != nil {
+		return esclient.ShutdownResponse{}, f.GetShutdownErr
+	}
 	var ns []esclient.NodeShutdown
 	for k, v := range f.Shutdowns {
 		if nodeID != nil && k != *nodeID {

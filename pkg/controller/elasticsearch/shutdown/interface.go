@@ -24,9 +24,10 @@ type NodeShutdownStatus struct {
 // Interface defines methods that both legacy shard migration based shutdown and new API based shutdowns implement to
 // prepare node shutdowns.
 type Interface interface {
-	// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
-	// shutdowns.
-	ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error
+	// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down, which
+	// can include nodes kept draining while their removal is held. If no node is given, it cancels the ongoing shutdowns
+	// of the non-terminating nodes.
+	ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string) error
 	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
@@ -52,11 +53,11 @@ type observed struct {
 	observer Observer
 }
 
-func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
+func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string) error {
 	if o.observer != nil {
-		o.observer.OnReconcileShutdowns(leavingNodes)
+		o.observer.OnReconcileShutdowns(nodesToShutdown)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, leavingNodes, terminatingNodes)
+	return o.Interface.ReconcileShutdowns(ctx, nodesToShutdown, terminatingNodes)
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {

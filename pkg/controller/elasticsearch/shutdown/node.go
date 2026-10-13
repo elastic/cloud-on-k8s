@@ -83,18 +83,18 @@ func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
 	return false
 }
 
-// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
-// shutdowns.
-func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
+// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down. If no
+// node is given, it cancels the ongoing shutdowns of the non-terminating nodes.
+func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	// cancel all ongoing shutdowns for the current shutdown type
-	if len(leavingNodes) == 0 {
+	if len(nodesToShutdown) == 0 {
 		return ns.Clear(ctx, ns.OnlyNonTerminatingNodes(terminatingNodes))
 	}
 
-	for _, node := range leavingNodes {
+	for _, node := range nodesToShutdown {
 		nodeID, err := ns.lookupNodeID(node)
 		if err != nil {
 			return err
@@ -162,7 +162,8 @@ func (ns *NodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string
 func logStatus(logger logr.Logger, podName string, shutdown esclient.NodeShutdown) {
 	switch shutdown.Status {
 	case esclient.ShutdownComplete:
-		logger.Info("Node shutdown complete, can start node deletion", "type", shutdown.Type, "node", podName)
+		// the node may be held by the downscale, its deletion is logged when it happens
+		logger.V(1).Info("Node shutdown complete", "type", shutdown.Type, "node", podName)
 	case esclient.ShutdownInProgress:
 		logger.V(1).Info("Node shutdown not over yet, hold off with node deletion", "type", shutdown.Type, "node", podName)
 	case esclient.ShutdownStalled:
