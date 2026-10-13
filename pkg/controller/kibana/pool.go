@@ -285,7 +285,7 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 			return kb.Spec.BackgroundTasks.Count
 		}
 
-		if existingDeployment.Spec.Replicas != nil && *existingDeployment.Spec.Replicas > 0 {
+		if existingDeployment != nil && existingDeployment.Spec.Replicas != nil {
 			return existingDeployment.Spec.Replicas // get the HPA decided value
 		}
 
@@ -299,6 +299,9 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 		// Return the old value if the deployment is background tasks. It will be stored in annotation.
 		if pm.Role.IsBackgroundTasks() {
 			oldValue = getBackgroundReplicas()
+			if oldValue == nil {
+				oldValue = new(int32(1))
+			}
 		}
 
 	case kb.BackgroundTasksEnabled() && pm.Role.IsBackgroundTasks():

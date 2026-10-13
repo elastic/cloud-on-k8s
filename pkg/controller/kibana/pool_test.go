@@ -1210,11 +1210,11 @@ func TestDeploymentReplicas(t *testing.T) {
 	}
 	kbSingle := &kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 3}}
 
-	dp := func(replicas *int32, annotations map[string]string) *appsv1.Deployment {
+	dp := func(deploymentReplicas *int32, annotations map[string]string) *appsv1.Deployment {
 		d := &appsv1.Deployment{}
 		d.Name = "test-dp"
 		d.Annotations = annotations
-		d.Spec.Replicas = replicas
+		d.Spec.Replicas = deploymentReplicas
 		return d
 	}
 	ann := func(v string) map[string]string {
@@ -1256,22 +1256,22 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantAnnRemoved: true,
 		},
 		{
-			name:       "BG, Count nil, HPA value: HPA replicas win",
+			name:       "BG, Count nil, Deployment value: HPA replicas win",
 			kb:         kbSplit(nil),
 			role:       kblabel.BackgroundTasksRole,
 			existingDp: dp(ptr(4), nil),
 			wantNew:    ptr(4),
 		},
 		{
-			name:           "BG, Count nil, HPA zeroed, annotation: annotation wins as last resort",
+			name:           "BG, Count nil, Deployment nil, annotation: annotation wins as last resort",
 			kb:             kbSplit(nil),
 			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(ptr(0), ann("5")),
+			existingDp:     dp(nil, ann("5")),
 			wantNew:        ptr(5),
 			wantAnnRemoved: true,
 		},
 		{
-			name:       "BG, Count nil, no HPA value, no annotation: returns nil",
+			name:       "BG, Count nil, Deployment nil, no annotation: returns nil",
 			kb:         kbSplit(nil),
 			role:       kblabel.BackgroundTasksRole,
 			existingDp: dp(nil, nil),
@@ -1281,7 +1281,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			name:           "BG, Count nil, HPA zeroed, malformed annotation: returns nil, annotation still removed",
 			kb:             kbSplit(nil),
 			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(ptr(0), ann("not-a-number")),
+			existingDp:     dp(nil, ann("not-a-number")),
 			wantNew:        nil,
 			wantAnnRemoved: true,
 		},
@@ -1309,12 +1309,12 @@ func TestDeploymentReplicas(t *testing.T) {
 			scaleToZero: true,
 			kb:          kbSplit(ptr(2)),
 			role:        kblabel.BackgroundTasksRole,
-			existingDp:  dp(ptr(0), ann("4")),
+			existingDp:  dp(nil, ann("4")),
 			wantNew:     ptr(0),
 			wantOld:     ptr(2),
 		},
 		{
-			name:        "stop, BG, Count nil, HPA value: HPA replicas saved as oldValue",
+			name:        "stop, BG, Count nil, Deployment value: HPA replicas saved as oldValue",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
@@ -1323,31 +1323,31 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(4),
 		},
 		{
-			name:        "stop, BG, Count nil, HPA zeroed, annotation: annotation saved as oldValue and kept",
+			name:        "stop, BG, Count nil, Deployment nil, annotation: annotation saved as oldValue and kept",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
-			existingDp:  dp(ptr(0), ann("4")),
+			existingDp:  dp(nil, ann("4")),
 			wantNew:     ptr(0),
 			wantOld:     ptr(4),
 		},
 		{
-			name:        "stop, BG, Count nil, no HPA, no annotation: oldValue is nil",
+			name:        "stop, BG, Count nil, Deployment nil, no annotation: oldValue fallbacks to 1",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
 			existingDp:  dp(nil, nil),
 			wantNew:     ptr(0),
-			wantOld:     nil,
+			wantOld:     ptr(1),
 		},
 		{
-			name:        "stop, BG, Count nil, HPA zeroed, malformed annotation: oldValue is nil",
+			name:        "stop, BG, Count nil, Deployment nil, malformed annotation: oldValue fallbacks to 1",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
-			existingDp:  dp(ptr(0), ann("not-a-number")),
+			existingDp:  dp(nil, ann("not-a-number")),
 			wantNew:     ptr(0),
-			wantOld:     nil,
+			wantOld:     ptr(1),
 		},
 	}
 
@@ -1356,8 +1356,16 @@ func TestDeploymentReplicas(t *testing.T) {
 			_, hadAnn := tt.existingDp.Annotations[replicasAnnotationName]
 			fakeClient := k8s.NewFakeClient(tt.existingDp)
 			gotNew, gotOld := deploymentReplicas(context.Background(), fakeClient, tt.kb, poolParameters{Role: tt.role, ScaleToZero: tt.scaleToZero}, tt.existingDp)
-			assert.Equal(t, tt.wantNew, gotNew)
-			assert.Equal(t, tt.wantOld, gotOld)
+
+			cmpPtrInt32 := func(a, b *int32, msg string) {
+				if a != nil && b != nil {
+					assert.Equal(t, *a, *b, msg)
+				} else {
+					assert.Equal(t, a, b, msg)
+				}
+			}
+			cmpPtrInt32(tt.wantNew, gotNew, "new values mismatch")
+			cmpPtrInt32(tt.wantOld, gotOld, "old values mismatch")
 
 			var updatedDp appsv1.Deployment
 			require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(tt.existingDp), &updatedDp))
