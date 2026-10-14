@@ -343,7 +343,8 @@ output {
 		WithPipelines([]commonv1.Config{credentialsPipeline})
 	lsMutated.Logstash.Spec.ElasticsearchRefs[0].AuthenticationMode = commonv1.AuthenticationModeCredentials
 
-	// Events must flow out of Logstash into Elasticsearch in both modes.
+	// Events must flow out of Logstash into Elasticsearch in both modes. events.out only counts events accepted by the
+	// Elasticsearch output, which retries batches rejected for authentication.
 	eventsOut := func(b logstash.Builder) func(k *test.K8sClient) test.StepList {
 		return func(k *test.K8sClient) test.StepList {
 			return test.StepList{
@@ -362,7 +363,17 @@ output {
 		}
 	}
 	lsWrapped := test.WrappedBuilder{BuildingThis: lsBuilder, PostCheckSteps: eventsOut(lsBuilder)}
-	lsMutatedWrapped := test.WrappedBuilder{BuildingThis: lsMutated, PostMutationSteps: eventsOut(lsMutated)}
+	// events.out is kept in memory, so once the PKI pod is replaced it only counts events sent with credentials.
+	restartChecker := test.NewPodRestartChecker("Logstash", test.LogstashPodListOptions(lsBuilder.Logstash.Namespace, lsBuilder.Logstash.Name)...)
+	lsMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: lsMutated,
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.RecordUIDs(k)
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.WaitForRestart(k).WithSteps(eventsOut(lsMutated)(k))
+		},
+	}
 
 	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, lsWrapped, lsMutatedWrapped)
 }
