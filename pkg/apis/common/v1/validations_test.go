@@ -140,9 +140,13 @@ func TestCheckReservedPKIRealmConfig(t *testing.T) {
 	}
 }
 
-func TestCheckConsistentAuthenticationModes(t *testing.T) {
+func TestCheckConsistentESRefAuthentication(t *testing.T) {
 	ref := func(namespace, name string, mode AuthenticationMode) ElasticsearchSelector {
 		return ElasticsearchSelector{Namespace: namespace, Name: name, AuthenticationMode: mode}
+	}
+	withCert := func(ref ElasticsearchSelector, secretName string) ElasticsearchSelector {
+		ref.ClientCertificateSecretName = secretName
+		return ref
 	}
 	tests := []struct {
 		name       string
@@ -187,6 +191,43 @@ func TestCheckConsistentAuthenticationModes(t *testing.T) {
 			wantFields: []string{"spec.elasticsearchRefs[2].authenticationMode"},
 		},
 		{
+			name: "same ES in PKI mode with the same client certificate",
+			refs: []ElasticsearchSelector{
+				withCert(ref("", "es", AuthenticationModePKI), "cert"),
+				withCert(ref("ns", "es", AuthenticationModePKI), "cert"),
+			},
+		},
+		{
+			name: "same ES in PKI mode with different client certificates",
+			refs: []ElasticsearchSelector{
+				withCert(ref("", "es", AuthenticationModePKI), "cert1"),
+				withCert(ref("", "es", AuthenticationModePKI), "cert2"),
+			},
+			wantFields: []string{"spec.elasticsearchRefs[1].clientCertificateSecretName"},
+		},
+		{
+			name: "same ES in PKI mode with a user-provided and an ECK-generated client certificate",
+			refs: []ElasticsearchSelector{
+				ref("", "es", AuthenticationModePKI),
+				withCert(ref("", "es", AuthenticationModePKI), "cert"),
+			},
+			wantFields: []string{"spec.elasticsearchRefs[1].clientCertificateSecretName"},
+		},
+		{
+			name: "same ES in Credentials mode with different client certificates",
+			refs: []ElasticsearchSelector{
+				withCert(ref("", "es", ""), "cert1"),
+				withCert(ref("", "es", AuthenticationModeCredentials), "cert2"),
+			},
+		},
+		{
+			name: "different ES in PKI mode with different client certificates",
+			refs: []ElasticsearchSelector{
+				withCert(ref("", "es1", AuthenticationModePKI), "cert1"),
+				withCert(ref("", "es2", AuthenticationModePKI), "cert2"),
+			},
+		},
+		{
 			name: "external refs are ignored",
 			refs: []ElasticsearchSelector{
 				{SecretName: "es"},
@@ -196,7 +237,7 @@ func TestCheckConsistentAuthenticationModes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := CheckConsistentAuthenticationModes(field.NewPath("spec").Child("elasticsearchRefs"), "ns", tt.refs...)
+			errs := CheckConsistentESRefAuthentication(field.NewPath("spec").Child("elasticsearchRefs"), "ns", tt.refs...)
 			var gotFields []string
 			for _, err := range errs {
 				gotFields = append(gotFields, err.Field)

@@ -34,7 +34,7 @@ var (
 		checkReferenceSetForMode,
 		checkSingleESRefInFleetMode,
 		checkAssociations,
-		checkConsistentESRefAuthenticationModes,
+		checkConsistentESRefAuthentication,
 		checkClientAuthentication,
 		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
@@ -326,8 +326,8 @@ func checkPKIESRefsNamed(a *Agent) field.ErrorList {
 	return errs
 }
 
-func checkConsistentESRefAuthenticationModes(a *Agent) field.ErrorList {
-	return commonv1.CheckConsistentAuthenticationModes(field.NewPath("spec").Child("elasticsearchRefs"), a.Namespace, esSelectors(a)...)
+func checkConsistentESRefAuthentication(a *Agent) field.ErrorList {
+	return commonv1.CheckConsistentESRefAuthentication(field.NewPath("spec").Child("elasticsearchRefs"), a.Namespace, esSelectors(a)...)
 }
 
 // esSelectors returns the Elasticsearch selectors of the outputs of a.

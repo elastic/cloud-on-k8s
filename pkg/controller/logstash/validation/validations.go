@@ -47,7 +47,7 @@ func validations() []validation {
 		checkSingleConfigSource,
 		checkESRefsNamed,
 		checkAssociations,
-		checkConsistentESRefAuthenticationModes,
+		checkConsistentESRefAuthentication,
 		checkSinglePipelineSource,
 		checkPipelinesRefSource,
 		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
@@ -93,8 +93,8 @@ func checkAssociations(l *lsv1alpha1.Logstash) field.ErrorList {
 	return append(append(err1, err2...), err3...)
 }
 
-func checkConsistentESRefAuthenticationModes(l *lsv1alpha1.Logstash) field.ErrorList {
-	return commonv1.CheckConsistentAuthenticationModes(field.NewPath("spec").Child("elasticsearchRefs"), l.Namespace, l.ElasticsearchRefs()...)
+func checkConsistentESRefAuthentication(l *lsv1alpha1.Logstash) field.ErrorList {
+	return commonv1.CheckConsistentESRefAuthentication(field.NewPath("spec").Child("elasticsearchRefs"), l.Namespace, l.ElasticsearchRefs()...)
 }
 
 func checkSinglePipelineSource(a *lsv1alpha1.Logstash) field.ErrorList {

@@ -203,27 +203,34 @@ func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelec
 	return nil
 }
 
-// CheckConsistentAuthenticationModes rejects references to the same Elasticsearch cluster that use different
-// authentication modes. These references share the association configuration and Secrets, so each mode would keep
-// deleting the resources of the other. namespace is the default namespace of the references. References to an
-// external Elasticsearch through secretName are ignored.
-func CheckConsistentAuthenticationModes(path *field.Path, namespace string, refs ...ElasticsearchSelector) field.ErrorList {
-	modes := make(map[types.NamespacedName]AuthenticationMode, len(refs))
+// CheckConsistentESRefAuthentication rejects references to the same Elasticsearch cluster that authenticate
+// differently: with different authentication modes, or in PKI mode with different client certificates. These references
+// share the association configuration and Secrets, including the client certificate and the PKI role mapping request,
+// so each reference would keep overwriting or deleting the resources of the other. namespace is the default namespace
+// of the references. References to an external Elasticsearch through secretName are ignored.
+func CheckConsistentESRefAuthentication(path *field.Path, namespace string, refs ...ElasticsearchSelector) field.ErrorList {
+	firstRefs := make(map[types.NamespacedName]ElasticsearchSelector, len(refs))
 	var errs field.ErrorList
 	for i, ref := range refs {
 		if !ref.IsSet() || ref.IsExternal() {
 			continue
 		}
 		nsn := ref.WithDefaultNamespace(namespace).NamespacedName()
-		mode := ref.GetAuthenticationMode()
-		first, exists := modes[nsn]
+		first, exists := firstRefs[nsn]
 		if !exists {
-			modes[nsn] = mode
+			firstRefs[nsn] = ref
 			continue
 		}
-		if mode != first {
+		mode, firstMode := ref.GetAuthenticationMode(), first.GetAuthenticationMode()
+		switch {
+		case mode != firstMode:
 			errs = append(errs, field.Invalid(path.Index(i).Child("authenticationMode"), mode,
-				fmt.Sprintf("all references to Elasticsearch %s must use the same authentication mode, found %s and %s", nsn, first, mode)))
+				fmt.Sprintf("all references to Elasticsearch %s must use the same authentication mode, found %s and %s", nsn, firstMode, mode)))
+		case mode == AuthenticationModePKI && ref.ClientCertificateSecretName != first.ClientCertificateSecretName:
+			// Only checked in PKI mode: in Credentials mode, references with different client certificates were
+			// accepted before PKI authentication was introduced.
+			errs = append(errs, field.Invalid(path.Index(i).Child("clientCertificateSecretName"), ref.ClientCertificateSecretName,
+				fmt.Sprintf("all references to Elasticsearch %s with authentication mode PKI must use the same client certificate", nsn)))
 		}
 	}
 	return errs
