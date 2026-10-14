@@ -362,7 +362,7 @@ output {
 		}
 	}
 	lsWrapped := test.WrappedBuilder{BuildingThis: lsBuilder, PostCheckSteps: eventsOut(lsBuilder)}
-	lsMutatedWrapped := test.WrappedBuilder{BuildingThis: lsMutated, PostCheckSteps: eventsOut(lsMutated)}
+	lsMutatedWrapped := test.WrappedBuilder{BuildingThis: lsMutated, PostMutationSteps: eventsOut(lsMutated)}
 
 	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, lsWrapped, lsMutatedWrapped)
 }
