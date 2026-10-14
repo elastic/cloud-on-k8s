@@ -155,7 +155,8 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	labels[commonlabels.ClientCertificateLabelName] = "true"
 
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      maps.Merge(policy.GetLabels(), labels),
+		// merge into labels (a fresh map) so that policy.GetLabels() is not mutated
+		Labels:      maps.MergePreservingExistingKeys(labels, policy.GetLabels()),
 		Annotations: policy.GetAnnotations(),
 	})
 
@@ -208,7 +209,8 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 	labels[policySecretTypeLabelKey] = caSecretType
 	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      maps.Merge(policy.GetLabels(), labels),
+		// merge into labels (a fresh map) so that policy.GetLabels() is not mutated
+		Labels:      maps.MergePreservingExistingKeys(labels, policy.GetLabels()),
 		Annotations: policy.GetAnnotations(),
 	})
 

@@ -138,8 +138,13 @@ func TestReconcileScriptsConfigMap(t *testing.T) {
 			// Setup mock K8s client with initial objects
 			mockClient := k8s.NewFakeClient(tt.initialObjects...)
 
+			originalMeta := tt.meta.Merge(metadata.Metadata{})
+
 			// Run the function
 			err := ReconcileScriptsConfigMap(context.Background(), mockClient, es, tt.meta)
+
+			// check that meta is unmodified (no side-effect)
+			assert.Equal(t, originalMeta, tt.meta)
 
 			// Check error
 			if tt.wantErr {
