@@ -390,7 +390,14 @@ func pkiRequestSecretWithCert(t *testing.T, es esv1.Elasticsearch, name, roles, 
 }
 
 func TestReconcilePKIRoleMappings(t *testing.T) {
-	es := esv1.Elasticsearch{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{
+		Namespace: "esNs",
+		Name:      "esName",
+		Spec: esv1.ElasticsearchSpec{
+			HTTP: commonv1.HTTPConfigWithClientOptions{TLS: commonv1.TLSWithClientOptions{Client: commonv1.ClientOptions{Authentication: true}}},
+			Auth: esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+		},
+	}
 	fileSettingsSecretName := types.NamespacedName{
 		Namespace: es.Namespace,
 		Name:      esv1.FileSettingsSecretName(es.Name),
@@ -408,6 +415,8 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		// checkFn runs after reconcile with the fake client, for assertions that require reading
 		// resources other than the file-settings Secret (e.g. conflict annotations on request Secrets).
 		checkFn func(t *testing.T, c k8s.Client)
+		// mutateES changes the reconciled Elasticsearch, e.g. to disable PKI.
+		mutateES func(es *esv1.Elasticsearch)
 	}{
 		{
 			name: "create: file-settings Secret is created with PKI mappings",
@@ -464,6 +473,38 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				// No PKI request Secrets — all have been deleted.
 				return []client.Object{&es, secret}
 			},
+			wantEmptyMappings: true,
+		},
+		{
+			name: "PKI disabled: ECK PKI entries are removed while requests exist",
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				secret := fileSettingsSecretWithRoleMappings(t, es, map[string]any{
+					pkiMappingKey(es.Namespace, "kb-client-cert"): managedPKIEntry("uid-kb"),
+				})
+				return []client.Object{
+					&es,
+					secret,
+					pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es"),
+				}
+			},
+			mutateES:          func(es *esv1.Elasticsearch) { es.Spec.Auth.PKI.Enabled = false },
+			wantEmptyMappings: true,
+		},
+		{
+			name: "mTLS disabled: ECK PKI entries are removed while requests exist",
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				secret := fileSettingsSecretWithRoleMappings(t, es, map[string]any{
+					pkiMappingKey(es.Namespace, "kb-client-cert"): managedPKIEntry("uid-kb"),
+				})
+				return []client.Object{
+					&es,
+					secret,
+					pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es"),
+				}
+			},
+			mutateES:          func(es *esv1.Elasticsearch) { es.Spec.HTTP.TLS.Client.Authentication = false },
 			wantEmptyMappings: true,
 		},
 		{
@@ -656,7 +697,11 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				rvBefore = s.ResourceVersion
 			}
 
-			require.NoError(t, ReconcilePKIRoleMappings(context.Background(), fakeClient, es))
+			reconciledES := *es.DeepCopy()
+			if tt.mutateES != nil {
+				tt.mutateES(&reconciledES)
+			}
+			require.NoError(t, ReconcilePKIRoleMappings(context.Background(), fakeClient, reconciledES))
 
 			var secret corev1.Secret
 			getErr := fakeClient.Get(context.Background(), fileSettingsSecretName, &secret)

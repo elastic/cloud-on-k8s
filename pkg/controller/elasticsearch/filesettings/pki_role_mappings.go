@@ -45,6 +45,8 @@ const (
 // Secrets, so mappings of deleted requests are removed. A mapping is withheld when its fingerprint is shared by
 // requests asking for different roles, or when its name is used by a user-defined role mapping. Its request Secret
 // then gets PKIConflictAnnotation, and the association controller keeps the association Pending.
+// No mapping is generated when the ECK-managed PKI realm or mTLS is disabled, so the mappings are removed when PKI is
+// disabled: their rules match the fingerprint from any PKI realm, so a user-defined PKI realm would still grant the roles.
 func ReconcilePKIRoleMappings(
 	ctx context.Context,
 	c k8s.Client,
@@ -54,7 +56,11 @@ func ReconcilePKIRoleMappings(
 	if err != nil {
 		return err
 	}
-	pkiMappings, conflictMessages := buildPKIRoleMappings(ctx, requests)
+	var pkiMappings *commonv1.Config
+	var conflictMessages map[string]string
+	if es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication {
+		pkiMappings, conflictMessages = buildPKIRoleMappings(ctx, requests)
+	}
 
 	meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 	esNsn := k8s.ExtractNamespacedName(&es)
