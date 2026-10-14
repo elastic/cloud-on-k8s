@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -769,6 +770,95 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.kb), tc.want)
+		})
+	}
+}
+
+func TestNewPodTemplateSpec_EPRCertsBackgroundTasksPool(t *testing.T) {
+	kibanaContainerWithCA := func(path string) corev1.PodTemplateSpec {
+		return corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: kbv1.KibanaContainerName,
+						Env:  []corev1.EnvVar{{Name: nodeExtraCACerts, Value: path}},
+					},
+				},
+			},
+		}
+	}
+	newKibana := func(base, background corev1.PodTemplateSpec) kbv1.Kibana {
+		return kbv1.Kibana{
+			Name:      "test-kibana",
+			Namespace: "test-ns",
+			Annotations: map[string]string{
+				"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-ca","url":"https://test-epr:8080"}`,
+			},
+			Spec: kbv1.KibanaSpec{
+				Version:            "8.16.0",
+				PackageRegistryRef: commonv1.LocalObjectSelector{Name: "test-epr"},
+				PodTemplate:        base,
+				BackgroundTasks: &kbv1.KibanaBackgroundTasks{
+					Count:       ptr.To[int32](1),
+					PodTemplate: background,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		kb          kbv1.Kibana
+		role        kblabel.Role
+		wantMainEnv string
+		wantInitEnv string // empty means the init container must not carry NODE_EXTRA_CA_CERTS
+	}{
+		{
+			name:        "CA path only in backgroundTasks.podTemplate: background pool uses combined bundle",
+			kb:          newKibana(corev1.PodTemplateSpec{}, kibanaContainerWithCA("/background/ca-bundle.crt")),
+			role:        kblabel.BackgroundTasksRole,
+			wantMainEnv: "/usr/share/kibana/config/combined-ca-bundle.crt",
+			wantInitEnv: "/background/ca-bundle.crt",
+		},
+		{
+			name:        "CA path only in backgroundTasks.podTemplate: UI pool is unaffected",
+			kb:          newKibana(corev1.PodTemplateSpec{}, kibanaContainerWithCA("/background/ca-bundle.crt")),
+			role:        kblabel.UIRole,
+			wantMainEnv: eprCertsVolumeMountPath + "/ca.crt",
+			wantInitEnv: "",
+		},
+		{
+			name:        "CA path in both templates: background pool uses its own override",
+			kb:          newKibana(kibanaContainerWithCA("/base/ca-bundle.crt"), kibanaContainerWithCA("/background/ca-bundle.crt")),
+			role:        kblabel.BackgroundTasksRole,
+			wantMainEnv: "/usr/share/kibana/config/combined-ca-bundle.crt",
+			wantInitEnv: "/background/ca-bundle.crt",
+		},
+		{
+			name:        "CA path only in spec.podTemplate: background pool inherits it",
+			kb:          newKibana(kibanaContainerWithCA("/base/ca-bundle.crt"), corev1.PodTemplateSpec{}),
+			role:        kblabel.BackgroundTasksRole,
+			wantMainEnv: "/usr/share/kibana/config/combined-ca-bundle.crt",
+			wantInitEnv: "/base/ca-bundle.crt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp, err := kbv1.GetKibanaBasePath(tt.kb)
+			require.NoError(t, err)
+			md := metadata.Propagate(&tt.kb, metadata.Metadata{Labels: tt.kb.GetIdentityLabels()})
+			got, err := NewPodTemplateSpec(context.Background(), k8s.NewFakeClient(), tt.kb, tt.role, nil, []commonvolume.VolumeLike{}, bp, true, md, kbv1.ConfigSecret(tt.kb.Name))
+			require.NoError(t, err)
+
+			assertEnvValue(t, kbv1.GetKibanaContainer(got.Spec), nodeExtraCACerts, tt.wantMainEnv, "main container NODE_EXTRA_CA_CERTS")
+
+			require.Len(t, got.Spec.InitContainers, 1)
+			initContainer := got.Spec.InitContainers[0]
+			if tt.wantInitEnv == "" {
+				assertEnvNotSet(t, &initContainer, nodeExtraCACerts, "init container must not carry NODE_EXTRA_CA_CERTS")
+			} else {
+				assertEnvValue(t, &initContainer, nodeExtraCACerts, tt.wantInitEnv, "init container NODE_EXTRA_CA_CERTS")
+			}
 		})
 	}
 }

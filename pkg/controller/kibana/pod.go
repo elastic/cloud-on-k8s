@@ -181,7 +181,9 @@ func NewPodTemplateSpec(
 
 	var additionalInitEnvVars []corev1.EnvVar
 	if kb.Spec.PackageRegistryRef.IsSet() {
-		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
+		// Read from the role-specific (merged) template so that a NODE_EXTRA_CA_CERTS
+		// set only in spec.backgroundTasks.podTemplate is honoured for that pool.
+		userNodeExtraCACerts := getUserNodeExtraCACerts(pt)
 		builder, err = withEPRCertsVolume(
 			builder,
 			kb,
@@ -207,13 +209,10 @@ func NewPodTemplateSpec(
 	return builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate, nil
 }
 
-// getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container spec.
-func getUserNodeExtraCACerts(kb kbv1.Kibana) string {
-	if kb.Spec.PodTemplate.Spec.Containers == nil {
-		return ""
-	}
-
-	for _, container := range kb.Spec.PodTemplate.Spec.Containers {
+// getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container
+// of the given (role-specific) pod template.
+func getUserNodeExtraCACerts(pt corev1.PodTemplateSpec) string {
+	for _, container := range pt.Spec.Containers {
 		if container.Name != kbv1.KibanaContainerName {
 			continue
 		}
