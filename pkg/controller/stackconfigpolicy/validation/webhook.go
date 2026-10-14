@@ -47,6 +47,9 @@ func (v *webhookValidator) validate(p, old *policyv1alpha1.StackConfigPolicy) (a
 	if err != nil {
 		return warnings, err
 	}
+	if err := policyv1alpha1.ValidateReservedPKIRealm(p, old); err != nil {
+		return warnings, err
+	}
 	return warnings, policyv1alpha1.ValidateReservedRoleMappingNames(p, old)
 }
 

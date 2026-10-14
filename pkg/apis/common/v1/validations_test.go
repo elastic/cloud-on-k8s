@@ -97,6 +97,29 @@ func TestCheckReservedPKIRealmConfig(t *testing.T) {
 			},
 		},
 		{
+			name:       "reserved realm name in another realm type (flat key)",
+			cfg:        map[string]any{"xpack.security.authc.realms.ldap." + ECKPKIRealmName + ".order": 1},
+			wantFields: []string{"spec.config.xpack.security.authc.realms.ldap." + ECKPKIRealmName},
+		},
+		{
+			name: "reserved realm name in another realm type (nested key) with the reserved order",
+			cfg: map[string]any{
+				"xpack": map[string]any{
+					"security": map[string]any{
+						"authc": map[string]any{
+							"realms": map[string]any{
+								"file": map[string]any{ECKPKIRealmName: map[string]any{"order": ECKPKIRealmOrder}},
+							},
+						},
+					},
+				},
+			},
+			wantFields: []string{
+				"spec.config.xpack.security.authc.realms.file." + ECKPKIRealmName,
+				"spec.config.xpack.security.authc.realms.file." + ECKPKIRealmName + ".order",
+			},
+		},
+		{
 			name: "other pki realm name",
 			cfg:  map[string]any{"xpack.security.authc.realms.pki.my_pki.order": 2},
 		},

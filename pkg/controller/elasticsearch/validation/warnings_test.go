@@ -171,6 +171,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
@@ -189,6 +190,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
@@ -217,6 +219,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
@@ -235,6 +238,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
 					NodeSets: []esv1.NodeSet{
 						{
 							Config: &commonv1.Config{
@@ -247,6 +251,42 @@ func Test_noUnsupportedSettings(t *testing.T) {
 				},
 			},
 			expectErrors: true,
+		},
+		{
+			name: "eck_managed_pki realm name is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "eck_managed_pki realm order is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
 		},
 	}
 	for _, tt := range tests {
@@ -303,6 +343,7 @@ func Test_settingsWarningsAndErrors(t *testing.T) {
 		es := esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				Version: "9.6.0",
+				Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
 				NodeSets: []esv1.NodeSet{{
 					Count: 1,
 					Config: &commonv1.Config{

@@ -136,7 +136,8 @@ func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, r
 }
 
 // CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
-// its name, which would change the realm, and realms using its order, which would stop Elasticsearch from starting.
+// its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
+// names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.
 // path is the path of cfg.
 func CheckReservedPKIRealmConfig(path *field.Path, cfg *settings.CanonicalConfig) field.ErrorList {
 	if !cfg.HasChildConfig(realmsConfigKey) {
@@ -160,6 +161,14 @@ func CheckReservedPKIRealmConfig(path *field.Path, cfg *settings.CanonicalConfig
 	}
 	for _, realmType := range slices.Sorted(maps.Keys(realms)) {
 		for _, realmName := range slices.Sorted(maps.Keys(realms[realmType])) {
+			// the pki realm type is covered above, also when the realm settings cannot be unpacked
+			if key := strings.Join([]string{realmsConfigKey, realmType, realmName}, "."); realmName == ECKPKIRealmName && key != ECKPKIRealmConfigKey {
+				errs = append(errs, field.Invalid(
+					path.Child(key),
+					key,
+					fmt.Sprintf("realm name %s is reserved for ECK-managed PKI authentication", ECKPKIRealmName),
+				))
+			}
 			if order := realms[realmType][realmName].Order; order != nil && *order == ECKPKIRealmOrder {
 				key := strings.Join([]string{realmsConfigKey, realmType, realmName, "order"}, ".")
 				errs = append(errs, field.Invalid(

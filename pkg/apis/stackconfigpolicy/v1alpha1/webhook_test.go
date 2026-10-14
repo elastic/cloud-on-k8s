@@ -169,81 +169,16 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
-			Name:      "reserved-eck-managed-pki-realm-in-scp-config-flat-key",
+			// The policy does not know if its target clusters enable PKI. Reserved realm settings are rejected by the
+			// admission-only ValidateReservedPKIRealm, and at reconcile time only for clusters with PKI enabled.
+			Name:      "reserved-eck-managed-pki-realm-not-checked-by-validate",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkStackConfigPolicy(uid)
 				m.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
-					commonv1.ECKPKIRealmConfigKey + ".enabled": "false",
-				}}
-				return test.MustMarshalJSON(t, m)
-			},
-			Check: test.ValidationWebhookFailed(
-				"realm name eck_managed_pki is reserved for ECK-managed PKI authentication",
-			),
-		},
-		{
-			Name:      "reserved-eck-managed-pki-realm-in-scp-config-nested-key",
-			Operation: admissionv1.Create,
-			Object: func(t *testing.T, uid string) []byte {
-				t.Helper()
-				m := mkStackConfigPolicy(uid)
-				m.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
-					"xpack": map[string]any{
-						"security": map[string]any{
-							"authc": map[string]any{
-								"realms": map[string]any{
-									"pki": map[string]any{
-										"eck_managed_pki": map[string]any{"enabled": false},
-									},
-								},
-							},
-						},
-					},
-				}}
-				return test.MustMarshalJSON(t, m)
-			},
-			Check: test.ValidationWebhookFailed(
-				"realm name eck_managed_pki is reserved for ECK-managed PKI authentication",
-			),
-		},
-		{
-			Name:      "user-defined-pki-realm-with-different-name-is-allowed",
-			Operation: admissionv1.Create,
-			Object: func(t *testing.T, uid string) []byte {
-				t.Helper()
-				m := mkStackConfigPolicy(uid)
-				m.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
-					"xpack.security.authc.realms.pki.my_custom_pki.order": 5,
-				}}
-				return test.MustMarshalJSON(t, m)
-			},
-			Check: test.ValidationWebhookSucceeded,
-		},
-		{
-			Name:      "reserved-eck-managed-pki-realm-order-in-scp-config",
-			Operation: admissionv1.Create,
-			Object: func(t *testing.T, uid string) []byte {
-				t.Helper()
-				m := mkStackConfigPolicy(uid)
-				m.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
+					commonv1.ECKPKIRealmConfigKey + ".enabled":     "false",
 					"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
-				}}
-				return test.MustMarshalJSON(t, m)
-			},
-			Check: test.ValidationWebhookFailed(
-				"realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki",
-			),
-		},
-		{
-			Name:      "realm-order-below-reserved-order-is-allowed",
-			Operation: admissionv1.Create,
-			Object: func(t *testing.T, uid string) []byte {
-				t.Helper()
-				m := mkStackConfigPolicy(uid)
-				m.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
-					"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder - 1,
 				}}
 				return test.MustMarshalJSON(t, m)
 			},
@@ -325,6 +260,121 @@ func TestValidateReservedRoleMappingNames(t *testing.T) {
 			}
 			require.ElementsMatch(t, tt.wantErrNames, gotErrNames)
 			require.Equal(t, len(tt.wantErrNames) > 0, err != nil, "unexpected error state: %v", err)
+		})
+	}
+}
+
+func TestValidateReservedPKIRealm(t *testing.T) {
+	reservedOrder := map[string]any{"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder}
+	tests := []struct {
+		name    string
+		config  map[string]any
+		old     map[string]any // config of the old policy on update, nil on create
+		wantErr string
+	}{
+		{
+			name: "no config",
+		},
+		{
+			name: "reserved eck_managed_pki realm name (flat key)",
+			config: map[string]any{
+				commonv1.ECKPKIRealmConfigKey + ".enabled": "false",
+			},
+			wantErr: "realm name eck_managed_pki is reserved for ECK-managed PKI authentication",
+		},
+		{
+			name: "reserved eck_managed_pki realm name (nested key)",
+			config: map[string]any{
+				"xpack": map[string]any{
+					"security": map[string]any{
+						"authc": map[string]any{
+							"realms": map[string]any{
+								"pki": map[string]any{
+									"eck_managed_pki": map[string]any{"enabled": false},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: "realm name eck_managed_pki is reserved for ECK-managed PKI authentication",
+		},
+		{
+			name: "user-defined pki realm with a different name",
+			config: map[string]any{
+				"xpack.security.authc.realms.pki.my_custom_pki.order": 5,
+			},
+		},
+		{
+			name: "reserved eck_managed_pki realm order",
+			config: map[string]any{
+				"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+			},
+			wantErr: "realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki",
+		},
+		{
+			name: "realm order below the reserved order",
+			config: map[string]any{
+				"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder - 1,
+			},
+		},
+		{
+			name:   "update keeping a reserved realm order that predates the reservation",
+			config: reservedOrder,
+			old:    reservedOrder,
+		},
+		{
+			name: "update keeping a reserved realm name that predates the reservation",
+			config: map[string]any{
+				commonv1.ECKPKIRealmConfigKey + ".enabled":     "false",
+				"xpack.security.authc.realms.jwt.my_jwt.order": 1,
+			},
+			old: map[string]any{
+				commonv1.ECKPKIRealmConfigKey + ".enabled": "false",
+			},
+		},
+		{
+			name:    "update introducing a reserved realm order",
+			config:  reservedOrder,
+			old:     map[string]any{"xpack.security.authc.realms.jwt.my_jwt.order": 1},
+			wantErr: "realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki",
+		},
+		{
+			name: "update moving the reserved realm order to another realm",
+			config: map[string]any{
+				"xpack.security.authc.realms.jwt.other_jwt.order": commonv1.ECKPKIRealmOrder,
+			},
+			old:     reservedOrder,
+			wantErr: "realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki",
+		},
+		{
+			name: "update keeping a reserved realm order and introducing a reserved realm name",
+			config: map[string]any{
+				commonv1.ECKPKIRealmConfigKey + ".enabled":     "false",
+				"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+			},
+			old:     reservedOrder,
+			wantErr: "realm name eck_managed_pki is reserved for ECK-managed PKI authentication",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := mkStackConfigPolicy("uid")
+			if tt.config != nil {
+				p.Spec.Elasticsearch.Config = &commonv1.Config{Data: tt.config}
+			}
+			var old *policyv1alpha1.StackConfigPolicy
+			if tt.old != nil {
+				old = mkStackConfigPolicy("uid")
+				old.Spec.Elasticsearch.Config = &commonv1.Config{Data: tt.old}
+			}
+			err := policyv1alpha1.ValidateReservedPKIRealm(p, old)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			require.Equal(t, tt.wantErr != "", err != nil, "unexpected error state: %v", err)
+			require.Contains(t, errMsg, tt.wantErr)
 		})
 	}
 }

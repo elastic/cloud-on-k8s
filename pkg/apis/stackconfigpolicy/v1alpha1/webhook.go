@@ -30,7 +30,6 @@ var (
 	defaultChecks = []func(*StackConfigPolicy) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
-		checkReservedPKIRealmInConfig,
 		validSettings,
 	}
 )
@@ -115,18 +114,40 @@ func checkReservedRoleMappingNames(policy *StackConfigPolicy, old *StackConfigPo
 	return errors
 }
 
-// checkReservedPKIRealmInConfig rejects config under the reserved eck_managed_pki realm or using its reserved order.
-// Unlike reserved role mapping names, it also runs at reconcile time. A colliding role mapping is only withheld (see
-// withholdNameCollisions), but realm settings would change ECK's realm, and a duplicate order would stop
-// Elasticsearch from starting.
-func checkReservedPKIRealmInConfig(policy *StackConfigPolicy) field.ErrorList {
-	if policy.Spec.Elasticsearch.Config == nil {
+// ValidateReservedPKIRealm rejects config using the reserved eck_managed_pki realm name, in any realm type, or its
+// reserved order. Settings already in old (nil on creation) are allowed, since they may predate the reservation. It runs
+// at admission only, not in Validate, because the policy does not know if its target clusters enable PKI. At reconcile
+// time, CheckReservedPKIRealmInConfig is run only for target clusters with PKI enabled, so policies that use these
+// settings are still applied to clusters that do not use PKI.
+func ValidateReservedPKIRealm(policy *StackConfigPolicy, old *StackConfigPolicy) error {
+	errs := CheckReservedPKIRealmInConfig(policy.Spec.Elasticsearch.Config)
+	if len(errs) > 0 && old != nil {
+		existing := make(map[string]struct{})
+		for _, err := range CheckReservedPKIRealmInConfig(old.Spec.Elasticsearch.Config) {
+			existing[err.Field] = struct{}{}
+		}
+		errs = slices.DeleteFunc(errs, func(err *field.Error) bool {
+			_, ok := existing[err.Field]
+			return ok
+		})
+	}
+	if len(errs) > 0 {
+		return apierrors.NewInvalid(groupKind, policy.Name, errs)
+	}
+	return nil
+}
+
+// CheckReservedPKIRealmInConfig rejects Elasticsearch config using the reserved eck_managed_pki realm name, in any realm
+// type, or its reserved order. A colliding role mapping is only withheld (see withholdNameCollisions), but realm settings
+// would change ECK's realm, and a duplicate realm name or order would stop Elasticsearch from starting.
+func CheckReservedPKIRealmInConfig(config *commonv1.Config) field.ErrorList {
+	if config == nil {
 		return nil
 	}
 	configPath := field.NewPath("spec").Child("elasticsearch").Child("config")
-	cfg, err := settings.NewCanonicalConfigFrom(policy.Spec.Elasticsearch.Config.Data)
+	cfg, err := settings.NewCanonicalConfigFrom(config.Data)
 	if err != nil {
-		return field.ErrorList{field.Invalid(configPath, policy.Spec.Elasticsearch.Config, "Configuration invalid")}
+		return field.ErrorList{field.Invalid(configPath, config, "Configuration invalid")}
 	}
 	return commonv1.CheckReservedPKIRealmConfig(configPath, cfg)
 }

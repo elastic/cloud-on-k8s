@@ -161,3 +161,57 @@ func TestValidate_ReservedRoleMappingNames(t *testing.T) {
 		})
 	}
 }
+
+func TestValidate_ReservedPKIRealm(t *testing.T) {
+	withRealmOrder := func(order int64) *policyv1alpha1.StackConfigPolicy {
+		p := mkSCP("default")
+		p.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
+			"xpack.security.authc.realms.jwt.my_jwt.order": order,
+		}}
+		return p
+	}
+	v := &webhookValidator{operatorNamespace: operatorNamespace}
+
+	tests := []struct {
+		name     string
+		validate func() error
+		wantErr  bool
+	}{
+		{
+			name: "admission create rejects the reserved realm order",
+			validate: func() error {
+				_, err := v.ValidateCreate(t.Context(), withRealmOrder(commonv1.ECKPKIRealmOrder))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "admission update rejects the reserved realm order",
+			validate: func() error {
+				_, err := v.ValidateUpdate(t.Context(), withRealmOrder(1), withRealmOrder(commonv1.ECKPKIRealmOrder))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "admission create accepts another realm order",
+			validate: func() error {
+				_, err := v.ValidateCreate(t.Context(), withRealmOrder(1))
+				return err
+			},
+		},
+		{
+			name: "controller-side validation accepts the reserved realm order so policies keep being applied to clusters without PKI",
+			validate: func() error {
+				_, err := Validate(withRealmOrder(commonv1.ECKPKIRealmOrder), operatorNamespace)
+				return err
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.validate()
+			require.Equal(t, tc.wantErr, err != nil, "unexpected error state: %v", err)
+		})
+	}
+}

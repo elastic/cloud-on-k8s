@@ -100,24 +100,27 @@ func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
 		}
-		errs = append(errs, validateSettings(config, i)...)
+		errs = append(errs, validateSettings(config, i, es.Spec.Auth.PKI.Enabled)...)
 	}
 	return errs
 }
 
-func validateSettings(config *common.CanonicalConfig, index int) field.ErrorList {
+func validateSettings(config *common.CanonicalConfig, index int, pkiEnabled bool) field.ErrorList {
 	unsupported := config.HasKeys(esv1.UnsupportedSettings)
 	errs := make(field.ErrorList, 0, len(unsupported))
 	for _, setting := range unsupported {
 		errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(index).Child("config").Child(setting), unsupportedConfigErrMsg))
 	}
 	errs = append(errs, validateClientAuthentication(config, index)...)
-	errs = append(errs, validateReservedPKIRealm(config, index)...)
+	if pkiEnabled {
+		errs = append(errs, validateReservedPKIRealm(config, index)...)
+	}
 	return errs
 }
 
-// validateReservedPKIRealm rejects nodeSet config under the realm name eck_managed_pki, or using its realm order,
-// both of which are reserved for the realm ECK generates when spec.auth.pki.enabled is set.
+// validateReservedPKIRealm rejects nodeSet config using the realm name eck_managed_pki, in any realm type, or its realm
+// order, both of which are reserved for the realm ECK generates when spec.auth.pki.enabled is set. It only runs when PKI
+// is enabled, so clusters that do not use PKI and already use these settings are not made invalid.
 func validateReservedPKIRealm(config *common.CanonicalConfig, index int) field.ErrorList {
 	return commonv1.CheckReservedPKIRealmConfig(field.NewPath("spec").Child("nodeSets").Index(index).Child("config"), config)
 }
