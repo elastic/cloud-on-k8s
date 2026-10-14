@@ -212,7 +212,7 @@ func (d *driver) Reconcile(
 	var (
 		aggregateAvailable int32
 		aggregateCount     int32
-		aggregateHealth    = commonv1.GreenHealth
+		aggregateHealth    = commonv1.DeploymentHealth("")
 	)
 
 	// reconciledSecrets tracks which config secrets have already been written this pass
@@ -256,9 +256,7 @@ func (d *driver) Reconcile(
 
 		aggregateAvailable += poolStatus.AvailableNodes
 		aggregateCount += poolStatus.Count
-		if poolStatus.Health != commonv1.GreenHealth {
-			aggregateHealth = poolStatus.Health
-		}
+		aggregateHealth = calculateAggregateHealth(aggregateHealth, poolStatus.Health)
 
 		buildStatus(state, kb, role, poolStatus, aggregateHealth, aggregateAvailable, aggregateCount)
 	}

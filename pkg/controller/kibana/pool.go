@@ -383,3 +383,18 @@ func buildStatus(state *State, kb *kbv1.Kibana, role kblabel.Role, poolStatus co
 		state.Kibana.Status.Pools = nil
 	}
 }
+
+func calculateAggregateHealth(aggregateHealth, poolHealth commonv1.DeploymentHealth) commonv1.DeploymentHealth {
+	if aggregateHealth == "" {
+		return poolHealth
+	}
+
+	switch {
+	case aggregateHealth == commonv1.GreenHealth && poolHealth == commonv1.GreenHealth:
+		return commonv1.GreenHealth
+	case aggregateHealth == commonv1.RedHealth && poolHealth == commonv1.RedHealth:
+		return commonv1.RedHealth
+	}
+
+	return commonv1.YellowHealth
+}

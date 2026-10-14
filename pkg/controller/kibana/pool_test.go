@@ -1682,3 +1682,35 @@ func TestReconcileServicePauseGuard(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateAggregateHealth(t *testing.T) {
+	const (
+		green  = commonv1.GreenHealth
+		yellow = commonv1.YellowHealth
+		red    = commonv1.RedHealth
+	)
+	tests := []struct {
+		name      string
+		aggregate commonv1.DeploymentHealth
+		pool      commonv1.DeploymentHealth
+		want      commonv1.DeploymentHealth
+	}{
+		{name: "empty + green = green", aggregate: "", pool: green, want: green},
+		{name: "empty + yellow = yellow", aggregate: "", pool: yellow, want: yellow},
+		{name: "empty + red = red", aggregate: "", pool: red, want: red},
+		{name: "green + green = green", aggregate: green, pool: green, want: green},
+		{name: "red + red = red", aggregate: red, pool: red, want: red},
+		{name: "yellow + yellow = yellow", aggregate: yellow, pool: yellow, want: yellow},
+		{name: "green + red = yellow", aggregate: green, pool: red, want: yellow},
+		{name: "red + green = yellow", aggregate: red, pool: green, want: yellow},
+		{name: "green + yellow = yellow", aggregate: green, pool: yellow, want: yellow},
+		{name: "yellow + green = yellow", aggregate: yellow, pool: green, want: yellow},
+		{name: "red + yellow = yellow", aggregate: red, pool: yellow, want: yellow},
+		{name: "yellow + red = yellow", aggregate: yellow, pool: red, want: yellow},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, calculateAggregateHealth(tt.aggregate, tt.pool))
+		})
+	}
+}
