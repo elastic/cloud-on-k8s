@@ -306,7 +306,23 @@ func checkAssociations(a *Agent) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), a.ElasticsearchRefs()...)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
 	err3 := commonv1.CheckFleetServerSelectorRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
-	return append(append(err1, err2...), err3...)
+	return append(append(append(err1, err2...), err3...), checkPKIESRefsNamed(a)...)
+}
+
+// checkPKIESRefsNamed rejects Elasticsearch refs in PKI mode without name. Agent does not run the full
+// ElasticsearchSelector validation, so existing Agents with clientCertificateSecretName and secretName stay valid
+// (backwards compatible).
+func checkPKIESRefsNamed(a *Agent) field.ErrorList {
+	var errs field.ErrorList
+	for i, ref := range a.Spec.ElasticsearchRefs {
+		if ref.Name == "" && ref.AuthenticationMode == commonv1.AuthenticationModePKI {
+			errs = append(errs, field.Forbidden(
+				field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("authenticationMode"),
+				"authenticationMode PKI can only be used in combination with name",
+			))
+		}
+	}
+	return errs
 }
 
 func checkNoPKIAuthentication(a *Agent) field.ErrorList {

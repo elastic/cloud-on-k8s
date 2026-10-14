@@ -573,7 +573,7 @@ func Test_checkFleetServerOrFleetServerRef(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: true,
-					FleetServerRef:     commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
+					FleetServerRef:     commonv1.FleetServerSelector{Name: "name"},
 				},
 			},
 			wantErr: true,
@@ -646,7 +646,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
+					FleetServerRef: commonv1.FleetServerSelector{Name: "name"},
 				},
 			},
 			wantErr: true,
@@ -666,7 +666,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "name"}},
+					FleetServerRef: commonv1.FleetServerSelector{Name: "name"},
 					KibanaRef:      commonv1.ObjectSelector{Name: "name"},
 				},
 			},
@@ -738,7 +738,7 @@ func Test_checkAssociations(t *testing.T) {
 							},
 						},
 						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "ble"}},
+						FleetServerRef: commonv1.FleetServerSelector{SecretName: "ble"},
 					},
 				},
 			},
@@ -771,6 +771,37 @@ func Test_checkAssociations(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "PKI with secret named ref: NOK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					SecretName:         "ext",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI with named ref: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					Name:               "es",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: false,
+		},
+		{
+			// accepted before PKI was introduced, so existing Agents must stay valid
+			name: "client certificate with secret named ref: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					SecretName:                  "ext",
+					ClientCertificateSecretName: "client-cert",
+				}}}},
+			},
+			wantErr: false,
+		},
+		{
 			name: "no name or secret name with namespace: NOK",
 			args: args{
 				b: &Agent{
@@ -786,7 +817,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Agent{
 					Spec: AgentSpec{
-						FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"}},
+						FleetServerRef: commonv1.FleetServerSelector{ServiceName: "ble"},
 					},
 				},
 			},
