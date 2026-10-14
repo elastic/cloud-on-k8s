@@ -43,12 +43,14 @@ const (
 // requests asking for different roles, or when its name is used by a user-defined role mapping. Once the mappings are
 // saved, each request Secret gets PKIEvaluationAnnotation, with the conflict if its mapping is withheld, and the
 // association controller keeps the association Pending until it matches the request.
-// No mapping is generated when the ECK-managed PKI realm or mTLS is disabled, so the mappings are removed when PKI is
-// disabled: their rules match the fingerprint from any PKI realm, so a user-defined PKI realm would still grant the roles.
+// No mapping is generated when the ECK-managed PKI realm is not configured (pkiRealmConfigured, see
+// settings.PKIRealmConfigured), so the mappings are removed with the realm: their rules match the fingerprint from any
+// PKI realm, so a user-defined PKI realm would still grant the roles.
 func ReconcilePKIRoleMappings(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	pkiRealmConfigured bool,
 ) error {
 	requests, err := rolemapping.RetrieveRequests(ctx, c, es)
 	if err != nil {
@@ -56,8 +58,7 @@ func ReconcilePKIRoleMappings(
 	}
 	var pkiMappings *commonv1.Config
 	var conflictMessages map[string]string
-	pkiEnabled := es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication
-	if pkiEnabled {
+	if pkiRealmConfigured {
 		pkiMappings, conflictMessages = buildPKIRoleMappings(ctx, requests)
 	}
 
@@ -87,7 +88,7 @@ func ReconcilePKIRoleMappings(
 		return err
 	}
 
-	return patchEvaluationAnnotations(ctx, c, requests, pkiEnabled, conflictMessages, nameCollisions)
+	return patchEvaluationAnnotations(ctx, c, requests, pkiRealmConfigured, conflictMessages, nameCollisions)
 }
 
 // withholdNameCollisions drops the entries of pkiMappings whose name is already used by a user-defined role
@@ -119,22 +120,22 @@ func withholdNameCollisions(ctx context.Context, pkiMappings *commonv1.Config, u
 
 // patchEvaluationAnnotations sets PKIEvaluationAnnotation on each request Secret, with the conflict message if its
 // role mapping is withheld. conflictMessages is keyed by public key fingerprint, nameCollisions by role mapping name.
-// When PKI is disabled, the requests are not evaluated, so the annotation is removed. Patch errors are aggregated so
-// the caller can retry.
+// When the PKI realm is not configured, the requests are not evaluated, so the annotation is removed. Patch errors are
+// aggregated so the caller can retry.
 func patchEvaluationAnnotations(
 	ctx context.Context,
 	c k8s.Client,
 	requests []rolemapping.Request,
-	pkiEnabled bool,
+	pkiRealmConfigured bool,
 	conflictMessages map[string]string,
 	nameCollisions map[string]string,
 ) error {
 	var errs []error
 	for _, req := range requests {
-		// annotationVal is nil (JSON null) when PKI is disabled, which removes the annotation.
+		// annotationVal is nil (JSON null) when the PKI realm is not configured, which removes the annotation.
 		var desired string
 		var annotationVal any
-		if pkiEnabled {
+		if pkiRealmConfigured {
 			conflict := conflictMessages[req.PublicKeyFingerprint]
 			if conflict == "" {
 				conflict = nameCollisions[pkiRoleMappingName(req)]

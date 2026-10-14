@@ -2971,7 +2971,8 @@ func TestReconciler_Reconcile_reconcileAuth(t *testing.T) {
 				if tt.beforeEvaluation != nil {
 					tt.beforeEvaluation(t, r, kb)
 				}
-				require.NoError(t, filesettings.ReconcilePKIRoleMappings(t.Context(), r.Client, es))
+				pkiRealmConfigured := es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication
+				require.NoError(t, filesettings.ReconcilePKIRoleMappings(t.Context(), r.Client, es, pkiRealmConfigured))
 				result, err = r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 				require.NoError(t, err)
 			}

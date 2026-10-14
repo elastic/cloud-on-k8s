@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -94,8 +95,9 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 			)
 		default:
 			// The file-settings Secret is not waiting on a StackConfigPolicy, so the ECK PKI role mappings can be
-			// written into it.
-			if err := filesettings.ReconcilePKIRoleMappings(ctx, d.Client, d.ES); err != nil {
+			// written into it. They follow the ECK-managed PKI realm, which depends on the effective mTLS setting.
+			pkiRealmConfigured := settings.PKIRealmConfigured(d.ES.Spec.Auth.PKI.Enabled, resolvedConfig.ClientAuthenticationRequired, d.Version)
+			if err := filesettings.ReconcilePKIRoleMappings(ctx, d.Client, d.ES, pkiRealmConfigured); err != nil {
 				return results.WithError(err)
 			}
 		}

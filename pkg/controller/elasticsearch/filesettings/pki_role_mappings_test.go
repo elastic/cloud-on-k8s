@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
+	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -382,6 +383,9 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		checkFn func(t *testing.T, c k8s.Client)
 		// mutateES changes the reconciled Elasticsearch, e.g. to disable PKI.
 		mutateES func(es *esv1.Elasticsearch)
+		// clientAuthenticationIneffective simulates mTLS being enabled in the spec but not effectively required, e.g.
+		// without enterprise features or with a client_authentication override in the user or StackConfigPolicy config.
+		clientAuthenticationIneffective bool
 	}{
 		{
 			name: "create: file-settings Secret is created with PKI mappings",
@@ -490,6 +494,28 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			wantEmptyMappings: true,
 		},
 		{
+			name: "mTLS ineffective: ECK PKI entries and evaluations are removed while the spec enables PKI and mTLS",
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				secret := fileSettingsSecretWithRoleMappings(t, es, map[string]any{
+					pkiMappingKey(es.Namespace, "kb-client-cert"): managedPKIEntry("uid-kb"),
+				})
+				req := pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es")
+				req.Annotations = map[string]string{rolemapping.PKIEvaluationAnnotation: evaluationAnnotation(t, rolemapping.Evaluation{
+					PublicKeyFingerprint: string(req.Data[rolemapping.PublicKeyFingerprintField]),
+					Roles:                "kibana_system",
+				})}
+				return []client.Object{&es, secret, req}
+			},
+			clientAuthenticationIneffective: true,
+			wantEmptyMappings:               true,
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				_, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.False(t, ok, "the evaluation must be removed when mTLS is not effectively required")
+			},
+		},
+		{
 			name: "legacy: user-defined eck_managed_pki_ mapping is preserved when there are no requests",
 			setup: func(t *testing.T) []client.Object {
 				t.Helper()
@@ -593,7 +619,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				req.Data[rolemapping.PublicKeyFingerprintField] = []byte(certificates.PublicKeyFingerprint(cert))
 				// First reconcile populates the file-settings Secret with the correct entries.
 				setupClient := k8s.NewFakeClient(&es, req)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es))
+				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
 				var secret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &secret))
 				return []client.Object{&es, &secret, req}
@@ -614,7 +640,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				second.Data[rolemapping.PublicKeyFingerprintField] = fp
 				// Pre-populate the file-settings Secret with the mapping for "first" (pre-conflict state).
 				setupClient := k8s.NewFakeClient(&es, first)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es))
+				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
 				var fsSecret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &fsSecret))
 				return []client.Object{&es, &fsSecret, first, second}
@@ -642,10 +668,10 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				second.Data[rolemapping.PublicKeyFingerprintField] = fp
 				// Phase 1: only first — Secret created with mapping.
 				setupClient := k8s.NewFakeClient(&es, first)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es))
+				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
 				// Phase 2: second added — role_mappings emptied, annotations written.
 				require.NoError(t, setupClient.Create(t.Context(), second))
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es))
+				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
 				var fsSecret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &fsSecret))
 				// Read first back so the final client carries the annotation written in phase 2.
@@ -686,7 +712,9 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			if tt.mutateES != nil {
 				tt.mutateES(&reconciledES)
 			}
-			require.NoError(t, ReconcilePKIRoleMappings(context.Background(), fakeClient, reconciledES))
+			clientAuthenticationRequired := reconciledES.Spec.HTTP.TLS.Client.Authentication && !tt.clientAuthenticationIneffective
+			pkiRealmConfigured := essettings.PKIRealmConfigured(reconciledES.Spec.Auth.PKI.Enabled, clientAuthenticationRequired, commonv1.PKIAuthMinVersion)
+			require.NoError(t, ReconcilePKIRoleMappings(context.Background(), fakeClient, reconciledES, pkiRealmConfigured))
 
 			var secret corev1.Secret
 			getErr := fakeClient.Get(context.Background(), fileSettingsSecretName, &secret)
@@ -736,7 +764,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 
 		// Phase 1: establish conflict so annotations are written onto both Secrets.
 		setupClient := k8s.NewFakeClient(&es, first, second)
-		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es))
+		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
 
 		var firstAnnotated, secondAnnotated corev1.Secret
 		require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &firstAnnotated))
@@ -751,7 +779,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		rvFirst := firstAnnotated.ResourceVersion
 		rvSecond := secondAnnotated.ResourceVersion
 		fakeClient := k8s.NewFakeClient(&es, &firstAnnotated, &secondAnnotated)
-		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), fakeClient, es))
+		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), fakeClient, es, true))
 
 		var s corev1.Secret
 		require.NoError(t, fakeClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &s))

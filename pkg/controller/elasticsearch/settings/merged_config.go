@@ -78,7 +78,7 @@ func NewMergedESConfig(
 	// accepts. Roles are granted only by role mappings bound to each association's public key fingerprint.
 	// Client certificate rotation rewrites the bundle, so the realm must reload its truststore
 	// (elastic/elasticsearch#160416, covered by PKIAuthMinVersion).
-	if pkiRealmEnabled && clientAuthenticationRequired && ver.GTE(commonv1.PKIAuthMinVersion) {
+	if PKIRealmConfigured(pkiRealmEnabled, clientAuthenticationRequired, ver) {
 		pkiRealmCfg := map[string]any{
 			esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder:                  commonv1.ECKPKIRealmOrder,
 			esv1.XPackSecurityAuthcRealmsPKIECKPKICertificateAuthorities: []string{clientTrustBundlePath()},
@@ -89,6 +89,11 @@ func NewMergedESConfig(
 	}
 
 	return CanonicalConfig{config}, nil
+}
+
+// PKIRealmConfigured reports whether the ECK-managed PKI realm is configured.
+func PKIRealmConfigured(pkiEnabled, clientAuthenticationRequired bool, ver version.Version) bool {
+	return pkiEnabled && clientAuthenticationRequired && ver.GTE(commonv1.PKIAuthMinVersion)
 }
 
 // zoneAwarenessConfig returns the ES configuration related to zone awareness.
