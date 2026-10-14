@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	uyaml "github.com/elastic/go-ucfg/yaml"
@@ -787,6 +788,9 @@ receivers:
 			if tt.policy != nil {
 				policy = tt.policy()
 			}
+
+			originalLabels := maps.Clone(policy.Labels)
+
 			es := mkES(false)
 			if tt.es != nil {
 				es = tt.es()
@@ -828,6 +832,9 @@ receivers:
 					t.Errorf("config mismatch: %v", diff)
 				}
 			}
+
+			require.Equal(t, originalLabels, policy.Labels, "policy labels should not be mutated")
+
 			if tt.check != nil {
 				tt.check(t, *cm)
 			}

@@ -15,8 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -130,4 +132,44 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 				"AutoOps CA secret should contain the expected CA certificate")
 		})
 	}
+}
+
+func TestBuildAutoOpsESCASecretDoesNotMutatePolicyLabels(t *testing.T) {
+	policy := newAutoOpsAgentPolicy(func(p *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		p.Labels = map[string]string{"user-label": "value"}
+	})
+	es := newElasticsearch()
+
+	secret := buildAutoOpsESCASecret(policy, *es, "ca-secret", []byte("ca-cert"))
+
+	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
+	assert.Equal(t, "value", secret.Labels["user-label"])
+	// the policy's own labels must not be polluted with the secret's labels
+	assert.Equal(t, map[string]string{"user-label": "value"}, policy.Labels)
+}
+
+func TestReconcileAutoOpsESClientCertSecretDoesNotMutatePolicy(t *testing.T) {
+	scheme.SetupScheme()
+
+	policy := newAutoOpsAgentPolicy(func(p *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		p.Labels = map[string]string{"user-label": "value"}
+		p.Annotations = map[string]string{"user-annotation": "value"}
+	})
+	es := newElasticsearch()
+
+	r := &AgentPolicyReconciler{
+		Client:         k8s.NewFakeClient(),
+		dynamicWatches: watches.NewDynamicWatches(),
+	}
+
+	secret, results := r.reconcileAutoOpsESClientCertSecret(t.Context(), policy, *es)
+	_, err := results.Aggregate()
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+
+	assert.Equal(t, "true", secret.Labels[commonlabels.ClientCertificateLabelName])
+	assert.Equal(t, "value", secret.Labels["user-label"])
+	// the policy's own labels and annotations must not be polluted with the secret's
+	assert.Equal(t, map[string]string{"user-label": "value"}, policy.Labels)
+	assert.Equal(t, map[string]string{"user-annotation": "value"}, policy.Annotations)
 }

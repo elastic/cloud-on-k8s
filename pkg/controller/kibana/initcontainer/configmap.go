@@ -33,7 +33,8 @@ func NewScriptsConfigMapVolume(kbName string) volume.ConfigMapVolume {
 		kbv1.ScriptsConfigMap(kbName),
 		kbvolume.ScriptsVolumeName,
 		kbvolume.ScriptsVolumeMountPath,
-		0o755)
+		0o755,
+	)
 }
 
 // ReconcileScriptsConfigMap reconciles the ConfigMap containing scripts used by the Kibana elastic-internal-init container.
@@ -46,21 +47,20 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, kb kbv1.Kibana
 		return err
 	}
 
+	// merge into a copy of meta: the caller reuses meta.Labels for other resources (eg. the Deployment),
+	// which must not inherit the watched label
+	cmMeta := meta.CloneWithLabel(commonv1.RestrictWatchedResourcesLabelName, commonv1.RestrictWatchedResourcesLabelValue)
+
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.ScriptsConfigMap(kb.Name)}
 	scriptsConfigMap := corev1.ConfigMap{
 		Name:        nsn.Name,
 		Namespace:   kb.Namespace,
-		Labels:      meta.Labels,
-		Annotations: meta.Annotations,
+		Labels:      cmMeta.Labels,
+		Annotations: cmMeta.Annotations,
 		Data: map[string]string{
 			KibanaInitScriptConfigKey: initScript,
 		},
 	}
-
-	if scriptsConfigMap.Labels == nil {
-		scriptsConfigMap.Labels = make(map[string]string)
-	}
-	scriptsConfigMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(
