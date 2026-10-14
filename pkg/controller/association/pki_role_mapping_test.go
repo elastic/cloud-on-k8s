@@ -40,7 +40,7 @@ func TestPKIRequestFingerprintTracksKeyRotation(t *testing.T) {
 		name := managed.Name
 		managedCert, err := certificates.GetPrimaryCertificate(managed.CertPem())
 		require.NoError(t, err)
-		_, err = reconcilePKIRoleMappingRequest(t.Context(), r.Client, association, metadata.Metadata{}, "kb-es", managedCert, "kibana_system", es)
+		_, _, err = reconcilePKIRoleMappingRequest(t.Context(), r.Client, association, metadata.Metadata{}, "kb-es", managedCert, "kibana_system", es)
 		require.NoError(t, err)
 		var request, secret corev1.Secret
 		require.NoError(t, r.Get(t.Context(), PKIRoleMappingRequestKey(association, es.Namespace, "kb-es"), &request))
@@ -83,7 +83,7 @@ func TestPKIRequestFingerprintFromUserProvidedClientCert(t *testing.T) {
 
 		copiedCert, err := certificates.GetPrimaryCertificate(certPEM)
 		require.NoError(t, err)
-		_, err = reconcilePKIRoleMappingRequest(t.Context(), r.Client, association, metadata.Metadata{}, "kb-es", copiedCert, "kibana_system", es)
+		_, _, err = reconcilePKIRoleMappingRequest(t.Context(), r.Client, association, metadata.Metadata{}, "kb-es", copiedCert, "kibana_system", es)
 		require.NoError(t, err)
 
 		var request corev1.Secret
@@ -131,10 +131,11 @@ func TestReconcilePKIAuth_ClientCertValidation(t *testing.T) {
 			wantEvent:  "non-empty Subject Common Name",
 		},
 		{
-			name:               "certificate with a Subject CN",
-			certPEM:            selfSignedCertPEM(t, pkix.Name{CommonName: "kibana"}),
-			wantAuthSecretName: commonv1.NoAuthRequiredValue,
-			wantRequest:        true,
+			// The request is written, and the association waits for the ES driver to evaluate it.
+			name:        "certificate with a Subject CN",
+			certPEM:     selfSignedCertPEM(t, pkix.Name{CommonName: "kibana"}),
+			wantStatus:  commonv1.AssociationPending,
+			wantRequest: true,
 		},
 	}
 

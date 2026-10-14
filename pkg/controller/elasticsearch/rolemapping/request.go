@@ -6,6 +6,7 @@ package rolemapping
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -36,10 +37,9 @@ const (
 	ResourceNamespaceField = "resourceNamespace"
 	ResourceNameField      = "resourceName"
 
-	// PKIConflictAnnotation is set by ReconcilePKIRoleMappings on a request Secret whose role mapping is withheld:
-	// its fingerprint is shared by requests asking for different roles, or its name is used by a user-defined role
-	// mapping. The value is the conflict description; it is removed once the conflict is resolved.
-	PKIConflictAnnotation = "association.k8s.elastic.co/pki-conflict"
+	// PKIEvaluationAnnotation is set by ReconcilePKIRoleMappings on each request Secret it evaluated, to the
+	// JSON-encoded Evaluation of the request. It is removed when PKI or mTLS is disabled on Elasticsearch.
+	PKIEvaluationAnnotation = "association.k8s.elastic.co/pki-evaluation"
 
 	fieldNotFound = "field %s not found in PKI role mapping request Secret %s/%s"
 )
@@ -55,9 +55,36 @@ type Request struct {
 	// ResourceNamespace and ResourceName identify the associated resource that owns this request, if set.
 	ResourceNamespace string
 	ResourceName      string
-	// ConflictAnnotation is the current value of PKIConflictAnnotation on the request Secret,
-	// carried here so patchConflictAnnotations can skip writes when the annotation is already correct.
-	ConflictAnnotation string
+	// EvaluationAnnotation is the current value of PKIEvaluationAnnotation on the request Secret, carried here so
+	// patchEvaluationAnnotations can skip writes when the annotation is already correct.
+	EvaluationAnnotation string
+}
+
+// Evaluation is the result of the evaluation of a request by ReconcilePKIRoleMappings, stored in
+// PKIEvaluationAnnotation. The association controller only trusts it when PublicKeyFingerprint and Roles match the
+// request it wrote: otherwise, the current request is not evaluated yet.
+type Evaluation struct {
+	// PublicKeyFingerprint and Roles are the content of the evaluated request.
+	PublicKeyFingerprint string `json:"fingerprint"`
+	Roles                string `json:"roles"`
+	// Conflict describes why the role mapping of the request is withheld: its fingerprint is shared by requests asking
+	// for different roles, or its name is used by a user-defined role mapping. Empty when the role mapping is written.
+	Conflict string `json:"conflict,omitempty"`
+}
+
+// ParseEvaluation returns the Evaluation stored in a PKIEvaluationAnnotation value. It returns false when the value is
+// empty or invalid, which means the request is not evaluated.
+func ParseEvaluation(value string) (Evaluation, bool) {
+	var evaluation Evaluation
+	if value == "" || json.Unmarshal([]byte(value), &evaluation) != nil {
+		return Evaluation{}, false
+	}
+	return evaluation, true
+}
+
+// Matches reports whether the evaluation is the one of a request with the given public key fingerprint and roles.
+func (e Evaluation) Matches(publicKeyFingerprint, roles string) bool {
+	return e.PublicKeyFingerprint == publicKeyFingerprint && e.Roles == strings.TrimSpace(roles)
 }
 
 // RequestLabels returns labels matching PKI role mapping request Secrets for es.
@@ -113,6 +140,6 @@ func parseRequestSecret(secret corev1.Secret) (Request, error) {
 	}
 	request.ResourceNamespace = string(secret.Data[ResourceNamespaceField])
 	request.ResourceName = string(secret.Data[ResourceNameField])
-	request.ConflictAnnotation = secret.Annotations[PKIConflictAnnotation]
+	request.EvaluationAnnotation = secret.Annotations[PKIEvaluationAnnotation]
 	return request, err
 }

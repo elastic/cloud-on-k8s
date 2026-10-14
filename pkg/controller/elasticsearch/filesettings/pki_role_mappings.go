@@ -40,8 +40,9 @@ const (
 
 // ReconcilePKIRoleMappings rebuilds the ECK-generated PKI role mappings in the file-settings Secret from the request
 // Secrets, so mappings of deleted requests are removed. A mapping is withheld when its fingerprint is shared by
-// requests asking for different roles, or when its name is used by a user-defined role mapping. Its request Secret
-// then gets PKIConflictAnnotation, and the association controller keeps the association Pending.
+// requests asking for different roles, or when its name is used by a user-defined role mapping. Once the mappings are
+// saved, each request Secret gets PKIEvaluationAnnotation, with the conflict if its mapping is withheld, and the
+// association controller keeps the association Pending until it matches the request.
 // No mapping is generated when the ECK-managed PKI realm or mTLS is disabled, so the mappings are removed when PKI is
 // disabled: their rules match the fingerprint from any PKI realm, so a user-defined PKI realm would still grant the roles.
 func ReconcilePKIRoleMappings(
@@ -55,7 +56,8 @@ func ReconcilePKIRoleMappings(
 	}
 	var pkiMappings *commonv1.Config
 	var conflictMessages map[string]string
-	if es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication {
+	pkiEnabled := es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication
+	if pkiEnabled {
 		pkiMappings, conflictMessages = buildPKIRoleMappings(ctx, requests)
 	}
 
@@ -85,7 +87,7 @@ func ReconcilePKIRoleMappings(
 		return err
 	}
 
-	return patchConflictAnnotations(ctx, c, requests, conflictMessages, nameCollisions)
+	return patchEvaluationAnnotations(ctx, c, requests, pkiEnabled, conflictMessages, nameCollisions)
 }
 
 // withholdNameCollisions drops the entries of pkiMappings whose name is already used by a user-defined role
@@ -115,44 +117,57 @@ func withholdNameCollisions(ctx context.Context, pkiMappings *commonv1.Config, u
 	return &commonv1.Config{Data: data}, collisions
 }
 
-// patchConflictAnnotations sets PKIConflictAnnotation on each request Secret whose role mapping is withheld, and
-// removes it from the others. conflictMessages is keyed by public key fingerprint, nameCollisions by role mapping
-// name. Patch errors are aggregated so the caller can retry.
-func patchConflictAnnotations(
+// patchEvaluationAnnotations sets PKIEvaluationAnnotation on each request Secret, with the conflict message if its
+// role mapping is withheld. conflictMessages is keyed by public key fingerprint, nameCollisions by role mapping name.
+// When PKI is disabled, the requests are not evaluated, so the annotation is removed. Patch errors are aggregated so
+// the caller can retry.
+func patchEvaluationAnnotations(
 	ctx context.Context,
 	c k8s.Client,
 	requests []rolemapping.Request,
+	pkiEnabled bool,
 	conflictMessages map[string]string,
 	nameCollisions map[string]string,
 ) error {
 	var errs []error
 	for _, req := range requests {
-		desiredMsg := conflictMessages[req.PublicKeyFingerprint]
-		if desiredMsg == "" {
-			desiredMsg = nameCollisions[pkiRoleMappingName(req)]
-		}
-		if req.ConflictAnnotation == desiredMsg {
-			continue // annotation already reflects the desired state
-		}
-		// annotationVal is nil (JSON null) when there is no conflict, which removes the annotation.
+		// annotationVal is nil (JSON null) when PKI is disabled, which removes the annotation.
+		var desired string
 		var annotationVal any
-		if desiredMsg != "" {
-			annotationVal = desiredMsg
+		if pkiEnabled {
+			conflict := conflictMessages[req.PublicKeyFingerprint]
+			if conflict == "" {
+				conflict = nameCollisions[pkiRoleMappingName(req)]
+			}
+			value, err := json.Marshal(rolemapping.Evaluation{
+				PublicKeyFingerprint: req.PublicKeyFingerprint,
+				Roles:                req.Roles,
+				Conflict:             conflict,
+			})
+			if err != nil {
+				errs = append(errs, fmt.Errorf("building PKI evaluation annotation for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
+				continue
+			}
+			desired = string(value)
+			annotationVal = desired
+		}
+		if req.EvaluationAnnotation == desired {
+			continue // annotation already reflects the desired state
 		}
 		patch, err := json.Marshal(map[string]any{
 			"metadata": map[string]any{
-				"annotations": map[string]any{rolemapping.PKIConflictAnnotation: annotationVal},
+				"annotations": map[string]any{rolemapping.PKIEvaluationAnnotation: annotationVal},
 			},
 		})
 		if err != nil {
-			errs = append(errs, fmt.Errorf("building PKI conflict annotation patch for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
+			errs = append(errs, fmt.Errorf("building PKI evaluation annotation patch for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
 			continue
 		}
 		secret := &corev1.Secret{}
 		secret.Namespace = req.SecretNamespace
 		secret.Name = req.SecretName
 		if err := c.Patch(ctx, secret, client.RawPatch(types.MergePatchType, patch)); err != nil && !apierrors.IsNotFound(err) {
-			errs = append(errs, fmt.Errorf("patching PKI conflict annotation on Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
+			errs = append(errs, fmt.Errorf("patching PKI evaluation annotation on Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
 		}
 	}
 	return errors.Join(errs...)

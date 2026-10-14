@@ -95,3 +95,55 @@ func TestParseRequestSecret(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluation(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotation  string
+		fingerprint string
+		roles       string
+		wantParsed  bool
+		wantMatches bool
+	}{
+		{
+			name:        "missing annotation",
+			fingerprint: "fp",
+			roles:       "kibana_system",
+		},
+		{
+			name:        "invalid annotation",
+			annotation:  "not-json",
+			fingerprint: "fp",
+			roles:       "kibana_system",
+		},
+		{
+			name:        "evaluation of the request",
+			annotation:  `{"fingerprint":"fp","roles":"kibana_system"}`,
+			fingerprint: "fp",
+			roles:       " kibana_system ",
+			wantParsed:  true,
+			wantMatches: true,
+		},
+		{
+			name:        "evaluation of a previous fingerprint",
+			annotation:  `{"fingerprint":"previous-fp","roles":"kibana_system"}`,
+			fingerprint: "fp",
+			roles:       "kibana_system",
+			wantParsed:  true,
+		},
+		{
+			name:        "evaluation of previous roles",
+			annotation:  `{"fingerprint":"fp","roles":"superuser","conflict":"withheld"}`,
+			fingerprint: "fp",
+			roles:       "kibana_system",
+			wantParsed:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			evaluation, parsed := ParseEvaluation(tt.annotation)
+			require.Equal(t, tt.wantParsed, parsed)
+			require.Equal(t, tt.wantMatches, evaluation.Matches(tt.fingerprint, tt.roles))
+		})
+	}
+}

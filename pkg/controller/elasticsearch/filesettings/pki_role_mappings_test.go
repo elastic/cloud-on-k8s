@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -87,6 +88,22 @@ func fileSettingsSecretWithRoleMappings(t *testing.T, es esv1.Elasticsearch, dat
 	var secret corev1.Secret
 	require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &secret))
 	return &secret
+}
+
+// requestEvaluation returns the evaluation stored on the request Secret name, and whether there is one.
+func requestEvaluation(t *testing.T, c k8s.Client, namespace, name string) (rolemapping.Evaluation, bool) {
+	t.Helper()
+	var s corev1.Secret
+	require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: namespace, Name: name}, &s))
+	return rolemapping.ParseEvaluation(s.Annotations[rolemapping.PKIEvaluationAnnotation])
+}
+
+// evaluationAnnotation returns the PKIEvaluationAnnotation value of evaluation.
+func evaluationAnnotation(t *testing.T, evaluation rolemapping.Evaluation) string {
+	t.Helper()
+	value, err := json.Marshal(evaluation)
+	require.NoError(t, err)
+	return string(value)
 }
 
 func binding(ns, name, fingerprint, roles string) rolemapping.Request {
@@ -390,6 +407,17 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				require.Equal(t, "uid-kb", meta["eck_resource_uid"])
 				require.Equal(t, "kb-es", meta["eck_association"])
 			},
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				for name, roles := range map[string]string{"kb-client-cert": "kibana_system", "fleet-client-cert": "fleet_server"} {
+					var req corev1.Secret
+					require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: name}, &req))
+					evaluation, ok := requestEvaluation(t, c, es.Namespace, name)
+					require.True(t, ok, "request Secret %q must be evaluated", name)
+					require.True(t, evaluation.Matches(string(req.Data[rolemapping.PublicKeyFingerprintField]), roles))
+					require.Empty(t, evaluation.Conflict)
+				}
+			},
 		},
 		{
 			name:        "update: existing file-settings Secret is updated idempotently",
@@ -424,20 +452,26 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			wantEmptyMappings: true,
 		},
 		{
-			name: "PKI disabled: ECK PKI entries are removed while requests exist",
+			name: "PKI disabled: ECK PKI entries and evaluations are removed while requests exist",
 			setup: func(t *testing.T) []client.Object {
 				t.Helper()
 				secret := fileSettingsSecretWithRoleMappings(t, es, map[string]any{
 					pkiMappingKey(es.Namespace, "kb-client-cert"): managedPKIEntry("uid-kb"),
 				})
-				return []client.Object{
-					&es,
-					secret,
-					pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es"),
-				}
+				req := pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es")
+				req.Annotations = map[string]string{rolemapping.PKIEvaluationAnnotation: evaluationAnnotation(t, rolemapping.Evaluation{
+					PublicKeyFingerprint: string(req.Data[rolemapping.PublicKeyFingerprintField]),
+					Roles:                "kibana_system",
+				})}
+				return []client.Object{&es, secret, req}
 			},
 			mutateES:          func(es *esv1.Elasticsearch) { es.Spec.Auth.PKI.Enabled = false },
 			wantEmptyMappings: true,
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				_, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.False(t, ok, "the evaluation must be removed when PKI is disabled")
+			},
 		},
 		{
 			name: "mTLS disabled: ECK PKI entries are removed while requests exist",
@@ -515,9 +549,9 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			},
 			checkFn: func(t *testing.T, c k8s.Client) {
 				t.Helper()
-				var s corev1.Secret
-				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "kb-client-cert"}, &s))
-				require.Contains(t, s.Annotations[rolemapping.PKIConflictAnnotation], "StackConfigPolicy")
+				evaluation, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.True(t, ok)
+				require.Contains(t, evaluation.Conflict, "StackConfigPolicy")
 			},
 		},
 		{
@@ -527,15 +561,19 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				t.Helper()
 				secret := fileSettingsSecretWithRoleMappings(t, es, map[string]any{"custom_mapping": userEntry("viewer")})
 				req := pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es")
-				req.Annotations = map[string]string{rolemapping.PKIConflictAnnotation: "previous collision"}
+				req.Annotations = map[string]string{rolemapping.PKIEvaluationAnnotation: evaluationAnnotation(t, rolemapping.Evaluation{
+					PublicKeyFingerprint: string(req.Data[rolemapping.PublicKeyFingerprintField]),
+					Roles:                "kibana_system",
+					Conflict:             "previous collision",
+				})}
 				return []client.Object{&es, secret, req}
 			},
 			wantMappingKeys: []string{"custom_mapping", pkiMappingKey(es.Namespace, "kb-client-cert")},
 			checkFn: func(t *testing.T, c k8s.Client) {
 				t.Helper()
-				var s corev1.Secret
-				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "kb-client-cert"}, &s))
-				require.Empty(t, s.Annotations[rolemapping.PKIConflictAnnotation])
+				evaluation, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.True(t, ok)
+				require.Empty(t, evaluation.Conflict)
 			},
 		},
 		{
@@ -585,10 +623,9 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			checkFn: func(t *testing.T, c k8s.Client) {
 				t.Helper()
 				for _, name := range []string{"first", "second"} {
-					var s corev1.Secret
-					require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: name}, &s))
-					require.NotEmpty(t, s.Annotations[rolemapping.PKIConflictAnnotation],
-						"request Secret %q must have conflict annotation", name)
+					evaluation, ok := requestEvaluation(t, c, es.Namespace, name)
+					require.True(t, ok, "request Secret %q must be evaluated", name)
+					require.NotEmpty(t, evaluation.Conflict, "request Secret %q must have a conflict", name)
 				}
 			},
 		},
@@ -614,17 +651,17 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				// Read first back so the final client carries the annotation written in phase 2.
 				var firstAnnotated corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &firstAnnotated))
-				require.NotEmpty(t, firstAnnotated.Annotations[rolemapping.PKIConflictAnnotation],
-					"precondition: first must carry the conflict annotation after phase 2")
+				evaluation, ok := rolemapping.ParseEvaluation(firstAnnotated.Annotations[rolemapping.PKIEvaluationAnnotation])
+				require.True(t, ok, "precondition: first must be evaluated after phase 2")
+				require.NotEmpty(t, evaluation.Conflict, "precondition: first must have a conflict after phase 2")
 				return []client.Object{&es, &fsSecret, &firstAnnotated} // second removed; conflict resolved
 			},
 			wantMappingKeys: []string{pkiMappingKey(es.Namespace, "first")},
 			checkFn: func(t *testing.T, c k8s.Client) {
 				t.Helper()
-				var s corev1.Secret
-				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &s))
-				require.Empty(t, s.Annotations[rolemapping.PKIConflictAnnotation],
-					"conflict annotation must be cleared once the conflict is resolved")
+				evaluation, ok := requestEvaluation(t, c, es.Namespace, "first")
+				require.True(t, ok)
+				require.Empty(t, evaluation.Conflict, "the conflict must be cleared once the conflict is resolved")
 			},
 		},
 	}
@@ -704,11 +741,11 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		var firstAnnotated, secondAnnotated corev1.Secret
 		require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &firstAnnotated))
 		require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "second"}, &secondAnnotated))
-		require.NotEmpty(t, firstAnnotated.Annotations[rolemapping.PKIConflictAnnotation], "precondition")
-		require.NotEmpty(t, secondAnnotated.Annotations[rolemapping.PKIConflictAnnotation], "precondition")
+		require.NotEmpty(t, firstAnnotated.Annotations[rolemapping.PKIEvaluationAnnotation], "precondition")
+		require.NotEmpty(t, secondAnnotated.Annotations[rolemapping.PKIEvaluationAnnotation], "precondition")
 
 		// Phase 2: run reconcile with annotated Secrets in the client.
-		// ConflictAnnotation == desiredMsg for both → skip branch must be taken, no patch issued.
+		// The current evaluations equal the desired ones for both → skip branch must be taken, no patch issued.
 		// No file-settings Secret is needed: a pure conflict produces nil pkiMappings, which the
 		// unchanged check catches before a write is attempted.
 		rvFirst := firstAnnotated.ResourceVersion
@@ -724,7 +761,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 	})
 }
 
-func TestPatchConflictAnnotations_PatchFailureIsReturned(t *testing.T) {
+func TestPatchEvaluationAnnotations_PatchFailureIsReturned(t *testing.T) {
 	patchErr := fmt.Errorf("injected patch failure")
 	c := k8s.NewFakeClientBuilder().
 		WithInterceptorFuncs(interceptor.Funcs{
@@ -737,9 +774,10 @@ func TestPatchConflictAnnotations_PatchFailureIsReturned(t *testing.T) {
 		SecretNamespace:      "ns",
 		SecretName:           "kb-client-cert",
 		PublicKeyFingerprint: "some-fp",
-		ConflictAnnotation:   "", // differs from desiredMsg, so patch is attempted
+		Roles:                "kibana_system",
+		EvaluationAnnotation: "", // differs from the desired evaluation, so patch is attempted
 	}
-	err := patchConflictAnnotations(t.Context(), c, []rolemapping.Request{req}, map[string]string{"some-fp": "conflict message"}, nil)
+	err := patchEvaluationAnnotations(t.Context(), c, []rolemapping.Request{req}, true, map[string]string{"some-fp": "conflict message"}, nil)
 	require.Error(t, err)
 	require.ErrorIs(t, err, patchErr)
 	require.ErrorContains(t, err, "ns/kb-client-cert")

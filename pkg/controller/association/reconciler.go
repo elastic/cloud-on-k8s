@@ -592,9 +592,19 @@ func (r *Reconciler) reconcilePKIAuth(
 		return authConf{}, commonv1.AssociationPending, nil
 	}
 
-	conflictMsg, err := reconcilePKIRoleMappingRequest(ctx, r.Client, association, assocMeta, r.AssociationName, clientCert, userRole, es)
+	evaluated, conflictMsg, err := reconcilePKIRoleMappingRequest(ctx, r.Client, association, assocMeta, r.AssociationName, clientCert, userRole, es)
 	if err != nil {
 		return authConf{}, commonv1.AssociationPending, err
+	}
+	// Until the ES driver has evaluated the current request, its role mapping may not be written, or may be withheld.
+	// Stay Pending, keeping the committed conf and its credentials: the driver annotates the request Secret, which
+	// triggers a reconciliation through the request Secret watch.
+	if !evaluated {
+		// The event is Normal: this happens briefly on every new request or client certificate rotation.
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeNormal,
+			events.EventAssociationStatusChange, events.EventActionAssociationConfiguration,
+			"Waiting for Elasticsearch %s/%s to evaluate the PKI role mapping request", es.Namespace, es.Name)
+		return authConf{}, commonv1.AssociationPending, nil
 	}
 	if conflictMsg != "" {
 		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,

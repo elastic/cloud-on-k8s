@@ -32,8 +32,9 @@ func PKIRoleMappingRequestKey(
 }
 
 // reconcilePKIRoleMappingRequest writes the request Secret into the ES namespace, with the client certificate public
-// key fingerprint and the roles to grant. It returns the PKIConflictAnnotation value set by the ES driver, which is
-// empty when there is no conflict.
+// key fingerprint and the roles to grant. It reports whether the ES driver has evaluated this request (see
+// rolemapping.PKIEvaluationAnnotation) and, if so, the conflict that withholds its role mapping, empty when there is
+// none.
 func reconcilePKIRoleMappingRequest(
 	ctx context.Context,
 	c k8s.Client,
@@ -43,8 +44,9 @@ func reconcilePKIRoleMappingRequest(
 	clientCert *x509.Certificate,
 	roles string,
 	es esv1.Elasticsearch,
-) (string, error) {
+) (evaluated bool, conflict string, err error) {
 	requestKey := PKIRoleMappingRequestKey(association, es.Namespace, associationName)
+	fingerprint := certificates.PublicKeyFingerprint(clientCert)
 	requestMeta := assocMeta.Merge(metadata.Metadata{Labels: rolemapping.RequestLabels(es)})
 	expected := corev1.Secret{
 		Namespace:   requestKey.Namespace,
@@ -52,7 +54,7 @@ func reconcilePKIRoleMappingRequest(
 		Labels:      requestMeta.Labels,
 		Annotations: requestMeta.Annotations,
 		Data: map[string][]byte{
-			rolemapping.PublicKeyFingerprintField: []byte(certificates.PublicKeyFingerprint(clientCert)),
+			rolemapping.PublicKeyFingerprintField: []byte(fingerprint),
 			rolemapping.RolesField:                []byte(roles),
 			rolemapping.ResourceUIDField:          []byte(association.GetUID()),
 			rolemapping.AssociationNameField:      []byte(associationName),
@@ -61,11 +63,16 @@ func reconcilePKIRoleMappingRequest(
 		},
 	}
 
-	// ReconcileSecret uses additive annotation merge, so the PKIConflictAnnotation written by the
+	// ReconcileSecret uses additive annotation merge, so the PKIEvaluationAnnotation written by the
 	// ES driver is preserved even after the association controller updates the Secret data.
 	reconciled, err := reconciler.ReconcileSecret(ctx, c, expected, &es)
 	if err != nil {
-		return "", err
+		return false, "", err
 	}
-	return reconciled.Annotations[rolemapping.PKIConflictAnnotation], nil
+	// The annotation is missing, or describes a previous content of the request, until the ES driver evaluates it.
+	evaluation, ok := rolemapping.ParseEvaluation(reconciled.Annotations[rolemapping.PKIEvaluationAnnotation])
+	if !ok || !evaluation.Matches(fingerprint, roles) {
+		return false, "", nil
+	}
+	return true, evaluation.Conflict, nil
 }
