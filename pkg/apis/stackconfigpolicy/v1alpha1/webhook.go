@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -30,6 +31,7 @@ var (
 	defaultChecks = []func(*StackConfigPolicy) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
+		checkNoECKManagedRoleMappingsInPolicy,
 		validSettings,
 	}
 )
@@ -112,6 +114,35 @@ func checkReservedRoleMappingNames(policy *StackConfigPolicy, old *StackConfigPo
 		))
 	}
 	return errors
+}
+
+func checkNoECKManagedRoleMappingsInPolicy(policy *StackConfigPolicy) field.ErrorList {
+	return CheckNoECKManagedRoleMappings(policy.Spec.Elasticsearch.SecurityRoleMappings)
+}
+
+// CheckNoECKManagedRoleMappings rejects role mappings that ECK would treat as its own (see
+// commonv1.IsECKManagedPKIRoleMapping), such as a copy of a generated PKI role mapping. The Elasticsearch controller
+// would remove them from the file settings, and the StackConfigPolicy controller would write them again, forever.
+// Unlike reserved role mapping names, it also runs at reconcile time: legacy role mappings that only use the
+// eck_managed_pki_ prefix do not have this metadata, so they are still applied.
+func CheckNoECKManagedRoleMappings(roleMappings *commonv1.Config) field.ErrorList {
+	if roleMappings == nil {
+		return nil
+	}
+	path := field.NewPath("spec").Child("elasticsearch").Child("securityRoleMappings")
+	var errs field.ErrorList
+	for _, name := range slices.Sorted(maps.Keys(roleMappings.Data)) {
+		if !commonv1.IsECKManagedPKIRoleMapping(name, roleMappings.Data[name]) {
+			continue
+		}
+		errs = append(errs, field.Invalid(
+			path.Key(name),
+			name,
+			fmt.Sprintf("role mappings named with the %q prefix and with metadata %s: %s and %s are reserved for ECK-generated PKI role mappings, remove this metadata",
+				commonv1.ECKPKIRoleMappingPrefix, commonv1.ECKPKIRoleMappingManagedByKey, commonv1.ECKPKIRoleMappingManagedByECK, commonv1.ECKPKIRoleMappingResourceUIDKey),
+		))
+	}
+	return errs
 }
 
 // ValidateReservedPKIRealm rejects config using the reserved eck_managed_pki realm name, in any realm type, or its

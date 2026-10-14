@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -38,9 +39,20 @@ const (
 	// ECKPKIRoleMappingPrefix is reserved for PKI role mappings managed by ECK.
 	ECKPKIRoleMappingPrefix = ECKPKIRealmName + "_"
 
+	// ECKPKIRoleMappingManagedByKey, ECKPKIRoleMappingManagedByECK and ECKPKIRoleMappingResourceUIDKey are the metadata
+	// keys and value ECK sets on the PKI role mappings it generates. See IsECKManagedPKIRoleMapping.
+	ECKPKIRoleMappingManagedByKey   = "managed_by"
+	ECKPKIRoleMappingManagedByECK   = "eck"
+	ECKPKIRoleMappingResourceUIDKey = "eck_resource_uid"
+
+	// realmsConfigKey is the dotted-path key under which Elasticsearch realms are configured.
+	realmsConfigKey = "xpack.security.authc.realms"
+	// pkiRealmType is the type of the ECK-managed PKI realm.
+	pkiRealmType = "pki"
+
 	// ECKPKIRealmConfigKey is the dotted-path key for the ECK-managed PKI realm in elasticsearch.yml.
 	// User and SCP config must not set any keys under this path; ECK owns the entire subtree.
-	ECKPKIRealmConfigKey = "xpack.security.authc.realms.pki." + ECKPKIRealmName
+	ECKPKIRealmConfigKey = realmsConfigKey + "." + pkiRealmType + "." + ECKPKIRealmName
 
 	// ECKPKIRealmOrder places the ECK-managed PKI realm last. Elasticsearch uses the token of the first realm, in
 	// order, that extracts one, and under mTLS the PKI realm extracts one from every request. Ordered earlier, it would
@@ -54,6 +66,25 @@ const (
 	// it without introducing an import cycle.
 	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
 )
+
+// IsECKManagedPKIRoleMapping reports whether a role mapping entry is owned by ECK, which then replaces or removes it to
+// match the PKI role mappings it generates. The eck_managed_pki_ prefix alone is not enough, since StackConfigPolicies
+// may use it too, so the metadata set by ECK is also checked.
+func IsECKManagedPKIRoleMapping(name string, mapping any) bool {
+	if !strings.HasPrefix(name, ECKPKIRoleMappingPrefix) {
+		return false
+	}
+	entry, ok := mapping.(map[string]any)
+	if !ok {
+		return false
+	}
+	meta, ok := entry["metadata"].(map[string]any)
+	if !ok {
+		return false
+	}
+	resourceUID, _ := meta[ECKPKIRoleMappingResourceUIDKey].(string)
+	return meta[ECKPKIRoleMappingManagedByKey] == ECKPKIRoleMappingManagedByECK && resourceUID != ""
+}
 
 // DeploymentStatus represents status information about a deployment.
 type DeploymentStatus struct {

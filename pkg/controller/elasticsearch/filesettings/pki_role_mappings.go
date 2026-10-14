@@ -28,11 +28,8 @@ import (
 )
 
 const (
-	// roleMappingManagedByKey, roleMappingManagedByECK, roleMappingResourceUIDKey and roleMappingAssociationKey
-	// are the metadata keys and value ECK sets on the role mappings it generates.
-	roleMappingManagedByKey   = "managed_by"
-	roleMappingManagedByECK   = "eck"
-	roleMappingResourceUIDKey = "eck_resource_uid"
+	// roleMappingAssociationKey is the metadata key ECK sets to the association name on the role mappings it generates,
+	// next to the ownership metadata described in commonv1.IsECKManagedPKIRoleMapping.
 	roleMappingAssociationKey = "eck_association"
 
 	// pkiFingerprintMetadataField and pkiDelegatedByRealmMetadataField are the user fields matched by the role mapping
@@ -237,9 +234,9 @@ func buildPKIRoleMappings(ctx context.Context, requests []rolemapping.Request) (
 		}
 
 		meta := map[string]any{
-			roleMappingManagedByKey:   roleMappingManagedByECK,
-			roleMappingResourceUIDKey: request.ResourceUID,
-			roleMappingAssociationKey: request.AssociationName,
+			commonv1.ECKPKIRoleMappingManagedByKey:   commonv1.ECKPKIRoleMappingManagedByECK,
+			commonv1.ECKPKIRoleMappingResourceUIDKey: request.ResourceUID,
+			roleMappingAssociationKey:                request.AssociationName,
 		}
 
 		data[pkiRoleMappingName(request)] = map[string]any{

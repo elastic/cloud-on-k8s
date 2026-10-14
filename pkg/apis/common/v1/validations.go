@@ -23,9 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
-// realmsConfigKey is the dotted-path key under which Elasticsearch realms are configured.
-const realmsConfigKey = "xpack.security.authc.realms"
-
 // NoUnknownFields checks whether the last applied config annotation contains json with unknown fields.
 func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorList {
 	var errs field.ErrorList

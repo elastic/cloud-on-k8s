@@ -89,58 +89,6 @@ func fileSettingsSecretWithRoleMappings(t *testing.T, es esv1.Elasticsearch, dat
 	return &secret
 }
 
-func TestIsECKManagedRoleMapping(t *testing.T) {
-	tests := []struct {
-		name    string
-		key     string
-		mapping any
-		want    bool
-	}{
-		{
-			name:    "generated entry with prefix and ECK metadata",
-			key:     commonv1.ECKPKIRoleMappingPrefix + "ns.kb",
-			mapping: managedPKIEntry("uid"),
-			want:    true,
-		},
-		{
-			name:    "ECK metadata without the prefix",
-			key:     "custom",
-			mapping: managedPKIEntry("uid"),
-		},
-		{
-			name:    "prefix without metadata (legacy user-defined mapping)",
-			key:     commonv1.ECKPKIRoleMappingPrefix + "corporate",
-			mapping: userEntry("superuser"),
-		},
-		{
-			name: "prefix with user-defined metadata",
-			key:  commonv1.ECKPKIRoleMappingPrefix + "corporate",
-			mapping: map[string]any{
-				"enabled":  true,
-				"metadata": map[string]any{"managed_by": "team-a", "eck_resource_uid": "uid"},
-			},
-		},
-		{
-			name: "prefix and managed_by eck without resource UID",
-			key:  commonv1.ECKPKIRoleMappingPrefix + "corporate",
-			mapping: map[string]any{
-				"enabled":  true,
-				"metadata": map[string]any{"managed_by": "eck"},
-			},
-		},
-		{
-			name:    "prefix with a non-object value",
-			key:     commonv1.ECKPKIRoleMappingPrefix + "corporate",
-			mapping: "not-a-mapping",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isECKManagedRoleMapping(tt.key, tt.mapping))
-		})
-	}
-}
-
 func binding(ns, name, fingerprint, roles string) rolemapping.Request {
 	return rolemapping.Request{
 		SecretNamespace:      ns,

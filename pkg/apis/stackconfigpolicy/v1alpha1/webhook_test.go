@@ -156,6 +156,24 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookSucceeded,
 		},
 		{
+			Name:      "eck-managed-role-mapping-metadata",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkStackConfigPolicy(uid)
+				m.Spec.Elasticsearch.SecurityRoleMappings = &commonv1.Config{Data: map[string]any{
+					commonv1.ECKPKIRoleMappingPrefix + "ns.kb-client-cert": map[string]any{
+						"enabled":  true,
+						"metadata": map[string]any{"managed_by": "eck", "eck_resource_uid": "uid"},
+					},
+				}}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				"are reserved for ECK-generated PKI role mappings, remove this metadata",
+			),
+		},
+		{
 			Name:      "non-reserved-role-mapping-name",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

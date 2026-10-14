@@ -374,6 +374,18 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
+		// the merged spec also contains the policies that are not reconciled here, which may be invalid: never write
+		// role mappings that the Elasticsearch controller would remove
+		if errs := policyv1alpha1.CheckNoECKManagedRoleMappings(esConfigPolicyFinal.Spec.SecurityRoleMappings); len(errs) > 0 {
+			err = errs.ToAggregate()
+			log.Info("StackConfigPolicy role mappings clash with ECK-generated PKI role mappings", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
+			if err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
+				return results.WithError(err), status
+			}
+			continue
+		}
+
 		// settings under the reserved eck_managed_pki realm or using its order only clash with the realm ECK
 		// generates when PKI is enabled
 		if es.Spec.Auth.PKI.Enabled {
