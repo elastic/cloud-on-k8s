@@ -22,7 +22,8 @@ For example, [{{es}}](elasticsearch://release-notes/known-issues.md), [{{product
 
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
 
-There are no known issues in ECK 3.5.0
+:::{include} ./_snippets/v35_watched_label_known_issue.md
+:::
 
 
 ## 3.4.1 [elastic-cloud-kubernetes-341-known-issues]

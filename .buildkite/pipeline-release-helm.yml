@@ -1,6 +1,8 @@
 env:
   HELM_DRY_RUN: ${HELM_DRY_RUN:-true}
   HELM_FORCE: ${HELM_FORCE:-false}
+  HELM_SKIP_CHART_REPO: ${HELM_SKIP_CHART_REPO:-false}
+  HELM_SKIP_OCI_REGISTRY: ${HELM_SKIP_OCI_REGISTRY:-false}
 
 steps:
 
@@ -11,7 +13,7 @@ steps:
       - make build
       - buildkite-agent artifact upload bin/releaser
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"
 
   - label: "operator dev helm chart"
@@ -28,9 +30,11 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-operator
+      - releaser --env=dev --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-dev-operator-oci-artifacts-digest.txt
+    artifact_paths:
+      - eck-helm-dev-operator-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"
 
   - label: "eck-stack dev helm charts"
@@ -48,9 +52,11 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=dev --charts-dir=deploy/eck-stack
+      - releaser --env=dev --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-dev-stack-oci-artifacts-digest.txt
+    artifact_paths:
+      - eck-helm-dev-stack-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"
 
   - label: "operator prod helm chart"
@@ -65,9 +71,11 @@ steps:
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-operator
+      - releaser --env=prod --charts-dir=deploy/eck-operator --oci-charts-digests-file=eck-helm-prod-operator-oci-artifacts-digest.txt
+    artifact_paths:
+      - eck-helm-prod-operator-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"
 
   - label: "eck-stack prod helm charts"
@@ -78,10 +86,13 @@ steps:
     depends_on:
       - "eck-operator-prod-helm"
       - "build-helm-releaser-tool"
+    key: "eck-stack-prod-helm"
     commands:
       - buildkite-agent artifact download "bin/releaser" /usr/local/
       - chmod u+x /usr/local/bin/releaser
-      - releaser --env=prod --charts-dir=deploy/eck-stack
+      - releaser --env=prod --charts-dir=deploy/eck-stack --oci-charts-digests-file=eck-helm-prod-stack-oci-artifacts-digest.txt
+    artifact_paths:
+      - eck-helm-prod-stack-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:18ff17b679ae3c8f6c6291778cdff167144626941a4d8b660f918872b5e4b1b5
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"

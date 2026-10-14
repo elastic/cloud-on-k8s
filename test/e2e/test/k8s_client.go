@@ -397,6 +397,23 @@ func (k *K8sClient) ExecInContainer(pod types.NamespacedName, container string, 
 	return stdout.String(), stderr.String(), err
 }
 
+// GetPodLogs returns the logs of the current instance of the named container, starting from the beginning of the logs
+// and limited to limitBytes.
+func (k *K8sClient) GetPodLogs(ctx context.Context, pod types.NamespacedName, container string, limitBytes int64) ([]byte, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
+		Container:  container,
+		LimitBytes: &limitBytes,
+	}).DoRaw(ctx)
+}
+
 func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error {
 	for _, ref := range secretRefs {
 		err := k.Client.Get(context.Background(), ref, &corev1.Secret{})

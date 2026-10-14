@@ -110,8 +110,6 @@ const (
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
 
-	LeaderElectionLeaseName = "elastic-operator-leader"
-
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
 
@@ -459,6 +457,8 @@ func doRun(_ *cobra.Command, _ []string) error {
 }
 
 func startOperator(ctx context.Context) error {
+	// e2e tests parse this log line to check the configuration the operator runs with: changing its message, its
+	// "values" key or its verbosity requires updating parseEffectiveConfig in test/e2e/test/helper/config.go.
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 	fipsLog()
 
@@ -593,7 +593,7 @@ func startOperator(ctx context.Context) error {
 		Scheme:                     clientgoscheme.Scheme,
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		LeaderElectionID:           LeaderElectionLeaseName,
+		LeaderElectionID:           operator.LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
 		Client:                     client.Options{FieldOwner: about.FieldOwner},

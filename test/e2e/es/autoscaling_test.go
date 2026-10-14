@@ -83,13 +83,13 @@ func TestAutoscaling(t *testing.T) {
 
 	autoscalingBuilder := autoscaling.NewAutoscalingBuilder(t, k8s.ExtractNamespacedName(&esBuilder.Elasticsearch)).
 		WithPolicy("data-ingest", []string{"data", "ingest"}, v1alpha1.AutoscalingResources{
-			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("1400m")},
 			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
 			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("10Gi"), Max: resource.MustParse("20Gi")},
 			NodeCountRange: v1alpha1.CountRange{Min: 2, Max: 4},
 		}).
 		WithPolicy("ml", []string{"ml"}, v1alpha1.AutoscalingResources{
-			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("2")},
+			CPURange:       &v1alpha1.QuantityRange{Min: resource.MustParse("1"), Max: resource.MustParse("1400m")},
 			MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("2Gi"), Max: resource.MustParse("4Gi")},
 			StorageRange:   &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("1Gi")},
 			NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 1},
