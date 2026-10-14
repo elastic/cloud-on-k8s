@@ -282,12 +282,14 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 		return nil
 	}
 
-	getBackgroundReplicas := func() *int32 {
+	getBackgroundReplicas := func(ignoreZeroOnDeployment bool) *int32 {
 		if kb.Spec.BackgroundTasks.Count != nil {
 			return kb.Spec.BackgroundTasks.Count
 		}
 
-		if existingDeployment != nil && existingDeployment.Spec.Replicas != nil {
+		if existingDeployment != nil &&
+			existingDeployment.Spec.Replicas != nil &&
+			(!ignoreZeroOnDeployment || *existingDeployment.Spec.Replicas > 0) {
 			return existingDeployment.Spec.Replicas // get the HPA decided value
 		}
 
@@ -300,14 +302,14 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 
 		// Return the old value if the deployment is background tasks. It will be stored in annotation.
 		if pm.Role.IsBackgroundTasks() {
-			oldValue = getBackgroundReplicas()
+			oldValue = getBackgroundReplicas(true)
 			if oldValue == nil {
 				oldValue = new(int32(1))
 			}
 		}
 
 	case kb.BackgroundTasksEnabled() && pm.Role.IsBackgroundTasks():
-		newValue = getBackgroundReplicas()
+		newValue = getBackgroundReplicas(false)
 
 		// Delete the annotation since it is no longer needed.
 		if err := k8s.PatchAnnotations(ctx, client, existingDeployment, nil, replicasAnnotationName); err != nil {

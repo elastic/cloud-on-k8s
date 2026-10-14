@@ -1286,11 +1286,19 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    nil,
 		},
 		{
-			name:           "BG, Count nil, HPA zeroed, malformed annotation: returns nil, annotation still removed",
+			name:           "BG, Count nil, Deployment zeroed, malformed annotation: returns nil, annotation still removed",
 			kb:             kbSplit(nil),
 			role:           kblabel.BackgroundTasksRole,
 			existingDp:     dp(nil, ann("not-a-number")),
 			wantNew:        nil,
+			wantAnnRemoved: true,
+		},
+		{
+			name:           "BG, Count nil, Deployment zeroed, with annotation: returns Deployment value, annotation still removed",
+			kb:             kbSplit(nil),
+			role:           kblabel.BackgroundTasksRole,
+			existingDp:     dp(ptr(0), ann("4")),
+			wantNew:        ptr(0),
 			wantAnnRemoved: true,
 		},
 		// ---- stop phase -----------------------------------------------------
@@ -1356,6 +1364,15 @@ func TestDeploymentReplicas(t *testing.T) {
 			existingDp:  dp(nil, ann("not-a-number")),
 			wantNew:     ptr(0),
 			wantOld:     ptr(1),
+		},
+		{
+			name:        "stop, BG, Count nil, Deployment zero, with annotation: oldValue from annotation",
+			scaleToZero: true,
+			kb:          kbSplit(nil),
+			role:        kblabel.BackgroundTasksRole,
+			existingDp:  dp(ptr(0), ann("4")),
+			wantNew:     ptr(0),
+			wantOld:     ptr(4),
 		},
 	}
 
