@@ -12,10 +12,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/go-test/deep"
+	"k8s.io/apimachinery/pkg/types"
 
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -190,4 +195,44 @@ func dataIntegrityReplicas(b Builder) int {
 	}
 	// default to 0 replicas, to ensure proper data migration happens during the mutation
 	return 0
+}
+
+// CheckNewDataSteps returns the steps that record the current time and then wait until hasDataSince passes for it in
+// es. hasDataSince must only match documents indexed at or after since, for example with TimestampSinceQuery.
+func CheckNewDataSteps(
+	ctx context.Context,
+	k *test.K8sClient,
+	es types.NamespacedName,
+	hasDataSince func(since time.Time) func(client.Client) error,
+) test.StepList {
+	var since time.Time
+	return test.StepList{
+		{
+			Name: "Record the time after which new documents are expected",
+			Test: func(t *testing.T) {
+				t.Helper()
+				since = time.Now()
+			},
+		},
+		{
+			Name: "Elasticsearch must receive new documents",
+			Test: test.Eventually(func() error {
+				var esObj esv1.Elasticsearch
+				if err := k.Client.Get(ctx, es, &esObj); err != nil {
+					return err
+				}
+				esClient, err := NewElasticsearchClient(esObj, k)
+				if err != nil {
+					return err
+				}
+				defer esClient.Close()
+				return hasDataSince(since)(esClient)
+			}),
+		},
+	}
+}
+
+// TimestampSinceQuery returns a URL-encoded query string query matching documents with a @timestamp at or after since.
+func TimestampSinceQuery(since time.Time) string {
+	return url.QueryEscape(fmt.Sprintf("@timestamp:>=%d", since.UnixMilli()))
 }

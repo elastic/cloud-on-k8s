@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
@@ -214,6 +216,11 @@ func TestPKIAuthenticationModeTransition(t *testing.T) {
 
 	beatMutated := beatBuilder.DeepCopy().WithMutatedFrom(&beatBuilder)
 	beatMutated.Beat.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+	beatMutatedWrapped := clientauth.WithNewDataCheck(t.Context(), esBuilder.Ref().NamespacedName(), beatMutated,
+		test.NewPodRestartChecker("Beat", test.BeatPodListOptions(beatBuilder.Beat.Namespace, beatBuilder.Beat.Name)...),
+		func(since time.Time) func(esclient.Client) error {
+			return beat.HasEvent(elasticsearch.TimestampSinceQuery(since))
+		})
 
-	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, beatBuilder, beatMutated, testPodBuilder)
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, beatBuilder, beatMutatedWrapped, testPodBuilder)
 }

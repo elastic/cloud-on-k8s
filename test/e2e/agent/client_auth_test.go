@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
@@ -576,6 +578,11 @@ func TestPKIAuthenticationModeTransition_StandaloneAgent(t *testing.T) {
 
 	agentMutated := agentBuilder.DeepCopy().WithMutatedFrom(&agentBuilder)
 	agentMutated.Agent.Spec.ElasticsearchRefs[0].AuthenticationMode = commonv1.AuthenticationModeCredentials
+	agentMutatedWrapped := clientauth.WithNewDataCheck(t.Context(), esBuilder.Ref().NamespacedName(), agentMutated,
+		test.NewPodRestartChecker("Agent", test.AgentPodListOptions(agentBuilder.Agent.Namespace, agentBuilder.Agent.Name)...),
+		func(since time.Time) func(esclient.Client) error {
+			return agent.HasEvent(fmt.Sprintf("/metrics-system.cpu-default/_search?q=%s", elasticsearch.TimestampSinceQuery(since)))
+		})
 
-	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, agentBuilder, agentMutated)
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, agentBuilder, agentMutatedWrapped)
 }
