@@ -39,7 +39,7 @@ var BackgroundTasksMinVersion = version.From(8, 16, 0)
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Kibana version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.pools.primary.count,selectorpath=.status.pools.primary.selector
 // +kubebuilder:storageversion
 type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -213,9 +213,9 @@ type KibanaStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
 	// Pools reports the state of the background tasks and primary Deployments.
-	// Only set when spec.backgroundTasks is configured.
+	// The background tasks pool status is only set when spec.backgroundTasks is configured.
 	// +optional
-	Pools *KibanaPoolsStatuses `json:"pools,omitempty"`
+	Pools KibanaPoolsStatuses `json:"pools,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted

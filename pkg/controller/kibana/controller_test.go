@@ -113,6 +113,12 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					Version:            "",
 					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
+					Pools: kibanav1.KibanaPoolsStatuses{
+						Primary: &kibanav1.KibanaPoolStatus{
+							Selector: "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=primary",
+							Health:   commonv1.RedHealth,
+						},
+					},
 				}, kibana.Status)
 			},
 		},
@@ -205,6 +211,12 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					Version:            "",
 					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
+					Pools: kibanav1.KibanaPoolsStatuses{
+						Primary: &kibanav1.KibanaPoolStatus{
+							Selector: "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=primary",
+							Health:   commonv1.RedHealth,
+						},
+					},
 				}, kibana.Status)
 			},
 		},
@@ -301,6 +313,12 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					Version:            "",
 					Health:             commonv1.RedHealth,
 					ObservedGeneration: 2,
+					Pools: kibanav1.KibanaPoolsStatuses{
+						Primary: &kibanav1.KibanaPoolStatus{
+							Selector: "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test-kibana,kibana.k8s.elastic.co/role=primary",
+							Health:   commonv1.RedHealth,
+						},
+					},
 				}, kibana.Status)
 			},
 		},

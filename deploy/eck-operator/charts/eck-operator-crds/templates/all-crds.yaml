@@ -10166,7 +10166,7 @@ spec:
               pools:
                 description: |-
                   Pools reports the state of the background tasks and primary Deployments.
-                  Only set when spec.backgroundTasks is configured.
+                  The background tasks pool status is only set when spec.backgroundTasks is configured.
                 properties:
                   backgroundTasks:
                     description: |-
@@ -10233,9 +10233,9 @@ spec:
     storage: true
     subresources:
       scale:
-        labelSelectorPath: .status.selector
+        labelSelectorPath: .status.pools.primary.selector
         specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
+        statusReplicasPath: .status.pools.primary.count
       status: {}
   - additionalPrinterColumns:
     - jsonPath: .status.health

@@ -348,13 +348,7 @@ func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) boo
 }
 
 func buildStatus(state *State, kb *kbv1.Kibana, role kblabel.Role, poolStatus commonv1.DeploymentStatus, aggregateHealth commonv1.DeploymentHealth, aggregateAvailable, aggregateCount int32) {
-	if kb.BackgroundTasksEnabled() && state.Kibana.Status.Pools == nil {
-		state.Kibana.Status.Pools = &kbv1.KibanaPoolsStatuses{}
-	}
-
 	switch {
-	case role.IsSinglePool():
-		state.Kibana.Status.DeploymentStatus = poolStatus
 	case role.IsPrimary():
 		state.Kibana.Status.DeploymentStatus = poolStatus
 		state.Kibana.Status.Pools.Primary = &kbv1.KibanaPoolStatus{
@@ -381,8 +375,8 @@ func buildStatus(state *State, kb *kbv1.Kibana, role kblabel.Role, poolStatus co
 			MatchLabels: kb.GetIdentityLabels(), // without the role label
 		})
 	} else {
-		// Single pool: clear pools status.
-		state.Kibana.Status.Pools = nil
+		// Single pool: clear background pool status.
+		state.Kibana.Status.Pools.BackgroundTasks = nil
 	}
 }
 

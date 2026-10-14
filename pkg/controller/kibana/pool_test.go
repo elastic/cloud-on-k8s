@@ -1509,17 +1509,23 @@ func TestBuildStatus(t *testing.T) {
 		Version:        "8.17.0",
 	}
 
-	t.Run("single pool: pool status copied verbatim, pools cleared, aggregates ignored", func(t *testing.T) {
+	t.Run("single pool: pool status copied verbatim, background pool cleared, aggregates ignored", func(t *testing.T) {
 		kb := &kbv1.Kibana{Name: "test", Namespace: "default", Spec: kbv1.KibanaSpec{Version: "8.17.0", Count: 3}}
 		state := &State{Kibana: kb}
-		// simulate a leftover pools status from a previously enabled split
-		state.Kibana.Status.Pools = &kbv1.KibanaPoolsStatuses{Primary: &kbv1.KibanaPoolStatus{Count: 1}}
+		// simulate a leftover background pool status from a previously enabled split
+		state.Kibana.Status.Pools = kbv1.KibanaPoolsStatuses{BackgroundTasks: &kbv1.KibanaPoolStatus{Count: 1}}
 
 		// aggregates intentionally diverge from the pool status to prove they are not applied
 		buildStatus(state, kb, kblabel.SinglePoolRole, primaryPoolStatus, commonv1.RedHealth, 99, 99)
 
 		assert.Equal(t, primaryPoolStatus, state.Kibana.Status.DeploymentStatus)
-		assert.Nil(t, state.Kibana.Status.Pools)
+		assert.Nil(t, state.Kibana.Status.Pools.BackgroundTasks)
+		assert.Equal(t, &kbv1.KibanaPoolStatus{
+			Selector:       primaryPoolStatus.Selector,
+			Count:          3,
+			AvailableNodes: 3,
+			Health:         commonv1.GreenHealth,
+		}, state.Kibana.Status.Pools.Primary)
 	})
 
 	t.Run("split, primary pool: pools.primary set and top level aggregated", func(t *testing.T) {
@@ -1528,7 +1534,6 @@ func TestBuildStatus(t *testing.T) {
 
 		buildStatus(state, kb, kblabel.UIRole, primaryPoolStatus, commonv1.GreenHealth, 3, 3)
 
-		require.NotNil(t, state.Kibana.Status.Pools)
 		require.NotNil(t, state.Kibana.Status.Pools.Primary)
 		assert.Equal(t, kbv1.KibanaPoolStatus{
 			Selector:       primaryPoolStatus.Selector,
@@ -1556,7 +1561,6 @@ func TestBuildStatus(t *testing.T) {
 		buildStatus(state, kb, kblabel.UIRole, primaryPoolStatus, commonv1.GreenHealth, 3, 3)
 		buildStatus(state, kb, kblabel.BackgroundTasksRole, bgPoolStatus, commonv1.RedHealth, 4, 5)
 
-		require.NotNil(t, state.Kibana.Status.Pools)
 		assert.Equal(t, &kbv1.KibanaPoolStatus{
 			Selector:       primaryPoolStatus.Selector,
 			Count:          3,
@@ -1587,7 +1591,6 @@ func TestBuildStatus(t *testing.T) {
 
 		buildStatus(state, kb, kblabel.BackgroundTasksRole, bgPoolStatus, commonv1.RedHealth, 1, 2)
 
-		require.NotNil(t, state.Kibana.Status.Pools)
 		assert.Nil(t, state.Kibana.Status.Pools.Primary)
 		require.NotNil(t, state.Kibana.Status.Pools.BackgroundTasks)
 		assert.Equal(t, commonv1.RedHealth, state.Kibana.Status.DeploymentStatus.Health)
