@@ -34,6 +34,7 @@ var (
 		checkReferenceSetForMode,
 		checkSingleESRefInFleetMode,
 		checkAssociations,
+		checkConsistentESRefAuthenticationModes,
 		checkClientAuthentication,
 		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
@@ -314,7 +315,7 @@ func checkAssociations(a *Agent) field.ErrorList {
 // (backwards compatible).
 func checkPKIESRefsNamed(a *Agent) field.ErrorList {
 	var errs field.ErrorList
-	for i, ref := range a.Spec.ElasticsearchRefs {
+	for i, ref := range esSelectors(a) {
 		if ref.Name == "" && ref.AuthenticationMode == commonv1.AuthenticationModePKI {
 			errs = append(errs, field.Forbidden(
 				field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("authenticationMode"),
@@ -323,6 +324,19 @@ func checkPKIESRefsNamed(a *Agent) field.ErrorList {
 		}
 	}
 	return errs
+}
+
+func checkConsistentESRefAuthenticationModes(a *Agent) field.ErrorList {
+	return commonv1.CheckConsistentAuthenticationModes(field.NewPath("spec").Child("elasticsearchRefs"), a.Namespace, esSelectors(a)...)
+}
+
+// esSelectors returns the Elasticsearch selectors of the outputs of a.
+func esSelectors(a *Agent) []commonv1.ElasticsearchSelector {
+	refs := make([]commonv1.ElasticsearchSelector, len(a.Spec.ElasticsearchRefs))
+	for i, ref := range a.Spec.ElasticsearchRefs {
+		refs[i] = ref.ElasticsearchSelector
+	}
+	return refs
 }
 
 func checkNoPKIAuthentication(a *Agent) field.ErrorList {

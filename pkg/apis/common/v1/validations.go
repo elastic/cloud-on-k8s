@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
@@ -200,6 +201,32 @@ func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelec
 		}
 	}
 	return nil
+}
+
+// CheckConsistentAuthenticationModes rejects references to the same Elasticsearch cluster that use different
+// authentication modes. These references share the association configuration and Secrets, so each mode would keep
+// deleting the resources of the other. namespace is the default namespace of the references. References to an
+// external Elasticsearch through secretName are ignored.
+func CheckConsistentAuthenticationModes(path *field.Path, namespace string, refs ...ElasticsearchSelector) field.ErrorList {
+	modes := make(map[types.NamespacedName]AuthenticationMode, len(refs))
+	var errs field.ErrorList
+	for i, ref := range refs {
+		if !ref.IsSet() || ref.IsExternal() {
+			continue
+		}
+		nsn := ref.WithDefaultNamespace(namespace).NamespacedName()
+		mode := ref.GetAuthenticationMode()
+		first, exists := modes[nsn]
+		if !exists {
+			modes[nsn] = mode
+			continue
+		}
+		if mode != first {
+			errs = append(errs, field.Invalid(path.Index(i).Child("authenticationMode"), mode,
+				fmt.Sprintf("all references to Elasticsearch %s must use the same authentication mode, found %s and %s", nsn, first, mode)))
+		}
+	}
+	return errs
 }
 
 // CheckLocalAssociationRefs checks that the given local association references are valid.

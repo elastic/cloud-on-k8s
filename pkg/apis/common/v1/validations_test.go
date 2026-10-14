@@ -139,3 +139,69 @@ func TestCheckReservedPKIRealmConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckConsistentAuthenticationModes(t *testing.T) {
+	ref := func(namespace, name string, mode AuthenticationMode) ElasticsearchSelector {
+		return ElasticsearchSelector{Namespace: namespace, Name: name, AuthenticationMode: mode}
+	}
+	tests := []struct {
+		name       string
+		refs       []ElasticsearchSelector
+		wantFields []string
+	}{
+		{
+			name: "no refs",
+		},
+		{
+			name: "single PKI ref",
+			refs: []ElasticsearchSelector{ref("", "es", AuthenticationModePKI)},
+		},
+		{
+			name: "same ES with the same mode",
+			refs: []ElasticsearchSelector{ref("", "es", AuthenticationModePKI), ref("ns", "es", AuthenticationModePKI)},
+		},
+		{
+			name: "same ES with unset and Credentials modes",
+			refs: []ElasticsearchSelector{ref("", "es", ""), ref("", "es", AuthenticationModeCredentials)},
+		},
+		{
+			name: "different ES with different modes",
+			refs: []ElasticsearchSelector{ref("", "es1", AuthenticationModePKI), ref("", "es2", AuthenticationModeCredentials)},
+		},
+		{
+			name: "same name in different namespaces with different modes",
+			refs: []ElasticsearchSelector{ref("", "es", AuthenticationModePKI), ref("other", "es", AuthenticationModeCredentials)},
+		},
+		{
+			name:       "same ES with different modes",
+			refs:       []ElasticsearchSelector{ref("", "es", AuthenticationModePKI), ref("", "es", "")},
+			wantFields: []string{"spec.elasticsearchRefs[1].authenticationMode"},
+		},
+		{
+			name: "same ES with different modes, with and without the default namespace",
+			refs: []ElasticsearchSelector{
+				ref("ns", "es", AuthenticationModeCredentials),
+				ref("", "es1", AuthenticationModeCredentials),
+				ref("", "es", AuthenticationModePKI),
+			},
+			wantFields: []string{"spec.elasticsearchRefs[2].authenticationMode"},
+		},
+		{
+			name: "external refs are ignored",
+			refs: []ElasticsearchSelector{
+				{SecretName: "es"},
+				ref("", "es", AuthenticationModePKI),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := CheckConsistentAuthenticationModes(field.NewPath("spec").Child("elasticsearchRefs"), "ns", tt.refs...)
+			var gotFields []string
+			for _, err := range errs {
+				gotFields = append(gotFields, err.Field)
+			}
+			require.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}
