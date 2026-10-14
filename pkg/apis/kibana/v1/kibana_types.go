@@ -166,24 +166,12 @@ type KibanaPoolsStatuses struct {
 	// BackgroundTasks reports the state of the background tasks Deployment.
 	// Only set when spec.backgroundTasks is configured.
 	// +optional
-	BackgroundTasks *KibanaPoolStatus `json:"backgroundTasks,omitempty"`
+	BackgroundTasks *commonv1.DeploymentStatus `json:"backgroundTasks,omitempty"`
 
 	// Primary reports the state of the primary Deployment.
 	// Only set when spec.backgroundTasks is configured.
 	// +optional
-	Primary *KibanaPoolStatus `json:"primary,omitempty"`
-}
-
-// KibanaPoolStatus reports the observed state of a single Kibana pool (UI or background tasks).
-type KibanaPoolStatus struct {
-	// Selector is the label selector used to find all pods in this pool.
-	Selector string `json:"selector,omitempty"`
-	// Count is the number of observed instances in this pool.
-	Count int32 `json:"count"`
-	// AvailableNodes is the number of available replicas in this pool.
-	AvailableNodes int32 `json:"availableNodes,omitempty"`
-	// Health of this pool.
-	Health commonv1.DeploymentHealth `json:"health,omitempty"`
+	Primary commonv1.DeploymentStatus `json:"primary,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana

@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -209,17 +210,23 @@ func (d *driver) Reconcile(
 	// violating Kibana's requirement that all outdated instances stop first.
 	scaleToZero := shouldScaleAllPoolsToZeroForUpgrade(kb, existingPods)
 
-	var (
-		aggregateAvailable int32
-		aggregateCount     int32
-		aggregateHealth    = commonv1.DeploymentHealth("")
-	)
+	activeRoles := kb.ActiveRoles()
+
+	// Pool statuses are staged locally and committed to state via buildStatus: once after the
+	// loop on success, and with whatever entries were gathered so far when a pool fails to
+	// reconcile, so the status reflects the pools that were observed this pass.
+	poolStatuses := make([]poolStatusEntry, 0, len(activeRoles))
+	// Each pool status inherits unknown fields from the previously persisted status, captured
+	// before any mutation.
+	prevStatus := state.Kibana.Status
+
+	defer func() { buildStatus(state, kb, poolStatuses) }()
 
 	// reconciledSecrets tracks which config secrets have already been written this pass
 	// so that pools sharing the base secret don't trigger a redundant write.
 	reconciledSecrets := map[string]struct{}{}
 
-	for _, role := range kb.ActiveRoles() {
+	for _, role := range activeRoles {
 		poolParams, err := poolParams(params, kb, role, basePath, scaleToZero)
 		if err != nil {
 			return results.WithError(err)
@@ -249,16 +256,17 @@ func (d *driver) Reconcile(
 			return results.WithRequeue()
 		}
 
-		poolStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, *reconciledDp, existingPods, kblabel.KibanaVersionLabelName)
+		currentStatus := prevStatus.Pools.Primary
+		if role.IsBackgroundTasks() {
+			currentStatus = ptr.Deref(prevStatus.Pools.BackgroundTasks, commonv1.DeploymentStatus{})
+		}
+
+		poolStatus, err := common.DeploymentStatus(ctx, currentStatus, *reconciledDp, existingPods, kblabel.KibanaVersionLabelName)
 		if err != nil {
 			return results.WithError(err)
 		}
 
-		aggregateAvailable += poolStatus.AvailableNodes
-		aggregateCount += poolStatus.Count
-		aggregateHealth = calculateAggregateHealth(aggregateHealth, poolStatus.Health)
-
-		buildStatus(state, kb, role, poolStatus, aggregateHealth, aggregateAvailable, aggregateCount)
+		poolStatuses = append(poolStatuses, poolStatusEntry{role: role, status: poolStatus})
 	}
 
 	if scaleToZero {

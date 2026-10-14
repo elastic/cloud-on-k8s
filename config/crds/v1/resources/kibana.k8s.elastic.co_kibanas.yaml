@@ -18705,23 +18705,49 @@ spec:
                     properties:
                       availableNodes:
                         description: AvailableNodes is the number of available replicas
-                          in this pool.
+                          in the deployment.
                         format: int32
                         type: integer
+                      conditions:
+                        description: Conditions holds the current service state of
+                          the deployment.
+                        items:
+                          description: Condition represents the ECK resource's condition.
+                          properties:
+                            lastTransitionTime:
+                              format: date-time
+                              type: string
+                            message:
+                              type: string
+                            status:
+                              type: string
+                            type:
+                              description: ConditionType defines the condition of
+                                a resource.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
                       count:
-                        description: Count is the number of observed instances in
-                          this pool.
+                        description: Count corresponds to Scale.Status.Replicas, which
+                          is the actual number of observed instances of the scaled
+                          object.
                         format: int32
                         type: integer
                       health:
-                        description: Health of this pool.
+                        description: Health of the deployment.
                         type: string
                       selector:
                         description: Selector is the label selector used to find all
-                          pods in this pool.
+                          pods.
                         type: string
-                    required:
-                    - count
+                      version:
+                        description: |-
+                          Version of the stack resource currently running. During version upgrades, multiple versions may run
+                          in parallel: this value specifies the lowest version currently running.
+                        type: string
                     type: object
                   primary:
                     description: |-
@@ -18730,23 +18756,49 @@ spec:
                     properties:
                       availableNodes:
                         description: AvailableNodes is the number of available replicas
-                          in this pool.
+                          in the deployment.
                         format: int32
                         type: integer
+                      conditions:
+                        description: Conditions holds the current service state of
+                          the deployment.
+                        items:
+                          description: Condition represents the ECK resource's condition.
+                          properties:
+                            lastTransitionTime:
+                              format: date-time
+                              type: string
+                            message:
+                              type: string
+                            status:
+                              type: string
+                            type:
+                              description: ConditionType defines the condition of
+                                a resource.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
                       count:
-                        description: Count is the number of observed instances in
-                          this pool.
+                        description: Count corresponds to Scale.Status.Replicas, which
+                          is the actual number of observed instances of the scaled
+                          object.
                         format: int32
                         type: integer
                       health:
-                        description: Health of this pool.
+                        description: Health of the deployment.
                         type: string
                       selector:
                         description: Selector is the label selector used to find all
-                          pods in this pool.
+                          pods.
                         type: string
-                    required:
-                    - count
+                      version:
+                        description: |-
+                          Version of the stack resource currently running. During version upgrades, multiple versions may run
+                          in parallel: this value specifies the lowest version currently running.
+                        type: string
                     type: object
                 type: object
               selector:

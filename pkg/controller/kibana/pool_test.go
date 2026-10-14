@@ -1494,109 +1494,141 @@ func TestBuildStatus(t *testing.T) {
 	// splitSelector is the role-less top-level selector set when the split is enabled.
 	const splitSelector = "common.k8s.elastic.co/type=kibana,kibana.k8s.elastic.co/name=test"
 
+	const elkVer = "8.17.0"
+
 	primaryPoolStatus := commonv1.DeploymentStatus{
 		Selector:       "kibana.k8s.elastic.co/role=primary",
 		Count:          3,
 		AvailableNodes: 3,
 		Health:         commonv1.GreenHealth,
-		Version:        "8.17.0",
+		Version:        elkVer,
 	}
 	bgPoolStatus := commonv1.DeploymentStatus{
 		Selector:       "kibana.k8s.elastic.co/role=background_tasks",
 		Count:          2,
 		AvailableNodes: 1,
 		Health:         commonv1.RedHealth,
-		Version:        "8.17.0",
+		Version:        elkVer,
 	}
 
-	t.Run("single pool: pool status copied verbatim, background pool cleared, aggregates ignored", func(t *testing.T) {
-		kb := &kbv1.Kibana{Name: "test", Namespace: "default", Spec: kbv1.KibanaSpec{Version: "8.17.0", Count: 3}}
-		state := &State{Kibana: kb}
-		// simulate a leftover background pool status from a previously enabled split
-		state.Kibana.Status.Pools = kbv1.KibanaPoolsStatuses{BackgroundTasks: &kbv1.KibanaPoolStatus{Count: 1}}
+	kbStatus := kbv1.KibanaStatus{
+		Count:          primaryPoolStatus.Count + bgPoolStatus.Count,
+		AvailableNodes: primaryPoolStatus.AvailableNodes + bgPoolStatus.AvailableNodes,
+		Version:        elkVer,
+		Health:         commonv1.GreenHealth,
+		Pools: kbv1.KibanaPoolsStatuses{
+			Primary:         primaryPoolStatus,
+			BackgroundTasks: &bgPoolStatus,
+		},
+	}
 
-		// aggregates intentionally diverge from the pool status to prove they are not applied
-		buildStatus(state, kb, kblabel.SinglePoolRole, primaryPoolStatus, commonv1.RedHealth, 99, 99)
+	// withCounts returns a copy of the given status with the count fields replaced.
+	withCounts := func(s commonv1.DeploymentStatus, count, available int32) commonv1.DeploymentStatus {
+		s.Count = count
+		s.AvailableNodes = available
+		return s
+	}
 
-		assert.Equal(t, primaryPoolStatus, state.Kibana.Status.DeploymentStatus)
-		assert.Nil(t, state.Kibana.Status.Pools.BackgroundTasks)
-		assert.Equal(t, &kbv1.KibanaPoolStatus{
-			Selector:       primaryPoolStatus.Selector,
-			Count:          3,
-			AvailableNodes: 3,
-			Health:         commonv1.GreenHealth,
-		}, state.Kibana.Status.Pools.Primary)
-	})
-
-	t.Run("split, primary pool: pools.primary set and top level aggregated", func(t *testing.T) {
-		kb := kbWithBG(ptr.To[int32](2), nil)
-		state := &State{Kibana: kb}
-
-		buildStatus(state, kb, kblabel.UIRole, primaryPoolStatus, commonv1.GreenHealth, 3, 3)
-
-		require.NotNil(t, state.Kibana.Status.Pools.Primary)
-		assert.Equal(t, kbv1.KibanaPoolStatus{
-			Selector:       primaryPoolStatus.Selector,
-			Count:          3,
-			AvailableNodes: 3,
-			Health:         commonv1.GreenHealth,
-		}, *state.Kibana.Status.Pools.Primary)
-		assert.Nil(t, state.Kibana.Status.Pools.BackgroundTasks)
-
-		// top level carries the aggregates and the role-less selector, version comes from the primary pool
-		assert.Equal(t, commonv1.DeploymentStatus{
+	// topStatus returns the expected top-level aggregate: the role-less split selector,
+	// the given counts and health, the version from the pools.
+	topStatus := func(count, available int32, health commonv1.DeploymentHealth) commonv1.DeploymentStatus {
+		return commonv1.DeploymentStatus{
 			Selector:       splitSelector,
-			Count:          3,
-			AvailableNodes: 3,
-			Health:         commonv1.GreenHealth,
-			Version:        "8.17.0",
-		}, state.Kibana.Status.DeploymentStatus)
-	})
+			Count:          count,
+			AvailableNodes: available,
+			Health:         health,
+			Version:        elkVer,
+		}
+	}
 
-	t.Run("split, both pools: top level sums counts and degrades health", func(t *testing.T) {
-		kb := kbWithBG(ptr.To[int32](2), nil)
-		state := &State{Kibana: kb}
+	tests := []struct {
+		name       string
+		singlePool bool // the Kibana under test has no spec.backgroundTasks
+		initial    kbv1.KibanaStatus
+		entries    []poolStatusEntry
+		want       kbv1.KibanaStatus
+	}{
+		{
+			name:    "no pool entries: status left untouched",
+			initial: kbStatus,
+			entries: nil,
+			want:    kbStatus,
+		},
+		{
+			name:       "single pool: pool status copied verbatim, leftover background pool cleared",
+			singlePool: true,
+			initial: kbv1.KibanaStatus{
+				Pools: kbv1.KibanaPoolsStatuses{BackgroundTasks: &commonv1.DeploymentStatus{Count: 1, Version: elkVer}},
+			},
+			entries: []poolStatusEntry{{role: kblabel.SinglePoolRole, status: primaryPoolStatus}},
+			want: kbv1.KibanaStatus{
+				DeploymentStatus: primaryPoolStatus,
+				Pools:            kbv1.KibanaPoolsStatuses{Primary: primaryPoolStatus},
+			},
+		},
+		{
+			name:    "split, primary pool: pools.primary set and top level aggregated",
+			entries: []poolStatusEntry{{role: kblabel.UIRole, status: primaryPoolStatus}},
+			want: kbv1.KibanaStatus{
+				DeploymentStatus: topStatus(3, 3, commonv1.GreenHealth),
+				Pools:            kbv1.KibanaPoolsStatuses{Primary: primaryPoolStatus},
+			},
+		},
+		{
+			// the background tasks pool must not overwrite the primary-derived top-level
+			// status, only the aggregate fields
+			name: "split, both pools: top level sums counts and degrades health",
+			entries: []poolStatusEntry{
+				{role: kblabel.UIRole, status: primaryPoolStatus},
+				{role: kblabel.BackgroundTasksRole, status: bgPoolStatus},
+			},
+			want: kbv1.KibanaStatus{
+				DeploymentStatus: topStatus(5, 4, commonv1.YellowHealth),
+				Pools: kbv1.KibanaPoolsStatuses{
+					Primary:         primaryPoolStatus,
+					BackgroundTasks: &bgPoolStatus,
+				},
+			},
+		},
+		{
+			name:    "split, primary entry only: aggregate includes the carried-over background pool",
+			initial: kbStatus,
+			entries: []poolStatusEntry{{role: kblabel.UIRole, status: withCounts(primaryPoolStatus, 5, 5)}},
+			want: kbv1.KibanaStatus{
+				DeploymentStatus: topStatus(7, 6, commonv1.YellowHealth),
+				Pools: kbv1.KibanaPoolsStatuses{
+					Primary:         withCounts(primaryPoolStatus, 5, 5),
+					BackgroundTasks: &bgPoolStatus,
+				},
+			},
+		},
+		{
+			name:    "split, background entry only: aggregate includes the carried-over primary pool",
+			initial: kbStatus,
+			entries: []poolStatusEntry{{role: kblabel.BackgroundTasksRole, status: withCounts(bgPoolStatus, 5, 6)}},
+			want: kbv1.KibanaStatus{
+				DeploymentStatus: topStatus(8, 9, commonv1.YellowHealth),
+				Pools: kbv1.KibanaPoolsStatuses{
+					Primary:         primaryPoolStatus,
+					BackgroundTasks: new(withCounts(bgPoolStatus, 5, 6)),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := kbWithBG(ptr.To[int32](2), nil)
+			if tt.singlePool {
+				kb = &kbv1.Kibana{Name: "test", Namespace: "default", Spec: kbv1.KibanaSpec{Count: 3}}
+			}
+			kb.Status = tt.initial
+			state := &State{Kibana: kb}
 
-		// simulate the driver loop: primary first, then background tasks with updated aggregates
-		buildStatus(state, kb, kblabel.UIRole, primaryPoolStatus, commonv1.GreenHealth, 3, 3)
-		buildStatus(state, kb, kblabel.BackgroundTasksRole, bgPoolStatus, commonv1.RedHealth, 4, 5)
+			buildStatus(state, kb, tt.entries)
 
-		assert.Equal(t, &kbv1.KibanaPoolStatus{
-			Selector:       primaryPoolStatus.Selector,
-			Count:          3,
-			AvailableNodes: 3,
-			Health:         commonv1.GreenHealth,
-		}, state.Kibana.Status.Pools.Primary)
-		assert.Equal(t, &kbv1.KibanaPoolStatus{
-			Selector:       bgPoolStatus.Selector,
-			Count:          2,
-			AvailableNodes: 1,
-			Health:         commonv1.RedHealth,
-		}, state.Kibana.Status.Pools.BackgroundTasks)
-
-		// the background tasks pool must not overwrite the primary-derived top-level status,
-		// only the aggregate fields
-		assert.Equal(t, commonv1.DeploymentStatus{
-			Selector:       splitSelector,
-			Count:          5,
-			AvailableNodes: 4,
-			Health:         commonv1.RedHealth,
-			Version:        "8.17.0",
-		}, state.Kibana.Status.DeploymentStatus)
-	})
-
-	t.Run("split, background pool only: primary pool status left unset", func(t *testing.T) {
-		kb := kbWithBG(ptr.To[int32](2), nil)
-		state := &State{Kibana: kb}
-
-		buildStatus(state, kb, kblabel.BackgroundTasksRole, bgPoolStatus, commonv1.RedHealth, 1, 2)
-
-		assert.Nil(t, state.Kibana.Status.Pools.Primary)
-		require.NotNil(t, state.Kibana.Status.Pools.BackgroundTasks)
-		assert.Equal(t, commonv1.RedHealth, state.Kibana.Status.DeploymentStatus.Health)
-		assert.Equal(t, int32(2), state.Kibana.Status.DeploymentStatus.Count)
-		assert.Equal(t, int32(1), state.Kibana.Status.DeploymentStatus.AvailableNodes)
-	})
+			assert.Equal(t, tt.want, state.Kibana.Status)
+		})
+	}
 }
 
 func TestReconcileServicePauseGuard(t *testing.T) {
@@ -1715,9 +1747,6 @@ func TestCalculateAggregateHealth(t *testing.T) {
 		pool      commonv1.DeploymentHealth
 		want      commonv1.DeploymentHealth
 	}{
-		{name: "empty + green = green", aggregate: "", pool: green, want: green},
-		{name: "empty + yellow = yellow", aggregate: "", pool: yellow, want: yellow},
-		{name: "empty + red = red", aggregate: "", pool: red, want: red},
 		{name: "green + green = green", aggregate: green, pool: green, want: green},
 		{name: "red + red = red", aggregate: red, pool: red, want: red},
 		{name: "yellow + yellow = yellow", aggregate: yellow, pool: yellow, want: yellow},

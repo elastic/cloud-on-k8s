@@ -96,10 +96,7 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
 						return err
 					}
-					if kb.Status.Pools == nil {
-						return fmt.Errorf("status.pools is nil")
-					}
-					if err := checkPoolStatus(kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
+					if err := checkPoolStatus(&kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
 						return err
 					}
 					if err := checkPoolStatus(kb.Status.Pools.BackgroundTasks, "backgroundTasks", kblabel.RoleBackgroundTasksValue, 1); err != nil {
@@ -169,10 +166,7 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
 						return err
 					}
-					if kb.Status.Pools == nil {
-						return fmt.Errorf("status.pools is nil")
-					}
-					if err := checkPoolStatus(kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
+					if err := checkPoolStatus(&kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1); err != nil {
 						return err
 					}
 					return checkPoolStatus(kb.Status.Pools.BackgroundTasks, "backgroundTasks", kblabel.RoleBackgroundTasksValue, 1)
@@ -208,16 +202,17 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 				}),
 			},
 			{
-				Name: "After disabling split: status.pools should be cleared",
+				Name: "After disabling split: background pool status should be cleared",
 				Test: test.Eventually(func() error {
 					var kb kbv1.Kibana
 					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb); err != nil {
 						return err
 					}
-					if kb.Status.Pools != nil {
-						return fmt.Errorf("status.pools should be nil when the split is disabled, got %+v", kb.Status.Pools)
+					if kb.Status.Pools.BackgroundTasks != nil {
+						return fmt.Errorf("status.pools.backgroundTasks should be nil when the split is disabled, got %+v", kb.Status.Pools.BackgroundTasks)
 					}
-					return nil
+					// the primary pool keeps reporting the single remaining Deployment
+					return checkPoolStatus(&kb.Status.Pools.Primary, "primary", kblabel.RolePrimaryValue, 1)
 				}),
 			},
 		}
@@ -234,7 +229,7 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 
 // checkPoolStatus asserts that a per-pool status reports the expected replica count, green health
 // and a selector scoped to the given role.
-func checkPoolStatus(pool *kbv1.KibanaPoolStatus, poolName, wantRole string, wantCount int32) error {
+func checkPoolStatus(pool *commonv1.DeploymentStatus, poolName, wantRole string, wantCount int32) error {
 	if pool == nil {
 		return fmt.Errorf("status.pools.%s is nil", poolName)
 	}

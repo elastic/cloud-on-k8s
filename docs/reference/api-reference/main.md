@@ -613,15 +613,6 @@ ConfigSource references configuration settings.
 | *`secretName`* __string__ | SecretName is the name of the secret. |
 
 
-### DeploymentHealth (string)  [#deploymenthealth]
-
-
-
-:::{admonition} Appears In:
-* [KibanaPoolStatus](#kibanapoolstatus)
-
-:::
-
 
 
 ### ElasticsearchSelector  [#elasticsearchselector]
@@ -2020,23 +2011,6 @@ pins the primary (UI) Deployment to node.roles: ["ui"].
 | *`config`* __[Config](#config)__ | Config holds Kibana configuration specific to the background tasks pool.<br>The node.roles setting is managed by ECK and must not be set here. |
 | *`resources`* __[Resources](#resources)__ | Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the<br>background tasks pool. When set, these values override any CPU or memory resource settings<br>specified in PodTemplate for the primary Kibana container. To set resources on other containers,<br>use PodTemplate. |
 | *`podTemplate`* __[PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#podtemplatespec-v1-core)__ | PodTemplate provides customization options for the background tasks pool pods.<br>It is applied as a strategic-merge overlay on top of spec.podTemplate. |
-
-
-### KibanaPoolStatus  [#kibanapoolstatus]
-
-KibanaPoolStatus reports the observed state of a single Kibana pool (UI or background tasks).
-
-:::{admonition} Appears In:
-* [KibanaPoolsStatuses](#kibanapoolsstatuses)
-
-:::
-
-| Field | Description |
-| --- | --- |
-| *`selector`* __string__ | Selector is the label selector used to find all pods in this pool. |
-| *`count`* __integer__ | Count is the number of observed instances in this pool. |
-| *`availableNodes`* __integer__ | AvailableNodes is the number of available replicas in this pool. |
-| *`health`* __[DeploymentHealth](#deploymenthealth)__ | Health of this pool. |
 
 
 

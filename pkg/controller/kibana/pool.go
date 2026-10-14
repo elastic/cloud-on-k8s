@@ -347,49 +347,60 @@ func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) boo
 	return false
 }
 
-func buildStatus(state *State, kb *kbv1.Kibana, role kblabel.Role, poolStatus commonv1.DeploymentStatus, aggregateHealth commonv1.DeploymentHealth, aggregateAvailable, aggregateCount int32) {
-	switch {
-	case role.IsPrimary():
-		state.Kibana.Status.DeploymentStatus = poolStatus
-		state.Kibana.Status.Pools.Primary = &kbv1.KibanaPoolStatus{
-			Selector:       poolStatus.Selector,
-			Count:          poolStatus.Count,
-			AvailableNodes: poolStatus.AvailableNodes,
-			Health:         poolStatus.Health,
+// poolStatusEntry associates a reconciled pool with its computed deployment status.
+type poolStatusEntry struct {
+	role   kblabel.Role
+	status commonv1.DeploymentStatus
+}
+
+// buildStatus writes the per-pool statuses and the top-level deployment status to state.
+// The top-level aggregate is computed from the pool sub-statuses after they are written, so it
+// is always consistent with the pools section: when called with a partial list of entries, the
+// aggregate includes the carried-over status of the pools not present.
+func buildStatus(state *State, kb *kbv1.Kibana, pools []poolStatusEntry) {
+	if len(pools) == 0 {
+		// Nothing was reconciled: keep the previous status untouched rather than
+		// overwriting the top level with an empty aggregate.
+		return
+	}
+
+	for _, pool := range pools {
+		poolStatus := pool.status
+		switch {
+		case pool.role.IsPrimary():
+			state.Kibana.Status.DeploymentStatus = poolStatus
+			state.Kibana.Status.Pools.Primary = poolStatus
+		case pool.role.IsBackgroundTasks():
+			state.Kibana.Status.Pools.BackgroundTasks = &poolStatus
 		}
-	case role.IsBackgroundTasks():
-		state.Kibana.Status.Pools.BackgroundTasks = &kbv1.KibanaPoolStatus{
-			Selector:       poolStatus.Selector,
-			Count:          poolStatus.Count,
-			AvailableNodes: poolStatus.AvailableNodes,
-			Health:         poolStatus.Health,
-		}
+	}
+
+	if !kb.BackgroundTasksEnabled() {
+		// Single pool: the pool status is the top-level status, clear any leftover
+		// background pool status.
+		state.Kibana.Status.Pools.BackgroundTasks = nil
+		return
+	}
+
+	// Calculate the aggregate directly from the pool sub-statuses, so that the top level is
+	// always the sum of the pool entries written next to it.
+	aggregateDeploymentStatus := state.Kibana.Status.Pools.Primary
+	if bg := state.Kibana.Status.Pools.BackgroundTasks; bg != nil {
+		aggregateDeploymentStatus.Count += bg.Count
+		aggregateDeploymentStatus.AvailableNodes += bg.AvailableNodes
+		aggregateDeploymentStatus.Health = calculateAggregateHealth(state.Kibana.Status.Pools.Primary.Health, bg.Health)
 	}
 
 	// replace with aggregate in top level
-	if !role.IsSinglePool() {
-		state.Kibana.Status.DeploymentStatus.Health = aggregateHealth
-		state.Kibana.Status.DeploymentStatus.AvailableNodes = aggregateAvailable
-		state.Kibana.Status.DeploymentStatus.Count = aggregateCount
-		state.Kibana.Status.DeploymentStatus.Selector = metav1.FormatLabelSelector(&metav1.LabelSelector{
-			MatchLabels: kb.GetIdentityLabels(), // without the role label
-		})
-	} else {
-		// Single pool: clear background pool status.
-		state.Kibana.Status.Pools.BackgroundTasks = nil
-	}
+	state.Kibana.Status.DeploymentStatus = aggregateDeploymentStatus
+	state.Kibana.Status.DeploymentStatus.Selector = metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchLabels: kb.GetIdentityLabels(), // without the role label
+	})
 }
 
-func calculateAggregateHealth(aggregateHealth, poolHealth commonv1.DeploymentHealth) commonv1.DeploymentHealth {
-	if aggregateHealth == "" {
-		return poolHealth
-	}
-
-	switch {
-	case aggregateHealth == commonv1.GreenHealth && poolHealth == commonv1.GreenHealth:
-		return commonv1.GreenHealth
-	case aggregateHealth == commonv1.RedHealth && poolHealth == commonv1.RedHealth:
-		return commonv1.RedHealth
+func calculateAggregateHealth(h1, h2 commonv1.DeploymentHealth) commonv1.DeploymentHealth {
+	if h1 == h2 {
+		return h1
 	}
 
 	return commonv1.YellowHealth
