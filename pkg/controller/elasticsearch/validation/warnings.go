@@ -125,6 +125,29 @@ func validateReservedPKIRealm(config *common.CanonicalConfig, index int) field.E
 	return commonv1.CheckReservedPKIRealmConfig(field.NewPath("spec").Child("nodeSets").Index(index).Child("config"), config)
 }
 
+// validateReservedPKIRealmInPolicyConfig rejects enabling the ECK-managed PKI realm while the StackConfigPolicy
+// Elasticsearch config applied to the cluster uses the realm name eck_managed_pki, in any realm type, or its realm
+// order. The StackConfigPolicy controller stops updating that config once PKI is enabled, but the config it wrote before
+// is still merged into elasticsearch.yml, where a duplicate realm name or order would stop Elasticsearch from starting.
+func validateReservedPKIRealmInPolicyConfig(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) (field.ErrorList, error) {
+	if !es.Spec.Auth.PKI.Enabled {
+		return nil, nil
+	}
+	policyConfig, err := essettings.GetStackConfigPolicyElasticsearchConfig(ctx, c, es)
+	if err != nil || policyConfig == nil {
+		return nil, err
+	}
+	errs := commonv1.CheckReservedPKIRealmConfig(field.NewPath("spec").Child("elasticsearch").Child("config"), policyConfig)
+	if len(errs) == 0 {
+		return nil, nil
+	}
+	return field.ErrorList{field.Invalid(
+		field.NewPath("spec").Child("auth", "pki", "enabled"),
+		true,
+		fmt.Sprintf("the StackConfigPolicy Elasticsearch config applied to this cluster clashes with the ECK-managed PKI realm: %s", errs.ToAggregate()),
+	)}, nil
+}
+
 // validateClientAuthentication reports mandatory HTTP client authentication
 // (value "required") as a Forbidden field error so admission surfaces it as a
 // warning, not a denial.
