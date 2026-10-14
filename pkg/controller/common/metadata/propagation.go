@@ -27,6 +27,19 @@ func (md Metadata) Merge(other Metadata) Metadata {
 	}
 }
 
+// CloneWithLabel returns a copy of the metadata with the given label set, leaving the receiver unmodified.
+func (md Metadata) CloneWithLabel(key, value string) Metadata {
+	m := maps.Clone(md.Labels)
+	if m == nil {
+		m = map[string]string{}
+	}
+	m[key] = value
+	return Metadata{
+		Annotations: maps.Clone(md.Annotations),
+		Labels:      m,
+	}
+}
+
 // Propagate returns a new set of metadata to apply to child objects.
 // Behaviour is driven by the presence of annotation and label propagation annotations in the object.
 // Elements chosen for propagation are merged with the elements to add giving precedence to the latter.

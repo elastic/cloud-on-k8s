@@ -78,9 +78,7 @@ func UpdateSeedHostsConfigMap(
 		hosts = strings.Join(seedHosts, "\n")
 	}
 
-	cmMeta := meta.Merge(metadata.Metadata{Labels: map[string]string{
-		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-	}})
+	cmMeta := meta.CloneWithLabel(commonv1.RestrictWatchedResourcesLabelName, commonv1.RestrictWatchedResourcesLabelValue)
 
 	expected := corev1.ConfigMap{
 		Name:        esv1.UnicastHostsConfigMap(es.Name),

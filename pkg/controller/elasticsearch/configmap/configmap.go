@@ -44,9 +44,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 
 	// merge into a copy of meta: the caller reuses meta.Labels for other resources (eg. the StatefulSets),
 	// which must not inherit the watched label
-	cmMeta := meta.Merge(metadata.Metadata{Labels: map[string]string{
-		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-	}})
+	cmMeta := meta.CloneWithLabel(commonv1.RestrictWatchedResourcesLabelName, commonv1.RestrictWatchedResourcesLabelValue)
 
 	nsn := types.NamespacedName{Name: esv1.ScriptsConfigMap(es.Name), Namespace: es.Namespace}
 	scriptsConfigMap := corev1.ConfigMap{
