@@ -10159,7 +10159,7 @@ spec:
                   primary:
                     description: |-
                       Primary reports the state of the primary Deployment.
-                      Only set when spec.backgroundTasks is configured.
+                      Always set, also when spec.backgroundTasks is not configured.
                     properties:
                       availableNodes:
                         description: AvailableNodes is the number of available replicas

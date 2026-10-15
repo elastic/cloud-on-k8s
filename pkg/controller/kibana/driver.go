@@ -198,7 +198,7 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	// Fan-out: reconcile one Deployment per active pool.
+	// fetch pod from all pools
 	existingPods, err := k8s.PodsMatchingLabels(d.K8sClient(), kb.Namespace, map[string]string{kblabel.KibanaNameLabelName: kb.Name})
 	if err != nil {
 		return results.WithError(err)
@@ -342,6 +342,7 @@ func (d *driver) deploymentParams(
 	policyAnnotations map[string]string,
 	meta metadata.Metadata,
 	selector map[string]string,
+	overwriteRevisionHistoryLimit *int32,
 ) (deployment.Params, error) {
 	role := pp.Role
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
@@ -448,6 +449,9 @@ func (d *driver) deploymentParams(
 		}})
 	}
 
+	if overwriteRevisionHistoryLimit == nil {
+		overwriteRevisionHistoryLimit = kb.Spec.RevisionHistoryLimit
+	}
 	return deployment.Params{
 		Name:                 pp.DeploymentName,
 		Namespace:            kb.Namespace,
@@ -455,7 +459,7 @@ func (d *driver) deploymentParams(
 		Selector:             selector,
 		Metadata:             poolMeta,
 		PodTemplateSpec:      kibanaPodSpec,
-		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
+		RevisionHistoryLimit: overwriteRevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }

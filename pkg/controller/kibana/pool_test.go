@@ -489,6 +489,14 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 	kbPaused.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
 	kbActive := kbWithBG(nil, nil)
 
+	// a complete driver is needed as the deployment is reconciled when it is not deleted
+	newDriverFor := func(t *testing.T, c k8s.Client) *driver {
+		t.Helper()
+		d, err := newDriver(c, watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kbActive, corev1.IPv4Protocol)
+		require.NoError(t, err)
+		return d
+	}
+
 	poolParamsFor := func(kb *kbv1.Kibana) poolParameters {
 		pp, err := poolParams(operator.Parameters{}, kb, kblabel.UIRole, "", false)
 		require.NoError(t, err)
@@ -498,8 +506,8 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 
 	t.Run("paused: mismatch detected, deployment not deleted, Defer returned", func(t *testing.T) {
 		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(dp)
-		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
+		d := newDriverFor(t, fakeClient)
 
 		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 
@@ -512,22 +520,32 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 
 	t.Run("not paused: mismatch triggers deletion and Requeue", func(t *testing.T) {
 		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(dp)
-		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
+		d := newDriverFor(t, fakeClient)
 
+		// First call: the deployment is reconciled with revisionHistoryLimit 0 (to clean up the old ReplicaSets)
+		// and its existing selector. It survives.
 		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.NotNil(t, reconciledDp)
+		var got appsv1.Deployment
+		require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+		assert.True(t, hasZeroRevisionHistoryLimit(&got))
+		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
 
+		// Second call: the deployment is deleted.
+		res, reconciledDp, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
 		assert.Equal(t, requeue, res)
 		assert.Nil(t, reconciledDp)
-		var got appsv1.Deployment
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
 	})
 
-	t.Run("resume after pause: deletion happens on next call", func(t *testing.T) {
+	t.Run("resume after pause: deletion happens on the calls after", func(t *testing.T) {
 		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(dp)
-		d := &driver{client: fakeClient, recorder: toolsevents.NewFakeRecorder(10)}
+		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
+		d := newDriverFor(t, fakeClient)
 
 		// First call: paused — deployment survives.
 		res, _, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
@@ -536,11 +554,121 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 
-		// Second call: not paused — deployment deleted.
+		// Second call: not paused — revisionHistoryLimit set to 0, deployment still there.
+		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+
+		// Third call: deployment deleted.
 		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
 		assert.Equal(t, requeue, res)
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
+	})
+
+	// reconcileOnce runs one reconciliation for the given existing deployment and returns what is left in the cluster.
+	reconcileOnce := func(t *testing.T, kb *kbv1.Kibana, objects ...client.Object) (poolDeploymentResult, *appsv1.Deployment, appsv1.Deployment, error) {
+		t.Helper()
+		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), objects...)...)
+		d := newDriverFor(t, fakeClient)
+		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, poolParamsFor(kb), nil, meta, map[string]struct{}{})
+		var got appsv1.Deployment
+		getErr := fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: dpName}, &got)
+		if getErr != nil {
+			require.True(t, apierrors.IsNotFound(getErr), "unexpected error: %v", getErr)
+			got = appsv1.Deployment{}
+		}
+		return res, reconciledDp, got, err
+	}
+	labeledPod := func() *corev1.Pod {
+		podLabels := maps.Clone(legacyLabels)
+		podLabels[kblabel.RoleLabelName] = kblabel.RolePrimaryValue
+		return &corev1.Pod{Name: "labeled", Namespace: "default", Labels: podLabels}
+	}
+	unlabeledPod := func() *corev1.Pod {
+		return &corev1.Pod{Name: "unlabeled", Namespace: "default", Labels: maps.Clone(legacyLabels)}
+	}
+	withHistoryLimit := func(dp *appsv1.Deployment, limit int32) *appsv1.Deployment {
+		dp.Spec.RevisionHistoryLimit = new(limit)
+		return dp
+	}
+
+	t.Run("old ReplicaSets not cleaned up yet: reconciled with revisionHistoryLimit 0 and the existing selector", func(t *testing.T) {
+		kb := kbWithBG(nil, nil)
+		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
+		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 5), labeledPod())
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.NotNil(t, reconciledDp)
+		assert.True(t, got.DeletionTimestamp.IsZero())
+		require.NotNil(t, got.Spec.RevisionHistoryLimit)
+		assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the Kibana spec value must be overwritten")
+		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+	})
+
+	incomplete := map[string]func(*appsv1.Deployment){
+		"the controller has not observed the spec yet": func(dp *appsv1.Deployment) {
+			dp.Generation, dp.Status.ObservedGeneration = 2, 1
+		},
+		"not all replicas are updated": func(dp *appsv1.Deployment) {
+			dp.Status.Replicas, dp.Status.UpdatedReplicas, dp.Status.AvailableReplicas = 3, 2, 2
+		},
+		"not all replicas are available": func(dp *appsv1.Deployment) {
+			dp.Status.Replicas, dp.Status.UpdatedReplicas, dp.Status.AvailableReplicas = 3, 3, 2
+		},
+	}
+	for name, makeIncomplete := range incomplete {
+		t.Run("revisionHistoryLimit 0 but "+name+": not deleted and the limit is kept at 0", func(t *testing.T) {
+			kb := kbWithBG(nil, nil)
+			kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
+			dp := withHistoryLimit(legacyDp(), 0)
+			makeIncomplete(dp)
+			res, _, got, err := reconcileOnce(t, kb, dp, labeledPod())
+			require.NoError(t, err)
+			assert.Equal(t, requeue, res)
+			assert.True(t, got.DeletionTimestamp.IsZero(), "must wait for the deployment to be complete")
+			require.NotNil(t, got.Spec.RevisionHistoryLimit)
+			assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the limit must not be reset while waiting")
+		})
+	}
+
+	t.Run("revisionHistoryLimit 0 and complete: deleted", func(t *testing.T) {
+		kb := kbWithBG(nil, nil)
+		dp := withHistoryLimit(legacyDp(), 0)
+		dp.Finalizers = []string{metav1.FinalizerOrphanDependents} // keep it around to observe the deletion
+		dp.Generation, dp.Status = 3, appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2}
+		res, reconciledDp, got, err := reconcileOnce(t, kb, dp, labeledPod())
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.Nil(t, reconciledDp)
+		assert.False(t, got.DeletionTimestamp.IsZero())
+	})
+
+	t.Run("pods without the role label: normal reconcile, the Kibana revisionHistoryLimit is kept", func(t *testing.T) {
+		kb := kbWithBG(nil, nil)
+		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
+		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 0), labeledPod(), unlabeledPod())
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.NotNil(t, reconciledDp)
+		assert.True(t, got.DeletionTimestamp.IsZero())
+		require.NotNil(t, got.Spec.RevisionHistoryLimit)
+		assert.Equal(t, int32(5), *got.Spec.RevisionHistoryLimit)
+		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+	})
+
+	t.Run("deployment already being deleted: requeue without reconciling it", func(t *testing.T) {
+		kb := kbWithBG(nil, nil)
+		dp := withHistoryLimit(legacyDp(), 7)
+		dp.Finalizers = []string{metav1.FinalizerOrphanDependents} // an object with a deletionTimestamp needs a finalizer
+		dp.DeletionTimestamp = new(metav1.Now())
+		res, reconciledDp, got, err := reconcileOnce(t, kb, dp, labeledPod())
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.Nil(t, reconciledDp)
+		require.NotNil(t, got.Spec.RevisionHistoryLimit)
+		assert.Equal(t, int32(7), *got.Spec.RevisionHistoryLimit, "a terminating deployment must not be updated")
 	})
 }
 
@@ -866,6 +994,7 @@ func TestNodeRolesEnvVar(t *testing.T) {
 				nil, // policyAnnotations
 				metadata.Propagate(tc.kb, metadata.Metadata{Labels: tc.kb.GetIdentityLabels()}),
 				tc.kb.GetIdentityLabels(),
+				nil, // overwriteRevisionHistoryLimit
 			)
 			require.NoError(t, err)
 
@@ -1502,6 +1631,7 @@ func TestDeploymentParamsReplicasAnnotation(t *testing.T) {
 				replicas, tt.replicasAnnotation,
 				nil,
 				meta, kb.GetIdentityLabels(),
+				nil,
 			)
 			require.NoError(t, err)
 
@@ -1827,28 +1957,6 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "deployment spec not yet observed by the controller",
-			dep: func() *appsv1.Deployment {
-				d := deployment(&metav1.LabelSelector{MatchLabels: selector})
-				d.Generation = 2
-				d.Status.ObservedGeneration = 1
-				return d
-			}(),
-			pods: []client.Object{pod("p1", "default", withRole("primary"))},
-			want: false,
-		},
-		{
-			name: "rollout in progress, pods from an older template remain",
-			dep: func() *appsv1.Deployment {
-				d := deployment(&metav1.LabelSelector{MatchLabels: selector})
-				d.Status.Replicas = 3
-				d.Status.UpdatedReplicas = 2
-				return d
-			}(),
-			pods: []client.Object{pod("p1", "default", withRole("primary"))},
-			want: false,
-		},
-		{
 			name: "all pods have the role label",
 			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
 			pods: []client.Object{
@@ -1896,30 +2004,25 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 }
 
 func TestDeletePoolDeployment(t *testing.T) {
-	newDeployment := func(terminating bool) *appsv1.Deployment {
-		dep := &appsv1.Deployment{
+	newDeployment := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
 			Name: "test-kb", Namespace: "default", UID: "uid-1", Finalizers: []string{metav1.FinalizerOrphanDependents},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{kblabel.KibanaNameLabelName: "test"}},
 			},
 		}
-		if terminating {
-			dep.DeletionTimestamp = new(metav1.Now())
-		}
-		return dep
 	}
+	kb := &kbv1.Kibana{Name: "test", Namespace: "default"}
 
 	t.Run("deletes the deployment and emits an event", func(t *testing.T) {
-		dep := newDeployment(false)
+		dep := newDeployment()
 		d := newTestDriver(t, dep)
 		recorder, is := d.recorder.(*toolsevents.FakeRecorder)
 		require.True(t, is, "recorder should be of type *toolsevents.FakeRecorder")
-		kb := &kbv1.Kibana{Name: "test", Namespace: "default"}
 
-		result, reconciled, err := d.deletePoolDeployment(context.Background(), kb, nil, dep)
+		result, err := d.deletePoolDeployment(context.Background(), kb, nil, dep)
 		require.NoError(t, err)
 		assert.Equal(t, requeue, result)
-		assert.Nil(t, reconciled)
 		assert.Len(t, recorder.Events, 1)
 
 		// the finalizer keeps the object around, but it must now be marked for deletion
@@ -1928,17 +2031,43 @@ func TestDeletePoolDeployment(t *testing.T) {
 		assert.False(t, got.DeletionTimestamp.IsZero())
 	})
 
-	t.Run("already terminating deployment is not deleted again", func(t *testing.T) {
-		dep := newDeployment(true)
-		d := newTestDriver(t, dep)
-		recorder, is := d.recorder.(*toolsevents.FakeRecorder)
-		require.True(t, is, "recorder should be of type *toolsevents.FakeRecorder")
-		kb := &kbv1.Kibana{Name: "test", Namespace: "default"}
-
-		result, reconciled, err := d.deletePoolDeployment(context.Background(), kb, nil, dep)
+	t.Run("deployment that is already gone is not an error", func(t *testing.T) {
+		d := newTestDriver(t) // no deployment in the cluster
+		result, err := d.deletePoolDeployment(context.Background(), kb, nil, newDeployment())
 		require.NoError(t, err)
 		assert.Equal(t, requeue, result)
-		assert.Nil(t, reconciled)
-		assert.Empty(t, recorder.Events)
 	})
+}
+
+func TestDeploymentParams_RevisionHistoryLimit(t *testing.T) {
+	tests := []struct {
+		name      string
+		specLimit *int32
+		overwrite *int32
+		want      *int32
+	}{
+		{name: "nothing set", want: nil},
+		{name: "spec value used when there is no overwrite", specLimit: ptr.To[int32](5), want: ptr.To[int32](5)},
+		{name: "overwrite used when the spec has no value", overwrite: ptr.To[int32](0), want: ptr.To[int32](0)},
+		{name: "overwrite takes precedence over the spec value", specLimit: ptr.To[int32](5), overwrite: ptr.To[int32](0), want: ptr.To[int32](0)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := kibanaFixture()
+			kb.Spec.RevisionHistoryLimit = tt.specLimit
+			d := newTestDriver(t, defaultInitialObjects()...)
+
+			got, err := d.deploymentParams(
+				context.Background(), kb,
+				poolParameters{Role: kblabel.SinglePoolRole, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.KBNamer.Suffix(kb.Name)},
+				new(kb.Spec.Count), nil, nil,
+				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
+				kb.GetIdentityLabels(),
+				tt.overwrite,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got.RevisionHistoryLimit)
+		})
+	}
 }

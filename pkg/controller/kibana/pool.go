@@ -135,14 +135,9 @@ func (d *driver) reconcilePoolDeployment(
 	meta metadata.Metadata,
 	reconciledSecrets map[string]struct{},
 ) (poolDeploymentResult, *appsv1.Deployment, error) {
-	var rPoolDeploymentResult poolDeploymentResult
-	logger := ulog.FromContext(ctx)
-
-	// Detect immutable selector transition.
-	// Kubernetes rejects selector updates as immutable, so we delete the stale deployment and requeue;
-	// the next pass recreates it with the correct selector.
 	var existingDeployment appsv1.Deployment
 	var existingSelector map[string]string
+
 	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolParams.DeploymentName}, &existingDeployment); err == nil {
 		if existingDeployment.Spec.Selector != nil {
 			existingSelector = existingDeployment.Spec.Selector.MatchLabels
@@ -152,34 +147,12 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	expectedSelector := deploymentSelector(kb, poolParams.Role, existingSelector)
-	// Check selector change is required
-	if existingSelector != nil && !umaps.IsSubset(expectedSelector, existingSelector) {
-		if common.IsOrchestrationPaused(kb) {
-			logger.Info(
-				"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
-				"deployment", existingDeployment.Name,
-			)
-			return deferred, nil, nil
-		}
-
-		// Since the selector has changed, we always requeue: either we are waiting for the pods to get
-		// the role label (before the deployment can be deleted), or the deployment was deleted and we
-		// need to reconcile again to create the new one.
-		rPoolDeploymentResult = requeue
-
-		shouldDelete, err := shouldDeleteTheDeployment(ctx, d.client, &existingDeployment)
-		if err != nil {
-			return "", nil, err
-		}
-		if shouldDelete {
-			return d.deletePoolDeployment(ctx, kb, existingSelector, &existingDeployment)
-		}
-
-		// Some pods do not have the role label yet, so we cannot delete the deployment safely.
-		// Keep the existing selector for this reconciliation: the selector is immutable, so sending the
-		// new one would make the update fail. The pod template (which carries the role label) is still
-		// updated, rolling the pods until they are all labeled.
-		expectedSelector = existingSelector
+	selectorOutcome, err := d.handleSelectorChange(ctx, kb, &existingDeployment, existingSelector, expectedSelector)
+	if err != nil {
+		return "", nil, err
+	}
+	if selectorOutcome.stop {
+		return selectorOutcome.result, nil, nil
 	}
 
 	// reconcile pool secret, unless it was already written earlier in this reconciliation pass
@@ -197,7 +170,7 @@ func (d *driver) reconcilePoolDeployment(
 	// Determine replica count for this pool.
 	replicas, oldReplicas := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
 
-	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, expectedSelector)
+	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, selectorOutcome.expectedSelector, selectorOutcome.overwriteRevisionHistoryLimit)
 	if err != nil {
 		return "", nil, err
 	}
@@ -208,23 +181,100 @@ func (d *driver) reconcilePoolDeployment(
 		return "", nil, err
 	}
 
-	return rPoolDeploymentResult, &reconciledDp, nil
+	return selectorOutcome.result, &reconciledDp, nil
 }
 
+// selectorChangeOutcome tells reconcilePoolDeployment how to continue after the existing and the expected
+// selectors of a pool Deployment were compared.
+type selectorChangeOutcome struct {
+	// stop is true when the reconciliation ends here and result is returned as is.
+	stop bool
+	// result is returned by the reconciliation: right away when stop is true, otherwise once the Deployment is reconciled.
+	result poolDeploymentResult
+
+	// expectedSelector is the selector to reconcile the deployment with.
+	expectedSelector map[string]string
+	// overwriteRevisionHistoryLimit is used instead of the revisionHistoryLimit of the Kibana spec, when not nil.
+	overwriteRevisionHistoryLimit *int32
+}
+
+// handleSelectorChange handles the difference between the existing and the expected selector of a pool Deployment.
+// The selector is immutable, so when it changes the Deployment has to be deleted (leaving its pods orphaned) and
+// recreated, which can only be done once it is safe. Until then the reconciliation either stops or proceeds with
+// the existing selector. When there is no difference (or no existing Deployment) the reconciliation proceeds as is.
+func (d *driver) handleSelectorChange(
+	ctx context.Context,
+	kb *kbv1.Kibana,
+	existingDeployment *appsv1.Deployment,
+	existingSelector, expectedSelector map[string]string,
+) (selectorChangeOutcome, error) {
+	logger := ulog.FromContext(ctx)
+
+	// no existing deployment, or its selector already matches
+	if existingSelector == nil || umaps.IsSubset(expectedSelector, existingSelector) {
+		return selectorChangeOutcome{expectedSelector: expectedSelector}, nil
+	}
+
+	if common.IsOrchestrationPaused(kb) {
+		logger.Info(
+			"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
+			"deployment", existingDeployment.Name,
+		)
+		return selectorChangeOutcome{stop: true, result: deferred}, nil
+	}
+
+	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
+	// has released its ReplicaSets. Nothing more to do but wait: do not reconcile (update) a Deployment that is
+	// going away, and do not delete it again.
+	if !existingDeployment.DeletionTimestamp.IsZero() {
+		logger.V(1).Info("Deployment is already being deleted; waiting for it to go away", "deployment", existingDeployment.Name)
+		return selectorChangeOutcome{stop: true, result: requeue}, nil
+	}
+
+	// The deployment cannot be deleted (yet): some pods do not have the role label, or the old ReplicaSets
+	// are not cleaned up. Keep the existing selector for this reconciliation: the selector is immutable, so
+	// sending the new one would make the update fail. The pod template (which carries the role label) is
+	// still updated, rolling the pods until they are all labeled.
+	//
+	// Since the selector has changed, we always requeue: either we are waiting for the pods to get the role label
+	// or the old ReplicaSets to be cleaned up (before the deployment can be deleted), or the deployment was deleted
+	// and we need to reconcile again to create the new one.
+	outcome := selectorChangeOutcome{result: requeue, expectedSelector: existingSelector}
+
+	shouldDelete, err := shouldDeleteTheDeployment(ctx, d.client, existingDeployment)
+	if err != nil {
+		return selectorChangeOutcome{}, err
+	}
+
+	if shouldDelete {
+		// The old ReplicaSets that do not carry the role label cannot be adopted by the recreated Deployment
+		// and would be left behind. Setting revisionHistoryLimit to 0 makes the Deployment controller delete
+		// all the inactive ones. There is no direct signal for the cleanup: the controller prunes while syncing
+		// a complete deployment, before it reports the new generation as observed, so a complete deployment
+		// that has observed the limit is taken as cleaned up.
+		if hasZeroRevisionHistoryLimit(existingDeployment) && isDeploymentComplete(existingDeployment) {
+			result, err := d.deletePoolDeployment(ctx, kb, expectedSelector, existingDeployment)
+			return selectorChangeOutcome{stop: true, result: result}, err
+		}
+
+		// The cleanup is not done (or not set yet): reconcile the deployment with revisionHistoryLimit 0 and
+		// wait. The recreated deployment gets the limit back from the Kibana spec.
+		logger.V(1).Info("Waiting for the old ReplicaSets to be cleaned up (revisionHistoryLimit 0) before recreating the deployment", "deployment", existingDeployment.Name)
+		outcome.overwriteRevisionHistoryLimit = new(int32(0))
+	}
+
+	return outcome, nil
+}
+
+// deletePoolDeployment deletes the Deployment, leaving its pods orphaned so that the recreated
+// Deployment can adopt them.
 func (d *driver) deletePoolDeployment(
 	ctx context.Context,
 	kb *kbv1.Kibana,
 	expectedSelector map[string]string,
 	existingDeployment *appsv1.Deployment,
-) (poolDeploymentResult, *appsv1.Deployment, error) {
+) (poolDeploymentResult, error) {
 	logger := ulog.FromContext(ctx)
-
-	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
-	// has released its ReplicaSets. Nothing more to do but wait: avoid deleting again and repeating the event.
-	if !existingDeployment.DeletionTimestamp.IsZero() {
-		logger.V(1).Info("Deployment is already being deleted; waiting for it to go away", "deployment", existingDeployment.Name)
-		return requeue, nil, nil
-	}
 
 	logger.Info(
 		"Deployment selector mismatch; deleting to allow recreation with updated selector",
@@ -249,16 +299,16 @@ func (d *driver) deletePoolDeployment(
 			// The UID precondition failed: the Deployment was replaced since we read it.
 			// Not an error, requeue to examine the current one.
 			logger.Info("Deployment changed while deleting (UID precondition failed); requeuing", "deployment", existingDeployment.Name)
-			return requeue, nil, nil
+			return requeue, nil
 		default:
-			return "", nil, delErr
+			return "", delErr
 		}
 	}
 
 	k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
 		fmt.Sprintf("Deleted Deployment %s to apply updated selector", existingDeployment.Name))
 
-	return requeue, nil, nil
+	return requeue, nil
 }
 
 // deploymentSelector returns the label selector to use for a pool deployment.
@@ -292,17 +342,22 @@ func deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels 
 	return expectedByRole
 }
 
-// shouldDeleteTheDeployment returns true if the rollout of the given Deployment is complete and every
-// pod it selects already carries the Kibana role label. It returns false otherwise.
+func hasZeroRevisionHistoryLimit(dep *appsv1.Deployment) bool {
+	return dep.Spec.RevisionHistoryLimit != nil && *dep.Spec.RevisionHistoryLimit == 0
+}
+
+// isDeploymentComplete returns true if the controller has observed the latest spec and all the replicas
+// are updated and available.
+func isDeploymentComplete(dep *appsv1.Deployment) bool {
+	return dep.Status.ObservedGeneration >= dep.Generation &&
+		dep.Status.Replicas == dep.Status.UpdatedReplicas &&
+		dep.Status.UpdatedReplicas == dep.Status.AvailableReplicas
+}
+
+// shouldDeleteTheDeployment returns true if every pod selected by the given Deployment already carries the
+// Kibana role label. It returns false otherwise.
 func shouldDeleteTheDeployment(ctx context.Context, c k8s.Client, dep *appsv1.Deployment) (bool, error) {
 	if dep.Spec.Selector == nil {
-		return false, nil
-	}
-
-	// The pod list may be served from a stale cache, which could make us miss unlabeled pods (an empty
-	// list is considered labeled). The Deployment status guards against it: the controller must have
-	// observed the latest spec, and no pod from an older template (which may lack the label) may remain.
-	if dep.Status.ObservedGeneration < dep.Generation || dep.Status.Replicas != dep.Status.UpdatedReplicas {
 		return false, nil
 	}
 

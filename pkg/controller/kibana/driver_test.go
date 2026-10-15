@@ -382,7 +382,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				SecretName:                kbv1.ConfigSecret(kb.Name),
 				DeploymentName:            kbv1.KBNamer.Suffix(kb.Name),
 				SetDefaultSecurityContext: tt.args.setDefaultSecurityContextFlag,
-			}, new(kb.Spec.Count), nil, tt.args.policyAnnotations, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels())
+			}, new(kb.Spec.Count), nil, tt.args.policyAnnotations, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetIdentityLabels(), nil)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
