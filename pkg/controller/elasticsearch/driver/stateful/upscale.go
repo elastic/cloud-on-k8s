@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -37,8 +38,8 @@ type upscaleCtx struct {
 	validateStorageClass bool
 	upscaleReporter      *reconcile.UpscaleReporter
 	meta                 metadata.Metadata
-	// desiredLeaving are the Pods the downscale wants to remove. They are not upgraded, so the master StatefulSets do not
-	// wait for them.
+	// desiredLeaving are the Pods the downscale wants to remove. They are not upgraded, so the master StatefulSets only
+	// wait for the ones that run an older version.
 	desiredLeaving set.StringSet
 }
 
@@ -307,8 +308,10 @@ func reconcileResources(
 }
 
 // findPendingNonMasterStatefulSetUpgrades finds all non-master StatefulSets that have not completed their upgrades. The
-// Pods the downscale wants to remove are not upgraded, so they are not waited for: a StatefulSet that only has such Pods is
-// skipped, and the other ones are only checked on the Pods that stay.
+// Pods the downscale wants to remove are not upgraded, so they are only waited for while they run an older version than
+// the target one: the masters are upgraded last so that the older nodes can rejoin the cluster, which also applies to
+// the leaving nodes until they are removed. A StatefulSet that only has leaving Pods is only checked on their version,
+// and the other ones are checked on the Pods that stay and on the version of the leaving ones.
 func findPendingNonMasterStatefulSetUpgrades(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
@@ -332,8 +335,24 @@ func findPendingNonMasterStatefulSetUpgrades(
 			continue
 		}
 
-		// All the Pods of this StatefulSet are leaving, none of them is upgraded
+		// All the Pods of this StatefulSet are leaving, none of them is upgraded: only wait for the older ones. The pending
+		// generation, revision and status checks below are skipped on purpose, as they would wait for an upgrade that
+		// never happens.
 		if !slices.ContainsFunc(sset.PodNames(actualStatefulSet), func(podName string) bool { return !desiredLeaving.Has(podName) }) {
+			pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&actualStatefulSet))
+			if err != nil {
+				return pendingNonMasterSTS, err
+			}
+			for _, pod := range pods {
+				older, err := runsOlderVersion(pod, targetVersion)
+				if err != nil {
+					return pendingNonMasterSTS, err
+				}
+				if older {
+					pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
+					break
+				}
+			}
 			continue
 		}
 
@@ -366,7 +385,8 @@ func findPendingNonMasterStatefulSetUpgrades(
 			return pendingNonMasterSTS, err
 		}
 
-		// The status counts the leaving Pods, which are not upgraded: only compare the Pods that stay.
+		// The status counts the leaving Pods, which are not upgraded: only compare the Pods that stay, and wait for the
+		// leaving Pods that run an older version.
 		stayingReplicas, stayingUpdatedReplicas := actualStatefulSet.Status.Replicas, actualStatefulSet.Status.UpdatedReplicas
 		pendingPods := false
 		for _, pod := range pods {
@@ -377,6 +397,11 @@ func findPendingNonMasterStatefulSetUpgrades(
 				if isUpdated {
 					stayingUpdatedReplicas--
 				}
+				older, err := runsOlderVersion(pod, targetVersion)
+				if err != nil {
+					return pendingNonMasterSTS, err
+				}
+				pendingPods = pendingPods || older
 			} else if !isUpdated {
 				// This pod still needs to be upgraded
 				pendingPods = true
@@ -389,4 +414,13 @@ func findPendingNonMasterStatefulSetUpgrades(
 	}
 
 	return pendingNonMasterSTS, nil
+}
+
+// runsOlderVersion returns true if the given Pod runs an older version than the given one.
+func runsOlderVersion(pod corev1.Pod, v version.Version) (bool, error) {
+	podVersion, err := label.ExtractVersion(pod.Labels)
+	if err != nil {
+		return false, err
+	}
+	return podVersion.LT(v), nil
 }

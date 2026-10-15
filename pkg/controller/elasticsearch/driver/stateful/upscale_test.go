@@ -902,10 +902,10 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", Replicas: replicas, UpdatedReplicas: updated},
 		}.Build()
 	}
-	pod := func(ssetName string, ordinal int, revision string) client.Object {
+	pod := func(ssetName string, ordinal int, esVersion, revision string) client.Object {
 		p := sset.TestPod{
 			Name: fmt.Sprintf("%s-%d", ssetName, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName,
-			Version: "8.2.0", Revision: revision, Data: true,
+			Version: esVersion, Revision: revision, Data: true,
 		}.Build()
 		return &p
 	}
@@ -921,30 +921,46 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			name:     "outdated Pod, nothing leaving",
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
-			pods:     []client.Object{pod("data", 0, "rev-b"), pod("data", 1, "rev-a")},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.2.0", "rev-a")},
 			want:     []string{"data"},
 		},
 		{
-			name:     "only the leaving Pod is outdated",
+			name:     "only the leaving Pod is outdated, at the target version",
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
-			pods:     []client.Object{pod("data", 0, "rev-b"), pod("data", 1, "rev-a")},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.2.0", "rev-a")},
 			leaving:  set.Make("data-1"),
 			want:     nil,
+		},
+		{
+			name:     "only the leaving Pod is outdated, at an older version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.1.0", "rev-a")},
+			leaving:  set.Make("data-1"),
+			want:     []string{"data"},
 		},
 		{
 			name:     "the Pod that stays is outdated",
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 0)},
-			pods:     []client.Object{pod("data", 0, "rev-a"), pod("data", 1, "rev-b")},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-b")},
 			leaving:  set.Make("data-1"),
 			want:     []string{"data"},
 		},
 		{
-			name:     "the StatefulSet only has leaving Pods and is not at the target version",
+			name:     "the StatefulSet only has leaving Pods at an older version",
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.1.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
-			pods:     []client.Object{pod("data", 0, "rev-a"), pod("data", 1, "rev-a"), pod("data-new", 0, "rev-b")},
+			pods:     []client.Object{pod("data", 0, "8.1.0", "rev-a"), pod("data", 1, "8.1.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
+			leaving:  set.Make("data-0", "data-1"),
+			want:     []string{"data"},
+		},
+		{
+			name:     "the StatefulSet only has outdated leaving Pods at the target version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
 			leaving:  set.Make("data-0", "data-1"),
 			want:     nil,
 		},
