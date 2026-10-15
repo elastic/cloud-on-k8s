@@ -80,12 +80,16 @@ func poolParams(operatorParameters operator.Parameters, kb *kbv1.Kibana, role kb
 		return pp, nil
 	}
 
-	poolCfg, err := primaryPoolConfig.WithOverlay(overlay)
+	overlayCfg, err := settings.NewCanonicalConfigFrom(overlay.Data)
 	if err != nil {
 		return poolParameters{}, err
 	}
+	// The base config was built fresh above, so it can be merged in place.
+	if err := primaryPoolConfig.MergeWith(overlayCfg); err != nil {
+		return poolParameters{}, err
+	}
 
-	pp.Config = poolCfg
+	pp.Config = primaryPoolConfig
 	pp.SecretName = kbv1.BackgroundTasksConfigSecret(kb.Name)
 	pp.DeploymentName = kbv1.BackgroundTasksDeployment(kb.Name)
 	return pp, nil

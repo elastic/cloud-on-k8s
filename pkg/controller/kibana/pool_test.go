@@ -24,7 +24,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -57,75 +56,6 @@ func newTestDriver(t *testing.T, objects ...client.Object) *driver {
 	d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(10), kb, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	return d
-}
-
-// ---- WithPoolOverlay --------------------------------------------------------
-
-func TestWithOverlay(t *testing.T) {
-	// Use simple non-dotted keys — ucfg treats dots as path separators so dotted
-	// keys in map literals produce nested structures, not flat string keys.
-	base := CanonicalConfig{settings.MustCanonicalConfig(map[string]any{
-		"basekey": "basevalue",
-		"shared":  "original",
-	})}
-
-	t.Run("nil overlay returns base unchanged", func(t *testing.T) {
-		got, err := base.WithOverlay(nil)
-		require.NoError(t, err)
-		// Identity: nil overlay returns the original config, not a copy.
-		assert.Equal(t, base.CanonicalConfig, got.CanonicalConfig)
-	})
-
-	t.Run("overlay adds new key while preserving base", func(t *testing.T) {
-		overlay := &commonv1.Config{Data: map[string]any{"newkey": "newvalue"}}
-		got, err := base.WithOverlay(overlay)
-		require.NoError(t, err)
-
-		rendered, err := got.Render()
-		require.NoError(t, err)
-		// All three keys must appear in the rendered YAML.
-		assert.Contains(t, string(rendered), "basekey")
-		assert.Contains(t, string(rendered), "basevalue")
-		assert.Contains(t, string(rendered), "newkey")
-		assert.Contains(t, string(rendered), "newvalue")
-	})
-
-	t.Run("overlay replaces existing key", func(t *testing.T) {
-		overlay := &commonv1.Config{Data: map[string]any{"shared": "overridden"}}
-		got, err := base.WithOverlay(overlay)
-		require.NoError(t, err)
-
-		rendered, err := got.Render()
-		require.NoError(t, err)
-		// "original" must be gone; "overridden" must appear.
-		assert.Contains(t, string(rendered), "overridden")
-		assert.NotContains(t, string(rendered), "original")
-		// Base-only key must still be present.
-		assert.Contains(t, string(rendered), "basekey")
-	})
-
-	t.Run("overlay does not inject node.roles into YAML", func(t *testing.T) {
-		overlay := &commonv1.Config{Data: map[string]any{"extra": "v"}}
-		got, err := base.WithOverlay(overlay)
-		require.NoError(t, err)
-
-		rendered, err := got.Render()
-		require.NoError(t, err)
-		assert.NotContains(t, string(rendered), "node.roles")
-	})
-
-	t.Run("base config is not mutated by overlay", func(t *testing.T) {
-		originalRendered, err := base.Render()
-		require.NoError(t, err)
-
-		overlay := &commonv1.Config{Data: map[string]any{"shared": "overridden"}}
-		_, err = base.WithOverlay(overlay)
-		require.NoError(t, err)
-
-		afterRendered, err := base.Render()
-		require.NoError(t, err)
-		assert.Equal(t, string(originalRendered), string(afterRendered), "base must not be mutated")
-	})
 }
 
 // ---- poolParams -------------------------------------------------------------

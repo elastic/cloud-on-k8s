@@ -94,31 +94,6 @@ type CanonicalConfig struct {
 	*settings.CanonicalConfig
 }
 
-// WithOverlay returns a copy of the base config with the overlay merged on top.
-// The deep-copy via render+parse ensures mutations don't affect the shared base config.
-func (c CanonicalConfig) WithOverlay(overlay *commonv1.Config) (CanonicalConfig, error) {
-	if overlay == nil {
-		return c, nil
-	}
-	// Deep-copy via render+parse so mutations don't affect the shared base config.
-	rendered, err := c.Render()
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	cp, err := settings.ParseConfig(rendered)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	overlayCfg, err := settings.NewCanonicalConfigFrom(overlay.Data)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-	if err := cp.MergeWith(overlayCfg); err != nil {
-		return CanonicalConfig{}, err
-	}
-	return CanonicalConfig{cp}, nil
-}
-
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 //
 // userSettings is deliberately passed in by the caller and NOT read from kb.Spec.Config here.
