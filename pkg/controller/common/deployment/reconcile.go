@@ -53,6 +53,11 @@ func New(params Params) appsv1.Deployment {
 	return WithTemplateHash(d)
 }
 
+type MetadataMergeStrategy struct {
+	Labels      func(reconciled, expected map[string]string) map[string]string
+	Annotations func(reconciled, expected map[string]string) map[string]string
+}
+
 // Reconcile creates or updates the given deployment for the specified owner.
 func Reconcile(
 	ctx context.Context,
@@ -60,6 +65,24 @@ func Reconcile(
 	expected appsv1.Deployment,
 	owner client.Object,
 ) (appsv1.Deployment, error) {
+	return ReconcileWithMetadataMergeStrategy(ctx, k8sClient, expected, owner, MetadataMergeStrategy{Labels: maps.Merge, Annotations: maps.Merge})
+}
+
+// Reconcile creates or updates the given deployment for the specified owner.
+func ReconcileWithMetadataMergeStrategy(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	expected appsv1.Deployment,
+	owner client.Object,
+	mdMergeStrategy MetadataMergeStrategy,
+) (appsv1.Deployment, error) {
+	if mdMergeStrategy.Labels == nil {
+		mdMergeStrategy.Labels = maps.Merge
+	}
+	if mdMergeStrategy.Annotations == nil {
+		mdMergeStrategy.Annotations = maps.Merge
+	}
+
 	// label the deployment with a hash of itself
 	expected = WithTemplateHash(expected)
 
@@ -87,8 +110,8 @@ func Reconcile(
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones
 			// that may have been defaulted or set by a user/admin on the existing resource
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			reconciled.Labels = mdMergeStrategy.Labels(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = mdMergeStrategy.Annotations(reconciled.Annotations, expected.Annotations)
 			// overwrite the spec but leave the status intact
 			reconciled.Spec = expected.Spec
 		},

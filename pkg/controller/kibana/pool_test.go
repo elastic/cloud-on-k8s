@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -691,6 +692,107 @@ func TestReconcilePoolDeployment(t *testing.T) {
 	})
 }
 
+func TestReconcilePoolDeploymentMetadataMerge(t *testing.T) {
+	owner := &kbv1.Kibana{Name: "test", Namespace: "default"}
+	dpName := kbv1.BackgroundTasksDeployment("test")
+
+	type metadata struct {
+		labels      map[string]string
+		annotations map[string]string
+	}
+
+	tests := []struct {
+		name            string
+		existing        *metadata // nil: the deployment does not exist yet
+		expected        metadata
+		wantLabels      map[string]string
+		wantAnnotations map[string]string
+	}{
+		{
+			name:            "prev-replicas removed when no longer expected, other annotations kept",
+			existing:        &metadata{annotations: map[string]string{replicasAnnotationName: "4", "user-annotation": "keep-me"}},
+			wantAnnotations: map[string]string{"user-annotation": "keep-me"},
+		},
+		{
+			name:            "prev-replicas updated when expected",
+			existing:        &metadata{annotations: map[string]string{replicasAnnotationName: "2"}},
+			expected:        metadata{annotations: map[string]string{replicasAnnotationName: "4"}},
+			wantAnnotations: map[string]string{replicasAnnotationName: "4"},
+		},
+		{
+			name:            "prev-replicas added when expected and not previously set",
+			existing:        &metadata{annotations: map[string]string{"user-annotation": "keep-me"}},
+			expected:        metadata{annotations: map[string]string{replicasAnnotationName: "4"}},
+			wantAnnotations: map[string]string{replicasAnnotationName: "4", "user-annotation": "keep-me"},
+		},
+		{
+			name:            "prev-replicas set on creation when expected",
+			expected:        metadata{annotations: map[string]string{replicasAnnotationName: "4"}},
+			wantAnnotations: map[string]string{replicasAnnotationName: "4"},
+		},
+		{
+			name:     "annotations merged: expected override, existing extras kept",
+			existing: &metadata{annotations: map[string]string{"shared": "old", "user-only": "keep-me"}},
+			expected: metadata{annotations: map[string]string{"shared": "new", "added": "yes"}},
+			wantAnnotations: map[string]string{
+				"shared": "new", "added": "yes", "user-only": "keep-me",
+			},
+		},
+		{
+			name:       "labels merged: expected override, existing extras kept",
+			existing:   &metadata{labels: map[string]string{"shared": "old", "user-only": "keep-me"}},
+			expected:   metadata{labels: map[string]string{"shared": "new", "added": "yes"}},
+			wantLabels: map[string]string{"shared": "new", "added": "yes", "user-only": "keep-me"},
+		},
+		{
+			name:       "labels are never removed, even one named like the prev-replicas annotation",
+			existing:   &metadata{labels: map[string]string{replicasAnnotationName: "4"}},
+			wantLabels: map[string]string{replicasAnnotationName: "4"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objs []client.Object
+			if tt.existing != nil {
+				objs = append(objs, &appsv1.Deployment{
+					Name: dpName, Namespace: "default",
+					Labels: tt.existing.labels, Annotations: tt.existing.annotations,
+					Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](0)},
+				})
+			}
+			fakeClient := k8s.NewFakeClient(objs...)
+
+			expected := appsv1.Deployment{
+				Name: dpName, Namespace: "default",
+				Labels: tt.expected.labels, Annotations: tt.expected.annotations,
+				Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](4)},
+			}
+			got, err := ReconcilePoolDeployment(t.Context(), fakeClient, expected, owner)
+			require.NoError(t, err)
+
+			// the template hash label is added by the reconciliation, so only check the wanted labels
+			for k, v := range tt.wantLabels {
+				assert.Equal(t, v, got.Labels[k], "label %q", k)
+			}
+			assert.Equal(t, tt.wantAnnotations, nilIfEmpty(got.Annotations))
+
+			// the result must be what was persisted
+			var persisted appsv1.Deployment
+			require.NoError(t, fakeClient.Get(t.Context(), types.NamespacedName{Namespace: "default", Name: dpName}, &persisted))
+			assert.Equal(t, got.Annotations, persisted.Annotations)
+			assert.Equal(t, got.Labels, persisted.Labels)
+		})
+	}
+}
+
+func nilIfEmpty(m map[string]string) map[string]string {
+	if len(m) == 0 {
+		return nil
+	}
+	return m
+}
+
 func TestGarbageCollectBGPauseGuard(t *testing.T) {
 	bgDpName := kbv1.BackgroundTasksDeployment("test")
 	bgSecretName := kbv1.BackgroundTasksConfigSecret("test")
@@ -1230,15 +1332,17 @@ func TestDeploymentReplicas(t *testing.T) {
 	}
 
 	// getBackgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
+	// deploymentReplicas does not mutate the deployment: the annotation is persisted only
+	// when oldValue is non-nil (deploymentParams) and dropped otherwise by the
+	// ReconcilePoolDeployment annotations merge strategy.
 	tests := []struct {
-		name           string
-		scaleToZero    bool
-		kb             *kbv1.Kibana
-		role           kblabel.Role
-		existingDp     *appsv1.Deployment
-		wantNew        *int32
-		wantOld        *int32
-		wantAnnRemoved bool // the replicas annotation must be removed from the deployment
+		name        string
+		scaleToZero bool
+		kb          *kbv1.Kibana
+		role        kblabel.Role
+		existingDp  *appsv1.Deployment
+		wantNew     *int32
+		wantOld     *int32
 	}{
 		// ---- no stop phase --------------------------------------------------
 		{
@@ -1256,12 +1360,11 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    ptr(2),
 		},
 		{
-			name:           "BG, explicit count ignores annotation: Count wins over annotation",
-			kb:             kbSplit(ptr(2)),
-			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(ptr(0), ann("5")),
-			wantNew:        ptr(2),
-			wantAnnRemoved: true,
+			name:       "BG, explicit count ignores annotation: Count wins over annotation",
+			kb:         kbSplit(ptr(2)),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("5")),
+			wantNew:    ptr(2),
 		},
 		{
 			name:       "BG, Count nil, Deployment value: HPA replicas win",
@@ -1271,12 +1374,11 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    ptr(4),
 		},
 		{
-			name:           "BG, Count nil, Deployment nil, annotation: annotation wins as last resort",
-			kb:             kbSplit(nil),
-			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(nil, ann("5")),
-			wantNew:        ptr(5),
-			wantAnnRemoved: true,
+			name:       "BG, Count nil, Deployment nil, annotation: annotation wins as last resort",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(nil, ann("5")),
+			wantNew:    ptr(5),
 		},
 		{
 			name:       "BG, Count nil, Deployment nil, no annotation: returns nil",
@@ -1286,20 +1388,18 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    nil,
 		},
 		{
-			name:           "BG, Count nil, Deployment zeroed, malformed annotation: returns nil, annotation still removed",
-			kb:             kbSplit(nil),
-			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(nil, ann("not-a-number")),
-			wantNew:        nil,
-			wantAnnRemoved: true,
+			name:       "BG, Count nil, Deployment nil, malformed annotation: returns nil",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(nil, ann("not-a-number")),
+			wantNew:    nil,
 		},
 		{
-			name:           "BG, Count nil, Deployment zeroed, with annotation: returns Deployment value, annotation still removed",
-			kb:             kbSplit(nil),
-			role:           kblabel.BackgroundTasksRole,
-			existingDp:     dp(ptr(0), ann("4")),
-			wantNew:        ptr(0),
-			wantAnnRemoved: true,
+			name:       "BG, Count nil, Deployment zeroed, with annotation: restores annotation value",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(0), ann("4")),
+			wantNew:    ptr(4),
 		},
 		// ---- stop phase -----------------------------------------------------
 		{
@@ -1378,9 +1478,8 @@ func TestDeploymentReplicas(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, hadAnn := tt.existingDp.Annotations[replicasAnnotationName]
-			fakeClient := k8s.NewFakeClient(tt.existingDp)
-			gotNew, gotOld := deploymentReplicas(context.Background(), fakeClient, tt.kb, poolParameters{Role: tt.role, ScaleToZero: tt.scaleToZero}, tt.existingDp)
+			annotationsBefore := maps.Clone(tt.existingDp.Annotations)
+			gotNew, gotOld := deploymentReplicas(t.Context(), tt.kb, poolParameters{Role: tt.role, ScaleToZero: tt.scaleToZero}, tt.existingDp)
 
 			cmpPtrInt32 := func(a, b *int32, msg string) {
 				if a != nil && b != nil {
@@ -1392,10 +1491,8 @@ func TestDeploymentReplicas(t *testing.T) {
 			cmpPtrInt32(tt.wantNew, gotNew, "new values mismatch")
 			cmpPtrInt32(tt.wantOld, gotOld, "old values mismatch")
 
-			var updatedDp appsv1.Deployment
-			require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(tt.existingDp), &updatedDp))
-			_, annExists := updatedDp.Annotations[replicasAnnotationName]
-			assert.Equal(t, hadAnn && !tt.wantAnnRemoved, annExists)
+			// deploymentReplicas must not mutate the existing deployment.
+			assert.Equal(t, annotationsBefore, tt.existingDp.Annotations)
 		})
 	}
 }

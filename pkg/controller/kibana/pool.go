@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -179,7 +180,7 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	// Determine replica count for this pool.
-	replicas, oldReplicas := deploymentReplicas(ctx, d.client, kb, poolParams, &existingDeployment)
+	replicas, oldReplicas := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
 
 	dpParams, err := d.deploymentParams(
 		ctx,
@@ -201,7 +202,7 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	expectedDp := deployment.New(dpParams)
-	reconciledDp, err := common.ReconcilePauseAware(ctx, d.client, d.recorder, expectedDp, kb, deployment.Reconcile)
+	reconciledDp, err := common.ReconcilePauseAware(ctx, d.client, d.recorder, expectedDp, kb, ReconcilePoolDeployment)
 	if err != nil {
 		return "", nil, err
 	}
@@ -259,7 +260,7 @@ func serviceSelector(ctx context.Context, client k8s.Client, kb *kbv1.Kibana) (m
 	return deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
 }
 
-func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
 	logger := ulog.FromContext(ctx)
 
 	// replicasFromAnnotation returns the replica count saved in the maintenance annotation
@@ -282,18 +283,40 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 		return nil
 	}
 
-	getBackgroundReplicas := func(ignoreZeroOnDeployment bool) *int32 {
+	getBackgroundReplicasToStore := func() *int32 {
 		if kb.Spec.BackgroundTasks.Count != nil {
 			return kb.Spec.BackgroundTasks.Count
 		}
 
 		if existingDeployment != nil &&
-			existingDeployment.Spec.Replicas != nil &&
-			(!ignoreZeroOnDeployment || *existingDeployment.Spec.Replicas > 0) {
-			return existingDeployment.Spec.Replicas // get the HPA decided value
+			// Do not store zero in annotation when the mode is scale to zero.
+			existingDeployment.Spec.Replicas != nil && *existingDeployment.Spec.Replicas > 0 {
+			return existingDeployment.Spec.Replicas
 		}
 
 		return replicasFromAnnotation() // restore from annotation
+	}
+
+	getBackgroundReplicas := func() *int32 {
+		if kb.Spec.BackgroundTasks.Count != nil {
+			return kb.Spec.BackgroundTasks.Count
+		}
+
+		var fromDeployment *int32
+		if existingDeployment != nil {
+			fromDeployment = existingDeployment.Spec.Replicas // get the HPA decided value
+		}
+
+		fromAnnotation := replicasFromAnnotation()
+		if fromDeployment == nil {
+			return fromAnnotation
+		}
+
+		if *fromDeployment == 0 && fromAnnotation != nil {
+			return fromAnnotation
+		}
+
+		return fromDeployment
 	}
 
 	switch {
@@ -302,20 +325,14 @@ func deploymentReplicas(ctx context.Context, client k8s.Client, kb *kbv1.Kibana,
 
 		// Return the old value if the deployment is background tasks. It will be stored in annotation.
 		if pm.Role.IsBackgroundTasks() {
-			oldValue = getBackgroundReplicas(true)
+			oldValue = getBackgroundReplicasToStore()
 			if oldValue == nil {
 				oldValue = new(int32(1))
 			}
 		}
 
 	case kb.BackgroundTasksEnabled() && pm.Role.IsBackgroundTasks():
-		newValue = getBackgroundReplicas(false)
-
-		// Delete the annotation since it is no longer needed.
-		if err := k8s.PatchAnnotations(ctx, client, existingDeployment, nil, replicasAnnotationName); err != nil {
-			// keep the annotation for the next reconciliation; the value read remains valid
-			logger.Error(err, "failed to remove replicas annotation", "annotation", replicasAnnotationName, "deployment", existingDeployment.Name)
-		}
+		newValue = getBackgroundReplicas()
 
 	default:
 		newValue = new(kb.Spec.Count)
@@ -404,4 +421,32 @@ func calculateAggregateHealth(h1, h2 commonv1.DeploymentHealth) commonv1.Deploym
 	}
 
 	return commonv1.YellowHealth
+}
+
+// ReconcilePoolDeployment creates or updates the given deployment for the specified owner.
+func ReconcilePoolDeployment(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	expected appsv1.Deployment,
+	owner client.Object,
+) (appsv1.Deployment, error) {
+	return deployment.ReconcileWithMetadataMergeStrategy(
+		ctx,
+		k8sClient,
+		expected,
+		owner,
+		deployment.MetadataMergeStrategy{
+			Labels: umaps.Merge,
+			Annotations: func(reconciled, expected map[string]string) map[string]string {
+				merged := umaps.Merge(reconciled, expected)
+
+				// Do not merge ECK owned annotations.
+				if _, exists := expected[replicasAnnotationName]; !exists {
+					delete(merged, replicasAnnotationName)
+				}
+
+				return merged
+			},
+		},
+	)
 }
