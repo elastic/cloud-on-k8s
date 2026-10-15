@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -34,6 +35,7 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var onceDone = &sync.Once{}
@@ -890,4 +892,73 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Verify master StatefulSet is now updated to 8.17.1
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
+}
+
+func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
+	target := version.MustParse("8.2.0")
+	statefulSet := func(name, esVersion string, replicas, updated int32) appsv1.StatefulSet {
+		return sset.TestSset{
+			Name: name, Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: replicas, Data: true,
+			Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", Replicas: replicas, UpdatedReplicas: updated},
+		}.Build()
+	}
+	pod := func(ssetName string, ordinal int, revision string) client.Object {
+		p := sset.TestPod{
+			Name: fmt.Sprintf("%s-%d", ssetName, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName,
+			Version: "8.2.0", Revision: revision, Data: true,
+		}.Build()
+		return &p
+	}
+	tests := []struct {
+		name     string
+		actual   es_sset.StatefulSetList
+		expected es_sset.StatefulSetList
+		pods     []client.Object
+		leaving  set.StringSet
+		want     []string // names of the StatefulSets with a pending upgrade
+	}{
+		{
+			name:     "outdated Pod, nothing leaving",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			pods:     []client.Object{pod("data", 0, "rev-b"), pod("data", 1, "rev-a")},
+			want:     []string{"data"},
+		},
+		{
+			name:     "only the leaving Pod is outdated",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "rev-b"), pod("data", 1, "rev-a")},
+			leaving:  set.Make("data-1"),
+			want:     nil,
+		},
+		{
+			name:     "the Pod that stays is outdated",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 0)},
+			pods:     []client.Object{pod("data", 0, "rev-a"), pod("data", 1, "rev-b")},
+			leaving:  set.Make("data-1"),
+			want:     []string{"data"},
+		},
+		{
+			name:     "the StatefulSet only has leaving Pods and is not at the target version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.1.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "rev-a"), pod("data", 1, "rev-a"), pod("data-new", 0, "rev-b")},
+			leaving:  set.Make("data-0", "data-1"),
+			want:     nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.NewFakeClient(tt.pods...)
+			got, err := findPendingNonMasterStatefulSetUpgrades(k8sClient, tt.actual, tt.expected, target, expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}), tt.leaving)
+			require.NoError(t, err)
+			var names []string
+			for _, s := range got {
+				names = append(names, s.Name)
+			}
+			require.Equal(t, tt.want, names)
+		})
+	}
 }

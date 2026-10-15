@@ -101,6 +101,11 @@ func (d *Driver) reconcileNodeSpecs(
 		}
 	}
 
+	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants: no upgrade path may
+	// restart them, as it would disrupt the shutdown that is migrating their shards away, and the upgrades do not wait
+	// for them.
+	desiredLeaving := desiredLeavingNodeNames(ctx, expectedResources.StatefulSets(), actualStatefulSets)
+
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
 		parentCtx:            ctx,
@@ -110,6 +115,7 @@ func (d *Driver) reconcileNodeSpecs(
 		validateStorageClass: d.OperatorParameters.ValidateStorageClass,
 		upscaleReporter:      reconcileState.UpscaleReporter,
 		meta:                 meta,
+		desiredLeaving:       desiredLeaving,
 	}
 	upscaleResults, err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -153,10 +159,6 @@ func (d *Driver) reconcileNodeSpecs(
 	if err := keystorepassword.MaybeGarbageCollectKeystorePasswordSecret(ctx, d.Client, d.ES, d.Version, resolvedConfig.PolicyConfig.ElasticsearchConfig); err != nil {
 		return results.WithError(err)
 	}
-
-	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants: neither upgrade path
-	// may restart them, as it would disrupt the shutdown that is migrating their shards away.
-	desiredLeaving := desiredLeavingNodeNames(ctx, expectedResources.StatefulSets(), actualStatefulSets)
 
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
 	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving)

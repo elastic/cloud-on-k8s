@@ -230,9 +230,9 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 	esVersion := "8.1.0"
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: TestEsName, Namespace: TestEsNamespace},
-		Spec:       esv1.ElasticsearchSpec{Version: esVersion},
-		Status:     esv1.ElasticsearchStatus{Version: esVersion},
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: esVersion},
+		Status: esv1.ElasticsearchStatus{Version: esVersion},
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
 	upToDate := appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 1, Replicas: 1}
@@ -319,9 +319,9 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.T) {
 	fromVersion, toVersion := "8.1.0", "8.2.0"
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: TestEsName, Namespace: TestEsNamespace},
-		Spec:       esv1.ElasticsearchSpec{Version: toVersion},
-		Status:     esv1.ElasticsearchStatus{Version: fromVersion},
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: toVersion},
+		Status: esv1.ElasticsearchStatus{Version: fromVersion},
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
 	// a single master makes the cluster non-HA; "gone" is absent from the expected StatefulSets
