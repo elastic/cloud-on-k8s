@@ -169,7 +169,7 @@ type KibanaPoolsStatuses struct {
 	BackgroundTasks *commonv1.DeploymentStatus `json:"backgroundTasks,omitempty"`
 
 	// Primary reports the state of the primary Deployment.
-	// Only set when spec.backgroundTasks is configured.
+	// Always set, also when spec.backgroundTasks is not configured.
 	// +optional
 	Primary commonv1.DeploymentStatus `json:"primary,omitempty"`
 }
