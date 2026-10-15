@@ -91,9 +91,11 @@ var baseStatefulElasticsearch = esv1.Elasticsearch{
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{{Name: "http", Port: 9200}},
-				}},
+				},
+			},
 		},
-		Version: "9.3.1"},
+		Version: "9.3.1",
+	},
 }
 
 func TestReconcileSharedResources(t *testing.T) {
@@ -130,7 +132,8 @@ func TestReconcileSharedResources(t *testing.T) {
 	}{
 		{
 			name: "happy path - new Elasticsearch with no remote cluster",
-			params: mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+			params: mustBuildParams(
+				t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
 				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 			),
@@ -144,11 +147,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: true,
@@ -159,7 +158,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "happy path - remote cluster service created when remote cluster server enabled",
 			params: func() driver.Parameters {
-				p := mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
+				p := mustBuildParams(
+					t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
 					&baseStatefulElasticsearch,
 					mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 				)
@@ -179,11 +179,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: true,
@@ -194,7 +190,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure generating remote-ca secret does not block remaining reconciliation",
 			params: func() driver.Parameters {
-				p := mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
+				p := mustBuildParams(
+					t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 1,
 					&baseStatefulElasticsearch,
 					mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 				)
@@ -225,11 +222,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: true, // still reachable despite remoteca secret creation failure
@@ -239,7 +232,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		},
 		{
 			name: "orphaned secret referencing a deleted pod is garbage collected",
-			params: mustBuildParams(t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+			params: mustBuildParams(
+				t, esServer, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
 				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 				// A secret with a PodName label pointing to a pod that does not exist.
@@ -266,11 +260,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: true,
@@ -281,7 +271,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - no pods with master label prevents reconciliation",
 			// nil listeningServer because there's no pod
-			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+			params: mustBuildParams(
+				t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
 			),
 			expectedServices: map[string]corev1.Service{
@@ -294,11 +285,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", nil),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: false,
@@ -309,7 +296,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - a pod exists but is not listening",
 			// nil listeningServer because the pod is not listening
-			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+			params: mustBuildParams(
+				t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
 				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), baseStatefulElasticsearch.Labels[label.VersionLabelName]),
 			),
@@ -323,11 +311,7 @@ func TestReconcileSharedResources(t *testing.T) {
 			expectedConfigMaps: mustBuildExpectedConfigMaps(t, &baseStatefulElasticsearch, "1", esServer),
 			expectedState: &ReconcileState{
 				Meta: metadata.Metadata{
-					Labels: map[string]string{
-						label.ClusterNameLabelName:                 clusterName,
-						"common.k8s.elastic.co/type":               "elasticsearch",
-						commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
-					},
+					Labels:      expectedStateLabels(clusterName),
 					Annotations: nil,
 				},
 				ESReachable: false,
@@ -338,7 +322,8 @@ func TestReconcileSharedResources(t *testing.T) {
 		{
 			name: "failure state - a pod is running an unsupported version halts returns an error",
 			// nil listeningServer because the pod is not listening
-			params: mustBuildParams(t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
+			params: mustBuildParams(
+				t, nil, baseStatefulElasticsearch.Spec.Version, services.InternalServiceURL(baseStatefulElasticsearch), 0,
 				&baseStatefulElasticsearch,
 				mustBuildNewPod(t, &baseStatefulElasticsearch, esServer.Listener.Addr(), "6.0.0"),
 			),
@@ -766,7 +751,8 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 				initcontainer.PrepareFsScriptConfigKey:       fsScript,
 				initcontainer.SuspendScriptConfigKey:         initcontainer.SuspendScript,
 				initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(*es),
-			}},
+			},
+		},
 		esv1.UnicastHostsConfigMap(es.Name): {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            esv1.UnicastHostsConfigMap(es.Name),
@@ -929,7 +915,8 @@ func mustBuildNewPod(t *testing.T, es *esv1.Elasticsearch, addr net.Addr, versio
 		&esv1.Node{
 			Master: new(bool(true)),
 		},
-		"https")
+		"https",
+	)
 
 	return &corev1.Pod{
 		Status: corev1.PodStatus{
@@ -938,7 +925,8 @@ func mustBuildNewPod(t *testing.T, es *esv1.Elasticsearch, addr net.Addr, versio
 			Conditions: []corev1.PodCondition{
 				{
 					Status: corev1.ConditionTrue,
-					Type:   corev1.ContainersReady},
+					Type:   corev1.ContainersReady,
+				},
 				{
 					Status: corev1.ConditionTrue,
 					Type:   corev1.PodReady,
@@ -1056,6 +1044,14 @@ func mustParseVersion(t *testing.T, version string) commonversion.Version {
 	require.NoError(t, err)
 
 	return v
+}
+
+func expectedStateLabels(clusterName string) map[string]string {
+	// ensure that watch label should not leak into ReconcileState.
+	return map[string]string{
+		label.ClusterNameLabelName:   clusterName,
+		"common.k8s.elastic.co/type": "elasticsearch",
+	}
 }
 
 type fakeClient struct {

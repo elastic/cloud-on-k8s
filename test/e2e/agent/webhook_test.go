@@ -18,6 +18,13 @@ import (
 )
 
 func TestWebhook(t *testing.T) {
+	if test.Ctx().DeployChaosJob {
+		// Skip if the chaos job is deployed as it deletes operator Pods which may end up leaving the webhook
+		// without a ready endpoint for a short time. With failurePolicy Ignore, the API server then admits the
+		// invalid resource.
+		t.Skip()
+	}
+
 	agent := v1alpha1.Agent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-webhook",
