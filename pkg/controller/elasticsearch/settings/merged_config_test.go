@@ -64,6 +64,16 @@ func TestNewMergedESConfig(t *testing.T) {
 		require.NoError(t, yaml.Unmarshal(cfgBytes, esCfg))
 		return esCfg.Xpack.Security.Authc.Realms.Pki.EckPki
 	}
+	// eckPKIRealmNodeAttribute returns the value of the node attribute ECK sets with the eck_managed_pki realm, or ""
+	// when absent.
+	eckPKIRealmNodeAttribute := func(cfg CanonicalConfig) string {
+		if len(cfg.HasKeys([]string{commonv1.ECKPKIRealmNodeAttributeConfigKey})) == 0 {
+			return ""
+		}
+		val, err := cfg.String(commonv1.ECKPKIRealmNodeAttributeConfigKey)
+		require.NoError(t, err)
+		return val
+	}
 
 	policyCfg := common.MustCanonicalConfig(map[string]any{
 		esv1.DiscoverySeedProviders: "policy-override",
@@ -438,6 +448,18 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, math.MaxInt32, realm.Order)
 				// The realm trusts exactly the ECK client trust bundle, not the wider http.ssl CA list.
 				require.Equal(t, []string{trustBundlePath}, realm.CertificateAuthorities)
+				require.Equal(t, "true", eckPKIRealmNodeAttribute(cfg), "the node attribute must be set with the realm")
+			},
+		},
+		{
+			name:                         "eck_managed_pki realm node attribute set by ECK overrides the user config",
+			version:                      "9.6.0",
+			ipFamily:                     corev1.IPv4Protocol,
+			cfgData:                      map[string]any{commonv1.ECKPKIRealmNodeAttributeConfigKey: "false"},
+			clientAuthenticationRequired: true,
+			pkiRealmEnabled:              true,
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, "true", eckPKIRealmNodeAttribute(cfg))
 			},
 		},
 		{
@@ -448,6 +470,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			clientAuthenticationRequired: true,
 			assert: func(cfg CanonicalConfig) {
 				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be present unless spec.auth.pki.enabled is set")
+				require.Empty(t, eckPKIRealmNodeAttribute(cfg))
 			},
 		},
 		{
@@ -458,6 +481,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			pkiRealmEnabled: true,
 			assert: func(cfg CanonicalConfig) {
 				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be present when client authentication is not required")
+				require.Empty(t, eckPKIRealmNodeAttribute(cfg))
 			},
 		},
 		{
@@ -469,6 +493,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			pkiRealmEnabled:              true,
 			assert: func(cfg CanonicalConfig) {
 				require.Nil(t, eckPKIRealm(cfg), "eck_managed_pki realm must not be injected for ES versions below 9.6")
+				require.Empty(t, eckPKIRealmNodeAttribute(cfg))
 			},
 		},
 		{

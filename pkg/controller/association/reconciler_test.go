@@ -2582,7 +2582,10 @@ func TestReconciler_Reconcile_reconcileAuth(t *testing.T) {
 		// then reconciles again. beforeEvaluation asserts the state after the first Reconcile.
 		esDriverEvaluates bool
 		beforeEvaluation  func(t *testing.T, r Reconciler, kb kbv1.Kibana)
-		assertFn          func(t *testing.T, r Reconciler, kb kbv1.Kibana, result reconcile.Result)
+		// pkiRealmNotRunning leaves the conflict-free evaluations unapplied, as when the ECK-managed PKI realm does not
+		// run on all the Elasticsearch nodes yet.
+		pkiRealmNotRunning bool
+		assertFn           func(t *testing.T, r Reconciler, kb kbv1.Kibana, result reconcile.Result)
 	}{
 		{
 			name: "plain credentials (new association): user Secrets created on both sides, CA cert copied, watches registered",
@@ -2730,6 +2733,34 @@ func TestReconciler_Reconcile_reconcileAuth(t *testing.T) {
 				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
 				require.Contains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
 				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			name: "PKI mode (transition from credentials): realm not running on all nodes keeps the credentials and the association Pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.UID = "kb-uid"
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:                 sampleESWithMTLSAndPKIVersion(),
+			extraObjs:          []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			esDriverEvaluates:  true,
+			pkiRealmNotRunning: true,
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret), "credentials must be kept")
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret), "credentials must be kept")
+				var requestSecret corev1.Secret
+				requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), esNamespace, kbAssociationInfo.AssociationName)
+				require.NoError(t, r.Client.Get(t.Context(), requestKey, &requestSecret))
+				require.NotContains(t, requestSecret.Annotations, rolemapping.PKIEvaluationAnnotation, "the request must not be evaluated")
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.NotContains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
 			},
 		},
 		{
@@ -2972,7 +3003,11 @@ func TestReconciler_Reconcile_reconcileAuth(t *testing.T) {
 					tt.beforeEvaluation(t, r, kb)
 				}
 				pkiRealmConfigured := es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication
-				require.NoError(t, filesettings.ReconcilePKIRoleMappings(t.Context(), r.Client, es, pkiRealmConfigured))
+				evaluations, err := filesettings.ReconcilePKIRoleMappings(t.Context(), r.Client, es, pkiRealmConfigured)
+				require.NoError(t, err)
+				if !tt.pkiRealmNotRunning {
+					require.NoError(t, evaluations.Apply(t.Context(), r.Client))
+				}
 				result, err = r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 				require.NoError(t, err)
 			}

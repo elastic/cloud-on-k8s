@@ -355,6 +355,15 @@ func pkiRequestSecretWithCert(t *testing.T, es esv1.Elasticsearch, name, roles, 
 	return s
 }
 
+// reconcileAndEvaluate runs ReconcilePKIRoleMappings with the ECK-managed PKI realm configured and applies the
+// evaluations, as the Elasticsearch driver does once the realm runs on all the nodes.
+func reconcileAndEvaluate(t *testing.T, c k8s.Client, es esv1.Elasticsearch) {
+	t.Helper()
+	evaluations, err := ReconcilePKIRoleMappings(t.Context(), c, es, true)
+	require.NoError(t, err)
+	require.NoError(t, evaluations.Apply(t.Context(), c))
+}
+
 func TestReconcilePKIRoleMappings(t *testing.T) {
 	es := esv1.Elasticsearch{
 		Namespace: "esNs",
@@ -386,6 +395,8 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		// clientAuthenticationIneffective simulates mTLS being enabled in the spec but not effectively required, e.g.
 		// without enterprise features or with a client_authentication override in the user or StackConfigPolicy config.
 		clientAuthenticationIneffective bool
+		// realmNotRunning leaves the conflict-free evaluations unapplied, as when the realm is not on all the nodes.
+		realmNotRunning bool
 	}{
 		{
 			name: "create: file-settings Secret is created with PKI mappings",
@@ -619,13 +630,52 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				req.Data[rolemapping.PublicKeyFingerprintField] = []byte(certificates.PublicKeyFingerprint(cert))
 				// First reconcile populates the file-settings Secret with the correct entries.
 				setupClient := k8s.NewFakeClient(&es, req)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
+				reconcileAndEvaluate(t, setupClient, es)
 				var secret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &secret))
 				return []client.Object{&es, &secret, req}
 			},
 			wantNoUpdate:    true,
 			wantMappingKeys: []string{pkiMappingKey(es.Namespace, "kb-client-cert")},
+		},
+		{
+			name: "realm configured but not running on all nodes: mappings are written and requests are not evaluated",
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				return []client.Object{&es, pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es")}
+			},
+			realmNotRunning: true,
+			wantMappingKeys: []string{pkiMappingKey(es.Namespace, "kb-client-cert")},
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				_, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.False(t, ok, "the request must not be evaluated before the realm runs on all the nodes")
+			},
+		},
+		{
+			name: "realm running on all nodes after the mappings were written: requests are evaluated without a new write",
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				req := pkiRequestSecretWithCert(t, es, "kb-client-cert", "kibana_system", "uid-kb", "kb-es")
+				setupClient := k8s.NewFakeClient(&es, req)
+				// the evaluations are not applied while the realm does not run on all the nodes
+				_, err := ReconcilePKIRoleMappings(t.Context(), setupClient, es, true)
+				require.NoError(t, err)
+				var secret, request corev1.Secret
+				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &secret))
+				require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "kb-client-cert"}, &request))
+				_, evaluated := requestEvaluation(t, setupClient, es.Namespace, "kb-client-cert")
+				require.False(t, evaluated, "precondition: the request is not evaluated while the realm is not running")
+				return []client.Object{&es, &secret, &request}
+			},
+			wantNoUpdate:    true,
+			wantMappingKeys: []string{pkiMappingKey(es.Namespace, "kb-client-cert")},
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				evaluation, ok := requestEvaluation(t, c, es.Namespace, "kb-client-cert")
+				require.True(t, ok)
+				require.Empty(t, evaluation.Conflict)
+			},
 		},
 		{
 			name:        "conflict: same fingerprint with different roles withholds all affected mappings",
@@ -640,7 +690,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				second.Data[rolemapping.PublicKeyFingerprintField] = fp
 				// Pre-populate the file-settings Secret with the mapping for "first" (pre-conflict state).
 				setupClient := k8s.NewFakeClient(&es, first)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
+				reconcileAndEvaluate(t, setupClient, es)
 				var fsSecret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &fsSecret))
 				return []client.Object{&es, &fsSecret, first, second}
@@ -668,10 +718,10 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				second.Data[rolemapping.PublicKeyFingerprintField] = fp
 				// Phase 1: only first — Secret created with mapping.
 				setupClient := k8s.NewFakeClient(&es, first)
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
+				reconcileAndEvaluate(t, setupClient, es)
 				// Phase 2: second added — role_mappings emptied, annotations written.
 				require.NoError(t, setupClient.Create(t.Context(), second))
-				require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
+				reconcileAndEvaluate(t, setupClient, es)
 				var fsSecret corev1.Secret
 				require.NoError(t, setupClient.Get(t.Context(), fileSettingsSecretName, &fsSecret))
 				// Read first back so the final client carries the annotation written in phase 2.
@@ -714,7 +764,11 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			}
 			clientAuthenticationRequired := reconciledES.Spec.HTTP.TLS.Client.Authentication && !tt.clientAuthenticationIneffective
 			pkiRealmConfigured := essettings.PKIRealmConfigured(reconciledES.Spec.Auth.PKI.Enabled, clientAuthenticationRequired, commonv1.PKIAuthMinVersion)
-			require.NoError(t, ReconcilePKIRoleMappings(context.Background(), fakeClient, reconciledES, pkiRealmConfigured))
+			evaluations, err := ReconcilePKIRoleMappings(context.Background(), fakeClient, reconciledES, pkiRealmConfigured)
+			require.NoError(t, err)
+			if !tt.realmNotRunning {
+				require.NoError(t, evaluations.Apply(context.Background(), fakeClient))
+			}
 
 			var secret corev1.Secret
 			getErr := fakeClient.Get(context.Background(), fileSettingsSecretName, &secret)
@@ -764,7 +818,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 
 		// Phase 1: establish conflict so annotations are written onto both Secrets.
 		setupClient := k8s.NewFakeClient(&es, first, second)
-		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), setupClient, es, true))
+		reconcileAndEvaluate(t, setupClient, es)
 
 		var firstAnnotated, secondAnnotated corev1.Secret
 		require.NoError(t, setupClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &firstAnnotated))
@@ -779,7 +833,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		rvFirst := firstAnnotated.ResourceVersion
 		rvSecond := secondAnnotated.ResourceVersion
 		fakeClient := k8s.NewFakeClient(&es, &firstAnnotated, &secondAnnotated)
-		require.NoError(t, ReconcilePKIRoleMappings(t.Context(), fakeClient, es, true))
+		reconcileAndEvaluate(t, fakeClient, es)
 
 		var s corev1.Secret
 		require.NoError(t, fakeClient.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "first"}, &s))
@@ -798,15 +852,203 @@ func TestPatchEvaluationAnnotations_PatchFailureIsReturned(t *testing.T) {
 			},
 		}).Build()
 
-	req := rolemapping.Request{
-		SecretNamespace:      "ns",
-		SecretName:           "kb-client-cert",
-		PublicKeyFingerprint: "some-fp",
-		Roles:                "kibana_system",
-		EvaluationAnnotation: "", // differs from the desired evaluation, so patch is attempted
-	}
-	err := patchEvaluationAnnotations(t.Context(), c, []rolemapping.Request{req}, true, map[string]string{"some-fp": "conflict message"}, nil)
+	err := patchEvaluationAnnotations(t.Context(), c, []evaluationUpdate{{namespace: "ns", name: "kb-client-cert", value: "evaluation"}})
 	require.Error(t, err)
 	require.ErrorIs(t, err, patchErr)
 	require.ErrorContains(t, err, "ns/kb-client-cert")
+}
+
+// TestReconcilePKIRoleMappings_Evaluations checks which evaluation annotations ReconcilePKIRoleMappings updates right
+// away, and which it returns to be applied once the ECK-managed PKI realm runs on all the nodes: only the
+// conflict-free evaluations, which let an association switch to PKI, wait.
+func TestReconcilePKIRoleMappings_Evaluations(t *testing.T) {
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
+	const (
+		// annotation states of a request Secret
+		none      = "no annotation"
+		unchanged = "annotation unchanged"
+		evaluated = "conflict-free evaluation"
+		conflict  = "evaluation with a conflict"
+	)
+	// annotated returns a copy of request with the evaluation annotation of its content, with the given conflict.
+	annotated := func(t *testing.T, request *corev1.Secret, conflict string) *corev1.Secret {
+		t.Helper()
+		request = request.DeepCopy()
+		request.Annotations = map[string]string{rolemapping.PKIEvaluationAnnotation: evaluationAnnotation(t, rolemapping.Evaluation{
+			PublicKeyFingerprint: string(request.Data[rolemapping.PublicKeyFingerprintField]),
+			Roles:                string(request.Data[rolemapping.RolesField]),
+			Conflict:             conflict,
+		})}
+		return request
+	}
+	// sharedFingerprint returns two requests with the same public key fingerprint asking for different roles.
+	sharedFingerprint := func(t *testing.T) (*corev1.Secret, *corev1.Secret) {
+		t.Helper()
+		first := pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es")
+		second := pkiRequestSecret(es, "second", "superuser", "uid2", "other-es")
+		second.Data[rolemapping.PublicKeyFingerprintField] = first.Data[rolemapping.PublicKeyFingerprintField]
+		return first, second
+	}
+	tests := []struct {
+		name               string
+		pkiRealmConfigured bool
+		setup              func(t *testing.T) []client.Object
+		wantPending        bool
+		// wantBefore and wantAfter are the annotation states of the request Secrets by name, before and after the
+		// returned evaluations are applied.
+		wantBefore map[string]string
+		wantAfter  map[string]string
+	}{
+		{
+			name:               "new request: pending, annotated once applied",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				return []client.Object{pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es")}
+			},
+			wantPending: true,
+			wantBefore:  map[string]string{"first": none},
+			wantAfter:   map[string]string{"first": evaluated},
+		},
+		{
+			name:               "request changed since its evaluation: pending, previous annotation kept until applied",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				request := pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es")
+				request.Annotations = map[string]string{rolemapping.PKIEvaluationAnnotation: "previous"}
+				return []client.Object{request}
+			},
+			wantPending: true,
+			wantBefore:  map[string]string{"first": unchanged},
+			wantAfter:   map[string]string{"first": evaluated},
+		},
+		{
+			name:               "request already evaluated: not pending",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				return []client.Object{annotated(t, pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es"), "")}
+			},
+			wantPending: false,
+			wantBefore:  map[string]string{"first": unchanged},
+			wantAfter:   map[string]string{"first": unchanged},
+		},
+		{
+			name:               "fingerprint conflict appears on evaluated requests: conflict annotated right away, not pending",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				first, second := sharedFingerprint(t)
+				return []client.Object{annotated(t, first, ""), annotated(t, second, "")}
+			},
+			wantPending: false,
+			wantBefore:  map[string]string{"first": conflict, "second": conflict},
+			wantAfter:   map[string]string{"first": conflict, "second": conflict},
+		},
+		{
+			name:               "fingerprint conflict on new requests: conflict annotated right away, not pending",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				first, second := sharedFingerprint(t)
+				return []client.Object{first, second}
+			},
+			wantPending: false,
+			wantBefore:  map[string]string{"first": conflict, "second": conflict},
+			wantAfter:   map[string]string{"first": conflict, "second": conflict},
+		},
+		{
+			name:               "fingerprint conflict disappears: pending, conflict kept until applied",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				first, _ := sharedFingerprint(t)
+				return []client.Object{annotated(t, first, "previous conflict")}
+			},
+			wantPending: true,
+			wantBefore:  map[string]string{"first": conflict},
+			wantAfter:   map[string]string{"first": evaluated},
+		},
+		{
+			name:               "name collision appears on an evaluated request: conflict annotated right away, not pending",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				return []client.Object{
+					annotated(t, pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es"), ""),
+					fileSettingsSecretWithRoleMappings(t, es, map[string]any{pkiMappingKey(es.Namespace, "first"): userEntry("superuser")}),
+				}
+			},
+			wantPending: false,
+			wantBefore:  map[string]string{"first": conflict},
+			wantAfter:   map[string]string{"first": conflict},
+		},
+		{
+			name:               "name collision disappears: pending, conflict kept until applied",
+			pkiRealmConfigured: true,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				return []client.Object{annotated(t, pkiRequestSecretWithCert(t, es, "first", "kibana_system", "uid1", "kb-es"), "previous collision")}
+			},
+			wantPending: true,
+			wantBefore:  map[string]string{"first": conflict},
+			wantAfter:   map[string]string{"first": evaluated},
+		},
+		{
+			name:               "realm not configured: evaluation and conflict removed right away, not pending",
+			pkiRealmConfigured: false,
+			setup: func(t *testing.T) []client.Object {
+				t.Helper()
+				first, second := sharedFingerprint(t)
+				return []client.Object{annotated(t, first, ""), annotated(t, second, "previous conflict")}
+			},
+			wantPending: false,
+			wantBefore:  map[string]string{"first": none, "second": none},
+			wantAfter:   map[string]string{"first": none, "second": none},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := append([]client.Object{&es}, tt.setup(t)...)
+			initial := make(map[string]string)
+			for _, obj := range objs {
+				if secret, ok := obj.(*corev1.Secret); ok {
+					initial[secret.Name] = secret.Annotations[rolemapping.PKIEvaluationAnnotation]
+				}
+			}
+			c := k8s.NewFakeClient(objs...)
+			assertStates := func(t *testing.T, want map[string]string) {
+				t.Helper()
+				for name, state := range want {
+					var request corev1.Secret
+					require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: name}, &request))
+					raw := request.Annotations[rolemapping.PKIEvaluationAnnotation]
+					switch state {
+					case none:
+						require.Empty(t, raw, name)
+					case unchanged:
+						require.Equal(t, initial[name], raw, name)
+					case evaluated, conflict:
+						evaluation, ok := rolemapping.ParseEvaluation(raw)
+						require.True(t, ok, name)
+						require.True(t, evaluation.Matches(string(request.Data[rolemapping.PublicKeyFingerprintField]), string(request.Data[rolemapping.RolesField])), name)
+						require.Equal(t, state == conflict, evaluation.Conflict != "", "%s: %s", name, evaluation.Conflict)
+					}
+				}
+			}
+
+			evaluations, err := ReconcilePKIRoleMappings(t.Context(), c, es, tt.pkiRealmConfigured)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantPending, evaluations.Pending())
+			assertStates(t, tt.wantBefore)
+
+			require.NoError(t, evaluations.Apply(t.Context(), c))
+			assertStates(t, tt.wantAfter)
+			// Nothing is pending once the evaluations are applied.
+			evaluations, err = ReconcilePKIRoleMappings(t.Context(), c, es, tt.pkiRealmConfigured)
+			require.NoError(t, err)
+			require.False(t, evaluations.Pending())
+		})
+	}
 }

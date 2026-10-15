@@ -38,23 +38,53 @@ const (
 	pkiDelegatedByRealmMetadataField = "metadata.pki_delegated_by_realm"
 )
 
+// PKIEvaluations are the pending conflict-free evaluations of the request Secrets. They let associations switch to PKI,
+// so ReconcilePKIRoleMappings returns them to be applied once the ECK-managed PKI realm runs on all the nodes.
+type PKIEvaluations struct {
+	updates []evaluationUpdate
+}
+
+// evaluationUpdate sets PKIEvaluationAnnotation of a request Secret to value, or removes it when value is empty.
+type evaluationUpdate struct {
+	namespace string
+	name      string
+	value     string
+}
+
+// Pending reports whether some request Secrets must be annotated with a conflict-free evaluation.
+func (e PKIEvaluations) Pending() bool {
+	return len(e.updates) > 0
+}
+
+// Apply annotates the request Secrets. Call it only once the ECK-managed PKI realm runs on all the nodes. Patch errors
+// are aggregated so the caller can retry.
+func (e PKIEvaluations) Apply(ctx context.Context, c k8s.Client) error {
+	return patchEvaluationAnnotations(ctx, c, e.updates)
+}
+
 // ReconcilePKIRoleMappings rebuilds the ECK-generated PKI role mappings in the file-settings Secret from the request
 // Secrets, so mappings of deleted requests are removed. A mapping is withheld when its fingerprint is shared by
 // requests asking for different roles, or when its name is used by a user-defined role mapping. Once the mappings are
 // saved, each request Secret gets PKIEvaluationAnnotation, with the conflict if its mapping is withheld, and the
-// association controller keeps the association Pending until it matches the request.
+// association controller keeps the association Pending until the annotation matches the request, or while it reports
+// a conflict.
+// Conflicts and removals are annotated right away: they cannot switch an association to PKI, and keeping a previous
+// conflict-free annotation would keep its association Established while its mapping is withheld. The conflict-free
+// evaluations are returned instead, to be applied once the realm runs on all the nodes: the realm is a static setting,
+// and until all the nodes load it an association switching to PKI must keep its credentials. Without the realm no user
+// matches the mappings, so writing them early is harmless.
 // No mapping is generated when the ECK-managed PKI realm is not configured (pkiRealmConfigured, see
 // settings.PKIRealmConfigured), so the mappings are removed with the realm: their rules match the fingerprint from any
-// PKI realm, so a user-defined PKI realm would still grant the roles.
+// PKI realm, so a user-defined PKI realm would still grant the roles. The annotations are removed then.
 func ReconcilePKIRoleMappings(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	pkiRealmConfigured bool,
-) error {
+) (PKIEvaluations, error) {
 	requests, err := rolemapping.RetrieveRequests(ctx, c, es)
 	if err != nil {
-		return err
+		return PKIEvaluations{}, err
 	}
 	var pkiMappings *commonv1.Config
 	var conflictMessages map[string]string
@@ -85,10 +115,17 @@ func ReconcilePKIRoleMappings(
 		}
 		return fs.Save(ctx, c, &es, WithAdditiveMetadata())
 	}); err != nil {
-		return err
+		return PKIEvaluations{}, err
 	}
 
-	return patchEvaluationAnnotations(ctx, c, requests, pkiRealmConfigured, conflictMessages, nameCollisions)
+	immediate, conflictFree, err := evaluationUpdates(requests, pkiRealmConfigured, conflictMessages, nameCollisions)
+	if err != nil {
+		return PKIEvaluations{}, err
+	}
+	if err := patchEvaluationAnnotations(ctx, c, immediate); err != nil {
+		return PKIEvaluations{}, err
+	}
+	return PKIEvaluations{updates: conflictFree}, nil
 }
 
 // withholdNameCollisions drops the entries of pkiMappings whose name is already used by a user-defined role
@@ -118,25 +155,20 @@ func withholdNameCollisions(ctx context.Context, pkiMappings *commonv1.Config, u
 	return &commonv1.Config{Data: data}, collisions
 }
 
-// patchEvaluationAnnotations sets PKIEvaluationAnnotation on each request Secret, with the conflict message if its
-// role mapping is withheld. conflictMessages is keyed by public key fingerprint, nameCollisions by role mapping name.
-// When the PKI realm is not configured, the requests are not evaluated, so the annotation is removed. Patch errors are
-// aggregated so the caller can retry.
-func patchEvaluationAnnotations(
-	ctx context.Context,
-	c k8s.Client,
+// evaluationUpdates returns the PKIEvaluationAnnotation updates of the request Secrets whose annotation does not match
+// their evaluation: first the removals, when the PKI realm is not configured, and the conflicts, then the
+// conflict-free evaluations. conflictMessages is keyed by public key fingerprint, nameCollisions by role mapping name.
+func evaluationUpdates(
 	requests []rolemapping.Request,
 	pkiRealmConfigured bool,
 	conflictMessages map[string]string,
 	nameCollisions map[string]string,
-) error {
-	var errs []error
+) ([]evaluationUpdate, []evaluationUpdate, error) {
+	var immediate, conflictFree []evaluationUpdate
 	for _, req := range requests {
-		// annotationVal is nil (JSON null) when the PKI realm is not configured, which removes the annotation.
-		var desired string
-		var annotationVal any
+		var desired, conflict string
 		if pkiRealmConfigured {
-			conflict := conflictMessages[req.PublicKeyFingerprint]
+			conflict = conflictMessages[req.PublicKeyFingerprint]
 			if conflict == "" {
 				conflict = nameCollisions[pkiRoleMappingName(req)]
 			}
@@ -146,14 +178,32 @@ func patchEvaluationAnnotations(
 				Conflict:             conflict,
 			})
 			if err != nil {
-				errs = append(errs, fmt.Errorf("building PKI evaluation annotation for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
-				continue
+				return nil, nil, fmt.Errorf("building PKI evaluation annotation for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err)
 			}
 			desired = string(value)
-			annotationVal = desired
 		}
 		if req.EvaluationAnnotation == desired {
 			continue // annotation already reflects the desired state
+		}
+		update := evaluationUpdate{namespace: req.SecretNamespace, name: req.SecretName, value: desired}
+		if desired == "" || conflict != "" {
+			immediate = append(immediate, update)
+		} else {
+			conflictFree = append(conflictFree, update)
+		}
+	}
+	return immediate, conflictFree, nil
+}
+
+// patchEvaluationAnnotations applies the PKIEvaluationAnnotation updates to the request Secrets. Patch errors are
+// aggregated so the caller can retry.
+func patchEvaluationAnnotations(ctx context.Context, c k8s.Client, updates []evaluationUpdate) error {
+	var errs []error
+	for _, update := range updates {
+		// annotationVal is nil (JSON null) when the value is empty, which removes the annotation.
+		var annotationVal any
+		if update.value != "" {
+			annotationVal = update.value
 		}
 		patch, err := json.Marshal(map[string]any{
 			"metadata": map[string]any{
@@ -161,14 +211,14 @@ func patchEvaluationAnnotations(
 			},
 		})
 		if err != nil {
-			errs = append(errs, fmt.Errorf("building PKI evaluation annotation patch for Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
+			errs = append(errs, fmt.Errorf("building PKI evaluation annotation patch for Secret %s/%s: %w", update.namespace, update.name, err))
 			continue
 		}
 		secret := &corev1.Secret{}
-		secret.Namespace = req.SecretNamespace
-		secret.Name = req.SecretName
+		secret.Namespace = update.namespace
+		secret.Name = update.name
 		if err := c.Patch(ctx, secret, client.RawPatch(types.MergePatchType, patch)); err != nil && !apierrors.IsNotFound(err) {
-			errs = append(errs, fmt.Errorf("patching PKI evaluation annotation on Secret %s/%s: %w", req.SecretNamespace, req.SecretName, err))
+			errs = append(errs, fmt.Errorf("patching PKI evaluation annotation on Secret %s/%s: %w", update.namespace, update.name, err))
 		}
 	}
 	return errors.Join(errs...)

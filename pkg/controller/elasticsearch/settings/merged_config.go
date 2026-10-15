@@ -78,10 +78,12 @@ func NewMergedESConfig(
 	// accepts. Roles are granted only by role mappings bound to each association's public key fingerprint.
 	// Client certificate rotation rewrites the bundle, so the realm must reload its truststore
 	// (elastic/elasticsearch#160416, covered by PKIAuthMinVersion).
+	// The node attribute tells which nodes loaded the realm (see ECKPKIRealmNodeAttribute).
 	if PKIRealmConfigured(pkiRealmEnabled, clientAuthenticationRequired, ver) {
 		pkiRealmCfg := map[string]any{
 			esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder:                  commonv1.ECKPKIRealmOrder,
 			esv1.XPackSecurityAuthcRealmsPKIECKPKICertificateAuthorities: []string{clientTrustBundlePath()},
+			commonv1.ECKPKIRealmNodeAttributeConfigKey:                   "true",
 		}
 		if err := config.MergeWith(common.MustCanonicalConfig(pkiRealmCfg)); err != nil {
 			return CanonicalConfig{}, err

@@ -60,6 +60,14 @@ const (
 	// Elasticsearch rejects duplicate realm orders.
 	ECKPKIRealmOrder = math.MaxInt32
 
+	// ECKPKIRealmNodeAttribute is set to "true" on the nodes configured with the ECK-managed PKI realm. ECK reads it
+	// from the nodes info API to know which nodes loaded the realm: the realm settings are reported there by default, but
+	// users can hide them with xpack.security.hide_settings, which does not apply to node attributes. User and SCP config
+	// must not set it, or nodes without the realm would report it.
+	ECKPKIRealmNodeAttribute = "eck_managed_pki_realm"
+	// ECKPKIRealmNodeAttributeConfigKey is the dotted-path key of ECKPKIRealmNodeAttribute in elasticsearch.yml.
+	ECKPKIRealmNodeAttributeConfigKey = "node.attr." + ECKPKIRealmNodeAttribute
+
 	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
 	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
 	// health monitoring). Defined here (rather than in pkg/controller/common) so the validating webhook can reference

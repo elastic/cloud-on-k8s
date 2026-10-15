@@ -90,9 +90,10 @@ func (n Nodes) Names() []string {
 
 // Node partially models an Elasticsearch node retrieved from /_nodes
 type Node struct {
-	Name    string   `json:"name"`
-	Version string   `json:"version"`
-	Roles   []string `json:"roles"`
+	Name       string            `json:"name"`
+	Version    string            `json:"version"`
+	Roles      []string          `json:"roles"`
+	Attributes map[string]string `json:"attributes"`
 }
 
 func (n Node) isV7OrAbove() (bool, error) {

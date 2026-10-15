@@ -97,8 +97,8 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 			// The file-settings Secret is not waiting on a StackConfigPolicy, so the ECK PKI role mappings can be
 			// written into it. They follow the ECK-managed PKI realm, which depends on the effective mTLS setting.
 			pkiRealmConfigured := settings.PKIRealmConfigured(d.ES.Spec.Auth.PKI.Enabled, resolvedConfig.ClientAuthenticationRequired, d.Version)
-			if err := filesettings.ReconcilePKIRoleMappings(ctx, d.Client, d.ES, pkiRealmConfigured); err != nil {
-				return results.WithError(err)
+			if results.WithResults(reconcilePKIRoleMappings(ctx, d.Client, d.ES, pkiRealmConfigured, sharedState)).HasError() {
+				return results
 			}
 		}
 	}

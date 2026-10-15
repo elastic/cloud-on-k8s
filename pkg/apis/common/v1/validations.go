@@ -136,12 +136,20 @@ func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, r
 // CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
 // its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
 // names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.
-// path is the path of cfg.
+// It also rejects the node attribute ECK uses to detect the nodes running the realm
+// (ECKPKIRealmNodeAttributeConfigKey). path is the path of cfg.
 func CheckReservedPKIRealmConfig(path *field.Path, cfg *settings.CanonicalConfig) field.ErrorList {
-	if !cfg.HasChildConfig(realmsConfigKey) {
-		return nil
-	}
 	var errs field.ErrorList
+	if len(cfg.HasKeys([]string{ECKPKIRealmNodeAttributeConfigKey})) > 0 {
+		errs = append(errs, field.Invalid(
+			path.Child(ECKPKIRealmNodeAttributeConfigKey),
+			ECKPKIRealmNodeAttributeConfigKey,
+			fmt.Sprintf("node attribute %s is reserved for ECK-managed PKI authentication", ECKPKIRealmNodeAttribute),
+		))
+	}
+	if !cfg.HasChildConfig(realmsConfigKey) {
+		return errs
+	}
 	if cfg.HasChildConfig(ECKPKIRealmConfigKey) {
 		errs = append(errs, field.Invalid(
 			path.Child(ECKPKIRealmConfigKey),

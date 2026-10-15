@@ -123,6 +123,26 @@ func TestCheckReservedPKIRealmConfig(t *testing.T) {
 			name: "other pki realm name",
 			cfg:  map[string]any{"xpack.security.authc.realms.pki.my_pki.order": 2},
 		},
+		{
+			name:       "reserved node attribute (flat key)",
+			cfg:        map[string]any{ECKPKIRealmNodeAttributeConfigKey: "true"},
+			wantFields: []string{"spec.config." + ECKPKIRealmNodeAttributeConfigKey},
+		},
+		{
+			name: "reserved node attribute (nested key) with the reserved realm name",
+			cfg: map[string]any{
+				"node":                            map[string]any{"attr": map[string]any{ECKPKIRealmNodeAttribute: "false"}},
+				ECKPKIRealmConfigKey + ".enabled": false,
+			},
+			wantFields: []string{
+				"spec.config." + ECKPKIRealmNodeAttributeConfigKey,
+				"spec.config." + ECKPKIRealmConfigKey,
+			},
+		},
+		{
+			name: "other node attributes",
+			cfg:  map[string]any{"node.attr.zone": "a", "node.attr." + ECKPKIRealmName: "true"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
