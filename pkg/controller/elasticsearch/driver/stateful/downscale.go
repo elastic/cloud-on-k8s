@@ -40,6 +40,7 @@ func HandleDownscale(
 	downscaleCtx downscaleContext,
 	expectedStatefulSets es_sset.StatefulSetList,
 	actualStatefulSets es_sset.StatefulSetList,
+	desiredLeaving set.StringSet,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -50,10 +51,9 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// Compute the desired downscale, without applying any budget filter, to feed the status and let the user know what nodes should
-	// be eventually removed, not only in this reconciliation attempt, but also in the next ones.
-	desiredDownscale, _ := podsToDownscale(downscaleCtx.parentCtx, actualPods, downscaleCtx.es, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
-	desiredLeavingNodes := leavingNodeNames(desiredDownscale)
+	// Feed the status with the desired leaving nodes, computed without applying any budget filter, to let the user know what
+	// nodes should be eventually removed, not only in this reconciliation attempt, but also in the next ones.
+	desiredLeavingNodes := desiredLeaving.AsSortedSlice()
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
 	// Retrieve the desired leaving nodes that are draining, ready or not, see newDownscaleState. Nodes that stay are
@@ -169,18 +169,12 @@ func reportShutdownStalled(downscaleCtx downscaleContext, statuses map[string]sh
 	}
 }
 
-func podsToDownscale(
-	ctx context.Context,
-	actualPods []corev1.Pod,
-	es esv1.Elasticsearch,
-	expectedStatefulSets es_sset.StatefulSetList,
-	actualStatefulSets es_sset.StatefulSetList,
-	downscaleFilter downscaleFilter,
-) ([]ssetDownscale, es_sset.StatefulSetList) {
-	downscaleState := newDownscaleState(actualPods, actualStatefulSets, es, nil)
-	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions, _ := calculateDownscales(ctx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleFilter)
-	return downscales, deletions
+// desiredLeavingNodeNames returns the names of all the Pods that the expected StatefulSets no longer include, without
+// applying any budget or invariant filter: this is the whole set of Pods the downscale wants to remove, not the ones it
+// is allowed to remove now.
+func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList) set.StringSet {
+	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
+	return set.Make(leavingNodeNames(downscales)...)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.

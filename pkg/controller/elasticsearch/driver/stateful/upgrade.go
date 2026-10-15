@@ -36,6 +36,7 @@ func (d *Driver) handleUpgrades(
 	esClient esclient.Client,
 	esState ESState,
 	expectedResources nodespec.ResourcesList,
+	desiredLeaving set.StringSet,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	log := ulog.FromContext(ctx)
@@ -57,7 +58,7 @@ func (d *Driver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	rollingUpgradeCandidates, err := podsToRollingUpgrade(ctx, d.Client, expectedResources.StatefulSets(), statefulSets)
+	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, desiredLeaving)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -263,26 +264,26 @@ func healthyPods(
 // record may even be replaced by a restart-type one): the removal has to be requested again once the Pod is back, and
 // shards with no other copy stay unavailable if it does not come back.
 func podsToRollingUpgrade(
-	ctx context.Context,
 	client k8s.Client,
-	expectedStatefulSets es_sset.StatefulSetList,
 	actualStatefulSets es_sset.StatefulSetList,
+	desiredLeaving set.StringSet,
 ) ([]corev1.Pod, error) {
 	toUpgrade, err := podsToUpgrade(client, actualStatefulSets)
 	if err != nil {
 		return nil, err
 	}
-	// the downscale state only matters to the budget filter, which is not applied here: this is the whole set of Pods
-	// the downscale wants to remove, not the ones it is allowed to remove now
-	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
-	leaving := set.Make(leavingNodeNames(downscales)...)
-	staying := make([]corev1.Pod, 0, len(toUpgrade))
-	for _, pod := range toUpgrade {
-		if !leaving.Has(pod.Name) {
+	return excludeLeavingPods(toUpgrade, desiredLeaving), nil
+}
+
+// excludeLeavingPods returns the given Pods minus the ones the downscale wants to remove.
+func excludeLeavingPods(pods []corev1.Pod, desiredLeaving set.StringSet) []corev1.Pod {
+	staying := make([]corev1.Pod, 0, len(pods))
+	for _, pod := range pods {
+		if !desiredLeaving.Has(pod.Name) {
 			staying = append(staying, pod)
 		}
 	}
-	return staying, nil
+	return staying
 }
 
 // podsToUpgrade returns all Pods of all StatefulSets where the controller-revision-hash label compared to the sset's

@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/optional"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func (d *Driver) reconcileNodeSpecs(
@@ -153,8 +154,12 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
+	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants: neither upgrade path
+	// may restart them, as it would disrupt the shutdown that is migrating their shards away.
+	desiredLeaving := desiredLeavingNodeNames(ctx, expectedResources.StatefulSets(), actualStatefulSets)
+
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
-	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets)
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving)
 	if err != nil || attempted {
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
@@ -208,20 +213,20 @@ func (d *Driver) reconcileNodeSpecs(
 		nodeShutdowns,
 	)
 
-	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
+	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets, desiredLeaving)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {
 		return results
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleUpgrades(ctx, esClient, esState, expectedResources)
+	rollingUpgradesRes := d.handleUpgrades(ctx, esClient, esState, expectedResources, desiredLeaving)
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results
 	}
 
-	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, expectedResources.StatefulSets(), actualStatefulSets, d.Client, results)
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results, desiredLeaving)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
@@ -252,7 +257,7 @@ func (d *Driver) reconcileNodeSpecs(
 	return results
 }
 
-func (d *Driver) isNodeSpecsReconciled(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results) bool {
+func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, desiredLeaving set.StringSet) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}
@@ -261,7 +266,7 @@ func (d *Driver) isNodeSpecsReconciled(ctx context.Context, expectedStatefulSets
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToRollingUpgrade(ctx, client, expectedStatefulSets, actualStatefulSets)
+	pods, err := podsToRollingUpgrade(client, actualStatefulSets, desiredLeaving)
 	if err != nil {
 		return false
 	}

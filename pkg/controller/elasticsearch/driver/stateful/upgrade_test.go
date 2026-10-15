@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"maps"
 	"testing"
 	"time"
 
@@ -215,7 +216,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.pods...)
-			got, err := podsToRollingUpgrade(context.Background(), client, tt.args.expectedStatefulSets, tt.args.statefulSets)
+			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, desiredLeavingNodeNames(context.Background(), tt.args.expectedStatefulSets, tt.args.statefulSets))
 			require.NoError(t, err)
 			assert.ElementsMatch(t, names(got), tt.want, tt.name)
 		})
@@ -224,8 +225,8 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 
 // Test_Driver_handleUpgrades_leavingPodsAreNotRestarted drives handleUpgrades with a nodeSet that has been removed from the
 // spec while a rolling upgrade was still pending on it: its Pod must be left to the downscale, while the outdated Pod of a
-// nodeSet that stays is still upgraded. Each case has exactly one outdated Pod so that the outcome does not depend on the
-// order in which candidates are considered.
+// nodeSet that stays is still upgraded. The leaving Pod is the only candidate once filtered, so that the outcome does not
+// depend on the order in which candidates are considered.
 func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 	esVersion := "8.1.0"
 	es := esv1.Elasticsearch{
@@ -245,8 +246,9 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 		name              string
 		leaving           appsv1.StatefulSetStatus // status of "data", which is absent from the expected StatefulSets
 		staying           appsv1.StatefulSetStatus // status of "data-new", which is expected
-		wantShutdowns     []shutdownCall           // shutdowns requested, by node ID and type
-		wantRemainingPods []string                 // Pods that have not been deleted for an upgrade
+		shutdowns         map[string]esclient.NodeShutdown
+		wantShutdowns     []shutdownCall // shutdowns requested, by node ID and type
+		wantRemainingPods []string       // Pods that have not been deleted for an upgrade
 	}{
 		{
 			name:              "only the leaving Pod is outdated: nothing is restarted",
@@ -262,6 +264,16 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 			wantShutdowns:     []shutdownCall{{NodeID: "id-data-new-0", Type: esclient.Restart}},
 			wantRemainingPods: []string{"data-0"},
 		},
+		{
+			name:    "both Pods are outdated and the leaving Pod is draining: only the staying Pod is restarted",
+			leaving: outdated,
+			staying: outdated,
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-0": {NodeID: "id-data-0", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdowns:     []shutdownCall{{NodeID: "id-data-new-0", Type: esclient.Restart}},
+			wantRemainingPods: []string{"data-0"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -272,6 +284,8 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 				version: version.MustParse(esVersion),
 				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}, "id-data-new-0": {Name: "data-new-0"}}},
 				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				// the fake only creates a record for a node that has none
+				Shutdowns: maps.Clone(tt.shutdowns),
 			}
 			d := &Driver{
 				Client:         k8sClient,
@@ -282,11 +296,16 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 			// the spec only has data-new left: data is being removed
 			expectedResources := nodespec.ResourcesList{{StatefulSet: stayingSset}}
 
-			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources)
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{leavingSset, stayingSset})
+			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
 
 			_, err := results.Aggregate()
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.wantShutdowns, esClient.PutShutdownCalls)
+			// the removal of the leaving Pod is left untouched
+			for nodeID, want := range tt.shutdowns {
+				assert.Equal(t, want, esClient.Shutdowns[nodeID])
+			}
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
@@ -331,7 +350,8 @@ func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.
 	require.True(t, isUpgrade)
 	require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
 
-	results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources)
+	desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{masterSset, leavingSset})
+	results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
 
 	_, err = results.Aggregate()
 	require.NoError(t, err)

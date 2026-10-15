@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -180,6 +182,67 @@ func Test_Driver_maybeForceUpgradePods(t *testing.T) {
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			require.ElementsMatch(t, tt.wantRemainingPods, pods.Items)
+		})
+	}
+}
+
+// Test_Driver_MaybeForceUpgrade_leavingPods checks that a forced upgrade does not delete the Pods the downscale wants to
+// remove, while all the Pods are still considered to decide whether a StatefulSet can be force upgraded.
+func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0}
+	statefulSet := func(name string, replicas int32) appsv1.StatefulSet {
+		status := outdated
+		status.Replicas = replicas
+		return sset.TestSset{Name: name, Namespace: TestEsNamespace, ClusterName: TestEsName, Replicas: replicas, Data: true, Status: status}.Build()
+	}
+	// all the Pods are bootlooping and outdated
+	pod := func(ssetName string, ordinal int) corev1.Pod {
+		return sset.TestPod{
+			Name: fmt.Sprintf("%s-%d", ssetName, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName,
+			Revision: "rev-a", Data: true, Ready: false, RestartCount: 1,
+		}.Build()
+	}
+	tests := []struct {
+		name              string
+		actual            es_sset.StatefulSetList
+		expected          es_sset.StatefulSetList
+		wantRemainingPods []string
+	}{
+		{
+			name:              "Pods of a StatefulSet that is not expected anymore are not deleted",
+			actual:            es_sset.StatefulSetList{statefulSet("data", 1), statefulSet("data-new", 1)},
+			expected:          es_sset.StatefulSetList{statefulSet("data-new", 1)},
+			wantRemainingPods: []string{"data-0"},
+		},
+		{
+			name:              "Pods above the expected number of replicas are not deleted",
+			actual:            es_sset.StatefulSetList{statefulSet("data", 2)},
+			expected:          es_sset.StatefulSetList{statefulSet("data", 1)},
+			wantRemainingPods: []string{"data-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objs []crclient.Object
+			for _, s := range tt.actual {
+				for i := range sset.GetReplicas(s) {
+					p := pod(s.Name, int(i))
+					objs = append(objs, &p)
+				}
+			}
+			k8sClient := k8s.NewFakeClient(objs...)
+			d := &Driver{
+				Client:         k8sClient,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(esv1.Elasticsearch{}),
+			}
+
+			attempted, err := d.MaybeForceUpgrade(context.Background(), tt.actual, desiredLeavingNodeNames(context.Background(), tt.expected, tt.actual))
+			require.NoError(t, err)
+			require.True(t, attempted)
+			var pods corev1.PodList
+			require.NoError(t, k8sClient.List(context.Background(), &pods))
+			require.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
 		})
 	}
 }

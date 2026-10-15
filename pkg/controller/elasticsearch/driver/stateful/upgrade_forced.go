@@ -16,9 +16,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
+// MaybeForceUpgrade may attempt a forced upgrade of the Pods that need one, except the ones the downscale wants to remove.
+// All the actual Pods, leaving ones included, are still considered to decide whether a StatefulSet can be force upgraded.
+func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList, desiredLeaving set.StringSet) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -28,7 +31,7 @@ func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.Statef
 	if err != nil {
 		return false, err
 	}
-	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
+	return d.maybeForceUpgradePods(ctx, actualPods, excludeLeavingPods(podsToUpgrade, desiredLeaving))
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,
