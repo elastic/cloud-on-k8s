@@ -9,6 +9,9 @@ plans:
   enforceSecurityPolicies: true
   gke:
     region: europe-west1
+    fallbackRegions:
+      - us-central1
+      - europe-west2
     # Attach, format, and provision the raw Local SSD as fixed-size local PVs.
     localNvmeSsdBlock: true
     nodeCountPerZone: 1
@@ -25,6 +28,9 @@ plans:
   gke:
     autopilot: true
     region: europe-west1
+    fallbackRegions:
+      - us-central1
+      - europe-west2
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: gke-dev
   operation: create
