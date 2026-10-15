@@ -1,0 +1,263 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+spec:
+  version: 9.2.3
+  nodeSets:
+    - name: default
+      count: 3
+      config:
+        # This setting has performance implications. See the README for more details.
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 9.2.3
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: filebeat
+spec:
+  type: filebeat
+  version: 9.2.3
+  config:
+    filebeat.inputs:
+      - type: filestream
+        id: logstash-tutorial
+        paths:
+          - /data/logstash-tutorial.log
+    output.logstash:
+      hosts: ["logstash-ls-beats:5044"]
+  deployment:
+    podTemplate:
+      spec:
+        automountServiceAccountToken: true
+        initContainers:
+          - name: download-tutorial
+            image: curlimages/curl
+            command: ["/bin/sh"]
+            args: ["-c", "curl -L https://download.elastic.co/demos/logstash/gettingstarted/logstash-tutorial.log.gz | gunzip -c > /data/logstash-tutorial.log"]
+            volumeMounts:
+              - name: data
+                mountPath: /data
+        containers:
+          - name: filebeat
+            volumeMounts:
+              - name: data
+                mountPath: /data
+              - name: beat-data
+                mountPath: /usr/share/filebeat/data
+        volumes:
+          - name: data
+            emptydir: {}
+          - name: beat-data
+            emptydir: {}
+---
+# Elasticsearch credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elasticsearch-credentials
+stringData:
+  es_username: "logstash_writer"
+  es_password: "changeme"
+---
+# Kafka credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kafka-credentials
+stringData:
+  kafka_username: "logstash_consumer"
+  kafka_password: "kafka_secret_password"
+---
+# ConfigMap for Beats input pipeline
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beats-pipeline
+data:
+  00-beats-input.conf: |
+    input {
+      beats { port => 5044 }
+    }
+    filter {
+      # example: tag the data
+      mutate { add_field => { "pipeline_source" => "beats" } }
+    }
+    output {
+      # example: send to the "processing" pipeline
+      pipeline { send_to => "processing_address" }
+    }
+---
+# ConfigMap for Kafka input pipeline
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-input-pipeline
+data:
+  00-kafka-input.conf: |
+    input {
+      kafka {
+        bootstrap_servers => "kafka-broker:9092"
+        topics => ["app-logs"]
+        group_id => "logstash_consumer_group"
+        sasl_mechanism => "PLAIN"
+        security_protocol => "SASL_SSL"
+        sasl_jaas_config => "org.apache.kafka.common.security.plain.PlainLoginModule required username='${KAFKA_BROKER_USER}' password='${KAFKA_BROKER_PASSWORD}';"
+      }
+    }
+    filter {
+      mutate { add_field => { "pipeline_source" => "kafka" } }
+    }
+    output {
+      # example: send directly to global output
+      pipeline { send_to => "global_output_address" }
+    }
+---
+# ConfigMap for Processing pipeline, using filters
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filtering-pipeline
+data:
+  50-processing.conf: |
+    input {
+      pipeline { address => "processing_address" }
+    }
+    filter {
+      # example: do some processing
+      mutate { add_tag => ["processed_by_logic_pipeline"] }
+    }
+    output {
+      # forward to the final global output
+      pipeline { send_to => "global_output_address" }
+    }
+
+---
+# ConfigMap for Elasticsearch output pipeline
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-output-pipeline
+data:
+  99-elasticsearch-output.conf: |
+    input {
+      # example: aggregates data from both Kafka (direct) and Beats (processed)
+      pipeline { address => "global_output_address" }
+    }
+    output {
+      # example: conditional output
+      if [pipeline_source] == "beats" {
+        elasticsearch {
+          hosts => ["${ES_HOSTS}"]
+          ssl_certificate_authorities => ["${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"]
+          user => "${OUTPUT_ES_USER}"
+          password => "${OUTPUT_ES_PASSWORD}"
+          index => "logs-beats-default"
+        }
+      } 
+      else if [pipeline_source] == "kafka" {
+        elasticsearch {
+          hosts => ["${ES_HOSTS}"]
+          ssl_certificate_authorities => ["${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"]
+          user => "${OUTPUT_ES_USER}"
+          password => "${OUTPUT_ES_PASSWORD}"
+          index => "logs-kafka-default"
+        }
+      }
+    }
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: multi-pipeline-logstash
+spec:
+  count: 1
+  version: 9.2.3
+  elasticsearchRefs:
+    - name: elasticsearch
+      clusterName: eck
+  pipelines:
+    # 1. Beats input
+    - pipeline.id: beats-input
+      path.config: "/etc/logstash/pipelines/beats/00-beats-input.conf"
+    # 2. Kafka input
+    - pipeline.id: kafka-input
+      path.config: "/etc/logstash/pipelines/kafka/00-kafka-input.conf"
+    # 3. Processing logic
+    - pipeline.id: processing
+      path.config: "/etc/logstash/pipelines/processing/50-processing.conf"      
+    # 4. Global output
+    - pipeline.id: global-output
+      path.config: "/etc/logstash/pipelines/output/99-elasticsearch-output.conf"
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        volumeMounts:
+        - name: vol-beats
+          mountPath: /etc/logstash/pipelines/beats
+          readOnly: true
+        - name: vol-kafka
+          mountPath: /etc/logstash/pipelines/kafka
+          readOnly: true
+        - name: vol-processing
+          mountPath: /etc/logstash/pipelines/processing
+          readOnly: true
+        - name: vol-output
+          mountPath: /etc/logstash/pipelines/output
+          readOnly: true        
+        env:
+        - name: OUTPUT_ES_USER
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: es_username
+        - name: OUTPUT_ES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: es_password
+        - name: KAFKA_BROKER_USER
+          valueFrom:
+            secretKeyRef:
+              name: kafka-credentials
+              key: kafka_username
+        - name: KAFKA_BROKER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kafka-credentials
+              key: kafka_password
+      volumes:
+      - name: vol-beats
+        configMap:
+          name: beats-pipeline
+      - name: vol-kafka
+        configMap:
+          name: kafka-input-pipeline
+      - name: vol-processing
+        configMap:
+          name: filtering-pipeline
+      - name: vol-output
+        configMap:
+          name: elasticsearch-output-pipeline
+  services:
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - port: 5044
+              name: "filebeat"
+              protocol: TCP
+              targetPort: 5044
