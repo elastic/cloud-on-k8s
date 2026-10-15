@@ -32,7 +32,8 @@ import (
 )
 
 type poolParameters struct {
-	OperatorParameters operator.Parameters
+	SetDefaultSecurityContext bool
+	OperatorNamespace         string
 
 	Role           kblabel.Role
 	Config         CanonicalConfig
@@ -54,10 +55,11 @@ func poolParams(operatorParameters operator.Parameters, kb *kbv1.Kibana, role kb
 	primaryPoolConfig := CanonicalConfig{pcg}
 
 	pp := poolParameters{
-		OperatorParameters: operatorParameters,
-		Role:               role,
-		BasePath:           basePath,
-		ScaleToZero:        scaleToZero,
+		SetDefaultSecurityContext: operatorParameters.SetDefaultSecurityContext,
+		OperatorNamespace:         operatorParameters.OperatorNamespace,
+		Role:                      role,
+		BasePath:                  basePath,
+		ScaleToZero:               scaleToZero,
 	}
 
 	if role.IsSinglePool() || role.IsUI() || (role == kblabel.Role{}) {
@@ -117,8 +119,8 @@ func reconcileService(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, m
 type poolDeploymentResult string
 
 const (
-	Requeue poolDeploymentResult = "Requeue"
-	Defer   poolDeploymentResult = "Defer"
+	requeue  poolDeploymentResult = "requeue"
+	deferred poolDeploymentResult = "deferred"
 )
 
 func (d *driver) reconcilePoolDeployment(
@@ -151,7 +153,7 @@ func (d *driver) reconcilePoolDeployment(
 				"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
 				"deployment", existingDeployment.Name,
 			)
-			return Defer, nil, nil
+			return deferred, nil, nil
 		}
 
 		logger.Info(
@@ -167,12 +169,15 @@ func (d *driver) reconcilePoolDeployment(
 		k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
 			fmt.Sprintf("Deleted Deployment %s to apply updated selector", existingDeployment.Name))
 
-		return Requeue, nil, nil
+		return requeue, nil, nil
 	}
 
 	// reconcile pool secret, unless it was already written earlier in this reconciliation pass
 	if _, exists := reconciledSecrets[poolParams.SecretName]; !exists {
-		err := ReconcileConfigSecret(ctx, d.client, *kb, poolParams.Config, poolParams.SecretName, meta)
+		// Telemetry is only preserved in the base config secret, which this pool writes
+		// unless it is a background pool with its own config overlay.
+		keepTelemetry := poolParams.SecretName == kbv1.ConfigSecret(kb.Name)
+		err := ReconcileConfigSecret(ctx, d.client, *kb, poolParams.Config, poolParams.SecretName, keepTelemetry, meta)
 		if err != nil {
 			return "", nil, err
 		}
@@ -182,21 +187,7 @@ func (d *driver) reconcilePoolDeployment(
 	// Determine replica count for this pool.
 	replicas, oldReplicas := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
 
-	dpParams, err := d.deploymentParams(
-		ctx,
-		kb,
-		poolParams.Role,
-		poolParams.SecretName,
-		poolParams.DeploymentName,
-		replicas,
-		oldReplicas,
-		podAnnotations,
-		poolParams.BasePath,
-		poolParams.OperatorParameters.SetDefaultSecurityContext,
-		poolParams.OperatorParameters.OperatorNamespace,
-		meta,
-		expectedSelector,
-	)
+	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, expectedSelector)
 	if err != nil {
 		return "", nil, err
 	}
@@ -380,6 +371,12 @@ func buildStatus(state *State, kb *kbv1.Kibana, pools []poolStatusEntry) {
 		// overwriting the top level with an empty aggregate.
 		return
 	}
+
+	// The pool statuses start from the previously persisted pool statuses, which do not carry
+	// the top-level conditions (e.g. OrchestrationPaused set during the reconcile loop).
+	// Preserve them so that overwriting the top-level DeploymentStatus below does not lose them.
+	conditions := state.Kibana.Status.Conditions
+	defer func() { state.Kibana.Status.Conditions = conditions }()
 
 	for _, pool := range pools {
 		poolStatus := pool.status

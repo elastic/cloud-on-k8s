@@ -179,6 +179,21 @@ func checkBackgroundTasksVersion(k *Kibana) field.ErrorList {
 	return nil
 }
 
+// poolSpec groups the field path, configuration and pod spec of one Kibana pool, for validation.
+type poolSpec struct {
+	Path    *field.Path
+	Config  *commonv1.Config
+	PodSpec v1.PodSpec
+}
+
+// poolSpecs returns the poolSpec of the primary pool and of the background tasks pool.
+// It must only be called when spec.backgroundTasks is set.
+func (k *Kibana) poolSpecs() (primary, background poolSpec) {
+	bg := k.Spec.BackgroundTasks
+	return poolSpec{field.NewPath("spec"), k.Spec.Config, k.Spec.PodTemplate.Spec},
+		poolSpec{field.NewPath("spec", "backgroundTasks"), bg.Config, bg.PodTemplate.Spec}
+}
+
 // checkBackgroundTasksNodeRoles rejects configurations where the user sets node.roles in
 // spec.config or spec.backgroundTasks.config, or the NODE_ROLES env var on the Kibana
 // container of spec.podTemplate or spec.backgroundTasks.podTemplate. ECK owns node.roles
@@ -192,49 +207,27 @@ func checkBackgroundTasksNodeRoles(k *Kibana) field.ErrorList {
 
 	const detailsPrefix = "node.roles is managed by ECK when spec.backgroundTasks is set and must not be set"
 
-	specPath := field.NewPath("spec")
-	bgSpecPath := field.NewPath("spec").Child("backgroundTasks")
-
-	for _, vld := range []struct {
-		Config           *commonv1.Config
-		PodSpec          v1.PodSpec
-		Path             *field.Path
-		DetailMessage    string
-		EnvDetailMessage string
-	}{
-		{
-			Config:           k.Spec.Config,
-			PodSpec:          k.Spec.PodTemplate.Spec,
-			Path:             specPath,
-			DetailMessage:    fmt.Sprintf("%s %s", detailsPrefix, "in spec.config"),
-			EnvDetailMessage: fmt.Sprintf("%s %s", detailsPrefix, "via the NODE_ROLES env var in spec.podTemplate"),
-		},
-		{
-			Config:           k.Spec.BackgroundTasks.Config,
-			PodSpec:          k.Spec.BackgroundTasks.PodTemplate.Spec,
-			Path:             bgSpecPath,
-			DetailMessage:    fmt.Sprintf("%s %s", detailsPrefix, "in spec.backgroundTasks.config"),
-			EnvDetailMessage: fmt.Sprintf("%s %s", detailsPrefix, "via the NODE_ROLES env var in spec.backgroundTasks.podTemplate"),
-		},
-	} {
-		if vld.Config != nil {
-			config, err := common.NewCanonicalConfigFrom(vld.Config.Data)
+	primary, background := k.poolSpecs()
+	for _, pool := range []poolSpec{primary, background} {
+		if pool.Config != nil {
+			config, err := common.NewCanonicalConfigFrom(pool.Config.Data)
 			if err != nil {
-				errs = append(errs, field.Invalid(vld.Path.Child("config"), vld.Config, cfgInvalidMsg))
+				errs = append(errs, field.Invalid(pool.Path.Child("config"), pool.Config, cfgInvalidMsg))
 			} else if keys := config.HasKeys([]string{label.NodeRolesConfigKey}); len(keys) > 0 {
-				errs = append(errs, field.Forbidden(vld.Path.Child("config"), vld.DetailMessage))
+				errs = append(errs, field.Forbidden(pool.Path.Child("config"),
+					fmt.Sprintf("%s in %s", detailsPrefix, pool.Path.Child("config"))))
 			}
 		}
 
-		index, container := getKibanaContainerWithIndex(vld.PodSpec)
+		index, container := getKibanaContainerWithIndex(pool.PodSpec)
 		if container == nil {
 			continue
 		}
 		for _, envVar := range container.Env {
 			if envVar.Name == label.NodeRolesEnvVar {
 				errs = append(errs, field.Forbidden(
-					vld.Path.Child("podTemplate", "spec", "containers").Index(index).Child("env"),
-					vld.EnvDetailMessage,
+					pool.Path.Child("podTemplate", "spec", "containers").Index(index).Child("env"),
+					fmt.Sprintf("%s via the NODE_ROLES env var in %s", detailsPrefix, pool.Path.Child("podTemplate")),
 				))
 				break
 			}
@@ -255,14 +248,13 @@ func checkBackgroundTasksBasePath(k *Kibana) field.ErrorList {
 		return nil
 	}
 
-	primarySpecPath := field.NewPath("spec")
-	primaryBasePathConfig, fErr := getBasePathConfig(primarySpecPath, k.Spec.PodTemplate.Spec, k.Spec.Config)
+	primary, background := k.poolSpecs()
+	primaryBasePathConfig, fErr := getBasePathConfig(primary.Path, primary.PodSpec, primary.Config)
 	if fErr != nil {
 		return fErr
 	}
 
-	bgSpecPath := field.NewPath("spec").Child("backgroundTasks")
-	bgBasePathConfig, fErr := getBasePathConfig(bgSpecPath, k.Spec.BackgroundTasks.PodTemplate.Spec, k.Spec.BackgroundTasks.Config)
+	bgBasePathConfig, fErr := getBasePathConfig(background.Path, background.PodSpec, background.Config)
 	if fErr != nil {
 		return fErr
 	}
@@ -273,7 +265,7 @@ func checkBackgroundTasksBasePath(k *Kibana) field.ErrorList {
 
 	if primaryBasePathConfig.GetBasePath() != bgBasePathConfig.GetBasePath() {
 		return field.ErrorList{field.Forbidden(
-			bgSpecPath,
+			background.Path,
 			"the background tasks pool must use the same base path as the primary pool: overriding server.basePath, server.rewriteBasePath or the SERVER_BASEPATH/SERVER_REWRITEBASEPATH env vars with a different value is not supported",
 		)}
 	}

@@ -250,9 +250,9 @@ func (d *driver) Reconcile(
 		switch {
 		case err != nil:
 			return results.WithError(err)
-		case deploymentResult == Defer:
+		case deploymentResult == deferred:
 			return results
-		case deploymentResult == Requeue:
+		case deploymentResult == requeue:
 			return results.WithRequeue()
 		}
 
@@ -336,18 +336,14 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 func (d *driver) deploymentParams(
 	ctx context.Context,
 	kb *kbv1.Kibana,
-	role kblabel.Role,
-	configSecretName string,
-	deploymentName string,
+	pp poolParameters,
 	replicas *int32,
 	replicasAnnotationValue *int32,
 	policyAnnotations map[string]string,
-	basePath string,
-	setDefaultSecurityContext bool,
-	operatorNamespace string,
 	meta metadata.Metadata,
 	selector map[string]string,
 ) (deployment.Params, error) {
+	role := pp.Role
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -359,14 +355,14 @@ func (d *driver) deploymentParams(
 		kb,
 		kbv1.KBNamer,
 		meta,
-		operatorNamespace,
+		pp.OperatorNamespace,
 		initContainersParameters,
 	)
 	if err != nil {
 		return deployment.Params{}, err
 	}
 
-	volumes, err := d.buildVolumes(kb, configSecretName)
+	volumes, err := d.buildVolumes(kb, pp.SecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -376,7 +372,7 @@ func (d *driver) deploymentParams(
 	poolLabels[kblabel.RoleLabelName] = role.LabelValue
 	poolMeta := metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, basePath, setDefaultSecurityContext, poolMeta, configSecretName)
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, pp.BasePath, pp.SetDefaultSecurityContext, poolMeta, pp.SecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -427,7 +423,7 @@ func (d *driver) deploymentParams(
 
 	// Hash the pool-specific config secret so changes roll this deployment.
 	var configSecret corev1.Secret
-	if err = d.client.Get(ctx, types.NamespacedName{Name: configSecretName, Namespace: kb.Namespace}, &configSecret); err != nil {
+	if err = d.client.Get(ctx, types.NamespacedName{Name: pp.SecretName, Namespace: kb.Namespace}, &configSecret); err != nil {
 		return deployment.Params{}, err
 	}
 	_, _ = configHash.Write(configSecret.Data[SettingsFilename])
@@ -453,7 +449,7 @@ func (d *driver) deploymentParams(
 	}
 
 	return deployment.Params{
-		Name:                 deploymentName,
+		Name:                 pp.DeploymentName,
 		Namespace:            kb.Namespace,
 		Replicas:             replicas,
 		Selector:             selector,

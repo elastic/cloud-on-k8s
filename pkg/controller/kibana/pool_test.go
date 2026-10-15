@@ -243,7 +243,8 @@ func TestPoolParams(t *testing.T) {
 			assert.Equal(t, tt.role, params.Role)
 			assert.Equal(t, "/base-path", params.BasePath)
 			assert.True(t, params.ScaleToZero)
-			assert.Equal(t, opParams, params.OperatorParameters)
+			assert.Equal(t, opParams.SetDefaultSecurityContext, params.SetDefaultSecurityContext)
+			assert.Equal(t, opParams.OperatorNamespace, params.OperatorNamespace)
 		})
 	}
 }
@@ -573,7 +574,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 
 		require.NoError(t, err)
-		assert.Equal(t, Defer, res)
+		assert.Equal(t, deferred, res)
 		assert.Nil(t, reconciledDp)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
@@ -587,7 +588,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 
 		require.NoError(t, err)
-		assert.Equal(t, Requeue, res)
+		assert.Equal(t, requeue, res)
 		assert.Nil(t, reconciledDp)
 		var got appsv1.Deployment
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
@@ -601,14 +602,14 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		// First call: paused — deployment survives.
 		res, _, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
-		assert.Equal(t, Defer, res)
+		assert.Equal(t, deferred, res)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 
 		// Second call: not paused — deployment deleted.
 		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
-		assert.Equal(t, Requeue, res)
+		assert.Equal(t, requeue, res)
 		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
 	})
 }
@@ -924,15 +925,15 @@ func TestNodeRolesEnvVar(t *testing.T) {
 			params, err := d.deploymentParams(
 				context.Background(),
 				tc.kb,
-				tc.role,
-				kbv1.ConfigSecret(tc.kb.Name),
-				kbv1.KBNamer.Suffix(tc.kb.Name),
+				poolParameters{
+					Role:                      tc.role,
+					SecretName:                kbv1.ConfigSecret(tc.kb.Name),
+					DeploymentName:            kbv1.KBNamer.Suffix(tc.kb.Name),
+					SetDefaultSecurityContext: true,
+				},
 				replicas,
 				nil, // replicasAnnotationValue
 				nil, // policyAnnotations
-				"",
-				true,
-				"",
 				metadata.Propagate(tc.kb, metadata.Metadata{Labels: tc.kb.GetIdentityLabels()}),
 				tc.kb.GetIdentityLabels(),
 			)
@@ -1566,10 +1567,10 @@ func TestDeploymentParamsReplicasAnnotation(t *testing.T) {
 			meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 
 			got, err := d.deploymentParams(
-				context.Background(), kb, tt.role,
-				configSecret, dpName,
+				context.Background(), kb,
+				poolParameters{Role: tt.role, SecretName: configSecret, DeploymentName: dpName},
 				replicas, tt.replicasAnnotation,
-				nil, "", false, "",
+				nil,
 				meta, kb.GetIdentityLabels(),
 			)
 			require.NoError(t, err)
