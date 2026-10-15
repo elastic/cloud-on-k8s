@@ -114,9 +114,6 @@ func newDownscaleState(
 	runningMasters := len(masters) - len(unavailableMasters)
 	// the master Pods that do not exist, for example because their creation is rejected, are not running either
 	for _, podName := range missingMasterPods(actualStatefulSets, masters) {
-		if unavailableMasters == nil {
-			unavailableMasters = set.Make()
-		}
 		unavailableMasters.Add(podName)
 	}
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
@@ -140,20 +137,15 @@ func newDownscaleState(
 // draining. A draining master that is not the next to be removed from its StatefulSet does not have its removal in
 // progress, otherwise a shutdown registered on it would block every master removal.
 func drainingMasterNodes(statefulSets es_sset.StatefulSetList, nodesWithShutdown set.StringSet) set.StringSet {
-	var masters set.StringSet
+	masters := set.Make()
 	for _, statefulSet := range statefulSets {
 		replicas := sset.GetReplicas(statefulSet)
 		if replicas == 0 || !label.IsMasterNodeSet(statefulSet) {
 			continue
 		}
-		podName := sset.PodName(statefulSet.Name, replicas-1)
-		if !nodesWithShutdown.Has(podName) {
-			continue
+		if podName := sset.PodName(statefulSet.Name, replicas-1); nodesWithShutdown.Has(podName) {
+			masters.Add(podName)
 		}
-		if masters == nil {
-			masters = set.Make()
-		}
-		masters.Add(podName)
 	}
 	return masters
 }
@@ -177,30 +169,22 @@ func missingMasterPods(statefulSets es_sset.StatefulSetList, masters []corev1.Po
 
 // unavailablePods returns the names of the given Pods that are not ready or terminating.
 func unavailablePods(pods []corev1.Pod) set.StringSet {
-	var unavailable set.StringSet
+	unavailable := set.Make()
 	for _, pod := range pods {
-		if k8s.IsPodReady(pod) && pod.DeletionTimestamp.IsZero() {
-			continue
+		if !k8s.IsPodReady(pod) || !pod.DeletionTimestamp.IsZero() {
+			unavailable.Add(pod.Name)
 		}
-		if unavailable == nil {
-			unavailable = set.Make()
-		}
-		unavailable.Add(pod.Name)
 	}
 	return unavailable
 }
 
 // unavailableDrainingPods returns the names of the not ready and non-terminating Pods of the given nodes with a shutdown.
 func unavailableDrainingPods(pods []corev1.Pod, nodesWithShutdown set.StringSet) set.StringSet {
-	var notReady set.StringSet
+	notReady := set.Make()
 	for _, pod := range pods {
-		if !nodesWithShutdown.Has(pod.Name) || k8s.IsPodReady(pod) || !pod.DeletionTimestamp.IsZero() {
-			continue
+		if nodesWithShutdown.Has(pod.Name) && !k8s.IsPodReady(pod) && pod.DeletionTimestamp.IsZero() {
+			notReady.Add(pod.Name)
 		}
-		if notReady == nil {
-			notReady = set.Make()
-		}
-		notReady.Add(pod.Name)
 	}
 	return notReady
 }

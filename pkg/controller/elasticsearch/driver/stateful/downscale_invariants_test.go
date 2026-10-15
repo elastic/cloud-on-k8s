@@ -213,6 +213,12 @@ func Test_newDownscaleState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newDownscaleState(tt.actualPods, tt.actualStatefulSets, es, tt.nodesWithShutdown)
+			// the sets omitted from the expected state are empty
+			for _, s := range []*set.StringSet{&tt.want.unavailableDrainingPods, &tt.want.unavailableMasters, &tt.want.drainingMasters} {
+				if *s == nil {
+					*s = set.Make()
+				}
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDownscaleInvariants() got = %v, want %v", got, tt.want)
 			}
