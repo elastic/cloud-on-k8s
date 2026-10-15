@@ -12,16 +12,27 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
-// MaybeForceUpgrade may attempt a forced upgrade of the Pods that need one, except the ones the downscale wants to remove.
-// All the actual Pods, leaving ones included, are still considered to decide whether a StatefulSet can be force upgraded.
-func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList, desiredLeaving set.StringSet) (bool, error) {
+// MaybeForceUpgrade may attempt a forced upgrade of the Pods that need one, except the leaving Pods that are draining:
+// deleting them would disrupt the shutdown that is migrating their shards away. The other leaving Pods have no shutdown
+// to protect and may need a forced upgrade to recover, for example masters that cannot form a quorum without them, or a
+// Pod that must join the cluster to be removed. nodeShutdowns is nil if Elasticsearch is not reachable, see
+// excludeDrainingPods. All the actual Pods, leaving ones included, are still considered to decide whether a StatefulSet
+// can be force upgraded.
+func (d *Driver) MaybeForceUpgrade(
+	ctx context.Context,
+	statefulSets sset.StatefulSetList,
+	desiredLeaving set.StringSet,
+	nodeShutdowns shutdown.Interface,
+) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -31,7 +42,62 @@ func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.Statef
 	if err != nil {
 		return false, err
 	}
-	return d.maybeForceUpgradePods(ctx, actualPods, excludeLeavingPods(podsToUpgrade, desiredLeaving))
+	podsToUpgrade, err = excludeDrainingPods(ctx, podsToUpgrade, desiredLeaving, nodeShutdowns, d.ES.Status.DownscaleOperation)
+	if err != nil {
+		return false, err
+	}
+	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
+}
+
+// excludeDrainingPods returns the given Pods minus the leaving ones that are draining. A Pending Pod is not draining, as
+// no Elasticsearch node runs in it: deleting it does not disrupt its shutdown. The draining nodes are retrieved with
+// nodeShutdowns. If it is nil, Elasticsearch is not reachable, which does not mean that the shutdowns stopped: the nodes
+// with a shutdown in lastDownscale, the downscale status reported while Elasticsearch was reachable, are draining.
+func excludeDrainingPods(
+	ctx context.Context,
+	pods []corev1.Pod,
+	desiredLeaving set.StringSet,
+	nodeShutdowns shutdown.Interface,
+	lastDownscale esv1.DownscaleOperation,
+) ([]corev1.Pod, error) {
+	var leaving []string
+	for _, pod := range pods {
+		if desiredLeaving.Has(pod.Name) && pod.Status.Phase != corev1.PodPending {
+			leaving = append(leaving, pod.Name)
+		}
+	}
+	if len(leaving) == 0 {
+		return pods, nil
+	}
+	var draining set.StringSet
+	if nodeShutdowns != nil {
+		var err error
+		if draining, err = nodeShutdowns.NodesWithShutdown(ctx, leaving); err != nil {
+			return nil, err
+		}
+	} else {
+		draining = nodesWithReportedShutdown(lastDownscale, leaving)
+	}
+	return excludeLeavingPods(pods, draining), nil
+}
+
+// nodesWithReportedShutdown returns the given nodes that have a shutdown in the given downscale status. The nodes the
+// downscale has not requested a shutdown for are reported as not started. A node is reported in progress before its
+// shutdown is requested, so a node whose request failed, for example because it never joined the cluster, is included.
+func nodesWithReportedShutdown(downscale esv1.DownscaleOperation, nodes []string) set.StringSet {
+	reported := set.Make()
+	for _, node := range downscale.Nodes {
+		if node.ShutdownStatus != string(esclient.ShutdownNotStarted) {
+			reported.Add(node.Name)
+		}
+	}
+	withShutdown := set.Make()
+	for _, node := range nodes {
+		if reported.Has(node) {
+			withShutdown.Add(node)
+		}
+	}
+	return withShutdown
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,

@@ -275,11 +275,12 @@ func podsToRollingUpgrade(
 	return excludeLeavingPods(toUpgrade, desiredLeaving), nil
 }
 
-// excludeLeavingPods returns the given Pods minus the ones the downscale wants to remove.
-func excludeLeavingPods(pods []corev1.Pod, desiredLeaving set.StringSet) []corev1.Pod {
+// excludeLeavingPods returns the given Pods minus the given leaving ones, for example the ones the downscale wants to
+// remove.
+func excludeLeavingPods(pods []corev1.Pod, leaving set.StringSet) []corev1.Pod {
 	staying := make([]corev1.Pod, 0, len(pods))
 	for _, pod := range pods {
-		if !desiredLeaving.Has(pod.Name) {
+		if !leaving.Has(pod.Name) {
 			staying = append(staying, pod)
 		}
 	}

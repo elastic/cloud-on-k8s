@@ -404,10 +404,16 @@ func TestHandleDownscale(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err))
 }
 
-// countingNodeShutdown counts the calls to ShutdownStatus for each node.
+// countingNodeShutdown counts the calls to ShutdownStatus for each node, and the calls to NodesWithShutdown.
 type countingNodeShutdown struct {
 	shutdown.Interface
-	statusCalls map[string]int
+	statusCalls            map[string]int
+	nodesWithShutdownCalls int
+}
+
+func (c *countingNodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error) {
+	c.nodesWithShutdownCalls++
+	return c.Interface.NodesWithShutdown(ctx, podNames)
 }
 
 func (c *countingNodeShutdown) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {

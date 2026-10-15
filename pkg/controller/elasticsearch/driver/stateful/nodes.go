@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -101,9 +102,9 @@ func (d *Driver) reconcileNodeSpecs(
 		}
 	}
 
-	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants: no upgrade path may
-	// restart them, as it would disrupt the shutdown that is migrating their shards away, and the upgrades do not wait
-	// for them.
+	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants. Rolling upgrades do not
+	// restart them, and forced upgrades do not restart the draining ones, as it would disrupt the shutdown that is
+	// migrating their shards away. The master upgrade only waits for the ones that run an older version.
 	desiredLeaving := desiredLeavingNodeNames(ctx, expectedResources.StatefulSets(), actualStatefulSets)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
@@ -160,8 +161,19 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
-	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving)
+	esState := NewMemoizingESState(ctx, esClient)
+	// shutdown logic is dependent on Elasticsearch version. It requires Elasticsearch to be reachable: otherwise the
+	// forced upgrade relies on the shutdowns reported in the downscale status.
+	var nodeShutdowns shutdown.Interface
+	if esReachable {
+		if nodeShutdowns, err = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter); err != nil {
+			return results.WithError(err)
+		}
+	}
+
+	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it. Only the leaving Pods that are draining are
+	// protected, the others may need it to recover.
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving, nodeShutdowns)
 	if err != nil || attempted {
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
@@ -194,13 +206,6 @@ func (d *Driver) reconcileNodeSpecs(
 	if requeue {
 		results.WithReconciliationState(shared.DefaultRequeue.WithReason("Cannot clear voting exclusions yet"))
 	}
-	esState := NewMemoizingESState(ctx, esClient)
-	// shutdown logic is dependent on Elasticsearch version
-	nodeShutdowns, err := newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
