@@ -135,6 +135,7 @@ func (d *driver) reconcilePoolDeployment(
 	meta metadata.Metadata,
 	reconciledSecrets map[string]struct{},
 ) (poolDeploymentResult, *appsv1.Deployment, error) {
+	var rPoolDeploymentResult poolDeploymentResult
 	logger := ulog.FromContext(ctx)
 
 	// Detect immutable selector transition.
@@ -151,7 +152,8 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	expectedSelector := deploymentSelector(kb, poolParams.Role, existingSelector)
-	if existingSelector != nil && !umaps.IsSubset(expectedSelector, existingSelector) { // selector change is required
+	// Check selector change is required
+	if existingSelector != nil && !umaps.IsSubset(expectedSelector, existingSelector) {
 		if common.IsOrchestrationPaused(kb) {
 			logger.Info(
 				"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
@@ -160,20 +162,24 @@ func (d *driver) reconcilePoolDeployment(
 			return deferred, nil, nil
 		}
 
-		logger.Info(
-			"Deployment selector mismatch; deleting to allow recreation with updated selector",
-			"deployment", existingDeployment.Name,
-			"existing_selector", existingSelector,
-			"expected_selector", expectedSelector,
-		)
-		if delErr := k8s.DeleteResourceIfExists(ctx, d.client, &existingDeployment); delErr != nil {
-			return "", nil, delErr
+		// Since the selector has changed, we always requeue: either we are waiting for the pods to get
+		// the role label (before the deployment can be deleted), or the deployment was deleted and we
+		// need to reconcile again to create the new one.
+		rPoolDeploymentResult = requeue
+
+		shouldDelete, err := shouldDeleteTheDeployment(ctx, d.client, &existingDeployment)
+		if err != nil {
+			return "", nil, err
+		}
+		if shouldDelete {
+			return d.deletePoolDeployment(ctx, kb, existingSelector, &existingDeployment)
 		}
 
-		k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
-			fmt.Sprintf("Deleted Deployment %s to apply updated selector", existingDeployment.Name))
-
-		return requeue, nil, nil
+		// Some pods do not have the role label yet, so we cannot delete the deployment safely.
+		// Keep the existing selector for this reconciliation: the selector is immutable, so sending the
+		// new one would make the update fail. The pod template (which carries the role label) is still
+		// updated, rolling the pods until they are all labeled.
+		expectedSelector = existingSelector
 	}
 
 	// reconcile pool secret, unless it was already written earlier in this reconciliation pass
@@ -202,7 +208,57 @@ func (d *driver) reconcilePoolDeployment(
 		return "", nil, err
 	}
 
-	return "", &reconciledDp, nil
+	return rPoolDeploymentResult, &reconciledDp, nil
+}
+
+func (d *driver) deletePoolDeployment(
+	ctx context.Context,
+	kb *kbv1.Kibana,
+	expectedSelector map[string]string,
+	existingDeployment *appsv1.Deployment,
+) (poolDeploymentResult, *appsv1.Deployment, error) {
+	logger := ulog.FromContext(ctx)
+
+	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
+	// has released its ReplicaSets. Nothing more to do but wait: avoid deleting again and repeating the event.
+	if !existingDeployment.DeletionTimestamp.IsZero() {
+		logger.V(1).Info("Deployment is already being deleted; waiting for it to go away", "deployment", existingDeployment.Name)
+		return requeue, nil, nil
+	}
+
+	logger.Info(
+		"Deployment selector mismatch; deleting to allow recreation with updated selector",
+		"deployment", existingDeployment.Name,
+		"existing_selector", existingDeployment.Spec.Selector.MatchLabels,
+		"expected_selector", expectedSelector,
+	)
+	// Orphan the dependents (ReplicaSets, and through them the Pods) instead of cascading the delete,
+	// so that the recreated Deployment can adopt them.
+	// The UID precondition ensures we only delete the Deployment we examined, not one recreated under the same name.
+	uid := existingDeployment.UID
+	if delErr := d.client.Delete(
+		ctx,
+		existingDeployment,
+		client.PropagationPolicy(metav1.DeletePropagationOrphan),
+		client.Preconditions{UID: &uid},
+	); delErr != nil {
+		switch {
+		case apierrors.IsNotFound(delErr):
+			// already gone, nothing to do
+		case apierrors.IsConflict(delErr):
+			// The UID precondition failed: the Deployment was replaced since we read it.
+			// Not an error, requeue to examine the current one.
+			logger.Info("Deployment changed while deleting (UID precondition failed); requeuing", "deployment", existingDeployment.Name)
+			return requeue, nil, nil
+		default:
+			return "", nil, delErr
+		}
+	}
+
+	k8s.EmitEvent(d.recorder, kb, corev1.EventTypeNormal, events.EventReasonUpgraded, events.EventActionDeploymentReconciliation,
+		fmt.Sprintf("Deleted Deployment %s to apply updated selector", existingDeployment.Name))
+
+	return requeue, nil, nil
 }
 
 // deploymentSelector returns the label selector to use for a pool deployment.
@@ -234,6 +290,37 @@ func deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels 
 	}
 
 	return expectedByRole
+}
+
+// shouldDeleteTheDeployment returns true if the rollout of the given Deployment is complete and every
+// pod it selects already carries the Kibana role label. It returns false otherwise.
+func shouldDeleteTheDeployment(ctx context.Context, c k8s.Client, dep *appsv1.Deployment) (bool, error) {
+	if dep.Spec.Selector == nil {
+		return false, nil
+	}
+
+	// The pod list may be served from a stale cache, which could make us miss unlabeled pods (an empty
+	// list is considered labeled). The Deployment status guards against it: the controller must have
+	// observed the latest spec, and no pod from an older template (which may lack the label) may remain.
+	if dep.Status.ObservedGeneration < dep.Generation || dep.Status.Replicas != dep.Status.UpdatedReplicas {
+		return false, nil
+	}
+
+	var pods corev1.PodList
+	if err := c.List(
+		ctx,
+		&pods,
+		client.InNamespace(dep.Namespace),
+		client.MatchingLabels(dep.Spec.Selector.MatchLabels),
+	); err != nil {
+		return false, err
+	}
+	for _, pod := range pods.Items {
+		if _, ok := pod.Labels[kblabel.RoleLabelName]; !ok {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // serviceSelector fetches the existing Kibana HTTP Service (if any) and returns the label

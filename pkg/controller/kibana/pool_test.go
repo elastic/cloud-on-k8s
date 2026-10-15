@@ -1791,3 +1791,154 @@ func TestCalculateAggregateHealth(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldDeleteTheDeployment(t *testing.T) {
+	selector := map[string]string{kblabel.KibanaNameLabelName: "test"}
+	deployment := func(sel *metav1.LabelSelector) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			Name: "test-kb", Namespace: "default",
+			Spec: appsv1.DeploymentSpec{Selector: sel},
+		}
+	}
+	pod := func(name, namespace string, labels map[string]string) *corev1.Pod {
+		return &corev1.Pod{Name: name, Namespace: namespace, Labels: labels}
+	}
+	withRole := func(role string) map[string]string {
+		l := maps.Clone(selector)
+		l[kblabel.RoleLabelName] = role
+		return l
+	}
+
+	tests := []struct {
+		name string
+		dep  *appsv1.Deployment
+		pods []client.Object
+		want bool
+	}{
+		{
+			name: "nil selector",
+			dep:  deployment(nil),
+			pods: []client.Object{pod("p1", "default", withRole("primary"))},
+			want: false,
+		},
+		{
+			name: "no pods",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			want: true,
+		},
+		{
+			name: "deployment spec not yet observed by the controller",
+			dep: func() *appsv1.Deployment {
+				d := deployment(&metav1.LabelSelector{MatchLabels: selector})
+				d.Generation = 2
+				d.Status.ObservedGeneration = 1
+				return d
+			}(),
+			pods: []client.Object{pod("p1", "default", withRole("primary"))},
+			want: false,
+		},
+		{
+			name: "rollout in progress, pods from an older template remain",
+			dep: func() *appsv1.Deployment {
+				d := deployment(&metav1.LabelSelector{MatchLabels: selector})
+				d.Status.Replicas = 3
+				d.Status.UpdatedReplicas = 2
+				return d
+			}(),
+			pods: []client.Object{pod("p1", "default", withRole("primary"))},
+			want: false,
+		},
+		{
+			name: "all pods have the role label",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				pod("p2", "default", withRole("primary")),
+			},
+			want: true,
+		},
+		{
+			name: "one pod is missing the role label",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				pod("p2", "default", selector),
+			},
+			want: false,
+		},
+		{
+			name: "pods not matching the selector are ignored",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				pod("other", "default", map[string]string{kblabel.KibanaNameLabelName: "other"}),
+			},
+			want: true,
+		},
+		{
+			name: "pods in other namespaces are ignored",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				pod("p2", "other-ns", selector),
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.pods...)
+			got, err := shouldDeleteTheDeployment(context.Background(), c, tt.dep)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDeletePoolDeployment(t *testing.T) {
+	newDeployment := func(terminating bool) *appsv1.Deployment {
+		dep := &appsv1.Deployment{
+			Name: "test-kb", Namespace: "default", UID: "uid-1", Finalizers: []string{metav1.FinalizerOrphanDependents},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{kblabel.KibanaNameLabelName: "test"}},
+			},
+		}
+		if terminating {
+			dep.DeletionTimestamp = new(metav1.Now())
+		}
+		return dep
+	}
+
+	t.Run("deletes the deployment and emits an event", func(t *testing.T) {
+		dep := newDeployment(false)
+		d := newTestDriver(t, dep)
+		recorder, is := d.recorder.(*toolsevents.FakeRecorder)
+		require.True(t, is, "recorder should be of type *toolsevents.FakeRecorder")
+		kb := &kbv1.Kibana{Name: "test", Namespace: "default"}
+
+		result, reconciled, err := d.deletePoolDeployment(context.Background(), kb, nil, dep)
+		require.NoError(t, err)
+		assert.Equal(t, requeue, result)
+		assert.Nil(t, reconciled)
+		assert.Len(t, recorder.Events, 1)
+
+		// the finalizer keeps the object around, but it must now be marked for deletion
+		var got appsv1.Deployment
+		require.NoError(t, d.client.Get(context.Background(), k8s.ExtractNamespacedName(dep), &got))
+		assert.False(t, got.DeletionTimestamp.IsZero())
+	})
+
+	t.Run("already terminating deployment is not deleted again", func(t *testing.T) {
+		dep := newDeployment(true)
+		d := newTestDriver(t, dep)
+		recorder, is := d.recorder.(*toolsevents.FakeRecorder)
+		require.True(t, is, "recorder should be of type *toolsevents.FakeRecorder")
+		kb := &kbv1.Kibana{Name: "test", Namespace: "default"}
+
+		result, reconciled, err := d.deletePoolDeployment(context.Background(), kb, nil, dep)
+		require.NoError(t, err)
+		assert.Equal(t, requeue, result)
+		assert.Nil(t, reconciled)
+		assert.Empty(t, recorder.Events)
+	})
+}
