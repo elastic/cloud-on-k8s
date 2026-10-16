@@ -96,20 +96,18 @@ func poolParams(operatorParameters operator.Parameters, kb *kbv1.Kibana, role kb
 }
 
 func reconcileService(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, meta metadata.Metadata) (*corev1.Service, error) {
-	svcSelector, err := serviceSelector(ctx, client, kb)
-	if err != nil {
-		return nil, err
-	}
-
-	expectedService := NewService(*kb, meta, svcSelector)
-
+	// Fetch the existing Service once: its selector feeds the expected selector computation,
+	// and it is reused for the orchestration-pause check below.
 	var existing corev1.Service
-	err = client.Get(ctx, k8s.ExtractNamespacedName(expectedService), &existing)
+	err := client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.HTTPService(kb.Name)}, &existing)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}
+	svcExists := err == nil
 
-	if err == nil && common.IsOrchestrationPaused(kb) && !maps.Equal(existing.Spec.Selector, expectedService.Spec.Selector) {
+	expectedService := NewService(*kb, meta, serviceSelector(kb, existing.Spec.Selector))
+
+	if svcExists && common.IsOrchestrationPaused(kb) && !maps.Equal(existing.Spec.Selector, expectedService.Spec.Selector) {
 		ulog.FromContext(ctx).Info(
 			"Service selector change detected but orchestration is paused; skipping Service reconciliation",
 			"namespace", kb.Namespace, "kibana_name", kb.Name, "service", expectedService.Name,
@@ -388,23 +386,15 @@ func shouldDeleteTheDeployment(ctx context.Context, c k8s.Client, dep *appsv1.De
 	return true, "", nil
 }
 
-// serviceSelector fetches the existing Kibana HTTP Service (if any) and returns the label
-// selector to use for it. It applies the same ECK upgrade-path exception as deploymentSelector:
-// when the existing Service has no role label yet and split mode is inactive, the role label
-// is omitted so that the Service is not needlessly updated on every reconcile during an
-// operator upgrade. Returns the full expected selector (including role=primary) when the Service
-// does not exist yet.
-func serviceSelector(ctx context.Context, client k8s.Client, kb *kbv1.Kibana) (map[string]string, error) {
-	var existingSvc corev1.Service
-	if err := client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.HTTPService(kb.Name)}, &existingSvc); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
-		// kblabel.UIRole is used directly: the HTTP service is only created for the UI role
-		// and only ever targets the primary pool.
-		return deploymentSelector(kb, kblabel.UIRole, nil), nil
-	}
-	return deploymentSelector(kb, kblabel.UIRole, existingSvc.Spec.Selector), nil
+// serviceSelector returns the label selector to use for the Kibana HTTP Service, given the
+// selector of the existing Service (nil when the Service does not exist yet). It applies the
+// same ECK upgrade-path exception as deploymentSelector: when the existing Service has no role
+// label yet and split mode is inactive, the role label is omitted so that the Service is not
+// needlessly updated on every reconcile during an operator upgrade.
+// kblabel.UIRole is used directly: the HTTP service is only created for the UI role and only
+// ever targets the primary pool.
+func serviceSelector(kb *kbv1.Kibana, existingSelector map[string]string) map[string]string {
+	return deploymentSelector(kb, kblabel.UIRole, existingSelector)
 }
 
 func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {

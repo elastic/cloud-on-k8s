@@ -1090,13 +1090,12 @@ func TestServiceSelector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var objects []client.Object
+			var existingSelector map[string]string
 			if tt.existingSvc != nil {
-				objects = append(objects, tt.existingSvc)
+				existingSelector = tt.existingSvc.Spec.Selector
 			}
 
-			sel, err := serviceSelector(context.Background(), k8s.NewFakeClient(objects...), tt.kb)
-			require.NoError(t, err)
+			sel := serviceSelector(tt.kb, existingSelector)
 
 			if tt.wantRole == "" {
 				_, hasRole := sel[kblabel.RoleLabelName]
