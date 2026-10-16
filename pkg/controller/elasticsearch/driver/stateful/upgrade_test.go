@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func podWithRevision(name, revision string) *corev1.Pod {
@@ -308,6 +309,181 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 			}
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &pods))
+			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
+		})
+	}
+}
+
+// Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest covers a restart shutdown that is not complete right
+// after it is requested, which holds the Pod: Elasticsearch only reports it as complete a short while later. The next
+// pass must delete the Pod once the shutdown is complete, without deleting the completed shutdown and requesting it
+// again, which would hold the Pod again.
+func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.T) {
+	esVersion := "8.1.0"
+	es := esv1.Elasticsearch{
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: esVersion},
+		Status: esv1.ElasticsearchStatus{Version: esVersion},
+	}
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
+	statefulSet := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 1, Data: true, Status: outdated}.Build()
+	pod := sset.TestPod{
+		Name: "data-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "data",
+		Version: esVersion, Revision: "rev-a", Data: true, Ready: true,
+	}.Build()
+	tests := []struct {
+		name string
+		// statusOnNextPass is the status of the shutdown when the next pass retrieves it
+		statusOnNextPass  esclient.ShutdownStatus
+		wantRemainingPods []string // Pods that have not been deleted for an upgrade after the next pass
+	}{
+		{
+			name:              "the shutdown is complete on the next pass: the Pod is deleted",
+			statusOnNextPass:  esclient.ShutdownComplete,
+			wantRemainingPods: nil,
+		},
+		{
+			name:              "the shutdown is still in progress on the next pass: the Pod is held",
+			statusOnNextPass:  esclient.ShutdownInProgress,
+			wantRemainingPods: []string{"data-0"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			k8sClient := k8s.NewFakeClient(&es, &statefulSet, &pod)
+			esClient := &fakeESClient{
+				version: version.MustParse(esVersion),
+				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}}},
+				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				// the shutdown is reported in progress right after it is requested
+				RegisterPutShutdowns: true,
+			}
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: statefulSet}}
+			handleUpgrades := func() {
+				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				_, err := results.Aggregate()
+				require.NoError(t, err)
+			}
+
+			// the Pod is held until the shutdown is complete
+			handleUpgrades()
+			require.Equal(t, []shutdownCall{{NodeID: "id-data-0", Type: esclient.Restart}}, esClient.PutShutdownCalls)
+			var pods corev1.PodList
+			require.NoError(t, k8sClient.List(ctx, &pods))
+			require.ElementsMatch(t, []string{"data-0"}, names(pods.Items))
+
+			restartShutdown := esClient.Shutdowns["id-data-0"]
+			restartShutdown.Status = tt.statusOnNextPass
+			esClient.Shutdowns["id-data-0"] = restartShutdown
+			handleUpgrades()
+			// the shutdown is not requested again
+			assert.Len(t, esClient.PutShutdownCalls, 1)
+			assert.Contains(t, esClient.Shutdowns, "id-data-0")
+			require.NoError(t, k8sClient.List(ctx, &pods))
+			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
+		})
+	}
+}
+
+// Test_Driver_handleUpgrades_fullRestartShutdownsCompleteAfterRequest covers the full restart of a non-HA cluster, which
+// only deletes the Pods once all their shutdowns are complete. The shutdowns are not complete right after they are
+// requested, which holds all the Pods: Elasticsearch only reports them as complete a short while later. The next pass
+// must delete all the Pods once all the shutdowns are complete, without deleting the completed shutdowns and requesting
+// them again, which would hold the Pods again.
+func Test_Driver_handleUpgrades_fullRestartShutdownsCompleteAfterRequest(t *testing.T) {
+	fromVersion, toVersion := "8.1.0", "8.2.0"
+	es := esv1.Elasticsearch{
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: toVersion},
+		Status: esv1.ElasticsearchStatus{Version: fromVersion},
+	}
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
+	// a single master makes the cluster non-HA
+	masterSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: toVersion, Replicas: 1, Master: true, Data: true, Status: outdated}.Build()
+	dataSset := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: toVersion, Replicas: 1, Data: true, Status: outdated}.Build()
+	masterPod := sset.TestPod{Name: "master-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "master", Version: fromVersion, Revision: "rev-a", Master: true, Data: true, Ready: true}.Build()
+	dataPod := sset.TestPod{Name: "data-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "data", Version: fromVersion, Revision: "rev-a", Data: true, Ready: true}.Build()
+	tests := []struct {
+		name string
+		// statusesOnNextPass are the statuses of the shutdowns, by node ID, when the next pass retrieves them
+		statusesOnNextPass map[string]esclient.ShutdownStatus
+		wantRemainingPods  []string // Pods that have not been deleted for an upgrade after the next pass
+	}{
+		{
+			name: "all the shutdowns are complete on the next pass: all the Pods are deleted",
+			statusesOnNextPass: map[string]esclient.ShutdownStatus{
+				"id-master-0": esclient.ShutdownComplete,
+				"id-data-0":   esclient.ShutdownComplete,
+			},
+			wantRemainingPods: nil,
+		},
+		{
+			name: "a shutdown is still in progress on the next pass: no Pod is deleted",
+			statusesOnNextPass: map[string]esclient.ShutdownStatus{
+				"id-master-0": esclient.ShutdownComplete,
+				"id-data-0":   esclient.ShutdownInProgress,
+			},
+			wantRemainingPods: []string{"master-0", "data-0"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			k8sClient := k8s.NewFakeClient(&es, &masterSset, &dataSset, &masterPod, &dataPod)
+			esClient := &fakeESClient{
+				version: version.MustParse(fromVersion),
+				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-master-0": {Name: "master-0"}, "id-data-0": {Name: "data-0"}}},
+				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				// the shutdowns are reported in progress right after they are requested
+				RegisterPutShutdowns: true,
+			}
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: masterSset}, {StatefulSet: dataSset}}
+			// make sure the fixture really selects the full-restart branch
+			currentPods, err := es_sset.StatefulSetList{masterSset, dataSset}.GetActualPods(k8sClient)
+			require.NoError(t, err)
+			isUpgrade, err := isVersionUpgrade(es)
+			require.NoError(t, err)
+			require.True(t, isUpgrade)
+			require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
+			handleUpgrades := func() {
+				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				_, err := results.Aggregate()
+				require.NoError(t, err)
+			}
+
+			// no Pod is deleted until all the shutdowns are complete
+			handleUpgrades()
+			wantPutShutdowns := []shutdownCall{{NodeID: "id-master-0", Type: esclient.Restart}, {NodeID: "id-data-0", Type: esclient.Restart}}
+			require.ElementsMatch(t, wantPutShutdowns, esClient.PutShutdownCalls)
+			var pods corev1.PodList
+			require.NoError(t, k8sClient.List(ctx, &pods))
+			require.ElementsMatch(t, []string{"master-0", "data-0"}, names(pods.Items))
+
+			for nodeID, status := range tt.statusesOnNextPass {
+				restartShutdown := esClient.Shutdowns[nodeID]
+				restartShutdown.Status = status
+				esClient.Shutdowns[nodeID] = restartShutdown
+			}
+			handleUpgrades()
+			// the shutdowns are not requested again
+			assert.ElementsMatch(t, wantPutShutdowns, esClient.PutShutdownCalls)
+			for nodeID := range tt.statusesOnNextPass {
+				assert.Contains(t, esClient.Shutdowns, nodeID)
+			}
+			require.NoError(t, k8sClient.List(ctx, &pods))
 			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
 		})
 	}
@@ -618,6 +794,18 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			Status: "COMPLETE",
 		},
 	}
+	twoShutdownsFixture := map[string]esclient.NodeShutdown{
+		"node-id-0": {
+			NodeID: "node-id-0",
+			Type:   "RESTART",
+			Status: "COMPLETE",
+		},
+		"node-id-1": {
+			NodeID: "node-id-1",
+			Type:   "RESTART",
+			Status: "COMPLETE",
+		},
+	}
 	leftOverShutdownFixture := map[string]esclient.NodeShutdown{
 		"node-id-99": {
 			NodeID: "node-id-99",
@@ -644,7 +832,9 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 		routingAllocation esclient.ClusterRoutingAllocation
 		runtimeObjects    []client.Object
 		expectations      func(*expectations.Expectations)
-		assertions        func(*reconciler.Results, *fakeESClient)
+		// pendingRestarts are the Pods that still wait for their restart
+		pendingRestarts []string
+		assertions      func(*reconciler.Results, *fakeESClient)
 	}{
 		{
 			name: "unsatisfied expectations: no shutdown clean up",
@@ -675,6 +865,42 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
 				require.True(t, esClient.DeleteShutdownCalled)
 				require.False(t, esClient.EnableShardAllocationCalled)
+				reconciled, _ := results.IsReconciled()
+				require.False(t, reconciled)
+			},
+		},
+		{
+			// the shutdown of es-0 may have turned complete after it was requested: it is deleted once es-0 restarted
+			name: "all nodes in cluster, completed shutdown of a Pod that waits for its restart is kept",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+				"node-id-1": {Name: "es-1"},
+			},
+			shutdowns:       twoShutdownsFixture,
+			pendingRestarts: []string{"es-0"},
+			runtimeObjects:  append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.True(t, esClient.DeleteShutdownCalled)
+				// the completed shutdown of the other Pod is deleted
+				require.Contains(t, esClient.Shutdowns, "node-id-0")
+				require.NotContains(t, esClient.Shutdowns, "node-id-1")
+				reconciled, _ := results.IsReconciled()
+				require.True(t, reconciled)
+			},
+		},
+		{
+			name: "not all nodes in cluster, completed shutdown of a Pod that waits for its restart is kept",
+			es:   es,
+			nodesInCluster: map[string]esclient.Node{
+				"node-id-0": {Name: "es-0"},
+			},
+			shutdowns:       shutdownFixture,
+			pendingRestarts: []string{"es-0"},
+			runtimeObjects:  append(testSset.Pods(), testSset.BuildPtr()),
+			assertions: func(results *reconciler.Results, esClient *fakeESClient) {
+				require.False(t, esClient.DeleteShutdownCalled)
+				require.Contains(t, esClient.Shutdowns, "node-id-0")
 				reconciled, _ := results.IsReconciled()
 				require.False(t, reconciled)
 			},
@@ -758,7 +984,7 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			esClient := &fakeESClient{
 				version:                  version.MustParse(esVersion),
 				nodes:                    esclient.Nodes{Nodes: tt.nodesInCluster},
-				Shutdowns:                tt.shutdowns,
+				Shutdowns:                maps.Clone(tt.shutdowns),
 				clusterRoutingAllocation: tt.routingAllocation,
 			}
 			esState := NewMemoizingESState(context.Background(), esClient)
@@ -781,7 +1007,11 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			require.NoError(t, err)
 
 			n := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, "", nil, crlog.Log)
-			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n)
+			var pendingRestarts []corev1.Pod
+			for _, name := range tt.pendingRestarts {
+				pendingRestarts = append(pendingRestarts, corev1.Pod{Name: name})
+			}
+			results := d.maybeCompleteNodeUpgrades(context.Background(), esClient, esState, n, pendingRestarts)
 			tt.assertions(results, esClient)
 		})
 	}

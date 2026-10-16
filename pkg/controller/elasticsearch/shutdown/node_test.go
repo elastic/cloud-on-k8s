@@ -201,6 +201,37 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			wantDelete: true,
 		},
 		{
+			name: "Should not delete the shutdowns of the excluded nodes",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.ExceptNodes([]string{"pod-1"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+			},
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
+			name: "Should delete the shutdowns of the nodes that are not excluded",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.ExceptNodes([]string{"pod-2"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				"pod-2": "another-node-id",
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
 			name: "Should bubble up errors",
 			args: args{
 				typ:        esclient.Remove,

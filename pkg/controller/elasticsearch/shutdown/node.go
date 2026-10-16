@@ -183,12 +183,17 @@ func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
 
 // OnlyNonTerminatingNodes is a function to generate a predicate to delete only those shutdowns which don't affect currently terminating Pods/ES nodes.
 func (ns *NodeShutdown) OnlyNonTerminatingNodes(terminatingNodes []string) func(s esclient.NodeShutdown) bool {
-	terminatingNodeIDs := map[string]bool{}
-	for _, n := range terminatingNodes {
-		terminatingNodeIDs[ns.podToNodeID[n]] = true
+	return ns.ExceptNodes(terminatingNodes)
+}
+
+// ExceptNodes is a function to generate a predicate to delete only those shutdowns which don't belong to the given nodes.
+func (ns *NodeShutdown) ExceptNodes(nodes []string) func(s esclient.NodeShutdown) bool {
+	nodeIDs := map[string]bool{}
+	for _, n := range nodes {
+		nodeIDs[ns.podToNodeID[n]] = true
 	}
 	return func(s esclient.NodeShutdown) bool {
-		return !terminatingNodeIDs[s.NodeID]
+		return !nodeIDs[s.NodeID]
 	}
 }
 

@@ -79,7 +79,7 @@ func (d *Driver) handleUpgrades(
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, shutdownReason, allocationDelay, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)).HasError() {
+	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown, rollingUpgradeCandidates)).HasError() {
 		return results
 	}
 
@@ -360,11 +360,16 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 	}
 }
 
+// maybeCompleteNodeUpgrades re-enables shards allocation and deletes the completed restart shutdowns once the upgraded
+// nodes are back in the cluster. The completed shutdowns of the Pods that still wait for their restart, pendingRestarts,
+// are kept: a shutdown may only turn complete a short while after it is requested, which is after the Pod was held, and
+// deleting it would make the next attempt request it again, and hold the Pod again, instead of deleting the Pod.
 func (d *Driver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
+	pendingRestarts []corev1.Pod,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	// Make sure all pods scheduled for upgrade have been upgraded.
@@ -391,6 +396,8 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
+	// the node of a Pod that still waits for its restart has not restarted: its shutdown is not over until the Pod is deleted
+	notPendingRestart := nodeShutdown.ExceptNodes(k8s.PodNames(pendingRestarts))
 
 	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
 	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
@@ -401,6 +408,7 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNodesInCluster,
 			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			notPendingRestart,
 		))
 	}
 
@@ -427,6 +435,7 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			notPendingRestart,
 		))
 	}
 	return results
