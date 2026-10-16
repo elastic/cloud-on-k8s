@@ -166,9 +166,9 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	// Determine replica count for this pool.
-	replicas, oldReplicas := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
+	replicas, replicasToSave := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
 
-	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, selectorOutcome)
+	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, replicasToSave, podAnnotations, meta, selectorOutcome)
 	if err != nil {
 		return "", nil, err
 	}
@@ -398,7 +398,7 @@ func serviceSelector(kb *kbv1.Kibana, existingSelector map[string]string) map[st
 	return deploymentSelector(kb, kblabel.UIRole, existingSelector)
 }
 
-func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (newValue *int32, oldValue *int32) {
+func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters, existingDeployment *appsv1.Deployment) (replicas *int32, replicasToSave *int32) {
 	logger := ulog.FromContext(ctx)
 
 	// replicasFromAnnotation returns the replica count saved in the maintenance annotation
@@ -421,7 +421,7 @@ func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters,
 		return nil
 	}
 
-	getBackgroundReplicasToStore := func() *int32 {
+	backgroundReplicasToSave := func() *int32 {
 		if kb.Spec.BackgroundTasks.Count != nil {
 			return kb.Spec.BackgroundTasks.Count
 		}
@@ -435,7 +435,7 @@ func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters,
 		return replicasFromAnnotation() // restore from annotation
 	}
 
-	getBackgroundReplicas := func() *int32 {
+	backgroundReplicas := func() *int32 {
 		if kb.Spec.BackgroundTasks.Count != nil {
 			return kb.Spec.BackgroundTasks.Count
 		}
@@ -459,24 +459,24 @@ func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters,
 
 	switch {
 	case pm.ScaleToZero:
-		newValue = new(int32(0)) // drain both pools before starting the new version
+		replicas = new(int32(0)) // drain both pools before starting the new version
 
-		// Return the old value if the deployment is background tasks. It will be stored in annotation.
+		// Return the replica count to save if the deployment is background tasks. It will be stored in annotation.
 		if pm.Role.IsBackgroundTasks() {
-			oldValue = getBackgroundReplicasToStore()
-			if oldValue == nil {
-				oldValue = new(int32(1))
+			replicasToSave = backgroundReplicasToSave()
+			if replicasToSave == nil {
+				replicasToSave = new(int32(1))
 			}
 		}
 
 	case kb.BackgroundTasksEnabled() && pm.Role.IsBackgroundTasks():
-		newValue = getBackgroundReplicas()
+		replicas = backgroundReplicas()
 
 	default:
-		newValue = new(kb.Spec.Count)
+		replicas = new(kb.Spec.Count)
 	}
 
-	return newValue, oldValue
+	return replicas, replicasToSave
 }
 
 // shouldScaleAllPoolsToZeroForUpgrade reports whether the controller must scale both pools to zero before starting

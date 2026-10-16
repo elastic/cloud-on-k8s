@@ -1422,9 +1422,9 @@ func TestDeploymentReplicas(t *testing.T) {
 		return map[string]string{replicasAnnotationName: v}
 	}
 
-	// getBackgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
+	// backgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
 	// deploymentReplicas does not mutate the deployment: the annotation is persisted only
-	// when oldValue is non-nil (deploymentParams) and dropped otherwise by the
+	// when replicasToSave is non-nil (deploymentParams) and dropped otherwise by the
 	// ReconcilePoolDeployment annotations merge strategy.
 	tests := []struct {
 		name        string
@@ -1494,7 +1494,7 @@ func TestDeploymentReplicas(t *testing.T) {
 		},
 		// ---- stop phase -----------------------------------------------------
 		{
-			name:        "stop, UI role: scales to zero, no oldValue",
+			name:        "stop, UI role: scales to zero, no replicasToSave",
 			scaleToZero: true,
 			kb:          kbSplit(ptr(2)),
 			role:        kblabel.UIRole,
@@ -1503,7 +1503,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     nil,
 		},
 		{
-			name:        "stop, BG, explicit count: Count saved as oldValue",
+			name:        "stop, BG, explicit count: Count saved as replicasToSave",
 			scaleToZero: true,
 			kb:          kbSplit(ptr(2)),
 			role:        kblabel.BackgroundTasksRole,
@@ -1521,7 +1521,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(2),
 		},
 		{
-			name:        "stop, BG, Count nil, Deployment value: HPA replicas saved as oldValue",
+			name:        "stop, BG, Count nil, Deployment value: HPA replicas saved as replicasToSave",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
@@ -1530,7 +1530,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(4),
 		},
 		{
-			name:        "stop, BG, Count nil, Deployment nil, annotation: annotation saved as oldValue and kept",
+			name:        "stop, BG, Count nil, Deployment nil, annotation: annotation saved as replicasToSave and kept",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
@@ -1539,7 +1539,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(4),
 		},
 		{
-			name:        "stop, BG, Count nil, Deployment nil, no annotation: oldValue fallbacks to 1",
+			name:        "stop, BG, Count nil, Deployment nil, no annotation: replicasToSave fallbacks to 1",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
@@ -1548,7 +1548,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(1),
 		},
 		{
-			name:        "stop, BG, Count nil, Deployment nil, malformed annotation: oldValue fallbacks to 1",
+			name:        "stop, BG, Count nil, Deployment nil, malformed annotation: replicasToSave fallbacks to 1",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
@@ -1557,7 +1557,7 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantOld:     ptr(1),
 		},
 		{
-			name:        "stop, BG, Count nil, Deployment zero, with annotation: oldValue from annotation",
+			name:        "stop, BG, Count nil, Deployment zero, with annotation: replicasToSave from annotation",
 			scaleToZero: true,
 			kb:          kbSplit(nil),
 			role:        kblabel.BackgroundTasksRole,
