@@ -63,6 +63,13 @@ func HandleDownscale(
 		}
 	}
 
+	// The leaving nodes that are not members of the cluster cannot be shut down. They are held, not removed, as they may
+	// still hold data, and do not fail the downscale: the next steps can recreate them, for them to join the cluster.
+	notMembers, err := nodesNotInCluster(downscaleCtx, desiredLeavingNodes)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// Feed the status with the desired leaving nodes, computed without applying any budget filter, to let the user know what
 	// nodes should be eventually removed, not only in this reconciliation attempt, but also in the next ones. They are
 	// only recorded once their shutdowns are retrieved: recording them resets their shutdown status, which the forced
@@ -70,7 +77,7 @@ func HandleDownscale(
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
-	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)
+	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining, notMembers)
 
 	// compute the list of StatefulSet downscales and deletions to perform
 	downscales, deletions, heldReasons := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
@@ -137,6 +144,19 @@ func formatHeldReasons(heldReasons map[string]string) string {
 // shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
 // also reports them in the downscale status through the observer, whether or not the nodes are removed. Shard migration
 // registers no shutdown, its statuses are retrieved by calculatePerformableDownscale.
+// nodesNotInCluster returns the given nodes that are not members of the cluster. Without node shutdown, membership does
+// not matter, as a node is removed once it holds no shard: none is returned.
+func nodesNotInCluster(downscaleCtx downscaleContext, nodes []string) (set.StringSet, error) {
+	if !supportsNodeShutdown(downscaleCtx.esClient.Version()) {
+		return nil, nil
+	}
+	members, err := membersAmong(downscaleCtx.esState, nodes)
+	if err != nil {
+		return nil, err
+	}
+	return set.Make(nodes...).Diff(members), nil
+}
+
 func shutdownStatuses(downscaleCtx downscaleContext, nodes []string) (map[string]shutdown.NodeShutdownStatus, error) {
 	withShutdown, err := downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, nodes)
 	if err != nil {

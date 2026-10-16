@@ -24,6 +24,7 @@ type downscaleContext struct {
 	// clients
 	k8sClient    k8s.Client
 	esClient     esclient.Client
+	esState      ESState
 	nodeShutdown shutdown.Interface
 	// driver states
 	resourcesState reconcile.ResourcesState
@@ -39,6 +40,7 @@ func newDownscaleContext(
 	ctx context.Context,
 	k8sClient k8s.Client,
 	esClient esclient.Client,
+	esState ESState,
 	resourcesState reconcile.ResourcesState,
 	reconcileState *reconcile.State,
 	expectations *expectations.Expectations,
@@ -49,6 +51,7 @@ func newDownscaleContext(
 	return downscaleContext{
 		k8sClient:      k8sClient,
 		esClient:       esClient,
+		esState:        esState,
 		nodeShutdown:   nodeShutdown,
 		resourcesState: resourcesState,
 		reconcileState: reconcileState,

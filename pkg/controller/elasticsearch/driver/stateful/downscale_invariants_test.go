@@ -212,7 +212,7 @@ func Test_newDownscaleState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newDownscaleState(tt.actualPods, tt.actualStatefulSets, es, tt.nodesWithShutdown)
+			got := newDownscaleState(tt.actualPods, tt.actualStatefulSets, es, tt.nodesWithShutdown, nil)
 			// the sets omitted from the expected state are empty
 			for _, s := range []*set.StringSet{&tt.want.unavailableDrainingPods, &tt.want.unavailableMasters, &tt.want.drainingMasters} {
 				if *s == nil {
@@ -282,6 +282,7 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		es_sset.StatefulSetList{ssetData4Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 3}}}},
 		set.Make(terminatingDrainingPod.Name),
+		nil,
 	)
 	masterPod := func(ordinal int32, ready bool) corev1.Pod {
 		return sset.TestPod{
@@ -298,6 +299,7 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		es_sset.StatefulSetList{ssetMaster3Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 1}}}},
 		set.Make(sset.PodName(ssetMaster3Replicas.Name, 2)),
+		nil,
 	)
 	// the last master is draining and the Pod of another master is missing: with 2 desired nodes and maxUnavailable 1, the
 	// budget does not allow the removal
@@ -306,6 +308,7 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		es_sset.StatefulSetList{ssetMaster3Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 2}}}},
 		set.Make(sset.PodName(ssetMaster3Replicas.Name, 2)),
+		nil,
 	)
 
 	// the next master to remove of the master StatefulSet b is draining, while a also needs to remove a master
@@ -323,6 +326,7 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 			es_sset.StatefulSetList{ssetMastersA, ssetMastersB},
 			esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "a", Count: 1}, {Name: "b", Count: 1}}}},
 			set.Make("b-1"),
+			nil,
 		)
 	}
 
@@ -518,6 +522,34 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 			requestedDeletes: 3,
 			wantCanDownscale: true,
 			wantReason:       RespectMaxUnavailableInvariant,
+		},
+		{
+			name:             "should not allow removing a data node that is not a member of the cluster",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: set.Make(sset.PodName(ssetData4Replicas.Name, 3))},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
+		},
+		{
+			name:             "should report the node that is not a member of the cluster when it holds the removal of the other data nodes",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(3)), notMembers: set.Make(sset.PodName(ssetData4Replicas.Name, 2))},
+			statefulSet:      ssetData4Replicas,
+			requestedDeletes: 3,
+			wantCanDownscale: true,
+			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 2),
+		},
+		{
+			name:             "should not hold the removal of the data nodes with a higher ordinal than a node that is not a member of the cluster",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: set.Make(sset.PodName(ssetData4Replicas.Name, 2))},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: true,
+		},
+		{
+			name:             "should not allow removing a master that is not a member of the cluster",
+			state:            &downscaleState{runningMasters: 2, removalsAllowed: new(int32(1)), notMembers: set.Make(sset.PodName(ssetMaster3Replicas.Name, 2))},
+			statefulSet:      ssetMaster3Replicas,
+			wantCanDownscale: false,
+			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetMaster3Replicas.Name, 2),
 		},
 		{
 			name:             "should not report a reason when all the data nodes can be removed",

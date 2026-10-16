@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // ESState gives information about Elasticsearch current status.
@@ -120,6 +121,21 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 		return false, err
 	}
 	return s.enabled, nil
+}
+
+// membersAmong returns the given nodes that are members of the cluster.
+func membersAmong(esState ESState, nodes []string) (set.StringSet, error) {
+	members := set.Make()
+	for _, node := range nodes {
+		member, err := esState.NodesInCluster([]string{node})
+		if err != nil {
+			return nil, err
+		}
+		if member {
+			members.Add(node)
+		}
+	}
+	return members, nil
 }
 
 // -- Cluster Status

@@ -24,6 +24,7 @@ const (
 	OneMasterAtATimeInvariant        = "A master node is already in the process of being removed"
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
+	NodeNotInClusterInvariant        = "Not removing node that is not a member of the cluster"
 )
 
 // checkDownscaleInvariants returns the removals of nodes that the given state allows when downscaling the given
@@ -42,6 +43,13 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 		}
 	}
 	removals := state.getMaxNodesToRemove(statefulSet, requestedDeletes)
+
+	if removals.count < requestedDeletes {
+		// the removals stop at the next Pod: it may be a node that is not a member of the cluster
+		if next := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-removals.count-1); state.notMembers.Has(next) {
+			return removals, fmt.Sprintf("%s: %s", NodeNotInClusterInvariant, next)
+		}
+	}
 
 	switch {
 	case removals.count == 0:
@@ -98,15 +106,19 @@ type downscaleState struct {
 	// drainingMasters are the draining master Pods that are the next to be removed from their StatefulSet: their removal
 	// is in progress, even if they are ready or terminating, as their shutdown is kept.
 	drainingMasters set.StringSet
+	// notMembers are the Pods that are not members of the cluster, for example because they never joined it. They cannot
+	// be shut down and may still hold data: their removal is held until they join the cluster.
+	notMembers set.StringSet
 }
 
 // newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type
-// shutdown registered.
+// shutdown registered, and notMembers the ones that are not members of the cluster.
 func newDownscaleState(
 	actualPods []corev1.Pod,
 	actualStatefulSets es_sset.StatefulSetList,
 	es esv1.Elasticsearch,
 	nodesWithShutdown set.StringSet,
+	notMembers set.StringSet,
 ) *downscaleState {
 	// retrieve the masters that are not running: a ready but terminating master may be stopping
 	masters := label.FilterMasterNodePods(actualPods)
@@ -130,6 +142,7 @@ func newDownscaleState(
 		unavailableMasters:      unavailableMasters,
 		drainingRemovalsAllowed: calculateDrainingRemovalsAllowed(maxUnavailable),
 		drainingMasters:         drainingMasterNodes(actualStatefulSets, nodesWithShutdown),
+		notMembers:              notMembers,
 	}
 }
 
@@ -246,6 +259,10 @@ func (s *downscaleState) getMaxNodesToRemove(statefulSet appsv1.StatefulSet, noM
 		// consider the next Pod with the highest ordinal
 		next := removals
 		next.count++
+		if s.notMembers.Has(sset.PodName(statefulSet.Name, replicas-next.count)) {
+			// the node cannot be shut down, and the ones with a lower ordinal are removed after it
+			break
+		}
 		if s.isDrainingRemoval(statefulSet, sset.PodName(statefulSet.Name, replicas-next.count)) {
 			next.drainingRemovals++
 		} else {

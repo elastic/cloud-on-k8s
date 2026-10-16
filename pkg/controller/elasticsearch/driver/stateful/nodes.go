@@ -200,6 +200,7 @@ func (d *Driver) reconcileNodeSpecs(
 		ctx,
 		d.Client,
 		esClient,
+		esState,
 		resourcesState,
 		reconcileState,
 		d.Expectations,

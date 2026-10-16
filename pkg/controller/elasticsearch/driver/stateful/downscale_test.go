@@ -446,7 +446,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		nodeSets       []nodeSet
 		maxUnavailable *int32
 		notReadyPods   set.StringSet
-		shutdowns      map[string]esclient.NodeShutdown
+		// notJoinedPods are the Pods that are not members of the cluster
+		notJoinedPods set.StringSet
+		shutdowns     map[string]esclient.NodeShutdown
 		// reportedShutdowns are the shutdown statuses in the downscale status reported by a previous reconciliation
 		reportedShutdowns     map[string]string
 		getShutdownErr        error
@@ -458,6 +460,32 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		wantStalled           bool
 		wantReason            string
 	}{
+		{
+			// the next steps may recreate the Pod, for it to join the cluster and be removed
+			name: "a leaving node that is not a member of the cluster is held, the downscale does not fail",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-2"),
+			notJoinedPods: set.Make("data-2"),
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			name: "the leaving nodes removed before a node that is not a member of the cluster are removed",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
+			},
+			notReadyPods:  set.Make("data-2", "data-1"),
+			notJoinedPods: set.Make("data-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
+			},
+			wantReplicas: map[string]int32{"data": 2},
+			wantReason:   "Downscale in progress, delayed nodes: [data-1], data: " + NodeNotInClusterInvariant + ": data-1",
+		},
 		{
 			// the shutdowns are retrieved before the StatefulSets downscaled to 0 replicas are deleted
 			name: "an error while retrieving the shutdowns aborts the downscale",
@@ -856,6 +884,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{}}
 			for _, p := range pods {
 				objs = append(objs, p.BuildPtr())
+				if tt.notJoinedPods.Has(p.Name) {
+					continue
+				}
 				podToNodeID[p.Name] = "id-" + p.Name
 				nodes.Nodes["id-"+p.Name] = esclient.Node{Name: p.Name}
 			}
@@ -877,6 +908,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				reconcileState: reconcileState,
 				nodeShutdown:   nodeShutdown,
 				esClient:       esClient,
+				esState:        NewMemoizingESState(context.Background(), esClient),
 				es:             es,
 				parentCtx:      context.Background(),
 			}
