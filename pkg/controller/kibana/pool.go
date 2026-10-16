@@ -593,12 +593,15 @@ func buildStatus(state *State, kb *kbv1.Kibana, pools []poolStatusEntry) {
 	})
 }
 
-func calculateAggregateHealth(h1, h2 commonv1.DeploymentHealth) commonv1.DeploymentHealth {
-	if h1 == h2 {
-		return h1
+func calculateAggregateHealth(primary, background commonv1.DeploymentHealth) commonv1.DeploymentHealth {
+	switch primary {
+	case background:
+		return primary
+	case commonv1.RedHealth: // no UI pod serves requests
+		return commonv1.RedHealth
+	default:
+		return commonv1.YellowHealth
 	}
-
-	return commonv1.YellowHealth
 }
 
 // ReconcilePoolDeployment creates or updates the given deployment for the specified owner.

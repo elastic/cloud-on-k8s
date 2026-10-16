@@ -1980,24 +1980,26 @@ func TestCalculateAggregateHealth(t *testing.T) {
 		red    = commonv1.RedHealth
 	)
 	tests := []struct {
-		name      string
-		aggregate commonv1.DeploymentHealth
-		pool      commonv1.DeploymentHealth
-		want      commonv1.DeploymentHealth
+		name string
+		pr   commonv1.DeploymentHealth
+		bg   commonv1.DeploymentHealth
+		want commonv1.DeploymentHealth
 	}{
-		{name: "green + green = green", aggregate: green, pool: green, want: green},
-		{name: "red + red = red", aggregate: red, pool: red, want: red},
-		{name: "yellow + yellow = yellow", aggregate: yellow, pool: yellow, want: yellow},
-		{name: "green + red = yellow", aggregate: green, pool: red, want: yellow},
-		{name: "red + green = yellow", aggregate: red, pool: green, want: yellow},
-		{name: "green + yellow = yellow", aggregate: green, pool: yellow, want: yellow},
-		{name: "yellow + green = yellow", aggregate: yellow, pool: green, want: yellow},
-		{name: "red + yellow = yellow", aggregate: red, pool: yellow, want: yellow},
-		{name: "yellow + red = yellow", aggregate: yellow, pool: red, want: yellow},
+		{name: "green + green = green", pr: green, bg: green, want: green},
+		{name: "red + red = red", pr: red, bg: red, want: red},
+		{name: "yellow + yellow = yellow", pr: yellow, bg: yellow, want: yellow},
+		{name: "green + red = yellow", pr: green, bg: red, want: yellow},
+		// A red primary pool means no UI pod serves requests: the aggregate is red regardless
+		// of the background pool health.
+		{name: "red + green = red", pr: red, bg: green, want: red},
+		{name: "green + yellow = yellow", pr: green, bg: yellow, want: yellow},
+		{name: "yellow + green = yellow", pr: yellow, bg: green, want: yellow},
+		{name: "red + yellow = red", pr: red, bg: yellow, want: red},
+		{name: "yellow + red = yellow", pr: yellow, bg: red, want: yellow},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, calculateAggregateHealth(tt.aggregate, tt.pool))
+			assert.Equal(t, tt.want, calculateAggregateHealth(tt.pr, tt.bg))
 		})
 	}
 }
