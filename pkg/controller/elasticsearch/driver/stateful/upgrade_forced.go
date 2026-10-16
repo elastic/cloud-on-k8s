@@ -24,9 +24,9 @@ import (
 // MaybeForceUpgrade may attempt a forced upgrade of the Pods that need one, except the leaving Pods that are draining:
 // deleting them would disrupt the shutdown that is migrating their shards away. The other leaving Pods have no shutdown
 // to protect and may need a forced upgrade to recover, for example masters that cannot form a quorum without them, or a
-// Pod that must join the cluster to be removed. nodeShutdowns is nil if Elasticsearch is not reachable, see
-// excludeDrainingPods. All the actual Pods, leaving ones included, are still considered to decide whether a StatefulSet
-// can be force upgraded.
+// Pod that must join the cluster to be removed. nodeShutdowns is nil if Elasticsearch is not reachable or if it cannot
+// be created, see excludeDrainingPods. All the actual Pods, leaving ones included, are still considered to decide
+// whether a StatefulSet can be force upgraded.
 func (d *Driver) MaybeForceUpgrade(
 	ctx context.Context,
 	statefulSets sset.StatefulSetList,
@@ -51,8 +51,9 @@ func (d *Driver) MaybeForceUpgrade(
 
 // excludeDrainingPods returns the given Pods minus the leaving ones that are draining. A Pending Pod is not draining, as
 // no Elasticsearch node runs in it: deleting it does not disrupt its shutdown. The draining nodes are retrieved with
-// nodeShutdowns. If it is nil, Elasticsearch is not reachable, which does not mean that the shutdowns stopped: the nodes
-// with a shutdown in lastDownscale, the downscale status reported while Elasticsearch was reachable, are draining.
+// nodeShutdowns. If it is nil, Elasticsearch is not reachable or the nodes cannot be retrieved, which does not mean that
+// the shutdowns stopped: the nodes with a shutdown in lastDownscale, the downscale status reported while Elasticsearch
+// was reachable, are draining.
 func excludeDrainingPods(
 	ctx context.Context,
 	pods []corev1.Pod,

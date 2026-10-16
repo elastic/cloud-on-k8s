@@ -162,23 +162,10 @@ func (d *Driver) reconcileNodeSpecs(
 	}
 
 	esState := NewMemoizingESState(ctx, esClient)
-	// shutdown logic is dependent on Elasticsearch version. It requires Elasticsearch to be reachable: otherwise the
-	// forced upgrade relies on the shutdowns reported in the downscale status.
-	var nodeShutdowns shutdown.Interface
-	if esReachable {
-		if nodeShutdowns, err = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter); err != nil {
-			return results.WithError(err)
-		}
-	}
-
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it. Only the leaving Pods that are draining are
 	// protected, the others may need it to recover.
-	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving, nodeShutdowns)
-	if err != nil || attempted {
-		// If attempted, we're in a transient state where it's safer to requeue.
-		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
-		// Next reconciliation will check expectations again.
-		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+	nodeShutdowns, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, esReachable, esClient, esState, reconcileState, actualStatefulSets, desiredLeaving)
+	if stop {
 		return results.WithError(err)
 	}
 
@@ -262,6 +249,40 @@ func (d *Driver) reconcileNodeSpecs(
 	}
 
 	return results
+}
+
+// maybeForceUpgradeWithShutdowns creates the shutdown interface used by the next phases, and may attempt a forced
+// upgrade, see MaybeForceUpgrade. The shutdown interface is dependent on Elasticsearch version. It requires
+// Elasticsearch to be reachable: otherwise the forced upgrade relies on the shutdowns reported in the downscale status.
+// It returns true if the reconciliation must stop, with the error that stopped it if any.
+func (d *Driver) maybeForceUpgradeWithShutdowns(
+	ctx context.Context,
+	esReachable bool,
+	esClient esclient.Client,
+	esState ESState,
+	reconcileState *reconcile.State,
+	actualStatefulSets es_sset.StatefulSetList,
+	desiredLeaving set.StringSet,
+) (shutdown.Interface, bool, error) {
+	var nodeShutdowns shutdown.Interface
+	var nodeShutdownsErr error
+	if esReachable {
+		// the error is only returned after the forced upgrade, which must not wait for the nodes to be retrieved
+		nodeShutdowns, nodeShutdownsErr = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
+	}
+
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving, nodeShutdowns)
+	if err != nil || attempted {
+		// If attempted, we're in a transient state where it's safer to requeue.
+		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
+		// Next reconciliation will check expectations again.
+		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
+		return nil, true, err
+	}
+	if nodeShutdownsErr != nil {
+		return nil, true, nodeShutdownsErr
+	}
+	return nodeShutdowns, false, nil
 }
 
 func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, desiredLeaving set.StringSet) bool {

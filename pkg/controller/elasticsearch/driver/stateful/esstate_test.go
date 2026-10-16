@@ -38,6 +38,7 @@ type fakeESClient struct { //nolint:maligned
 	FlushCalled       bool
 
 	nodes             esclient.Nodes
+	GetNodesErr       error
 	GetNodesCallCount int
 
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
@@ -89,6 +90,9 @@ func (f *fakeESClient) Flush(_ context.Context) error {
 
 func (f *fakeESClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
 	f.GetNodesCallCount++
+	if f.GetNodesErr != nil {
+		return esclient.Nodes{}, f.GetNodesErr
+	}
 	return f.nodes, nil
 }
 
