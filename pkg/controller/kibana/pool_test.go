@@ -1952,7 +1952,7 @@ func TestCalculateAggregateHealth(t *testing.T) {
 	}
 }
 
-func TestShouldDeleteTheDeployment(t *testing.T) {
+func TestAllPodsHaveRoleLabel(t *testing.T) {
 	selector := map[string]string{kblabel.KibanaNameLabelName: "test"}
 	deployment := func(sel *metav1.LabelSelector) *appsv1.Deployment {
 		return &appsv1.Deployment{
@@ -2061,7 +2061,7 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.pods...)
-			got, blockingPod, err := shouldDeleteTheDeployment(context.Background(), c, tt.dep)
+			got, blockingPod, err := allPodsHaveRoleLabel(context.Background(), c, tt.dep)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, tt.wantPod, blockingPod)
@@ -2129,7 +2129,7 @@ func TestDeploymentParams_RevisionHistoryLimit(t *testing.T) {
 				poolParameters{Role: kblabel.SinglePoolRole, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.KBNamer.Suffix(kb.Name)},
 				new(kb.Spec.Count), nil, nil,
 				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
-				selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels(), overwriteRevisionHistoryLimit: tt.overwrite},
+				selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels(), revisionHistoryLimitOverride: tt.overwrite},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got.RevisionHistoryLimit)

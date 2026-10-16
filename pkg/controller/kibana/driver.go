@@ -436,8 +436,8 @@ func (d *driver) deploymentParams(
 		}})
 	}
 
-	if selectorOutcome.overwriteRevisionHistoryLimit == nil {
-		selectorOutcome.overwriteRevisionHistoryLimit = kb.Spec.RevisionHistoryLimit
+	if selectorOutcome.revisionHistoryLimitOverride == nil {
+		selectorOutcome.revisionHistoryLimitOverride = kb.Spec.RevisionHistoryLimit
 	}
 	return deployment.Params{
 		Name:                 pp.DeploymentName,
@@ -446,7 +446,7 @@ func (d *driver) deploymentParams(
 		Selector:             selectorOutcome.expectedSelector,
 		Metadata:             poolMeta,
 		PodTemplateSpec:      kibanaPodSpec,
-		RevisionHistoryLimit: selectorOutcome.overwriteRevisionHistoryLimit,
+		RevisionHistoryLimit: selectorOutcome.revisionHistoryLimitOverride,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }

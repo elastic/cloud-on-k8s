@@ -192,9 +192,9 @@ type selectorChangeOutcome struct {
 
 	// expectedSelector is the selector to reconcile the deployment with.
 	expectedSelector map[string]string
-	// overwriteRevisionHistoryLimit is used instead of the revisionHistoryLimit of the Kibana spec, when not nil.
-	overwriteRevisionHistoryLimit *int32
-	omitRoleSplit                 bool
+	// revisionHistoryLimitOverride is used instead of the revisionHistoryLimit of the Kibana spec, when not nil.
+	revisionHistoryLimitOverride *int32
+	omitRoleSplit                bool
 }
 
 // handleSelectorChange handles the difference between the existing and the expected selector of a pool Deployment.
@@ -240,14 +240,9 @@ func (d *driver) handleSelectorChange(
 	// and we need to reconcile again to create the new one.
 	outcome := selectorChangeOutcome{result: requeue, expectedSelector: existingSelector, omitRoleSplit: true}
 
-	shouldDelete, blockingPod, err := shouldDeleteTheDeployment(ctx, d.client, existingDeployment)
+	allLabeled, blockingPod, err := allPodsHaveRoleLabel(ctx, d.client, existingDeployment)
 	if err != nil {
 		return selectorChangeOutcome{}, err
-	}
-
-	if !shouldDelete {
-		logger.Info("Waiting for all pods to carry the role label before recreating the Deployment", "deployment", existingDeployment.Name, "pod", blockingPod)
-		return outcome, nil
 	}
 
 	// The old ReplicaSets that do not carry the role label cannot be adopted by the recreated Deployment
@@ -255,15 +250,20 @@ func (d *driver) handleSelectorChange(
 	// all the inactive ones. There is no direct signal for the cleanup: the controller prunes while syncing
 	// a complete deployment, before it reports the new generation as observed, so a complete deployment
 	// that has observed the limit is taken as cleaned up.
-	if hasZeroRevisionHistoryLimit(existingDeployment) && isDeploymentComplete(existingDeployment) {
+	if allLabeled && hasZeroRevisionHistoryLimit(existingDeployment) && isDeploymentComplete(existingDeployment) {
 		result, err := d.deletePoolDeployment(ctx, kb, expectedSelector, existingDeployment)
 		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: result}, err
+	}
+
+	if !allLabeled {
+		logger.Info("Waiting for all pods to carry the role label before recreating the Deployment", "deployment", existingDeployment.Name, "pod", blockingPod)
+		return outcome, nil
 	}
 
 	// The cleanup is not done (or not set yet): reconcile the deployment with revisionHistoryLimit 0 and
 	// wait. The recreated deployment gets the limit back from the Kibana spec.
 	logger.V(1).Info("Waiting for the old ReplicaSets to be cleaned up (revisionHistoryLimit 0) before recreating the deployment", "deployment", existingDeployment.Name)
-	outcome.overwriteRevisionHistoryLimit = new(int32(0))
+	outcome.revisionHistoryLimitOverride = new(int32(0))
 
 	return outcome, nil
 }
@@ -356,13 +356,13 @@ func isDeploymentComplete(dep *appsv1.Deployment) bool {
 		dep.Status.UpdatedReplicas == dep.Status.AvailableReplicas
 }
 
-// shouldDeleteTheDeployment returns true if every pod selected by the given Deployment already carries the
+// allPodsHaveRoleLabel returns true if every pod selected by the given Deployment already carries the
 // Kibana role label. It returns false otherwise, along with the name of the first pod missing the label.
 // Pods in the Failed or Succeeded phase are ignored: they are not restarted in place (the Deployment
 // controller replaces them) and may linger until pod garbage collection (e.g. after an eviction), so a
 // terminated pod from before the upgrade must not block the migration. The recreated Deployment does not
 // select them, so they are left alone.
-func shouldDeleteTheDeployment(ctx context.Context, c k8s.Client, dep *appsv1.Deployment) (bool, string, error) {
+func allPodsHaveRoleLabel(ctx context.Context, c k8s.Client, dep *appsv1.Deployment) (bool, string, error) {
 	if dep.Spec.Selector == nil {
 		return false, "", nil
 	}
