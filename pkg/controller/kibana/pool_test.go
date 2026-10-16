@@ -658,6 +658,20 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
 	})
 
+	t.Run("failed pod without the role label does not block the migration", func(t *testing.T) {
+		kb := kbWithBG(nil, nil)
+		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
+		failedPod := unlabeledPod()
+		failedPod.Status.Phase = corev1.PodFailed
+		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 5), labeledPod(), failedPod)
+		require.NoError(t, err)
+		assert.Equal(t, requeue, res)
+		assert.NotNil(t, reconciledDp)
+		assert.True(t, got.DeletionTimestamp.IsZero())
+		require.NotNil(t, got.Spec.RevisionHistoryLimit)
+		assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the migration must proceed despite the failed pod")
+	})
+
 	t.Run("deployment already being deleted: requeue without reconciling it", func(t *testing.T) {
 		kb := kbWithBG(nil, nil)
 		dp := withHistoryLimit(legacyDp(), 7)
@@ -1933,6 +1947,11 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 	pod := func(name, namespace string, labels map[string]string) *corev1.Pod {
 		return &corev1.Pod{Name: name, Namespace: namespace, Labels: labels}
 	}
+	podInPhase := func(name, namespace string, labels map[string]string, phase corev1.PodPhase) *corev1.Pod {
+		p := pod(name, namespace, labels)
+		p.Status.Phase = phase
+		return p
+	}
 	withRole := func(role string) map[string]string {
 		l := maps.Clone(selector)
 		l[kblabel.RoleLabelName] = role
@@ -1940,10 +1959,11 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		dep  *appsv1.Deployment
-		pods []client.Object
-		want bool
+		name    string
+		dep     *appsv1.Deployment
+		pods    []client.Object
+		want    bool
+		wantPod string
 	}{
 		{
 			name: "nil selector",
@@ -1972,7 +1992,36 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 				pod("p1", "default", withRole("primary")),
 				pod("p2", "default", selector),
 			},
-			want: false,
+			want:    false,
+			wantPod: "p2",
+		},
+		{
+			name: "failed pod missing the role label is ignored",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				podInPhase("p2", "default", selector, corev1.PodFailed),
+			},
+			want: true,
+		},
+		{
+			name: "succeeded pod missing the role label is ignored",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				podInPhase("p2", "default", selector, corev1.PodSucceeded),
+			},
+			want: true,
+		},
+		{
+			name: "running pod missing the role label is not ignored",
+			dep:  deployment(&metav1.LabelSelector{MatchLabels: selector}),
+			pods: []client.Object{
+				pod("p1", "default", withRole("primary")),
+				podInPhase("p2", "default", selector, corev1.PodRunning),
+			},
+			want:    false,
+			wantPod: "p2",
 		},
 		{
 			name: "pods not matching the selector are ignored",
@@ -1996,9 +2045,10 @@ func TestShouldDeleteTheDeployment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.pods...)
-			got, err := shouldDeleteTheDeployment(context.Background(), c, tt.dep)
+			got, blockingPod, err := shouldDeleteTheDeployment(context.Background(), c, tt.dep)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantPod, blockingPod)
 		})
 	}
 }
