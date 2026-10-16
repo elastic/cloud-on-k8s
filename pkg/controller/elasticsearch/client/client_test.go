@@ -316,6 +316,7 @@ func TestClientGetNodes(t *testing.T) {
 	require.Equal(t, 3, len(resp.Nodes))
 	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
 	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
+	require.Equal(t, "us-east-1b", resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Attributes["availability_zone"])
 }
 
 func TestClientGetNodesStats(t *testing.T) {

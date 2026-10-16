@@ -219,6 +219,33 @@ ssl:
 `,
 			wantErr: false,
 		},
+		{
+			name: "PKI authentication: client cert only, no username or password",
+			args: args{
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       commonv1.NoAuthRequiredValue,
+					CACertProvided:       true,
+					CASecretName:         "sample-maps-es-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+        verificationMode: certificate
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

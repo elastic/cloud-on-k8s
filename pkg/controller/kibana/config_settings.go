@@ -157,11 +157,14 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 			return CanonicalConfig{}, err
 		}
 		var esCreds map[string]any
-		if credentials.HasServiceAccountToken() {
+		switch {
+		case esAssocConf.NoAuthRequired():
+			// PKI realm auth is in effect: the client certificate handles authentication, no credential config needed.
+		case credentials.HasServiceAccountToken():
 			esCreds = map[string]any{
 				ElasticsearchServiceAccountToken: credentials.ServiceAccountToken,
 			}
-		} else {
+		default:
 			esCreds = map[string]any{
 				ElasticsearchUsername: credentials.Username,
 				ElasticsearchPassword: credentials.Password,

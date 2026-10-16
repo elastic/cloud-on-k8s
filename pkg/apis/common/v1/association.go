@@ -172,6 +172,8 @@ type AssociationRef interface {
 	NameOrSecretName() string
 	// GetClientCertificateSecretName returns the name of the user-provided client certificate secret, or empty if none.
 	GetClientCertificateSecretName() string
+	// GetAuthenticationMode returns the authentication mode for this association.
+	GetAuthenticationMode() AuthenticationMode
 }
 
 // Association interface helps to manage the Spec fields involved in an association.
@@ -314,6 +316,9 @@ func (ac *AssociationConf) AuthIsConfigured() bool {
 }
 
 func (ac *AssociationConf) NoAuthRequired() bool {
+	if ac == nil {
+		return false
+	}
 	return ac.AuthSecretName == NoAuthRequiredValue
 }
 

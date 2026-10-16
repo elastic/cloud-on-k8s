@@ -121,3 +121,23 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), emsWrapped).RunSequential(t)
 }
+
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for Elastic Maps Server:
+// Maps authenticates to Elasticsearch with its client certificate only, and switching it back to credentials
+// cleans up the eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-ems-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	emsBuilder := maps.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+	emsBuilder.EMS.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+
+	emsMutated := emsBuilder.DeepCopy().WithMutatedFrom(&emsBuilder)
+	emsMutated.EMS.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, emsBuilder, emsMutated)
+}

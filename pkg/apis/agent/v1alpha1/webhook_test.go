@@ -206,6 +206,28 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "create-refs-to-same-es-with-different-authentication-modes",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				a := mkAgent(uid)
+				a.Namespace = "ns"
+				a.Spec.Version = "9.6.0"
+				a.Spec.ElasticsearchRefs = []agentv1alpha1.Output{
+					{Name: "es", OutputName: "default"},
+					{
+						Name:               "es",
+						AuthenticationMode: commonv1.AuthenticationModePKI,
+						OutputName:         "pki",
+					},
+				}
+				return test.MustMarshalJSON(t, a)
+			},
+			Check: test.ValidationWebhookFailed(
+				`all references to Elasticsearch ns/es must use the same authentication mode, found Credentials and PKI`,
+			),
+		},
+		{
 			Name:      "pause-orchestration false",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

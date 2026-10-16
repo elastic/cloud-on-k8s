@@ -34,11 +34,23 @@ type webhookValidator struct {
 }
 
 func (v *webhookValidator) ValidateCreate(_ context.Context, p *policyv1alpha1.StackConfigPolicy) (admission.Warnings, error) {
-	return Validate(p, v.operatorNamespace)
+	return v.validate(p, nil)
 }
 
-func (v *webhookValidator) ValidateUpdate(_ context.Context, _, newObj *policyv1alpha1.StackConfigPolicy) (admission.Warnings, error) {
-	return Validate(newObj, v.operatorNamespace)
+func (v *webhookValidator) ValidateUpdate(_ context.Context, oldObj, newObj *policyv1alpha1.StackConfigPolicy) (admission.Warnings, error) {
+	return v.validate(newObj, oldObj)
+}
+
+// validate runs Validate plus the admission-only checks, which need the old policy on update.
+func (v *webhookValidator) validate(p, old *policyv1alpha1.StackConfigPolicy) (admission.Warnings, error) {
+	warnings, err := Validate(p, v.operatorNamespace)
+	if err != nil {
+		return warnings, err
+	}
+	if err := policyv1alpha1.ValidateReservedPKIRealm(p, old); err != nil {
+		return warnings, err
+	}
+	return warnings, policyv1alpha1.ValidateReservedRoleMappingNames(p, old)
 }
 
 func (v *webhookValidator) ValidateDelete(_ context.Context, _ *policyv1alpha1.StackConfigPolicy) (admission.Warnings, error) {

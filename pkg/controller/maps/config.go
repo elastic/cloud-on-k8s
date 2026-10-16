@@ -123,11 +123,14 @@ func associationConfig(ctx context.Context, c k8s.Client, ems emsv1alpha1.Elasti
 	if err != nil {
 		return nil, err
 	}
-	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
-		"elasticsearch.host":     assocConf.URL,
-		"elasticsearch.username": credentials.Username,
-		"elasticsearch.password": credentials.Password,
-	})); err != nil {
+	esCfg := map[string]string{"elasticsearch.host": assocConf.URL}
+	// PKI authentication: the client certificate configured below authenticates Elastic Maps Server, so no
+	// credentials are set.
+	if !assocConf.NoAuthRequired() {
+		esCfg["elasticsearch.username"] = credentials.Username
+		esCfg["elasticsearch.password"] = credentials.Password
+	}
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(esCfg)); err != nil {
 		return nil, err
 	}
 

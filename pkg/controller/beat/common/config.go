@@ -53,7 +53,7 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 			return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding apikey from secret %s: %w", esAssocConf.AuthSecretName, err)
 		}
 		output["api_key"] = string(decodedAPIKey)
-	} else {
+	} else if !esAssocConf.NoAuthRequired() {
 		output["username"] = credentials.Username
 		output["password"] = credentials.Password
 	}

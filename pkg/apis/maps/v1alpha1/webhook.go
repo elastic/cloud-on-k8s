@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -27,6 +29,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		checkPKIAuthenticationSupported,
 		commonv1.PauseOrchestrationAnnotationCheck[*ElasticMapsServer](),
 	}
 )
@@ -93,4 +96,22 @@ func checkIfVersionDeprecated(ems *ElasticMapsServer) (string, field.ErrorList) 
 
 func checkAssociation(ems *ElasticMapsServer) field.ErrorList {
 	return commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), ems.Spec.ElasticsearchRef)
+}
+
+func checkPKIAuthenticationSupported(ems *ElasticMapsServer) field.ErrorList {
+	if ems.Spec.ElasticsearchRef.AuthenticationMode != commonv1.AuthenticationModePKI {
+		return nil
+	}
+	v, err := version.Parse(ems.Spec.Version)
+	if err != nil {
+		return nil // version parse errors are reported by checkSupportedVersion
+	}
+	if v.LT(commonv1.PKIAuthMinVersion) {
+		return field.ErrorList{field.Invalid(
+			field.NewPath("spec").Child("elasticsearchRef", "authenticationMode"),
+			commonv1.AuthenticationModePKI,
+			fmt.Sprintf("PKI authentication mode requires Elastic Maps Server %s or higher", version.WithoutPre(commonv1.PKIAuthMinVersion)),
+		)}
+	}
+	return nil
 }

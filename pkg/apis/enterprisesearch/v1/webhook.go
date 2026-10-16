@@ -27,6 +27,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAssociation,
+		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*EnterpriseSearch](),
 	}
 
@@ -115,4 +116,12 @@ func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {
 
 func checkAssociation(ent *EnterpriseSearch) field.ErrorList {
 	return commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRef"), ent.Spec.ElasticsearchRef)
+}
+
+func checkNoPKIAuthentication(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.CheckNoPKIAuthenticationMode(
+		field.NewPath("spec").Child("elasticsearchRef"),
+		ent.Spec.ElasticsearchRef,
+		"Enterprise Search",
+	)
 }

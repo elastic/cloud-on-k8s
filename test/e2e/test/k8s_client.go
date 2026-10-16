@@ -578,11 +578,11 @@ func LogstashPodListOptions(logstashNamespace, logstashName string) []k8sclient.
 	return []k8sclient.ListOption{ns, matchLabels}
 }
 
-func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.ListOption {
+func BeatPodListOptions(beatNamespace, beatName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(beatNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName:   beatcommon.TypeLabelValue,
-		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
+		beatcommon.NameLabelName: beatName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

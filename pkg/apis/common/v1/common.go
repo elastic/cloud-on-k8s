@@ -7,7 +7,9 @@ package v1
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -19,9 +21,52 @@ import (
 
 type DeploymentHealth string
 
+// AuthenticationMode controls how a component authenticates to Elasticsearch.
+type AuthenticationMode string
+
 const (
 	GreenHealth DeploymentHealth = "green"
 	RedHealth   DeploymentHealth = "red"
+
+	// AuthenticationModeCredentials uses credential-based authentication (service account token or username/password).
+	AuthenticationModeCredentials AuthenticationMode = "Credentials"
+	// AuthenticationModePKI uses the PKI realm: the component authenticates via its TLS client certificate.
+	AuthenticationModePKI AuthenticationMode = "PKI"
+
+	// ECKPKIRealmName is the name of the ECK-managed PKI realm.
+	ECKPKIRealmName = "eck_managed_pki"
+
+	// ECKPKIRoleMappingPrefix is reserved for PKI role mappings managed by ECK.
+	ECKPKIRoleMappingPrefix = ECKPKIRealmName + "_"
+
+	// ECKPKIRoleMappingManagedByKey, ECKPKIRoleMappingManagedByECK and ECKPKIRoleMappingResourceUIDKey are the metadata
+	// keys and value ECK sets on the PKI role mappings it generates. See IsECKManagedPKIRoleMapping.
+	ECKPKIRoleMappingManagedByKey   = "managed_by"
+	ECKPKIRoleMappingManagedByECK   = "eck"
+	ECKPKIRoleMappingResourceUIDKey = "eck_resource_uid"
+
+	// realmsConfigKey is the dotted-path key under which Elasticsearch realms are configured.
+	realmsConfigKey = "xpack.security.authc.realms"
+	// pkiRealmType is the type of the ECK-managed PKI realm.
+	pkiRealmType = "pki"
+
+	// ECKPKIRealmConfigKey is the dotted-path key for the ECK-managed PKI realm in elasticsearch.yml.
+	// User and SCP config must not set any keys under this path; ECK owns the entire subtree.
+	ECKPKIRealmConfigKey = realmsConfigKey + "." + pkiRealmType + "." + ECKPKIRealmName
+
+	// ECKPKIRealmOrder places the ECK-managed PKI realm last. Elasticsearch uses the token of the first realm, in
+	// order, that extracts one, and under mTLS the PKI realm extracts one from every request. Ordered earlier, it would
+	// shadow token-based realms such as JWT or Kerberos. User and SCP config must not use this order, because
+	// Elasticsearch rejects duplicate realm orders.
+	ECKPKIRealmOrder = math.MaxInt32
+
+	// ECKPKIRealmNodeAttribute is set to "true" on the nodes configured with the ECK-managed PKI realm. ECK reads it
+	// from the nodes info API to know which nodes loaded the realm: the realm settings are reported there by default, but
+	// users can hide them with xpack.security.hide_settings, which does not apply to node attributes. User and SCP config
+	// must not set it, or nodes without the realm would report it.
+	ECKPKIRealmNodeAttribute = "eck_managed_pki_realm"
+	// ECKPKIRealmNodeAttributeConfigKey is the dotted-path key of ECKPKIRealmNodeAttribute in elasticsearch.yml.
+	ECKPKIRealmNodeAttributeConfigKey = "node.attr." + ECKPKIRealmNodeAttribute
 
 	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
 	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
@@ -29,6 +74,25 @@ const (
 	// it without introducing an import cycle.
 	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
 )
+
+// IsECKManagedPKIRoleMapping reports whether a role mapping entry is owned by ECK, which then replaces or removes it to
+// match the PKI role mappings it generates. The eck_managed_pki_ prefix alone is not enough, since StackConfigPolicies
+// may use it too, so the metadata set by ECK is also checked.
+func IsECKManagedPKIRoleMapping(name string, mapping any) bool {
+	if !strings.HasPrefix(name, ECKPKIRoleMappingPrefix) {
+		return false
+	}
+	entry, ok := mapping.(map[string]any)
+	if !ok {
+		return false
+	}
+	meta, ok := entry["metadata"].(map[string]any)
+	if !ok {
+		return false
+	}
+	resourceUID, _ := meta[ECKPKIRoleMappingResourceUIDKey].(string)
+	return meta[ECKPKIRoleMappingManagedByKey] == ECKPKIRoleMappingManagedByECK && resourceUID != ""
+}
 
 // DeploymentStatus represents status information about a deployment.
 type DeploymentStatus struct {
@@ -89,6 +153,11 @@ type LocalObjectSelector struct {
 // GetClientCertificateSecretName always returns empty string as LocalObjectSelector does not support client certificates.
 func (o LocalObjectSelector) GetClientCertificateSecretName() string {
 	return ""
+}
+
+// GetAuthenticationMode always returns Credentials as LocalObjectSelector does not support PKI authentication.
+func (o LocalObjectSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
 }
 
 // WithDefaultNamespace adds a default namespace to a given LocalObjectSelector if none is set.
@@ -202,6 +271,11 @@ func (o ObjectSelector) GetClientCertificateSecretName() string {
 	return ""
 }
 
+// GetAuthenticationMode always returns Credentials as ObjectSelector does not support PKI authentication.
+func (o ObjectSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
+}
+
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
 func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSelector {
 	if len(o.Namespace) > 0 {
@@ -309,13 +383,32 @@ type ElasticsearchSelector struct {
 	// (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
 	// This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
 	// If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-	// client certificate.
+	// client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+	// public key of this certificate.
 	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
+
+	// AuthenticationMode controls how this component authenticates to Elasticsearch.
+	// Credentials uses a service account token or a username and password. This is used when the field is omitted.
+	// PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+	// spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+	// PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+	// Elastic Maps Server 9.6.0+.
+	// +kubebuilder:validation:Enum=Credentials;PKI
+	AuthenticationMode AuthenticationMode `json:"authenticationMode,omitempty"`
 }
 
 // GetClientCertificateSecretName returns the name of the client certificate secret.
 func (e ElasticsearchSelector) GetClientCertificateSecretName() string {
 	return e.ClientCertificateSecretName
+}
+
+// GetAuthenticationMode returns the authentication mode for this association.
+// Returns AuthenticationModeCredentials when the field is unset.
+func (e ElasticsearchSelector) GetAuthenticationMode() AuthenticationMode {
+	if e.AuthenticationMode == "" {
+		return AuthenticationModeCredentials
+	}
+	return e.AuthenticationMode
 }
 
 // IsValid validates the ElasticsearchSelector, including the embedded ObjectSelector.
@@ -325,6 +418,9 @@ func (e ElasticsearchSelector) IsValid() error {
 	}
 	if e.Name == "" && e.ClientCertificateSecretName != "" {
 		return errors.New("clientCertificateSecretName can only be used in combination with name")
+	}
+	if e.Name == "" && e.AuthenticationMode == AuthenticationModePKI {
+		return errors.New("authenticationMode PKI can only be used in combination with name")
 	}
 	return nil
 }
@@ -337,6 +433,7 @@ func (e ElasticsearchSelector) WithDefaultNamespace(defaultNamespace string) Ela
 	return ElasticsearchSelector{
 		ObjectSelector:              e.ObjectSelector.WithDefaultNamespace(defaultNamespace),
 		ClientCertificateSecretName: e.ClientCertificateSecretName,
+		AuthenticationMode:          e.AuthenticationMode,
 	}
 }
 
@@ -360,6 +457,11 @@ type FleetServerSelector struct {
 // GetClientCertificateSecretName returns the name of the client certificate secret.
 func (f FleetServerSelector) GetClientCertificateSecretName() string {
 	return f.ClientCertificateSecretName
+}
+
+// GetAuthenticationMode always returns Credentials as FleetServerSelector does not support PKI authentication.
+func (f FleetServerSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
 }
 
 // IsValid validates the FleetServerSelector, including the embedded ObjectSelector.

@@ -402,5 +402,5 @@ func (b Builder) GetLogsCluster() *types.NamespacedName {
 }
 
 func (b Builder) ListOptions() []k8sclient.ListOption {
-	return test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)
+	return test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)
 }

@@ -107,6 +107,11 @@ func ValidateElasticsearch(ctx context.Context, c k8s.Client, es esv1.Elasticsea
 	}
 	settingWarns, settingErrs := settingsWarningsAndErrors(es)
 	admWarnings = append(admWarnings, settingWarns...)
+	policyErrs, err := validateReservedPKIRealmInPolicyConfig(ctx, c, es)
+	if err != nil {
+		return nil, err
+	}
+	settingErrs = append(settingErrs, policyErrs...)
 	if len(settingErrs) > 0 {
 		return admWarnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: esv1.Kind},

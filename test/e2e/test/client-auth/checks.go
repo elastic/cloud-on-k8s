@@ -8,16 +8,19 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
 // CheckClientCertificatesCountStep returns a Step that verifies the expected number of client
@@ -127,4 +130,26 @@ func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, cer
 	})
 
 	return before, after
+}
+
+// WithNewDataCheck wraps mutated so that, once all the pods recorded by restartChecker are replaced, hasDataSince
+// must find documents indexed in es after that point. The pods may belong to another resource than mutated. Wrap
+// the result again to add other mutation steps.
+func WithNewDataCheck(
+	ctx context.Context,
+	es types.NamespacedName,
+	mutated test.Builder,
+	restartChecker *test.PodRestartChecker,
+	hasDataSince func(since time.Time) func(esclient.Client) error,
+) test.WrappedBuilder {
+	return test.WrappedBuilder{
+		BuildingThis: mutated,
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.RecordUIDs(k)
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.WaitForRestart(k).
+				WithSteps(elasticsearch.CheckNewDataSteps(ctx, k, es, hasDataSince))
+		},
+	}
 }

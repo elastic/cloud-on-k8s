@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"maps"
 	"time"
@@ -55,12 +56,12 @@ func clientCertSecretName(association commonv1.Association, associationName stri
 // The ECK-managed secret is always created in the associated resource's namespace with soft-owner labels
 // pointing to the referenced server resource, enabling trust bundle discovery regardless of the cert source.
 //
-// Returns the name of the client certificate secret and results containing requeue and/or error info.
+// Returns the client certificate secret and results containing requeue and/or error info.
 func (r *Reconciler) reconcileClientCertificate(
 	ctx context.Context,
 	association commonv1.Association,
 	assocMeta metadata.Metadata,
-) (string, *reconciler.Results) {
+) (*certificates.CertificatesSecret, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 
 	secretName := clientCertSecretName(association, r.AssociationName)
@@ -75,16 +76,18 @@ func (r *Reconciler) reconcileClientCertificate(
 	}
 
 	if userSecretName := association.AssociationRef().GetClientCertificateSecretName(); userSecretName != "" {
-		if err := ReconcileUserProvidedClientCert(ctx, r.Client, association, assocMeta, secretName, userSecretName, extraLabels); err != nil {
-			return "", results.WithError(err)
+		clientCertSecret, err := ReconcileUserProvidedClientCert(ctx, r.Client, association, assocMeta, secretName, userSecretName, extraLabels)
+		if err != nil {
+			return nil, results.WithError(err)
 		}
-		return secretName, results
+		return clientCertSecret, results
 	}
 
 	return ReconcileManagedClientCert(ctx, r.Client, association, assocMeta, secretName, extraLabels)
 }
 
 // ReconcileManagedClientCert creates or updates a self-signed client certificate.
+// Returns the client certificate secret and results containing requeue and/or error info.
 func ReconcileManagedClientCert(
 	ctx context.Context,
 	c k8s.Client,
@@ -92,7 +95,7 @@ func ReconcileManagedClientCert(
 	assocMeta metadata.Metadata,
 	secretName string,
 	extraLabels map[string]string,
-) (string, *reconciler.Results) {
+) (*certificates.CertificatesSecret, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 
 	certReconciler := certificates.Reconciler{
@@ -110,12 +113,12 @@ func ReconcileManagedClientCert(
 
 	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, extraLabels)
 	if err != nil {
-		return "", results.WithError(err)
+		return nil, results.WithError(err)
 	}
 
 	primaryCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
 	if err != nil {
-		return "", results.WithError(err)
+		return nil, results.WithError(err)
 	}
 
 	results.WithReconciliationState(
@@ -123,12 +126,13 @@ func ReconcileManagedClientCert(
 			RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certReconciler.CertRotation.RotateBefore)).
 			ReconciliationComplete(),
 	)
-	return clientCertSecret.Name, results
+	return clientCertSecret, results
 }
 
 // ReconcileUserProvidedClientCert copies a user-provided client certificate secret into the ECK-managed
 // secret with the collision-free name and soft-owner labels. This ensures the trust bundle discovery
 // and cleanup mechanisms work uniformly regardless of whether the cert was auto-generated or user-provided.
+// It returns the validated certificate Secret that was written.
 func ReconcileUserProvidedClientCert(
 	ctx context.Context,
 	c k8s.Client,
@@ -137,7 +141,7 @@ func ReconcileUserProvidedClientCert(
 	targetSecretName string,
 	userSecretName string,
 	extraLabels map[string]string,
-) error {
+) (*certificates.CertificatesSecret, error) {
 	associatedNS := association.GetNamespace()
 
 	// Fetch the user-provided secret (must be in the same namespace as the associated resource).
@@ -146,18 +150,18 @@ func ReconcileUserProvidedClientCert(
 		Name:      userSecretName,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get user-provided client certificate secret %s/%s: %w", associatedNS, userSecretName, err)
+		return nil, fmt.Errorf("failed to get user-provided client certificate secret %s/%s: %w", associatedNS, userSecretName, err)
 	}
 	if userSecret == nil {
-		return fmt.Errorf("user-provided client certificate secret %s/%s not found", associatedNS, userSecretName)
+		return nil, fmt.Errorf("user-provided client certificate secret %s/%s not found", associatedNS, userSecretName)
 	}
 
 	// Validate the user-provided secret contains the required keys.
 	if _, ok := userSecret.Data[certificates.CertFileName]; !ok {
-		return fmt.Errorf("user-provided client certificate secret %s/%s is missing required key %s", associatedNS, userSecretName, certificates.CertFileName)
+		return nil, fmt.Errorf("user-provided client certificate secret %s/%s is missing required key %s", associatedNS, userSecretName, certificates.CertFileName)
 	}
 	if _, ok := userSecret.Data[certificates.KeyFileName]; !ok {
-		return fmt.Errorf("user-provided client certificate secret %s/%s is missing required key %s", associatedNS, userSecretName, certificates.KeyFileName)
+		return nil, fmt.Errorf("user-provided client certificate secret %s/%s is missing required key %s", associatedNS, userSecretName, certificates.KeyFileName)
 	}
 
 	// Build expected labels.
@@ -179,8 +183,25 @@ func ReconcileUserProvidedClientCert(
 		Annotations: assocMeta.Annotations,
 	}
 
-	_, err = reconciler.ReconcileSecret(ctx, c, expected, association.Associated())
-	return err
+	// Validate the certificate before copying it, so that invalid material ends up in neither the managed Secret nor
+	// the client trust bundle.
+	clientCertSecret := &certificates.CertificatesSecret{Secret: expected}
+	leaf, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
+	if err != nil {
+		return nil, fmt.Errorf("invalid user-provided client certificate secret %s/%s: %w", associatedNS, userSecretName, err)
+	}
+	// Check that the key belongs to the leaf. In PKI mode, roles are granted to the leaf's public key, so without
+	// this check an association could use another one's certificate.
+	// Pass only the leaf: ParsePEMCerts skips PEM blocks with headers and tls.X509KeyPair does not, so with the
+	// whole chain they can disagree on which certificate is the leaf.
+	if _, err := tls.X509KeyPair(certificates.EncodePEMCert(leaf.Raw), clientCertSecret.KeyPem()); err != nil {
+		return nil, fmt.Errorf("invalid user-provided client certificate secret %s/%s: %w", associatedNS, userSecretName, err)
+	}
+
+	if _, err := reconciler.ReconcileSecret(ctx, c, expected, association.Associated()); err != nil {
+		return nil, err
+	}
+	return clientCertSecret, nil
 }
 
 // DeleteClientCertSecret deletes the client certificate secret for the given association if it exists.

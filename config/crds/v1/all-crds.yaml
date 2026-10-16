@@ -213,13 +213,26 @@ spec:
                   Due to existing limitations, only a single ES cluster is currently supported.
                 items:
                   properties:
+                    authenticationMode:
+                      description: |-
+                        AuthenticationMode controls how this component authenticates to Elasticsearch.
+                        Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                        PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                        spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                        PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                        Elastic Maps Server 9.6.0+.
+                      enum:
+                      - Credentials
+                      - PKI
+                      type: string
                     clientCertificateSecretName:
                       description: |-
                         ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                         (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                         This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                         If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                        client certificate.
+                        client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                        public key of this certificate.
                       type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
@@ -1322,13 +1335,26 @@ spec:
                 description: ElasticsearchRef is a reference to the output Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
                   clientCertificateSecretName:
                     description: |-
                       ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                       (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                       This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                       If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                      client certificate.
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -3172,13 +3198,26 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
                   clientCertificateSecretName:
                     description: |-
                       ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                       (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                       This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                       If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                      client certificate.
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -3616,13 +3655,26 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
                   clientCertificateSecretName:
                     description: |-
                       ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                       (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                       This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                       If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                      client certificate.
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -4660,6 +4712,16 @@ spec:
                           type: string
                       type: object
                     type: array
+                  pki:
+                    description: PKI configures the ECK-managed PKI realm.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enabled specifies whether to configure the ECK-managed PKI realm, which components with
+                          elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.
+                          Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication.
+                        type: boolean
+                    type: object
                   roles:
                     description: Roles to propagate to the Elasticsearch cluster.
                     items:
@@ -7941,13 +8003,26 @@ spec:
                 description: ElasticsearchRef is a reference to the Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
                   clientCertificateSecretName:
                     description: |-
                       ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                       (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                       This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                       If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                      client certificate.
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -9210,13 +9285,26 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
                   clientCertificateSecretName:
                     description: |-
                       ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                       (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                       This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                       If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                      client certificate.
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
                     type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
@@ -10659,13 +10747,26 @@ spec:
                   description: ElasticsearchCluster is a named reference to an Elasticsearch
                     cluster which can be used in a Logstash pipeline.
                   properties:
+                    authenticationMode:
+                      description: |-
+                        AuthenticationMode controls how this component authenticates to Elasticsearch.
+                        Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                        PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                        spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                        PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                        Elastic Maps Server 9.6.0+.
+                      enum:
+                      - Credentials
+                      - PKI
+                      type: string
                     clientCertificateSecretName:
                       description: |-
                         ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
                         (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
                         This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
                         If not specified and the referenced resource requires client authentication, ECK will auto-generate a
-                        client certificate.
+                        client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                        public key of this certificate.
                       type: string
                     clusterName:
                       description: |-

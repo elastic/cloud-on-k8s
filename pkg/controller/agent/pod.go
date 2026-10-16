@@ -741,6 +741,7 @@ func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent,
 	if esConnectionSettings.credentials.HasServiceAccountToken() {
 		fleetServerCfg[FleetServerServiceToken] = esConnectionSettings.credentials.ServiceAccountToken
 	} else {
+		// NoAuthRequired() (PKI) is unreachable here: Fleet mode rejects PKI at admission and at runtime.
 		fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.credentials.Username
 		fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.credentials.Password
 	}

@@ -104,3 +104,114 @@ func TestValidate_VariablesFrom(t *testing.T) {
 		})
 	}
 }
+
+func TestValidate_ReservedRoleMappingNames(t *testing.T) {
+	withRoleMappings := func(names ...string) *policyv1alpha1.StackConfigPolicy {
+		p := mkSCP("default")
+		data := map[string]any{}
+		for _, name := range names {
+			data[name] = map[string]any{"enabled": true}
+		}
+		p.Spec.Elasticsearch.SecurityRoleMappings = &commonv1.Config{Data: data}
+		return p
+	}
+	reserved := commonv1.ECKPKIRoleMappingPrefix + "corporate"
+	v := &webhookValidator{operatorNamespace: operatorNamespace}
+
+	tests := []struct {
+		name     string
+		validate func() error
+		wantErr  bool
+	}{
+		{
+			name: "admission create rejects a reserved name",
+			validate: func() error {
+				_, err := v.ValidateCreate(t.Context(), withRoleMappings(reserved))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "admission update accepts a reserved name already in the old policy",
+			validate: func() error {
+				_, err := v.ValidateUpdate(t.Context(), withRoleMappings(reserved), withRoleMappings(reserved, "custom_mapping"))
+				return err
+			},
+		},
+		{
+			name: "admission update rejects a newly added reserved name",
+			validate: func() error {
+				_, err := v.ValidateUpdate(t.Context(), withRoleMappings("custom_mapping"), withRoleMappings(reserved, "custom_mapping"))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "controller-side validation accepts a reserved name so existing policies keep being applied",
+			validate: func() error {
+				_, err := Validate(withRoleMappings(reserved), operatorNamespace)
+				return err
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.validate()
+			require.Equal(t, tc.wantErr, err != nil, "unexpected error state: %v", err)
+		})
+	}
+}
+
+func TestValidate_ReservedPKIRealm(t *testing.T) {
+	withRealmOrder := func(order int64) *policyv1alpha1.StackConfigPolicy {
+		p := mkSCP("default")
+		p.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
+			"xpack.security.authc.realms.jwt.my_jwt.order": order,
+		}}
+		return p
+	}
+	v := &webhookValidator{operatorNamespace: operatorNamespace}
+
+	tests := []struct {
+		name     string
+		validate func() error
+		wantErr  bool
+	}{
+		{
+			name: "admission create rejects the reserved realm order",
+			validate: func() error {
+				_, err := v.ValidateCreate(t.Context(), withRealmOrder(commonv1.ECKPKIRealmOrder))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "admission update rejects the reserved realm order",
+			validate: func() error {
+				_, err := v.ValidateUpdate(t.Context(), withRealmOrder(1), withRealmOrder(commonv1.ECKPKIRealmOrder))
+				return err
+			},
+			wantErr: true,
+		},
+		{
+			name: "admission create accepts another realm order",
+			validate: func() error {
+				_, err := v.ValidateCreate(t.Context(), withRealmOrder(1))
+				return err
+			},
+		},
+		{
+			name: "controller-side validation accepts the reserved realm order so policies keep being applied to clusters without PKI",
+			validate: func() error {
+				_, err := Validate(withRealmOrder(commonv1.ECKPKIRealmOrder), operatorNamespace)
+				return err
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.validate()
+			require.Equal(t, tc.wantErr, err != nil, "unexpected error state: %v", err)
+		})
+	}
+}
