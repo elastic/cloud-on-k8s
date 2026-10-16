@@ -58,7 +58,7 @@ func (d *Driver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, desiredLeaving)
+	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, desiredLeaving, esState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -258,21 +258,32 @@ func healthyPods(
 	return healthyPods, nil
 }
 
-// podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the ones the downscale wants to remove: Pods
-// of a StatefulSet that is not expected anymore, and Pods whose ordinal is at or above the expected number of replicas.
-// Deleting such a Pod for a rolling upgrade disrupts the remove-type shutdown that is migrating its shards away (its
-// record may even be replaced by a restart-type one): the removal has to be requested again once the Pod is back, and
-// shards with no other copy stay unavailable if it does not come back.
+// podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the leaving ones that are members of the
+// cluster. Restarting one that is draining disrupts the remove-type shutdown that is migrating its shards away (its
+// record may even be replaced by a restart-type one), and the others are left to the downscale. A leaving Pod that is not
+// a member has no shard to migrate and may need the upgrade to recover: a Pod that cannot be scheduled or crashes with
+// an outdated spec must be recreated with the repaired one to join the cluster, for the downscale to remove it.
 func podsToRollingUpgrade(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
 	desiredLeaving set.StringSet,
+	esState ESState,
 ) ([]corev1.Pod, error) {
 	toUpgrade, err := podsToUpgrade(client, actualStatefulSets)
 	if err != nil {
 		return nil, err
 	}
-	return excludeLeavingPods(toUpgrade, desiredLeaving), nil
+	var leaving []string
+	for _, pod := range toUpgrade {
+		if desiredLeaving.Has(pod.Name) {
+			leaving = append(leaving, pod.Name)
+		}
+	}
+	members, err := membersAmong(esState, leaving)
+	if err != nil {
+		return nil, err
+	}
+	return excludeLeavingPods(toUpgrade, members), nil
 }
 
 // excludeLeavingPods returns the given Pods minus the given leaving ones, for example the ones the downscale wants to

@@ -150,11 +150,28 @@ func Test_podsToUpgrade(t *testing.T) {
 	}
 }
 
+// clusterMembers is an ESState of a cluster that only has the given members.
+type clusterMembers struct {
+	ESState
+	members set.StringSet
+}
+
+func (c clusterMembers) NodesInCluster(nodeNames []string) (bool, error) {
+	for _, nodeName := range nodeNames {
+		if !c.members.Has(nodeName) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func Test_podsToRollingUpgrade(t *testing.T) {
 	type args struct {
 		pods                 []client.Object
 		statefulSets         es_sset.StatefulSetList
 		expectedStatefulSets es_sset.StatefulSetList
+		// members are the Pods that are members of the cluster
+		members set.StringSet
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2}
 	tests := []struct {
@@ -179,7 +196,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 			want: []string{"data-0", "data-1"},
 		},
 		{
-			name: "pods of a StatefulSet that is not expected anymore are not upgraded",
+			name: "pods of a StatefulSet that is not expected anymore are not upgraded if they are members of the cluster",
 			args: args{
 				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build(),
@@ -194,11 +211,50 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 					podWithRevision("data-new-0", "rev-a"),
 					podWithRevision("data-new-1", "rev-a"),
 				},
+				members: set.Make("data-0", "data-1"),
 			},
 			want: []string{"data-new-0", "data-new-1"},
 		},
 		{
-			name: "pods whose ordinal is at or above the expected number of replicas are not upgraded",
+			name: "pods of a StatefulSet that is not expected anymore are upgraded if they are not members of the cluster",
+			args: args{
+				statefulSets: es_sset.StatefulSetList{
+					sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build(),
+					sset.TestSset{Name: "data-new", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build(),
+				},
+				expectedStatefulSets: es_sset.StatefulSetList{
+					sset.TestSset{Name: "data-new", Namespace: TestEsNamespace, Replicas: 2}.Build(),
+				},
+				pods: []client.Object{
+					podWithRevision("data-0", "rev-a"),
+					podWithRevision("data-1", "rev-a"),
+					podWithRevision("data-new-0", "rev-a"),
+					podWithRevision("data-new-1", "rev-a"),
+				},
+				// the Pod of data-1 never joined the cluster
+				members: set.Make("data-0"),
+			},
+			want: []string{"data-1", "data-new-0", "data-new-1"},
+		},
+		{
+			name: "pods whose ordinal is at or above the expected number of replicas are not upgraded if they are members of the cluster",
+			args: args{
+				statefulSets: es_sset.StatefulSetList{
+					sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build(),
+				},
+				expectedStatefulSets: es_sset.StatefulSetList{
+					sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 1}.Build(),
+				},
+				pods: []client.Object{
+					podWithRevision("data-0", "rev-a"),
+					podWithRevision("data-1", "rev-a"),
+				},
+				members: set.Make("data-1"),
+			},
+			want: []string{"data-0"},
+		},
+		{
+			name: "pods whose ordinal is at or above the expected number of replicas are upgraded if they are not members of the cluster",
 			args: args{
 				statefulSets: es_sset.StatefulSetList{
 					sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build(),
@@ -211,13 +267,14 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 					podWithRevision("data-1", "rev-a"),
 				},
 			},
-			want: []string{"data-0"},
+			want: []string{"data-0", "data-1"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.pods...)
-			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, desiredLeavingNodeNames(context.Background(), tt.args.expectedStatefulSets, tt.args.statefulSets))
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), tt.args.expectedStatefulSets, tt.args.statefulSets)
+			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, desiredLeaving, clusterMembers{members: tt.args.members})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, names(got), tt.want, tt.name)
 		})
@@ -225,9 +282,9 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 }
 
 // Test_Driver_handleUpgrades_leavingPodsAreNotRestarted drives handleUpgrades with a nodeSet that has been removed from the
-// spec while a rolling upgrade was still pending on it: its Pod must be left to the downscale, while the outdated Pod of a
-// nodeSet that stays is still upgraded. The leaving Pod is the only candidate once filtered, so that the outcome does not
-// depend on the order in which candidates are considered.
+// spec while a rolling upgrade was still pending on it: its Pod must be left to the downscale if it is a member of the
+// cluster, while the outdated Pod of a nodeSet that stays is still upgraded. The leaving Pod is the only candidate once
+// filtered, so that the outcome does not depend on the order in which candidates are considered.
 func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 	esVersion := "8.1.0"
 	es := esv1.Elasticsearch{
@@ -240,23 +297,44 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 	statefulSet := func(name string, status appsv1.StatefulSetStatus) appsv1.StatefulSet {
 		return sset.TestSset{Name: name, Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 1, Data: true, Status: status}.Build()
 	}
-	pod := func(ssetName, revision string) corev1.Pod {
-		return sset.TestPod{Name: ssetName + "-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName, Version: esVersion, Revision: revision, Data: true, Ready: true}.Build()
+	pod := func(ssetName, revision string, ready bool) corev1.Pod {
+		return sset.TestPod{Name: ssetName + "-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName, Version: esVersion, Revision: revision, Data: true, Ready: ready}.Build()
 	}
 	tests := []struct {
 		name              string
 		leaving           appsv1.StatefulSetStatus // status of "data", which is absent from the expected StatefulSets
 		staying           appsv1.StatefulSetStatus // status of "data-new", which is expected
 		shutdowns         map[string]esclient.NodeShutdown
+		leavingNotMember  bool           // the leaving Pod never joined the cluster, it is not ready
 		wantShutdowns     []shutdownCall // shutdowns requested, by node ID and type
 		wantRemainingPods []string       // Pods that have not been deleted for an upgrade
 	}{
 		{
-			name:              "only the leaving Pod is outdated: nothing is restarted",
+			// the removal is not requested yet, for example because the downscale budget does not allow it
+			name:              "only the leaving Pod is outdated and it is a member of the cluster: nothing is restarted",
 			leaving:           outdated,
 			staying:           upToDate,
 			wantShutdowns:     nil,
 			wantRemainingPods: []string{"data-0", "data-new-0"},
+		},
+		{
+			name:    "only the leaving Pod is outdated and it is draining: nothing is restarted",
+			leaving: outdated,
+			staying: upToDate,
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-0": {NodeID: "id-data-0", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdowns:     nil,
+			wantRemainingPods: []string{"data-0", "data-new-0"},
+		},
+		{
+			// it has no shutdown to request, and it may need the upgrade to recover
+			name:              "only the leaving Pod is outdated and it is not a member of the cluster: it is recreated",
+			leaving:           outdated,
+			staying:           upToDate,
+			leavingNotMember:  true,
+			wantShutdowns:     nil,
+			wantRemainingPods: []string{"data-new-0"},
 		},
 		{
 			name:              "only the staying Pod is outdated: it is restarted",
@@ -279,11 +357,15 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			leavingSset, stayingSset := statefulSet("data", tt.leaving), statefulSet("data-new", tt.staying)
-			leavingPod, stayingPod := pod("data", tt.leaving.CurrentRevision), pod("data-new", tt.staying.CurrentRevision)
+			leavingPod, stayingPod := pod("data", tt.leaving.CurrentRevision, !tt.leavingNotMember), pod("data-new", tt.staying.CurrentRevision, true)
 			k8sClient := k8s.NewFakeClient(&es, &leavingSset, &stayingSset, &leavingPod, &stayingPod)
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}, "id-data-new-0": {Name: "data-new-0"}}}
+			if tt.leavingNotMember {
+				delete(nodes.Nodes, "id-data-0")
+			}
 			esClient := &fakeESClient{
 				version: version.MustParse(esVersion),
-				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}, "id-data-new-0": {Name: "data-new-0"}}},
+				nodes:   nodes,
 				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
 				// the fake only creates a record for a node that has none
 				Shutdowns: maps.Clone(tt.shutdowns),
@@ -310,6 +392,218 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &pods))
 			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
+		})
+	}
+}
+
+// Test_Driver_handleUpgrades_leavingPodThatIsNotInCluster drives handleUpgrades with healthy data-0 and data-1, and data-2
+// leaving while its outdated spec is repaired: the nodeSet is reduced from 3 to 2 with maxUnavailable 0. Neither the
+// downscale budget nor the forced upgrade, which needs all the Pods to be unready, can remove or recreate data-2: the
+// rolling upgrade must recreate it, for it to join the cluster, unless it is a member of the cluster.
+func Test_Driver_handleUpgrades_leavingPodThatIsNotInCluster(t *testing.T) {
+	esVersion := "8.1.0"
+	es := esv1.Elasticsearch{
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec: esv1.ElasticsearchSpec{
+			Version:        esVersion,
+			UpdateStrategy: esv1.UpdateStrategy{ChangeBudget: esv1.ChangeBudget{MaxUnavailable: new(int32(0))}},
+		},
+		Status: esv1.ElasticsearchStatus{Version: esVersion},
+	}
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3}
+	actualSset := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 3, Data: true, Status: outdated}.Build()
+	expectedSset := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 2, Data: true}.Build()
+	tests := []struct {
+		name string
+		// leavingPod customizes data-2, which is ready by default
+		leavingPod func(pod *sset.TestPod)
+		// esRunning makes the Elasticsearch container of data-2 run
+		esRunning bool
+		// joined makes data-2 a member of the cluster
+		joined    bool
+		shutdowns map[string]esclient.NodeShutdown
+		// wantRecreated is true if data-2 is deleted for the upgrade
+		wantRecreated bool
+	}{
+		{
+			name: "Pending, Elasticsearch does not run in it: it is recreated",
+			leavingPod: func(pod *sset.TestPod) {
+				pod.Phase, pod.Ready = corev1.PodPending, false
+			},
+			wantRecreated: true,
+		},
+		{
+			name: "crash looping, it never joined the cluster: it is recreated",
+			leavingPod: func(pod *sset.TestPod) {
+				pod.Ready, pod.RestartCount = false, 3
+			},
+			wantRecreated: true,
+		},
+		{
+			name: "Pending, Elasticsearch runs in it and it is draining: it is not recreated",
+			leavingPod: func(pod *sset.TestPod) {
+				pod.Phase, pod.Ready = corev1.PodPending, false
+			},
+			esRunning: true,
+			joined:    true,
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantRecreated: false,
+		},
+		{
+			name:          "not ready but a member of the cluster, it is not draining: it is not recreated",
+			leavingPod:    func(pod *sset.TestPod) { pod.Ready = false },
+			joined:        true,
+			wantRecreated: false,
+		},
+		{
+			// the shutdown closed its readiness port
+			name:       "not ready because it is draining: it is not recreated",
+			leavingPod: func(pod *sset.TestPod) { pod.Ready = false },
+			joined:     true,
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownStalled},
+			},
+			wantRecreated: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testPod := func(ordinal int32) sset.TestPod {
+				return sset.TestPod{
+					Name: sset.PodName("data", ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "data",
+					Version: esVersion, Revision: "rev-a", Data: true, Ready: true,
+				}
+			}
+			leavingTestPod := testPod(2)
+			tt.leavingPod(&leavingTestPod)
+			pods := []corev1.Pod{testPod(0).Build(), testPod(1).Build(), leavingTestPod.Build()}
+			if tt.esRunning {
+				pods[2].Status.ContainerStatuses[0].State.Running = &corev1.ContainerStateRunning{}
+			}
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}, "id-data-1": {Name: "data-1"}}}
+			if tt.joined {
+				nodes.Nodes["id-data-2"] = esclient.Node{Name: "data-2"}
+			}
+			esClient := &fakeESClient{
+				version:   version.MustParse(esVersion),
+				nodes:     nodes,
+				health:    esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				Shutdowns: maps.Clone(tt.shutdowns),
+			}
+			// the forced upgrade does not apply, the rolling upgrade is the only way to recreate data-2
+			require.False(t, shouldForceUpgrade(pods))
+			k8sClient := k8s.NewFakeClient(&es, &actualSset, &pods[0], &pods[1], &pods[2])
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: expectedSset}}
+
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
+			require.ElementsMatch(t, []string{"data-2"}, desiredLeaving.AsSortedSlice())
+			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+
+			_, err := results.Aggregate()
+			require.NoError(t, err)
+			// the Pods that are ready wait for the budget, and no restart is requested for data-2: it is not ready
+			assert.Empty(t, esClient.PutShutdownCalls)
+			// the removal of a draining Pod is left untouched
+			assert.Equal(t, tt.shutdowns == nil, len(esClient.Shutdowns) == 0)
+			for nodeID, want := range tt.shutdowns {
+				assert.Equal(t, want, esClient.Shutdowns[nodeID])
+			}
+			wantRemainingPods := []string{"data-0", "data-1", "data-2"}
+			if tt.wantRecreated {
+				wantRemainingPods = []string{"data-0", "data-1"}
+			}
+			var actualPods corev1.PodList
+			require.NoError(t, k8sClient.List(context.Background(), &actualPods))
+			assert.ElementsMatch(t, wantRemainingPods, names(actualPods.Items))
+		})
+	}
+}
+
+// Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster drives handleUpgrades with healthy master-0 and master-1, and
+// master-2 leaving while its outdated spec is repaired: the nodeSet is reduced from 3 to 2. master-2 is recreated if it is
+// not a member of the cluster, without excluding it from the voting, as it is not part of the voting configuration, which
+// Elasticsearch would reject for a node it does not know.
+func Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster(t *testing.T) {
+	esVersion := "8.1.0"
+	es := esv1.Elasticsearch{
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: esVersion},
+		Status: esv1.ElasticsearchStatus{Version: esVersion},
+	}
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3}
+	actualSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 3, Master: true, Data: true, Status: outdated}.Build()
+	expectedSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 2, Master: true, Data: true}.Build()
+	tests := []struct {
+		name string
+		// joined makes master-2 a member of the cluster, it is not ready otherwise
+		joined bool
+		// wantRecreated is true if master-2 is deleted for the upgrade
+		wantRecreated bool
+	}{
+		{
+			name:          "master-2 is not a member of the cluster: it is recreated, without excluding it from the voting",
+			wantRecreated: true,
+		},
+		{
+			name:          "master-2 is a member of the cluster: it is left to the downscale",
+			joined:        true,
+			wantRecreated: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testPod := func(ordinal int32) sset.TestPod {
+				return sset.TestPod{
+					Name: sset.PodName("master", ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "master",
+					Version: esVersion, Revision: "rev-a", Master: true, Data: true, Ready: true,
+				}
+			}
+			leavingTestPod := testPod(2)
+			leavingTestPod.Ready = tt.joined
+			if !tt.joined {
+				leavingTestPod.Phase = corev1.PodPending
+			}
+			pods := []corev1.Pod{testPod(0).Build(), testPod(1).Build(), leavingTestPod.Build()}
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{"id-master-0": {Name: "master-0"}, "id-master-1": {Name: "master-1"}}}
+			if tt.joined {
+				nodes.Nodes["id-master-2"] = esclient.Node{Name: "master-2"}
+			}
+			esClient := &fakeESClient{
+				version: version.MustParse(esVersion),
+				nodes:   nodes,
+				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			}
+			k8sClient := k8s.NewFakeClient(&es, &actualSset, &pods[0], &pods[1], &pods[2])
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: expectedSset}}
+
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
+			require.ElementsMatch(t, []string{"master-2"}, desiredLeaving.AsSortedSlice())
+			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+
+			_, err := results.Aggregate()
+			require.NoError(t, err)
+			assert.False(t, esClient.AddVotingConfigExclusionsCalled)
+			wantRemainingPods := []string{"master-0", "master-1", "master-2"}
+			if tt.wantRecreated {
+				wantRemainingPods = []string{"master-0", "master-1"}
+			}
+			var actualPods corev1.PodList
+			require.NoError(t, k8sClient.List(context.Background(), &actualPods))
+			assert.ElementsMatch(t, wantRemainingPods, names(actualPods.Items))
 		})
 	}
 }
@@ -491,7 +785,7 @@ func Test_Driver_handleUpgrades_fullRestartShutdownsCompleteAfterRequest(t *test
 
 // Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart covers the other deletion branch of handleUpgrades: a
 // version upgrade of a non-HA cluster restarts all outdated Pods at once, without predicates. A Pod of a nodeSet that
-// is being removed must not be part of that restart either.
+// is being removed must not be part of that restart either, if it is a member of the cluster.
 func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.T) {
 	fromVersion, toVersion := "8.1.0", "8.2.0"
 	es := esv1.Elasticsearch{
@@ -510,6 +804,10 @@ func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.
 		version: version.MustParse(fromVersion),
 		nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-master-0": {Name: "master-0"}, "id-gone-0": {Name: "gone-0"}}},
 		health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+		// the removal of the leaving Pod is in progress
+		Shutdowns: map[string]esclient.NodeShutdown{
+			"id-gone-0": {NodeID: "id-gone-0", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+		},
 	}
 	d := &Driver{
 		Client:         k8sClient,

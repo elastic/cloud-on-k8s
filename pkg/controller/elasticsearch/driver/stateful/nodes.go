@@ -102,9 +102,10 @@ func (d *Driver) reconcileNodeSpecs(
 		}
 	}
 
-	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants. Rolling upgrades do not
-	// restart them, and forced upgrades do not restart the draining ones, as it would disrupt the shutdown that is
-	// migrating their shards away. The master upgrade only waits for the ones that run an older version.
+	// The Pods the downscale wants to remove, regardless of the downscale budget and invariants. Neither upgrade restarts
+	// the ones that are draining, as it would disrupt the shutdown that is migrating their shards away, and the rolling
+	// upgrade leaves to the downscale all the ones that are members of the cluster. The master upgrade only waits for the
+	// ones that run an older version.
 	desiredLeaving := desiredLeavingNodeNames(ctx, expectedResources.StatefulSets(), actualStatefulSets)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
@@ -221,7 +222,7 @@ func (d *Driver) reconcileNodeSpecs(
 		return results
 	}
 
-	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results, desiredLeaving)
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results, desiredLeaving, esState)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
@@ -286,7 +287,7 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 	return nodeShutdowns, false, nil
 }
 
-func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, desiredLeaving set.StringSet) bool {
+func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, desiredLeaving set.StringSet, esState ESState) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}
@@ -295,7 +296,7 @@ func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets e
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToRollingUpgrade(client, actualStatefulSets, desiredLeaving)
+	pods, err := podsToRollingUpgrade(client, actualStatefulSets, desiredLeaving, esState)
 	if err != nil {
 		return false
 	}
