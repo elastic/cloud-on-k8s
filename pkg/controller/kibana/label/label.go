@@ -91,10 +91,6 @@ func (r Role) IsSinglePool() bool {
 	return r == SinglePoolRole
 }
 
-func (r Role) IsPrimary() bool {
-	return r == SinglePoolRole || r == UIRole
-}
-
 // NewLabels constructs a new set of labels from Kibana definition.
 func NewLabels(kb types.NamespacedName) map[string]string {
 	return map[string]string{

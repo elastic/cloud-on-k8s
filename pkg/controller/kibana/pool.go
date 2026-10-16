@@ -545,42 +545,39 @@ func buildStatus(state *State, kb *kbv1.Kibana, pools []poolStatusEntry) {
 		return
 	}
 
-	// The pool statuses start from the previously persisted pool statuses, which do not carry
-	// the top-level conditions (e.g. OrchestrationPaused set during the reconcile loop).
-	// Preserve them so that overwriting the top-level DeploymentStatus below does not lose them.
-	conditions := state.Kibana.Status.Conditions
-	defer func() { state.Kibana.Status.Conditions = conditions }()
-
+	status := &state.Kibana.Status
 	for _, pool := range pools {
-		poolStatus := pool.status
-		switch {
-		case pool.role.IsPrimary():
-			state.Kibana.Status.DeploymentStatus = poolStatus
-			state.Kibana.Status.Pools.Primary = poolStatus
-		case pool.role.IsBackgroundTasks():
-			state.Kibana.Status.Pools.BackgroundTasks = &poolStatus
+		if pool.role.IsBackgroundTasks() {
+			status.Pools.BackgroundTasks = new(pool.status)
+		} else {
+			status.Pools.Primary = pool.status
 		}
 	}
+	if !kb.BackgroundTasksEnabled() {
+		// Single pool: clear any leftover background pool status.
+		status.Pools.BackgroundTasks = nil
+	}
+
+	// The pool statuses start from the previously persisted pool statuses, which do not carry
+	// the top-level conditions (e.g. OrchestrationPaused set during the reconcile loop).
+	// Preserve them while the top-level DeploymentStatus is overwritten below.
+	conditions := status.DeploymentStatus.Conditions
+	status.DeploymentStatus = status.Pools.Primary
+	status.DeploymentStatus.Conditions = conditions
 
 	if !kb.BackgroundTasksEnabled() {
-		// Single pool: the pool status is the top-level status, clear any leftover
-		// background pool status.
-		state.Kibana.Status.Pools.BackgroundTasks = nil
+		// Single pool: the pool status is the top-level status.
 		return
 	}
 
-	// Calculate the aggregate directly from the pool sub-statuses, so that the top level is
-	// always the sum of the pool entries written next to it.
-	aggregateDeploymentStatus := state.Kibana.Status.Pools.Primary
-	if bg := state.Kibana.Status.Pools.BackgroundTasks; bg != nil {
-		aggregateDeploymentStatus.Count += bg.Count
-		aggregateDeploymentStatus.AvailableNodes += bg.AvailableNodes
-		aggregateDeploymentStatus.Health = calculateAggregateHealth(state.Kibana.Status.Pools.Primary.Health, bg.Health)
+	// Aggregate the pool sub-statuses, so that the top level is always the sum of the pool
+	// entries written next to it. The top-level selector targets all pools.
+	if bg := status.Pools.BackgroundTasks; bg != nil {
+		status.Count += bg.Count
+		status.AvailableNodes += bg.AvailableNodes
+		status.Health = calculateAggregateHealth(status.Pools.Primary.Health, bg.Health)
 	}
-
-	// replace with aggregate in top level
-	state.Kibana.Status.DeploymentStatus = aggregateDeploymentStatus
-	state.Kibana.Status.DeploymentStatus.Selector = metav1.FormatLabelSelector(&metav1.LabelSelector{
+	status.Selector = metav1.FormatLabelSelector(&metav1.LabelSelector{
 		MatchLabels: kb.GetIdentityLabels(), // without the role label
 	})
 }
