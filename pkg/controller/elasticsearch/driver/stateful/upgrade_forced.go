@@ -51,8 +51,8 @@ func (d *Driver) MaybeForceUpgrade(
 
 // excludeDrainingPods returns the given Pods minus the leaving ones that are draining. A Pending Pod whose Elasticsearch
 // container is not running is not draining, as no Elasticsearch node runs in it: deleting it does not disrupt its
-// shutdown. A Pending Pod may still run Elasticsearch, for example while another container waits for its image. The draining nodes are retrieved with
-// nodeShutdowns. If it is nil, Elasticsearch is not reachable or the nodes cannot be retrieved, which does not mean that
+// shutdown. A Pending Pod may still run Elasticsearch, for example while another container waits for its image. The
+// draining nodes are retrieved with nodeShutdowns. If it is nil, Elasticsearch is not reachable or the nodes cannot be retrieved, which does not mean that
 // the shutdowns stopped: the nodes with a shutdown in lastDownscale, the downscale status reported while Elasticsearch
 // was reachable, are draining.
 func excludeDrainingPods(

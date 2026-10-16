@@ -156,6 +156,14 @@ type clusterMembers struct {
 	members set.StringSet
 }
 
+func (c clusterMembers) NodeNameToID() (map[string]string, error) {
+	nodeNameToID := make(map[string]string, len(c.members))
+	for nodeName := range c.members {
+		nodeNameToID[nodeName] = nodeName
+	}
+	return nodeNameToID, nil
+}
+
 func (c clusterMembers) NodesInCluster(nodeNames []string) (bool, error) {
 	for _, nodeName := range nodeNames {
 		if !c.members.Has(nodeName) {

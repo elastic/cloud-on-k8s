@@ -186,7 +186,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNodesInCluster,
-			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
+			nodeShutdown.ExceptNodes(terminatingNodes),
 		))
 	}
 

@@ -125,13 +125,17 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 
 // membersAmong returns the given nodes that are members of the cluster.
 func membersAmong(esState ESState, nodes []string) (set.StringSet, error) {
+	if len(nodes) == 0 {
+		// do not require Elasticsearch to be reachable when there is nothing to look up
+		return set.Make(), nil
+	}
+	nodeNameToID, err := esState.NodeNameToID()
+	if err != nil {
+		return nil, err
+	}
 	members := set.Make()
 	for _, node := range nodes {
-		member, err := esState.NodesInCluster([]string{node})
-		if err != nil {
-			return nil, err
-		}
-		if member {
+		if _, exists := nodeNameToID[node]; exists {
 			members.Add(node)
 		}
 	}

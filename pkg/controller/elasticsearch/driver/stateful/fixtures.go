@@ -336,6 +336,14 @@ func (t *testESState) Health() (client.Health, error) {
 	return t.health, nil
 }
 
+func (t *testESState) NodeNameToID() (map[string]string, error) {
+	nodeNameToID := make(map[string]string, len(t.inCluster))
+	for _, nodeName := range t.inCluster {
+		nodeNameToID[nodeName] = nodeName
+	}
+	return nodeNameToID, nil
+}
+
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
 	for _, nodeName := range nodeNames {
 		if slices.Contains(t.inCluster, nodeName) {

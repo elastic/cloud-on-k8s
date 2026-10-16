@@ -141,9 +141,6 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
-// shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
-// also reports them in the downscale status through the observer, whether or not the nodes are removed. Shard migration
-// registers no shutdown, its statuses are retrieved by calculatePerformableDownscale.
 // nodesNotInCluster returns the given nodes that are not members of the cluster. Without node shutdown, membership does
 // not matter, as a node is removed once it holds no shard: none is returned.
 func nodesNotInCluster(downscaleCtx downscaleContext, nodes []string) (set.StringSet, error) {
@@ -157,6 +154,9 @@ func nodesNotInCluster(downscaleCtx downscaleContext, nodes []string) (set.Strin
 	return set.Make(nodes...).Diff(members), nil
 }
 
+// shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
+// also reports them in the downscale status through the observer, whether or not the nodes are removed. Shard migration
+// registers no shutdown, its statuses are retrieved by calculatePerformableDownscale.
 func shutdownStatuses(downscaleCtx downscaleContext, nodes []string) (map[string]shutdown.NodeShutdownStatus, error) {
 	withShutdown, err := downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, nodes)
 	if err != nil {

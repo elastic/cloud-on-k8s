@@ -418,7 +418,7 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNodesInCluster,
-			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			nodeShutdown.ExceptNodes(terminating),
 			notPendingRestart,
 		))
 	}
@@ -445,7 +445,7 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 		// or node state was lost due to an external event
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
-			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			nodeShutdown.ExceptNodes(terminating),
 			notPendingRestart,
 		))
 	}
