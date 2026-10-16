@@ -206,7 +206,21 @@ func NewPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	return builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate, nil
+	podTemplate := builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate
+
+	// When background task isolation is active, set NODE_ROLES on the Kibana container.
+	// Kibana reads this env var to determine which roles it runs, taking precedence over
+	// kibana.yml.
+	if role.Name != "" {
+		if c := kbv1.GetKibanaContainer(podTemplate.Spec); c != nil {
+			c.Env = append(
+				[]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: fmt.Sprintf(`["%s"]`, role.Name)}},
+				c.Env...,
+			)
+		}
+	}
+
+	return podTemplate, nil
 }
 
 // getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container

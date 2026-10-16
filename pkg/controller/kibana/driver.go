@@ -378,22 +378,6 @@ func (d *driver) deploymentParams(
 		return deployment.Params{}, err
 	}
 
-	// When background task isolation is active, set NODE_ROLES on the Kibana container.
-	// Kibana reads this env var to determine which roles it runs, taking precedence over
-	// kibana.yml.
-	if role.Name != "" {
-		nodeRolesValue := fmt.Sprintf(`["%s"]`, role.Name)
-		for i, c := range kibanaPodSpec.Spec.Containers {
-			if c.Name == kbv1.KibanaContainerName {
-				kibanaPodSpec.Spec.Containers[i].Env = append(
-					[]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: nodeRolesValue}},
-					kibanaPodSpec.Spec.Containers[i].Env...,
-				)
-				break
-			}
-		}
-	}
-
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
 	// This is done because Kibana does not support updating those without restarting the process.
