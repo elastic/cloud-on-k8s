@@ -289,9 +289,12 @@ func TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady(t *testing.T) 
 		RunSequential(t)
 }
 
-// TestDownscaleDuringRollingUpgrade removes data nodes while a pod template change is applied to all the NodeSets.
-// The leaving nodes are not upgraded: their shutdowns are kept and their Pods are not restarted, while the staying data
-// node is upgraded, then the master, which does not wait for the leaving nodes to be upgraded.
+// TestDownscaleDuringRollingUpgrade removes data nodes, then applies a pod template change to all the NodeSets once the
+// leaving nodes are draining and not ready. The leaving nodes are not upgraded: their shutdowns are kept and their Pods
+// are not restarted. The staying data node is only upgraded once they are removed: the tier availability predicate counts
+// the not ready leaving nodes as data nodes, so it holds the restart of the only healthy one. Applying the change once the
+// leaving nodes are not ready makes this order deterministic, rather than depending on whether the operator selects the
+// staying node before the readiness probes fail.
 func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
 	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
@@ -307,6 +310,10 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 	// the not ready leaving nodes must not prevent the staying nodes from being upgraded
 	initial.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable = new(int32(3))
 
+	downscaled := initial.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data", elasticsearch.DefaultResources)
+	// built separately from downscaled, as WithEnvironmentVariable updates the NodeSets it shares with it
 	mutated := initial.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(1, "data", elasticsearch.DefaultResources).
@@ -337,20 +344,13 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 		WithSteps(leavingPods.RecordUIDs(k)).
 		WithSteps(stayingDataPod.RecordUIDs(k)).
 		WithSteps(masterPod.RecordUIDs(k)).
-		WithSteps(mutated.UpgradeTestSteps(k)).
+		WithSteps(downscaled.UpgradeTestSteps(k)).
 		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, leavingNodes, leavingPods)).
-		WithSteps(stayingDataPod.WaitForRestart(k)).
-		// the master is only upgraded once the non-master nodes are, which must not include the leaving ones
-		WithSteps(masterPod.WaitForRestart(k)).
-		WithStep(test.Step{
-			Name: "Leaving nodes should still have a remove-type shutdown and not have been restarted",
-			Test: test.Eventually(func() error {
-				if err := checkRemoveShutdowns(ctx, esClient, leavingNodes); err != nil {
-					return err
-				}
-				return leavingPods.CheckNotRestarted(ctx, k)
-			}),
-		}).
+		// the leaving nodes are not ready: the pod template change makes them rolling upgrade candidates while they drain
+		WithSteps(mutated.UpgradeTestSteps(k)).
+		// the operator reconciles the pod template change while the leaving nodes drain, which must not restart them nor
+		// cancel their shutdowns
+		WithSteps(shutdownsKeptSteps(ctx, k, mutated, &esClient, leavingNodes, leavingPods)).
 		WithStep(test.Step{
 			Name: "Allow the index to be migrated to the staying data node",
 			Test: test.Eventually(func() error {
@@ -359,6 +359,9 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 				return err
 			}),
 		}).
+		// once the leaving nodes are removed, the staying data node is the only one of its tier and can be upgraded
+		WithSteps(stayingDataPod.WaitForRestart(k)).
+		WithSteps(masterPod.WaitForRestart(k)).
 		WithSteps(test.CheckTestSteps(mutated, k)).
 		WithSteps(mutated.DeletionTestSteps(k)).
 		RunSequential(t)
