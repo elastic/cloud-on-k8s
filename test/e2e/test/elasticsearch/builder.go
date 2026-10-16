@@ -505,7 +505,12 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 					},
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: resource.MustParse("1Gi"),
+							// 2Gi fits a copy of the ELSER model (~660MB) on each node with room to spare.
+							// With an enterprise license, Kibana deploys ELSER at startup for the Security AI Assistant
+							// product documentation (elastic/kibana#199694), and ES stores it in the
+							// .ml-inference-native-* index. With 1Gi volumes its replica cannot be allocated: the cluster
+							// stays yellow and rolling restarts stop before restarting the node holding the primary.
+							corev1.ResourceStorage: resource.MustParse("2Gi"),
 						},
 					},
 					StorageClassName: &storageClass,
