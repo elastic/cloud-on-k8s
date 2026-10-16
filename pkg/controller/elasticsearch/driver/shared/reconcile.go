@@ -131,7 +131,8 @@ func ReconcileSharedResources(
 		params.OperatorParameters.PasswordHasher,
 		params.OperatorParameters.PasswordGenerator,
 		policyConfig.UserRoles(),
-		meta)
+		meta,
+	)
 	if err != nil {
 		return nil, results.WithError(err)
 	}

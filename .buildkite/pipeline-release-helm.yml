@@ -96,3 +96,42 @@ steps:
     agents:
       image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
       memory: "2G"
+
+  - label: ":key: sign helm charts"
+    if: |
+      ( build.branch == "main" && build.source != "schedule" )
+      || build.tag != null
+      || build.message =~ /^buildkite test .*release.*/
+      || build.message == "release eck-operator dev helm charts"
+      || build.message == "release eck-stack dev helm charts"
+      || build.message == "release eck-operator helm charts"
+      || build.message == "release eck-stack helm charts"
+      || build.message == "release all helm charts"
+    depends_on:
+      - "eck-operator-dev-helm"
+      - "eck-stack-dev-helm"
+      - "eck-operator-prod-helm"
+      - "eck-stack-prod-helm"
+    command: |
+      # nothing is pushed to the OCI registry on dry run or when it is skipped, so there is nothing to sign
+      if [[ "$${HELM_DRY_RUN}" != "false" || "$${HELM_SKIP_OCI_REGISTRY}" == "true" ]]; then
+        echo "Skipping helm charts signing (HELM_DRY_RUN=$${HELM_DRY_RUN}, HELM_SKIP_OCI_REGISTRY=$${HELM_SKIP_OCI_REGISTRY})"
+        exit 0
+      fi
+      if [[ -n "$${BUILDKITE_TAG}" ]]; then
+        IMAGES_TAG_VALUE="$${BUILDKITE_TAG#v}"
+      else
+        IMAGES_TAG_VALUE="$$(cat VERSION)"
+      fi
+      cat <<- YAML | buildkite-agent pipeline upload
+      steps:
+        - trigger: unified-release-container-image-signing
+          build:
+            env:
+              ARTIFACT_PATTERN: "eck-helm-*-oci-artifacts-digest.txt"
+              IMAGES_TAG: "$${IMAGES_TAG_VALUE}"
+              UPLOAD_SIGNATURE: "true"
+      YAML
+    agents:
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      memory: "256Mi"
