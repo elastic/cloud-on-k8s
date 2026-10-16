@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
@@ -212,10 +213,26 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if b.Kibana.Spec.BackgroundTasks == nil {
 				expectedSelector["kibana.k8s.elastic.co/role"] = "primary"
 			}
+
+			expectedSelectorPrimary := maps.Clone(expectedSelector)
+			expectedSelectorPrimary["kibana.k8s.elastic.co/role"] = "primary"
+
 			if err := test.CheckSelector(kb.Status.Selector, expectedSelector); err != nil {
 				return err
 			}
+			if err := test.CheckSelector(kb.Status.Pools.Primary.Selector, expectedSelectorPrimary); err != nil {
+				return err
+			}
+			if kb.BackgroundTasksEnabled() {
+				expectedSelectorBackground := maps.Clone(expectedSelector)
+				expectedSelectorBackground["kibana.k8s.elastic.co/role"] = "background_tasks"
+				if err := test.CheckSelector(kb.Status.Pools.BackgroundTasks.Selector, expectedSelectorBackground); err != nil {
+					return err
+				}
+				kb.Status.Pools.BackgroundTasks.Selector = ""
+			}
 			kb.Status.Selector = ""
+			kb.Status.Pools.Primary.Selector = ""
 
 			// don't check the association statuses that may vary across tests
 			// Count and AvailableNodes are controller-aggregated across all active pools.
@@ -227,6 +244,23 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					Health:         "green",
 					Conditions:     kb.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
+			}
+			expected.Pools.Primary = commonv1.DeploymentStatus{
+				Count:          b.Count(),
+				AvailableNodes: b.Count(),
+				Version:        b.Kibana.Spec.Version,
+				Health:         "green",
+				Conditions:     kb.Status.Pools.Primary.Conditions, // Ignore Conditions
+			}
+
+			if b.Kibana.BackgroundTasksEnabled() {
+				expected.Pools.BackgroundTasks = &commonv1.DeploymentStatus{
+					Count:          *kb.Spec.BackgroundTasks.Count,
+					AvailableNodes: *kb.Spec.BackgroundTasks.Count,
+					Version:        b.Kibana.Spec.Version,
+					Health:         "green",
+					Conditions:     kb.Status.Pools.BackgroundTasks.Conditions, // Ignore Conditions
+				}
 			}
 
 			if !cmp.Equal(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
