@@ -250,7 +250,7 @@ func (d *driver) Reconcile(
 		switch {
 		case err != nil:
 			return results.WithError(err)
-		case deploymentResult == deferred:
+		case deploymentResult == paused:
 			return results
 		case deploymentResult == requeue:
 			return results.WithRequeue()
@@ -341,10 +341,8 @@ func (d *driver) deploymentParams(
 	replicasAnnotationValue *int32,
 	policyAnnotations map[string]string,
 	meta metadata.Metadata,
-	selector map[string]string,
-	overwriteRevisionHistoryLimit *int32,
+	selectorOutcome selectorChangeOutcome,
 ) (deployment.Params, error) {
-	role := pp.Role
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -370,10 +368,15 @@ func (d *driver) deploymentParams(
 
 	// Pool-specific metadata: add role label to pod labels.
 	poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
-	poolLabels[kblabel.RoleLabelName] = role.LabelValue
+	poolLabels[kblabel.RoleLabelName] = pp.Role.LabelValue
 	poolMeta := metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
 
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, role, keystoreResources, volumes, pp.BasePath, pp.SetDefaultSecurityContext, poolMeta, pp.SecretName)
+	r := pp.Role
+	if selectorOutcome.omitRoleSplit && r == kblabel.UIRole {
+		// feed the single pool role, we don't need to remove the background functionality yet.
+		r = kblabel.SinglePoolRole
+	}
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, r, keystoreResources, volumes, pp.BasePath, pp.SetDefaultSecurityContext, poolMeta, pp.SecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -427,23 +430,23 @@ func (d *driver) deploymentParams(
 	}
 
 	// add the replicas Deployment's annotation if needed.
-	if role.IsBackgroundTasks() && replicasAnnotationValue != nil {
+	if pp.Role.IsBackgroundTasks() && replicasAnnotationValue != nil {
 		poolMeta = poolMeta.Merge(metadata.Metadata{Annotations: map[string]string{
 			replicasAnnotationName: fmt.Sprintf("%d", *replicasAnnotationValue),
 		}})
 	}
 
-	if overwriteRevisionHistoryLimit == nil {
-		overwriteRevisionHistoryLimit = kb.Spec.RevisionHistoryLimit
+	if selectorOutcome.overwriteRevisionHistoryLimit == nil {
+		selectorOutcome.overwriteRevisionHistoryLimit = kb.Spec.RevisionHistoryLimit
 	}
 	return deployment.Params{
 		Name:                 pp.DeploymentName,
 		Namespace:            kb.Namespace,
 		Replicas:             replicas,
-		Selector:             selector,
+		Selector:             selectorOutcome.expectedSelector,
 		Metadata:             poolMeta,
 		PodTemplateSpec:      kibanaPodSpec,
-		RevisionHistoryLimit: overwriteRevisionHistoryLimit,
+		RevisionHistoryLimit: selectorOutcome.overwriteRevisionHistoryLimit,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }

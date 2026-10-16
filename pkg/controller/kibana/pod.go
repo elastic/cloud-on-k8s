@@ -211,7 +211,7 @@ func NewPodTemplateSpec(
 	// When background task isolation is active, set NODE_ROLES on the Kibana container.
 	// Kibana reads this env var to determine which roles it runs, taking precedence over
 	// kibana.yml.
-	if role.Name != "" {
+	if !role.IsSinglePool() {
 		if c := kbv1.GetKibanaContainer(podTemplate.Spec); c != nil {
 			c.Env = append(
 				[]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: fmt.Sprintf(`["%s"]`, role.Name)}},

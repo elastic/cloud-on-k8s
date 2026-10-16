@@ -512,7 +512,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 
 		require.NoError(t, err)
-		assert.Equal(t, deferred, res)
+		assert.Equal(t, paused, res)
 		assert.Nil(t, reconciledDp)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
@@ -550,7 +550,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		// First call: paused — deployment survives.
 		res, _, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
-		assert.Equal(t, deferred, res)
+		assert.Equal(t, paused, res)
 		var got appsv1.Deployment
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 
@@ -605,6 +605,10 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		require.NotNil(t, got.Spec.RevisionHistoryLimit)
 		assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the Kibana spec value must be overwritten")
 		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+		// While the migration is in progress, the pool keeps running all Kibana roles:
+		// NODE_ROLES must not be injected yet (omitRoleSplit).
+		_, found := findEnvVar(findKibanaContainerEnv(got.Spec.Template.Spec), kblabel.NodeRolesEnvVar)
+		assert.False(t, found, "NODE_ROLES must not be set while the selector migration is in progress")
 	})
 
 	incomplete := map[string]func(*appsv1.Deployment){
@@ -951,19 +955,20 @@ func TestNodeRolesEnvVar(t *testing.T) {
 	// The NODE_ROLES injection is independent of the Kibana version.
 	objs := defaultInitialObjects()
 
+	kbWithBGTasks := func() *kbv1.Kibana {
+		kb := kibanaFixture()
+		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
+		return kb
+	}
+
 	cases := []struct {
 		name          string
 		role          kblabel.Role
+		omitRoleSplit bool
 		kb            *kbv1.Kibana
 		wantNodeRoles string
 		wantPresent   bool
 	}{
-		{
-			name:        "empty role (single-pool mode) injects no NODE_ROLES",
-			role:        kblabel.Role{},
-			kb:          kibanaFixture(),
-			wantPresent: false,
-		},
 		{
 			name:        "Single-pool mode injects no NODE_ROLES",
 			role:        kblabel.SinglePoolRole,
@@ -978,13 +983,24 @@ func TestNodeRolesEnvVar(t *testing.T) {
 			wantPresent:   true,
 		},
 		{
-			name: "BackgroundTasksRole injects NODE_ROLES=[\"background_tasks\"]",
-			role: kblabel.BackgroundTasksRole,
-			kb: func() *kbv1.Kibana {
-				kb := kibanaFixture()
-				kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
-				return kb
-			}(),
+			name:          "BackgroundTasksRole injects NODE_ROLES=[\"background_tasks\"]",
+			role:          kblabel.BackgroundTasksRole,
+			kb:            kbWithBGTasks(),
+			wantNodeRoles: `["background_tasks"]`,
+			wantPresent:   true,
+		},
+		{
+			name:          "UIRole with omitRoleSplit (selector migration in progress) injects no NODE_ROLES",
+			role:          kblabel.UIRole,
+			omitRoleSplit: true,
+			kb:            kbWithBGTasks(),
+			wantPresent:   false,
+		},
+		{
+			name:          "BackgroundTasksRole is not affected by omitRoleSplit",
+			role:          kblabel.BackgroundTasksRole,
+			omitRoleSplit: true,
+			kb:            kbWithBGTasks(),
 			wantNodeRoles: `["background_tasks"]`,
 			wantPresent:   true,
 		},
@@ -1007,8 +1023,7 @@ func TestNodeRolesEnvVar(t *testing.T) {
 				nil, // replicasAnnotationValue
 				nil, // policyAnnotations
 				metadata.Propagate(tc.kb, metadata.Metadata{Labels: tc.kb.GetIdentityLabels()}),
-				tc.kb.GetIdentityLabels(),
-				nil, // overwriteRevisionHistoryLimit
+				selectorChangeOutcome{expectedSelector: tc.kb.GetIdentityLabels(), omitRoleSplit: tc.omitRoleSplit},
 			)
 			require.NoError(t, err)
 
@@ -1020,6 +1035,9 @@ func TestNodeRolesEnvVar(t *testing.T) {
 				// Verify it is the first env var so it can be overridden by user-supplied vars.
 				assert.Equal(t, kblabel.NodeRolesEnvVar, env[0].Name, "NODE_ROLES must be first env var")
 			}
+			// The role label always reflects the pool role, even when omitRoleSplit remaps the
+			// NODE_ROLES injection to the single-pool behavior.
+			assert.Equal(t, tc.role.LabelValue, params.PodTemplateSpec.Labels[kblabel.RoleLabelName])
 		})
 	}
 }
@@ -1643,8 +1661,7 @@ func TestDeploymentParamsReplicasAnnotation(t *testing.T) {
 				poolParameters{Role: tt.role, SecretName: configSecret, DeploymentName: dpName},
 				replicas, tt.replicasAnnotation,
 				nil,
-				meta, kb.GetIdentityLabels(),
-				nil,
+				meta, selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels()},
 			)
 			require.NoError(t, err)
 
@@ -2112,8 +2129,7 @@ func TestDeploymentParams_RevisionHistoryLimit(t *testing.T) {
 				poolParameters{Role: kblabel.SinglePoolRole, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.KBNamer.Suffix(kb.Name)},
 				new(kb.Spec.Count), nil, nil,
 				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
-				kb.GetIdentityLabels(),
-				tt.overwrite,
+				selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels(), overwriteRevisionHistoryLimit: tt.overwrite},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got.RevisionHistoryLimit)

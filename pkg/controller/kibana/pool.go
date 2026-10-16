@@ -121,8 +121,8 @@ func reconcileService(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, m
 type poolDeploymentResult string
 
 const (
-	requeue  poolDeploymentResult = "requeue"
-	deferred poolDeploymentResult = "deferred"
+	requeue poolDeploymentResult = "requeue"
+	paused  poolDeploymentResult = "paused"
 )
 
 func (d *driver) reconcilePoolDeployment(
@@ -149,7 +149,7 @@ func (d *driver) reconcilePoolDeployment(
 	if err != nil {
 		return "", nil, err
 	}
-	if selectorOutcome.stop {
+	if selectorOutcome.stopDeploymentReconciliation {
 		return selectorOutcome.result, nil, nil
 	}
 
@@ -168,7 +168,7 @@ func (d *driver) reconcilePoolDeployment(
 	// Determine replica count for this pool.
 	replicas, oldReplicas := deploymentReplicas(ctx, kb, poolParams, &existingDeployment)
 
-	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, selectorOutcome.expectedSelector, selectorOutcome.overwriteRevisionHistoryLimit)
+	dpParams, err := d.deploymentParams(ctx, kb, poolParams, replicas, oldReplicas, podAnnotations, meta, selectorOutcome)
 	if err != nil {
 		return "", nil, err
 	}
@@ -185,8 +185,8 @@ func (d *driver) reconcilePoolDeployment(
 // selectorChangeOutcome tells reconcilePoolDeployment how to continue after the existing and the expected
 // selectors of a pool Deployment were compared.
 type selectorChangeOutcome struct {
-	// stop is true when the reconciliation ends here and result is returned as is.
-	stop bool
+	// stopDeploymentReconciliation is true when the reconciliation ends here and result is returned as is.
+	stopDeploymentReconciliation bool
 	// result is returned by the reconciliation: right away when stop is true, otherwise once the Deployment is reconciled.
 	result poolDeploymentResult
 
@@ -194,6 +194,7 @@ type selectorChangeOutcome struct {
 	expectedSelector map[string]string
 	// overwriteRevisionHistoryLimit is used instead of the revisionHistoryLimit of the Kibana spec, when not nil.
 	overwriteRevisionHistoryLimit *int32
+	omitRoleSplit                 bool
 }
 
 // handleSelectorChange handles the difference between the existing and the expected selector of a pool Deployment.
@@ -218,7 +219,7 @@ func (d *driver) handleSelectorChange(
 			"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
 			"deployment", existingDeployment.Name,
 		)
-		return selectorChangeOutcome{stop: true, result: deferred}, nil
+		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: paused}, nil
 	}
 
 	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
@@ -226,7 +227,7 @@ func (d *driver) handleSelectorChange(
 	// going away, and do not delete it again.
 	if !existingDeployment.DeletionTimestamp.IsZero() {
 		logger.V(1).Info("Deployment is already being deleted; waiting for it to go away", "deployment", existingDeployment.Name)
-		return selectorChangeOutcome{stop: true, result: requeue}, nil
+		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: requeue}, nil
 	}
 
 	// The deployment cannot be deleted (yet): some pods do not have the role label, or the old ReplicaSets
@@ -237,7 +238,7 @@ func (d *driver) handleSelectorChange(
 	// Since the selector has changed, we always requeue: either we are waiting for the pods to get the role label
 	// or the old ReplicaSets to be cleaned up (before the deployment can be deleted), or the deployment was deleted
 	// and we need to reconcile again to create the new one.
-	outcome := selectorChangeOutcome{result: requeue, expectedSelector: existingSelector}
+	outcome := selectorChangeOutcome{result: requeue, expectedSelector: existingSelector, omitRoleSplit: true}
 
 	shouldDelete, blockingPod, err := shouldDeleteTheDeployment(ctx, d.client, existingDeployment)
 	if err != nil {
@@ -256,7 +257,7 @@ func (d *driver) handleSelectorChange(
 	// that has observed the limit is taken as cleaned up.
 	if hasZeroRevisionHistoryLimit(existingDeployment) && isDeploymentComplete(existingDeployment) {
 		result, err := d.deletePoolDeployment(ctx, kb, expectedSelector, existingDeployment)
-		return selectorChangeOutcome{stop: true, result: result}, err
+		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: result}, err
 	}
 
 	// The cleanup is not done (or not set yet): reconcile the deployment with revisionHistoryLimit 0 and
