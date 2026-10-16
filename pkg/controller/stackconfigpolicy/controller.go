@@ -932,12 +932,7 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 	defer esClient.Close()
 
-	clusterState, err := esClient.GetClusterState(ctx)
-	if err != nil {
-		return esclient.FileSettings{}, err
-	}
-
-	return clusterState.Metadata.ReservedState.FileSettings, nil
+	return esclient.GetFileSettings(ctx, esClient)
 }
 
 func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {

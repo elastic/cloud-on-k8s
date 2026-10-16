@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -28,12 +30,49 @@ import (
 // fakePKIRealmClient returns a node for each entry of nodeAttributes, keyed by node name, with the value of the
 // ECK-managed PKI realm node attribute, or without it when the value is empty. The calls fail with the errors of errs,
 // in order, then return the nodes of earlierNodeAttributes, in order, then the nodes of nodeAttributes.
+// The cluster state requests fail with the errors of clusterStateErrs, in order, then report the file-based settings
+// returned by fileSettings for the version of the file-settings Secret of es, or that version when fileSettings is
+// nil.
 type fakePKIRealmClient struct {
 	esclient.Client
 	nodeAttributes        map[string]string
 	earlierNodeAttributes []map[string]string
 	errs                  []error
 	queried               bool
+
+	k8sClient           k8s.Client
+	es                  types.NamespacedName
+	fileSettings        func(persisted int64) esclient.FileSettings
+	clusterStateErrs    []error
+	clusterStateQueried bool
+}
+
+func (f *fakePKIRealmClient) GetClusterState(ctx context.Context) (esclient.ClusterState, error) {
+	f.clusterStateQueried = true
+	if len(f.clusterStateErrs) > 0 {
+		err := f.clusterStateErrs[0]
+		f.clusterStateErrs = f.clusterStateErrs[1:]
+		return esclient.ClusterState{}, err
+	}
+	var secret corev1.Secret
+	if err := f.k8sClient.Get(ctx, types.NamespacedName{Namespace: f.es.Namespace, Name: esv1.FileSettingsSecretName(f.es.Name)}, &secret); err != nil {
+		return esclient.ClusterState{}, err
+	}
+	var settings filesettings.Settings
+	if err := json.Unmarshal(secret.Data[filesettings.SettingsSecretKey], &settings); err != nil {
+		return esclient.ClusterState{}, err
+	}
+	persisted, err := strconv.ParseInt(settings.Metadata.Version, 10, 64)
+	if err != nil {
+		return esclient.ClusterState{}, err
+	}
+	fileSettings := esclient.FileSettings{Version: persisted}
+	if f.fileSettings != nil {
+		fileSettings = f.fileSettings(persisted)
+	}
+	var clusterState esclient.ClusterState
+	clusterState.Metadata.ReservedState.FileSettings = fileSettings
+	return clusterState, nil
 }
 
 func (f *fakePKIRealmClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
@@ -213,8 +252,14 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		// request is the evaluation annotation of the request Secret: nil means no request Secret.
 		request *string
 		// conflicting adds a request with the same public key fingerprint asking for other roles.
-		conflicting   bool
-		wantESQueried bool
+		conflicting bool
+		// fileSettings are the file-based settings Elasticsearch reports for the persisted version, which it reports
+		// as applied when nil.
+		fileSettings func(persisted int64) esclient.FileSettings
+		// clusterStateErrs are the errors of the first cluster state requests, which then succeed.
+		clusterStateErrs        []error
+		wantESQueried           bool
+		wantClusterStateQueried bool
 		// wantRequeues tells if each successive reconciliation requeues. The other expectations apply after the last.
 		wantRequeues   []bool
 		wantEvaluation string
@@ -249,14 +294,66 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			wantEvaluation:     string(evaluated),
 		},
 		{
-			name:               "request pending and realm running on all the nodes: evaluated, no requeue",
+			name:                    "request pending and realm running on all the nodes: evaluated, no requeue",
+			pkiRealmConfigured:      true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			request:                 new(""),
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{false},
+			wantEvaluation:          string(evaluated),
+		},
+		{
+			name:                    "request pending, realm running on all the nodes and a later file-based settings version applied: evaluated, no requeue",
+			pkiRealmConfigured:      true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			request:                 new(""),
+			fileSettings:            func(persisted int64) esclient.FileSettings { return esclient.FileSettings{Version: persisted + 1} },
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{false},
+			wantEvaluation:          string(evaluated),
+		},
+		{
+			name:                    "request pending, realm running on all the nodes and file-based settings not applied yet: not evaluated, requeue",
+			pkiRealmConfigured:      true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			request:                 new(""),
+			fileSettings:            func(persisted int64) esclient.FileSettings { return esclient.FileSettings{Version: persisted - 1} },
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{true},
+		},
+		{
+			name:               "request pending, realm running on all the nodes and file-based settings failed to apply: not evaluated, requeue",
 			pkiRealmConfigured: true,
 			esReachable:        true,
 			nodeAttributes:     map[string]string{"es-0": "true", "es-1": "true"},
 			request:            new(""),
-			wantESQueried:      true,
-			wantRequeues:       []bool{false},
-			wantEvaluation:     string(evaluated),
+			fileSettings: func(persisted int64) esclient.FileSettings {
+				return esclient.FileSettings{
+					Version: persisted - 1,
+					Errors:  &esclient.FileSettingsErrors{Version: persisted, ErrorKind: "validation", Errors: []string{"invalid"}},
+				}
+			},
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{true},
+		},
+		{
+			name:                    "request pending, realm running on all the nodes and the cluster state request fails once: requeue, then evaluated",
+			pkiRealmConfigured:      true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			request:                 new(""),
+			clusterStateErrs:        []error{errors.New("boom")},
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{true, false},
+			wantEvaluation:          string(evaluated),
 		},
 		{
 			name:               "request pending and realm not running on all the nodes: not evaluated, requeue",
@@ -297,15 +394,16 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			wantRequeues:       []bool{true},
 		},
 		{
-			name:               "request pending and realm running on all the nodes with orchestration paused: evaluated, no requeue",
-			pkiRealmConfigured: true,
-			paused:             true,
-			esReachable:        true,
-			nodeAttributes:     map[string]string{"es-0": "true", "es-1": "true"},
-			request:            new(""),
-			wantESQueried:      true,
-			wantRequeues:       []bool{false},
-			wantEvaluation:     string(evaluated),
+			name:                    "request pending and realm running on all the nodes with orchestration paused: evaluated, no requeue",
+			pkiRealmConfigured:      true,
+			paused:                  true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			request:                 new(""),
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{false},
+			wantEvaluation:          string(evaluated),
 		},
 		{
 			name:               "request pending and Elasticsearch not reachable with orchestration paused: not evaluated, requeue",
@@ -317,28 +415,30 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			wantRequeues:       []bool{true},
 		},
 		{
-			name:               "request pending and the nodes request fails once with orchestration paused: requeue, then evaluated",
-			pkiRealmConfigured: true,
-			paused:             true,
-			esReachable:        true,
-			nodeAttributes:     map[string]string{"es-0": "true", "es-1": "true"},
-			getNodesErrs:       []error{errors.New("boom")},
-			request:            new(""),
-			wantESQueried:      true,
-			wantRequeues:       []bool{true, false},
-			wantEvaluation:     string(evaluated),
+			name:                    "request pending and the nodes request fails once with orchestration paused: requeue, then evaluated",
+			pkiRealmConfigured:      true,
+			paused:                  true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			getNodesErrs:            []error{errors.New("boom")},
+			request:                 new(""),
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{true, false},
+			wantEvaluation:          string(evaluated),
 		},
 		{
-			name:                  "request pending and a Pod missing from the nodes once with orchestration paused: requeue, then evaluated",
-			pkiRealmConfigured:    true,
-			paused:                true,
-			esReachable:           true,
-			nodeAttributes:        map[string]string{"es-0": "true", "es-1": "true"},
-			earlierNodeAttributes: []map[string]string{{"es-0": "true"}},
-			request:               new(""),
-			wantESQueried:         true,
-			wantRequeues:          []bool{true, false},
-			wantEvaluation:        string(evaluated),
+			name:                    "request pending and a Pod missing from the nodes once with orchestration paused: requeue, then evaluated",
+			pkiRealmConfigured:      true,
+			paused:                  true,
+			esReachable:             true,
+			nodeAttributes:          map[string]string{"es-0": "true", "es-1": "true"},
+			earlierNodeAttributes:   []map[string]string{{"es-0": "true"}},
+			request:                 new(""),
+			wantESQueried:           true,
+			wantClusterStateQueried: true,
+			wantRequeues:            []bool{true, false},
+			wantEvaluation:          string(evaluated),
 		},
 	}
 	for _, tt := range tests {
@@ -359,7 +459,15 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 				objs = append(objs, other)
 			}
 			c := k8s.NewFakeClient(objs...)
-			esClient := &fakePKIRealmClient{nodeAttributes: tt.nodeAttributes, earlierNodeAttributes: tt.earlierNodeAttributes, errs: tt.getNodesErrs}
+			esClient := &fakePKIRealmClient{
+				nodeAttributes:        tt.nodeAttributes,
+				earlierNodeAttributes: tt.earlierNodeAttributes,
+				errs:                  tt.getNodesErrs,
+				k8sClient:             c,
+				es:                    k8s.ExtractNamespacedName(es),
+				fileSettings:          tt.fileSettings,
+				clusterStateErrs:      tt.clusterStateErrs,
+			}
 			sharedState := &shared.ReconcileState{
 				ESReachable:    tt.esReachable,
 				ESClient:       esClient,
@@ -373,6 +481,7 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 			}
 			require.Equal(t, tt.wantRequeues, requeues)
 			require.Equal(t, tt.wantESQueried, esClient.queried)
+			require.Equal(t, tt.wantClusterStateQueried, esClient.clusterStateQueried)
 			if tt.request != nil {
 				var request corev1.Secret
 				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: "kb-client-cert"}, &request))

@@ -111,6 +111,15 @@ func (f *Secret) Version() int64 {
 	return f.version
 }
 
+// persistedVersion returns the settings version of the Secret on the API server, or 0 if the Secret does not exist or
+// its settings are malformed: no version is applied by Elasticsearch then.
+func (f *Secret) persistedVersion() (int64, error) {
+	if f.current == nil || f.settingsCorrupted {
+		return 0, nil
+	}
+	return extractVersion(*f.current)
+}
+
 // Reset clears SCP-managed settings state.
 // Use when the Secret should be reset (e.g. when all StackConfigPolicy owners are removed).
 func (f *Secret) Reset() *Secret {

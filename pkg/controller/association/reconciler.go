@@ -596,16 +596,18 @@ func (r *Reconciler) reconcilePKIAuth(
 	if err != nil {
 		return authConf{}, commonv1.AssociationPending, err
 	}
-	// Until the ES driver has evaluated the current request, its role mapping may not be written, or the ECK-managed PKI
-	// realm may not run on all the nodes yet. Stay Pending, keeping the committed conf and its credentials: the driver
-	// annotates the request Secret, which triggers a reconciliation through the request Secret watch.
+	// Until the ES driver has evaluated the current request, its role mapping may not be written or applied by
+	// Elasticsearch, or the ECK-managed PKI realm may not run on all the nodes yet. Stay Pending, keeping the committed
+	// conf and its credentials: the driver annotates the request Secret, which triggers a reconciliation through the
+	// request Secret watch.
 	if !evaluated {
 		// The event is Normal: this is expected on every new request or client certificate rotation, and during the
 		// rolling restart that loads the realm.
 		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeNormal,
 			events.EventAssociationStatusChange, events.EventActionAssociationConfiguration,
 			"Waiting for Elasticsearch %s/%s to evaluate the PKI role mapping request. It is evaluated once Elasticsearch is "+
-				"reachable and the ECK-managed PKI realm runs on all its nodes, see the Elasticsearch status and events",
+				"reachable, the ECK-managed PKI realm runs on all its nodes and the file-based settings holding the role "+
+				"mapping are applied, see the Elasticsearch status and events",
 			es.Namespace, es.Name)
 		return authConf{}, commonv1.AssociationPending, nil
 	}

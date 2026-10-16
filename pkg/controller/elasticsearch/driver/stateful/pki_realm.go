@@ -23,9 +23,11 @@ import (
 )
 
 // reconcilePKIRoleMappings reconciles the ECK PKI role mappings and applies the pending conflict-free evaluations once
-// the ECK-managed PKI realm runs on all the nodes. Elasticsearch is only queried when some are pending. Until then it
-// requeues, also while the orchestration is paused: nodes can join, leave or restart without an event triggering a
-// reconciliation.
+// the ECK-managed PKI realm runs on all the nodes and Elasticsearch applied the file-based settings holding the PKI
+// role mappings: a file-based settings version Elasticsearch fails to apply, e.g. because of an invalid
+// StackConfigPolicy, must not switch associations to PKI. Elasticsearch is only queried when some are pending. Until
+// then it requeues, also while the orchestration is paused: nodes can join, leave or restart, and file-based settings
+// be applied, without an event triggering a reconciliation.
 func reconcilePKIRoleMappings(
 	ctx context.Context,
 	c k8s.Client,
@@ -49,6 +51,20 @@ func reconcilePKIRoleMappings(
 	}
 	if !running {
 		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Waiting for the ECK-managed PKI realm to run on all the nodes"))
+	}
+	current, err := esclient.GetFileSettings(ctx, sharedState.ESClient)
+	if err != nil {
+		ulog.FromContext(ctx).V(1).Info("Could not get the file-based settings applied by Elasticsearch", "err", err)
+		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Waiting for Elasticsearch to report the applied file-based settings"))
+	}
+	if !evaluations.FileSettingsApplied(current) {
+		reason := fmt.Sprintf("Waiting for Elasticsearch to apply the file-based settings version %d holding the PKI role mappings, current version is %d",
+			evaluations.FileSettingsVersion(), current.Version)
+		if current.Errors != nil && current.Errors.Version >= evaluations.FileSettingsVersion() {
+			reason = fmt.Sprintf("Elasticsearch failed to apply the file-based settings version %d holding the PKI role mappings, current version is %d",
+				current.Errors.Version, current.Version)
+		}
+		return results.WithReconciliationState(shared.DefaultRequeue.WithReason(reason))
 	}
 	return results.WithError(evaluations.Apply(ctx, c))
 }

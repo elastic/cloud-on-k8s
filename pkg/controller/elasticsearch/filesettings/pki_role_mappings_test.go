@@ -28,6 +28,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -356,7 +357,8 @@ func pkiRequestSecretWithCert(t *testing.T, es esv1.Elasticsearch, name, roles, 
 }
 
 // reconcileAndEvaluate runs ReconcilePKIRoleMappings with the ECK-managed PKI realm configured and applies the
-// evaluations, as the Elasticsearch driver does once the realm runs on all the nodes.
+// evaluations, as the Elasticsearch driver does once the realm runs on all the nodes and the file-based settings are
+// applied.
 func reconcileAndEvaluate(t *testing.T, c k8s.Client, es esv1.Elasticsearch) {
 	t.Helper()
 	evaluations, err := ReconcilePKIRoleMappings(t.Context(), c, es, true)
@@ -395,7 +397,8 @@ func TestReconcilePKIRoleMappings(t *testing.T) {
 		// clientAuthenticationIneffective simulates mTLS being enabled in the spec but not effectively required, e.g.
 		// without enterprise features or with a client_authentication override in the user or StackConfigPolicy config.
 		clientAuthenticationIneffective bool
-		// realmNotRunning leaves the conflict-free evaluations unapplied, as when the realm is not on all the nodes.
+		// realmNotRunning leaves the conflict-free evaluations unapplied, as when the realm is not on all the nodes or
+		// the file-based settings are not applied yet.
 		realmNotRunning bool
 	}{
 		{
@@ -859,8 +862,9 @@ func TestPatchEvaluationAnnotations_PatchFailureIsReturned(t *testing.T) {
 }
 
 // TestReconcilePKIRoleMappings_Evaluations checks which evaluation annotations ReconcilePKIRoleMappings updates right
-// away, and which it returns to be applied once the ECK-managed PKI realm runs on all the nodes: only the
-// conflict-free evaluations, which let an association switch to PKI, wait.
+// away, and which it returns to be applied once the ECK-managed PKI realm runs on all the nodes and Elasticsearch
+// applied the file-based settings holding the mappings: only the conflict-free evaluations, which let an association
+// switch to PKI, wait.
 func TestReconcilePKIRoleMappings_Evaluations(t *testing.T) {
 	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 	const (
@@ -1038,17 +1042,38 @@ func TestReconcilePKIRoleMappings_Evaluations(t *testing.T) {
 				}
 			}
 
+			// assertFileSettingsVersion checks that the evaluations refer to the persisted file-based settings version,
+			// 0 without file-settings Secret, and are applied only from that version on.
+			assertFileSettingsVersion := func(t *testing.T, evaluations PKIEvaluations) {
+				t.Helper()
+				var want int64
+				var secret corev1.Secret
+				err := c.Get(t.Context(), types.NamespacedName{Namespace: es.Namespace, Name: esv1.FileSettingsSecretName(es.Name)}, &secret)
+				if !apierrors.IsNotFound(err) {
+					require.NoError(t, err)
+					want, err = extractVersion(secret)
+					require.NoError(t, err)
+				}
+				require.Equal(t, want, evaluations.FileSettingsVersion())
+				require.True(t, evaluations.FileSettingsApplied(esclient.FileSettings{Version: want}))
+				require.True(t, evaluations.FileSettingsApplied(esclient.FileSettings{Version: want + 1}))
+				require.False(t, evaluations.FileSettingsApplied(esclient.FileSettings{Version: want - 1}))
+			}
+
 			evaluations, err := ReconcilePKIRoleMappings(t.Context(), c, es, tt.pkiRealmConfigured)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantPending, evaluations.Pending())
 			assertStates(t, tt.wantBefore)
+			assertFileSettingsVersion(t, evaluations)
 
 			require.NoError(t, evaluations.Apply(t.Context(), c))
 			assertStates(t, tt.wantAfter)
-			// Nothing is pending once the evaluations are applied.
+			// Nothing is pending once the evaluations are applied, and the unchanged file-based settings keep their
+			// version.
 			evaluations, err = ReconcilePKIRoleMappings(t.Context(), c, es, tt.pkiRealmConfigured)
 			require.NoError(t, err)
 			require.False(t, evaluations.Pending())
+			assertFileSettingsVersion(t, evaluations)
 		})
 	}
 }

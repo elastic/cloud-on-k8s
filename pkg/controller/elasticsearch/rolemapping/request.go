@@ -39,7 +39,8 @@ const (
 
 	// PKIEvaluationAnnotation is set by ReconcilePKIRoleMappings on each request Secret it evaluated, to the
 	// JSON-encoded Evaluation of the request. A conflict-free evaluation is only set once the ECK-managed PKI realm runs
-	// on all the Elasticsearch nodes. It is removed when PKI or mTLS is disabled on Elasticsearch.
+	// on all the Elasticsearch nodes and Elasticsearch applied the file-based settings holding the role mapping. It is
+	// removed when PKI or mTLS is disabled on Elasticsearch.
 	PKIEvaluationAnnotation = "association.k8s.elastic.co/pki-evaluation"
 
 	fieldNotFound = "field %s not found in PKI role mapping request Secret %s/%s"

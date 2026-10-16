@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -39,9 +40,12 @@ const (
 )
 
 // PKIEvaluations are the pending conflict-free evaluations of the request Secrets. They let associations switch to PKI,
-// so ReconcilePKIRoleMappings returns them to be applied once the ECK-managed PKI realm runs on all the nodes.
+// so ReconcilePKIRoleMappings returns them to be applied once the ECK-managed PKI realm runs on all the nodes and
+// Elasticsearch applied the file-based settings holding the PKI role mappings.
 type PKIEvaluations struct {
 	updates []evaluationUpdate
+	// fileSettingsVersion is the version of the file-based settings holding the PKI role mappings.
+	fileSettingsVersion int64
 }
 
 // evaluationUpdate sets PKIEvaluationAnnotation of a request Secret to value, or removes it when value is empty.
@@ -56,7 +60,19 @@ func (e PKIEvaluations) Pending() bool {
 	return len(e.updates) > 0
 }
 
-// Apply annotates the request Secrets. Call it only once the ECK-managed PKI realm runs on all the nodes. Patch errors
+// FileSettingsApplied reports whether Elasticsearch applied the file-based settings holding the PKI role mappings.
+// A later version also holds them: the StackConfigPolicy controller preserves the ECK-generated PKI role mappings.
+func (e PKIEvaluations) FileSettingsApplied(current esclient.FileSettings) bool {
+	return current.Version >= e.fileSettingsVersion
+}
+
+// FileSettingsVersion returns the version of the file-based settings holding the PKI role mappings.
+func (e PKIEvaluations) FileSettingsVersion() int64 {
+	return e.fileSettingsVersion
+}
+
+// Apply annotates the request Secrets. Call it only once the ECK-managed PKI realm runs on all the nodes and
+// Elasticsearch applied the file-based settings holding the PKI role mappings (see FileSettingsApplied). Patch errors
 // are aggregated so the caller can retry.
 func (e PKIEvaluations) Apply(ctx context.Context, c k8s.Client) error {
 	return patchEvaluationAnnotations(ctx, c, e.updates)
@@ -70,9 +86,10 @@ func (e PKIEvaluations) Apply(ctx context.Context, c k8s.Client) error {
 // a conflict.
 // Conflicts and removals are annotated right away: they cannot switch an association to PKI, and keeping a previous
 // conflict-free annotation would keep its association Established while its mapping is withheld. The conflict-free
-// evaluations are returned instead, to be applied once the realm runs on all the nodes: the realm is a static setting,
-// and until all the nodes load it an association switching to PKI must keep its credentials. Without the realm no user
-// matches the mappings, so writing them early is harmless.
+// evaluations are returned instead, to be applied once the realm runs on all the nodes and Elasticsearch applied the
+// file-based settings holding the mappings: the realm is a static setting, and until all the nodes load it and the
+// mappings are applied an association switching to PKI must keep its credentials. Without the realm no user matches
+// the mappings, so writing them early is harmless.
 // No mapping is generated when the ECK-managed PKI realm is not configured (pkiRealmConfigured, see
 // settings.PKIRealmConfigured), so the mappings are removed with the realm: their rules match the fingerprint from any
 // PKI realm, so a user-defined PKI realm would still grant the roles. The annotations are removed then.
@@ -96,6 +113,7 @@ func ReconcilePKIRoleMappings(
 	esNsn := k8s.ExtractNamespacedName(&es)
 
 	var nameCollisions map[string]string
+	var fileSettingsVersion int64
 	if err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
@@ -108,12 +126,17 @@ func ReconcilePKIRoleMappings(
 		// Skip write when the incoming mappings are identical to those already stored.
 		// Covers both the no-PKI case (nil == nil) and the unchanged-entries case.
 		if fs.pkiMappingsUnchanged(desired) {
-			return nil
+			fileSettingsVersion, err = fs.persistedVersion()
+			return err
 		}
 		if err := fs.SetPKIRoleMappings(desired); err != nil {
 			return err
 		}
-		return fs.Save(ctx, c, &es, WithAdditiveMetadata())
+		if err := fs.Save(ctx, c, &es, WithAdditiveMetadata()); err != nil {
+			return err
+		}
+		fileSettingsVersion = fs.Version()
+		return nil
 	}); err != nil {
 		return PKIEvaluations{}, err
 	}
@@ -125,7 +148,7 @@ func ReconcilePKIRoleMappings(
 	if err := patchEvaluationAnnotations(ctx, c, immediate); err != nil {
 		return PKIEvaluations{}, err
 	}
-	return PKIEvaluations{updates: conflictFree}, nil
+	return PKIEvaluations{updates: conflictFree, fileSettingsVersion: fileSettingsVersion}, nil
 }
 
 // withholdNameCollisions drops the entries of pkiMappings whose name is already used by a user-defined role
