@@ -90,9 +90,9 @@ func HandleDownscale(
 	// of the non-terminating nodes. While a leaving node is not a member of the cluster, the shutdowns of the nodes that
 	// are not members are kept: it may have left the cluster while draining, for example because its Pod restarted, and
 	// its shutdown cannot be told apart from the others as its node ID is unknown.
-	leavingNodes := leavingNodeNames(downscales)
-	keptNodes := draining.Diff(set.Make(leavingNodes...)).AsSortedSlice()
-	shutdownNodes := slices.Concat(leavingNodes, keptNodes)
+	selectedNodes := leavingNodeNames(downscales)
+	keptNodes := draining.Diff(set.Make(selectedNodes...)).AsSortedSlice()
+	shutdownNodes := slices.Concat(selectedNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
 	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes, len(notMembers) > 0); err != nil {
 		return results.WithError(err)
@@ -118,7 +118,7 @@ func HandleDownscale(
 
 	// Report the delayed nodes and why they are held in a single reason, as only the first one of a priority is kept.
 	reason := "Downscale in progress"
-	if delayedLeavingNodes, _ := stringsutil.Difference(desiredLeavingNodes, leavingNodes); len(delayedLeavingNodes) > 0 {
+	if delayedLeavingNodes, _ := stringsutil.Difference(desiredLeavingNodes, selectedNodes); len(delayedLeavingNodes) > 0 {
 		sort.Strings(delayedLeavingNodes)
 		// the held reasons are only reported with delayed nodes: a downscale is only held when fewer nodes than
 		// requested are removed, which delays the others

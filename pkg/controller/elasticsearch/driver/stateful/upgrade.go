@@ -372,6 +372,9 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 // are kept: a shutdown may only turn complete a short while after it is requested, which is after the Pod was held, and
 // deleting it would make the next attempt request it again, and hold the Pod again, instead of deleting the Pod. The ones
 // of the Pods that fail a predicate are deleted afterwards, see clearHeldRestartShutdowns.
+// A Pod that already restarted, and is back before its completed shutdown is deleted, is a pending restart again if the
+// spec changes in the meantime: its shutdown is kept, and keeps its readiness port closed, until the Pod is deleted for
+// the new spec or fails a predicate.
 func (d *Driver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
@@ -404,7 +407,8 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	// the node of a Pod that still waits for its restart has not restarted: its shutdown is not over until the Pod is deleted
+	// the shutdown of a Pod that still waits for its restart is not over until the Pod is deleted. The Pod may also have
+	// restarted already for a previous spec, its shutdown is then kept until its next restart, see above.
 	notPendingRestart := nodeShutdown.ExceptNodes(k8s.PodNames(pendingRestarts))
 
 	// once expectations are satisfied we can already delete shutdowns that are complete and where the node

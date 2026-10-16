@@ -756,6 +756,89 @@ func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.
 	}
 }
 
+// Test_Driver_handleUpgrades_restartedPodWithNewSpecChange covers a Pod that restarted for a spec change and is back in
+// the cluster, but whose completed restart shutdown is not deleted yet when another spec change makes it a pending
+// restart again. Its shutdown is kept, and keeps its readiness port closed: the Pod is not ready, so it is deleted for the
+// new spec without a new shutdown request, unless a predicate holds it, in which case its shutdown is deleted.
+func Test_Driver_handleUpgrades_restartedPodWithNewSpecChange(t *testing.T) {
+	esVersion := "8.1.0"
+	es := esv1.Elasticsearch{
+		Name: TestEsName, Namespace: TestEsNamespace,
+		Spec:   esv1.ElasticsearchSpec{Version: esVersion},
+		Status: esv1.ElasticsearchStatus{Version: esVersion},
+	}
+	// data-0 restarted with rev-b, and the new spec change is rev-c
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-c", UpdatedReplicas: 0, Replicas: 1}
+	statefulSet := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 1, Data: true, Status: outdated}.Build()
+	// the completed shutdown closes the readiness port of data-0
+	pod := sset.TestPod{
+		Name: "data-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "data",
+		Version: esVersion, Revision: "rev-b", Data: true, Ready: false,
+	}.Build()
+	tests := []struct {
+		name string
+		// health is the cluster health, green if empty
+		health esv1.ElasticsearchHealth
+		// shards are the shards of the cluster
+		shards            esclient.Shards
+		wantRemainingPods []string // Pods that have not been deleted for an upgrade
+		// wantShutdownKept is true if the completed restart shutdown still exists
+		wantShutdownKept bool
+	}{
+		{
+			name:              "the Pod is deleted for the new spec: the completed shutdown is kept",
+			wantRemainingPods: nil,
+			wantShutdownKept:  true,
+		},
+		{
+			name:   "a predicate holds the Pod: the completed shutdown is deleted",
+			health: esv1.ElasticsearchYellowHealth,
+			// a primary on data-0 whose replica is not assigned, which require_started_replica holds
+			shards: esclient.Shards{
+				{Index: "index", Shard: "0", State: esclient.STARTED, NodeName: "data-0", Type: esclient.Primary},
+				{Index: "index", Shard: "0", State: esclient.UNASSIGNED, Type: esclient.Replica},
+			},
+			wantRemainingPods: []string{"data-0"},
+			wantShutdownKept:  false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			k8sClient := k8s.NewFakeClient(&es, &statefulSet, &pod)
+			esClient := &fakeESClient{
+				version: version.MustParse(esVersion),
+				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-data-0": {Name: "data-0"}}},
+				health:  esclient.Health{Status: cmp.Or(tt.health, esv1.ElasticsearchGreenHealth)},
+				shards:  tt.shards,
+				// the completed shutdown of the previous restart of data-0
+				Shutdowns: map[string]esclient.NodeShutdown{
+					"id-data-0": {NodeID: "id-data-0", Type: "RESTART", Status: esclient.ShutdownComplete},
+				},
+			}
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: statefulSet}}
+			esState := NewMemoizingESState(ctx, esClient)
+			results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
+			_, err := results.Aggregate()
+			require.NoError(t, err)
+
+			// data-0 is not ready: no shutdown is requested
+			assert.Empty(t, esClient.PutShutdownCalls)
+			_, shutdownKept := esClient.Shutdowns["id-data-0"]
+			assert.Equal(t, tt.wantShutdownKept, shutdownKept)
+			var pods corev1.PodList
+			require.NoError(t, k8sClient.List(ctx, &pods))
+			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
+		})
+	}
+}
+
 // Test_Driver_handleUpgrades_heldRestartShutdowns covers the restart shutdowns of the Pods that are not deleted on the
 // pass after the one that requested them. The shutdown of a Pod that fails a predicate is deleted, as it would keep the
 // Pod unavailable, which can hold the restarts the predicate waits for. The shutdown of a Pod that is only held because
