@@ -518,6 +518,22 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 	})
 
+	// markSteady simulates the Deployment controller having observed the spec and made all
+	// replicas available, which deployment.IsSteady requires before the deletion can happen.
+	markSteady := func(t *testing.T, c k8s.Client, dp *appsv1.Deployment) {
+		t.Helper()
+		var got appsv1.Deployment
+		require.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+		replicas := ptr.Deref(got.Spec.Replicas, 1)
+		got.Status = appsv1.DeploymentStatus{
+			ObservedGeneration: got.Generation,
+			Replicas:           replicas,
+			UpdatedReplicas:    replicas,
+			AvailableReplicas:  replicas,
+		}
+		require.NoError(t, c.Status().Update(context.Background(), &got))
+	}
+
 	t.Run("not paused: mismatch triggers deletion and Requeue", func(t *testing.T) {
 		dp := legacyDp()
 		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
@@ -533,6 +549,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 		assert.True(t, hasZeroRevisionHistoryLimit(&got))
 		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+		markSteady(t, fakeClient, dp)
 
 		// Second call: the deployment is deleted.
 		res, reconciledDp, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
@@ -557,6 +574,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		// Second call: not paused — revisionHistoryLimit set to 0, deployment still there.
 		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
 		require.NoError(t, err)
+		markSteady(t, fakeClient, dp)
 		assert.Equal(t, requeue, res)
 		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
 
@@ -641,6 +659,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		kb := kbWithBG(nil, nil)
 		dp := withHistoryLimit(legacyDp(), 0)
 		dp.Finalizers = []string{metav1.FinalizerOrphanDependents} // keep it around to observe the deletion
+		dp.Spec.Replicas = ptr.To[int32](2)
 		dp.Generation, dp.Status = 3, appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2}
 		res, reconciledDp, got, err := reconcileOnce(t, kb, dp, labeledPod())
 		require.NoError(t, err)

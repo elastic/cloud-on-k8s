@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -124,4 +125,15 @@ func WithTemplateHash(d appsv1.Deployment) appsv1.Deployment {
 	dCopy := *d.DeepCopy()
 	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
+}
+
+// IsSteady reports whether the Deployment has converged: the controller has observed the latest
+// spec and all expected replicas are updated and available. The default for nil Spec.Replicas is 1,
+// matching the Kubernetes Deployment default, so a Deployment with no explicit replica count is
+// only steady once its one pod is available.
+func IsSteady(d *appsv1.Deployment) bool {
+	return d.Status.ObservedGeneration >= d.Generation &&
+		d.Status.Replicas == d.Status.UpdatedReplicas &&
+		d.Status.UpdatedReplicas == d.Status.AvailableReplicas &&
+		d.Status.UpdatedReplicas == ptr.Deref(d.Spec.Replicas, 1)
 }

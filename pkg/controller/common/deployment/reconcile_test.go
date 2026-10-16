@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -163,4 +164,79 @@ func TestReconcileNilReplicas(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, int32(2), *reconciled.Spec.Replicas, "ECK-managed replica count must be enforced")
 	})
+}
+
+func TestIsSteady(t *testing.T) {
+	tests := []struct {
+		name string
+		d    appsv1.Deployment
+		want bool
+	}{
+		{
+			name: "all replicas updated and available",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 2},
+				Spec:       appsv1.DeploymentSpec{Replicas: new(int32(3))},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 3, UpdatedReplicas: 3, AvailableReplicas: 3},
+			},
+			want: true,
+		},
+		{
+			name: "nil replicas defaults to 1 and is steady",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 1},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 1, Replicas: 1, UpdatedReplicas: 1, AvailableReplicas: 1},
+			},
+			want: true,
+		},
+		{
+			name: "nil replicas defaults to 1 and pod not available",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 1},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 1, Replicas: 1, UpdatedReplicas: 1},
+			},
+			want: false,
+		},
+		{
+			name: "generation not yet observed",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 3},
+				Spec:       appsv1.DeploymentSpec{Replicas: new(int32(1))},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 1, UpdatedReplicas: 1, AvailableReplicas: 1},
+			},
+			want: false,
+		},
+		{
+			name: "rolling update in progress: old replicas still present",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 2},
+				Spec:       appsv1.DeploymentSpec{Replicas: new(int32(2))},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 3, UpdatedReplicas: 2, AvailableReplicas: 2},
+			},
+			want: false,
+		},
+		{
+			name: "updated replicas not all available",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 2},
+				Spec:       appsv1.DeploymentSpec{Replicas: new(int32(2))},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 1},
+			},
+			want: false,
+		},
+		{
+			name: "fewer replicas than spec",
+			d: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Generation: 2},
+				Spec:       appsv1.DeploymentSpec{Replicas: new(int32(3))},
+				Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsSteady(&tt.d))
+		})
+	}
 }

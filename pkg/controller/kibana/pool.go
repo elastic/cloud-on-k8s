@@ -250,7 +250,7 @@ func (d *driver) handleSelectorChange(
 	// all the inactive ones. There is no direct signal for the cleanup: the controller prunes while syncing
 	// a complete deployment, before it reports the new generation as observed, so a complete deployment
 	// that has observed the limit is taken as cleaned up.
-	if allLabeled && hasZeroRevisionHistoryLimit(existingDeployment) && isDeploymentComplete(existingDeployment) {
+	if allLabeled && hasZeroRevisionHistoryLimit(existingDeployment) && deployment.IsSteady(existingDeployment) {
 		result, err := d.deletePoolDeployment(ctx, kb, expectedSelector, existingDeployment)
 		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: result}, err
 	}
@@ -346,14 +346,6 @@ func deploymentSelector(kb *kbv1.Kibana, role kblabel.Role, existingMatchLabels 
 
 func hasZeroRevisionHistoryLimit(dep *appsv1.Deployment) bool {
 	return dep.Spec.RevisionHistoryLimit != nil && *dep.Spec.RevisionHistoryLimit == 0
-}
-
-// isDeploymentComplete returns true if the controller has observed the latest spec and all the replicas
-// are updated and available.
-func isDeploymentComplete(dep *appsv1.Deployment) bool {
-	return dep.Status.ObservedGeneration >= dep.Generation &&
-		dep.Status.Replicas == dep.Status.UpdatedReplicas &&
-		dep.Status.UpdatedReplicas == dep.Status.AvailableReplicas
 }
 
 // allPodsHaveRoleLabel returns true if every pod selected by the given Deployment already carries the
