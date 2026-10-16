@@ -43,55 +43,47 @@ type poolParameters struct {
 	BasePath       string
 }
 
-func poolParams(operatorParameters operator.Parameters, kb *kbv1.Kibana, role kblabel.Role, basePath string, scaleToZero bool) (params poolParameters, rErr error) {
+func newPoolParameters(operatorParameters operator.Parameters, kb *kbv1.Kibana, role kblabel.Role, basePath string, scaleToZero bool) (poolParameters, error) {
 	var specConfigData map[string]any
 	if kb.Spec.Config != nil {
 		specConfigData = kb.Spec.Config.Data
 	}
-	pcg, err := settings.NewCanonicalConfigFrom(specConfigData)
+	cfg, err := settings.NewCanonicalConfigFrom(specConfigData)
 	if err != nil {
 		return poolParameters{}, err
 	}
-	primaryPoolConfig := CanonicalConfig{pcg}
 
+	// Single all-roles pool or UI pool: use the base config and base names.
 	pp := poolParameters{
 		SetDefaultSecurityContext: operatorParameters.SetDefaultSecurityContext,
 		OperatorNamespace:         operatorParameters.OperatorNamespace,
 		Role:                      role,
 		BasePath:                  basePath,
 		ScaleToZero:               scaleToZero,
+		Config:                    CanonicalConfig{cfg},
+		SecretName:                kbv1.ConfigSecret(kb.Name),
+		DeploymentName:            kbv1.KBNamer.Suffix(kb.Name),
 	}
 
-	if role.IsSinglePool() || role.IsUI() || (role == kblabel.Role{}) {
-		// Single all-roles pool or UI pool: use the base config and base names.
-		pp.Config = primaryPoolConfig
-		pp.SecretName = kbv1.ConfigSecret(kb.Name)
-		pp.DeploymentName = kbv1.KBNamer.Suffix(kb.Name)
+	if !role.IsBackgroundTasks() {
 		return pp, nil
 	}
 
-	// Background tasks pool: only create a separate secret when there is an overlay.
-	overlay := kb.Spec.BackgroundTasks.Config // kb.Spec.BackgroundTasks is non-nil when BG role is active
-	if overlay == nil {
-		// No overlay — share the base secret; no separate BG secret needed.
-		pp.Config = primaryPoolConfig
-		pp.SecretName = kbv1.ConfigSecret(kb.Name)
-		pp.DeploymentName = kbv1.BackgroundTasksDeployment(kb.Name)
-		return pp, nil
-	}
-
-	overlayCfg, err := settings.NewCanonicalConfigFrom(overlay.Data)
-	if err != nil {
-		return poolParameters{}, err
-	}
-	// The base config was built fresh above, so it can be merged in place.
-	if err := primaryPoolConfig.MergeWith(overlayCfg); err != nil {
-		return poolParameters{}, err
-	}
-
-	pp.Config = primaryPoolConfig
-	pp.SecretName = kbv1.BackgroundTasksConfigSecret(kb.Name)
 	pp.DeploymentName = kbv1.BackgroundTasksDeployment(kb.Name)
+	// Only create a separate secret when there is an overlay, otherwise share the base secret.
+	// kb.Spec.BackgroundTasks is non-nil when the background tasks role is active.
+	if overlay := kb.Spec.BackgroundTasks.Config; overlay != nil {
+		overlayCfg, err := settings.NewCanonicalConfigFrom(overlay.Data)
+		if err != nil {
+			return poolParameters{}, err
+		}
+		// The base config was built fresh above, so it can be merged in place.
+		if err := pp.Config.MergeWith(overlayCfg); err != nil {
+			return poolParameters{}, err
+		}
+		pp.SecretName = kbv1.BackgroundTasksConfigSecret(kb.Name)
+	}
+
 	return pp, nil
 }
 

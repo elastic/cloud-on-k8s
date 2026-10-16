@@ -156,7 +156,7 @@ func TestPoolParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opParams := operator.Parameters{OperatorNamespace: "op-ns", SetDefaultSecurityContext: true}
-			params, err := poolParams(opParams, tt.kb, tt.role, "/base-path", true)
+			params, err := newPoolParameters(opParams, tt.kb, tt.role, "/base-path", true)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantSecretName, params.SecretName)
 			assert.Equal(t, tt.wantDeploymentName, params.DeploymentName)
@@ -498,7 +498,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 	}
 
 	poolParamsFor := func(kb *kbv1.Kibana) poolParameters {
-		pp, err := poolParams(operator.Parameters{}, kb, kblabel.UIRole, "", false)
+		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.UIRole, "", false)
 		require.NoError(t, err)
 		return pp
 	}
@@ -722,7 +722,7 @@ func TestReconcilePoolDeployment(t *testing.T) {
 		kb.Spec.Config = &commonv1.Config{Data: map[string]any{"server.name": "from-spec"}}
 		d := newDriverFor(t, kb, defaultInitialObjects()...)
 
-		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
+		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
 		require.NoError(t, err)
 		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 
@@ -755,7 +755,7 @@ func TestReconcilePoolDeployment(t *testing.T) {
 		kb.Spec.Config = &commonv1.Config{Data: map[string]any{"server.name": "from-spec"}}
 		d := newDriverFor(t, kb, defaultInitialObjects()...)
 
-		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
+		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", false)
 		require.NoError(t, err)
 		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 
@@ -776,7 +776,7 @@ func TestReconcilePoolDeployment(t *testing.T) {
 		kb := kibanaFixture()
 		d := newDriverFor(t, kb, defaultInitialObjects()...)
 
-		pp, err := poolParams(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", true)
+		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.SinglePoolRole, "", true)
 		require.NoError(t, err)
 		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
 

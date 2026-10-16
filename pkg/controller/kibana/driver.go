@@ -227,7 +227,7 @@ func (d *driver) Reconcile(
 	reconciledSecrets := map[string]struct{}{}
 
 	for _, role := range activeRoles {
-		poolParams, err := poolParams(params, kb, role, basePath, scaleToZero)
+		poolParams, err := newPoolParameters(params, kb, role, basePath, scaleToZero)
 		if err != nil {
 			return results.WithError(err)
 		}
