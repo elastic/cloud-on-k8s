@@ -105,7 +105,25 @@ func reconcileService(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, m
 	}
 	svcExists := err == nil
 
-	expectedService := NewService(*kb, meta, serviceSelector(kb, existing.Spec.Selector))
+	expectedSelector := serviceSelector(kb, existing.Spec.Selector)
+
+	// The Service selector must follow the same migration as the Deployment selector: while the
+	// primary Deployment still uses the legacy selector (no role label), some of its running pods
+	// may not carry the role label yet. Switching the Service to role=primary at that point would
+	// drop those pods from the endpoints while they are still healthy (a single-replica Kibana
+	// would lose all endpoints). The Deployment selector is the signal: it only carries the role
+	// label once the Deployment has been recreated, after all its pods were rolled with the label.
+	if svcExists && !maps.Equal(existing.Spec.Selector, expectedSelector) {
+		hasTheRole, err := primaryDeploymentSelectorHasRole(ctx, client, kb)
+		if err != nil {
+			return nil, err
+		}
+		if !hasTheRole {
+			expectedSelector = existing.Spec.Selector
+		}
+	}
+
+	expectedService := NewService(*kb, meta, expectedSelector)
 
 	if svcExists && common.IsOrchestrationPaused(kb) && !maps.Equal(existing.Spec.Selector, expectedService.Spec.Selector) {
 		ulog.FromContext(ctx).Info(
@@ -116,6 +134,27 @@ func reconcileService(ctx context.Context, client k8s.Client, kb *kbv1.Kibana, m
 	}
 
 	return common.ReconcileService(ctx, client, expectedService, kb)
+}
+
+// primaryDeploymentSelectorHasRole returns false while the primary Deployment exists with a
+// selector that does not carry the role label, i.e. while its selector migration is still in
+// progress. When the Deployment does not exist (nothing deployed yet, or the migration just
+// deleted it for recreation), it returns true: every pod the recreated Deployment adopts
+// already carries the role label.
+func primaryDeploymentSelectorHasRole(ctx context.Context, c k8s.Client, kb *kbv1.Kibana) (bool, error) {
+	var dp appsv1.Deployment
+	err := c.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.KBNamer.Suffix(kb.Name)}, &dp)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return true, err
+	}
+	if dp.Spec.Selector == nil {
+		return true, nil
+	}
+	_, hasRole := dp.Spec.Selector.MatchLabels[kblabel.RoleLabelName]
+	return hasRole, nil
 }
 
 type poolDeploymentResult string
@@ -247,9 +286,12 @@ func (d *driver) handleSelectorChange(
 
 	// The old ReplicaSets that do not carry the role label cannot be adopted by the recreated Deployment
 	// and would be left behind. Setting revisionHistoryLimit to 0 makes the Deployment controller delete
-	// all the inactive ones. There is no direct signal for the cleanup: the controller prunes while syncing
-	// a complete deployment, before it reports the new generation as observed, so a complete deployment
-	// that has observed the limit is taken as cleaned up.
+	// all the inactive ones. There is no direct signal for the cleanup, so this is best effort: the
+	// controller prunes only while syncing a deployment whose stored status already observes the latest
+	// generation, which happens on a second sync after the limit update. A steady deployment that has
+	// observed the limit is taken as cleaned up, but deleting it before that second sync leaves the old
+	// ReplicaSets (0 replicas, no role label) orphaned. Accepted risk: the impact is only some empty
+	// ReplicaSets.
 	if allLabeled && hasZeroRevisionHistoryLimit(existingDeployment) && deployment.IsSteady(existingDeployment) {
 		result, err := d.deletePoolDeployment(ctx, kb, expectedSelector, existingDeployment)
 		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: result}, err

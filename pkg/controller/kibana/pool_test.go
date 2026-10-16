@@ -1870,12 +1870,19 @@ func TestReconcileServicePauseGuard(t *testing.T) {
 		}
 		return kb
 	}
+	mkDp := func(selector map[string]string) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			Name: kbv1.KBNamer.Suffix("test"), Namespace: "default",
+			Spec: appsv1.DeploymentSpec{Selector: &metav1.LabelSelector{MatchLabels: selector}},
+		}
+	}
 
 	tests := []struct {
-		name     string
-		split    bool
-		paused   bool
-		existing *corev1.Service // nil: the Service does not exist yet
+		name       string
+		split      bool
+		paused     bool
+		existing   *corev1.Service    // nil: the Service does not exist yet
+		deployment *appsv1.Deployment // nil: the primary Deployment does not exist
 		// wantSelector is the selector of the Service in the API server after reconciliation.
 		wantSelector map[string]string
 	}{
@@ -1918,6 +1925,27 @@ func TestReconcileServicePauseGuard(t *testing.T) {
 			existing:     mkSvc(rolelessSelector),
 			wantSelector: rolelessSelector,
 		},
+		{
+			// The primary Deployment still has the legacy selector: its pods may not carry the
+			// role label yet, so the Service must keep the legacy selector to not drop them from
+			// the endpoints.
+			name:         "not paused, selector differs, Deployment selector still legacy: selector kept",
+			split:        true,
+			paused:       false,
+			existing:     mkSvc(rolelessSelector),
+			deployment:   mkDp(rolelessSelector),
+			wantSelector: rolelessSelector,
+		},
+		{
+			// The primary Deployment was recreated with the role label in its selector: the
+			// migration is done and the Service can switch.
+			name:         "not paused, selector differs, Deployment selector has the role: selector updated",
+			split:        true,
+			paused:       false,
+			existing:     mkSvc(rolelessSelector),
+			deployment:   mkDp(fullSelector),
+			wantSelector: fullSelector,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1925,6 +1953,9 @@ func TestReconcileServicePauseGuard(t *testing.T) {
 			var objs []client.Object
 			if tt.existing != nil {
 				objs = append(objs, tt.existing)
+			}
+			if tt.deployment != nil {
+				objs = append(objs, tt.deployment)
 			}
 			client := k8s.NewFakeClient(objs...)
 
