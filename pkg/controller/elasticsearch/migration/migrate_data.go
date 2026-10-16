@@ -35,7 +35,8 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.Shar
 }
 
 // ReconcileShutdowns migrates data away from the leaving nodes or removes any allocation filtering if no nodes are leaving.
-func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes, _ []string) error {
+// The allocation filtering does not depend on the membership of the nodes: keepNonMembers is ignored.
+func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes, _ []string, _ bool) error {
 	return migrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 

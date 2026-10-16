@@ -455,6 +455,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 		podToNodeID      map[string]string
 		leavingNodes     []string
 		terminatingNodes []string
+		keepNonMembers   bool
 	}
 	tests := []struct {
 		name        string
@@ -578,6 +579,35 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			wantErr:     false,
 			wantMethods: []string{"GET"},
 		},
+		{
+			name: "should not clean up shutdowns of nodes not in the cluster if they are kept",
+			args: args{
+				typ:            esclient.Restart,
+				podToNodeID:    map[string]string{},
+				keepNonMembers: true,
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET"},
+		},
+		{
+			name: "should clean up shutdowns of nodes in the cluster if the ones not in the cluster are kept",
+			args: args{
+				typ: esclient.Restart,
+				podToNodeID: map[string]string{
+					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				},
+				keepNonMembers: true,
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+				ackFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET", "DELETE"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -601,7 +631,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				podToNodeID: tt.args.podToNodeID,
 				log:         log.Log.WithName("test"),
 			}
-			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes, tt.args.terminatingNodes); (err != nil) != tt.wantErr {
+			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes, tt.args.terminatingNodes, tt.args.keepNonMembers); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileShutdowns() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(methodsCalled, tt.wantMethods) {
@@ -657,7 +687,7 @@ func TestNodeShutdown_ReconcileShutdowns_AllocationDelay(t *testing.T) {
 				log:             log.Log.WithName("test"),
 			}
 
-			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"}, nil)
+			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"}, nil, false)
 			require.NoError(t, err)
 			assert.Equal(t, esclient.Restart, capturedBody.Type)
 			assert.Equal(t, "test-reason", capturedBody.Reason)

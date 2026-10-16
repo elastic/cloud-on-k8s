@@ -509,7 +509,7 @@ func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 	}
 	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
 	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
-	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)))
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)), false)
 }
 
 func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {

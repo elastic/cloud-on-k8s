@@ -84,14 +84,20 @@ func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
 }
 
 // ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down. If no
-// node is given, it cancels the ongoing shutdowns of the non-terminating nodes.
-func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string) error {
+// node is given, it cancels the ongoing shutdowns of the non-terminating nodes, except those of the nodes that are not
+// members of the cluster if keepNonMembers is true: such a shutdown cannot be attributed to a Pod, as its node ID is
+// unknown.
+func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
 	}
 	// cancel all ongoing shutdowns for the current shutdown type
 	if len(nodesToShutdown) == 0 {
-		return ns.Clear(ctx, ns.ExceptNodes(terminatingNodes))
+		conditions := []ClearCondition{ns.ExceptNodes(terminatingNodes)}
+		if keepNonMembers {
+			conditions = append(conditions, ns.OnlyNodesInCluster)
+		}
+		return ns.Clear(ctx, conditions...)
 	}
 
 	for _, node := range nodesToShutdown {

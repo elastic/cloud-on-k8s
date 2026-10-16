@@ -90,12 +90,14 @@ func HandleDownscale(
 
 	// request the shutdowns of the nodes to remove, and keep those of the draining nodes even if they cannot be removed
 	// now: cancelling them would make the nodes ready only to drain them again. With no such nodes, cancel the shutdowns
-	// of the non-terminating nodes.
+	// of the non-terminating nodes. While a leaving node is not a member of the cluster, the shutdowns of the nodes that
+	// are not members are kept: it may have left the cluster while draining, for example because its Pod restarted, and
+	// its shutdown cannot be told apart from the others as its node ID is unknown.
 	leavingNodes := leavingNodeNames(downscales)
 	keptNodes := draining.Diff(set.Make(leavingNodes...)).AsSortedSlice()
 	shutdownNodes := slices.Concat(leavingNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
-	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes); err != nil {
+	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes, len(notMembers) > 0); err != nil {
 		return results.WithError(err)
 	}
 	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)

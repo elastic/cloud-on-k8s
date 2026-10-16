@@ -9,6 +9,7 @@ import (
 	"errors"
 	"maps"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -454,11 +455,13 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		getShutdownErr        error
 		wantErr               bool
 		wantShutdownCancelled bool
-		wantPutShutdowns      []string
-		wantReplicas          map[string]int32
-		wantShutdownStatuses  map[string]string
-		wantStalled           bool
-		wantReason            string
+		// wantShutdowns are the node IDs of the shutdowns that remain registered, if not nil
+		wantShutdowns        []string
+		wantPutShutdowns     []string
+		wantReplicas         map[string]int32
+		wantShutdownStatuses map[string]string
+		wantStalled          bool
+		wantReason           string
 	}{
 		{
 			// the next steps may recreate the Pod, for it to join the cluster and be removed
@@ -471,6 +474,43 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notJoinedPods: set.Make("data-2"),
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// data-2 left the cluster while draining, for example because its Pod restarted: its shutdown cannot be
+			// mapped to it, so it is not cancelled while data-2 is held
+			name: "the shutdown of a draining node that is not a member of the cluster is not cancelled",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-2"),
+			notJoinedPods: set.Make("data-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantShutdowns:         []string{"id-data-2"},
+			wantReplicas:          map[string]int32{"data": 3},
+			wantReason:            "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// data-1 no longer leaves but kept its shutdown: it is a member of the cluster, so its shutdown is cancelled,
+			// while the one of data-2, which is not a member, is kept
+			name: "the shutdowns of members are cancelled while a draining node is not a member of the cluster",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-1", "data-2"),
+			notJoinedPods: set.Make("data-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: true,
+			wantShutdowns:         []string{"id-data-2"},
+			wantReplicas:          map[string]int32{"data": 3},
+			wantReason:            "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
 		},
 		{
 			name: "the leaving nodes removed before a node that is not a member of the cluster are removed",
@@ -922,6 +962,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			require.Equal(t, tt.wantPutShutdowns, putShutdowns)
 			require.Equal(t, tt.wantErr, results.HasError())
 			require.Equal(t, tt.wantShutdownCancelled, esClient.DeleteShutdownCalled)
+			if tt.wantShutdowns != nil {
+				require.ElementsMatch(t, tt.wantShutdowns, slices.Collect(maps.Keys(esClient.Shutdowns)))
+			}
 			// the shutdown status of each node is retrieved, and reported to the observer, once
 			for node, calls := range nodeShutdown.statusCalls {
 				require.Equal(t, 1, calls, node)
