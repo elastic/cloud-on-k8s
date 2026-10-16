@@ -114,16 +114,12 @@ func TestReconcileNilReplicas(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                         string
-		replicas                     *int32
-		excludeReplicasFromHashOnNil bool
+		name     string
+		replicas *int32
 		// externalUpdate mutates the stored deployment between two reconciles,
 		// simulating e.g. an HPA. nil means a single reconcile only.
 		externalUpdate func(d *appsv1.Deployment)
 		wantReplicas   *int32
-		// wantHashChanged is whether the template hash label after the last reconcile
-		// is expected to differ from the one written on initial creation.
-		wantHashChanged bool
 	}{
 		{
 			name:     "nil replicas on create: API server defaults to 1",
@@ -133,46 +129,19 @@ func TestReconcileNilReplicas(t *testing.T) {
 			wantReplicas: nil,
 		},
 		{
-			name:                         "nil replicas on create with replicas excluded from hash",
-			replicas:                     nil,
-			excludeReplicasFromHashOnNil: true,
-			wantReplicas:                 nil,
-		},
-		{
-			name:           "nil replicas preserves externally scaled value and re-anchors the hash",
+			name:           "nil replicas preserves externally scaled value and keeps the hash",
 			replicas:       nil,
 			externalUpdate: hpaScaleTo5,
-			// ECK must not revert the HPA-managed count, but it rewrites the hash
-			// computed with the adopted replica count.
-			wantReplicas:    new(int32(5)),
-			wantHashChanged: true,
-		},
-		{
-			name:                         "nil replicas preserves externally scaled value and keeps the hash when replicas are excluded",
-			replicas:                     nil,
-			excludeReplicasFromHashOnNil: true,
-			externalUpdate:               hpaScaleTo5,
 			// ECK must not revert the HPA-managed count, and since replicas are not part
 			// of the hash the stored hash still matches: no write happens.
-			wantReplicas:    new(int32(5)),
-			wantHashChanged: false,
+			wantReplicas: new(int32(5)),
 		},
 		{
 			name:           "non-nil replicas are still enforced",
 			replicas:       new(int32(2)),
 			externalUpdate: externalScaleTo99,
 			// ECK must restore the desired count and its hash.
-			wantReplicas:    new(int32(2)),
-			wantHashChanged: false,
-		},
-		{
-			name:                         "non-nil replicas are still enforced with replicas excluded from hash",
-			replicas:                     new(int32(2)),
-			excludeReplicasFromHashOnNil: true,
-			externalUpdate:               externalScaleTo99,
-			// The flag only applies to nil replicas: ECK must restore the desired count and its hash.
-			wantReplicas:    new(int32(2)),
-			wantHashChanged: false,
+			wantReplicas: new(int32(2)),
 		},
 	}
 	for _, tt := range tests {
@@ -185,7 +154,7 @@ func TestReconcileNilReplicas(t *testing.T) {
 			}
 			reconcile := func() appsv1.Deployment {
 				reconciled, err := ReconcileWithMetadataMergeStrategy(
-					context.Background(), k8sClient, expected, &owner, MetadataMergeStrategy{}, tt.excludeReplicasFromHashOnNil,
+					context.Background(), k8sClient, expected, &owner, MetadataMergeStrategy{},
 				)
 				require.NoError(t, err)
 				return reconciled
@@ -205,11 +174,7 @@ func TestReconcileNilReplicas(t *testing.T) {
 			}
 
 			require.Equal(t, tt.wantReplicas, reconciled.Spec.Replicas)
-			if tt.wantHashChanged {
-				require.NotEqual(t, initialHash, hash.GetTemplateHashLabel(reconciled.Labels))
-			} else {
-				require.Equal(t, initialHash, hash.GetTemplateHashLabel(reconciled.Labels))
-			}
+			require.Equal(t, initialHash, hash.GetTemplateHashLabel(reconciled.Labels))
 		})
 	}
 }
