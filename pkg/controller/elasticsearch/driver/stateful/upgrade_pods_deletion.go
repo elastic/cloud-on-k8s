@@ -57,9 +57,12 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
+	podsToDelete, failed, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
 	if err != nil {
 		return podsToDelete, err
+	}
+	if err := ctx.clearHeldRestartShutdowns(failed); err != nil {
+		return nil, err
 	}
 
 	if len(podsToDelete) == 0 {
@@ -194,6 +197,15 @@ func sortCandidates(allPods []corev1.Pod) {
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
+		// a master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded from
+		// the voting: it is not part of the voting configuration
+		members, err := membersAmong(ctx.esState, []string{pod.Name})
+		if err != nil {
+			return err
+		}
+		if !members.Has(pod.Name) {
+			return nil
+		}
 		// Update zen2 settings to exclude leaving master nodes from voting.
 		if err := zen2.AddToVotingConfigExclusions(
 			ctx.parentCtx,

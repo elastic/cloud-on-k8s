@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -26,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 type upscaleCtx struct {
@@ -36,6 +38,9 @@ type upscaleCtx struct {
 	validateStorageClass bool
 	upscaleReporter      *reconcile.UpscaleReporter
 	meta                 metadata.Metadata
+	// desiredLeaving are the Pods the downscale wants to remove. The master StatefulSets only wait for the ones that run
+	// an older version, not for their upgrade.
+	desiredLeaving set.StringSet
 }
 
 type UpscaleResults struct {
@@ -129,6 +134,7 @@ func HandleUpscaleAndSpecChanges(
 		expectedResources.StatefulSets(),
 		targetVersion,
 		ctx.expectations,
+		ctx.desiredLeaving,
 	)
 	if err != nil {
 		return results, fmt.Errorf("while checking non-master upgrade status: %w", err)
@@ -301,13 +307,18 @@ func reconcileResources(
 	return results, nil
 }
 
-// findPendingNonMasterStatefulSetUpgrades finds all non-master StatefulSets that have not completed their upgrades
+// findPendingNonMasterStatefulSetUpgrades finds all non-master StatefulSets that have not completed their upgrades. The
+// Pods the downscale wants to remove are only waited for while they run an older version than the target one, not for
+// their upgrade: the masters are upgraded last so that the older nodes can rejoin the cluster, which also applies to
+// the leaving nodes until they are removed. A StatefulSet that only has leaving Pods is only checked on their version,
+// and the other ones are checked on the Pods that stay and on the version of the leaving ones.
 func findPendingNonMasterStatefulSetUpgrades(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
 	expectedStatefulSets es_sset.StatefulSetList,
 	targetVersion version.Version,
 	expectations *expectations.Expectations,
+	desiredLeaving set.StringSet,
 ) ([]appsv1.StatefulSet, error) {
 	pendingStatefulSets, err := expectations.PendingGenerations()
 	if err != nil {
@@ -321,6 +332,29 @@ func findPendingNonMasterStatefulSetUpgrades(
 		// Skip master StatefulSets. We check both here because the master role may have been added
 		// to a non-master StatefulSet during the upgrade spec change.
 		if label.IsMasterNodeSet(actualStatefulSet) || label.IsMasterNodeSet(expectedSset) {
+			continue
+		}
+
+		hasStayingPod := slices.ContainsFunc(sset.PodNames(actualStatefulSet), func(podName string) bool {
+			return !desiredLeaving.Has(podName)
+		})
+		if !hasStayingPod {
+			// All the Pods of this StatefulSet are leaving: only wait for the older ones. The pending generation, revision
+			// and status checks below are skipped on purpose, as they would wait for the upgrade of Pods about to be removed.
+			pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&actualStatefulSet))
+			if err != nil {
+				return pendingNonMasterSTS, err
+			}
+			for _, pod := range pods {
+				older, err := runsOlderVersion(pod, targetVersion)
+				if err != nil {
+					return pendingNonMasterSTS, err
+				}
+				if older {
+					pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
+					break
+				}
+			}
 			continue
 		}
 
@@ -347,27 +381,48 @@ func findPendingNonMasterStatefulSetUpgrades(
 			continue
 		}
 
-		// Check if this StatefulSet has pending updates
-		if actualStatefulSet.Status.UpdatedReplicas != actualStatefulSet.Status.Replicas {
-			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
-			continue
-		}
-
 		// Check if there are any pods that need to be upgraded
 		pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&actualStatefulSet))
 		if err != nil {
 			return pendingNonMasterSTS, err
 		}
 
+		// The status counts the leaving Pods, whose upgrade is not waited for: only compare the Pods that stay, and wait
+		// for the leaving Pods that run an older version.
+		stayingReplicas, stayingUpdatedReplicas := actualStatefulSet.Status.Replicas, actualStatefulSet.Status.UpdatedReplicas
+		pendingPods := false
 		for _, pod := range pods {
 			// Check if pod revision matches StatefulSet update revision
-			if actualStatefulSet.Status.UpdateRevision != "" && sset.PodRevision(pod) != actualStatefulSet.Status.UpdateRevision {
+			isUpdated := actualStatefulSet.Status.UpdateRevision == "" || sset.PodRevision(pod) == actualStatefulSet.Status.UpdateRevision
+			if desiredLeaving.Has(pod.Name) {
+				stayingReplicas--
+				if isUpdated {
+					stayingUpdatedReplicas--
+				}
+				older, err := runsOlderVersion(pod, targetVersion)
+				if err != nil {
+					return pendingNonMasterSTS, err
+				}
+				pendingPods = pendingPods || older
+			} else if !isUpdated {
 				// This pod still needs to be upgraded
-				pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
-				break
+				pendingPods = true
 			}
+		}
+		// Check if this StatefulSet has pending updates
+		if stayingUpdatedReplicas != stayingReplicas || pendingPods {
+			pendingNonMasterSTS = append(pendingNonMasterSTS, actualStatefulSet)
 		}
 	}
 
 	return pendingNonMasterSTS, nil
+}
+
+// runsOlderVersion returns true if the given Pod runs an older version than the given one.
+func runsOlderVersion(pod corev1.Pod, v version.Version) (bool, error) {
+	podVersion, err := label.ExtractVersion(pod.Labels)
+	if err != nil {
+		return false, err
+	}
+	return podVersion.LT(v), nil
 }

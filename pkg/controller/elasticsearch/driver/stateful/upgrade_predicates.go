@@ -156,20 +156,22 @@ func NewPredicateContext(
 	}
 }
 
+// applyPredicates returns the candidates that can be deleted, and the ones that failed a predicate, by name, with the
+// predicate. The candidates after the last one that can be deleted within allowedDeletions are in neither.
 func applyPredicates(
 	ctx PredicateContext,
 	candidates []corev1.Pod,
 	maxUnavailableReached bool,
 	allowedDeletions int,
 	reconcileState *reconcile.State,
-) (deletedPods []corev1.Pod, err error) {
+) (deletedPods []corev1.Pod, failed failedPredicates, err error) {
 	failedPredicates := make(failedPredicates)
 
 Loop:
 	for _, candidate := range candidates {
 		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); {
 		case err != nil:
-			return deletedPods, err
+			return deletedPods, failedPredicates, err
 		case predicateErr != nil:
 			// A predicate has failed on this Pod
 			failedPredicates[predicateErr.pod] = predicateErr.predicate
@@ -202,7 +204,7 @@ Loop:
 	}
 	// Also report in the status
 	reconcileState.RecordPredicatesResult(failedPredicates)
-	return deletedPods, nil
+	return deletedPods, failedPredicates, nil
 }
 
 var predicates = [...]Predicate{

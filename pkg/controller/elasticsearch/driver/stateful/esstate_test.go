@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,17 +38,28 @@ type fakeESClient struct { //nolint:maligned
 	FlushCalled       bool
 
 	nodes             esclient.Nodes
+	GetNodesErr       error
 	GetNodesCallCount int
 
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
 	GetClusterRoutingAllocationCallCount int
 
-	Shutdowns            map[string]esclient.NodeShutdown
+	Shutdowns        map[string]esclient.NodeShutdown
+	GetShutdownErr   error
+	PutShutdownCalls []shutdownCall
+	// RegisterPutShutdowns makes PutShutdown register an in progress shutdown in Shutdowns, replacing any existing one
+	RegisterPutShutdowns bool
 	DeleteShutdownCalled bool
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
 	version                     version.Version
+
+	shards esclient.Shards
+}
+
+func (f *fakeESClient) GetShards(_ context.Context) (esclient.Shards, error) {
+	return f.shards, nil
 }
 
 func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string) error {
@@ -84,6 +96,9 @@ func (f *fakeESClient) Flush(_ context.Context) error {
 
 func (f *fakeESClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
 	f.GetNodesCallCount++
+	if f.GetNodesErr != nil {
+		return esclient.Nodes{}, f.GetNodesErr
+	}
 	return f.nodes, nil
 }
 
@@ -102,11 +117,34 @@ func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (escl
 	return f.health, nil
 }
 
-func (f *fakeESClient) PutShutdown(_ context.Context, _ string, _ esclient.ShutdownType, _ string, _ *time.Duration) error {
+// shutdownCall is one PutShutdown call recorded by the fake.
+type shutdownCall struct {
+	NodeID string
+	Type   esclient.ShutdownType
+}
+
+func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, _ string, _ *time.Duration) error {
+	f.PutShutdownCalls = append(f.PutShutdownCalls, shutdownCall{NodeID: nodeID, Type: shutdownType})
+	if f.Shutdowns == nil {
+		f.Shutdowns = make(map[string]esclient.NodeShutdown)
+	}
+	if f.RegisterPutShutdowns {
+		// register the shutdown, so that it can be retrieved as Elasticsearch would
+		f.Shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: strings.ToUpper(string(shutdownType)), Status: esclient.ShutdownInProgress}
+		return nil
+	}
+	// NodeShutdown.ReconcileShutdowns reads the record back right after the PUT, so one is created for the node if there
+	// is none yet; tests that need a specific status seed it in Shutdowns
+	if _, exists := f.Shutdowns[nodeID]; !exists {
+		f.Shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: strings.ToUpper(string(shutdownType)), Status: esclient.ShutdownComplete}
+	}
 	return nil
 }
 
 func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.ShutdownResponse, error) {
+	if f.GetShutdownErr != nil {
+		return esclient.ShutdownResponse{}, f.GetShutdownErr
+	}
 	var ns []esclient.NodeShutdown
 	for k, v := range f.Shutdowns {
 		if nodeID != nil && k != *nodeID {
@@ -117,8 +155,9 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 	return esclient.ShutdownResponse{Nodes: ns}, nil
 }
 
-func (f *fakeESClient) DeleteShutdown(_ context.Context, _ string) error {
+func (f *fakeESClient) DeleteShutdown(_ context.Context, nodeID string) error {
 	f.DeleteShutdownCalled = true
+	delete(f.Shutdowns, nodeID)
 	return nil
 }
 
