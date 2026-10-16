@@ -51,10 +51,7 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// Feed the status with the desired leaving nodes, computed without applying any budget filter, to let the user know what
-	// nodes should be eventually removed, not only in this reconciliation attempt, but also in the next ones.
 	desiredLeavingNodes := desiredLeaving.AsSortedSlice()
-	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
 	// Retrieve the desired leaving nodes that are draining, ready or not, see newDownscaleState. Nodes that stay are
 	// ignored, so that a shutdown registered outside of the operator does not allow more removals.
@@ -65,6 +62,12 @@ func HandleDownscale(
 			return results.WithError(err)
 		}
 	}
+
+	// Feed the status with the desired leaving nodes, computed without applying any budget filter, to let the user know what
+	// nodes should be eventually removed, not only in this reconciliation attempt, but also in the next ones. They are
+	// only recorded once their shutdowns are retrieved: recording them resets their shutdown status, which the forced
+	// upgrade relies on while Elasticsearch is unreachable, so a failed retrieval must keep the reported one.
+	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)

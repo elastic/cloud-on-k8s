@@ -442,11 +442,13 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                  string
-		nodeSets              []nodeSet
-		maxUnavailable        *int32
-		notReadyPods          set.StringSet
-		shutdowns             map[string]esclient.NodeShutdown
+		name           string
+		nodeSets       []nodeSet
+		maxUnavailable *int32
+		notReadyPods   set.StringSet
+		shutdowns      map[string]esclient.NodeShutdown
+		// reportedShutdowns are the shutdown statuses in the downscale status reported by a previous reconciliation
+		reportedShutdowns     map[string]string
 		getShutdownErr        error
 		wantErr               bool
 		wantShutdownCancelled bool
@@ -468,6 +470,18 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantErr:               true,
 			wantShutdownCancelled: false,
 			wantReplicas:          map[string]int32{"removed": 0, "old": 1},
+		},
+		{
+			// the forced upgrade relies on the reported shutdowns while Elasticsearch is unreachable: a failed
+			// retrieval must not reset them
+			name:                 "an error while retrieving the shutdowns keeps the reported shutdown statuses",
+			nodeSets:             removedNodeSet,
+			notReadyPods:         set.Make("old-0", "unhealthy-0"),
+			reportedShutdowns:    map[string]string{"old-0": "IN_PROGRESS"},
+			getShutdownErr:       errors.New("boom"),
+			wantErr:              true,
+			wantReplicas:         map[string]int32{"old": 1},
+			wantShutdownStatuses: map[string]string{"old-0": "IN_PROGRESS"},
 		},
 		{
 			name:         "removing a draining node does not consume the budget",
@@ -811,6 +825,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{Namespace: "ns", Name: clusterName}
 			es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable = tt.maxUnavailable
+			for name, status := range tt.reportedShutdowns {
+				// the status was written by a previous reconciliation
+				es.Status.DownscaleOperation.LastUpdatedTime = metav1.Now()
+				es.Status.DownscaleOperation.Nodes = append(es.Status.DownscaleOperation.Nodes, esv1.DownscaledNode{Name: name, ShutdownStatus: status})
+			}
 			var actualStatefulSets, expectedStatefulSets es_sset.StatefulSetList
 			var pods []sset.TestPod
 			for _, ns := range tt.nodeSets {
@@ -885,7 +904,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				require.Equal(t, wantReplicas, sset.GetReplicas(statefulSet))
 			}
 			shutdownStatuses := map[string]string{}
-			for _, node := range reconcileState.DownscaleReporter.Merge(esv1.DownscaleOperation{}).Nodes {
+			for _, node := range reconcileState.DownscaleReporter.Merge(es.Status.DownscaleOperation).Nodes {
 				shutdownStatuses[node.Name] = node.ShutdownStatus
 			}
 			for name, wantStatus := range tt.wantShutdownStatuses {
