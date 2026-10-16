@@ -335,10 +335,13 @@ func findPendingNonMasterStatefulSetUpgrades(
 			continue
 		}
 
-		// All the Pods of this StatefulSet are leaving, none of them is upgraded: only wait for the older ones. The pending
-		// generation, revision and status checks below are skipped on purpose, as they would wait for an upgrade that
-		// never happens.
-		if !slices.ContainsFunc(sset.PodNames(actualStatefulSet), func(podName string) bool { return !desiredLeaving.Has(podName) }) {
+		hasStayingPod := slices.ContainsFunc(sset.PodNames(actualStatefulSet), func(podName string) bool {
+			return !desiredLeaving.Has(podName)
+		})
+		if !hasStayingPod {
+			// All the Pods of this StatefulSet are leaving, none of them is upgraded: only wait for the older ones. The
+			// pending generation, revision and status checks below are skipped on purpose, as they would wait for an
+			// upgrade that never happens.
 			pods, err := es_sset.GetActualPodsForStatefulSet(client, k8s.ExtractNamespacedName(&actualStatefulSet))
 			if err != nil {
 				return pendingNonMasterSTS, err
