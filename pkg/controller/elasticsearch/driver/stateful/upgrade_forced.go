@@ -49,8 +49,9 @@ func (d *Driver) MaybeForceUpgrade(
 	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
 }
 
-// excludeDrainingPods returns the given Pods minus the leaving ones that are draining. A Pending Pod is not draining, as
-// no Elasticsearch node runs in it: deleting it does not disrupt its shutdown. The draining nodes are retrieved with
+// excludeDrainingPods returns the given Pods minus the leaving ones that are draining. A Pending Pod whose Elasticsearch
+// container is not running is not draining, as no Elasticsearch node runs in it: deleting it does not disrupt its
+// shutdown. A Pending Pod may still run Elasticsearch, for example while another container waits for its image. The draining nodes are retrieved with
 // nodeShutdowns. If it is nil, Elasticsearch is not reachable or the nodes cannot be retrieved, which does not mean that
 // the shutdowns stopped: the nodes with a shutdown in lastDownscale, the downscale status reported while Elasticsearch
 // was reachable, are draining.
@@ -63,7 +64,7 @@ func excludeDrainingPods(
 ) ([]corev1.Pod, error) {
 	var leaving []string
 	for _, pod := range pods {
-		if desiredLeaving.Has(pod.Name) && pod.Status.Phase != corev1.PodPending {
+		if desiredLeaving.Has(pod.Name) && (pod.Status.Phase != corev1.PodPending || isElasticsearchRunning(pod)) {
 			leaving = append(leaving, pod.Name)
 		}
 	}
@@ -80,6 +81,16 @@ func excludeDrainingPods(
 		draining = nodesWithReportedShutdown(lastDownscale, leaving)
 	}
 	return excludeLeavingPods(pods, draining), nil
+}
+
+// isElasticsearchRunning returns true if the Elasticsearch container of the given Pod is running.
+func isElasticsearchRunning(pod corev1.Pod) bool {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.Name == esv1.ElasticsearchContainerName && containerStatus.State.Running != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // nodesWithReportedShutdown returns the given nodes that have a shutdown in the given downscale status. The nodes the

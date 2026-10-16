@@ -223,6 +223,8 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 		expected  es_sset.StatefulSetList
 		pending   bool
 		readyPods []string
+		// runningPods are Pending Pods whose Elasticsearch container is running
+		runningPods []string
 		// esReachable makes the shutdown interface available
 		esReachable bool
 		// shutdowns are the nodes that are members of the cluster with a remove-type shutdown
@@ -317,6 +319,19 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 			wantRemainingPods: nil,
 		},
 		{
+			name:     "a Pending draining Pod is not deleted if Elasticsearch runs in it",
+			actual:   es_sset.StatefulSetList{statefulSet("data", 2, false)},
+			expected: es_sset.StatefulSetList{statefulSet("data", 1, false)},
+			pending:  true,
+			// another container of data-1 waits for its image, Elasticsearch is running and draining
+			runningPods:       []string{"data-1"},
+			esReachable:       true,
+			shutdowns:         []string{"data-1"},
+			wantAttempted:     true,
+			wantLookups:       1,
+			wantRemainingPods: []string{"data-1"},
+		},
+		{
 			name:              "a StatefulSet that cannot be force upgraded is left untouched",
 			actual:            es_sset.StatefulSetList{statefulSet("data", 2, false)},
 			expected:          es_sset.StatefulSetList{statefulSet("data", 1, false)},
@@ -365,6 +380,9 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 			for _, s := range tt.actual {
 				for i := range sset.GetReplicas(s) {
 					p := pod(s, i, tt.pending, slices.Contains(tt.readyPods, sset.PodName(s.Name, i)))
+					if slices.Contains(tt.runningPods, p.Name) {
+						p.Status.ContainerStatuses[0].State.Running = &corev1.ContainerStateRunning{}
+					}
 					objs = append(objs, &p)
 				}
 			}
