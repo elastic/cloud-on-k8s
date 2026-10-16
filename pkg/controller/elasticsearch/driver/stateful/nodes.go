@@ -165,7 +165,7 @@ func (d *Driver) reconcileNodeSpecs(
 	esState := NewMemoizingESState(ctx, esClient)
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it. Only the leaving Pods that are draining are
 	// protected, the others may need it to recover.
-	nodeShutdowns, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, esReachable, esClient, esState, reconcileState, actualStatefulSets, desiredLeaving)
+	leaving, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, esReachable, esClient, esState, reconcileState, actualStatefulSets, desiredLeaving)
 	if stop {
 		return results.WithError(err)
 	}
@@ -201,28 +201,27 @@ func (d *Driver) reconcileNodeSpecs(
 		ctx,
 		d.Client,
 		esClient,
-		esState,
 		resourcesState,
 		reconcileState,
 		d.Expectations,
 		d.ES,
-		nodeShutdowns,
+		leaving.nodeShutdown,
 	)
 
-	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets, desiredLeaving)
+	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets, leaving)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {
 		return results
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleUpgrades(ctx, esClient, esState, expectedResources, desiredLeaving)
+	rollingUpgradesRes := d.handleUpgrades(ctx, esClient, esState, expectedResources, leaving)
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results
 	}
 
-	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results, desiredLeaving, esState)
+	isNodeSpecsReconciled := d.isNodeSpecsReconciled(ctx, actualStatefulSets, d.Client, results, leaving)
 	// as of 7.15.2 with node shutdown we do not need transient settings anymore and in fact want to remove any left-overs.
 	if esReachable && isNodeSpecsReconciled {
 		if err := d.maybeRemoveTransientSettings(ctx, esClient); err != nil {
@@ -253,10 +252,11 @@ func (d *Driver) reconcileNodeSpecs(
 	return results
 }
 
-// maybeForceUpgradeWithShutdowns creates the shutdown interface used by the next phases, and may attempt a forced
-// upgrade, see MaybeForceUpgrade. The shutdown interface is dependent on Elasticsearch version. It requires
-// Elasticsearch to be reachable: otherwise the forced upgrade relies on the shutdowns reported in the downscale status.
-// It returns true if the reconciliation must stop, with the error that stopped it if any.
+// maybeForceUpgradeWithShutdowns creates the shutdown interface and the leavingNodes of the given desired leaving Pods
+// used by the next phases, and may attempt a forced upgrade, see MaybeForceUpgrade. The shutdown interface is dependent
+// on Elasticsearch version. It requires Elasticsearch to be reachable: otherwise the forced upgrade relies on the
+// shutdowns reported in the downscale status. It returns true if the reconciliation must stop, with the error that
+// stopped it if any.
 func (d *Driver) maybeForceUpgradeWithShutdowns(
 	ctx context.Context,
 	esReachable bool,
@@ -265,7 +265,7 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 	reconcileState *reconcile.State,
 	actualStatefulSets es_sset.StatefulSetList,
 	desiredLeaving set.StringSet,
-) (shutdown.Interface, bool, error) {
+) (*leavingNodes, bool, error) {
 	var nodeShutdowns shutdown.Interface
 	var nodeShutdownsErr error
 	if esReachable {
@@ -273,7 +273,8 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 		nodeShutdowns, nodeShutdownsErr = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
 	}
 
-	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, desiredLeaving, nodeShutdowns)
+	leaving := newLeavingNodes(desiredLeaving, esState, nodeShutdowns, d.ES.Status.DownscaleOperation)
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, leaving)
 	if err != nil || attempted {
 		// If attempted, we're in a transient state where it's safer to requeue.
 		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
@@ -284,10 +285,10 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 	if nodeShutdownsErr != nil {
 		return nil, true, nodeShutdownsErr
 	}
-	return nodeShutdowns, false, nil
+	return leaving, false, nil
 }
 
-func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, desiredLeaving set.StringSet, esState ESState) bool {
+func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, leaving *leavingNodes) bool {
 	if isReconciled, _ := result.IsReconciled(); !isReconciled {
 		return false
 	}
@@ -296,7 +297,7 @@ func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets e
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToRollingUpgrade(client, actualStatefulSets, desiredLeaving, esState)
+	pods, err := podsToRollingUpgrade(client, actualStatefulSets, leaving)
 	if err != nil {
 		return false
 	}

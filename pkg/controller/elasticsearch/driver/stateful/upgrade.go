@@ -38,7 +38,7 @@ func (d *Driver) handleUpgrades(
 	esClient esclient.Client,
 	esState ESState,
 	expectedResources nodespec.ResourcesList,
-	desiredLeaving set.StringSet,
+	leaving *leavingNodes,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	log := ulog.FromContext(ctx)
@@ -60,7 +60,7 @@ func (d *Driver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, desiredLeaving, esState)
+	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, leaving)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -261,27 +261,21 @@ func healthyPods(
 }
 
 // podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the leaving ones that are members of the
-// cluster. Restarting one that is draining disrupts the remove-type shutdown that is migrating its shards away (its
-// record may even be replaced by a restart-type one), and the others are left to the downscale. A leaving Pod that is not
-// a member has no shard to migrate and may need the upgrade to recover: a Pod that cannot be scheduled or crashes with
-// an outdated spec must be recreated with the repaired one to join the cluster, for the downscale to remove it.
+// cluster, see leavingNodes.members. Restarting one that is draining disrupts the remove-type shutdown that is migrating
+// its shards away (its record may even be replaced by a restart-type one), and the others are left to the downscale. A
+// leaving Pod that is not a member has no shard to migrate and may need the upgrade to recover: a Pod that cannot be
+// scheduled or crashes with an outdated spec must be recreated with the repaired one to join the cluster, for the
+// downscale to remove it.
 func podsToRollingUpgrade(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
-	desiredLeaving set.StringSet,
-	esState ESState,
+	leaving *leavingNodes,
 ) ([]corev1.Pod, error) {
 	toUpgrade, err := podsToUpgrade(client, actualStatefulSets)
 	if err != nil {
 		return nil, err
 	}
-	var leaving []string
-	for _, pod := range toUpgrade {
-		if desiredLeaving.Has(pod.Name) {
-			leaving = append(leaving, pod.Name)
-		}
-	}
-	members, err := membersAmong(esState, leaving)
+	members, err := leaving.members(k8s.PodNames(toUpgrade))
 	if err != nil {
 		return nil, err
 	}

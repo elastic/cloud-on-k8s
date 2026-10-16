@@ -136,10 +136,10 @@ func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 				GetNodesErr: tt.getNodesErr,
 			}
 
-			nodeShutdowns, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, tt.esReachable, esClient, NewMemoizingESState(ctx, esClient), reconcileState, actual, desiredLeaving)
+			leaving, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, tt.esReachable, esClient, NewMemoizingESState(ctx, esClient), reconcileState, actual, desiredLeaving)
 			require.ErrorIs(t, err, tt.wantErr)
 			require.Equal(t, tt.wantStop, stop)
-			require.Equal(t, tt.wantShutdowns, nodeShutdowns != nil)
+			require.Equal(t, tt.wantShutdowns, leaving != nil && leaving.nodeShutdown != nil)
 			var pods corev1.PodList
 			require.NoError(t, k8sClient.List(ctx, &pods))
 			require.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))

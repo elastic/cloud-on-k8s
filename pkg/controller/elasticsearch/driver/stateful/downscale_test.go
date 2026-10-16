@@ -160,6 +160,12 @@ var (
 	emptyResults = &reconciler.Results{}
 )
 
+// testLeavingNodes returns the leavingNodes of the downscale from the given actual StatefulSets to the given expected
+// ones, with the shutdown interface of the given downscale context and the given ESState.
+func testLeavingNodes(downscaleCtx downscaleContext, esState ESState, expected, actual es_sset.StatefulSetList) *leavingNodes {
+	return newLeavingNodes(desiredLeavingNodeNames(context.Background(), expected, actual), esState, downscaleCtx.nodeShutdown, esv1.DownscaleOperation{})
+}
+
 // -- Tests start here
 
 func TestHandleDownscale(t *testing.T) {
@@ -197,7 +203,7 @@ func TestHandleDownscale(t *testing.T) {
 	requestedStatefulSets := es_sset.StatefulSetList{ssetMaster3ReplicasDownscaled, ssetData4ReplicasDownscaled}
 
 	// do the downscale
-	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actualStatefulSets))
+	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actualStatefulSets))
 	require.False(t, results.HasError())
 
 	// data migration should have been requested for all nodes, but three master in Master3 sset, leaving the cluster
@@ -253,7 +259,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// running the downscale again should remove the next master,
 	// and also requeue since data migration is still not over for data nodes
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason(
 		"Downscale in progress, delayed nodes: [ssetMaster3Replicas-1], ssetMaster3Replicas: "+OneMasterAtATimeInvariant,
@@ -286,7 +292,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// running the downscale yet again should remove the next master,
 	// and also requeue since data migration is still not over for data nodes
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
 	// status should reflect the in progress operations
@@ -322,7 +328,7 @@ func TestHandleDownscale(t *testing.T) {
 	)
 	downscaleCtx.nodeShutdown = shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[0], new(int32(2)))
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
 	require.Equal(t,
@@ -350,7 +356,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetData4Replicas[2]))
 
 	// running the downscale again should not remove any new node
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(context.Background(), &actual)
@@ -378,7 +384,7 @@ func TestHandleDownscale(t *testing.T) {
 	// do the downscale, that third StatefulSet is not part of the expected ones
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	// the StatefulSet replicas should be decreased to 0, but StatefulSet should still be around
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
@@ -387,7 +393,7 @@ func TestHandleDownscale(t *testing.T) {
 	// run downscale again: this time the StatefulSet should be removed
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, desiredLeavingNodeNames(context.Background(), requestedStatefulSets, actual.Items))
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t,
 		[]esv1.DownscaledNode{
@@ -948,12 +954,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				reconcileState: reconcileState,
 				nodeShutdown:   nodeShutdown,
 				esClient:       esClient,
-				esState:        NewMemoizingESState(context.Background(), esClient),
 				es:             es,
 				parentCtx:      context.Background(),
 			}
 
-			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, desiredLeavingNodeNames(context.Background(), expectedStatefulSets, actualStatefulSets))
+			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, testLeavingNodes(downscaleCtx, NewMemoizingESState(context.Background(), esClient), expectedStatefulSets, actualStatefulSets))
 			// the shutdowns of the draining nodes are already registered, only the nodes selected for removal get one
 			var putShutdowns []string
 			for _, call := range esClient.PutShutdownCalls {

@@ -40,7 +40,7 @@ func HandleDownscale(
 	downscaleCtx downscaleContext,
 	expectedStatefulSets es_sset.StatefulSetList,
 	actualStatefulSets es_sset.StatefulSetList,
-	desiredLeaving set.StringSet,
+	leaving *leavingNodes,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -51,21 +51,18 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	desiredLeavingNodes := desiredLeaving.AsSortedSlice()
+	desiredLeavingNodes := leaving.names()
 
 	// Retrieve the desired leaving nodes that are draining, ready or not, see newDownscaleState. Nodes that stay are
 	// ignored, so that a shutdown registered outside of the operator does not allow more removals.
-	var draining set.StringSet
-	if len(desiredLeavingNodes) > 0 {
-		draining, err = downscaleCtx.nodeShutdown.NodesWithShutdown(downscaleCtx.parentCtx, desiredLeavingNodes)
-		if err != nil {
-			return results.WithError(err)
-		}
+	draining, err := leaving.draining(downscaleCtx.parentCtx, desiredLeavingNodes)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// The leaving nodes that are not members of the cluster cannot be shut down. They are held, not removed, as they may
 	// still hold data, and do not fail the downscale: the next steps can recreate them, for them to join the cluster.
-	notMembers, err := nodesNotInCluster(downscaleCtx, desiredLeavingNodes)
+	notMembers, err := nodesNotInCluster(downscaleCtx, leaving)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -143,17 +140,17 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
-// nodesNotInCluster returns the given nodes that are not members of the cluster. Without node shutdown, membership does
-// not matter, as a node is removed once it holds no shard: none is returned.
-func nodesNotInCluster(downscaleCtx downscaleContext, nodes []string) (set.StringSet, error) {
+// nodesNotInCluster returns the desired leaving nodes that are not members of the cluster. Without node shutdown,
+// membership does not matter, as a node is removed once it holds no shard: none is returned.
+func nodesNotInCluster(downscaleCtx downscaleContext, leaving *leavingNodes) (set.StringSet, error) {
 	if !supportsNodeShutdown(downscaleCtx.esClient.Version()) {
 		return nil, nil
 	}
-	members, err := membersAmong(downscaleCtx.esState, nodes)
+	members, err := leaving.members(leaving.names())
 	if err != nil {
 		return nil, err
 	}
-	return set.Make(nodes...).Diff(members), nil
+	return leaving.desired.Diff(members), nil
 }
 
 // shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
@@ -192,14 +189,6 @@ func reportShutdownStalled(downscaleCtx downscaleContext, statuses map[string]sh
 			)
 		return
 	}
-}
-
-// desiredLeavingNodeNames returns the names of all the Pods that the expected StatefulSets no longer include, without
-// applying any budget or invariant filter: this is the whole set of Pods the downscale wants to remove, not the ones it
-// is allowed to remove now.
-func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList) set.StringSet {
-	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
-	return set.Make(leavingNodeNames(downscales)...)
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.

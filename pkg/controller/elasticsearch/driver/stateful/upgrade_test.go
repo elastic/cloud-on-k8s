@@ -287,7 +287,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.pods...)
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), tt.args.expectedStatefulSets, tt.args.statefulSets)
-			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, desiredLeaving, clusterMembers{members: tt.args.members})
+			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, newLeavingNodes(desiredLeaving, clusterMembers{members: tt.args.members}, nil, esv1.DownscaleOperation{}))
 			require.NoError(t, err)
 			assert.ElementsMatch(t, names(got), tt.want, tt.name)
 		})
@@ -393,7 +393,8 @@ func Test_Driver_handleUpgrades_leavingPodsAreNotRestarted(t *testing.T) {
 			expectedResources := nodespec.ResourcesList{{StatefulSet: stayingSset}}
 
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{leavingSset, stayingSset})
-			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+			esState := NewMemoizingESState(context.Background(), esClient)
+			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
 			_, err := results.Aggregate()
 			require.NoError(t, err)
@@ -518,7 +519,8 @@ func Test_Driver_handleUpgrades_leavingPodThatIsNotInCluster(t *testing.T) {
 
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
 			require.ElementsMatch(t, []string{"data-2"}, desiredLeaving.AsSortedSlice())
-			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+			esState := NewMemoizingESState(context.Background(), esClient)
+			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
 			_, err := results.Aggregate()
 			require.NoError(t, err)
@@ -605,7 +607,8 @@ func Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster(t *testing.T) {
 
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
 			require.ElementsMatch(t, []string{"master-2"}, desiredLeaving.AsSortedSlice())
-			results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+			esState := NewMemoizingESState(context.Background(), esClient)
+			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
 			_, err := results.Aggregate()
 			require.NoError(t, err)
@@ -716,7 +719,8 @@ func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.
 			}
 			expectedResources := nodespec.ResourcesList{{StatefulSet: statefulSet}}
 			handleUpgrades := func() {
-				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				esState := NewMemoizingESState(ctx, esClient)
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
@@ -879,7 +883,8 @@ func Test_Driver_handleUpgrades_heldRestartShutdowns(t *testing.T) {
 				ReconcileState: reconcile.MustNewState(es),
 			}
 			handleUpgrades := func() {
-				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				esState := NewMemoizingESState(ctx, esClient)
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
@@ -1015,7 +1020,8 @@ func Test_Driver_handleUpgrades_fullRestartShutdownsCompleteAfterRequest(t *test
 			require.True(t, isUpgrade)
 			require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
 			handleUpgrades := func() {
-				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				esState := NewMemoizingESState(ctx, esClient)
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
@@ -1087,7 +1093,8 @@ func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.
 	require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
 
 	desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{masterSset, leavingSset})
-	results := d.handleUpgrades(context.Background(), esClient, NewMemoizingESState(context.Background(), esClient), expectedResources, desiredLeaving)
+	esState := NewMemoizingESState(context.Background(), esClient)
+	results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
 	_, err = results.Aggregate()
 	require.NoError(t, err)

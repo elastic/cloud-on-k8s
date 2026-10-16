@@ -413,7 +413,7 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 				nodeShutdowns = counting
 			}
 
-			attempted, err := d.MaybeForceUpgrade(ctx, tt.actual, desiredLeaving, nodeShutdowns)
+			attempted, err := d.MaybeForceUpgrade(ctx, tt.actual, newLeavingNodes(desiredLeaving, nil, nodeShutdowns, es.Status.DownscaleOperation))
 			require.Equal(t, tt.wantErr, err != nil, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var lookups int
