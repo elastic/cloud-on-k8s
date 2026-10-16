@@ -105,65 +105,113 @@ func TestReconcileNilReplicas(t *testing.T) {
 	controllerscheme.SetupScheme()
 	owner := esv1.Elasticsearch{}
 
-	t.Run("nil replicas on create: API server defaults to 1", func(t *testing.T) {
-		k8sClient := k8s.NewFakeClient()
-		expected := appsv1.Deployment{
-			Name:      "dep",
-			Namespace: "ns",
-			Spec:      appsv1.DeploymentSpec{Replicas: nil},
-		}
-		reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
-		require.NoError(t, err)
-		// Spec.Replicas stays nil in what ECK wrote; the fake client doesn't default it like
-		// the real API server would, but the stored hash was computed with nil replicas.
-		require.Nil(t, reconciled.Spec.Replicas)
-	})
+	// Simulate HPA scaling the deployment to 5 replicas.
+	hpaScaleTo5 := func(d *appsv1.Deployment) { d.Spec.Replicas = new(int32(5)) }
+	// Simulate something changing replicas externally and clearing the hash so NeedsUpdate sees a diff.
+	externalScaleTo99 := func(d *appsv1.Deployment) {
+		d.Spec.Replicas = new(int32(99))
+		d.Labels = nil
+	}
 
-	t.Run("nil replicas preserves externally scaled value on subsequent reconcile", func(t *testing.T) {
-		k8sClient := k8s.NewFakeClient()
-		expected := appsv1.Deployment{
-			Name:      "dep",
-			Namespace: "ns",
-			Spec:      appsv1.DeploymentSpec{Replicas: nil},
-		}
-		// First creation.
-		_, err := Reconcile(context.Background(), k8sClient, expected, &owner)
-		require.NoError(t, err)
+	tests := []struct {
+		name                         string
+		replicas                     *int32
+		excludeReplicasFromHashOnNil bool
+		// externalUpdate mutates the stored deployment between two reconciles,
+		// simulating e.g. an HPA. nil means a single reconcile only.
+		externalUpdate func(d *appsv1.Deployment)
+		wantReplicas   *int32
+		// wantHashChanged is whether the template hash label after the last reconcile
+		// is expected to differ from the one written on initial creation.
+		wantHashChanged bool
+	}{
+		{
+			name:     "nil replicas on create: API server defaults to 1",
+			replicas: nil,
+			// Spec.Replicas stays nil in what ECK wrote; the fake client doesn't default it like
+			// the real API server would, but the stored hash was computed with nil replicas.
+			wantReplicas: nil,
+		},
+		{
+			name:                         "nil replicas on create with replicas excluded from hash",
+			replicas:                     nil,
+			excludeReplicasFromHashOnNil: true,
+			wantReplicas:                 nil,
+		},
+		{
+			name:           "nil replicas preserves externally scaled value and re-anchors the hash",
+			replicas:       nil,
+			externalUpdate: hpaScaleTo5,
+			// ECK must not revert the HPA-managed count, but it rewrites the hash
+			// computed with the adopted replica count.
+			wantReplicas:    new(int32(5)),
+			wantHashChanged: true,
+		},
+		{
+			name:                         "nil replicas preserves externally scaled value and keeps the hash when replicas are excluded",
+			replicas:                     nil,
+			excludeReplicasFromHashOnNil: true,
+			externalUpdate:               hpaScaleTo5,
+			// ECK must not revert the HPA-managed count, and since replicas are not part
+			// of the hash the stored hash still matches: no write happens.
+			wantReplicas:    new(int32(5)),
+			wantHashChanged: false,
+		},
+		{
+			name:           "non-nil replicas are still enforced",
+			replicas:       new(int32(2)),
+			externalUpdate: externalScaleTo99,
+			// ECK must restore the desired count and its hash.
+			wantReplicas:    new(int32(2)),
+			wantHashChanged: false,
+		},
+		{
+			name:                         "non-nil replicas are still enforced with replicas excluded from hash",
+			replicas:                     new(int32(2)),
+			excludeReplicasFromHashOnNil: true,
+			externalUpdate:               externalScaleTo99,
+			// The flag only applies to nil replicas: ECK must restore the desired count and its hash.
+			wantReplicas:    new(int32(2)),
+			wantHashChanged: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.NewFakeClient()
+			expected := appsv1.Deployment{
+				Name:      "dep",
+				Namespace: "ns",
+				Spec:      appsv1.DeploymentSpec{Replicas: tt.replicas},
+			}
+			reconcile := func() appsv1.Deployment {
+				reconciled, err := ReconcileWithMetadataMergeStrategy(
+					context.Background(), k8sClient, expected, &owner, MetadataMergeStrategy{}, tt.excludeReplicasFromHashOnNil,
+				)
+				require.NoError(t, err)
+				return reconciled
+			}
 
-		// Simulate HPA scaling the deployment to 5 replicas.
-		var stored appsv1.Deployment
-		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &stored))
-		stored.Spec.Replicas = new(int32(5))
-		require.NoError(t, k8sClient.Update(context.Background(), &stored))
+			reconciled := reconcile()
+			initialHash := hash.GetTemplateHashLabel(reconciled.Labels)
+			require.NotEmpty(t, initialHash)
 
-		// Reconcile again with nil replicas: ECK must not revert the HPA-managed count.
-		reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
-		require.NoError(t, err)
-		require.Equal(t, int32(5), *reconciled.Spec.Replicas, "HPA-managed replica count must be preserved")
-	})
+			if tt.externalUpdate != nil {
+				var stored appsv1.Deployment
+				require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &stored))
+				tt.externalUpdate(&stored)
+				require.NoError(t, k8sClient.Update(context.Background(), &stored))
 
-	t.Run("non-nil replicas are still enforced", func(t *testing.T) {
-		k8sClient := k8s.NewFakeClient()
-		expected := appsv1.Deployment{
-			Name:      "dep",
-			Namespace: "ns",
-			Spec:      appsv1.DeploymentSpec{Replicas: new(int32(2))},
-		}
-		_, err := Reconcile(context.Background(), k8sClient, expected, &owner)
-		require.NoError(t, err)
+				reconciled = reconcile()
+			}
 
-		// Simulate something changing replicas externally.
-		var stored appsv1.Deployment
-		require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &stored))
-		stored.Spec.Replicas = new(int32(99))
-		stored.Labels = nil // clear hash so NeedsUpdate sees a diff
-		require.NoError(t, k8sClient.Update(context.Background(), &stored))
-
-		// Reconcile with non-nil replicas: ECK must restore the desired count.
-		reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
-		require.NoError(t, err)
-		require.Equal(t, int32(2), *reconciled.Spec.Replicas, "ECK-managed replica count must be enforced")
-	})
+			require.Equal(t, tt.wantReplicas, reconciled.Spec.Replicas)
+			if tt.wantHashChanged {
+				require.NotEqual(t, initialHash, hash.GetTemplateHashLabel(reconciled.Labels))
+			} else {
+				require.Equal(t, initialHash, hash.GetTemplateHashLabel(reconciled.Labels))
+			}
+		})
+	}
 }
 
 func TestIsSteady(t *testing.T) {

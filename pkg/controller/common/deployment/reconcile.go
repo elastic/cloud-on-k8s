@@ -66,7 +66,7 @@ func Reconcile(
 	expected appsv1.Deployment,
 	owner client.Object,
 ) (appsv1.Deployment, error) {
-	return ReconcileWithMetadataMergeStrategy(ctx, k8sClient, expected, owner, MetadataMergeStrategy{Labels: maps.Merge, Annotations: maps.Merge})
+	return ReconcileWithMetadataMergeStrategy(ctx, k8sClient, expected, owner, MetadataMergeStrategy{Labels: maps.Merge, Annotations: maps.Merge}, false)
 }
 
 // Reconcile creates or updates the given deployment for the specified owner.
@@ -76,6 +76,7 @@ func ReconcileWithMetadataMergeStrategy(
 	expected appsv1.Deployment,
 	owner client.Object,
 	mdMergeStrategy MetadataMergeStrategy,
+	excludeReplicasFromHashOnNil bool,
 ) (appsv1.Deployment, error) {
 	if mdMergeStrategy.Labels == nil {
 		mdMergeStrategy.Labels = maps.Merge
@@ -101,7 +102,10 @@ func ReconcileWithMetadataMergeStrategy(
 				// on every reconcile. One annotation-only write still occurs after each HPA scale
 				// event to re-anchor the hash at the new replica count.
 				expected.Spec.Replicas = reconciled.Spec.Replicas
-				expected = WithTemplateHash(expected)
+
+				if !excludeReplicasFromHashOnNil {
+					expected = WithTemplateHash(expected)
+				}
 			}
 			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
 				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||

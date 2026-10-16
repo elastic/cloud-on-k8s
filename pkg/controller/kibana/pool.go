@@ -621,5 +621,6 @@ func ReconcilePoolDeployment(
 				return merged
 			},
 		},
+		true, // excludeReplicasFromHashOnNil
 	)
 }
