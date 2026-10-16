@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -223,48 +224,57 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 			if err := test.CheckSelector(kb.Status.Pools.Primary.Selector, expectedSelectorPrimary); err != nil {
 				return err
 			}
-			if kb.BackgroundTasksEnabled() {
+			kb.Status.Selector = ""
+			kb.Status.Pools.Primary.Selector = ""
+
+			// don't check the association statuses that may vary across tests
+			// Count and AvailableNodes are controller-aggregated across all active pools.
+			// Conditions are ignored: their LastTransitionTime is unpredictable.
+			expected := kbv1.KibanaStatus{
+				Count:          b.Count(),
+				AvailableNodes: b.Count(),
+				Version:        b.Kibana.Spec.Version,
+				Health:         "green",
+				Conditions:     kb.Status.Conditions,
+				Pools: kbv1.KibanaPoolsStatuses{
+					Primary: commonv1.DeploymentStatus{
+						Count:          b.Kibana.Spec.Count,
+						AvailableNodes: b.Kibana.Spec.Count,
+						Version:        b.Kibana.Spec.Version,
+						Health:         "green",
+						Conditions:     kb.Status.Pools.Primary.Conditions,
+					},
+				},
+			}
+
+			if b.Kibana.BackgroundTasksEnabled() {
+				// The status can lag behind the spec: retry rather than dereference a nil pool status.
+				if kb.Status.Pools.BackgroundTasks == nil {
+					return fmt.Errorf("background tasks pool status is not set yet")
+				}
 				expectedSelectorBackground := maps.Clone(expectedSelector)
 				expectedSelectorBackground["kibana.k8s.elastic.co/role"] = "background_tasks"
 				if err := test.CheckSelector(kb.Status.Pools.BackgroundTasks.Selector, expectedSelectorBackground); err != nil {
 					return err
 				}
 				kb.Status.Pools.BackgroundTasks.Selector = ""
-			}
-			kb.Status.Selector = ""
-			kb.Status.Pools.Primary.Selector = ""
 
-			// don't check the association statuses that may vary across tests
-			// Count and AvailableNodes are controller-aggregated across all active pools.
-			expected := kbv1.KibanaStatus{
-				DeploymentStatus: commonv1.DeploymentStatus{
-					Count:          b.Count(),
-					AvailableNodes: b.Count(),
-					Version:        b.Kibana.Spec.Version,
-					Health:         "green",
-					Conditions:     kb.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
-				},
-			}
-			expected.Pools.Primary = commonv1.DeploymentStatus{
-				Count:          b.Count(),
-				AvailableNodes: b.Count(),
-				Version:        b.Kibana.Spec.Version,
-				Health:         "green",
-				Conditions:     kb.Status.Pools.Primary.Conditions, // Ignore Conditions
-			}
-
-			if b.Kibana.BackgroundTasksEnabled() {
+				// Without an explicit count the Deployment runs the Kubernetes default of 1 replica.
+				bgCount := ptr.Deref(b.Kibana.Spec.BackgroundTasks.Count, 1)
 				expected.Pools.BackgroundTasks = &commonv1.DeploymentStatus{
-					Count:          *kb.Spec.BackgroundTasks.Count,
-					AvailableNodes: *kb.Spec.BackgroundTasks.Count,
+					Count:          bgCount,
+					AvailableNodes: bgCount,
 					Version:        b.Kibana.Spec.Version,
 					Health:         "green",
-					Conditions:     kb.Status.Pools.BackgroundTasks.Conditions, // Ignore Conditions
+					Conditions:     kb.Status.Pools.BackgroundTasks.Conditions,
 				}
 			}
 
 			if !cmp.Equal(kb.Status.DeploymentStatus, expected.DeploymentStatus) {
 				return fmt.Errorf("expected status %+v but got %+v", expected.DeploymentStatus, kb.Status.DeploymentStatus)
+			}
+			if !cmp.Equal(kb.Status.Pools, expected.Pools) {
+				return fmt.Errorf("expected pools status %+v but got %+v", expected.Pools, kb.Status.Pools)
 			}
 			return nil
 		}),
