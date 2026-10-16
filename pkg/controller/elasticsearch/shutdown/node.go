@@ -26,7 +26,10 @@ type NodeShutdown struct {
 	podToNodeID     map[string]string
 	shutdowns       map[string]esclient.NodeShutdown
 	once            sync.Once
-	log             logr.Logger
+	// initErr is the error that prevented the retrieval of the shutdowns, returned by every call, as the shutdowns are
+	// only retrieved once.
+	initErr error
+	log     logr.Logger
 }
 
 var _ Interface = (*NodeShutdown)(nil)
@@ -47,13 +50,13 @@ func NewNodeShutdown(c esclient.Client, podToNodeID map[string]string, typ escli
 	}
 }
 
+// initOnce retrieves the shutdowns on the first call. If they cannot be retrieved, every call returns the error, so that
+// the instance does not report that there is no shutdown.
 func (ns *NodeShutdown) initOnce(ctx context.Context) error {
-	var err error
 	ns.once.Do(func() {
-		var r esclient.ShutdownResponse
-		r, err = ns.c.GetShutdown(ctx, nil)
+		r, err := ns.c.GetShutdown(ctx, nil)
 		if err != nil {
-			err = fmt.Errorf("while getting node shutdowns: %w", err)
+			ns.initErr = fmt.Errorf("while getting node shutdowns: %w", err)
 			return
 		}
 		shutdowns := map[string]esclient.NodeShutdown{}
@@ -63,7 +66,7 @@ func (ns *NodeShutdown) initOnce(ctx context.Context) error {
 		}
 		ns.shutdowns = shutdowns
 	})
-	return err
+	return ns.initErr
 }
 
 func (ns *NodeShutdown) lookupNodeID(podName string) (string, error) {

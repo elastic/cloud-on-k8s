@@ -254,9 +254,9 @@ func (d *Driver) reconcileNodeSpecs(
 
 // maybeForceUpgradeWithShutdowns creates the shutdown interface and the leavingNodes of the given desired leaving Pods
 // used by the next phases, and may attempt a forced upgrade, see MaybeForceUpgrade. The shutdown interface is dependent
-// on Elasticsearch version. It requires Elasticsearch to be reachable: otherwise the forced upgrade relies on the
-// shutdowns reported in the downscale status. It returns true if the reconciliation must stop, with the error that
-// stopped it if any.
+// on Elasticsearch version. It requires Elasticsearch to be reachable, and the nodes and their shutdowns to be
+// retrieved: otherwise the forced upgrade relies on the shutdowns reported in the downscale status. It returns true if
+// the reconciliation must stop, with the error that stopped it if any.
 func (d *Driver) maybeForceUpgradeWithShutdowns(
 	ctx context.Context,
 	esReachable bool,
@@ -271,6 +271,13 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 	if esReachable {
 		// the error is only returned after the forced upgrade, which must not wait for the nodes to be retrieved
 		nodeShutdowns, nodeShutdownsErr = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
+	}
+	if nodeShutdowns != nil && desiredLeaving.Count() > 0 {
+		// retrieve the shutdowns up front, as the downscale does in any case: if they cannot be retrieved, the forced
+		// upgrade relies on the reported ones, and the error stops the reconciliation before the downscale
+		if _, err := nodeShutdowns.NodesWithShutdown(ctx, nil); err != nil {
+			nodeShutdowns, nodeShutdownsErr = nil, err
+		}
 	}
 
 	leaving := newLeavingNodes(desiredLeaving, esState, nodeShutdowns, d.ES.Status.DownscaleOperation)

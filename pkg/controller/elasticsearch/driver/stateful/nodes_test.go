@@ -25,9 +25,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// Test_Driver_maybeForceUpgradeWithShutdowns checks that the forced upgrade does not depend on retrieving the nodes,
-// which the shutdown interface requires: if they cannot be retrieved, the draining Pods are the ones reported in the
-// downscale status, and the error stops the reconciliation after the forced upgrade.
+// Test_Driver_maybeForceUpgradeWithShutdowns checks that the forced upgrade does not depend on retrieving the nodes or
+// their shutdowns, which the shutdown interface requires: if they cannot be retrieved, the draining Pods are the ones
+// reported in the downscale status, and the error stops the reconciliation after the forced upgrade.
 func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0}
 	statefulSet := func(replicas int32) appsv1.StatefulSet {
@@ -36,6 +36,7 @@ func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 		return sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Replicas: replicas, Data: true, Status: status}.Build()
 	}
 	nodesErr := errors.New("cannot retrieve the nodes")
+	shutdownsErr := errors.New("cannot retrieve the shutdowns")
 	tests := []struct {
 		name     string
 		actual   int32
@@ -47,6 +48,7 @@ func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 		reportedShutdowns []string
 		esReachable       bool
 		getNodesErr       error
+		getShutdownErr    error
 		wantShutdowns     bool
 		wantStop          bool
 		wantErr           error
@@ -71,6 +73,38 @@ func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 			reportedShutdowns: []string{"data-2"},
 			wantStop:          true,
 			wantRemainingPods: []string{"data-2"},
+		},
+		{
+			name:           "draining Pods are not deleted if the shutdowns cannot be retrieved, based on the reported shutdowns",
+			actual:         3,
+			expected:       1,
+			esReachable:    true,
+			getShutdownErr: shutdownsErr,
+			// data-1 has no shutdown to protect
+			reportedShutdowns: []string{"data-2"},
+			wantStop:          true,
+			wantRemainingPods: []string{"data-2"},
+		},
+		{
+			name:              "the shutdowns error is returned if no forced upgrade is attempted",
+			actual:            2,
+			expected:          1,
+			readyPods:         []string{"data-0", "data-1"},
+			esReachable:       true,
+			getShutdownErr:    shutdownsErr,
+			wantStop:          true,
+			wantErr:           shutdownsErr,
+			wantRemainingPods: []string{"data-0", "data-1"},
+		},
+		{
+			name:              "the shutdowns are not retrieved if no Pod is leaving",
+			actual:            2,
+			expected:          2,
+			readyPods:         []string{"data-0", "data-1"},
+			esReachable:       true,
+			getShutdownErr:    shutdownsErr,
+			wantShutdowns:     true,
+			wantRemainingPods: []string{"data-0", "data-1"},
 		},
 		{
 			name:              "the error is returned if no forced upgrade is attempted",
@@ -131,9 +165,10 @@ func Test_Driver_maybeForceUpgradeWithShutdowns(t *testing.T) {
 				ReconcileState: reconcileState,
 			}
 			esClient := &fakeESClient{
-				version:     version.MustParse("8.15.0"),
-				nodes:       esclient.Nodes{Nodes: map[string]esclient.Node{}},
-				GetNodesErr: tt.getNodesErr,
+				version:        version.MustParse("8.15.0"),
+				nodes:          esclient.Nodes{Nodes: map[string]esclient.Node{}},
+				GetNodesErr:    tt.getNodesErr,
+				GetShutdownErr: tt.getShutdownErr,
 			}
 
 			leaving, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, tt.esReachable, esClient, NewMemoizingESState(ctx, esClient), reconcileState, actual, desiredLeaving)

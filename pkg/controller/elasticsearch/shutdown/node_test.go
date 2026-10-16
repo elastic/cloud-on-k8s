@@ -485,9 +485,12 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 				podToNodeID: tt.podToNodeID,
 				log:         log.Log.WithName("test"),
 			}
-			got, err := ns.NodesWithShutdown(context.Background(), tt.podNames)
-			require.Equal(t, tt.wantErr, err != nil, "NodesWithShutdown() error = %v", err)
-			require.Equal(t, tt.want, got)
+			// the shutdowns are only retrieved once: a second call must return the same result, including the error
+			for range 2 {
+				got, err := ns.NodesWithShutdown(context.Background(), tt.podNames)
+				require.Equal(t, tt.wantErr, err != nil, "NodesWithShutdown() error = %v", err)
+				require.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
