@@ -461,6 +461,12 @@ func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters,
 		return replicasFromAnnotation() // restore from annotation
 	}
 
+	// backgroundReplicas returns the replica count to set on the background tasks Deployment.
+	// Without an explicit count the replicas are managed externally (e.g. by an HPA): nil is
+	// returned so that the deployment reconciliation adopts the live value without including it
+	// in the template hash, and an HPA scale event does not cause a Deployment write. The only
+	// exception is the restore after the stop phase: the Deployment is at zero (or has no replica
+	// count yet) and the saved count is present in the annotation.
 	backgroundReplicas := func() *int32 {
 		if kb.Spec.BackgroundTasks.Count != nil {
 			return kb.Spec.BackgroundTasks.Count
@@ -480,7 +486,7 @@ func deploymentReplicas(ctx context.Context, kb *kbv1.Kibana, pm poolParameters,
 			return fromAnnotation
 		}
 
-		return fromDeployment
+		return nil // return nil to keep the HPA value
 	}
 
 	switch {

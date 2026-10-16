@@ -772,6 +772,43 @@ func TestReconcilePoolDeployment(t *testing.T) {
 		assert.Equal(t, "server.name: test", string(sec.Data["kibana.yml"]))
 	})
 
+	t.Run("background pool without count: HPA scale events do not cause a Deployment write", func(t *testing.T) {
+		kb := kibanaFixture()
+		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{} // no count: HPA mode
+		d := newDriverFor(t, kb, defaultInitialObjects()...)
+
+		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.BackgroundTasksRole, "", false)
+		require.NoError(t, err)
+		meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
+
+		reconcile := func() appsv1.Deployment {
+			_, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, pp, nil, meta, map[string]struct{}{})
+			require.NoError(t, err)
+			require.NotNil(t, reconciledDp)
+			return *reconciledDp
+		}
+		dpName := types.NamespacedName{Namespace: "default", Name: kbv1.BackgroundTasksDeployment(kb.Name)}
+
+		// First reconcile creates the Deployment without a replica count.
+		created := reconcile()
+		assert.Nil(t, created.Spec.Replicas)
+
+		// Simulate an HPA scaling the Deployment to 3 replicas.
+		var dp appsv1.Deployment
+		require.NoError(t, d.client.Get(context.Background(), dpName, &dp))
+		dp.Spec.Replicas = ptr.To[int32](3)
+		require.NoError(t, d.client.Update(context.Background(), &dp))
+		require.NoError(t, d.client.Get(context.Background(), dpName, &dp))
+		scaledVersion := dp.ResourceVersion
+
+		// Second reconcile keeps the HPA value and does not write the Deployment.
+		reconciled := reconcile()
+		require.NoError(t, d.client.Get(context.Background(), dpName, &dp))
+		assert.Equal(t, scaledVersion, dp.ResourceVersion, "a Deployment write happened after the HPA scale event")
+		assert.Equal(t, int32(3), ptr.Deref(dp.Spec.Replicas, -1))
+		assert.Equal(t, int32(3), ptr.Deref(reconciled.Spec.Replicas, -1))
+	})
+
 	t.Run("scaleToZero pool params produce a zero-replicas deployment", func(t *testing.T) {
 		kb := kibanaFixture()
 		d := newDriverFor(t, kb, defaultInitialObjects()...)
@@ -1441,7 +1478,7 @@ func TestDeploymentReplicas(t *testing.T) {
 		return map[string]string{replicasAnnotationName: v}
 	}
 
-	// backgroundReplicas priority: Count > HPA replicas (> 0) > annotation.
+	// backgroundReplicas priority: Count > nil when the Deployment runs HPA replicas (> 0) > annotation.
 	// deploymentReplicas does not mutate the deployment: the annotation is persisted only
 	// when replicasToSave is non-nil (deploymentParams) and dropped otherwise by the
 	// ReconcilePoolDeployment annotations merge strategy.
@@ -1477,11 +1514,18 @@ func TestDeploymentReplicas(t *testing.T) {
 			wantNew:    ptr(2),
 		},
 		{
-			name:       "BG, Count nil, Deployment value: HPA replicas win",
+			name:       "BG, Count nil, Deployment value: nil, the HPA replicas are adopted by the reconciliation",
 			kb:         kbSplit(nil),
 			role:       kblabel.BackgroundTasksRole,
-			existingDp: dp(ptr(4), nil),
-			wantNew:    ptr(4),
+			existingDp: dp(ptr(3), nil),
+			wantNew:    nil,
+		},
+		{
+			name:       "BG, Count nil, Deployment value, stale annotation: nil, the annotation is not restored over a running Deployment",
+			kb:         kbSplit(nil),
+			role:       kblabel.BackgroundTasksRole,
+			existingDp: dp(ptr(3), ann("5")),
+			wantNew:    nil,
 		},
 		{
 			name:       "BG, Count nil, Deployment nil, annotation: annotation wins as last resort",
