@@ -5,8 +5,10 @@
 package stateful
 
 import (
+	"cmp"
 	"context"
 	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -14,7 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -32,6 +36,7 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
 func podWithRevision(name, revision string) *corev1.Pod {
@@ -619,7 +624,8 @@ func Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster(t *testing.T) {
 // Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest covers a restart shutdown that is not complete right
 // after it is requested, which holds the Pod: Elasticsearch only reports it as complete a short while later. The next
 // pass must delete the Pod once the shutdown is complete, without deleting the completed shutdown and requesting it
-// again, which would hold the Pod again.
+// again, which would hold the Pod again. If a predicate holds the Pod on the next pass, the shutdown is deleted instead:
+// it would keep the readiness port of the Pod closed while it waits.
 func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.T) {
 	esVersion := "8.1.0"
 	es := esv1.Elasticsearch{
@@ -629,25 +635,66 @@ func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
 	statefulSet := sset.TestSset{Name: "data", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 1, Data: true, Status: outdated}.Build()
-	pod := sset.TestPod{
+	testPod := sset.TestPod{
 		Name: "data-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "data",
 		Version: esVersion, Revision: "rev-a", Data: true, Ready: true,
-	}.Build()
+	}
+	pod := testPod.Build()
+	// a primary on data-0 whose replica is not assigned, which require_started_replica holds while the cluster is not green
+	unassignedReplica := esclient.Shards{
+		{Index: "index", Shard: "0", State: esclient.STARTED, NodeName: "data-0", Type: esclient.Primary},
+		{Index: "index", Shard: "0", State: esclient.UNASSIGNED, Type: esclient.Replica},
+	}
 	tests := []struct {
 		name string
 		// statusOnNextPass is the status of the shutdown when the next pass retrieves it
-		statusOnNextPass  esclient.ShutdownStatus
+		statusOnNextPass esclient.ShutdownStatus
+		// notReadyOnNextPass makes the Pod not ready on the next pass, as the shutdown closed its readiness port
+		notReadyOnNextPass bool
+		// healthOnNextPass is the cluster health on the next pass, green if empty
+		healthOnNextPass esv1.ElasticsearchHealth
+		// shardsOnNextPass are the shards on the next pass
+		shardsOnNextPass  esclient.Shards
 		wantRemainingPods []string // Pods that have not been deleted for an upgrade after the next pass
+		// wantShutdownKept is true if the restart shutdown still exists after the next pass
+		wantShutdownKept bool
 	}{
 		{
 			name:              "the shutdown is complete on the next pass: the Pod is deleted",
 			statusOnNextPass:  esclient.ShutdownComplete,
 			wantRemainingPods: nil,
+			wantShutdownKept:  true,
 		},
 		{
 			name:              "the shutdown is still in progress on the next pass: the Pod is held",
 			statusOnNextPass:  esclient.ShutdownInProgress,
 			wantRemainingPods: []string{"data-0"},
+			wantShutdownKept:  true,
+		},
+		{
+			name:               "the shutdown is complete and closed the readiness port on the next pass: the Pod is deleted",
+			statusOnNextPass:   esclient.ShutdownComplete,
+			notReadyOnNextPass: true,
+			wantRemainingPods:  nil,
+			wantShutdownKept:   true,
+		},
+		{
+			name:               "a predicate holds the Pod on the next pass: the completed shutdown is deleted",
+			statusOnNextPass:   esclient.ShutdownComplete,
+			notReadyOnNextPass: true,
+			healthOnNextPass:   esv1.ElasticsearchYellowHealth,
+			shardsOnNextPass:   unassignedReplica,
+			wantRemainingPods:  []string{"data-0"},
+			wantShutdownKept:   false,
+		},
+		{
+			name:               "a predicate holds the Pod on the next pass, the shutdown is in progress: it is deleted",
+			statusOnNextPass:   esclient.ShutdownInProgress,
+			notReadyOnNextPass: true,
+			healthOnNextPass:   esv1.ElasticsearchYellowHealth,
+			shardsOnNextPass:   unassignedReplica,
+			wantRemainingPods:  []string{"data-0"},
+			wantShutdownKept:   false,
 		},
 	}
 	for _, tt := range tests {
@@ -684,12 +731,219 @@ func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.
 			restartShutdown := esClient.Shutdowns["id-data-0"]
 			restartShutdown.Status = tt.statusOnNextPass
 			esClient.Shutdowns["id-data-0"] = restartShutdown
+			esClient.health = esclient.Health{Status: cmp.Or(tt.healthOnNextPass, esv1.ElasticsearchGreenHealth)}
+			esClient.shards = tt.shardsOnNextPass
+			if tt.notReadyOnNextPass {
+				var actual corev1.Pod
+				require.NoError(t, k8sClient.Get(ctx, k8s.ExtractNamespacedName(&pod), &actual))
+				notReady := testPod
+				notReady.Ready = false
+				actual.Status = notReady.Build().Status
+				require.NoError(t, k8sClient.Status().Update(ctx, &actual))
+			}
 			handleUpgrades()
 			// the shutdown is not requested again
 			assert.Len(t, esClient.PutShutdownCalls, 1)
-			assert.Contains(t, esClient.Shutdowns, "id-data-0")
+			_, shutdownKept := esClient.Shutdowns["id-data-0"]
+			assert.Equal(t, tt.wantShutdownKept, shutdownKept)
 			require.NoError(t, k8sClient.List(ctx, &pods))
 			assert.ElementsMatch(t, tt.wantRemainingPods, names(pods.Items))
+		})
+	}
+}
+
+// Test_Driver_handleUpgrades_heldRestartShutdowns covers the restart shutdowns of the Pods that are not deleted on the
+// pass after the one that requested them. The shutdown of a Pod that fails a predicate is deleted, as it would keep the
+// Pod unavailable, which can hold the restarts the predicate waits for. The shutdown of a Pod that is only held because
+// allowedDeletions is reached is kept: the Pod still waits for its deletion.
+func Test_Driver_handleUpgrades_heldRestartShutdowns(t *testing.T) {
+	esVersion := "8.1.0"
+	outdated := func(replicas int32) appsv1.StatefulSetStatus {
+		return appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: replicas}
+	}
+	upToDate := func(replicas int32) appsv1.StatefulSetStatus {
+		return appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-a", UpdatedReplicas: replicas, Replicas: replicas}
+	}
+	tests := []struct {
+		name           string
+		maxUnavailable *int32
+		// statefulSets are the StatefulSets on the first pass, and statefulSetsOnNextPass their changes on the next one
+		statefulSets           []sset.TestSset
+		statefulSetsOnNextPass []sset.TestSset
+		// statusOnNextPass is the status of the shutdowns when the next pass retrieves them
+		statusOnNextPass esclient.ShutdownStatus
+		// wantPutShutdowns are the restart shutdowns requested by the first pass
+		wantPutShutdowns []string
+		// wantDeleted are the Pods deleted by the next pass
+		wantDeleted []string
+		// wantShutdownsOnNextPass are the nodes that have a restart shutdown after the next pass
+		wantShutdownsOnNextPass []string
+		// wantPutShutdownsOnLastPass are the restart shutdowns requested once the Pods without a shutdown are ready again
+		wantPutShutdownsOnLastPass []string
+	}{
+		{
+			// the master is not ready because of its shutdown, which uses up maxUnavailable and holds the restart of the
+			// data Pod, which the master waits for to be upgraded last
+			name: "a data Pod change after the master shutdown, which is complete: the master shutdown is deleted",
+			statefulSets: []sset.TestSset{
+				{Name: "master", Replicas: 1, Master: true, Status: outdated(1)},
+				{Name: "data", Replicas: 1, Data: true, Status: upToDate(1)},
+			},
+			statefulSetsOnNextPass: []sset.TestSset{
+				{Name: "master", Replicas: 1, Master: true, Status: outdated(1)},
+				{Name: "data", Replicas: 1, Data: true, Status: outdated(1)},
+			},
+			statusOnNextPass:           esclient.ShutdownComplete,
+			wantPutShutdowns:           []string{"id-master-0"},
+			wantDeleted:                nil,
+			wantShutdownsOnNextPass:    nil,
+			wantPutShutdownsOnLastPass: []string{"id-master-0", "id-data-0"},
+		},
+		{
+			name: "a data Pod change after the master shutdown, which is in progress: the master shutdown is deleted",
+			statefulSets: []sset.TestSset{
+				{Name: "master", Replicas: 1, Master: true, Status: outdated(1)},
+				{Name: "data", Replicas: 1, Data: true, Status: upToDate(1)},
+			},
+			statefulSetsOnNextPass: []sset.TestSset{
+				{Name: "master", Replicas: 1, Master: true, Status: outdated(1)},
+				{Name: "data", Replicas: 1, Data: true, Status: outdated(1)},
+			},
+			statusOnNextPass:           esclient.ShutdownInProgress,
+			wantPutShutdowns:           []string{"id-master-0"},
+			wantDeleted:                nil,
+			wantShutdownsOnNextPass:    nil,
+			wantPutShutdownsOnLastPass: []string{"id-master-0", "id-data-0"},
+		},
+		{
+			// data-2 and data-1 are not ready because of their shutdowns, which uses up maxUnavailable: data-2 is the
+			// only one deleted, and data-1 waits for the next pass. data-0 is kept for the tier availability.
+			name:           "two Pods with a restart shutdown and maxUnavailable reached: the shutdown of the second one is kept",
+			maxUnavailable: new(int32(2)),
+			statefulSets: []sset.TestSset{
+				{Name: "data", Replicas: 3, Data: true, Status: outdated(3)},
+			},
+			statusOnNextPass:        esclient.ShutdownComplete,
+			wantPutShutdowns:        []string{"id-data-2", "id-data-1"},
+			wantDeleted:             []string{"data-2"},
+			wantShutdownsOnNextPass: []string{"id-data-2", "id-data-1"},
+			// data-2 is not recreated yet, nothing more is requested
+			wantPutShutdownsOnLastPass: []string{"id-data-2", "id-data-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			es := esv1.Elasticsearch{
+				Name: TestEsName, Namespace: TestEsNamespace,
+				Spec: esv1.ElasticsearchSpec{
+					Version:        esVersion,
+					UpdateStrategy: esv1.UpdateStrategy{ChangeBudget: esv1.ChangeBudget{MaxUnavailable: tt.maxUnavailable}},
+				},
+				Status: esv1.ElasticsearchStatus{Version: esVersion},
+			}
+			buildStatefulSet := func(testSset sset.TestSset) appsv1.StatefulSet {
+				testSset.Namespace, testSset.ClusterName, testSset.Version = TestEsNamespace, TestEsName, esVersion
+				return testSset.Build()
+			}
+			testPod := func(testSset sset.TestSset, ordinal int32, ready bool) sset.TestPod {
+				return sset.TestPod{
+					Name: sset.PodName(testSset.Name, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: testSset.Name,
+					Version: esVersion, Revision: "rev-a", Master: testSset.Master, Data: testSset.Data, Ready: ready,
+				}
+			}
+			objects := []client.Object{&es}
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{}}
+			var expectedResources nodespec.ResourcesList
+			for _, testSset := range tt.statefulSets {
+				statefulSet := buildStatefulSet(testSset)
+				objects = append(objects, &statefulSet)
+				expectedResources = append(expectedResources, nodespec.Resources{StatefulSet: statefulSet})
+				for ordinal := range testSset.Replicas {
+					objects = append(objects, testPod(testSset, ordinal, true).BuildPtr())
+					nodes.Nodes["id-"+sset.PodName(testSset.Name, ordinal)] = esclient.Node{Name: sset.PodName(testSset.Name, ordinal)}
+				}
+			}
+			k8sClient := k8s.NewFakeClient(objects...)
+			esClient := &fakeESClient{
+				version: version.MustParse(esVersion),
+				nodes:   nodes,
+				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				// the shutdowns are reported in progress right after they are requested
+				RegisterPutShutdowns: true,
+			}
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			handleUpgrades := func() {
+				results := d.handleUpgrades(ctx, esClient, NewMemoizingESState(ctx, esClient), expectedResources, set.Make())
+				_, err := results.Aggregate()
+				require.NoError(t, err)
+			}
+			putShutdownNodes := func() []string {
+				nodeIDs := make([]string, 0, len(esClient.PutShutdownCalls))
+				for _, call := range esClient.PutShutdownCalls {
+					require.Equal(t, esclient.Restart, call.Type)
+					nodeIDs = append(nodeIDs, call.NodeID)
+				}
+				return nodeIDs
+			}
+			// syncReadiness makes the Pods that have a shutdown not ready, as it closes their readiness port, and the others
+			// ready
+			syncReadiness := func() {
+				for _, testSset := range tt.statefulSets {
+					for ordinal := range testSset.Replicas {
+						podName := sset.PodName(testSset.Name, ordinal)
+						var actual corev1.Pod
+						err := k8sClient.Get(ctx, types.NamespacedName{Namespace: TestEsNamespace, Name: podName}, &actual)
+						if apierrors.IsNotFound(err) {
+							// deleted for its upgrade
+							continue
+						}
+						require.NoError(t, err)
+						_, hasShutdown := esClient.Shutdowns["id-"+podName]
+						actual.Status = testPod(testSset, ordinal, !hasShutdown).Build().Status
+						require.NoError(t, k8sClient.Status().Update(ctx, &actual))
+					}
+				}
+			}
+			podNames := func() []string {
+				var pods corev1.PodList
+				require.NoError(t, k8sClient.List(ctx, &pods))
+				return names(pods.Items)
+			}
+
+			// the shutdowns are in progress: no Pod is deleted
+			handleUpgrades()
+			require.ElementsMatch(t, tt.wantPutShutdowns, putShutdownNodes())
+			allPods := podNames()
+
+			for _, testSset := range tt.statefulSetsOnNextPass {
+				statefulSet := buildStatefulSet(testSset)
+				var actual appsv1.StatefulSet
+				require.NoError(t, k8sClient.Get(ctx, k8s.ExtractNamespacedName(&statefulSet), &actual))
+				actual.Status = statefulSet.Status
+				require.NoError(t, k8sClient.Status().Update(ctx, &actual))
+			}
+			for nodeID, shutdown := range esClient.Shutdowns {
+				shutdown.Status = tt.statusOnNextPass
+				esClient.Shutdowns[nodeID] = shutdown
+			}
+			syncReadiness()
+			handleUpgrades()
+			// the shutdowns are not requested again
+			assert.ElementsMatch(t, tt.wantPutShutdowns, putShutdownNodes())
+			deleted, _ := stringsutil.Difference(allPods, podNames())
+			assert.ElementsMatch(t, tt.wantDeleted, deleted)
+			assert.ElementsMatch(t, tt.wantShutdownsOnNextPass, slices.Collect(maps.Keys(esClient.Shutdowns)))
+
+			// the Pods whose shutdown was deleted are ready again: the restarts they held can be requested
+			syncReadiness()
+			handleUpgrades()
+			assert.ElementsMatch(t, tt.wantPutShutdownsOnLastPass, putShutdownNodes())
 		})
 	}
 }

@@ -54,6 +54,12 @@ type fakeESClient struct { //nolint:maligned
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
 	version                     version.Version
+
+	shards esclient.Shards
+}
+
+func (f *fakeESClient) GetShards(_ context.Context) (esclient.Shards, error) {
+	return f.shards, nil
 }
 
 func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string) error {

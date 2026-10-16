@@ -57,9 +57,12 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
+	podsToDelete, failed, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
 	if err != nil {
 		return podsToDelete, err
+	}
+	if err := ctx.clearHeldRestartShutdowns(failed); err != nil {
+		return nil, err
 	}
 
 	if len(podsToDelete) == 0 {

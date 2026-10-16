@@ -7,6 +7,8 @@ package stateful
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -374,7 +376,8 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 // maybeCompleteNodeUpgrades re-enables shards allocation and deletes the completed restart shutdowns once the upgraded
 // nodes are back in the cluster. The completed shutdowns of the Pods that still wait for their restart, pendingRestarts,
 // are kept: a shutdown may only turn complete a short while after it is requested, which is after the Pod was held, and
-// deleting it would make the next attempt request it again, and hold the Pod again, instead of deleting the Pod.
+// deleting it would make the next attempt request it again, and hold the Pod again, instead of deleting the Pod. The ones
+// of the Pods that fail a predicate are deleted afterwards, see clearHeldRestartShutdowns.
 func (d *Driver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
@@ -507,9 +510,28 @@ func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 		}
 		podNames = append(podNames, p.Name)
 	}
-	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
-	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
+	if len(podNames) == 0 {
+		// ReconcileShutdowns would cancel the ongoing shutdowns when called with no podNames, including the one of a Pod
+		// about to be deleted that is not ready because its shutdown closed its readiness port.
+		return nil
+	}
 	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)), false)
+}
+
+// clearHeldRestartShutdowns deletes the restart shutdowns, complete or not, of the Pods to upgrade that failed a
+// predicate in this pass. maybeCompleteNodeUpgrades keeps them before the predicates run, but a held Pod may wait for a
+// long time, for example until the cluster is green again, and its shutdown keeps its readiness port closed: the Pod
+// would be unavailable while it still serves its shards, and use up maxUnavailable, which can hold the restarts the
+// predicate waits for. Its shutdown is requested again once it passes the predicates. The shutdowns of the Pods that
+// are only held by allowedDeletions are kept: they still wait for their deletion, as do the terminating Pods.
+func (ctx *upgradeCtx) clearHeldRestartShutdowns(failed failedPredicates) error {
+	if !supportsNodeShutdown(ctx.esClient.Version()) || len(failed) == 0 {
+		return nil
+	}
+	return ctx.nodeShutdown.Clear(ctx.parentCtx,
+		ctx.nodeShutdown.OnlyNodes(slices.Collect(maps.Keys(failed))),
+		ctx.nodeShutdown.ExceptNodes(k8s.PodNames(k8s.TerminatingPods(ctx.currentPods))),
+	)
 }
 
 func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {

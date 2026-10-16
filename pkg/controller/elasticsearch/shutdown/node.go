@@ -199,6 +199,20 @@ func (ns *NodeShutdown) ExceptNodes(nodes []string) func(s esclient.NodeShutdown
 	}
 }
 
+// OnlyNodes is a function to generate a predicate to delete only those shutdowns which belong to the given nodes. The
+// nodes that are not members of the cluster have no known node ID: their shutdowns are not deleted.
+func (ns *NodeShutdown) OnlyNodes(nodes []string) func(s esclient.NodeShutdown) bool {
+	nodeIDs := map[string]bool{}
+	for _, n := range nodes {
+		if nodeID, inCluster := ns.podToNodeID[n]; inCluster {
+			nodeIDs[nodeID] = true
+		}
+	}
+	return func(s esclient.NodeShutdown) bool {
+		return nodeIDs[s.NodeID]
+	}
+}
+
 // Clear deletes shutdown requests matching the type of the NodeShutdown field typ and the given optional status.
 // Depending on the progress of the shutdown in question this means either a cancellation of the shutdown or a clean-up
 // after shutdown completion.
