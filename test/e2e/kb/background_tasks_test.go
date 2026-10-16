@@ -129,7 +129,7 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 
 	name := "test-kb-bg-toggle"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// Start without background tasks.
 	kbBuilder := kibana.NewBuilder(name).
