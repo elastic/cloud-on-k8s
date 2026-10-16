@@ -17,7 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -25,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
@@ -60,7 +62,7 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 		WithNamedESDataNodes(2, "data-new", elasticsearch.DefaultResources)
 
 	// add a NodeSet whose Pod cannot be scheduled, so that one Pod is not ready during the removal
-	pendingNodeSet, fixedNodeSet := pendingNodeSets(initial)
+	pendingNodeSet, fixedNodeSet := pendingNodeSets("pending", elasticsearch.DataRoleCfg(initial.Elasticsearch.Spec.Version))
 	renamedWithPending := renamed.DeepCopy().WithNodeSet(pendingNodeSet)
 	// eventually let the Pod be scheduled: a NodeSet whose Pods never joined the cluster cannot be removed
 	fixed := renamed.DeepCopy().WithNodeSet(fixedNodeSet)
@@ -143,7 +145,7 @@ func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
 
 	// add a NodeSet whose Pod cannot be scheduled: with 3 desired nodes and maxUnavailable 1, the not ready leaving
 	// master and the pending Pod use up the budget
-	pendingNodeSet, fixedNodeSet := pendingNodeSets(initial)
+	pendingNodeSet, fixedNodeSet := pendingNodeSets("pending", elasticsearch.DataRoleCfg(initial.Elasticsearch.Spec.Version))
 	downscaledWithPending := downscaled.DeepCopy().WithNodeSet(pendingNodeSet)
 	fixed := downscaled.DeepCopy().WithNodeSet(fixedNodeSet)
 
@@ -201,12 +203,170 @@ func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
 		RunSequential(t)
 }
 
-// pendingNodeSets returns a data NodeSet whose Pod cannot be scheduled, and the same NodeSet once its Pod can be scheduled.
-func pendingNodeSets(b elasticsearch.Builder) (pending esv1.NodeSet, fixed esv1.NodeSet) {
+// TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady removes a master node while the Pod of a new master
+// NodeSet cannot be scheduled. Once its remove-type shutdown made it not ready, the draining master is one of two
+// unavailable masters: its removal consumes the budget, which the new master uses up, so it must be held with its
+// shutdown until the new master is ready.
+func TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady(t *testing.T) {
+	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
+	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
+		t.SkipNow()
+	}
+
+	ctx := t.Context()
+	k := test.NewK8sClientOrFatal()
+
+	initial := elasticsearch.NewBuilder("test-downscale-hold-master").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	downscaled := initial.WithNoESTopology().
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	// add a master NodeSet whose Pod cannot be scheduled
+	pendingNodeSet, fixedNodeSet := pendingNodeSets("pending-master", elasticsearch.MasterRoleCfg(initial.Elasticsearch.Spec.Version))
+	downscaledWithPending := downscaled.DeepCopy().WithNodeSet(pendingNodeSet)
+	fixed := downscaled.DeepCopy().WithNodeSet(fixedNodeSet)
+
+	esName := initial.Elasticsearch.Name
+	esNamespace := initial.Elasticsearch.Namespace
+	masterStatefulSet := esv1.StatefulSet(esName, "masterdata")
+	leavingNode := sset.PodName(masterStatefulSet, 2)
+	var esClient esclient.Client
+	masterPods := test.NewPodRestartChecker("master Elasticsearch", test.ESPodListOptionsByNodeSet(esNamespace, esName, "masterdata")...)
+
+	// a single primary on the leaving master, without replicas: its shutdown can only complete once it is not ready,
+	// otherwise the ready master would be removed within the budget
+	pinnedIndexSettings := fmt.Sprintf(
+		`{"settings": {"number_of_shards": 1, "number_of_replicas": 0, "index.routing.allocation.require._name": "%s"}}`,
+		leavingNode,
+	)
+
+	test.StepList{}.
+		WithSteps(initial.InitTestSteps(k)).
+		WithSteps(initial.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the remaining master nodes", pinnedIndexSettings)).
+		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
+		WithSteps(masterPods.RecordUIDs(k)).
+		WithSteps(downscaledWithPending.UpgradeTestSteps(k)).
+		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, []string{leavingNode}, masterPods)).
+		WithStep(test.Step{
+			Name: "Allow the index to be migrated to the remaining master nodes",
+			Test: test.Eventually(func() error {
+				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
+					[]byte(`{"index.routing.allocation.require._name": null}`))
+				return err
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "Leaving master should have a complete remove-type shutdown",
+			Test: test.Eventually(func() error {
+				return checkRemoveShutdownsComplete(ctx, esClient, []string{leavingNode})
+			}),
+		}).
+		WithStep(test.Step{
+			// the master is drained: only the unavailable new master holds its removal
+			Name: "Leaving master should be held while the new master is not ready",
+			Test: func(t *testing.T) {
+				t.Helper()
+				require.Never(t, func() bool {
+					err := checkRemoveShutdowns(ctx, esClient, []string{leavingNode})
+					if err != nil {
+						t.Log(err)
+					}
+					// errors while querying Elasticsearch are not considered as a removal
+					return errors.Is(err, errNoRemoveShutdown)
+				}, shutdownsKeptFor, 2*time.Second, "the leaving master was removed while the new master is not ready")
+			},
+		}).
+		WithSteps(fixed.UpgradeTestSteps(k)).
+		WithSteps(test.CheckTestSteps(fixed, k)).
+		WithSteps(fixed.DeletionTestSteps(k)).
+		RunSequential(t)
+}
+
+// TestDownscaleDuringRollingUpgrade removes data nodes while a pod template change is applied to all the NodeSets.
+// The leaving nodes are not upgraded: their shutdowns are kept and their Pods are not restarted, while the staying data
+// node is upgraded, then the master, which does not wait for the leaving nodes to be upgraded.
+func TestDownscaleDuringRollingUpgrade(t *testing.T) {
+	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
+	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
+		t.SkipNow()
+	}
+
+	ctx := t.Context()
+	k := test.NewK8sClientOrFatal()
+
+	initial := elasticsearch.NewBuilder("test-downscale-rolling-upgrade").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(3, "data", elasticsearch.DefaultResources)
+	// the not ready leaving nodes must not prevent the staying nodes from being upgraded
+	initial.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable = new(int32(3))
+
+	mutated := initial.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data", elasticsearch.DefaultResources).
+		WithEnvironmentVariable("E2E_DOWNSCALE_ROLLING_UPGRADE", "true")
+
+	esName := initial.Elasticsearch.Name
+	esNamespace := initial.Elasticsearch.Namespace
+	dataStatefulSet := esv1.StatefulSet(esName, "data")
+	leavingNodes := []string{sset.PodName(dataStatefulSet, 1), sset.PodName(dataStatefulSet, 2)}
+	var esClient esclient.Client
+	leavingPods := test.NewPodRestartChecker("leaving Elasticsearch", podListOptionsByName(t, esNamespace, leavingNodes...)...)
+	stayingDataPod := test.NewPodRestartChecker("staying data Elasticsearch", podListOptionsByName(t, esNamespace, sset.PodName(dataStatefulSet, 0))...)
+	masterPod := test.NewPodRestartChecker("master Elasticsearch", test.ESPodListOptionsByNodeSet(esNamespace, esName, "master")...)
+
+	// a single primary on the last leaving node, without replicas: the leaving nodes are removed from the last one, so
+	// both are held
+	pinnedIndexSettings := fmt.Sprintf(
+		`{"settings": {"number_of_shards": 1, "number_of_replicas": 0, "index.routing.allocation.require._name": "%s"}}`,
+		leavingNodes[1],
+	)
+
+	test.StepList{}.
+		WithSteps(initial.InitTestSteps(k)).
+		WithSteps(initial.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the staying data node", pinnedIndexSettings)).
+		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
+		WithSteps(leavingPods.RecordUIDs(k)).
+		WithSteps(stayingDataPod.RecordUIDs(k)).
+		WithSteps(masterPod.RecordUIDs(k)).
+		WithSteps(mutated.UpgradeTestSteps(k)).
+		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, leavingNodes, leavingPods)).
+		WithSteps(stayingDataPod.WaitForRestart(k)).
+		// the master is only upgraded once the non-master nodes are, which must not include the leaving ones
+		WithSteps(masterPod.WaitForRestart(k)).
+		WithStep(test.Step{
+			Name: "Leaving nodes should still have a remove-type shutdown and not have been restarted",
+			Test: test.Eventually(func() error {
+				if err := checkRemoveShutdowns(ctx, esClient, leavingNodes); err != nil {
+					return err
+				}
+				return leavingPods.CheckNotRestarted(ctx, k)
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "Allow the index to be migrated to the staying data node",
+			Test: test.Eventually(func() error {
+				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
+					[]byte(`{"index.routing.allocation.require._name": null}`))
+				return err
+			}),
+		}).
+		WithSteps(test.CheckTestSteps(mutated, k)).
+		WithSteps(mutated.DeletionTestSteps(k)).
+		RunSequential(t)
+}
+
+// pendingNodeSets returns a NodeSet with the given name and config whose Pod cannot be scheduled, and the same NodeSet
+// once its Pod can be scheduled.
+func pendingNodeSets(name string, config map[string]any) (pending esv1.NodeSet, fixed esv1.NodeSet) {
 	pending = esv1.NodeSet{
-		Name:        "pending",
+		Name:        name,
 		Count:       1,
-		Config:      &commonv1.Config{Data: elasticsearch.DataRoleCfg(b.Elasticsearch.Spec.Version)},
+		Config:      &commonv1.Config{Data: config},
 		PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 	}
 	pending.PodTemplate.Spec.NodeSelector = map[string]string{"cannot": "be-scheduled"}
@@ -329,34 +489,69 @@ var (
 // checkRemoveShutdowns returns an error wrapping errNoRemoveShutdown if one of the given nodes has no remove-type
 // shutdown, or is not in the cluster anymore.
 func checkRemoveShutdowns(ctx context.Context, esClient esclient.Client, nodeNames []string) error {
-	nodes, err := esClient.GetNodes(ctx)
+	_, err := removeShutdowns(ctx, esClient, nodeNames)
+	return err
+}
+
+// checkRemoveShutdownsComplete returns an error if one of the given nodes has no complete remove-type shutdown.
+func checkRemoveShutdownsComplete(ctx context.Context, esClient esclient.Client, nodeNames []string) error {
+	shutdowns, err := removeShutdowns(ctx, esClient, nodeNames)
 	if err != nil {
 		return err
+	}
+	for name, s := range shutdowns {
+		if s.Status != esclient.ShutdownComplete {
+			return fmt.Errorf("shutdown of node %s is %s", name, s.Status)
+		}
+	}
+	return nil
+}
+
+// removeShutdowns returns the remove-type shutdowns of the given nodes by node name. It returns an error wrapping
+// errNoRemoveShutdown if one of the nodes has none, or is not in the cluster anymore.
+func removeShutdowns(ctx context.Context, esClient esclient.Client, nodeNames []string) (map[string]esclient.NodeShutdown, error) {
+	nodes, err := esClient.GetNodes(ctx)
+	if err != nil {
+		return nil, err
 	}
 	shutdowns, err := esClient.GetShutdown(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	removing := set.Make()
+	removing := map[string]esclient.NodeShutdown{}
 	for _, s := range shutdowns.Nodes {
 		if s.Is(esclient.Remove) {
-			removing.Add(s.NodeID)
+			removing[s.NodeID] = s
 		}
 	}
 	nameToID := map[string]string{}
 	for id, node := range nodes.Nodes {
 		nameToID[node.Name] = id
 	}
+	byName := make(map[string]esclient.NodeShutdown, len(nodeNames))
 	for _, name := range nodeNames {
 		id, inCluster := nameToID[name]
 		if !inCluster {
-			return fmt.Errorf("node %s is not in the cluster: %w", name, errNoRemoveShutdown)
+			return nil, fmt.Errorf("node %s is not in the cluster: %w", name, errNoRemoveShutdown)
 		}
-		if !removing.Has(id) {
-			return fmt.Errorf("node %s: %w", name, errNoRemoveShutdown)
+		s, exists := removing[id]
+		if !exists {
+			return nil, fmt.Errorf("node %s: %w", name, errNoRemoveShutdown)
 		}
+		byName[name] = s
 	}
-	return nil
+	return byName, nil
+}
+
+// podListOptionsByName returns the list options to list the given StatefulSet Pods.
+func podListOptionsByName(t *testing.T, namespace string, podNames ...string) []k8sclient.ListOption {
+	t.Helper()
+	requirement, err := labels.NewRequirement(appsv1.StatefulSetPodNameLabel, selection.In, podNames)
+	require.NoError(t, err)
+	return []k8sclient.ListOption{
+		k8sclient.InNamespace(namespace),
+		k8sclient.MatchingLabelsSelector{Selector: labels.NewSelector().Add(*requirement)},
+	}
 }
 
 // checkPodsNotReady returns an error if one of the given Pods is ready.
