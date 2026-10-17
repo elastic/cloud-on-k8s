@@ -138,7 +138,7 @@ func buildExpectedDeployment(rp ReconciliationParams) (v1.Deployment, error) {
 		Selector:             rp.agent.GetIdentityLabels(),
 		Metadata:             rp.meta,
 		PodTemplateSpec:      rp.podTemplate,
-		Replicas:             pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1)),
+		Replicas:             new(pointer.Int32OrDefault(rp.agent.Spec.Deployment.Replicas, int32(1))),
 		RevisionHistoryLimit: rp.agent.Spec.RevisionHistoryLimit,
 		Strategy:             rp.agent.Spec.Deployment.Strategy,
 	})

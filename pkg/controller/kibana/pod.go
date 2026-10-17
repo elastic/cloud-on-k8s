@@ -6,25 +6,22 @@ package kibana
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/elastic/go-ucfg"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/initcontainer"
@@ -35,13 +32,9 @@ import (
 )
 
 const (
-	defaultFSGroup = 1000
-	defaultFSUser  = 1000
-	// basePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
-	basePathEnvName = "SERVER_BASEPATH"
-	// rewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
-	rewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
-	nodeExtraCACerts       = "NODE_EXTRA_CA_CERTS"
+	defaultFSGroup   = 1000
+	defaultFSUser    = 1000
+	nodeExtraCACerts = "NODE_EXTRA_CA_CERTS"
 )
 
 var (
@@ -85,14 +78,6 @@ var (
 	StatusReadinessProbeSupportedVersion = version.From(8, 16, 0)
 )
 
-// basePathConfig is used to get the base path from the Kibana configuration.
-type basePathConfig struct {
-	Server struct {
-		RewriteBasePath bool   `config:"rewriteBasePath"`
-		BasePath        string `config:"basePath"`
-	}
-}
-
 func readinessProbePath(basePath string, v version.Version) string {
 	if v.GTE(StatusReadinessProbeSupportedVersion) {
 		return fmt.Sprintf("%s/api/status", basePath)
@@ -124,11 +109,13 @@ func NewPodTemplateSpec(
 	ctx context.Context,
 	client k8sclient.Client,
 	kb kbv1.Kibana,
+	role kblabel.Role,
 	keystore *keystore.Resources,
 	volumes []volume.VolumeLike,
 	basePath string,
 	setDefaultSecurityContext bool,
 	meta metadata.Metadata,
+	configSecretName string,
 ) (corev1.PodTemplateSpec, error) {
 	labels := kb.GetIdentityLabels()
 	labels[kblabel.KibanaVersionLabelName] = kb.Spec.Version
@@ -144,21 +131,27 @@ func NewPodTemplateSpec(
 		Labels:      labels,
 		Annotations: DefaultAnnotations,
 	})
-	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
-		WithResourcesAndOverrides(DefaultResources, kb.Spec.Resources).
+
+	pt, err := getPodTemplateSpecForRole(kb, role)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+
+	builder := defaults.NewPodTemplateBuilder(pt, kbv1.KibanaContainerName).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, v)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled(), basePath, v)).
 		WithVolumes(scriptsConfigMapVolume.Volume()).WithVolumeMounts(scriptsConfigMapVolume.VolumeMount()).
 		WithVolumes(PluginsVolume.Volume()).WithVolumeMounts(PluginsVolume.VolumeMount()).
+		WithResourcesAndOverrides(DefaultResources, kb.GetResourcesForRole(role)).
 		WithPorts(ports)
 
 	for _, volume := range volumes {
 		builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(kb)
+	initContainer, err := initcontainer.NewInitContainer(configSecretName)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -173,7 +166,7 @@ func NewPodTemplateSpec(
 	// Limiting to 7.10.0 here as there was a bug in previous versions causing rebuilding
 	// of browser bundles to happen on plugin install, which would attempt a write to the
 	// root filesystem on restart.
-	var canEnableSecurityContext = v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
+	canEnableSecurityContext := v.GTE(initcontainer.HardenedSecurityContextSupportedVersion) && setDefaultSecurityContext
 	if canEnableSecurityContext {
 		builder.WithContainersSecurityContext(defaultSecurityContext).
 			WithPodSecurityContext(defaultPodSecurityContext).
@@ -188,7 +181,9 @@ func NewPodTemplateSpec(
 
 	var additionalInitEnvVars []corev1.EnvVar
 	if kb.Spec.PackageRegistryRef.IsSet() {
-		userNodeExtraCACerts := getUserNodeExtraCACerts(kb)
+		// Read from the role-specific (merged) template so that a NODE_EXTRA_CA_CERTS
+		// set only in spec.backgroundTasks.podTemplate is honoured for that pool.
+		userNodeExtraCACerts := getUserNodeExtraCACerts(pt)
 		builder, err = withEPRCertsVolume(
 			builder,
 			kb,
@@ -211,16 +206,27 @@ func NewPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	return builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate, nil
-}
+	podTemplate := builder.WithInitContainerDefaults(additionalInitEnvVars...).PodTemplate
 
-// getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container spec.
-func getUserNodeExtraCACerts(kb kbv1.Kibana) string {
-	if kb.Spec.PodTemplate.Spec.Containers == nil {
-		return ""
+	// When background task isolation is active, set NODE_ROLES on the Kibana container.
+	// Kibana reads this env var to determine which roles it runs, taking precedence over
+	// kibana.yml.
+	if !role.IsSinglePool() {
+		if c := kbv1.GetKibanaContainer(podTemplate.Spec); c != nil {
+			c.Env = append(
+				[]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: fmt.Sprintf(`["%s"]`, role.Name)}},
+				c.Env...,
+			)
+		}
 	}
 
-	for _, container := range kb.Spec.PodTemplate.Spec.Containers {
+	return podTemplate, nil
+}
+
+// getUserNodeExtraCACerts extracts the NODE_EXTRA_CA_CERTS environment variable value from the Kibana container
+// of the given (role-specific) pod template.
+func getUserNodeExtraCACerts(pt corev1.PodTemplateSpec) string {
+	for _, container := range pt.Spec.Containers {
 		if container.Name != kbv1.KibanaContainerName {
 			continue
 		}
@@ -235,73 +241,8 @@ func getUserNodeExtraCACerts(kb kbv1.Kibana) string {
 	return ""
 }
 
-// GetKibanaContainer returns the Kibana container from the given podSpec.
-func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
-	return pod.ContainerByName(podSpec, kbv1.KibanaContainerName)
-}
-
-func GetKibanaBasePathFromSpecEnv(podSpec corev1.PodSpec) (string, error) {
-	kbContainer := GetKibanaContainer(podSpec)
-	if kbContainer == nil {
-		return "", nil
-	}
-
-	envMap := make(map[string]string)
-	for _, envVar := range kbContainer.Env {
-		if envVar.Name == basePathEnvName || envVar.Name == rewriteBasePathEnvName {
-			envMap[envVar.Name] = envVar.Value
-		}
-	}
-
-	// If SERVER_REWRITEBASEPATH is set to true, we should use the value of SERVER_BASEPATH
-	if rewriteBasePath, ok := envMap[rewriteBasePathEnvName]; ok {
-		rewriteBasePathBool, err := strconv.ParseBool(rewriteBasePath)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse SERVER_REWRITEBASEPATH value %s: %w", rewriteBasePath, err)
-		}
-		if rewriteBasePathBool {
-			return envMap[basePathEnvName], nil
-		}
-	}
-
-	return "", nil
-}
-
 func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
 	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(network.HTTPPort), Protocol: corev1.ProtocolTCP}}
-}
-
-func GetKibanaBasePath(kb kbv1.Kibana) (string, error) {
-	// We only support the case where both base path and rewrite base path are set in the ENV or the config
-	// We will not support the case where base path is set in the ENV and rewrite base path is set in the config or vice versa
-	kbBasePath, err := GetKibanaBasePathFromSpecEnv(kb.Spec.PodTemplate.Spec)
-	if err != nil {
-		return "", err
-	}
-
-	if kbBasePath != "" {
-		return kbBasePath, nil
-	}
-
-	if kb.Spec.Config == nil {
-		return "", nil
-	}
-
-	kbucfgConfig, err := ucfg.NewFrom(kb.Spec.Config.Data, settings.Options...)
-	if err != nil {
-		return "", err
-	}
-
-	kbCfg := basePathConfig{}
-	if err := kbucfgConfig.Unpack(&kbCfg); err != nil {
-		return "", err
-	}
-
-	if kbCfg.Server.RewriteBasePath {
-		return kbCfg.Server.BasePath, nil
-	}
-
-	return "", nil
 }
 
 // withEPRCertsVolume sets NODE_EXTRA_CA_CERTS environment variable to point to either ca.crt or combined-ca-bundle.crt if the user has already set NODE_EXTRA_CA_CERTS in the podTemplate.
@@ -330,4 +271,62 @@ func withEPRCertsVolume(builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, us
 		}
 	}
 	return builder, nil
+}
+
+func getPodTemplateSpecForRole(kb kbv1.Kibana, role kblabel.Role) (corev1.PodTemplateSpec, error) {
+	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
+	// spec.podTemplate.
+	if role.IsBackgroundTasks() {
+		merged, err := mergePoolPodTemplate(kb.Spec.PodTemplate, kb.Spec.BackgroundTasks.PodTemplate)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+		return merged, nil
+	}
+
+	return kb.Spec.PodTemplate, nil
+}
+
+// mergePoolPodTemplate produces the final PodTemplateSpec for one pool by layering overlay on top of base.
+// base is spec.podTemplate — the user-supplied top-level pod template shared by all pools.
+// overlay is spec.backgroundTasks.podTemplate, carrying only the fields that should differ
+// per pool (scheduling constraints, resource overrides, extra sidecars, …).
+//
+// Fields are merged via Kubernetes strategic merge patch, which honours the patch strategy annotations on
+// PodSpec (e.g. replaceKeys on securityContext, atomic on tolerations) and preserves base fields that the
+// overlay leaves unset. Container and volume lists are keyed by name, so an overlay container replaces its
+// base counterpart and novel names are appended.
+//
+// One caveat: strategic merge patch treats a missing slice in the overlay as an explicit nil, which would
+// drop the base containers/volumes. The nil-preservation block below restores them when the overlay omits
+// those lists entirely.
+func mergePoolPodTemplate(base, overlay corev1.PodTemplateSpec) (corev1.PodTemplateSpec, error) {
+	var out corev1.PodTemplateSpec
+
+	baseJSON, err := json.Marshal(base)
+	if err != nil {
+		return out, err
+	}
+	overlayJSON, err := json.Marshal(overlay)
+	if err != nil {
+		return out, err
+	}
+
+	merged, err := strategicpatch.StrategicMergePatch(baseJSON, overlayJSON, corev1.PodTemplateSpec{})
+	if err != nil {
+		return out, err
+	}
+
+	err = json.Unmarshal(merged, &out)
+	if err != nil {
+		return out, err
+	}
+
+	// A missing slice in the overlay JSON unmarshals as nil, which strategic merge patch treats as
+	// an explicit deletion. Restore the base slices so an overlay that omits containers or volumes
+	// does not silently drop them.
+	if overlay.Spec.Containers == nil {
+		out.Spec.Containers = base.Spec.Containers
+	}
+	return out, nil
 }

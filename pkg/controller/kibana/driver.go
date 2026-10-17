@@ -15,8 +15,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -40,7 +42,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	umaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 7.0.0.
@@ -127,9 +129,10 @@ func (d *driver) Reconcile(
 
 	// metadata to propagate to children
 	meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
-	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb, meta), kb)
+
+	// reconcile the service (only for the primary pool).
+	svc, err := reconcileService(ctx, d.client, kb, meta)
 	if err != nil {
-		// TODO: consider updating some status here?
 		return results.WithError(err)
 	}
 
@@ -166,16 +169,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	if err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, meta); err != nil {
-		return results.WithError(err)
-	}
-
-	basePath, err := GetKibanaBasePath(*kb)
+	basePath, err := kbv1.GetKibanaBasePath(*kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -188,31 +182,132 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
+	// GC: remove background-tasks resources when the split is no longer configured.
+	if !kb.BackgroundTasksEnabled() {
+		if err := d.garbageCollectBackgroundResources(ctx, kb); err != nil {
+			return results.WithError(err)
+		}
+	} else if kb.Spec.BackgroundTasks.Config == nil {
+		// BG pool is active but has no overlay — both pools share the base secret.
+		// GC any orphaned BG config secret left from a previous overlay configuration.
+		if err := d.garbageCollectBGConfigSecret(ctx, kb); err != nil {
+			return results.WithError(err)
+		}
+	}
+
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(ctx, kb, kibanaPolicyCfg.PodAnnotations, basePath, params.SetDefaultSecurityContext, params.OperatorNamespace, meta)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := common.ReconcilePauseAware(ctx, d.client, d.recorder, expectedDp, kb, deployment.Reconcile)
-	if err != nil {
-		return results.WithError(err)
-	}
-
+	// fetch pod from all pools
 	existingPods, err := k8s.PodsMatchingLabels(d.K8sClient(), kb.Namespace, map[string]string{kblabel.KibanaNameLabelName: kb.Name})
 	if err != nil {
 		return results.WithError(err)
 	}
-	deploymentStatus, err := common.DeploymentStatus(ctx, state.Kibana.Status.DeploymentStatus, reconciledDp, existingPods, kblabel.KibanaVersionLabelName)
-	if err != nil {
-		return results.WithError(err)
+
+	// When split is active and any pod carries a stale version, enter the stop phase:
+	// scale both pools to zero before starting any new-version pods. Without this,
+	// the UI Deployment can start new pods while old background-task pods still run,
+	// violating Kibana's requirement that all outdated instances stop first.
+	scaleToZero := shouldScaleAllPoolsToZeroForUpgrade(kb, existingPods)
+
+	activeRoles := kb.ActiveRoles()
+
+	// Pool statuses are staged locally and committed to state via buildStatus: once after the
+	// loop on success, and with whatever entries were gathered so far when a pool fails to
+	// reconcile, so the status reflects the pools that were observed this pass.
+	poolStatuses := make([]poolStatusEntry, 0, len(activeRoles))
+	// Each pool status inherits unknown fields from the previously persisted status, captured
+	// before any mutation.
+	prevStatus := state.Kibana.Status
+
+	defer func() { buildStatus(state, kb, poolStatuses) }()
+
+	// reconciledSecrets tracks which config secrets have already been written this pass
+	// so that pools sharing the base secret don't trigger a redundant write.
+	reconciledSecrets := map[string]struct{}{}
+
+	for _, role := range activeRoles {
+		poolParams, err := newPoolParameters(params, kb, role, basePath, scaleToZero)
+		if err != nil {
+			return results.WithError(err)
+		}
+
+		// merge with scp.
+		poolConfig, err := NewConfigSettings(ctx, d.client, *kb, poolParams.Config, d.version, d.ipFamily, kibanaPolicyCfg.KibanaConfig)
+		if err != nil {
+			return results.WithError(err)
+		}
+		poolParams.Config = poolConfig
+
+		deploymentResult, reconciledDp, err := d.reconcilePoolDeployment(
+			ctx,
+			kb,
+			poolParams,
+			kibanaPolicyCfg.PodAnnotations,
+			meta,
+			reconciledSecrets,
+		)
+		switch {
+		case err != nil:
+			return results.WithError(err)
+		case deploymentResult == paused:
+			return results
+		case deploymentResult == requeue:
+			return results.WithRequeue()
+		}
+
+		currentStatus := prevStatus.Pools.Primary
+		if role.IsBackgroundTasks() {
+			currentStatus = ptr.Deref(prevStatus.Pools.BackgroundTasks, commonv1.DeploymentStatus{})
+		}
+
+		poolStatus, err := common.DeploymentStatus(ctx, currentStatus, *reconciledDp, existingPods, kblabel.KibanaVersionLabelName)
+		if err != nil {
+			return results.WithError(err)
+		}
+
+		poolStatuses = append(poolStatuses, poolStatusEntry{role: role, status: poolStatus})
 	}
-	state.Kibana.Status.DeploymentStatus = deploymentStatus
+
+	if scaleToZero {
+		// Both pools are being drained. Requeue so the controller re-checks once pods terminate.
+		results = results.WithRequeue()
+	}
 
 	return results
+}
+
+// garbageCollectBackgroundResources deletes the background tasks Deployment and config Secret
+// when spec.backgroundTasks is no longer set.
+// Deletion is skipped while orchestration is paused so that disabling the split on a paused
+// Kibana does not remove the background Deployment until the user resumes orchestration.
+func (d *driver) garbageCollectBackgroundResources(ctx context.Context, kb *kbv1.Kibana) error {
+	if common.IsOrchestrationPaused(kb) {
+		return nil
+	}
+
+	if err := k8s.DeleteResourceIfExists(ctx, d.client, &appsv1.Deployment{
+		Namespace: kb.Namespace,
+		Name:      kbv1.BackgroundTasksDeployment(kb.Name),
+	}); err != nil {
+		return err
+	}
+
+	return d.garbageCollectBGConfigSecret(ctx, kb)
+}
+
+// garbageCollectBGConfigSecret deletes the background tasks config Secret when it is no longer
+// needed — either because spec.backgroundTasks was cleared or because spec.backgroundTasks.config
+// was cleared (both pools now share the base secret).
+func (d *driver) garbageCollectBGConfigSecret(ctx context.Context, kb *kbv1.Kibana) error {
+	if common.IsOrchestrationPaused(kb) {
+		return nil
+	}
+
+	return k8s.DeleteResourceIfExists(ctx, d.client, &corev1.Secret{
+		Namespace: kb.Namespace,
+		Name:      kbv1.BackgroundTasksConfigSecret(kb.Name),
+	})
 }
 
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
@@ -238,7 +333,16 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAnnotations map[string]string, basePath string, setDefaultSecurityContext bool, operatorNamespace string, meta metadata.Metadata) (deployment.Params, error) {
+func (d *driver) deploymentParams(
+	ctx context.Context,
+	kb *kbv1.Kibana,
+	pp poolParameters,
+	replicas *int32,
+	replicasAnnotationValue *int32,
+	policyAnnotations map[string]string,
+	meta metadata.Metadata,
+	selectorOutcome selectorChangeOutcome,
+) (deployment.Params, error) {
 	initContainersParameters, err := initcontainer.NewInitContainersParameters(kb)
 	if err != nil {
 		return deployment.Params{}, err
@@ -250,18 +354,29 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		kb,
 		kbv1.KBNamer,
 		meta,
-		operatorNamespace,
+		pp.OperatorNamespace,
 		initContainersParameters,
 	)
 	if err != nil {
 		return deployment.Params{}, err
 	}
 
-	volumes, err := d.buildVolumes(kb)
+	volumes, err := d.buildVolumes(kb, pp.SecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, keystoreResources, volumes, basePath, setDefaultSecurityContext, meta)
+
+	// Pool-specific metadata: add role label to pod labels.
+	poolLabels := umaps.Merge(map[string]string{}, meta.Labels)
+	poolLabels[kblabel.RoleLabelName] = pp.Role.LabelValue
+	poolMeta := metadata.Propagate(kb, metadata.Metadata{Labels: poolLabels, Annotations: meta.Annotations})
+
+	r := pp.Role
+	if selectorOutcome.omitRoleSplit && r == kblabel.UIRole {
+		// feed the single pool role, we don't need to remove the background functionality yet.
+		r = kblabel.SinglePoolRole
+	}
+	kibanaPodSpec, err := NewPodTemplateSpec(ctx, d.client, *kb, r, keystoreResources, volumes, pp.BasePath, pp.SetDefaultSecurityContext, poolMeta, pp.SecretName)
 	if err != nil {
 		return deployment.Params{}, err
 	}
@@ -294,10 +409,9 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		}
 	}
 
-	// get config secret to add its content to the config checksum
-	configSecret := corev1.Secret{}
-	err = d.client.Get(ctx, types.NamespacedName{Name: kbv1.ConfigSecret(kb.Name), Namespace: kb.Namespace}, &configSecret)
-	if err != nil {
+	// Hash the pool-specific config secret so changes roll this deployment.
+	var configSecret corev1.Secret
+	if err = d.client.Get(ctx, types.NamespacedName{Name: pp.SecretName, Namespace: kb.Namespace}, &configSecret); err != nil {
 		return deployment.Params{}, err
 	}
 	_, _ = configHash.Write(configSecret.Data[SettingsFilename])
@@ -307,7 +421,7 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 	kibanaPodSpec.Annotations[configHashAnnotationName] = fmt.Sprint(configHash.Sum32())
 
 	// add additional annotations related to the StackConfigPolicy
-	kibanaPodSpec.Annotations = maps.Merge(kibanaPodSpec.Annotations, policyAnnotations)
+	kibanaPodSpec.Annotations = umaps.Merge(kibanaPodSpec.Annotations, policyAnnotations)
 
 	// decide the strategy type
 	strategyType, err := d.getStrategyType(kb)
@@ -315,20 +429,34 @@ func (d *driver) deploymentParams(ctx context.Context, kb *kbv1.Kibana, policyAn
 		return deployment.Params{}, err
 	}
 
+	if pp.ScaleToZero {
+		strategyType = appsv1.RollingUpdateDeploymentStrategyType
+	}
+
+	// add the replicas Deployment's annotation if needed.
+	if pp.Role.IsBackgroundTasks() && replicasAnnotationValue != nil {
+		poolMeta = poolMeta.Merge(metadata.Metadata{Annotations: map[string]string{
+			replicasAnnotationName: fmt.Sprintf("%d", *replicasAnnotationValue),
+		}})
+	}
+
+	if selectorOutcome.revisionHistoryLimitOverride == nil {
+		selectorOutcome.revisionHistoryLimitOverride = kb.Spec.RevisionHistoryLimit
+	}
 	return deployment.Params{
-		Name:                 kbv1.KBNamer.Suffix(kb.Name),
+		Name:                 pp.DeploymentName,
 		Namespace:            kb.Namespace,
-		Replicas:             kb.Spec.Count,
-		Selector:             kb.GetIdentityLabels(),
-		Metadata:             meta,
+		Replicas:             replicas,
+		Selector:             selectorOutcome.expectedSelector,
+		Metadata:             poolMeta,
 		PodTemplateSpec:      kibanaPodSpec,
-		RevisionHistoryLimit: kb.Spec.RevisionHistoryLimit,
+		RevisionHistoryLimit: selectorOutcome.revisionHistoryLimitOverride,
 		Strategy:             appsv1.DeploymentStrategy{Type: strategyType},
 	}, nil
 }
 
-func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error) {
-	volumes := []commonvolume.VolumeLike{DataVolume, initcontainer.ConfigSharedVolume, initcontainer.ConfigVolume(*kb)}
+func (d *driver) buildVolumes(kb *kbv1.Kibana, configSecretName string) ([]commonvolume.VolumeLike, error) {
+	volumes := []commonvolume.VolumeLike{DataVolume, initcontainer.ConfigSharedVolume, initcontainer.ConfigVolume(configSecretName)}
 
 	esAssocConf, err := kb.EsAssociation().AssociationConf()
 	if err != nil {
@@ -368,7 +496,7 @@ func (d *driver) buildVolumes(kb *kbv1.Kibana) ([]commonvolume.VolumeLike, error
 	return volumes, nil
 }
 
-func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
+func NewService(kb kbv1.Kibana, meta metadata.Metadata, selector map[string]string) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
 		Spec:       kb.Spec.HTTP.Service.Spec,
@@ -377,7 +505,6 @@ func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
 	svc.ObjectMeta.Namespace = kb.Namespace
 	svc.ObjectMeta.Name = kbv1.HTTPService(kb.Name)
 
-	selector := kb.GetIdentityLabels()
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),

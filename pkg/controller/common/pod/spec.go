@@ -10,19 +10,21 @@ import (
 
 // ContainerByName returns a reference to a container with the name from the given pod spec.
 func ContainerByName(podSpec corev1.PodSpec, name string) *corev1.Container {
-	for i, c := range podSpec.Containers {
-		if c.Name == name {
-			return &podSpec.Containers[i]
-		}
-	}
-	return nil
+	_, c := ContainerAndIndexByName(podSpec.Containers, name)
+	return c
 }
 
 func InitContainerByName(podSpec corev1.PodSpec, name string) *corev1.Container {
-	for i, c := range podSpec.InitContainers {
+	_, c := ContainerAndIndexByName(podSpec.InitContainers, name)
+	return c
+}
+
+// ContainerAndIndexByName returns a reference to a container (and the index) based on name, from the given containers slice.
+func ContainerAndIndexByName(containers []corev1.Container, name string) (int, *corev1.Container) {
+	for i, c := range containers {
 		if c.Name == name {
-			return &podSpec.InitContainers[i]
+			return i, &containers[i]
 		}
 	}
-	return nil
+	return 0, nil
 }
