@@ -429,6 +429,10 @@ func (d *driver) deploymentParams(
 		return deployment.Params{}, err
 	}
 
+	if pp.ScaleToZero {
+		strategyType = appsv1.RollingUpdateDeploymentStrategyType
+	}
+
 	// add the replicas Deployment's annotation if needed.
 	if pp.Role.IsBackgroundTasks() && replicasAnnotationValue != nil {
 		poolMeta = poolMeta.Merge(metadata.Metadata{Annotations: map[string]string{

@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"testing"
 
@@ -467,63 +468,54 @@ func TestDeploymentSelector(t *testing.T) {
 }
 
 // ---- reconcilePoolDeployment --------------------------------------------------
-
 func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 	dpName := kbv1.KBNamer.Suffix("test")
+	dpKey := types.NamespacedName{Namespace: "default", Name: dpName}
 	legacyLabels := map[string]string{
 		kblabel.KibanaNameLabelName: "test",
 		commonv1.TypeLabelName:      "kibana",
 	}
-	legacyDp := func() *appsv1.Deployment {
+	legacyDp := func(revisionHistoryLimit *int32) *appsv1.Deployment {
 		return &appsv1.Deployment{
 			Name: dpName, Namespace: "default",
 			Spec: appsv1.DeploymentSpec{
-				Selector: &metav1.LabelSelector{MatchLabels: legacyLabels},
+				Selector:             &metav1.LabelSelector{MatchLabels: legacyLabels},
+				RevisionHistoryLimit: revisionHistoryLimit,
 			},
 		}
+	}
+	labeledPod := func() *corev1.Pod {
+		podLabels := maps.Clone(legacyLabels)
+		podLabels[kblabel.RoleLabelName] = kblabel.RolePrimaryValue
+		return &corev1.Pod{Name: "labeled", Namespace: "default", Labels: podLabels}
+	}
+	unlabeledPod := func() *corev1.Pod {
+		return &corev1.Pod{Name: "unlabeled", Namespace: "default", Labels: maps.Clone(legacyLabels)}
+	}
+	failedUnlabeledPod := func() *corev1.Pod {
+		pod := unlabeledPod()
+		pod.Status.Phase = corev1.PodFailed
+		return pod
 	}
 
 	// Split enabled: the expected UI selector includes role=primary while the existing
 	// deployment has no role label, so a selector mismatch must be detected.
-	kbPaused := kbWithBG(nil, nil)
-	kbPaused.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
-	kbActive := kbWithBG(nil, nil)
-
-	// a complete driver is needed as the deployment is reconciled when it is not deleted
-	newDriverFor := func(t *testing.T, c k8s.Client) *driver {
-		t.Helper()
-		d, err := newDriver(c, watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kbActive, corev1.IPv4Protocol)
-		require.NoError(t, err)
-		return d
+	kbFor := func(paused bool, revisionHistoryLimit *int32) *kbv1.Kibana {
+		kb := kbWithBG(nil, nil)
+		kb.Spec.RevisionHistoryLimit = revisionHistoryLimit
+		if paused {
+			kb.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+		}
+		return kb
 	}
-
-	poolParamsFor := func(kb *kbv1.Kibana) poolParameters {
-		pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.UIRole, "", false)
-		require.NoError(t, err)
-		return pp
-	}
-	meta := metadata.Metadata{Labels: kbActive.GetIdentityLabels()}
-
-	t.Run("paused: mismatch detected, deployment not deleted, Defer returned", func(t *testing.T) {
-		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
-		d := newDriverFor(t, fakeClient)
-
-		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
-
-		require.NoError(t, err)
-		assert.Equal(t, paused, res)
-		assert.Nil(t, reconciledDp)
-		var got appsv1.Deployment
-		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
-	})
+	meta := metadata.Metadata{Labels: kbFor(false, nil).GetIdentityLabels()}
 
 	// markSteady simulates the Deployment controller having observed the spec and made all
 	// replicas available, which deployment.IsSteady requires before the deletion can happen.
-	markSteady := func(t *testing.T, c k8s.Client, dp *appsv1.Deployment) {
+	markSteady := func(t *testing.T, c k8s.Client) {
 		t.Helper()
 		var got appsv1.Deployment
-		require.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
+		require.NoError(t, c.Get(context.Background(), dpKey, &got))
 		replicas := ptr.Deref(got.Spec.Replicas, 1)
 		got.Status = appsv1.DeploymentStatus{
 			ObservedGeneration: got.Generation,
@@ -534,101 +526,198 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		require.NoError(t, c.Status().Update(context.Background(), &got))
 	}
 
-	t.Run("not paused: mismatch triggers deletion and Requeue", func(t *testing.T) {
-		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
-		d := newDriverFor(t, fakeClient)
-
-		// First call: the deployment is reconciled with revisionHistoryLimit 0 (to clean up the old ReplicaSets)
-		// and its existing selector. It survives.
-		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.NotNil(t, reconciledDp)
-		var got appsv1.Deployment
-		require.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
-		assert.True(t, hasZeroRevisionHistoryLimit(&got))
-		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
-		markSteady(t, fakeClient, dp)
-
-		// Second call: the deployment is deleted.
-		res, reconciledDp, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.Nil(t, reconciledDp)
-		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
-	})
-
-	t.Run("resume after pause: deletion happens on the calls after", func(t *testing.T) {
-		dp := legacyDp()
-		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), dp)...)
-		d := newDriverFor(t, fakeClient)
-
-		// First call: paused — deployment survives.
-		res, _, err := d.reconcilePoolDeployment(context.Background(), kbPaused, poolParamsFor(kbPaused), nil, meta, map[string]struct{}{})
-		require.NoError(t, err)
-		assert.Equal(t, paused, res)
-		var got appsv1.Deployment
-		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
-
-		// Second call: not paused — revisionHistoryLimit set to 0, deployment still there.
-		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
-		require.NoError(t, err)
-		markSteady(t, fakeClient, dp)
-		assert.Equal(t, requeue, res)
-		assert.NoError(t, fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got))
-
-		// Third call: deployment deleted.
-		res, _, err = d.reconcilePoolDeployment(context.Background(), kbActive, poolParamsFor(kbActive), nil, meta, map[string]struct{}{})
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.True(t, apierrors.IsNotFound(fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(dp), &got)))
-	})
-
-	// reconcileOnce runs one reconciliation for the given existing deployment and returns what is left in the cluster.
-	reconcileOnce := func(t *testing.T, kb *kbv1.Kibana, objects ...client.Object) (poolDeploymentResult, *appsv1.Deployment, appsv1.Deployment, error) {
+	assertRevisionHistoryLimit := func(t *testing.T, got *appsv1.Deployment, want int32, msg string) {
 		t.Helper()
-		fakeClient := k8s.NewFakeClient(append(defaultInitialObjects(), objects...)...)
-		d := newDriverFor(t, fakeClient)
-		res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, poolParamsFor(kb), nil, meta, map[string]struct{}{})
-		var got appsv1.Deployment
-		getErr := fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: dpName}, &got)
-		if getErr != nil {
-			require.True(t, apierrors.IsNotFound(getErr), "unexpected error: %v", getErr)
-			got = appsv1.Deployment{}
-		}
-		return res, reconciledDp, got, err
-	}
-	labeledPod := func() *corev1.Pod {
-		podLabels := maps.Clone(legacyLabels)
-		podLabels[kblabel.RoleLabelName] = kblabel.RolePrimaryValue
-		return &corev1.Pod{Name: "labeled", Namespace: "default", Labels: podLabels}
-	}
-	unlabeledPod := func() *corev1.Pod {
-		return &corev1.Pod{Name: "unlabeled", Namespace: "default", Labels: maps.Clone(legacyLabels)}
-	}
-	withHistoryLimit := func(dp *appsv1.Deployment, limit int32) *appsv1.Deployment {
-		dp.Spec.RevisionHistoryLimit = new(limit)
-		return dp
-	}
-
-	t.Run("old ReplicaSets not cleaned up yet: reconciled with revisionHistoryLimit 0 and the existing selector", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
-		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 5), labeledPod())
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.NotNil(t, reconciledDp)
-		assert.True(t, got.DeletionTimestamp.IsZero())
 		require.NotNil(t, got.Spec.RevisionHistoryLimit)
-		assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the Kibana spec value must be overwritten")
-		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
-		// While the migration is in progress, the pool keeps running all Kibana roles:
-		// NODE_ROLES must not be injected yet (omitRoleSplit).
-		_, found := findEnvVar(findKibanaContainerEnv(got.Spec.Template.Spec), kblabel.NodeRolesEnvVar)
-		assert.False(t, found, "NODE_ROLES must not be set while the selector migration is in progress")
-	})
+		assert.Equal(t, want, *got.Spec.RevisionHistoryLimit, msg)
+	}
+	assertNotTerminating := func(t *testing.T, got *appsv1.Deployment) {
+		t.Helper()
+		require.NotNil(t, got, "the deployment must not be deleted")
+		assert.True(t, got.DeletionTimestamp.IsZero(), "the deployment must not be terminating")
+	}
 
+	// a deployment that already went through the migration but has not been deleted yet
+	completeDp := legacyDp(ptr.To[int32](0))
+	completeDp.Finalizers = []string{metav1.FinalizerOrphanDependents} // keep it around to observe the deletion
+	completeDp.Spec.Replicas = ptr.To[int32](2)
+	completeDp.Generation, completeDp.Status = 3, appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2}
+
+	terminatingDp := legacyDp(ptr.To[int32](7))
+	terminatingDp.Finalizers = []string{metav1.FinalizerOrphanDependents} // an object with a deletionTimestamp needs a finalizer
+	terminatingDp.DeletionTimestamp = new(metav1.Now())
+
+	// step is one call of reconcilePoolDeployment and what is expected from it.
+	type step struct {
+		paused bool
+		// before runs before the reconciliation, e.g. to simulate the Deployment controller.
+		before func(t *testing.T, c k8s.Client)
+
+		wantRes poolDeploymentResult
+		// wantReconciledDp is true when a non-nil Deployment is expected to be returned.
+		wantReconciledDp bool
+		// wantUnchanged is true when the Deployment must not have been written by this step.
+		wantUnchanged bool
+		// check inspects the Deployment left in the cluster, nil when it does not exist anymore.
+		check func(t *testing.T, got *appsv1.Deployment)
+	}
+	type testCase struct {
+		name string
+		// revisionHistoryLimit of the Kibana spec
+		revisionHistoryLimit *int32
+		dp                   *appsv1.Deployment
+		pods                 []client.Object
+		steps                []step
+	}
+
+	tests := []testCase{ //nolint:prealloc  // not needed in testcase
+		{
+			name: "paused: mismatch detected, deployment neither deleted nor updated, paused returned",
+			dp:   legacyDp(nil),
+			steps: []step{{
+				paused:  true,
+				wantRes: paused,
+				// reconciliation proceeds while paused, but ReconcilePauseAware returns the existing Deployment untouched
+				wantReconciledDp: true,
+				wantUnchanged:    true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					assertNotTerminating(t, got)
+					assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+				},
+			}},
+		},
+		{
+			name: "not paused: mismatch triggers deletion and requeue",
+			dp:   legacyDp(nil),
+			steps: []step{
+				{
+					// the deployment is reconciled with revisionHistoryLimit 0 (to clean up the old ReplicaSets)
+					// and its existing selector. It survives.
+					wantRes:          requeue,
+					wantReconciledDp: true,
+					check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+						assertNotTerminating(t, got)
+						assert.True(t, hasZeroRevisionHistoryLimit(got))
+						assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+					},
+				},
+				{
+					// once steady, the deployment is deleted
+					before:  markSteady,
+					wantRes: requeue,
+					check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+						assert.Nil(t, got, "the deployment must be deleted")
+					},
+				},
+			},
+		},
+		{
+			name: "resume after pause: deletion happens on the calls after",
+			dp:   legacyDp(nil),
+			steps: []step{
+				{
+					// paused: the deployment survives
+					paused:           true,
+					wantRes:          paused,
+					wantReconciledDp: true,
+					wantUnchanged:    true,
+					check:            assertNotTerminating,
+				},
+				{
+					// not paused: revisionHistoryLimit set to 0, deployment still there
+					wantRes:          requeue,
+					wantReconciledDp: true,
+					check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+						assertNotTerminating(t, got)
+						assert.True(t, hasZeroRevisionHistoryLimit(got))
+					},
+				},
+				{
+					// steady: the deployment is deleted
+					before:  markSteady,
+					wantRes: requeue,
+					check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+						assert.Nil(t, got, "the deployment must be deleted")
+					},
+				},
+			},
+		},
+		{
+			name:                 "old ReplicaSets not cleaned up yet: reconciled with revisionHistoryLimit 0 and the existing selector",
+			revisionHistoryLimit: ptr.To[int32](5),
+			dp:                   legacyDp(ptr.To[int32](5)),
+			pods:                 []client.Object{labeledPod()},
+			steps: []step{{
+				wantRes:          requeue,
+				wantReconciledDp: true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					assertNotTerminating(t, got)
+					assertRevisionHistoryLimit(t, got, 0, "the Kibana spec value must be overwritten")
+					assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+					// While the migration is in progress, the pool keeps running all Kibana roles:
+					// NODE_ROLES must not be injected yet (omitRoleSplit).
+					_, found := findEnvVar(findKibanaContainerEnv(got.Spec.Template.Spec), kblabel.NodeRolesEnvVar)
+					assert.False(t, found, "NODE_ROLES must not be set while the selector migration is in progress")
+				},
+			}},
+		},
+		{
+			name: "revisionHistoryLimit 0 and complete: deleted",
+			dp:   completeDp,
+			pods: []client.Object{labeledPod()},
+			steps: []step{{
+				wantRes: requeue,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					require.NotNil(t, got, "the deployment is kept around by its finalizer")
+					assert.False(t, got.DeletionTimestamp.IsZero(), "the deployment must be terminating")
+				},
+			}},
+		},
+		{
+			name:                 "pods without the role label: normal reconcile, the Kibana revisionHistoryLimit is kept",
+			revisionHistoryLimit: ptr.To[int32](5),
+			dp:                   legacyDp(ptr.To[int32](0)),
+			pods:                 []client.Object{labeledPod(), unlabeledPod()},
+			steps: []step{{
+				wantRes:          requeue,
+				wantReconciledDp: true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					assertNotTerminating(t, got)
+					assertRevisionHistoryLimit(t, got, 5, "the Kibana spec value must be kept")
+					assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
+				},
+			}},
+		},
+		{
+			name:                 "failed pod without the role label does not block the migration",
+			revisionHistoryLimit: ptr.To[int32](5),
+			dp:                   legacyDp(ptr.To[int32](5)),
+			pods:                 []client.Object{labeledPod(), failedUnlabeledPod()},
+			steps: []step{{
+				wantRes:          requeue,
+				wantReconciledDp: true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					assertNotTerminating(t, got)
+					assertRevisionHistoryLimit(t, got, 0, "the migration must proceed despite the failed pod")
+				},
+			}},
+		},
+		{
+			name: "deployment already being deleted: requeue without reconciling it",
+			dp:   terminatingDp,
+			pods: []client.Object{labeledPod()},
+			steps: []step{{
+				wantRes:       requeue,
+				wantUnchanged: true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					require.NotNil(t, got)
+					assertRevisionHistoryLimit(t, got, 7, "a terminating deployment must not be updated")
+				},
+			}},
+		},
+	}
+
+	// deployments with revisionHistoryLimit 0 that are not complete yet: not deleted and the limit is kept at 0
 	incomplete := map[string]func(*appsv1.Deployment){
 		"the controller has not observed the spec yet": func(dp *appsv1.Deployment) {
 			dp.Generation, dp.Status.ObservedGeneration = 2, 1
@@ -641,72 +730,75 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		},
 	}
 	for name, makeIncomplete := range incomplete {
-		t.Run("revisionHistoryLimit 0 but "+name+": not deleted and the limit is kept at 0", func(t *testing.T) {
-			kb := kbWithBG(nil, nil)
-			kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
-			dp := withHistoryLimit(legacyDp(), 0)
-			makeIncomplete(dp)
-			res, _, got, err := reconcileOnce(t, kb, dp, labeledPod())
-			require.NoError(t, err)
-			assert.Equal(t, requeue, res)
-			assert.True(t, got.DeletionTimestamp.IsZero(), "must wait for the deployment to be complete")
-			require.NotNil(t, got.Spec.RevisionHistoryLimit)
-			assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the limit must not be reset while waiting")
+		dp := legacyDp(ptr.To[int32](0))
+		makeIncomplete(dp)
+		tests = append(tests, testCase{
+			name:                 "revisionHistoryLimit 0 but " + name + ": not deleted and the limit is kept at 0",
+			revisionHistoryLimit: ptr.To[int32](5),
+			dp:                   dp,
+			pods:                 []client.Object{labeledPod()},
+			steps: []step{{
+				wantRes:          requeue,
+				wantReconciledDp: true,
+				check: func(t *testing.T, got *appsv1.Deployment) { //nolint:thelper
+					assertNotTerminating(t, got)
+					assertRevisionHistoryLimit(t, got, 0, "the limit must not be reset while waiting")
+				},
+			}},
 		})
 	}
 
-	t.Run("revisionHistoryLimit 0 and complete: deleted", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		dp := withHistoryLimit(legacyDp(), 0)
-		dp.Finalizers = []string{metav1.FinalizerOrphanDependents} // keep it around to observe the deletion
-		dp.Spec.Replicas = ptr.To[int32](2)
-		dp.Generation, dp.Status = 3, appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2}
-		res, reconciledDp, got, err := reconcileOnce(t, kb, dp, labeledPod())
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.Nil(t, reconciledDp)
-		assert.False(t, got.DeletionTimestamp.IsZero())
-	})
+	// getDp returns the deployment in the cluster, nil when it does not exist.
+	getDp := func(t *testing.T, c k8s.Client) *appsv1.Deployment {
+		t.Helper()
+		var got appsv1.Deployment
+		err := c.Get(context.Background(), dpKey, &got)
+		if err != nil {
+			require.True(t, apierrors.IsNotFound(err), "unexpected error: %v", err)
+			return nil
+		}
+		return &got
+	}
 
-	t.Run("pods without the role label: normal reconcile, the Kibana revisionHistoryLimit is kept", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
-		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 0), labeledPod(), unlabeledPod())
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.NotNil(t, reconciledDp)
-		assert.True(t, got.DeletionTimestamp.IsZero())
-		require.NotNil(t, got.Spec.RevisionHistoryLimit)
-		assert.Equal(t, int32(5), *got.Spec.RevisionHistoryLimit)
-		assert.Equal(t, legacyLabels, got.Spec.Selector.MatchLabels)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objects := append(defaultInitialObjects(), tt.dp)
+			fakeClient := k8s.NewFakeClient(append(objects, tt.pods...)...)
+			// a complete driver is needed as the deployment is reconciled when it is not deleted
+			d, err := newDriver(fakeClient, watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kbFor(false, tt.revisionHistoryLimit), corev1.IPv4Protocol)
+			require.NoError(t, err)
 
-	t.Run("failed pod without the role label does not block the migration", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		kb.Spec.RevisionHistoryLimit = ptr.To[int32](5)
-		failedPod := unlabeledPod()
-		failedPod.Status.Phase = corev1.PodFailed
-		res, reconciledDp, got, err := reconcileOnce(t, kb, withHistoryLimit(legacyDp(), 5), labeledPod(), failedPod)
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.NotNil(t, reconciledDp)
-		assert.True(t, got.DeletionTimestamp.IsZero())
-		require.NotNil(t, got.Spec.RevisionHistoryLimit)
-		assert.Equal(t, int32(0), *got.Spec.RevisionHistoryLimit, "the migration must proceed despite the failed pod")
-	})
+			for i, s := range tt.steps {
+				stepMsg := fmt.Sprintf("step %d", i+1)
+				if s.before != nil {
+					s.before(t, fakeClient)
+				}
+				before := getDp(t, fakeClient)
 
-	t.Run("deployment already being deleted: requeue without reconciling it", func(t *testing.T) {
-		kb := kbWithBG(nil, nil)
-		dp := withHistoryLimit(legacyDp(), 7)
-		dp.Finalizers = []string{metav1.FinalizerOrphanDependents} // an object with a deletionTimestamp needs a finalizer
-		dp.DeletionTimestamp = new(metav1.Now())
-		res, reconciledDp, got, err := reconcileOnce(t, kb, dp, labeledPod())
-		require.NoError(t, err)
-		assert.Equal(t, requeue, res)
-		assert.Nil(t, reconciledDp)
-		require.NotNil(t, got.Spec.RevisionHistoryLimit)
-		assert.Equal(t, int32(7), *got.Spec.RevisionHistoryLimit, "a terminating deployment must not be updated")
-	})
+				kb := kbFor(s.paused, tt.revisionHistoryLimit)
+				pp, err := newPoolParameters(operator.Parameters{}, kb, kblabel.UIRole, "", false)
+				require.NoError(t, err, stepMsg)
+				res, reconciledDp, err := d.reconcilePoolDeployment(context.Background(), kb, pp, nil, meta, map[string]struct{}{})
+				require.NoError(t, err, stepMsg)
+
+				assert.Equal(t, s.wantRes, res, stepMsg)
+				if s.wantReconciledDp {
+					assert.NotNil(t, reconciledDp, stepMsg)
+				} else {
+					assert.Nil(t, reconciledDp, stepMsg)
+				}
+				got := getDp(t, fakeClient)
+				if s.wantUnchanged {
+					require.NotNil(t, before, stepMsg)
+					require.NotNil(t, got, stepMsg)
+					assert.Equal(t, before.ResourceVersion, got.ResourceVersion, "%s: the deployment must not be updated", stepMsg)
+				}
+				if s.check != nil {
+					s.check(t, got)
+				}
+			}
+		})
+	}
 }
 
 func TestReconcilePoolDeployment(t *testing.T) {
