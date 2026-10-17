@@ -176,6 +176,10 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	expectedSelector := deploymentSelector(kb, poolParams.Role, existingSelector)
+	if poolParams.ScaleToZero {
+		// if we are scaling to zero, keep the old selector
+		expectedSelector = existingSelector
+	}
 	selectorOutcome, err := d.handleSelectorChange(ctx, kb, &existingDeployment, existingSelector, expectedSelector)
 	if err != nil {
 		return "", nil, err
@@ -238,19 +242,19 @@ func (d *driver) handleSelectorChange(
 	existingDeployment *appsv1.Deployment,
 	existingSelector, expectedSelector map[string]string,
 ) (selectorChangeOutcome, error) {
-	logger := ulog.FromContext(ctx)
-
 	// no existing deployment, or its selector already matches
 	if existingSelector == nil || umaps.IsSubset(expectedSelector, existingSelector) {
 		return selectorChangeOutcome{expectedSelector: expectedSelector}, nil
 	}
+
+	logger := ulog.FromContext(ctx)
 
 	if common.IsOrchestrationPaused(kb) {
 		logger.Info(
 			"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
 			"deployment", existingDeployment.Name,
 		)
-		return selectorChangeOutcome{stopDeploymentReconciliation: true, result: paused}, nil
+		return selectorChangeOutcome{stopDeploymentReconciliation: false, result: paused}, nil
 	}
 
 	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
