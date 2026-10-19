@@ -542,11 +542,7 @@ func Test_Driver_handleUpgrades_leavingPodThatIsNotInCluster(t *testing.T) {
 	}
 }
 
-// Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster drives handleUpgrades with healthy master-0 and master-1, and
-// master-2 leaving while its outdated spec is repaired: the nodeSet is reduced from 3 to 2. master-2 is recreated if it is
-// not a member of the cluster, without excluding it from the voting, as it is not part of the voting configuration, which
-// Elasticsearch would reject for a node it does not know.
-func Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster(t *testing.T) {
+func Test_Driver_handleUpgrades_masterNotInCluster(t *testing.T) {
 	esVersion := "8.1.0"
 	es := esv1.Elasticsearch{
 		Name: TestEsName, Namespace: TestEsNamespace,
@@ -555,71 +551,115 @@ func Test_Driver_handleUpgrades_leavingMasterThatIsNotInCluster(t *testing.T) {
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3}
 	actualSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 3, Master: true, Data: true, Status: outdated}.Build()
-	expectedSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 2, Master: true, Data: true}.Build()
+	reducedSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 2, Master: true, Data: true}.Build()
+	dataSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 3, Master: false, Data: true}.Build()
+	otherMasterSset := sset.TestSset{Name: "other-master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: 2, Master: true, Data: true}.Build()
 	tests := []struct {
 		name string
+		// staysAsData makes the nodeSet lose its master role instead of being reduced: master-2 stays, and the masters are
+		// the Pods of another nodeSet
+		staysAsData bool
 		// joined makes master-2 a member of the cluster, it is not ready otherwise
 		joined bool
 		// wantRecreated is true if master-2 is deleted for the upgrade
 		wantRecreated bool
+		// wantExcluded is true if master-2 is excluded from the voting
+		wantExcluded bool
 	}{
 		{
-			name:          "master-2 is not a member of the cluster: it is recreated, without excluding it from the voting",
+			name:          "master-2 leaves and is not a member of the cluster: it is recreated, without excluding it from the voting",
 			wantRecreated: true,
 		},
 		{
-			name:          "master-2 is a member of the cluster: it is left to the downscale",
+			name:          "master-2 leaves and is a member of the cluster: it is left to the downscale",
 			joined:        true,
 			wantRecreated: false,
+		},
+		{
+			name:          "master-2 loses its master role and is not a member of the cluster: it is recreated, and excluded from the voting",
+			staysAsData:   true,
+			wantRecreated: true,
+			wantExcluded:  true,
+		},
+		{
+			name:          "master-2 loses its master role and is a member of the cluster: it is recreated, and excluded from the voting",
+			staysAsData:   true,
+			joined:        true,
+			wantRecreated: true,
+			wantExcluded:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testPod := func(ordinal int32) sset.TestPod {
+			testPod := func(statefulSet string, ordinal int32) sset.TestPod {
 				return sset.TestPod{
-					Name: sset.PodName("master", ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "master",
+					Name: sset.PodName(statefulSet, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: statefulSet,
 					Version: esVersion, Revision: "rev-a", Master: true, Data: true, Ready: true,
 				}
 			}
-			leavingTestPod := testPod(2)
-			leavingTestPod.Ready = tt.joined
-			if !tt.joined {
-				leavingTestPod.Phase = corev1.PodPending
+			notJoinedTestPod := testPod("master", 2)
+			notJoinedTestPod.Ready = tt.joined
+			if !tt.joined && !tt.staysAsData {
+				// a leaving Pod that is not a member never joined the cluster, a staying one is offline
+				notJoinedTestPod.Phase = corev1.PodPending
 			}
-			pods := []corev1.Pod{testPod(0).Build(), testPod(1).Build(), leavingTestPod.Build()}
+			pods := []corev1.Pod{testPod("master", 0).Build(), testPod("master", 1).Build(), notJoinedTestPod.Build()}
 			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{"id-master-0": {Name: "master-0"}, "id-master-1": {Name: "master-1"}}}
 			if tt.joined {
 				nodes.Nodes["id-master-2"] = esclient.Node{Name: "master-2"}
+			}
+			actualSsets := es_sset.StatefulSetList{actualSset}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: reducedSset}}
+			wantLeaving := []string{"master-2"}
+			if tt.staysAsData {
+				pods = append(pods, testPod("other-master", 0).Build(), testPod("other-master", 1).Build())
+				nodes.Nodes["id-other-master-0"] = esclient.Node{Name: "other-master-0"}
+				nodes.Nodes["id-other-master-1"] = esclient.Node{Name: "other-master-1"}
+				actualSsets = append(actualSsets, otherMasterSset)
+				expectedResources = nodespec.ResourcesList{{StatefulSet: dataSset}, {StatefulSet: otherMasterSset}}
+				wantLeaving = nil
 			}
 			esClient := &fakeESClient{
 				version: version.MustParse(esVersion),
 				nodes:   nodes,
 				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
 			}
-			k8sClient := k8s.NewFakeClient(&es, &actualSset, &pods[0], &pods[1], &pods[2])
+			objects := []client.Object{&es}
+			for i := range actualSsets {
+				objects = append(objects, &actualSsets[i])
+			}
+			for i := range pods {
+				objects = append(objects, &pods[i])
+			}
+			k8sClient := k8s.NewFakeClient(objects...)
 			d := &Driver{
 				Client:         k8sClient,
 				ES:             es,
 				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
 				ReconcileState: reconcile.MustNewState(es),
 			}
-			expectedResources := nodespec.ResourcesList{{StatefulSet: expectedSset}}
 
-			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
-			require.ElementsMatch(t, []string{"master-2"}, desiredLeaving.AsSortedSlice())
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), actualSsets)
+			require.ElementsMatch(t, wantLeaving, desiredLeaving.AsSortedSlice())
 			esState := NewMemoizingESState(context.Background(), esClient)
 			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
 			_, err := results.Aggregate()
 			require.NoError(t, err)
-			assert.False(t, esClient.AddVotingConfigExclusionsCalled)
-			wantRemainingPods := []string{"master-0", "master-1", "master-2"}
-			if tt.wantRecreated {
-				wantRemainingPods = []string{"master-0", "master-1"}
+			var wantExcluded []string
+			if tt.wantExcluded {
+				wantExcluded = []string{"master-2"}
 			}
+			assert.Equal(t, wantExcluded, esClient.AddVotingConfigExclusionsCalledWith)
 			var actualPods corev1.PodList
 			require.NoError(t, k8sClient.List(context.Background(), &actualPods))
-			assert.ElementsMatch(t, wantRemainingPods, names(actualPods.Items))
+			wantDeleted := ""
+			if tt.wantRecreated {
+				wantDeleted = "master-2"
+			}
+			for _, pod := range pods {
+				assert.Equal(t, pod.Name == wantDeleted, !slices.Contains(names(actualPods.Items), pod.Name), pod.Name)
+			}
 		})
 	}
 }

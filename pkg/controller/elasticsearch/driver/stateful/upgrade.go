@@ -103,6 +103,7 @@ func (d *Driver) handleUpgrades(
 		esState,
 		nodeShutdown,
 		expectedMasters,
+		leaving.desired,
 		rollingUpgradeCandidates,
 		healthyPods,
 		currentPods,
@@ -138,18 +139,20 @@ func (d *Driver) handleUpgrades(
 }
 
 type upgradeCtx struct {
-	parentCtx                    context.Context
-	client                       k8s.Client
-	ES                           esv1.Elasticsearch
-	resourcesList                nodespec.ResourcesList
-	statefulSets                 es_sset.StatefulSetList
-	esClient                     esclient.Client
-	shardLister                  esclient.ShardLister
-	nodeShutdown                 *shutdown.NodeShutdown
-	esState                      ESState
-	expectations                 *expectations.Expectations
-	reconcileState               *reconcile.State
-	expectedMasters              []string
+	parentCtx       context.Context
+	client          k8s.Client
+	ES              esv1.Elasticsearch
+	resourcesList   nodespec.ResourcesList
+	statefulSets    es_sset.StatefulSetList
+	esClient        esclient.Client
+	shardLister     esclient.ShardLister
+	nodeShutdown    *shutdown.NodeShutdown
+	esState         ESState
+	expectations    *expectations.Expectations
+	reconcileState  *reconcile.State
+	expectedMasters []string
+	// leavingPods are the Pods the downscale wants to remove.
+	leavingPods                  set.StringSet
 	podsToUpgrade                []corev1.Pod
 	healthyPods                  map[string]corev1.Pod
 	currentPods                  []corev1.Pod
@@ -165,6 +168,7 @@ func newUpgrade(
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
+	leavingPods set.StringSet,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	currentPods []corev1.Pod,
@@ -183,6 +187,7 @@ func newUpgrade(
 		expectations:                 d.Expectations,
 		reconcileState:               d.ReconcileState,
 		expectedMasters:              expectedMaster,
+		leavingPods:                  leavingPods,
 		podsToUpgrade:                podsToUpgrade,
 		healthyPods:                  healthyPods,
 		currentPods:                  currentPods,

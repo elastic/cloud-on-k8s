@@ -200,14 +200,18 @@ func sortCandidates(allPods []corev1.Pod) {
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
-		// a master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded from
-		// the voting: it is not part of the voting configuration
-		members, err := membersAmong(ctx.esState, []string{pod.Name})
-		if err != nil {
-			return err
-		}
-		if !members.Has(pod.Name) {
-			return nil
+		// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
+		// from the voting: it is not part of the voting configuration. The downscale excludes it once it is removed. A
+		// master that stays and loses its role is excluded even if it is not a member right now, as a master that joined
+		// earlier and is offline may still be in the voting configuration.
+		if ctx.leavingPods.Has(pod.Name) {
+			members, err := membersAmong(ctx.esState, []string{pod.Name})
+			if err != nil {
+				return err
+			}
+			if !members.Has(pod.Name) {
+				return nil
+			}
 		}
 		// Update zen2 settings to exclude leaving master nodes from voting.
 		if err := zen2.AddToVotingConfigExclusions(
