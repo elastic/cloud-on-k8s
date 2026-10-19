@@ -1187,6 +1187,84 @@ func Test_Driver_handleUpgrades_leavingPodsSurviveFullClusterRestart(t *testing.
 	assert.ElementsMatch(t, []string{"gone-0"}, names(pods.Items))
 }
 
+// Test_Driver_handleUpgrades_fullClusterRestartClearsLeavingPodsStatus checks that the full-restart branch of
+// handleUpgrades removes a leaving Pod from the upgrade status, once it is no longer a candidate. The leaving Pod keeps
+// the old version, which keeps the version upgrade, and the full-restart branch, going until it is removed.
+func Test_Driver_handleUpgrades_fullClusterRestartClearsLeavingPodsStatus(t *testing.T) {
+	fromVersion, toVersion := "8.1.0", "8.2.0"
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 1}
+	tests := []struct {
+		name string
+		// masterRevision is the revision of the master Pod, rev-a needs an upgrade, rev-b is up to date
+		masterRevision string
+		wantNodes      []esv1.UpgradedNode
+	}{
+		{
+			name:           "no candidate is left: the status is cleared",
+			masterRevision: "rev-b",
+			wantNodes:      nil,
+		},
+		{
+			name:           "the master is still a candidate: only the master is in the status",
+			masterRevision: "rev-a",
+			wantNodes:      []esv1.UpgradedNode{{Name: "master-0", Status: "DELETED", Message: new("Deleting pod for full cluster upgrade")}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				Name: TestEsName, Namespace: TestEsNamespace,
+				Spec: esv1.ElasticsearchSpec{Version: toVersion},
+				Status: esv1.ElasticsearchStatus{
+					Version: fromVersion,
+					// reported by an earlier pass, before the "gone" nodeSet was removed from the spec
+					UpgradeOperation: esv1.UpgradeOperation{
+						LastUpdatedTime: metav1.Now(),
+						Nodes:           []esv1.UpgradedNode{{Name: "gone-0", Status: "PENDING"}},
+					},
+				},
+			}
+			// a single master makes the cluster non-HA; "gone" is absent from the expected StatefulSets
+			masterSset := sset.TestSset{Name: "master", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: toVersion, Replicas: 1, Master: true, Data: true, Status: outdated}.Build()
+			leavingSset := sset.TestSset{Name: "gone", Namespace: TestEsNamespace, ClusterName: TestEsName, Version: toVersion, Replicas: 1, Data: true, Status: outdated}.Build()
+			masterPod := sset.TestPod{Name: "master-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "master", Version: fromVersion, Revision: tt.masterRevision, Master: true, Data: true, Ready: true}.Build()
+			leavingPod := sset.TestPod{Name: "gone-0", Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: "gone", Version: fromVersion, Revision: "rev-a", Data: true, Ready: true}.Build()
+			k8sClient := k8s.NewFakeClient(&es, &masterSset, &leavingSset, &masterPod, &leavingPod)
+			esClient := &fakeESClient{
+				version: version.MustParse(fromVersion),
+				nodes:   esclient.Nodes{Nodes: map[string]esclient.Node{"id-master-0": {Name: "master-0"}, "id-gone-0": {Name: "gone-0"}}},
+				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+				// the removal of the leaving Pod is in progress
+				Shutdowns: map[string]esclient.NodeShutdown{
+					"id-gone-0": {NodeID: "id-gone-0", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+				},
+			}
+			d := &Driver{
+				Client:         k8sClient,
+				ES:             es,
+				Expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				ReconcileState: reconcile.MustNewState(es),
+			}
+			expectedResources := nodespec.ResourcesList{{StatefulSet: masterSset}}
+			// make sure the fixture really selects the full-restart branch
+			currentPods, err := es_sset.StatefulSetList{masterSset, leavingSset}.GetActualPods(k8sClient)
+			require.NoError(t, err)
+			isUpgrade, err := isVersionUpgrade(es)
+			require.NoError(t, err)
+			require.True(t, isUpgrade)
+			require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
+
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{masterSset, leavingSset})
+			esState := NewMemoizingESState(context.Background(), esClient)
+			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
+
+			_, err = results.Aggregate()
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantNodes, d.ReconcileState.UpgradeReporter.Merge(es.Status.UpgradeOperation).Nodes)
+		})
+	}
+}
+
 func Test_healthyPods(t *testing.T) {
 	type args struct {
 		pods         upgradeTestPods
