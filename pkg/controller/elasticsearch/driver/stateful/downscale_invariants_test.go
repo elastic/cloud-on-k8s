@@ -310,6 +310,25 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		set.Make(sset.PodName(ssetMaster3Replicas.Name, 2)),
 		nil,
 	)
+	// the StatefulSet "changed" already has a data-only template, but its Pods still run as masters, and its last one is
+	// draining: with 3 desired nodes and maxUnavailable 1, the budget does not allow any removal
+	ssetChangedToData := sset.TestSset{Namespace: ssetMaster3Replicas.Namespace, Name: "changed", ClusterName: clusterName, Data: true, Replicas: 2}.Build()
+	ssetOtherMaster := sset.TestSset{Namespace: ssetMaster3Replicas.Namespace, Name: "other", ClusterName: clusterName, Master: true, Replicas: 1}.Build()
+	drainingMasterWithDataTemplateState := func(otherMasterReady bool) *downscaleState {
+		pod := func(statefulSet appsv1.StatefulSet, ordinal int32, ready bool) corev1.Pod {
+			return sset.TestPod{
+				Namespace: statefulSet.Namespace, Name: sset.PodName(statefulSet.Name, ordinal),
+				StatefulSetName: statefulSet.Name, ClusterName: clusterName, Master: true, Data: true, Ready: ready,
+			}.Build()
+		}
+		return newDownscaleState(
+			[]corev1.Pod{pod(ssetChangedToData, 0, true), pod(ssetChangedToData, 1, false), pod(ssetOtherMaster, 0, otherMasterReady)},
+			es_sset.StatefulSetList{ssetChangedToData, ssetOtherMaster},
+			esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "changed", Count: 1}, {Name: "other", Count: 2}}}},
+			set.Make("changed-1"),
+			nil,
+		)
+	}
 
 	// the next master to remove of the master StatefulSet b is draining, while a also needs to remove a master
 	ssetMastersA := sset.TestSset{Namespace: ssetMaster3Replicas.Namespace, Name: "a", ClusterName: clusterName, Master: true, Replicas: 2}.Build()
@@ -439,6 +458,19 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 			name:             "should not allow removing a draining master if maxUnavailable disallows and another master is missing",
 			state:            drainingMasterWithMissingMasterState,
 			statefulSet:      ssetMaster3Replicas,
+			wantCanDownscale: false,
+			wantReason:       RespectMaxUnavailableInvariant,
+		},
+		{
+			name:             "should allow removing a draining master of a StatefulSet with a data-only template if the other masters are available",
+			state:            drainingMasterWithDataTemplateState(true),
+			statefulSet:      ssetChangedToData,
+			wantCanDownscale: true,
+		},
+		{
+			name:             "should not allow removing a draining master of a StatefulSet with a data-only template if another master is unavailable",
+			state:            drainingMasterWithDataTemplateState(false),
+			statefulSet:      ssetChangedToData,
 			wantCanDownscale: false,
 			wantReason:       RespectMaxUnavailableInvariant,
 		},

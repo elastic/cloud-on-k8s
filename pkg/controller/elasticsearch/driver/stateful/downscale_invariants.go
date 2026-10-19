@@ -225,13 +225,15 @@ func calculateDrainingRemovalsAllowed(maxUnavailable *int32) *int32 {
 // isDrainingRemoval returns true if removing the given Pod consumes a draining removal rather than the budget: its
 // remove-type shutdown closed its readiness port, so it is already unavailable. A draining master only does so if it is
 // the only unavailable master, otherwise its removal waits for the budget and its shutdown is kept.
-func (s *downscaleState) isDrainingRemoval(statefulSet appsv1.StatefulSet, podName string) bool {
+func (s *downscaleState) isDrainingRemoval(podName string) bool {
 	if !s.unavailableDrainingPods.Has(podName) {
 		return false
 	}
-	// the limit is 1, not 0, because the draining master is not ready and is one of the unavailable masters. If another
+	// A draining Pod is not ready, so it is a master Pod if it is one of the unavailable masters. The role of the Pod is
+	// used rather than the one of its StatefulSet, which may already have a data-only template while the Pod still runs
+	// as a master. The limit is 1, not 0, because the draining master is one of the unavailable masters. If another
 	// master is unavailable or missing, the removal of the draining master consumes the budget.
-	return !label.IsMasterNodeSet(statefulSet) || len(s.unavailableMasters) == 1
+	return !s.unavailableMasters.Has(podName) || len(s.unavailableMasters) == 1
 }
 
 // isRunningMaster returns true if the given master Pod is running: a not ready, terminating or missing master, for
@@ -263,7 +265,7 @@ func (s *downscaleState) getMaxNodesToRemove(statefulSet appsv1.StatefulSet, noM
 			// the node cannot be shut down, and the ones with a lower ordinal are removed after it
 			break
 		}
-		if s.isDrainingRemoval(statefulSet, sset.PodName(statefulSet.Name, replicas-next.count)) {
+		if s.isDrainingRemoval(sset.PodName(statefulSet.Name, replicas-next.count)) {
 			next.drainingRemovals++
 		} else {
 			next.cost++
