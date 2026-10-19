@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -152,6 +153,95 @@ func TestAggregator(t *testing.T) {
 		require.Equal(t, v, val.appUsage[k].inGiB(), k)
 	}
 	require.Equal(t, 329.9073486328125, val.totalMemory.inGiB(), "total")
+}
+
+func TestAggregatorResourcesShorthand(t *testing.T) {
+	objects := readObjects(t, "testdata/resources_shorthand.yaml")
+	client := k8s.NewFakeClient(objects...)
+	aggregator := aggregator{client: client}
+
+	val, err := aggregator.aggregateMemory(context.Background())
+	require.NoError(t, err)
+	for k, v := range map[string]float64{
+		elasticsearchKey: 20.0, // 2x4Gi (shorthand) + 4Gi (pod template) + 2Gi (shorthand over pod template) + 6Gi (shorthand over heap)
+		kibanaKey:        6.0,
+		apmKey:           1.0,
+		entSearchKey:     5.0,
+		logstashKey:      3.0,
+	} {
+		require.Equal(t, v, val.appUsage[k].inGiB(), k)
+	}
+	require.Equal(t, 35.0, val.totalMemory.inGiB(), "total")
+}
+
+func TestContainerMemLimits(t *testing.T) {
+	quantity := func(s string) *resource.Quantity {
+		q := resource.MustParse(s)
+		return &q
+	}
+	container := func(limit string, javaOpts string) corev1.Container {
+		c := corev1.Container{Name: "main"}
+		if limit != "" {
+			c.Resources.Limits = corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(limit)}
+		}
+		if javaOpts != "" {
+			c.Env = []corev1.EnvVar{{Name: "JAVA_OPTS", Value: javaOpts}}
+		}
+		return c
+	}
+	tests := []struct {
+		name       string
+		containers []corev1.Container
+		shorthand  *resource.Quantity
+		want       resource.Quantity
+	}{
+		{
+			name:       "default when nothing is set",
+			containers: []corev1.Container{container("", "")},
+			want:       resource.MustParse("2Gi"),
+		},
+		{
+			name:       "pod template limit",
+			containers: []corev1.Container{container("4Gi", "")},
+			want:       resource.MustParse("4Gi"),
+		},
+		{
+			name:       "heap size when no limit is set",
+			containers: []corev1.Container{container("", "-Xmx3g")},
+			want:       resource.MustParse("6Gi"),
+		},
+		{
+			name:       "shorthand when the pod template sets nothing",
+			containers: []corev1.Container{container("", "")},
+			shorthand:  quantity("4Gi"),
+			want:       resource.MustParse("4Gi"),
+		},
+		{
+			name:       "shorthand when there is no main container in the pod template",
+			containers: nil,
+			shorthand:  quantity("4Gi"),
+			want:       resource.MustParse("4Gi"),
+		},
+		{
+			name:       "shorthand overrides the pod template limit",
+			containers: []corev1.Container{container("8Gi", "")},
+			shorthand:  quantity("2Gi"),
+			want:       resource.MustParse("2Gi"),
+		},
+		{
+			name:       "shorthand overrides the heap size",
+			containers: []corev1.Container{container("", "-Xmx3g")},
+			shorthand:  quantity("1Gi"),
+			want:       resource.MustParse("1Gi"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := containerMemLimits(tt.containers, tt.shorthand, "main", "JAVA_OPTS", memFromJavaOpts, resource.MustParse("2Gi"))
+			require.NoError(t, err)
+			assert.Equal(t, 0, tt.want.Cmp(got), "want %s, got %s", tt.want.String(), got.String())
+		})
+	}
 }
 
 func readObjects(t *testing.T, filePath string) []client.Object {
