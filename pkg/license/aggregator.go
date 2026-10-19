@@ -183,7 +183,7 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 	for _, as := range asList.Items {
 		mem, err := containerMemLimits(
 			as.Spec.PodTemplate.Spec.Containers,
-			as.Spec.Resources.Limits.Memory
+			as.Spec.Resources.Limits.Memory,
 			apmv1.ApmServerContainerName,
 			"", nil, // no fallback with limits defined in an env var
 			apmserver.DefaultMemoryLimits,
@@ -203,7 +203,7 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 // containerMemLimits reads the container memory limits from the resource specification with fallback
 // on the environment variable and on the default limits.
 // A memory limit set through the resources shorthand takes precedence over the pod template, mirroring
-// how PodTemplateBuilder.WithResourcesandOverrides applies it to the main container
+// how PodTemplateBuilder.WithResourcesAndOverrides applies it to the main container
 func containerMemLimits(
 	containers []corev1.Container,
 	shorthandMemLimit *resource.Quantity,
@@ -212,7 +212,7 @@ func containerMemLimits(
 	envLookup func(envVar string) (resource.Quantity, error),
 	defaultLimit resource.Quantity,
 ) (resource.Quantity, error) {
-	if shortHandMemLimit != nil && !shorthandMemLimit.IsZero() {
+	if shorthandMemLimit != nil && !shorthandMemLimit.IsZero() {
 		return shorthandMemLimit.DeepCopy(), nil
 	}
 
