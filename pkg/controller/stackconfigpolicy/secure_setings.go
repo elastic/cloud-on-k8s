@@ -139,7 +139,7 @@ func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource
 		if isSourceAllowed(allowed, src) {
 			validated = append(validated, src)
 		} else {
-			log.Info("Ignoring secure settings source: not declared with the same entries by any active StackConfigPolicy",
+			log.Info("Ignoring secure settings source: no active StackConfigPolicy declares this Secret with these entries",
 				"rejected_namespace", src.Namespace,
 				"rejected_name", src.SecretName,
 			)
