@@ -69,7 +69,10 @@ func Reconcile(
 	return ReconcileWithMetadataMergeStrategy(ctx, k8sClient, expected, owner, MetadataMergeStrategy{Labels: maps.Merge, Annotations: maps.Merge})
 }
 
-// Reconcile creates or updates the given deployment for the specified owner.
+// ReconcileWithMetadataMergeStrategy creates or updates the given Deployment for the specified owner, like Reconcile,
+// but lets the caller choose how labels and annotations are merged on update.
+// When expected.Spec.Replicas is nil, the live replica count is kept and is not part of the template hash.
+// This lets an external controller such as an HPA own the replica count.
 func ReconcileWithMetadataMergeStrategy(
 	ctx context.Context,
 	k8sClient k8s.Client,
