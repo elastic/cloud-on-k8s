@@ -420,8 +420,8 @@ func Test_allowedSources(t *testing.T) {
 			name:         "Elasticsearch includes both Spec.Elasticsearch.SecureSettings and deprecated Spec.SecureSettings with their entries",
 			resourceKind: esv1.Kind,
 			want: []commonv1.NamespacedSecretSource{
-				{Namespace: "ns", SecretName: "es-secret", Entries: []commonv1.KeyToPath{{Key: "e1", Path: "p1"}}},
 				{Namespace: "ns", SecretName: "deprecated-secret", Entries: []commonv1.KeyToPath{{Key: "d1"}}},
+				{Namespace: "ns", SecretName: "es-secret", Entries: []commonv1.KeyToPath{{Key: "e1", Path: "p1"}}},
 			},
 		},
 		{

@@ -71,14 +71,8 @@ func allowedSources(policy *policyv1alpha1.StackConfigPolicy, resourceKind strin
 	case kbv1.Kind:
 		return policy.GetKibanaNamespacedSecureSettings()
 	case esv1.Kind:
-		sources := policy.GetElasticsearchNamespacedSecureSettings()
-		// The deprecated top-level Spec.SecureSettings also applies to Elasticsearch and
-		// is still written to the annotation by the SCP controller. Include it so that
-		// sources from this field are not falsely rejected while the field is still supported.
-		for _, s := range policy.Spec.SecureSettings { //nolint:staticcheck
-			sources = append(sources, commonv1.NamespacedSecretSource{Namespace: policy.Namespace, SecretName: s.SecretName, Entries: s.Entries})
-		}
-		return sources
+		// Use the same sources as the SCP controller, including the deprecated top-level Spec.SecureSettings.
+		return mergeSecretSources(nil, elasticsearchSecureSettings(policy), policy)
 	default:
 		return nil
 	}
