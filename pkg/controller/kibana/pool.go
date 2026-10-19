@@ -166,14 +166,14 @@ func (d *driver) reconcilePoolDeployment(
 	reconciledSecrets set.StringSet,
 ) (poolDeploymentResult, *appsv1.Deployment, error) {
 	var existingDeployment appsv1.Deployment
-	var existingSelector map[string]string
-
-	if err := d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolParams.DeploymentName}, &existingDeployment); err == nil {
-		if existingDeployment.Spec.Selector != nil {
-			existingSelector = existingDeployment.Spec.Selector.MatchLabels
-		}
-	} else if !apierrors.IsNotFound(err) {
+	if err := client.IgnoreNotFound(d.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: poolParams.DeploymentName}, &existingDeployment)); err != nil {
 		return "", nil, err
+	}
+
+	// existingDeployment is the zero value when it does not exist, so the selector stays nil.
+	var existingSelector map[string]string
+	if existingDeployment.Spec.Selector != nil {
+		existingSelector = existingDeployment.Spec.Selector.MatchLabels
 	}
 
 	expectedSelector := deploymentSelector(kb, poolParams.Role, existingSelector)
