@@ -57,7 +57,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.58.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20260813180055-c1d0aacb2297 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.304.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.305.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.37.1 | Apache-2.0 |
 | [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.1 | Apache-2.0 |
