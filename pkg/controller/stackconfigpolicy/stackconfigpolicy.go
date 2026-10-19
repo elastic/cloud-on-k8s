@@ -130,11 +130,7 @@ func getConfigPolicyForElasticsearch(
 				return err
 			}
 
-			var secureSettings []commonv1.SecretSource                                //nolint:prealloc
-			secureSettings = append(secureSettings, srcPolicy.Spec.SecureSettings...) //nolint:staticcheck // keep supporting deprecated SecureSettings until it is completely removed
-			secureSettings = append(secureSettings, srcPolicy.Spec.Elasticsearch.SecureSettings...)
-
-			c.SecretSources = mergeSecretSources(c.SecretSources, secureSettings, srcPolicy)
+			c.SecretSources = mergeSecretSources(c.SecretSources, elasticsearchSecureSettings(srcPolicy), srcPolicy)
 			return nil
 		},
 	}
@@ -349,6 +345,14 @@ func (s *secretMountsAggregator) mergeInto(
 		})
 	}
 	return dst, nil
+}
+
+// elasticsearchSecureSettings returns the secure settings that policy applies to Elasticsearch, including the
+// deprecated top-level Spec.SecureSettings. The SCP controller writes these sources to the secure settings
+// annotation and filterByAllowedSources validates the annotation against them, so both must use this function.
+func elasticsearchSecureSettings(policy *policyv1alpha1.StackConfigPolicy) []commonv1.SecretSource {
+	secureSettings := slices.Clone(policy.Spec.SecureSettings) //nolint:staticcheck // keep supporting deprecated SecureSettings until it is completely removed
+	return append(secureSettings, policy.Spec.Elasticsearch.SecureSettings...)
 }
 
 // mergeSecretSources merges source secure settings into the destination slice, organizing them by the source

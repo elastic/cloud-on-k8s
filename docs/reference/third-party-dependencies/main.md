@@ -31,7 +31,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/ghodss/yaml](https://github.com/ghodss/yaml) | v1.0.0 | MIT |
 | [github.com/gkampitakis/go-snaps](https://github.com/gkampitakis/go-snaps) | v0.5.23 | MIT |
 | [github.com/go-logr/logr](https://github.com/go-logr/logr) | v1.4.4 | Apache-2.0 |
-| [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.1 | MIT |
+| [github.com/go-test/deep](https://github.com/go-test/deep) | v1.1.2 | MIT |
 | [github.com/gobuffalo/flect](https://github.com/gobuffalo/flect) | v1.0.3 | MIT |
 | [github.com/google/go-cmp](https://github.com/google/go-cmp) | v0.7.0 | BSD-3-Clause |
 | [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | v0.22.1 | Apache-2.0 |
@@ -57,7 +57,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.58.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20260813180055-c1d0aacb2297 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.302.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.304.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.37.1 | Apache-2.0 |
 | [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.1 | Apache-2.0 |

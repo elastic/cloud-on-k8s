@@ -25,8 +25,9 @@ type DeploymentHealth string
 type AuthenticationMode string
 
 const (
-	GreenHealth DeploymentHealth = "green"
-	RedHealth   DeploymentHealth = "red"
+	GreenHealth  DeploymentHealth = "green"
+	RedHealth    DeploymentHealth = "red"
+	YellowHealth DeploymentHealth = "yellow"
 
 	// AuthenticationModeCredentials uses credential-based authentication (service account token or username/password).
 	AuthenticationModeCredentials AuthenticationMode = "Credentials"

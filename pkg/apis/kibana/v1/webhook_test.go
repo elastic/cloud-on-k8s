@@ -478,6 +478,299 @@ func TestWebhook(t *testing.T) {
 			},
 			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
 		},
+		// --- background tasks checks ---
+		{
+			Name:      "backgroundTasks-valid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				count := int32(2)
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: &count}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-version-too-old",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.15.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookFailed("spec.backgroundTasks requires Kibana >= 8.16.0"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-in-spec-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"node.roles": []string{"ui"}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"node.roles": []string{"background_tasks"}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-in-bg-config-forbidden-canonical",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"node": map[string]any{"roles": []string{"background_tasks"}}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("node.roles is managed by ECK"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-env-var-in-spec-pod-template-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				k.Spec.PodTemplate = corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env:  []corev1.EnvVar{{Name: "NODE_ROLES", Value: `["ui"]`}},
+					}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must not be set via the NODE_ROLES env var in spec.podTemplate"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-env-var-in-bg-pod-template-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{Containers: []corev1.Container{{
+							Name: kbv1.KibanaContainerName,
+							Env:  []corev1.EnvVar{{Name: "NODE_ROLES", Value: `["background_tasks"]`}},
+						}}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must not be set via the NODE_ROLES env var in spec.backgroundTasks.podTemplate"),
+		},
+		{
+			Name:      "backgroundTasks-node-roles-env-var-in-other-container-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				// NODE_ROLES on a sidecar container is not a Kibana node.roles override.
+				k.Spec.PodTemplate = corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: "sidecar",
+						Env:  []corev1.EnvVar{{Name: "NODE_ROLES", Value: `["ui"]`}},
+					}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-node-roles-env-var-without-split-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.PodTemplate = corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env:  []corev1.EnvVar{{Name: "NODE_ROLES", Value: `["ui"]`}},
+					}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-nil-count-allowed-for-hpa",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				// nil Count means user-managed replicas (HPA scenario).
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return test.MustMarshalJSON(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-base-path-differs-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.basePath": "/tasks", "server.rewriteBasePath": true},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-only-on-bg-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server": map[string]any{"basePath": "/tasks", "rewriteBasePath": true}},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-differs-in-bg-pod-template-env-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env: []corev1.EnvVar{
+							{Name: "SERVER_BASEPATH", Value: "/tasks"},
+							{Name: "SERVER_REWRITEBASEPATH", Value: "true"},
+						},
+					}}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-rewrite-disabled-in-bg-config-forbidden",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.rewriteBasePath": false},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-same-base-path-repeated-in-bg-but-different-rewrite-not-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					Config: &commonv1.Config{
+						Data: map[string]any{"server.basePath": "/primary"},
+					},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookFailed("must use the same base path as the primary pool"),
+		},
+		{
+			Name:      "backgroundTasks-base-path-inherited-from-primary-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "backgroundTasks-same-base-path-via-bg-env-allowed",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				k := mkKibana(uid)
+				k.Spec.Version = "8.17.0"
+				k.Spec.Config = &commonv1.Config{
+					Data: map[string]any{"server.basePath": "/primary", "server.rewriteBasePath": true},
+				}
+				k.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env: []corev1.EnvVar{
+							{Name: "SERVER_BASEPATH", Value: "/primary"},
+							{Name: "SERVER_REWRITEBASEPATH", Value: "true"},
+						},
+					}}}},
+				}
+				return serialize(t, k)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
 	}
 
 	handler := test.NewValidationWebhookHandler(kbv1.Validate)
