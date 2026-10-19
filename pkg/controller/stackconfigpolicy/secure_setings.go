@@ -84,21 +84,20 @@ func allowedSources(policy *policyv1alpha1.StackConfigPolicy, resourceKind strin
 	}
 }
 
-// findAllowedSource returns the source in allowed that matches src on namespace, secret name and entries.
+// isSourceAllowed returns true if a source in allowed matches src on namespace, secret name and entries.
 // Entries are part of the match because omitting them projects every key of the Secret, which would
 // otherwise let a modified annotation widen the set of keys selected by the policy.
-func findAllowedSource(allowed []commonv1.NamespacedSecretSource, src commonv1.NamespacedSecretSource) (commonv1.NamespacedSecretSource, bool) {
-	for _, a := range allowed {
-		if a.Namespace == src.Namespace && a.SecretName == src.SecretName && slices.Equal(a.Entries, src.Entries) {
-			return a, true
-		}
-	}
-	return commonv1.NamespacedSecretSource{}, false
+// Nil and empty entries are considered equal, as the SCP controller omits empty entries from the annotation.
+func isSourceAllowed(allowed []commonv1.NamespacedSecretSource, src commonv1.NamespacedSecretSource) bool {
+	return slices.ContainsFunc(allowed, func(a commonv1.NamespacedSecretSource) bool {
+		return a.Namespace == src.Namespace && a.SecretName == src.SecretName && slices.Equal(a.Entries, src.Entries)
+	})
 }
 
 // filterByAllowedSources retains only those sources that are declared, including their entries, by an
 // active StackConfigPolicy governing this resource. Sources not present in any governing SCP are dropped.
-// Retained sources are returned as declared by the policy rather than as read from the annotation.
+// Retained sources are returned as read from the annotation, so that empty entries declared by the policy
+// stay omitted and keep projecting all keys of the Secret.
 func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource metav1.Object, operatorNamespace string, resourceKind string, sources []commonv1.NamespacedSecretSource) ([]commonv1.NamespacedSecretSource, error) {
 	if len(sources) == 0 {
 		return sources, nil
@@ -136,8 +135,8 @@ func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource
 	log := ulog.FromContext(ctx)
 	var validated []commonv1.NamespacedSecretSource
 	for _, src := range sources {
-		if declared, ok := findAllowedSource(allowed, src); ok {
-			validated = append(validated, declared)
+		if isSourceAllowed(allowed, src) {
+			validated = append(validated, src)
 		} else {
 			log.Info("Ignoring secure settings source: not declared with the same entries by any active StackConfigPolicy",
 				"rejected_namespace", src.Namespace,

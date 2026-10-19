@@ -443,6 +443,52 @@ func Test_allowedSources(t *testing.T) {
 	}
 }
 
+func Test_isSourceAllowed(t *testing.T) {
+	tests := []struct {
+		name    string
+		allowed []commonv1.NamespacedSecretSource
+		src     commonv1.NamespacedSecretSource
+		want    bool
+	}{
+		{
+			name:    "empty entries in the policy match the annotation that omits them",
+			allowed: []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s", Entries: []commonv1.KeyToPath{}}},
+			src:     commonv1.NamespacedSecretSource{Namespace: "ns", SecretName: "s"},
+			want:    true,
+		},
+		{
+			name:    "same entries match",
+			allowed: []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s", Entries: []commonv1.KeyToPath{{Key: "k1", Path: "p1"}}}},
+			src:     commonv1.NamespacedSecretSource{Namespace: "ns", SecretName: "s", Entries: []commonv1.KeyToPath{{Key: "k1", Path: "p1"}}},
+			want:    true,
+		},
+		{
+			name:    "omitted entries do not match declared entries",
+			allowed: []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
+			src:     commonv1.NamespacedSecretSource{Namespace: "ns", SecretName: "s"},
+			want:    false,
+		},
+		{
+			name:    "different namespace does not match",
+			allowed: []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s"}},
+			src:     commonv1.NamespacedSecretSource{Namespace: "other", SecretName: "s"},
+			want:    false,
+		},
+		{
+			name:    "different secret name does not match",
+			allowed: []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s"}},
+			src:     commonv1.NamespacedSecretSource{Namespace: "ns", SecretName: "other"},
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isSourceAllowed(tt.allowed, tt.src))
+		})
+	}
+}
+
 func addSecureSettingsAnnotationToSecret(secret *corev1.Secret, namespace, secretName string) {
 	setSecureSettingsAnnotation(secret, fmt.Sprintf(`[{"namespace":"%s","secretName":"%s"}]`, namespace, secretName))
 }
