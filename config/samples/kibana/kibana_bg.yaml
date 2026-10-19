@@ -1,3 +1,5 @@
+# This sample sets up an Elasticsearch cluster and a Kibana with a dedicated pool of background task nodes.
+# The primary Deployment serves the UI only. A second Deployment runs 2 background task nodes.
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
