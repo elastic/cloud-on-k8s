@@ -7,6 +7,7 @@ package stackconfigpolicy
 import (
 	"context"
 	"encoding/json"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -64,31 +65,40 @@ func getKibanaSecureSettingsSecretSources(ctx context.Context, kubeClient k8s.Cl
 	return secretSources, nil
 }
 
-// allowedSourceKeys returns the {namespace, secretName} set declared by policy for the given resource kind.
-func allowedSourceKeys(policy *policyv1alpha1.StackConfigPolicy, resourceKind string) map[types.NamespacedName]struct{} {
-	var sources []commonv1.NamespacedSecretSource
+// allowedSources returns the secure settings sources declared by policy for the given resource kind.
+func allowedSources(policy *policyv1alpha1.StackConfigPolicy, resourceKind string) []commonv1.NamespacedSecretSource {
 	switch resourceKind {
 	case kbv1.Kind:
-		sources = policy.GetKibanaNamespacedSecureSettings()
+		return policy.GetKibanaNamespacedSecureSettings()
 	case esv1.Kind:
-		sources = policy.GetElasticsearchNamespacedSecureSettings()
+		sources := policy.GetElasticsearchNamespacedSecureSettings()
 		// The deprecated top-level Spec.SecureSettings also applies to Elasticsearch and
 		// is still written to the annotation by the SCP controller. Include it so that
 		// sources from this field are not falsely rejected while the field is still supported.
 		for _, s := range policy.Spec.SecureSettings { //nolint:staticcheck
-			sources = append(sources, commonv1.NamespacedSecretSource{Namespace: policy.Namespace, SecretName: s.SecretName})
+			sources = append(sources, commonv1.NamespacedSecretSource{Namespace: policy.Namespace, SecretName: s.SecretName, Entries: s.Entries})
 		}
+		return sources
+	default:
+		return nil
 	}
-	keys := make(map[types.NamespacedName]struct{}, len(sources))
-	for _, s := range sources {
-		keys[types.NamespacedName{Namespace: s.Namespace, Name: s.SecretName}] = struct{}{}
-	}
-	return keys
 }
 
-// filterByAllowedSources retains only those sources whose {namespace, secretName} pair is
-// declared by an active StackConfigPolicy governing this resource. Sources not present in
-// any governing SCP are dropped.
+// findAllowedSource returns the source in allowed that matches src on namespace, secret name and entries.
+// Entries are part of the match because omitting them projects every key of the Secret, which would
+// otherwise let a modified annotation widen the set of keys selected by the policy.
+func findAllowedSource(allowed []commonv1.NamespacedSecretSource, src commonv1.NamespacedSecretSource) (commonv1.NamespacedSecretSource, bool) {
+	for _, a := range allowed {
+		if a.Namespace == src.Namespace && a.SecretName == src.SecretName && slices.Equal(a.Entries, src.Entries) {
+			return a, true
+		}
+	}
+	return commonv1.NamespacedSecretSource{}, false
+}
+
+// filterByAllowedSources retains only those sources that are declared, including their entries, by an
+// active StackConfigPolicy governing this resource. Sources not present in any governing SCP are dropped.
+// Retained sources are returned as declared by the policy rather than as read from the annotation.
 func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource metav1.Object, operatorNamespace string, resourceKind string, sources []commonv1.NamespacedSecretSource) ([]commonv1.NamespacedSecretSource, error) {
 	if len(sources) == 0 {
 		return sources, nil
@@ -104,8 +114,7 @@ func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource
 		namespacesToCheck = append(namespacesToCheck, operatorNamespace)
 	}
 
-	// Build the allowed set while listing — no intermediate slice needed.
-	allowed := map[types.NamespacedName]struct{}{}
+	var allowed []commonv1.NamespacedSecretSource
 	for _, ns := range namespacesToCheck {
 		var policyList policyv1alpha1.StackConfigPolicyList
 		if err := kubeClient.List(ctx, &policyList, client.InNamespace(ns)); err != nil {
@@ -120,19 +129,17 @@ func filterByAllowedSources(ctx context.Context, kubeClient k8s.Client, resource
 			if !matches {
 				continue
 			}
-			for k := range allowedSourceKeys(policy, resourceKind) {
-				allowed[k] = struct{}{}
-			}
+			allowed = append(allowed, allowedSources(policy, resourceKind)...)
 		}
 	}
 
 	log := ulog.FromContext(ctx)
 	var validated []commonv1.NamespacedSecretSource
 	for _, src := range sources {
-		if _, ok := allowed[types.NamespacedName{Namespace: src.Namespace, Name: src.SecretName}]; ok {
-			validated = append(validated, src)
+		if declared, ok := findAllowedSource(allowed, src); ok {
+			validated = append(validated, declared)
 		} else {
-			log.Info("Ignoring secure settings source: not declared by any active StackConfigPolicy",
+			log.Info("Ignoring secure settings source: not declared with the same entries by any active StackConfigPolicy",
 				"rejected_namespace", src.Namespace,
 				"rejected_name", src.SecretName,
 			)

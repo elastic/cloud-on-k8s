@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -67,6 +66,48 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
 				SecureSettings: []commonv1.SecretSource{{SecretName: "shared-secret"}},
 			},
+		},
+	}
+
+	// Operator-namespace SCP that projects a single key of "central-secret" into the Kibana keystore.
+	operatorSCPWithEntries := &policyv1alpha1.StackConfigPolicy{
+		Name: "op-scp-entries", Namespace: "operator-ns",
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{},
+			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+				SecureSettings: []commonv1.SecretSource{{
+					SecretName: "central-secret",
+					Entries:    []commonv1.KeyToPath{{Key: "k1"}, {Key: "k2", Path: "p2"}},
+				}},
+			},
+		},
+	}
+
+	elasticsearchSecretWithoutEntries := &corev1.Secret{
+		Name: "test-es-es-file-settings", Namespace: "test-es-ns",
+	}
+	setSecureSettingsAnnotation(elasticsearchSecretWithoutEntries, `[{"namespace":"operator-ns","secretName":"central-secret"}]`)
+
+	elasticsearchSecretWithEntries := &corev1.Secret{
+		Name: "test-es-es-file-settings", Namespace: "test-es-ns",
+	}
+	setSecureSettingsAnnotation(elasticsearchSecretWithEntries, `[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k1"}]}]`)
+
+	// Operator-namespace SCP that projects a single key of "central-secret" through each Elasticsearch secure settings field.
+	operatorESSCPWithEntries := &policyv1alpha1.StackConfigPolicy{
+		Name: "op-es-scp-entries", Namespace: "operator-ns",
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecureSettings: []commonv1.SecretSource{{SecretName: "central-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
+			},
+		},
+	}
+	operatorDeprecatedSCPWithEntries := &policyv1alpha1.StackConfigPolicy{
+		Name: "op-deprecated-scp-entries", Namespace: "operator-ns",
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{},
+			SecureSettings:   []commonv1.SecretSource{{SecretName: "central-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
 		},
 	}
 
@@ -171,10 +212,130 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 			want: []commonv1.NamespacedSecretSource{},
 		},
 		{
+			name: "Kibana: source with entries identical to the governing SCP is allowed",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k1"},{"key":"k2","path":"p2"}]}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{{
+				Namespace: "operator-ns", SecretName: "central-secret",
+				Entries: []commonv1.KeyToPath{{Key: "k1"}, {Key: "k2", Path: "p2"}},
+			}},
+		},
+		{
+			name: "Kibana: source with entries removed is rejected",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret"}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Kibana: source with an added entry is rejected",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k1"},{"key":"k2","path":"p2"},{"key":"k3"}]}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Kibana: source with a replaced entry key is rejected",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k1"},{"key":"k3","path":"p2"}]}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Kibana: source with a modified entry path is rejected",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k1"},{"key":"k2","path":"other"}]}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Kibana: source with reordered entries is rejected",
+			args: args{
+				resource:     kibana,
+				resourceKind: kbv1.Kind,
+				client: k8s.NewFakeClient(
+					mkKibanaConfigSecretWithAnnotation(`[{"namespace":"operator-ns","secretName":"central-secret","entries":[{"key":"k2","path":"p2"},{"key":"k1"}]}]`),
+					operatorSCPWithEntries,
+				),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Elasticsearch: source with entries identical to the governing SCP is allowed",
+			args: args{
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
+				resourceKind:      esv1.Kind,
+				client:            k8s.NewFakeClient(elasticsearchSecretWithEntries, operatorESSCPWithEntries),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{{Namespace: "operator-ns", SecretName: "central-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
+		},
+		{
+			name: "Elasticsearch: source with entries removed is rejected",
+			args: args{
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
+				resourceKind:      esv1.Kind,
+				client:            k8s.NewFakeClient(elasticsearchSecretWithoutEntries, operatorESSCPWithEntries),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
+			name: "Elasticsearch: source with entries identical to the deprecated SCP secure settings is allowed",
+			args: args{
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
+				resourceKind:      esv1.Kind,
+				client:            k8s.NewFakeClient(elasticsearchSecretWithEntries, operatorDeprecatedSCPWithEntries),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{{Namespace: "operator-ns", SecretName: "central-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
+		},
+		{
+			name: "Elasticsearch: source with entries removed from the deprecated SCP secure settings is rejected",
+			args: args{
+				resource:          &esv1.Elasticsearch{Name: "test-es", Namespace: "test-es-ns"},
+				resourceKind:      esv1.Kind,
+				client:            k8s.NewFakeClient(elasticsearchSecretWithoutEntries, operatorDeprecatedSCPWithEntries),
+				operatorNamespace: "operator-ns",
+			},
+			want: []commonv1.NamespacedSecretSource{},
+		},
+		{
 			// Two SCPs declare the same secret with different Entries. The annotation contains
-			// both entries. Validation only checks {namespace, secretName} — entries are the
-			// SCP controller's concern and will be reconciled back. Both annotation entries pass.
-			name: "Kibana: two SCPs with diverging Entries — all annotation entries with authorised secret pass",
+			// both sources, and each one matches the entries declared by one of the SCPs.
+			name: "Kibana: two SCPs with diverging Entries — each annotation source matching an SCP passes",
 			args: args{
 				resource:     kibana,
 				resourceKind: kbv1.Kind,
@@ -236,16 +397,16 @@ func Test_GetSecureSettingsSecretSourcesForResources(t *testing.T) {
 	}
 }
 
-func Test_allowedSourceKeys(t *testing.T) {
+func Test_allowedSources(t *testing.T) {
 	policy := &policyv1alpha1.StackConfigPolicy{
 		Name: "scp", Namespace: "ns",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
-			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret"}},
+			SecureSettings: []commonv1.SecretSource{{SecretName: "deprecated-secret", Entries: []commonv1.KeyToPath{{Key: "d1"}}}},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
-				SecureSettings: []commonv1.SecretSource{{SecretName: "es-secret"}},
+				SecureSettings: []commonv1.SecretSource{{SecretName: "es-secret", Entries: []commonv1.KeyToPath{{Key: "e1", Path: "p1"}}}},
 			},
 			Kibana: policyv1alpha1.KibanaConfigPolicySpec{
-				SecureSettings: []commonv1.SecretSource{{SecretName: "kb-secret"}},
+				SecureSettings: []commonv1.SecretSource{{SecretName: "kb-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
 			},
 		},
 	}
@@ -253,39 +414,48 @@ func Test_allowedSourceKeys(t *testing.T) {
 	tests := []struct {
 		name         string
 		resourceKind string
-		wantKeys     []types.NamespacedName
+		want         []commonv1.NamespacedSecretSource
 	}{
 		{
-			name:         "Elasticsearch includes both Spec.Elasticsearch.SecureSettings and deprecated Spec.SecureSettings",
+			name:         "Elasticsearch includes both Spec.Elasticsearch.SecureSettings and deprecated Spec.SecureSettings with their entries",
 			resourceKind: esv1.Kind,
-			wantKeys:     []types.NamespacedName{{Namespace: "ns", Name: "es-secret"}, {Namespace: "ns", Name: "deprecated-secret"}},
+			want: []commonv1.NamespacedSecretSource{
+				{Namespace: "ns", SecretName: "es-secret", Entries: []commonv1.KeyToPath{{Key: "e1", Path: "p1"}}},
+				{Namespace: "ns", SecretName: "deprecated-secret", Entries: []commonv1.KeyToPath{{Key: "d1"}}},
+			},
 		},
 		{
-			name:         "Kibana includes only Spec.Kibana.SecureSettings",
+			name:         "Kibana includes only Spec.Kibana.SecureSettings with their entries",
 			resourceKind: kbv1.Kind,
-			wantKeys:     []types.NamespacedName{{Namespace: "ns", Name: "kb-secret"}},
+			want:         []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "kb-secret", Entries: []commonv1.KeyToPath{{Key: "k1"}}}},
 		},
 		{
-			name:         "unknown kind returns empty set",
+			name:         "unknown kind returns no sources",
 			resourceKind: "Beat",
-			wantKeys:     []types.NamespacedName{},
+			want:         nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := allowedSourceKeys(policy, tt.resourceKind)
-			require.Len(t, got, len(tt.wantKeys))
-			for _, k := range tt.wantKeys {
-				require.Contains(t, got, k)
-			}
+			require.Equal(t, tt.want, allowedSources(policy, tt.resourceKind))
 		})
 	}
 }
 
 func addSecureSettingsAnnotationToSecret(secret *corev1.Secret, namespace, secretName string) {
+	setSecureSettingsAnnotation(secret, fmt.Sprintf(`[{"namespace":"%s","secretName":"%s"}]`, namespace, secretName))
+}
+
+func setSecureSettingsAnnotation(secret *corev1.Secret, sources string) {
 	if secret.Annotations == nil {
 		secret.Annotations = make(map[string]string)
 	}
-	secret.Annotations["policy.k8s.elastic.co/secure-settings-secrets"] = fmt.Sprintf(`[{"namespace":"%s","secretName":"%s"}]`, namespace, secretName)
+	secret.Annotations["policy.k8s.elastic.co/secure-settings-secrets"] = sources
+}
+
+func mkKibanaConfigSecretWithAnnotation(sources string) *corev1.Secret {
+	secret := MkKibanaConfigSecret("test-kb-ns", "test-policy", "test-policy-ns", "")
+	setSecureSettingsAnnotation(secret, sources)
+	return secret
 }
