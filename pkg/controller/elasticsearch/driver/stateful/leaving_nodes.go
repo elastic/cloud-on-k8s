@@ -67,8 +67,8 @@ func (l *leavingNodes) members(nodes []string) (set.StringSet, error) {
 }
 
 // draining returns the given nodes that are leaving and have a remove-type shutdown registered. Elasticsearch is not
-// requested if none of them is leaving. Without nodeShutdown, Elasticsearch is not reachable, which does not mean that
-// the shutdowns stopped: the nodes with a shutdown in lastDownscale are draining.
+// requested if none of them is leaving. Without nodeShutdown, because Elasticsearch is not reachable or the shutdown
+// interface cannot be created, the shutdowns may still be running: the nodes with a shutdown in lastDownscale are draining.
 func (l *leavingNodes) draining(ctx context.Context, nodes []string) (set.StringSet, error) {
 	leaving := l.among(nodes)
 	if len(leaving) == 0 {
