@@ -5223,11 +5223,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : google.golang.org/api
-Version : v0.304.0
-Time    : 2026-10-14T18:54:29Z
+Version : v0.305.0
+Time    : 2026-10-19T16:56:05Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.304.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/google.golang.org/api@v0.305.0/LICENSE:
 
 Copyright (c) 2011 Google Inc. All rights reserved.
 
