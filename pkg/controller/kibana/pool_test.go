@@ -23,6 +23,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -760,12 +761,26 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 		return &got
 	}
 
+	// drainEvents returns the events recorded so far.
+	drainEvents := func(recorder *toolsevents.FakeRecorder) []string {
+		var events []string
+		for {
+			select {
+			case event := <-recorder.Events:
+				events = append(events, event)
+			default:
+				return events
+			}
+		}
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			objects := append(defaultInitialObjects(), tt.dp)
 			fakeClient := k8s.NewFakeClient(append(objects, tt.pods...)...)
+			recorder := toolsevents.NewFakeRecorder(100)
 			// a complete driver is needed as the deployment is reconciled when it is not deleted
-			d, err := newDriver(fakeClient, watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kbFor(false, tt.revisionHistoryLimit), corev1.IPv4Protocol)
+			d, err := newDriver(fakeClient, watches.NewDynamicWatches(), recorder, kbFor(false, tt.revisionHistoryLimit), corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			for i, s := range tt.steps {
@@ -782,6 +797,20 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 				require.NoError(t, err, stepMsg)
 
 				assert.Equal(t, s.wantRes, res, stepMsg)
+
+				// While paused, the selector mismatch is reported as pending changes on the Kibana resource:
+				// the existing Deployment has no template hash, so the expected one always differs.
+				events := drainEvents(recorder)
+				conditions := kb.Conditions()
+				if idx := conditions.Index(commonv1.OrchestrationPaused); s.paused {
+					require.GreaterOrEqual(t, idx, 0, "%s: the OrchestrationPaused condition must be set", stepMsg)
+					assert.Equal(t, corev1.ConditionTrue, conditions[idx].Status, stepMsg)
+					assert.Equal(t, common.PausedWithPendingChangesMessage, conditions[idx].Message, stepMsg)
+					assert.Equal(t, []string{"Warning Paused " + common.PausedWithPendingChangesMessage}, events, stepMsg)
+				} else {
+					assert.Less(t, idx, 0, "%s: the OrchestrationPaused condition must not be set", stepMsg)
+				}
+
 				if s.wantReconciledDp {
 					assert.NotNil(t, reconciledDp, stepMsg)
 				} else {
@@ -796,6 +825,156 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 				if s.check != nil {
 					s.check(t, got)
 				}
+			}
+		})
+	}
+}
+
+// TestHandleSelectorChange checks the outcome returned for each branch of handleSelectorChange, in particular
+// the selector the Deployment is reconciled with: the expected one when it matches, the existing one while the
+// Deployment cannot be recreated yet (paused, pods not labeled, old ReplicaSets not cleaned up).
+func TestHandleSelectorChange(t *testing.T) {
+	legacySelector := map[string]string{
+		commonv1.TypeLabelName:      "kibana",
+		kblabel.KibanaNameLabelName: "test",
+	}
+	roleSelector := maps.Clone(legacySelector)
+	roleSelector[kblabel.RoleLabelName] = kblabel.RolePrimaryValue
+
+	legacyDp := func(revisionHistoryLimit *int32) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "default"},
+			Spec: appsv1.DeploymentSpec{
+				Selector:             &metav1.LabelSelector{MatchLabels: legacySelector},
+				RevisionHistoryLimit: revisionHistoryLimit,
+			},
+		}
+	}
+	steadyDp := func(revisionHistoryLimit *int32) *appsv1.Deployment {
+		dp := legacyDp(revisionHistoryLimit)
+		dp.Spec.Replicas = ptr.To[int32](2)
+		dp.Generation, dp.Status = 3, appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2}
+		return dp
+	}
+	terminatingDp := legacyDp(ptr.To[int32](0))
+	terminatingDp.Finalizers = []string{metav1.FinalizerOrphanDependents}
+	terminatingDp.DeletionTimestamp = new(metav1.Now())
+
+	labeledPod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "labeled", Namespace: "default", Labels: roleSelector}}
+	unlabeledPod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "unlabeled", Namespace: "default", Labels: legacySelector}}
+
+	kbFor := func(paused bool) *kbv1.Kibana {
+		kb := kbWithBG(nil, nil)
+		if paused {
+			kb.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+		}
+		return kb
+	}
+
+	tests := []struct {
+		name             string
+		paused           bool
+		dp               *appsv1.Deployment
+		pods             []client.Object
+		existingSelector map[string]string
+		expectedSelector map[string]string
+		want             selectorChangeOutcome
+		wantDeleted      bool
+	}{
+		{
+			name:             "no existing deployment: expected selector used",
+			dp:               &appsv1.Deployment{},
+			existingSelector: nil,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{expectedSelector: roleSelector},
+		},
+		{
+			name:             "selector matches: expected selector used",
+			dp:               legacyDp(nil),
+			existingSelector: roleSelector,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{expectedSelector: roleSelector},
+		},
+		{
+			name:             "expected selector is a subset of the existing one: expected selector used",
+			dp:               legacyDp(nil),
+			existingSelector: roleSelector,
+			expectedSelector: legacySelector,
+			want:             selectorChangeOutcome{expectedSelector: legacySelector},
+		},
+		{
+			name:             "paused: reconciliation proceeds with the existing selector and paused is returned",
+			paused:           true,
+			dp:               legacyDp(nil),
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{result: paused, expectedSelector: legacySelector},
+		},
+		{
+			name:             "deployment already being deleted: stop and requeue",
+			dp:               terminatingDp,
+			pods:             []client.Object{labeledPod},
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{stopDeploymentReconciliation: true, result: requeue},
+		},
+		{
+			name:             "pods without the role label: existing selector kept, no limit override, role split omitted",
+			dp:               legacyDp(ptr.To[int32](0)),
+			pods:             []client.Object{labeledPod, unlabeledPod},
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{result: requeue, expectedSelector: legacySelector, omitRoleSplit: true},
+		},
+		{
+			name:             "all pods labeled but old ReplicaSets not cleaned up: existing selector kept with revisionHistoryLimit 0",
+			dp:               legacyDp(ptr.To[int32](5)),
+			pods:             []client.Object{labeledPod},
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want: selectorChangeOutcome{
+				result: requeue, expectedSelector: legacySelector, omitRoleSplit: true,
+				revisionHistoryLimitOverride: ptr.To[int32](0),
+			},
+		},
+		{
+			name:             "revisionHistoryLimit 0 but not steady: existing selector kept with revisionHistoryLimit 0",
+			dp:               legacyDp(ptr.To[int32](0)),
+			pods:             []client.Object{labeledPod},
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want: selectorChangeOutcome{
+				result: requeue, expectedSelector: legacySelector, omitRoleSplit: true,
+				revisionHistoryLimitOverride: ptr.To[int32](0),
+			},
+		},
+		{
+			name:             "all pods labeled, revisionHistoryLimit 0 and steady: deployment deleted, stop and requeue",
+			dp:               steadyDp(ptr.To[int32](0)),
+			pods:             []client.Object{labeledPod},
+			existingSelector: legacySelector,
+			expectedSelector: roleSelector,
+			want:             selectorChangeOutcome{stopDeploymentReconciliation: true, result: requeue},
+			wantDeleted:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := kbFor(tt.paused)
+			objects := append([]client.Object{tt.dp}, tt.pods...)
+			d := newTestDriver(t, objects...)
+
+			got, err := d.handleSelectorChange(context.Background(), kb, tt.dp, tt.existingSelector, tt.expectedSelector)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+
+			var dp appsv1.Deployment
+			err = d.client.Get(context.Background(), k8s.ExtractNamespacedName(tt.dp), &dp)
+			if tt.wantDeleted {
+				assert.True(t, apierrors.IsNotFound(err), "the deployment must be deleted, got: %v", err)
+			} else {
+				assert.NoError(t, err, "the deployment must not be deleted")
 			}
 		})
 	}
@@ -1078,7 +1257,7 @@ func TestGarbageCollectBGPauseGuard(t *testing.T) {
 	})
 }
 
-// ---- NODE_ROLES env var injection -------------------------------------------
+// ---- env var helpers --------------------------------------------------------
 
 func findKibanaContainerEnv(spec corev1.PodSpec) []corev1.EnvVar {
 	for _, c := range spec.Containers {
@@ -1096,98 +1275,6 @@ func findEnvVar(env []corev1.EnvVar, name string) (corev1.EnvVar, bool) {
 		}
 	}
 	return corev1.EnvVar{}, false
-}
-
-func TestNodeRolesEnvVar(t *testing.T) {
-	// Use the existing kibanaFixture (7.17.0) + initialObjects for deploymentParams.
-	// The NODE_ROLES injection is independent of the Kibana version.
-	objs := defaultInitialObjects()
-
-	kbWithBGTasks := func() *kbv1.Kibana {
-		kb := kibanaFixture()
-		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
-		return kb
-	}
-
-	cases := []struct {
-		name          string
-		role          kblabel.Role
-		omitRoleSplit bool
-		kb            *kbv1.Kibana
-		wantNodeRoles string
-		wantPresent   bool
-	}{
-		{
-			name:        "Single-pool mode injects no NODE_ROLES",
-			role:        kblabel.SinglePoolRole,
-			kb:          kibanaFixture(),
-			wantPresent: false,
-		},
-		{
-			name:          "UIRole injects NODE_ROLES=[\"ui\"]",
-			role:          kblabel.UIRole,
-			kb:            kibanaFixture(),
-			wantNodeRoles: `["ui"]`,
-			wantPresent:   true,
-		},
-		{
-			name:          "BackgroundTasksRole injects NODE_ROLES=[\"background_tasks\"]",
-			role:          kblabel.BackgroundTasksRole,
-			kb:            kbWithBGTasks(),
-			wantNodeRoles: `["background_tasks"]`,
-			wantPresent:   true,
-		},
-		{
-			name:          "UIRole with omitRoleSplit (selector migration in progress) injects no NODE_ROLES",
-			role:          kblabel.UIRole,
-			omitRoleSplit: true,
-			kb:            kbWithBGTasks(),
-			wantPresent:   false,
-		},
-		{
-			name:          "BackgroundTasksRole is not affected by omitRoleSplit",
-			role:          kblabel.BackgroundTasksRole,
-			omitRoleSplit: true,
-			kb:            kbWithBGTasks(),
-			wantNodeRoles: `["background_tasks"]`,
-			wantPresent:   true,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			d := newTestDriver(t, objs...)
-			replicas := new(tc.kb.Spec.Count)
-			params, err := d.deploymentParams(
-				context.Background(),
-				tc.kb,
-				poolParameters{
-					Role:                      tc.role,
-					SecretName:                kbv1.ConfigSecret(tc.kb.Name),
-					DeploymentName:            kbv1.KBNamer.Suffix(tc.kb.Name),
-					SetDefaultSecurityContext: true,
-				},
-				replicas,
-				nil, // replicasAnnotationValue
-				nil, // policyAnnotations
-				metadata.Propagate(tc.kb, metadata.Metadata{Labels: tc.kb.GetIdentityLabels()}),
-				selectorChangeOutcome{expectedSelector: tc.kb.GetIdentityLabels(), omitRoleSplit: tc.omitRoleSplit},
-			)
-			require.NoError(t, err)
-
-			env := findKibanaContainerEnv(params.PodTemplateSpec.Spec)
-			nodeRoles, found := findEnvVar(env, kblabel.NodeRolesEnvVar)
-			assert.Equal(t, tc.wantPresent, found, "NODE_ROLES presence mismatch")
-			if tc.wantPresent {
-				assert.Equal(t, tc.wantNodeRoles, nodeRoles.Value)
-				// Verify it is the first env var so it can be overridden by user-supplied vars.
-				assert.Equal(t, kblabel.NodeRolesEnvVar, env[0].Name, "NODE_ROLES must be first env var")
-			}
-			// The role label always reflects the pool role, even when omitRoleSplit remaps the
-			// NODE_ROLES injection to the single-pool behavior.
-			assert.Equal(t, tc.role.LabelValue, params.PodTemplateSpec.Labels[kblabel.RoleLabelName])
-		})
-	}
 }
 
 // ---- Service selector -------------------------------------------------------
@@ -1546,6 +1633,28 @@ func TestShouldScaleAllPoolsToZeroForUpgrade(t *testing.T) {
 	}
 }
 
+func TestOutdatedPodsForUpgrade(t *testing.T) {
+	const (
+		oldVersion = "8.17.0"
+		newVersion = "8.18.0"
+	)
+	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: newVersion}}
+
+	failedOld := makePod("kb-bg-failed", oldVersion, kblabel.BackgroundTasksRole)
+	failedOld.Status.Phase = corev1.PodFailed
+
+	pods := []corev1.Pod{
+		makePod("kb-ui-new", newVersion, kblabel.UIRole),
+		makePod("kb-ui-old", oldVersion, kblabel.UIRole),
+		{Name: "kb-unlabeled"},
+		makePod("kb-bg-old", oldVersion, kblabel.BackgroundTasksRole),
+		failedOld,
+	}
+
+	assert.Equal(t, []string{"kb-ui-old", "kb-unlabeled", "kb-bg-old"}, outdatedPodsForUpgrade(&kb, pods))
+	assert.Empty(t, outdatedPodsForUpgrade(&kb, []corev1.Pod{makePod("kb-ui-new", newVersion, kblabel.UIRole)}))
+}
+
 // ---- deploymentReplicas -----------------------------------------------------
 
 func TestDeploymentReplicas(t *testing.T) {
@@ -1739,94 +1848,6 @@ func TestDeploymentReplicas(t *testing.T) {
 
 			// deploymentReplicas must not mutate the existing deployment.
 			assert.Equal(t, annotationsBefore, tt.existingDp.Annotations)
-		})
-	}
-}
-
-// ---- deploymentParams: replicas annotation ----------------------------------
-
-func TestDeploymentParamsReplicasAnnotation(t *testing.T) {
-	ptr := func(n int32) *int32 { return &n }
-
-	// Kibana with background tasks enabled (needed for BG-role calls to succeed).
-	kbWithBG := func() *kbv1.Kibana {
-		kb := kibanaFixture()
-		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: ptr(2)}
-		return kb
-	}
-
-	// bgConfigSecret is needed when deploymentParams is called with BackgroundTasksRole,
-	// because it fetches the config secret by name from the API server.
-	bgConfigSecret := &corev1.Secret{
-		Data: map[string][]byte{"kibana.yml": []byte("server.name: test")},
-	}
-	bgConfigSecret.Name = kbv1.BackgroundTasksConfigSecret("test")
-	bgConfigSecret.Namespace = "default"
-
-	tests := []struct {
-		name                string
-		role                kblabel.Role
-		replicasAnnotation  *int32
-		wantAnnotationValue string // "" means the key must be absent
-	}{
-		{
-			name:                "BG role, non-nil value: annotation written",
-			role:                kblabel.BackgroundTasksRole,
-			replicasAnnotation:  ptr(5),
-			wantAnnotationValue: "5",
-		},
-		{
-			name:               "BG role, nil value: annotation absent",
-			role:               kblabel.BackgroundTasksRole,
-			replicasAnnotation: nil,
-		},
-		{
-			name:               "SinglePool role, non-nil value: annotation absent",
-			role:               kblabel.SinglePoolRole,
-			replicasAnnotation: ptr(5),
-		},
-		{
-			name:               "UI role, non-nil value: annotation absent",
-			role:               kblabel.UIRole,
-			replicasAnnotation: ptr(5),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			kb := kbWithBG()
-
-			initialObjects := append(defaultInitialObjects(), bgConfigSecret)
-			c := k8s.NewFakeClient(initialObjects...)
-			w := watches.NewDynamicWatches()
-			d, err := newDriver(c, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
-			require.NoError(t, err)
-
-			configSecret := kbv1.ConfigSecret(kb.Name)
-			dpName := kbv1.KBNamer.Suffix(kb.Name)
-			if tt.role == kblabel.BackgroundTasksRole {
-				configSecret = kbv1.BackgroundTasksConfigSecret(kb.Name)
-				dpName = kbv1.BackgroundTasksDeployment(kb.Name)
-			}
-			replicas := ptr(kb.Spec.Count)
-			meta := metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()})
-
-			got, err := d.deploymentParams(
-				context.Background(), kb,
-				poolParameters{Role: tt.role, SecretName: configSecret, DeploymentName: dpName},
-				replicas, tt.replicasAnnotation,
-				nil,
-				meta, selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels()},
-			)
-			require.NoError(t, err)
-
-			val, exists := got.Metadata.Annotations[replicasAnnotationName]
-			if tt.wantAnnotationValue == "" {
-				assert.False(t, exists, "expected annotation to be absent, got %q", val)
-			} else {
-				assert.True(t, exists, "expected annotation to be present")
-				assert.Equal(t, tt.wantAnnotationValue, val)
-			}
 		})
 	}
 }
@@ -2291,36 +2312,4 @@ func TestDeletePoolDeployment(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, requeue, result)
 	})
-}
-
-func TestDeploymentParams_RevisionHistoryLimit(t *testing.T) {
-	tests := []struct {
-		name      string
-		specLimit *int32
-		overwrite *int32
-		want      *int32
-	}{
-		{name: "nothing set", want: nil},
-		{name: "spec value used when there is no overwrite", specLimit: ptr.To[int32](5), want: ptr.To[int32](5)},
-		{name: "overwrite used when the spec has no value", overwrite: ptr.To[int32](0), want: ptr.To[int32](0)},
-		{name: "overwrite takes precedence over the spec value", specLimit: ptr.To[int32](5), overwrite: ptr.To[int32](0), want: ptr.To[int32](0)},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			kb := kibanaFixture()
-			kb.Spec.RevisionHistoryLimit = tt.specLimit
-			d := newTestDriver(t, defaultInitialObjects()...)
-
-			got, err := d.deploymentParams(
-				context.Background(), kb,
-				poolParameters{Role: kblabel.SinglePoolRole, SecretName: kbv1.ConfigSecret(kb.Name), DeploymentName: kbv1.KBNamer.Suffix(kb.Name)},
-				new(kb.Spec.Count), nil, nil,
-				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
-				selectorChangeOutcome{expectedSelector: kb.GetIdentityLabels(), revisionHistoryLimitOverride: tt.overwrite},
-			)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got.RevisionHistoryLimit)
-		})
-	}
 }

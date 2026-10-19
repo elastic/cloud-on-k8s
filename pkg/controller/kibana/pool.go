@@ -250,7 +250,7 @@ func (d *driver) handleSelectorChange(
 			"Deployment selector mismatch detected but orchestration is paused; deferring deletion",
 			"deployment", existingDeployment.Name,
 		)
-		return selectorChangeOutcome{stopDeploymentReconciliation: false, result: paused}, nil
+		return selectorChangeOutcome{stopDeploymentReconciliation: false, result: paused, expectedSelector: existingSelector}, nil
 	}
 
 	// An orphan deletion keeps the Deployment around (with a deletionTimestamp) until the garbage collector
@@ -522,16 +522,23 @@ func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) boo
 	if !kb.BackgroundTasksEnabled() {
 		return false
 	}
+	return len(outdatedPodsForUpgrade(kb, pods)) > 0
+}
+
+// outdatedPodsForUpgrade returns the names of the pods that are not terminated and do not carry
+// the version label matching kb.Spec.Version. These are the pods the upgrade drain waits for.
+func outdatedPodsForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) []string {
+	var outdated []string
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
 			continue
 		}
 		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
 		if !ok || ver != kb.Spec.Version {
-			return true
+			outdated = append(outdated, pod.Name)
 		}
 	}
-	return false
+	return outdated
 }
 
 // poolStatusEntry associates a reconciled pool with its computed deployment status.

@@ -271,6 +271,13 @@ func (d *driver) Reconcile(
 
 	if scaleToZero {
 		// Both pools are being drained. Requeue so the controller re-checks once pods terminate.
+		outdated := outdatedPodsForUpgrade(kb, existingPods)
+		logger.Info(
+			"Waiting for all pools to scale to zero before upgrading; pods running an outdated version are still present",
+			"namespace", kb.Namespace, "kibana_name", kb.Name,
+			"target_version", kb.Spec.Version,
+			"outdated_pod_count", len(outdated), "outdated_pods", outdated,
+		)
 		results = results.WithRequeue()
 	}
 
