@@ -14,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -124,7 +126,8 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			assert.False(t, failed)
-		})
+		},
+	)
 
 	test.RunMutationsWhileWatching(
 		t,
@@ -163,6 +166,54 @@ func TestVersionUpgradeToLatest8x(t *testing.T) {
 	// - there was a time were no Kibana pods were ready (when all old version pods were termintated,
 	//   but before new version pods were started), and
 	// - at all times all pods had the same Kibana version.
+	test.RunMutationsWhileWatching(
+		t,
+		[]test.Builder{esBuilder, kbBuilder},
+		[]test.Builder{
+			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
+			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),
+		},
+		[]test.Watcher{NewReadinessWatcher(opts...), test.NewVersionWatcher(kblabel.KibanaVersionLabelName, opts...)},
+	)
+}
+
+// TestVersionUpgradeToLatest8xWithBackgroundTasks is the same as TestVersionUpgradeToLatest8x but with
+// spec.backgroundTasks enabled, so Kibana pods are spread across two Deployments (UI and background tasks).
+// The label selector used by the watchers matches the pods of both pools, so the version watcher asserts the main
+// requirement of the drain-based upgrade: at no point in time do the two pools run different Kibana versions.
+func TestVersionUpgradeToLatest8xWithBackgroundTasks(t *testing.T) {
+	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+	if v := version.MustParse(srcVersion); v.LT(kbv1.BackgroundTasksMinVersion) {
+		t.Skipf("background task isolation requires Kibana >= %s (got %s)", kbv1.BackgroundTasksMinVersion, v)
+	}
+
+	name := "test-version-upgrade-to-8x-bg"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithVersion(srcVersion).
+		TolerateMutationChecksFailures()
+
+	srcNodeCount := int32(3)
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(srcNodeCount).
+		WithBackgroundTasks(1).
+		WithVersion(srcVersion)
+
+	opts := []client.ListOption{
+		client.InNamespace(kbBuilder.Kibana.Namespace),
+		client.MatchingLabels(map[string]string{
+			commonv1.TypeLabelName:      kblabel.Type,
+			kblabel.KibanaNameLabelName: kbBuilder.Kibana.Name,
+		}),
+	}
+
+	// perform a Kibana version upgrade and assert that:
+	// - there was a time were no Kibana pods were ready (when all old version pods of both pools were terminated,
+	//   but before new version pods were started), and
+	// - at all times all pods, across both pools, had the same Kibana version.
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
@@ -228,7 +279,8 @@ func TestVersionUpgradeAndRespecToLatest8x(t *testing.T) {
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			assert.False(t, failed)
-		})
+		},
+	)
 
 	test.RunMutationsWhileWatching(
 		t,
@@ -255,5 +307,6 @@ func NewReadinessWatcher(opts ...client.ListOption) test.Watcher {
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			assert.Contains(t, readinessObservations, 0)
-		})
+		},
+	)
 }
