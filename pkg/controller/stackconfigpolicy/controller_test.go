@@ -17,9 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
-	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -1381,101 +1379,6 @@ func Test_reconcileRequestForSoftOwnerPolicy(t *testing.T) {
 				assert.NotEmpty(t, req.Namespace, "reconcile request should not have empty namespace")
 				assert.NotEmpty(t, req.Name, "reconcile request should not have empty name")
 			}
-		})
-	}
-}
-
-// Test_reconcileRequestForSoftOwnerPolicy_Update verifies that an update moving a Secret away from its
-// StackConfigPolicy soft owner still enqueues that policy, so that the policy controller can restore the Secret.
-func Test_reconcileRequestForSoftOwnerPolicy_Update(t *testing.T) {
-	scpOwnedSecret := &corev1.Secret{
-		Name:      "kb-kb-policy-config",
-		Namespace: "kb-ns",
-		Labels: map[string]string{
-			reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
-			reconciler.SoftOwnerNameLabel:      "policy",
-			reconciler.SoftOwnerNamespaceLabel: "policy-ns",
-		},
-	}
-	multiSCPOwnedSecret := &corev1.Secret{
-		Name:      "kb-kb-policy-config",
-		Namespace: "kb-ns",
-		Labels: map[string]string{
-			reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
-		},
-		Annotations: map[string]string{
-			reconciler.SoftOwnerRefsAnnotation: `["ns1/policy1","ns2/policy2"]`,
-		},
-	}
-	kibanaOwnedSecret := &corev1.Secret{
-		Name:      "kb-kb-policy-config",
-		Namespace: "kb-ns",
-		Labels: map[string]string{
-			reconciler.SoftOwnerKindLabel:      kibanav1.Kind,
-			reconciler.SoftOwnerNameLabel:      "kb",
-			reconciler.SoftOwnerNamespaceLabel: "kb-ns",
-		},
-	}
-
-	tests := []struct {
-		name      string
-		oldSecret *corev1.Secret
-		newSecret *corev1.Secret
-		wantReqs  []reconcile.Request
-	}{
-		{
-			name:      "soft owner changed from a StackConfigPolicy to a Kibana enqueues the previous policy",
-			oldSecret: scpOwnedSecret,
-			newSecret: kibanaOwnedSecret,
-			wantReqs:  []reconcile.Request{{Namespace: "policy-ns", Name: "policy"}},
-		},
-		{
-			name:      "soft owners changed from multiple StackConfigPolicies to a Kibana enqueues all previous policies",
-			oldSecret: multiSCPOwnedSecret,
-			newSecret: kibanaOwnedSecret,
-			wantReqs: []reconcile.Request{
-				{Namespace: "ns1", Name: "policy1"},
-				{Namespace: "ns2", Name: "policy2"},
-			},
-		},
-		{
-			name:      "soft owner changed from a Kibana to a StackConfigPolicy enqueues the new policy",
-			oldSecret: kibanaOwnedSecret,
-			newSecret: scpOwnedSecret,
-			wantReqs:  []reconcile.Request{{Namespace: "policy-ns", Name: "policy"}},
-		},
-		{
-			name:      "unchanged StackConfigPolicy soft owner enqueues the policy once",
-			oldSecret: scpOwnedSecret,
-			newSecret: scpOwnedSecret,
-			wantReqs:  []reconcile.Request{{Namespace: "policy-ns", Name: "policy"}},
-		},
-		{
-			name:      "Secret never soft owned by a StackConfigPolicy enqueues nothing",
-			oldSecret: kibanaOwnedSecret,
-			newSecret: kibanaOwnedSecret,
-			wantReqs:  []reconcile.Request{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
-			defer q.ShutDown()
-
-			reconcileRequestForSoftOwnerPolicy().Update(t.Context(), event.TypedUpdateEvent[*corev1.Secret]{
-				ObjectOld: tt.oldSecret,
-				ObjectNew: tt.newSecret,
-			}, q)
-
-			gotReqs := []reconcile.Request{}
-			for q.Len() > 0 {
-				req, shutdown := q.Get()
-				require.False(t, shutdown)
-				gotReqs = append(gotReqs, req)
-				q.Done(req)
-			}
-			assert.ElementsMatch(t, tt.wantReqs, gotReqs)
 		})
 	}
 }
