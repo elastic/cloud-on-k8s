@@ -203,9 +203,9 @@ func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 		return nil
 	}
 	// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
-	// from the voting: it is not part of the voting configuration. The downscale excludes it once it is removed. A
-	// master that stays and loses its role is excluded even if it is not a member right now, as a master that joined
-	// earlier and is offline may still be in the voting configuration.
+	// from the voting now: its node ID is unknown. It is restarted so that it can recover, and the downscale excludes it
+	// from the voting before its eventual removal. A master that stays and loses its role is excluded even if it is not
+	// a member right now, as a master that joined earlier and is offline may still be in the voting configuration.
 	nonMember, err := ctx.isLeavingNonMember(pod.Name)
 	if err != nil || nonMember {
 		return err
