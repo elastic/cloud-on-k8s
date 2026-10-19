@@ -84,9 +84,9 @@ enterpriseSearch:
     verificationMode: certificate
 `)
 
-// specUserSettings builds a CanonicalConfig from kb.Spec.Config the same way
+// canonicalConfigFrom builds a CanonicalConfig from kb.Spec.Config the same way
 // NewConfigSettings callers are expected to do: nil-safe access to .Data.
-func specUserSettings(cfg *commonv1.Config) CanonicalConfig {
+func canonicalConfigFrom(cfg *commonv1.Config) CanonicalConfig {
 	var data map[string]any
 	if cfg != nil {
 		data = cfg.Data
@@ -560,7 +560,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			userSettings := specUserSettings(kb.Spec.Config)
+			userSettings := canonicalConfigFrom(kb.Spec.Config)
 			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, userSettings, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -587,7 +587,7 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.NewFakeClient()
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	userSettings := specUserSettings(kb.Spec.Config)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
 	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
@@ -612,7 +612,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	}
 	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
-	userSettings := specUserSettings(kb.Spec.Config)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
 	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	var gotCfg map[string]any
@@ -642,7 +642,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	userSettings := specUserSettings(kb.Spec.Config)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
 	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
@@ -656,7 +656,7 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	kb.Spec.Version = "7.5.0"
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	userSettings := specUserSettings(kb.Spec.Config)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
 	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
