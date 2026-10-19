@@ -39,6 +39,9 @@ const (
 	XPackSecurityAuthcRealmsFileFile1Order     = "xpack.security.authc.realms.file.file1.order"
 	XPackSecurityAuthcRealmsNativeNative1Order = "xpack.security.authc.realms.native.native1.order"
 
+	XPackSecurityAuthcRealmsPKIECKPKIOrder                  = "xpack.security.authc.realms.pki.eck_managed_pki.order"
+	XPackSecurityAuthcRealmsPKIECKPKICertificateAuthorities = "xpack.security.authc.realms.pki.eck_managed_pki.certificate_authorities"
+
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"             //nolint:revive

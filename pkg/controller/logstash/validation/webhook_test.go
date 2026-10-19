@@ -89,6 +89,39 @@ func Test_webhook_Create(t *testing.T) {
 			wantMessage: "Unsupported version: version 8.11.1 is lower than the lowest supported version of 8.12.0",
 		},
 		{
+			name: "refs-to-same-es-with-different-authentication-modes",
+			fields: fields{
+				client: k8s.NewFakeClient(),
+			},
+			req: admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{
+				Operation: admissionv1.Create,
+				Object: runtime.RawExtension{
+					Raw: asJSON(
+						&v1alpha1.Logstash{
+							Name:      "webhook-test",
+							Namespace: "ns",
+							Spec: v1alpha1.LogstashSpec{
+								Version: "9.6.0",
+								ElasticsearchRefs: []v1alpha1.ElasticsearchCluster{
+									{
+										Name:        "es",
+										ClusterName: "credentials",
+									},
+									{
+										Name:               "es",
+										AuthenticationMode: commonv1.AuthenticationModePKI,
+										ClusterName:        "pki",
+									},
+								},
+							},
+						},
+					),
+				}},
+			},
+			wantAllowed: false,
+			wantMessage: "all references to Elasticsearch ns/es must use the same authentication mode",
+		},
+		{
 			name: "simple-stackmon-ref",
 			fields: fields{
 				client: k8s.NewFakeClient(),

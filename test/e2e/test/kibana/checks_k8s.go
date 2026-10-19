@@ -106,39 +106,32 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					},
 				},
 			)
+		}
+		// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+		// skip the check to avoid a hang in CheckSecretsContent.
+		if b.Kibana.Spec.ElasticsearchRef.Name != "" &&
+			b.Kibana.Spec.ElasticsearchRef.AuthenticationMode != commonv1.AuthenticationModePKI {
 			v, err := version.Parse(b.Kibana.Spec.Version)
 			if err != nil {
 				panic(err) // should not happen in an e2e test
 			}
+			userSecretKeys := []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"}
 			if v.GTE(kbv1.KibanaServiceAccountMinVersion) {
-				expected = append(
-					expected,
-					test.ExpectedSecret{
-						Name: kbName + "-kibana-user",
-						Keys: []string{"hash", "name", "serviceAccount", "token"},
-						Labels: map[string]string{
-							"eck.k8s.elastic.co/credentials":             "true",
-							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
-							"kibanaassociation.k8s.elastic.co/name":      kbName,
-							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
-						},
-					},
-				)
-			} else {
-				expected = append(
-					expected,
-					test.ExpectedSecret{
-						Name: kbName + "-kibana-user",
-						Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
-						Labels: map[string]string{
-							"eck.k8s.elastic.co/credentials":             "true",
-							"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
-							"kibanaassociation.k8s.elastic.co/name":      kbName,
-							"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
-						},
-					},
-				)
+				userSecretKeys = []string{"hash", "name", "serviceAccount", "token"}
 			}
+			expected = append(
+				expected,
+				test.ExpectedSecret{
+					Name: kbName + "-kibana-user",
+					Keys: userSecretKeys,
+					Labels: map[string]string{
+						"eck.k8s.elastic.co/credentials":             "true",
+						"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+						"kibanaassociation.k8s.elastic.co/name":      kbName,
+						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+					},
+				},
+			)
 		}
 		if b.Kibana.Spec.PackageRegistryRef.Name != "" {
 			expected = append(

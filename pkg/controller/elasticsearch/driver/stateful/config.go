@@ -51,7 +51,7 @@ func ResolveConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsearch
 		cfg, err := settings.NewMergedESConfig(
 			es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig,
 			es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey(), clusterHasZoneAwareness,
-			clientAuthenticationRequired,
+			clientAuthenticationRequired, es.Spec.Auth.PKI.Enabled,
 		)
 		if err != nil {
 			return nodespec.ResolvedConfig{}, err
@@ -112,7 +112,7 @@ func detectClientAuthenticationRequired(
 		cfg, err := settings.NewMergedESConfig(
 			es.Name, ver, ipFamily, es.Spec.HTTP, userCfg, policyConfig.ElasticsearchConfig,
 			es.Spec.RemoteClusterServer.Enabled, es.HasRemoteClusterAPIKey(), clusterHasZoneAwareness,
-			false,
+			false, false,
 		)
 		if err != nil {
 			return false, "", err

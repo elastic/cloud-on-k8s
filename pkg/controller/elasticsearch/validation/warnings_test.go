@@ -15,6 +15,8 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_noUnsupportedSettings(t *testing.T) {
@@ -166,6 +168,128 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			},
 			expectErrors: true,
 		},
+		{
+			name: "reserved eck_managed_pki realm name (flat key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "reserved eck_managed_pki realm name (nested key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack": map[string]any{
+										"security": map[string]any{
+											"authc": map[string]any{
+												"realms": map[string]any{
+													"pki": map[string]any{
+														"eck_managed_pki": map[string]any{"order": 1},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "other pki realm name is allowed",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.pki.my_pki.order": 2,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "reserved eck_managed_pki realm order is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "eck_managed_pki realm name is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "eck_managed_pki realm order is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -217,6 +341,109 @@ func Test_settingsWarningsAndErrors(t *testing.T) {
 		require.Len(t, warns, 1)
 		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
 	})
+	t.Run("reserved eck_managed_pki realm name is a blocking error", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "9.6.0",
+				Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Contains(t, blocking[0].Detail, "eck_managed_pki")
+	})
+}
+
+func Test_validateReservedPKIRealmInPolicyConfig(t *testing.T) {
+	policyConfigSecret := func(config string) *corev1.Secret {
+		return &corev1.Secret{
+			Name:      esv1.StackConfigElasticsearchConfigSecretName("es"),
+			Namespace: "ns",
+			Data:      map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(config)},
+		}
+	}
+	mkES := func(pkiEnabled bool) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			Name:      "es",
+			Namespace: "ns",
+			Spec: esv1.ElasticsearchSpec{
+				Version:  "9.6.0",
+				HTTP:     commonv1.HTTPConfigWithClientOptions{TLS: commonv1.TLSWithClientOptions{Client: commonv1.ClientOptions{Authentication: true}}},
+				Auth:     esv1.Auth{PKI: esv1.PKIRealm{Enabled: pkiEnabled}},
+				NodeSets: []esv1.NodeSet{{Name: "default", Count: 1}},
+			},
+		}
+	}
+	reservedOrder := policyConfigSecret(`{"xpack.security.authc.realms.jwt.my_jwt.order":2147483647}`)
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		secret   *corev1.Secret
+		wantErrs []string
+	}{
+		{
+			name: "PKI enabled without policy config",
+			es:   mkES(true),
+		},
+		{
+			name:   "PKI enabled with policy config not clashing with the realm",
+			es:     mkES(true),
+			secret: policyConfigSecret(`{"xpack.security.authc.realms.jwt.my_jwt.order":1}`),
+		},
+		{
+			name:     "PKI enabled with policy config using the reserved realm order",
+			es:       mkES(true),
+			secret:   reservedOrder,
+			wantErrs: []string{"realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki"},
+		},
+		{
+			name:     "PKI enabled with policy config under the reserved realm name",
+			es:       mkES(true),
+			secret:   policyConfigSecret(`{"xpack.security.authc.realms.pki.eck_managed_pki.order":1}`),
+			wantErrs: []string{"realm name eck_managed_pki is reserved for ECK-managed PKI authentication"},
+		},
+		{
+			name:   "PKI disabled with policy config using the reserved realm order",
+			es:     mkES(false),
+			secret: reservedOrder,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient()
+			if tt.secret != nil {
+				c = k8s.NewFakeClient(tt.secret)
+			}
+			errs, err := validateReservedPKIRealmInPolicyConfig(t.Context(), c, tt.es)
+			require.NoError(t, err)
+			require.Len(t, errs, len(tt.wantErrs), "unexpected errors: %v", errs)
+			for i, wantErr := range tt.wantErrs {
+				require.Equal(t, "spec.auth.pki.enabled", errs[i].Field)
+				require.Contains(t, errs[i].Detail, wantErr)
+			}
+
+			// ValidateElasticsearch must deny the resource with the same errors.
+			_, err = ValidateElasticsearch(t.Context(), c, tt.es, &license.MockLicenseChecker{EnterpriseEnabled: true}, nil)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			require.Equal(t, len(tt.wantErrs) > 0, err != nil, "unexpected error state: %v", err)
+			for _, wantErr := range tt.wantErrs {
+				require.Contains(t, errMsg, wantErr)
+			}
+		})
+	}
 }
 
 func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {

@@ -356,6 +356,15 @@ func TestElasticsearchSelector_IsValid(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "PKI and clientCertificateSecretName: OK",
+			selector: ElasticsearchSelector{
+				ObjectSelector:              ObjectSelector{Name: "a", Namespace: "b"},
+				ClientCertificateSecretName: "cc",
+				AuthenticationMode:          AuthenticationModePKI,
+			},
+			wantErr: false,
+		},
+		{
 			name: "clientCertificateSecretName without name: KO",
 			selector: ElasticsearchSelector{
 				ClientCertificateSecretName: "cc",
@@ -381,6 +390,21 @@ func TestElasticsearchSelector_IsValid(t *testing.T) {
 			name: "inherits ObjectSelector validation - secretName and serviceName: KO",
 			selector: ElasticsearchSelector{
 				ObjectSelector: ObjectSelector{SecretName: "s", ServiceName: "c"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI without name: KO",
+			selector: ElasticsearchSelector{
+				AuthenticationMode: AuthenticationModePKI,
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI with secretName (external ref): KO",
+			selector: ElasticsearchSelector{
+				ObjectSelector:     ObjectSelector{SecretName: "s"},
+				AuthenticationMode: AuthenticationModePKI,
 			},
 			wantErr: true,
 		},
@@ -532,6 +556,63 @@ func TestLocalObjectSelector_IsValid(t *testing.T) {
 			if got := tt.objectSelector.IsValid(); (got != nil) != tt.wantErr {
 				t.Errorf("IsValid() = %+v, want %+v", got, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestIsECKManagedPKIRoleMapping(t *testing.T) {
+	eckEntry := map[string]any{
+		"enabled":  true,
+		"roles":    []any{"kibana_system"},
+		"metadata": map[string]any{"managed_by": "eck", "eck_resource_uid": "uid"},
+	}
+	tests := []struct {
+		name    string
+		key     string
+		mapping any
+		want    bool
+	}{
+		{
+			name:    "generated entry with prefix and ECK metadata",
+			key:     ECKPKIRoleMappingPrefix + "ns.kb",
+			mapping: eckEntry,
+			want:    true,
+		},
+		{
+			name:    "ECK metadata without the prefix",
+			key:     "custom",
+			mapping: eckEntry,
+		},
+		{
+			name:    "prefix without metadata (legacy user-defined mapping)",
+			key:     ECKPKIRoleMappingPrefix + "corporate",
+			mapping: map[string]any{"enabled": true, "roles": []any{"superuser"}},
+		},
+		{
+			name: "prefix with user-defined metadata",
+			key:  ECKPKIRoleMappingPrefix + "corporate",
+			mapping: map[string]any{
+				"enabled":  true,
+				"metadata": map[string]any{"managed_by": "team-a", "eck_resource_uid": "uid"},
+			},
+		},
+		{
+			name: "prefix and managed_by eck without resource UID",
+			key:  ECKPKIRoleMappingPrefix + "corporate",
+			mapping: map[string]any{
+				"enabled":  true,
+				"metadata": map[string]any{"managed_by": "eck"},
+			},
+		},
+		{
+			name:    "prefix with a non-object value",
+			key:     ECKPKIRoleMappingPrefix + "corporate",
+			mapping: "not-a-mapping",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsECKManagedPKIRoleMapping(tt.key, tt.mapping))
 		})
 	}
 }

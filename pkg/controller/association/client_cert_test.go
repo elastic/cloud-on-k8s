@@ -6,6 +6,16 @@ package association
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -381,4 +392,144 @@ func TestReconciler_Reconcile_ClientCertDeletedWhenDisabled(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, assocConf.ClientCertIsConfigured())
 	require.Empty(t, assocConf.GetClientCertSecretName())
+}
+
+func TestReconcileUserProvidedClientCert_Validation(t *testing.T) {
+	kb := sampleKibanaWithESRef()
+	es := sampleESWithMTLS()
+	association := kb.EsAssociation()
+	const (
+		userSecretName   = "user-client-cert"
+		targetSecretName = "managed-copy"
+	)
+
+	// a valid certificate and key to build the test cases from
+	generator := testReconciler(&kb, &es)
+	generated, results := ReconcileManagedClientCert(t.Context(), generator.Client, association, metadata.Metadata{}, "generated", nil)
+	require.False(t, results.HasError())
+	validCert, validKey := generated.Data[certificates.CertFileName], generated.Data[certificates.KeyFileName]
+
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	otherRSAKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	otherECDSAKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoError(t, err)
+	_, ed25519Key, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	ecdsaSEC1, err := x509.MarshalECPrivateKey(ecdsaKey)
+	require.NoError(t, err)
+
+	clientSubject := pkix.Name{CommonName: "client"}
+	rsaCert := selfSignedCertForKey(t, rsaKey, clientSubject)
+	ecdsaCert := selfSignedCertForKey(t, ecdsaKey, clientSubject)
+	otherRSACert := selfSignedCertForKey(t, otherRSAKey, clientSubject)
+	// otherRSACert with PEM headers: ParsePEMCerts skips such blocks while tls.X509KeyPair does not
+	otherRSACertWithHeaders := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{"h": "v"}, Bytes: pemBlockBytes(t, otherRSACert)})
+
+	tests := []struct {
+		name    string
+		data    map[string][]byte
+		wantErr string
+	}{
+		{
+			name: "valid ECK-generated certificate and key",
+			data: map[string][]byte{certificates.CertFileName: validCert, certificates.KeyFileName: validKey},
+		},
+		{
+			name: "RSA PKCS#1 key is accepted",
+			data: map[string][]byte{certificates.CertFileName: rsaCert, certificates.KeyFileName: pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaKey)})},
+		},
+		{
+			name: "RSA PKCS#8 key is accepted",
+			data: map[string][]byte{certificates.CertFileName: rsaCert, certificates.KeyFileName: pkcs8KeyPEM(t, rsaKey)},
+		},
+		{
+			name: "ECDSA SEC1 key is accepted",
+			data: map[string][]byte{certificates.CertFileName: ecdsaCert, certificates.KeyFileName: pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: ecdsaSEC1})},
+		},
+		{
+			name: "ECDSA PKCS#8 key is accepted",
+			data: map[string][]byte{certificates.CertFileName: ecdsaCert, certificates.KeyFileName: pkcs8KeyPEM(t, ecdsaKey)},
+		},
+		{
+			name: "Ed25519 PKCS#8 key is accepted",
+			data: map[string][]byte{certificates.CertFileName: selfSignedCertForKey(t, ed25519Key, clientSubject), certificates.KeyFileName: pkcs8KeyPEM(t, ed25519Key)},
+		},
+		{
+			name: "chain with the leaf first is accepted",
+			data: map[string][]byte{certificates.CertFileName: slices.Concat(rsaCert, ecdsaCert), certificates.KeyFileName: pkcs8KeyPEM(t, rsaKey)},
+		},
+		{
+			name:    "invalid certificate",
+			data:    map[string][]byte{certificates.CertFileName: []byte("not a certificate"), certificates.KeyFileName: validKey},
+			wantErr: "invalid user-provided client certificate secret",
+		},
+		{
+			name:    "invalid key",
+			data:    map[string][]byte{certificates.CertFileName: rsaCert, certificates.KeyFileName: []byte("not a key")},
+			wantErr: "invalid user-provided client certificate secret",
+		},
+		{
+			name:    "RSA key of another certificate is rejected",
+			data:    map[string][]byte{certificates.CertFileName: rsaCert, certificates.KeyFileName: pkcs8KeyPEM(t, otherRSAKey)},
+			wantErr: "private key does not match public key",
+		},
+		{
+			name:    "ECDSA key of another certificate is rejected",
+			data:    map[string][]byte{certificates.CertFileName: ecdsaCert, certificates.KeyFileName: pkcs8KeyPEM(t, otherECDSAKey)},
+			wantErr: "private key does not match public key",
+		},
+		{
+			name:    "key of another type is rejected",
+			data:    map[string][]byte{certificates.CertFileName: rsaCert, certificates.KeyFileName: pkcs8KeyPEM(t, ecdsaKey)},
+			wantErr: "private key type does not match public key type",
+		},
+		{
+			name:    "key matching a certificate that is not the leaf is rejected",
+			data:    map[string][]byte{certificates.CertFileName: slices.Concat(otherRSACertWithHeaders, rsaCert), certificates.KeyFileName: pkcs8KeyPEM(t, otherRSAKey)},
+			wantErr: "private key does not match public key",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userSecret := corev1.Secret{
+				Namespace: kb.Namespace, Name: userSecretName,
+				Data: tt.data,
+			}
+			r := testReconciler(&kb, &es, &userSecret)
+
+			got, err := ReconcileUserProvidedClientCert(t.Context(), r.Client, association, metadata.Metadata{}, targetSecretName, userSecretName, nil)
+
+			copyErr := r.Client.Get(t.Context(), types.NamespacedName{Namespace: kb.Namespace, Name: targetSecretName}, &corev1.Secret{})
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, got)
+				require.True(t, apierrors.IsNotFound(copyErr), "invalid material must not be copied")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.data[certificates.CertFileName], got.CertPem())
+			require.NoError(t, copyErr)
+		})
+	}
+}
+
+// pkcs8KeyPEM returns the given private key PEM encoded in the PKCS#8 format.
+func pkcs8KeyPEM(t *testing.T, key crypto.Signer) []byte {
+	t.Helper()
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+}
+
+// pemBlockBytes returns the DER bytes of the first PEM block in data.
+func pemBlockBytes(t *testing.T, data []byte) []byte {
+	t.Helper()
+	block, _ := pem.Decode(data)
+	require.NotNil(t, block)
+	return block.Bytes
 }

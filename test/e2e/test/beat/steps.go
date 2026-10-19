@@ -64,7 +64,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					}
 				}
 				// wait for Beat pods to disappear
-				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...); err != nil {
+				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...); err != nil {
 					return err
 				}
 
@@ -245,7 +245,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Beat pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...)
+				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...)
 			}),
 		},
 	}

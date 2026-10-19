@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,13 +14,18 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	commonversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/keystorepassword"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -168,6 +174,135 @@ func TestReconcileManagedKeystorePasswordSecret(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.True(t, apierrors.IsNotFound(err))
+			}
+		})
+	}
+}
+
+func TestReconcileSecureSettings(t *testing.T) {
+	const ns = "ns"
+	const esName = "es"
+	const secureSettingsSecretName = "my-secure-settings"
+
+	secureSettingsSecret := &corev1.Secret{
+		Namespace: ns, Name: secureSettingsSecretName,
+		Data: map[string][]byte{"my-key": []byte("my-value")},
+	}
+
+	esWithAnnotation := esv1.Elasticsearch{
+		Namespace: ns, Name: esName,
+		Annotations: map[string]string{esv1.FileBasedSecureSettingsAnnotation: "true"},
+		Spec: esv1.ElasticsearchSpec{
+			SecureSettings: []commonv1.SecretSource{{SecretName: secureSettingsSecretName}},
+		},
+	}
+	esNoAnnotation := esv1.Elasticsearch{
+		Namespace: ns, Name: esName,
+		Spec: esv1.ElasticsearchSpec{
+			SecureSettings: []commonv1.SecretSource{{SecretName: secureSettingsSecretName}},
+		},
+	}
+
+	// staleFileSettingsSecret simulates a cluster that previously used file-based delivery
+	// (annotation path) and left cluster_secrets in the file-settings Secret.
+	staleClusterSecretsCfg := commonv1.NewConfig(map[string]any{"stale-key": "stale-value"})
+	staleSettings := filesettings.NewEmptySettings(1)
+	staleSettings.State.ClusterSecrets = &staleClusterSecretsCfg
+	staleSettingsBytes, err := json.Marshal(staleSettings)
+	require.NoError(t, err)
+	staleFileSettingsSecret := &corev1.Secret{
+		Namespace: ns, Name: esv1.FileSettingsSecretName(esName),
+		Data: map[string][]byte{filesettings.SettingsSecretKey: staleSettingsBytes},
+	}
+
+	tests := []struct {
+		name                string
+		es                  esv1.Elasticsearch
+		extraObjs           []client.Object
+		version             commonversion.Version
+		fileSettingsRequeue bool
+		wantNilResources    bool
+		checkFn             func(*testing.T, k8s.Client)
+	}{
+		{
+			name:                "file-based annotation path: returns nil when fileSettingsRequeue",
+			es:                  esWithAnnotation,
+			version:             esversion.FileBasedSecureSettingsMinVersion,
+			fileSettingsRequeue: true,
+			wantNilResources:    true,
+		},
+		{
+			name:                "file-based annotation path: returns nil when not fileSettingsRequeue",
+			es:                  esWithAnnotation,
+			extraObjs:           []client.Object{secureSettingsSecret},
+			version:             esversion.FileBasedSecureSettingsMinVersion,
+			fileSettingsRequeue: false,
+			wantNilResources:    true,
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				var secret corev1.Secret
+				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: ns, Name: esv1.FileSettingsSecretName(esName)}, &secret))
+				var settings filesettings.Settings
+				require.NoError(t, json.Unmarshal(secret.Data[filesettings.SettingsSecretKey], &settings))
+				require.NotNil(t, settings.State.ClusterSecrets, "cluster_secrets must be written by the annotation path")
+				stringSecrets, ok := settings.State.ClusterSecrets.Data["string_secrets"]
+				require.True(t, ok, "cluster_secrets must contain string_secrets")
+				require.Equal(t, map[string]any{"my-key": "my-value"}, stringSecrets)
+			},
+		},
+		{
+			name:                "keystore path: runs reconcileKeystore even when fileSettingsRequeue",
+			es:                  esNoAnnotation,
+			extraObjs:           []client.Object{secureSettingsSecret},
+			version:             esversion.FileBasedSecureSettingsMinVersion,
+			fileSettingsRequeue: true,
+			wantNilResources:    false,
+		},
+		{
+			name:             "keystore path: clears stale cluster_secrets from file-settings Secret",
+			es:               esNoAnnotation,
+			extraObjs:        []client.Object{secureSettingsSecret, staleFileSettingsSecret},
+			version:          esversion.FileBasedSecureSettingsMinVersion,
+			wantNilResources: false,
+			checkFn: func(t *testing.T, c k8s.Client) {
+				t.Helper()
+				var secret corev1.Secret
+				require.NoError(t, c.Get(t.Context(), types.NamespacedName{Namespace: ns, Name: esv1.FileSettingsSecretName(esName)}, &secret))
+				var settings filesettings.Settings
+				require.NoError(t, json.Unmarshal(secret.Data[filesettings.SettingsSecretKey], &settings))
+				require.Nil(t, settings.State.ClusterSecrets)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := tt.es
+			initObjs := append([]client.Object{&es}, tt.extraObjs...)
+			c := k8s.NewFakeClient(initObjs...)
+
+			d := &Driver{
+				Parameters: driver.Parameters{
+					ES:             es,
+					Version:        tt.version,
+					Client:         c,
+					Recorder:       toolsevents.NewFakeRecorder(10),
+					DynamicWatches: watches.NewDynamicWatches(),
+					OperatorParameters: operator.Parameters{
+						PasswordGenerator: fixtures.MustTestRandomGenerator(24),
+					},
+				},
+			}
+
+			resources, err := d.reconcileSecureSettings(t.Context(), metadata.Metadata{}, tt.fileSettingsRequeue)
+			require.NoError(t, err)
+			if tt.wantNilResources {
+				require.Nil(t, resources)
+			} else {
+				require.NotNil(t, resources)
+			}
+			if tt.checkFn != nil {
+				tt.checkFn(t, c)
 			}
 		})
 	}

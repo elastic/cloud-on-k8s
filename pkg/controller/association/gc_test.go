@@ -17,6 +17,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -60,6 +61,22 @@ func newServiceAccountSecret(
 	}
 }
 
+func newPKIRoleMappingRequest(
+	namespace, name,
+	associationNamespaceLabel, associationNameLabel,
+	associationNamespaceValue, associationNameValue string,
+) client.Object {
+	return &corev1.Secret{
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    rolemapping.PKIRoleMappingRequestType,
+		},
+	}
+}
+
 func TestUsersGarbageCollector_GC(t *testing.T) {
 	client := k8s.NewFakeClient(
 		// Create 5 secrets, 3 actually used and 2 orphaned
@@ -68,18 +85,11 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 		newUserSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
-		&kbv1.Kibana{
-			Name:      "kibana1",
-			Namespace: "ns1",
-		},
-		&kbv1.Kibana{
-			Name:      "kibana2",
-			Namespace: "ns2",
-		},
-		&apmv1.ApmServer{
-			Name:      "apm1",
-			Namespace: "ns1",
-		},
+		newPKIRoleMappingRequest("es", "ns1-kb-kibana1-pki-role-mapping", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
+		newPKIRoleMappingRequest("es", "ns1-kb-orphaned-pki-role-mapping", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
+		&kbv1.Kibana{Name: "kibana1", Namespace: "ns1"},
+		&kbv1.Kibana{Name: "kibana2", Namespace: "ns2"},
+		&apmv1.ApmServer{Name: "apm1", Namespace: "ns1"},
 	)
 
 	ugc := &UsersGarbageCollector{
@@ -106,6 +116,11 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	assert.NoError(t, err)
 	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
+		Name:      "ns1-kb-kibana1-pki-role-mapping",
+	}, s)
+	assert.NoError(t, err)
+	err = client.Get(context.Background(), types.NamespacedName{
+		Namespace: "es",
 		Name:      "ns1-kb-kibana2-fy8i-kibana-user",
 	}, s)
 	assert.NoError(t, err)
@@ -125,6 +140,12 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 
 	err = client.Get(context.Background(), types.NamespacedName{
 		Namespace: "es",
+		Name:      "ns1-kb-orphaned-pki-role-mapping",
+	}, s)
+	assert.True(t, errors.IsNotFound(err))
+
+	err = client.Get(context.Background(), types.NamespacedName{
+		Namespace: "es",
 		Name:      "ns1-kb-orphaned-xxxx-apm-user",
 	}, s)
 	assert.NotNil(t, err)
@@ -139,18 +160,9 @@ func TestServiceAccountsGarbageCollector_GC(t *testing.T) {
 		newServiceAccountSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
-		&kbv1.Kibana{
-			Name:      "kibana1",
-			Namespace: "ns1",
-		},
-		&kbv1.Kibana{
-			Name:      "kibana2",
-			Namespace: "ns2",
-		},
-		&apmv1.ApmServer{
-			Name:      "apm1",
-			Namespace: "ns1",
-		},
+		&kbv1.Kibana{Name: "kibana1", Namespace: "ns1"},
+		&kbv1.Kibana{Name: "kibana2", Namespace: "ns2"},
+		&apmv1.ApmServer{Name: "apm1", Namespace: "ns1"},
 	)
 
 	ugc := &UsersGarbageCollector{

@@ -299,6 +299,22 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:   "When NoAuthRequired is set (PKI auth)",
+			client: k8s.NewFakeClient(),
+			assocConf: commonv1.AssociationConf{
+				AuthSecretName: commonv1.NoAuthRequiredValue,
+				CASecretName:   "ca-secret",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			},
+		},
+		{
+			name:   "When NoAuthRequired is set (monitoring-style, no credential secret created)",
+			client: k8s.NewFakeClient(),
+			assocConf: commonv1.AssociationConf{
+				AuthSecretName: commonv1.NoAuthRequiredValue,
+			},
+		},
+		{
 			name: "When the auth secret key does not exist",
 			client: k8s.NewFakeClient(&corev1.Secret{
 				Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",

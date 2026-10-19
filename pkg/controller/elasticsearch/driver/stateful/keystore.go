@@ -105,8 +105,14 @@ func reconcileManagedKeystorePasswordSecret(
 // opt-in annotation. For ES >= 9.5 with the file-based annotation, settings are delivered
 // via cluster_secrets in the file-based settings JSON (no init container, hot-reload capable).
 // For all other cases the standard keystore init container path is used.
-func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata) (*keystore.Resources, error) {
+// When fileSettingsRequeue is true, the file-settings Secret does not exist yet and the SCP
+// controller is expected to create it, so every step that writes cluster_secrets into it is
+// skipped. The keystore is still reconciled when the file-based annotation is not set.
+func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Metadata, fileSettingsRequeue bool) (*keystore.Resources, error) {
 	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) && d.ES.HasFileBasedSecureSettingsAnnotation() {
+		if fileSettingsRequeue {
+			return nil, nil
+		}
 		clusterSecrets, err := shared.BuildClusterSecrets(ctx, d.Client, d.Recorder(), d.DynamicWatches(), d.ES, d.OperatorParameters.OperatorNamespace)
 		if err != nil {
 			return nil, err
@@ -117,7 +123,7 @@ func (d *Driver) reconcileSecureSettings(ctx context.Context, meta metadata.Meta
 		return nil, keystore.DeleteSecureSettingsSecret(ctx, d.Client, esv1.ESNamer, &d.ES)
 	}
 	// Keystore path
-	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) {
+	if d.Version.GTE(esversion.FileBasedSecureSettingsMinVersion) && !fileSettingsRequeue {
 		// Clear any stale cluster_secrets
 		if err := filesettings.ReconcileClusterSecrets(ctx, d.Client, d.ES, nil); err != nil {
 			return nil, err

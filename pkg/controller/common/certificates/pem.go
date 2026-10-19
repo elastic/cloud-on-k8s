@@ -11,7 +11,9 @@ import (
 	"crypto/ecdsa"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"reflect"
@@ -207,4 +209,11 @@ func NewPrivateKey(caSigner crypto.Signer) (crypto.Signer, error) {
 	default:
 		return nil, fmt.Errorf("unsupported CA private key type: %T", caSigner)
 	}
+}
+
+// PublicKeyFingerprint returns the lowercase SHA-256 fingerprint of a parsed certificate's
+// SubjectPublicKeyInfo.
+func PublicKeyFingerprint(cert *x509.Certificate) string {
+	digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+	return hex.EncodeToString(digest[:])
 }

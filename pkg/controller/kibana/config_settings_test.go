@@ -209,10 +209,9 @@ func TestNewConfigSettings(t *testing.T) {
 		kibanaConfigFromPolicy *settings.CanonicalConfig
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
+		name string
+		args args
+		want []byte
 	}{
 		{
 			name: "default config IPv4",
@@ -267,7 +266,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with elasticsearch Association",
@@ -325,7 +323,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with elasticsearch Association",
@@ -372,7 +369,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with Enterprise Search Association",
@@ -410,9 +406,7 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
-		},
-		{
+		}, {
 			name: "with Elasticsearch and Enterprise Search associations",
 			args: args{
 				kb: func() kbv1.Kibana {
@@ -477,7 +471,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with user config",
@@ -555,6 +548,44 @@ func TestNewConfigSettings(t *testing.T) {
 			},
 			want: defaultConfig,
 		},
+		{
+			name: "with PKI mode: ssl cert/key set, no credentials",
+			args: args{
+				client: k8s.NewFakeClient(existingSecret),
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+						Name:               "test-es",
+						AuthenticationMode: commonv1.AuthenticationModePKI,
+					}
+					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
+						AuthSecretName:       commonv1.NoAuthRequiredValue,
+						ClientCertSecretName: "client-cert-secret",
+						URL:                  "https://es-url:9200",
+					})
+					return kb
+				},
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				assocCfg, err := settings.ParseConfig([]byte(`elasticsearch:
+  hosts:
+    - "https://es-url:9200"
+  ssl:
+    verificationMode: certificate
+    certificate: /usr/share/kibana/config/elasticsearch-client-certs/tls.crt
+    key: /usr/share/kibana/config/elasticsearch-client-certs/tls.key
+    alwaysPresentCertificate: true
+`))
+				require.NoError(t, err)
+				require.NoError(t, cfg.MergeWith(assocCfg))
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -562,9 +593,6 @@ func TestNewConfigSettings(t *testing.T) {
 			v := version.From(7, 6, 0)
 			userSettings := canonicalConfigFrom(kb.Spec.Config)
 			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, userSettings, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
-			if tt.wantErr {
-				require.Error(t, err)
-			}
 			require.NoError(t, err)
 
 			// convert "got" into something comparable
@@ -803,6 +831,9 @@ func (m mockAssociationRef) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: m.namespace, Name: m.name}
 }
 func (m mockAssociationRef) NameOrSecretName() string { return m.name }
+func (m mockAssociationRef) GetAuthenticationMode() commonv1.AuthenticationMode {
+	return commonv1.AuthenticationModeCredentials
+}
 
 // mockAssociation implements commonv1.Association for testing.
 // It embeds a Kibana object to satisfy the metav1.Object and runtime.Object

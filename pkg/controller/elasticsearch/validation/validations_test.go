@@ -1680,6 +1680,68 @@ func Test_validClientAuthentication(t *testing.T) {
 	}
 }
 
+func Test_validPKIRealm(t *testing.T) {
+	esWith := func(ver string, clientAuthentication, pkiEnabled bool) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: ver,
+				HTTP: commonv1.HTTPConfigWithClientOptions{
+					TLS: commonv1.TLSWithClientOptions{
+						Client: commonv1.ClientOptions{Authentication: clientAuthentication},
+					},
+				},
+				Auth: esv1.Auth{PKI: esv1.PKIRealm{Enabled: pkiEnabled}},
+			},
+		}
+	}
+	tests := []struct {
+		name       string
+		es         esv1.Elasticsearch
+		wantErrors int
+	}{
+		{
+			name:       "PKI realm disabled: OK regardless of version and client authentication",
+			es:         esWith("8.17.0", false, false),
+			wantErrors: 0,
+		},
+		{
+			name:       "PKI realm enabled with client authentication on 9.6.0: OK",
+			es:         esWith("9.6.0", true, true),
+			wantErrors: 0,
+		},
+		{
+			name:       "PKI realm enabled without client authentication: NOK",
+			es:         esWith("9.6.0", false, true),
+			wantErrors: 1,
+		},
+		{
+			name:       "PKI realm enabled below 9.6.0: NOK",
+			es:         esWith("9.5.0", true, true),
+			wantErrors: 1,
+		},
+		{
+			name:       "PKI realm enabled below 9.6.0 without client authentication: both errors reported",
+			es:         esWith("9.5.0", false, true),
+			wantErrors: 2,
+		},
+		{
+			name:       "PKI realm enabled with unparseable version: only client authentication is checked",
+			es:         esWith("not-a-version", true, true),
+			wantErrors: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validPKIRealm(tt.es)
+			require.Len(t, errs, tt.wantErrors)
+			for _, err := range errs {
+				require.Equal(t, "spec.auth.pki.enabled", err.Field)
+			}
+		})
+	}
+}
+
 func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 	tests := []struct {
 		name         string

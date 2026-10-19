@@ -313,6 +313,16 @@ type Auth struct {
 	FileRealm []FileRealmSource `json:"fileRealm,omitempty"`
 	// DisableElasticUser disables the default elastic user that is created by ECK.
 	DisableElasticUser bool `json:"disableElasticUser,omitempty"`
+	// PKI configures the ECK-managed PKI realm.
+	PKI PKIRealm `json:"pki,omitempty"`
+}
+
+// PKIRealm configures the ECK-managed PKI realm.
+type PKIRealm struct {
+	// Enabled specifies whether to configure the ECK-managed PKI realm, which components with
+	// elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.
+	// Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // RoleSource references roles to create in the Elasticsearch cluster.

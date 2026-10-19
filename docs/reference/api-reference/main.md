@@ -475,6 +475,17 @@ Package v1 contains API schema definitions for common types used by all resource
 
 
 
+### AuthenticationMode (string)  [#authenticationmode]
+
+AuthenticationMode controls how a component authenticates to Elasticsearch.
+
+:::{admonition} Appears In:
+* [ElasticsearchSelector](#elasticsearchselector)
+
+:::
+
+
+
 ### ClientOptions  [#clientoptions]
 
 ClientOptions configures client certificate authentication for incoming connections.
@@ -637,7 +648,8 @@ or a Secret describing an external cluster not managed by the operator.
 | *`name`* __string__ | Name of an existing Kubernetes object corresponding to an Elastic resource managed by ECK. |
 | *`serviceName`* __string__ | ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced<br>object. It has to be in the same namespace as the referenced resource. If left empty, the default HTTP service of<br>the referenced resource is used. |
 | *`secretName`* __string__ | SecretName is the name of an existing Kubernetes secret that contains connection information for associating an<br>Elastic resource not managed by the operator.<br>The referenced secret must contain the following:<br>- `url`: the URL to reach the Elastic resource<br>- `username`: the username of the user to be authenticated to the Elastic resource<br>- `password`: the password of the user to be authenticated to the Elastic resource<br>- `ca.crt`: the CA certificate in PEM format (optional)<br>- `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)<br>This field cannot be used in combination with the other fields name, namespace or serviceName. |
-| *`clientCertificateSecretName`* __string__ | ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate<br>(tls.crt) and private key (tls.key) for client authentication to the referenced resource.<br>This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.<br>If not specified and the referenced resource requires client authentication, ECK will auto-generate a<br>client certificate. |
+| *`clientCertificateSecretName`* __string__ | ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate<br>(tls.crt) and private key (tls.key) for client authentication to the referenced resource.<br>This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.<br>If not specified and the referenced resource requires client authentication, ECK will auto-generate a<br>client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the<br>public key of this certificate. |
+| *`authenticationMode`* __[AuthenticationMode](#authenticationmode)__ | AuthenticationMode controls how this component authenticates to Elasticsearch.<br>Credentials uses a service account token or a username and password. This is used when the field is omitted.<br>PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with<br>spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.<br>PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires<br>Elastic Maps Server 9.6.0+. |
 
 
 ### FleetServerSelector  [#fleetserverselector]
@@ -1229,6 +1241,7 @@ Auth contains user authentication and authorization security settings for Elasti
 | *`roles`* __[RoleSource](#rolesource) array__ | Roles to propagate to the Elasticsearch cluster. |
 | *`fileRealm`* __[FileRealmSource](#filerealmsource) array__ | FileRealm to propagate to the Elasticsearch cluster. |
 | *`disableElasticUser`* __boolean__ | DisableElasticUser disables the default elastic user that is created by ECK. |
+| *`pki`* __[PKIRealm](#pkirealm)__ | PKI configures the ECK-managed PKI realm. |
 
 
 
@@ -1488,6 +1501,20 @@ storage limit.
 | *`limits`* __[ResourceAllocations](#resourceallocations)__ | Limits is the shorthand for the main container's CPU and memory limits. |
 | *`requests`* __[ResourceAllocations](#resourceallocations)__ | Requests is the shorthand for the main container's CPU and memory requests. |
 | *`storage`* __[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#quantity-resource-api)__ | Storage overrides the storage request of this NodeSet's data volume claim: the claim named<br>"elasticsearch-data" if present, otherwise the single claim when exactly one is declared. A<br>nil value means "do not override", so any storage request already set in<br>VolumeClaimTemplates is passed through unchanged. A non-nil value wins over the claim's own<br>request.<br><br>This is the field the autoscaling controller writes. Keeping it out of VolumeClaimTemplates<br>leaves that list, and therefore the storage class and access modes, owned solely by whoever<br>declares it. |
+
+
+### PKIRealm  [#pkirealm]
+
+PKIRealm configures the ECK-managed PKI realm.
+
+:::{admonition} Appears In:
+* [Auth](#auth)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`enabled`* __boolean__ | Enabled specifies whether to configure the ECK-managed PKI realm, which components with<br>elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.<br>Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication. |
 
 
 ### RemoteCluster  [#remotecluster]

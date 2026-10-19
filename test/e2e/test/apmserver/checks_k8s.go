@@ -65,17 +65,23 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
 					},
 				},
-				test.ExpectedSecret{
-					Name: apmName + "-apm-user",
-					Keys: []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"},
-					Labels: map[string]string{
-						"apmassociation.k8s.elastic.co/name":        apmName,
-						"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
-						"eck.k8s.elastic.co/credentials":            "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
-					},
-				},
 			)
+			// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+			// skip the check to avoid a hang in CheckSecretsContent.
+			if b.ApmServer.Spec.ElasticsearchRef.AuthenticationMode != commonv1.AuthenticationModePKI {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: apmName + "-apm-user",
+						Keys: []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"},
+						Labels: map[string]string{
+							"apmassociation.k8s.elastic.co/name":        apmName,
+							"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
+							"eck.k8s.elastic.co/credentials":            "true",
+							"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
+						},
+					},
+				)
+			}
 		}
 		if b.ApmServer.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,

@@ -126,3 +126,24 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), apmWrapped).RunSequential(t)
 }
+
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for APM Server: APM Server
+// authenticates to Elasticsearch with its client certificate only, and switching it back to credentials cleans up
+// the eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-apm-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	apmBuilder := apmserver.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithoutIntegrationCheck().
+		WithNodeCount(1)
+	apmBuilder.ApmServer.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+
+	apmMutated := apmBuilder.DeepCopy().WithMutatedFrom(&apmBuilder)
+	apmMutated.ApmServer.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, apmBuilder, apmMutated)
+}

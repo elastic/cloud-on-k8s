@@ -6,6 +6,11 @@ package association
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,9 +23,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -30,16 +37,23 @@ import (
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/optional"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -649,59 +663,6 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 			tt.checkResult(t, r, updatedKibana)
 		})
 	}
-}
-
-func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
-	// Kibana references ES, but no secret nor association conf exist yet
-	kb := sampleKibanaWithESRef()
-	require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
-	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
-	// no resources are watched yet
-	require.Empty(t, r.watches.Secrets.Registrations())
-	require.Empty(t, r.watches.ReferencedResources.Registrations())
-	// run the reconciliation
-	results, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
-	require.NoError(t, err)
-	// no requeue to trigger
-	require.Equal(t, reconcile.Result{}, results)
-
-	// should create the kibana user in es namespace
-	var actualKbUserInESNamespace corev1.Secret
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &actualKbUserInESNamespace)
-	require.NoError(t, err)
-	// password hash should be generated so let's ignore its exact content in the comparison
-	require.NotEmpty(t, actualKbUserInESNamespace.Data[user.PasswordHashField])
-	expected := kibanaUserInESNamespace.DeepCopy()
-	expected.Data[user.PasswordHashField] = actualKbUserInESNamespace.Data[user.PasswordHashField]
-	comparison.RequireEqual(t, expected, &actualKbUserInESNamespace)
-
-	// should create the kibana user in kibana namespace
-	var actualKbUserInKbNamespace corev1.Secret
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &actualKbUserInKbNamespace)
-	require.NoError(t, err)
-	// password should be generated so let's ignore its exact content in the comparison
-	require.NotEmpty(t, actualKbUserInKbNamespace.Data)
-	expected = kibanaUserInKibanaNamespace.DeepCopy()
-	expected.Data = actualKbUserInKbNamespace.Data
-	comparison.RequireEqual(t, expected, &actualKbUserInKbNamespace)
-
-	// should create the es certs in kibana namespace
-	var actualEsCertsInKibanaNamespace corev1.Secret
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&esCertsInKibanaNamespace), &actualEsCertsInKibanaNamespace)
-	require.NoError(t, err)
-	comparison.RequireEqual(t, &esCertsInKibanaNamespace, &actualEsCertsInKibanaNamespace)
-
-	// should have dynamic watches set
-	require.NotEmpty(t, r.watches.Secrets.Registrations())
-	require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
-
-	var updatedKibana kbv1.Kibana
-	err = r.Get(context.Background(), k8s.ExtractNamespacedName(&kb), &updatedKibana)
-	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKibana.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
-	// association status should be established
-	require.NoError(t, err)
-	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
 }
 
 func TestReconciler_Reconcile_noESAuth(t *testing.T) {
@@ -2139,6 +2100,17 @@ func TestReconciler_Unbind(t *testing.T) {
 			"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
 		},
 	}
+	pkiRoleMappingRequest := corev1.Secret{
+		Namespace: esNamespace,
+		Name:      "kbns-kbname-kb-es-pki-role-mapping",
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                       rolemapping.PKIRoleMappingRequestType,
+			eslabel.ClusterNameLabelName:                 sampleES.Name,
+			eslabel.ClusterNamespaceLabelName:            sampleES.Namespace,
+			"kibanaassociation.k8s.elastic.co/name":      assocResourceLabels["kibanaassociation.k8s.elastic.co/name"],
+			"kibanaassociation.k8s.elastic.co/namespace": assocResourceLabels["kibanaassociation.k8s.elastic.co/namespace"],
+		},
+	}
 	kb := sampleKibanaWithESRef()
 
 	// Fixtures for the same-namespace case.
@@ -2198,6 +2170,18 @@ func TestReconciler_Unbind(t *testing.T) {
 				var appSecret corev1.Secret
 				err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&appTokenSecret), &appSecret)
 				require.True(t, apierrors.IsNotFound(err), "Application-side SA token secret should have been deleted by Unbind")
+			},
+		},
+		{
+			name: "PKI role mapping request is deleted",
+			setup: func() (Reconciler, commonv1.Association) {
+				return testReconciler(&sampleES, &kb, &pkiRoleMappingRequest), kb.EsAssociation()
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				var request corev1.Secret
+				err := r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&pkiRoleMappingRequest), &request)
+				require.True(t, apierrors.IsNotFound(err), "PKI role mapping request should have been deleted by Unbind")
 			},
 		},
 		{
@@ -2315,6 +2299,724 @@ func TestReconciler_Unbind(t *testing.T) {
 	}
 }
 
+// sampleESWithMTLS returns sampleES with the client-authentication-required annotation set.
+func sampleESWithMTLS() esv1.Elasticsearch {
+	es := sampleES
+	es.Spec.HTTP.TLS.Client.Authentication = true
+	es.Annotations = map[string]string{
+		annotation.ClientAuthenticationRequiredAnnotation: "true",
+	}
+	return es
+}
+
+// sampleESWithMTLSAndPKIRealm returns sampleESWithMTLS with the ECK-managed PKI realm enabled.
+func sampleESWithMTLSAndPKIRealm() esv1.Elasticsearch {
+	es := sampleESWithMTLS()
+	es.Spec.Auth.PKI.Enabled = true
+	return es
+}
+
+// sampleESWithMTLSAndPKIVersion returns sampleES with mTLS and the PKI realm enabled and an ES version that
+// satisfies PKIAuthMinVersion, so reconciler-side PKI gate checks pass.
+func sampleESWithMTLSAndPKIVersion() esv1.Elasticsearch {
+	es := sampleESWithMTLSAndPKIRealm()
+	es.Status.Version = commonv1.PKIAuthMinVersion.String()
+	return es
+}
+
+func TestReconciler_Reconcile_CredentialsModeDeletesPKIRoleMappingRequest(t *testing.T) {
+	kb := sampleKibanaWithESRef()
+	es := sampleESWithMTLS()
+	requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), es.Namespace, kbAssociationInfo.AssociationName)
+	assocLabels := kbAssociationInfo.AssociationResourceLabels(k8s.ExtractNamespacedName(&kb), kb.EsAssociation().AssociationRef().NamespacedName())
+	request := corev1.Secret{
+		Namespace: requestKey.Namespace,
+		Name:      requestKey.Name,
+		Labels:    maps.Merge(map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType}, assocLabels),
+	}
+	r := testReconciler(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), &request)
+
+	_, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+	require.NoError(t, err)
+
+	err = r.Client.Get(t.Context(), requestKey, &corev1.Secret{})
+	require.True(t, apierrors.IsNotFound(err))
+}
+
+// TestReconciler_Reconcile_PKIToCredentialsSwitchOrdering checks that the stale PKI role mapping request is only
+// deleted once the new association conf has been committed, and kept when committing it fails.
+func TestReconciler_Reconcile_PKIToCredentialsSwitchOrdering(t *testing.T) {
+	tests := []struct {
+		name string
+		// patchErr is returned by the association conf annotation patch on the associated resource.
+		patchErr           error
+		wantRequestDeleted bool
+	}{
+		{
+			name:               "conf committed: request deleted after the conf update",
+			wantRequestDeleted: true,
+		},
+		{
+			name:               "conf update conflicts: request preserved",
+			patchErr:           apierrors.NewConflict(schema.GroupResource{Resource: "kibanas"}, "kbname", errors.New("conflict")),
+			wantRequestDeleted: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := sampleKibanaWithESRef()
+			es := sampleESWithMTLS()
+			requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), es.Namespace, kbAssociationInfo.AssociationName)
+			assocLabels := kbAssociationInfo.AssociationResourceLabels(k8s.ExtractNamespacedName(&kb), kb.EsAssociation().AssociationRef().NamespacedName())
+			request := corev1.Secret{
+				Namespace: requestKey.Namespace,
+				Name:      requestKey.Name,
+				Labels:    maps.Merge(map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType}, assocLabels),
+			}
+
+			// requestExistedAtConfPatch records whether the request Secret was still present when the
+			// association conf annotation was patched on the associated resource.
+			var requestExistedAtConfPatch *bool
+			c := k8s.NewFakeClientBuilder(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), &request).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+						if _, isKb := obj.(*kbv1.Kibana); isKb && requestExistedAtConfPatch == nil {
+							existed := c.Get(ctx, requestKey, &corev1.Secret{}) == nil
+							requestExistedAtConfPatch = &existed
+							if tt.patchErr != nil {
+								return tt.patchErr
+							}
+						}
+						return c.Patch(ctx, obj, patch, opts...)
+					},
+				}).Build()
+			r := testReconciler()
+			r.Client = c
+
+			_, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+			require.NoError(t, err)
+
+			require.NotNil(t, requestExistedAtConfPatch, "association conf must have been patched")
+			require.True(t, *requestExistedAtConfPatch, "request Secret must still exist when the new conf is committed")
+
+			err = r.Client.Get(t.Context(), requestKey, &corev1.Secret{})
+			if tt.wantRequestDeleted {
+				require.True(t, apierrors.IsNotFound(err), "request Secret should be deleted once the conf is committed")
+			} else {
+				require.NoError(t, err, "request Secret must be preserved when the conf could not be committed")
+			}
+		})
+	}
+}
+
+func TestReconciler_Reconcile_SupportsAuthentication(t *testing.T) {
+	tests := []struct {
+		name               string
+		supportsAuth       func(commonv1.Associated, commonv1.AuthenticationMode) bool
+		wantStatus         commonv1.AssociationStatus
+		wantEventSubstring string
+	}{
+		{
+			name: "SupportsAuthentication returns false for PKI: association stays pending, stale request preserved, kind-gate warning emitted",
+			supportsAuth: func(_ commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+				return mode == commonv1.AuthenticationModeCredentials
+			},
+			wantStatus:         commonv1.AssociationPending,
+			wantEventSubstring: "not supported for this resource type",
+		},
+		{
+			name: "SupportsAuthentication returns true for PKI: gate bypassed, stale request preserved, mTLS warning emitted instead",
+			supportsAuth: func(_ commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+				return true
+			},
+			wantStatus:         commonv1.AssociationPending,
+			wantEventSubstring: "requires mTLS",
+		},
+		{
+			name:               "SupportsAuthentication nil: no kind check, stale request preserved, mTLS warning emitted",
+			supportsAuth:       nil,
+			wantStatus:         commonv1.AssociationPending,
+			wantEventSubstring: "requires mTLS",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := sampleKibanaWithESRef()
+			kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+			es := sampleES // no mTLS annotation
+
+			info := kbAssociationInfo
+			euc := *kbAssociationInfo.ElasticsearchUserCreation
+			euc.SupportsAuthentication = tt.supportsAuth
+			info.ElasticsearchUserCreation = &euc
+
+			requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), es.Namespace, info.AssociationName)
+			staleRequest := &corev1.Secret{
+				Namespace: requestKey.Namespace, Name: requestKey.Name,
+				Labels: map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType},
+			}
+
+			recorder := toolsevents.NewFakeRecorder(10)
+			r := Reconciler{
+				AssociationInfo:        info,
+				Client:                 k8s.NewFakeClient(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), staleRequest),
+				accessReviewer:         rbac.NewPermissiveAccessReviewer(),
+				watches:                watches.NewDynamicWatches(),
+				recorder:               recorder,
+				OperatorInfo:           about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.5.0"}},
+				PasswordGenerator:      fixtures.MustTestRandomGenerator(24),
+				referencedResourceKind: esv1.Kind,
+			}
+
+			_, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+			require.NoError(t, err)
+
+			require.NoError(t, r.Client.Get(t.Context(), requestKey, &corev1.Secret{}), "PKI role mapping request Secret must exist")
+
+			var updatedKb kbv1.Kibana
+			require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+			require.Equal(t, tt.wantStatus, updatedKb.Status.AssociationStatus)
+
+			event := fetchEvent(recorder)
+			require.True(t, strings.HasPrefix(event, corev1.EventTypeWarning), "expected a warning event, got: %q", event)
+			require.Contains(t, event, tt.wantEventSubstring)
+		})
+	}
+}
+
+func TestReconciler_Reconcile_reconcileAuth(t *testing.T) {
+	// key of the user-provided client certificate without a Subject CN
+	cnLessKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	// user-provided client certificate with a known public key fingerprint
+	pkiCertKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	pkiCertPEM := selfSignedCertForKey(t, pkiCertKey, pkix.Name{CommonName: "kibana"})
+	pkiCert, err := certificates.GetPrimaryCertificate(pkiCertPEM)
+	require.NoError(t, err)
+	userProvidedPKICertFingerprint := certificates.PublicKeyFingerprint(pkiCert)
+	kibanaWithUserProvidedPKICert := func() kbv1.Kibana {
+		kb := sampleKibanaWithESRef()
+		kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+		kb.Spec.ElasticsearchRef.ClientCertificateSecretName = "user-pki-client-cert"
+		return kb
+	}
+	userProvidedPKICertObjs := func() []client.Object {
+		return []client.Object{&corev1.Secret{
+			Namespace: kibanaNamespace, Name: "user-pki-client-cert",
+			Data: map[string][]byte{
+				certificates.CertFileName: pkiCertPEM,
+				certificates.KeyFileName:  pkcs8KeyPEM(t, pkiCertKey),
+			},
+		}}
+	}
+	// evaluatedRequest returns the PKI role mapping request Secret of kibanaWithUserProvidedPKICert, annotated with
+	// evaluation as if the ES driver had evaluated it.
+	evaluatedRequest := func(evaluation rolemapping.Evaluation) client.Object {
+		value, err := json.Marshal(evaluation)
+		require.NoError(t, err)
+		kb := kibanaWithUserProvidedPKICert()
+		requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), esNamespace, kbAssociationInfo.AssociationName)
+		return &corev1.Secret{
+			Namespace:   requestKey.Namespace,
+			Name:        requestKey.Name,
+			Annotations: map[string]string{rolemapping.PKIEvaluationAnnotation: string(value)},
+		}
+	}
+
+	esWithSAHint := func(saEnabled bool) esv1.Elasticsearch {
+		es := sampleES
+		ann, err := hints.OrchestrationsHints{ServiceAccounts: optional.NewBool(saEnabled)}.AsAnnotation()
+		require.NoError(t, err)
+		es.Annotations = ann
+		return es
+	}
+
+	assertPKIRoleMappingRequest := func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+		t.Helper()
+		association := kb.EsAssociation()
+		requestKey := PKIRoleMappingRequestKey(association, sampleES.Namespace, kbAssociationInfo.AssociationName)
+		var request corev1.Secret
+		require.NoError(t, r.Client.Get(t.Context(), requestKey, &request))
+		require.Equal(t, rolemapping.PKIRoleMappingRequestType, request.Labels[commonv1.TypeLabelName])
+		require.Equal(t, sampleES.Name, request.Labels[eslabel.ClusterNameLabelName])
+		require.Equal(t, "kibana_system", string(request.Data[rolemapping.RolesField]))
+		clientCertKey := types.NamespacedName{
+			Namespace: kb.Namespace,
+			Name:      clientCertSecretName(association, kbAssociationInfo.AssociationName),
+		}
+		var clientCert corev1.Secret
+		require.NoError(t, r.Client.Get(t.Context(), clientCertKey, &clientCert))
+		certificate, err := certificates.GetPrimaryCertificate(clientCert.Data[certificates.CertFileName])
+		require.NoError(t, err)
+		require.Equal(t, certificates.PublicKeyFingerprint(certificate), string(request.Data[rolemapping.PublicKeyFingerprintField]))
+		require.Len(t, request.OwnerReferences, 1)
+		require.Equal(t, esv1.Kind, request.OwnerReferences[0].Kind)
+		require.Equal(t, sampleES.Name, request.OwnerReferences[0].Name)
+	}
+
+	assertWarningEvent := func(t *testing.T, r Reconciler, wantMsg string) {
+		t.Helper()
+		fakeRec, ok := r.recorder.(*toolsevents.FakeRecorder)
+		require.True(t, ok, "recorder must be a FakeRecorder")
+		event := fetchEvent(fakeRec)
+		require.True(t, strings.HasPrefix(event, corev1.EventTypeWarning), "expected a warning event, got: %q", event)
+		require.Contains(t, event, wantMsg)
+	}
+
+	// Both SA tokens and plain credentials live at this namespace/name on the application side.
+	appSecretKey := types.NamespacedName{Namespace: kibanaNamespace, Name: "kbname-kibana-user"}
+	// ES-side user Secret and ES-side SA token Secret share this namespace/name, differentiated by label type.
+	esSecretKey := types.NamespacedName{Namespace: esNamespace, Name: "kbns-kbname-kibana-user"}
+
+	tests := []struct {
+		name        string
+		kb          func() kbv1.Kibana
+		es          esv1.Elasticsearch
+		extraObjs   []client.Object
+		checkBefore func(t *testing.T, r Reconciler, kb kbv1.Kibana) // assertions on initial state, before Reconcile
+		// esDriverEvaluates runs the ES driver evaluation of the PKI role mapping requests after the first Reconcile,
+		// then reconciles again. beforeEvaluation asserts the state after the first Reconcile.
+		esDriverEvaluates bool
+		beforeEvaluation  func(t *testing.T, r Reconciler, kb kbv1.Kibana)
+		// pkiRealmNotRunning leaves the conflict-free evaluations unapplied, as when the ECK-managed PKI realm does not
+		// run on all the Elasticsearch nodes yet.
+		pkiRealmNotRunning bool
+		assertFn           func(t *testing.T, r Reconciler, kb kbv1.Kibana, result reconcile.Result)
+	}{
+		{
+			name: "plain credentials (new association): user Secrets created on both sides, CA cert copied, watches registered",
+			kb:   sampleKibanaWithESRef,
+			es:   sampleES,
+			checkBefore: func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				require.Empty(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				require.Empty(t, r.watches.Secrets.Registrations())
+				require.Empty(t, r.watches.ReferencedResources.Registrations())
+			},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, result reconcile.Result) {
+				t.Helper()
+				require.Equal(t, reconcile.Result{}, result)
+
+				var actualESUser corev1.Secret
+				require.NoError(t, r.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &actualESUser))
+				require.NotEmpty(t, actualESUser.Data[user.PasswordHashField])
+				expectedESUser := kibanaUserInESNamespace.DeepCopy()
+				expectedESUser.Data[user.PasswordHashField] = actualESUser.Data[user.PasswordHashField]
+				comparison.RequireEqual(t, expectedESUser, &actualESUser)
+
+				var actualAppUser corev1.Secret
+				require.NoError(t, r.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &actualAppUser))
+				require.NotEmpty(t, actualAppUser.Data)
+				expectedAppUser := kibanaUserInKibanaNamespace.DeepCopy()
+				expectedAppUser.Data = actualAppUser.Data
+				comparison.RequireEqual(t, expectedAppUser, &actualAppUser)
+
+				var actualCA corev1.Secret
+				require.NoError(t, r.Get(t.Context(), k8s.ExtractNamespacedName(&esCertsInKibanaNamespace), &actualCA))
+				comparison.RequireEqual(t, &esCertsInKibanaNamespace, &actualCA)
+
+				require.NotEmpty(t, r.watches.Secrets.Registrations())
+				require.NotEmpty(t, r.watches.ReferencedResources.Registrations())
+
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, sampleAssociatedKibana().Annotations[kb.EsAssociation().AssociationConfAnnotationName()], updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()])
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			// Regression: stale cleanup must NOT set UserAppSecret when SA mode is active — the SA
+			// token lives under the same app-side name as the plain-credentials Secret.
+			name: "SA hint true: SA token created on both sides, app-side not deleted by stale cleanup",
+			kb: func() kbv1.Kibana {
+				kb := sampleKibanaWithESRef()
+				kb.Spec.Version = "8.0.0"
+				return kb
+			},
+			es: esWithSAHint(true),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				require.NoError(t, r.Client.Get(t.Context(), appSecretKey, &corev1.Secret{}), "app-side auth Secret must exist")
+				var esSecret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), esSecretKey, &esSecret))
+				require.Equal(t, user.ServiceAccountTokenType, esSecret.Labels[commonv1.TypeLabelName])
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+				require.Contains(t, updatedKb.Annotations[updatedKb.EsAssociation().AssociationConfAnnotationName()], `"isServiceAccount":true`)
+			},
+		},
+		{
+			// Fallthrough: SA-capable Kibana but SA orchestration hint is false — plain credentials.
+			name: "SA hint false: falls through to plain credentials, app-side not deleted by stale cleanup",
+			kb: func() kbv1.Kibana {
+				kb := sampleKibanaWithESRef()
+				kb.Spec.Version = "8.0.0"
+				return kb
+			},
+			es: esWithSAHint(false),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				require.NoError(t, r.Client.Get(t.Context(), appSecretKey, &corev1.Secret{}), "app-side auth Secret must exist")
+				var esSecret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), esSecretKey, &esSecret))
+				require.Equal(t, user.AssociatedUserType, esSecret.Labels[commonv1.TypeLabelName])
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+				require.Contains(t, updatedKb.Annotations[updatedKb.EsAssociation().AssociationConfAnnotationName()], `"isServiceAccount":false`)
+			},
+		},
+		{
+			name: "PKI mode (new association): role mapping request written, stale user Secrets cleaned up",
+			kb: func() kbv1.Kibana {
+				kb := sampleKibanaWithESRef()
+				kb.UID = "kb-uid"
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:                sampleESWithMTLSAndPKIVersion(),
+			extraObjs:         []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			esDriverEvaluates: true,
+			beforeEvaluation: func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus, "the request is not evaluated yet")
+			},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)))
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret)))
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Contains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			name: "PKI mode (transition from credentials): user Secrets kept until the request is evaluated, then cleaned up",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.UID = "kb-uid"
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:                sampleESWithMTLSAndPKIVersion(),
+			extraObjs:         []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			esDriverEvaluates: true,
+			beforeEvaluation: func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret), "credentials must be kept until the request is evaluated")
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret), "credentials must be kept until the request is evaluated")
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.NotContains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+			},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)))
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret)))
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Contains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			name: "PKI mode (transition from credentials): realm not running on all nodes keeps the credentials and the association Pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.UID = "kb-uid"
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:                 sampleESWithMTLSAndPKIVersion(),
+			extraObjs:          []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			esDriverEvaluates:  true,
+			pkiRealmNotRunning: true,
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret), "credentials must be kept")
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret), "credentials must be kept")
+				var requestSecret corev1.Secret
+				requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), esNamespace, kbAssociationInfo.AssociationName)
+				require.NoError(t, r.Client.Get(t.Context(), requestKey, &requestSecret))
+				require.NotContains(t, requestSecret.Annotations, rolemapping.PKIEvaluationAnnotation, "the request must not be evaluated")
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.NotContains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			name: "PKI mode (restart replay): annotation already has authSecretName=\"-\", role mapping request re-created, no user Secrets created",
+			kb: func() kbv1.Kibana {
+				kb := sampleKibanaWithESRef()
+				kb.UID = "kb-uid"
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				kb.Annotations = map[string]string{
+					kb.EsAssociation().AssociationConfAnnotationName(): assocConf(
+						commonv1.NoAuthRequiredValue, "", true, "kbname-kb-es-ca",
+						fmt.Sprintf("https://esname-es-http.%s.svc:9200", esNamespace),
+					),
+				}
+				return kb
+			},
+			es:                sampleESWithMTLSAndPKIVersion(),
+			esDriverEvaluates: true,
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				assertPKIRoleMappingRequest(t, r, kb)
+				var secret corev1.Secret
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)), "no ES-side user Secret must be created for PKI")
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret)), "no app-side user Secret must be created for PKI")
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Contains(t, updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], `"authSecretName":"-"`)
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+		{
+			name: "PKI mode: ES version below minimum stays pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:        sampleESWithMTLSAndPKIRealm(), // 7.16.0 < PKIAuthMinVersion
+			extraObjs: []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "requires Elasticsearch 9.6.0 or higher (current: \"7.16.0\")")
+			},
+		},
+		{
+			name: "PKI mode: empty ES status version stays pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es: func() esv1.Elasticsearch {
+				es := sampleESWithMTLSAndPKIRealm()
+				es.Status.Version = ""
+				return es
+			}(),
+			extraObjs: []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "requires Elasticsearch 9.6.0 or higher (current: \"\")")
+			},
+		},
+		{
+			name: "PKI mode: no mTLS stays pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es:        sampleES, // no ClientAuthenticationRequiredAnnotation
+			extraObjs: []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "PKI authentication requires mTLS")
+			},
+		},
+		{
+			name: "PKI mode: PKI realm not enabled on ES stays pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleAssociatedKibana()
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				return kb
+			},
+			es: func() esv1.Elasticsearch {
+				es := sampleESWithMTLSAndPKIVersion()
+				es.Spec.Auth.PKI.Enabled = false
+				return es
+			}(),
+			extraObjs: []client.Object{&kibanaUserInESNamespace, &kibanaUserInKibanaNamespace},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				fakeRec, ok := r.recorder.(*toolsevents.FakeRecorder)
+				require.True(t, ok, "recorder must be a FakeRecorder")
+				event := fetchEvent(fakeRec)
+				require.True(t, strings.HasPrefix(event, corev1.EventTypeWarning), "expected a warning event, got: %q", event)
+				require.Contains(t, event, "spec.auth.pki.enabled")
+			},
+		},
+		{
+			name: "PKI mode: user-provided client certificate without a Subject CN stays pending",
+			kb: func() kbv1.Kibana {
+				kb := sampleKibanaWithESRef()
+				kb.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+				kb.Spec.ElasticsearchRef.ClientCertificateSecretName = "user-client-cert"
+				return kb
+			},
+			es: sampleESWithMTLSAndPKIVersion(),
+			extraObjs: []client.Object{&corev1.Secret{
+				Namespace: kibanaNamespace, Name: "user-client-cert",
+				Data: map[string][]byte{
+					certificates.CertFileName: selfSignedCertForKey(t, cnLessKey, pkix.Name{}),
+					certificates.KeyFileName:  pkcs8KeyPEM(t, cnLessKey),
+				},
+			}},
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "client certificate in Secret kbns/user-client-cert to have a non-empty Subject Common Name")
+				requestKey := PKIRoleMappingRequestKey(kb.EsAssociation(), esNamespace, kbAssociationInfo.AssociationName)
+				require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), requestKey, &corev1.Secret{})), "no role mapping request must be written")
+			},
+		},
+		{
+			name: "PKI mode: conflict in the evaluation of the request causes AssociationPending",
+			kb:   kibanaWithUserProvidedPKICert,
+			es:   sampleESWithMTLSAndPKIVersion(),
+			// Pre-populate the request Secret with an evaluation of the current request. ReconcileSecret uses
+			// additive annotation merge so the annotation is preserved after the association controller updates the
+			// Secret data.
+			extraObjs: append(userProvidedPKICertObjs(), evaluatedRequest(rolemapping.Evaluation{
+				PublicKeyFingerprint: userProvidedPKICertFingerprint,
+				Roles:                "kibana_system",
+				Conflict:             "fingerprint conflict detected",
+			})),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "PKI role mapping conflict: fingerprint conflict detected")
+			},
+		},
+		{
+			name: "PKI mode (transition from credentials): conflict in the evaluation keeps the credentials",
+			kb: func() kbv1.Kibana {
+				kb := kibanaWithUserProvidedPKICert()
+				kb.Annotations = sampleAssociatedKibana().Annotations
+				return kb
+			},
+			es: sampleESWithMTLSAndPKIVersion(),
+			extraObjs: append(userProvidedPKICertObjs(), &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, evaluatedRequest(rolemapping.Evaluation{
+				PublicKeyFingerprint: userProvidedPKICertFingerprint,
+				Roles:                "kibana_system",
+				Conflict:             "fingerprint conflict detected",
+			})),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var secret corev1.Secret
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret), "credentials must be kept")
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kibanaUserInKibanaNamespace), &secret), "credentials must be kept")
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, kb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()],
+					updatedKb.Annotations[kb.EsAssociation().AssociationConfAnnotationName()], "the committed conf must be kept")
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				assertWarningEvent(t, r, "PKI role mapping conflict: fingerprint conflict detected")
+			},
+		},
+		{
+			name: "PKI mode: evaluation of a previous request content keeps the association Pending with a normal event",
+			kb:   kibanaWithUserProvidedPKICert,
+			es:   sampleESWithMTLSAndPKIVersion(),
+			extraObjs: append(userProvidedPKICertObjs(), evaluatedRequest(rolemapping.Evaluation{
+				PublicKeyFingerprint: "previous-fingerprint",
+				Roles:                "kibana_system",
+			})),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationPending, updatedKb.Status.AssociationStatus)
+				fakeRec, ok := r.recorder.(*toolsevents.FakeRecorder)
+				require.True(t, ok, "recorder must be a FakeRecorder")
+				var waiting bool
+				for event := fetchEvent(fakeRec); event != ""; event = fetchEvent(fakeRec) {
+					require.False(t, strings.HasPrefix(event, corev1.EventTypeWarning), "unexpected warning event: %q", event)
+					waiting = waiting || (strings.HasPrefix(event, corev1.EventTypeNormal) &&
+						strings.Contains(event, "Waiting for Elasticsearch "+sampleES.Namespace+"/"+sampleES.Name+" to evaluate the PKI role mapping request"))
+				}
+				require.True(t, waiting, "expected a normal event about waiting for the evaluation")
+			},
+		},
+		{
+			name: "PKI mode: evaluation of the current request without conflict establishes the association",
+			kb:   kibanaWithUserProvidedPKICert,
+			es:   sampleESWithMTLSAndPKIVersion(),
+			extraObjs: append(userProvidedPKICertObjs(), evaluatedRequest(rolemapping.Evaluation{
+				PublicKeyFingerprint: userProvidedPKICertFingerprint,
+				Roles:                "kibana_system",
+			})),
+			assertFn: func(t *testing.T, r Reconciler, kb kbv1.Kibana, _ reconcile.Result) {
+				t.Helper()
+				var updatedKb kbv1.Kibana
+				require.NoError(t, r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&kb), &updatedKb))
+				require.Equal(t, commonv1.AssociationEstablished, updatedKb.Status.AssociationStatus)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kb := tt.kb()
+			es := tt.es
+			objs := append([]client.Object{&kb, &es, &esHTTPPublicCertsSecret, esHTTPService()}, tt.extraObjs...)
+			r := testReconciler(objs...)
+
+			if tt.checkBefore != nil {
+				tt.checkBefore(t, r, kb)
+			}
+
+			result, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+			require.NoError(t, err)
+
+			if tt.esDriverEvaluates {
+				if tt.beforeEvaluation != nil {
+					tt.beforeEvaluation(t, r, kb)
+				}
+				pkiRealmConfigured := es.Spec.Auth.PKI.Enabled && es.Spec.HTTP.TLS.Client.Authentication
+				evaluations, err := filesettings.ReconcilePKIRoleMappings(t.Context(), r.Client, es, pkiRealmConfigured)
+				require.NoError(t, err)
+				if !tt.pkiRealmNotRunning {
+					require.NoError(t, evaluations.Apply(t.Context(), r.Client))
+				}
+				result, err = r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
+				require.NoError(t, err)
+			}
+
+			tt.assertFn(t, r, kb, result)
+		})
+	}
+}
+
 func TestReconciler_ReconcileThenUnbind(t *testing.T) {
 	kb := sampleKibanaWithESRef()
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret, esHTTPService())
@@ -2373,4 +3075,114 @@ func TestReconcileWatches_SameNamespace_WatchRegistered(t *testing.T) {
 
 	assert.Contains(t, r.watches.Secrets.Registrations(), additionalSecretWatchName(agentNSN),
 		"additional-secret watch must be registered even when agent and fleet server share a namespace")
+}
+
+func TestReconciler_deleteStaleAuthRequestSecrets(t *testing.T) {
+	kb := sampleKibanaWithESRef()
+	assoc := kb.EsAssociation()
+	assocLabels := kbAssociationInfo.AssociationResourceLabels(
+		k8s.ExtractNamespacedName(&kb),
+		assoc.AssociationRef().NamespacedName(),
+	)
+
+	// Four representative Secrets, one per deletion path.
+	pkiRequestKey := PKIRoleMappingRequestKey(assoc, esNamespace, kbAssociationInfo.AssociationName)
+	pkiRequest := corev1.Secret{
+		Namespace: pkiRequestKey.Namespace, Name: pkiRequestKey.Name,
+		Labels: maps.Merge(map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType}, assocLabels),
+	}
+
+	saTokenKey := types.NamespacedName{Namespace: esNamespace, Name: "kbns-kbname-es-sa-token"}
+	saToken := corev1.Secret{
+		Namespace: saTokenKey.Namespace, Name: saTokenKey.Name,
+		Labels: maps.Merge(map[string]string{commonv1.TypeLabelName: user.ServiceAccountTokenType}, assocLabels),
+	}
+
+	userESKey := types.NamespacedName{Namespace: esNamespace, Name: "kbns-kbname-es-user"}
+	userES := corev1.Secret{
+		Namespace: userESKey.Namespace, Name: userESKey.Name,
+		Labels: maps.Merge(map[string]string{commonv1.TypeLabelName: user.AssociatedUserType}, assocLabels),
+	}
+
+	// App-side Secret: deleted by name, no special labels needed.
+	userAppKey := types.NamespacedName{Namespace: kibanaNamespace, Name: "kbname-kibana-user"}
+	userApp := corev1.Secret{Namespace: userAppKey.Namespace, Name: userAppKey.Name}
+
+	all := []types.NamespacedName{pkiRequestKey, saTokenKey, userESKey, userAppKey}
+
+	tests := []struct {
+		name        string
+		params      deleteStaleAuthRequestParams
+		wantDeleted []types.NamespacedName
+		wantKept    []types.NamespacedName
+	}{
+		{
+			name:        "PKI only",
+			params:      deleteStaleAuthRequestParams{PKI: true},
+			wantDeleted: []types.NamespacedName{pkiRequestKey},
+			wantKept:    []types.NamespacedName{saTokenKey, userESKey, userAppKey},
+		},
+		{
+			name:        "ServiceAccount only",
+			params:      deleteStaleAuthRequestParams{ServiceAccount: true},
+			wantDeleted: []types.NamespacedName{saTokenKey},
+			wantKept:    []types.NamespacedName{pkiRequestKey, userESKey, userAppKey},
+		},
+		{
+			name:        "UserESSecrets only",
+			params:      deleteStaleAuthRequestParams{UserESSecrets: true},
+			wantDeleted: []types.NamespacedName{userESKey},
+			wantKept:    []types.NamespacedName{pkiRequestKey, saTokenKey, userAppKey},
+		},
+		{
+			name:        "UserAppSecret only",
+			params:      deleteStaleAuthRequestParams{UserAppSecret: true},
+			wantDeleted: []types.NamespacedName{userAppKey},
+			wantKept:    []types.NamespacedName{pkiRequestKey, saTokenKey, userESKey},
+		},
+		{
+			name:        "SA mode: PKI+UserESSecrets, app-side token preserved",
+			params:      deleteStaleAuthRequestParams{PKI: true, UserESSecrets: true},
+			wantDeleted: []types.NamespacedName{pkiRequestKey, userESKey},
+			wantKept:    []types.NamespacedName{saTokenKey, userAppKey},
+		},
+		{
+			name:        "PKI mode: ServiceAccount+UserESSecrets+UserAppSecret",
+			params:      deleteStaleAuthRequestParams{ServiceAccount: true, UserESSecrets: true, UserAppSecret: true},
+			wantDeleted: []types.NamespacedName{saTokenKey, userESKey, userAppKey},
+			wantKept:    []types.NamespacedName{pkiRequestKey},
+		},
+		{
+			name:        "plain credentials: PKI+ServiceAccount",
+			params:      deleteStaleAuthRequestParams{PKI: true, ServiceAccount: true},
+			wantDeleted: []types.NamespacedName{pkiRequestKey, saTokenKey},
+			wantKept:    []types.NamespacedName{userESKey, userAppKey},
+		},
+		{
+			name:        "all flags",
+			params:      deleteStaleAuthRequestParams{PKI: true, ServiceAccount: true, UserESSecrets: true, UserAppSecret: true},
+			wantDeleted: all,
+		},
+		{
+			name:     "no flags",
+			params:   deleteStaleAuthRequestParams{},
+			wantKept: all,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := testReconciler(&kb, &sampleES, &pkiRequest, &saToken, &userES, &userApp)
+			err := r.deleteStaleAuthRequestSecrets(t.Context(), assoc, tt.params)
+			require.NoError(t, err)
+			for _, nsn := range tt.wantDeleted {
+				err := r.Client.Get(t.Context(), nsn, &corev1.Secret{})
+				require.True(t, apierrors.IsNotFound(err), "expected %s to be deleted", nsn)
+			}
+			for _, nsn := range tt.wantKept {
+				err := r.Client.Get(t.Context(), nsn, &corev1.Secret{})
+				require.NoError(t, err, "expected %s to be preserved", nsn)
+			}
+		})
+	}
 }
