@@ -20,7 +20,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/gkampitakis/go-snaps v0.5.23
 	github.com/go-logr/logr v1.4.4
-	github.com/go-test/deep v1.1.1
+	github.com/go-test/deep v1.1.2
 	github.com/gobuffalo/flect v1.0.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.22.1
@@ -46,7 +46,7 @@ require (
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297
-	google.golang.org/api v0.302.0
+	google.golang.org/api v0.304.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
