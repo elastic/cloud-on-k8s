@@ -58,6 +58,17 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return "superuser", nil
 			},
+			SupportsAuthentication: agentSupportsAuthentication,
 		},
 	})
+}
+
+// agentSupportsAuthentication reports whether the Agent supports the given authentication mode towards
+// Elasticsearch. PKI is only supported by standalone Agents: fleet-managed Agents are configured through Fleet.
+func agentSupportsAuthentication(associated commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	if mode == commonv1.AuthenticationModeCredentials {
+		return true
+	}
+	agent, ok := associated.(*agentv1alpha1.Agent)
+	return ok && !agent.Spec.FleetModeEnabled()
 }

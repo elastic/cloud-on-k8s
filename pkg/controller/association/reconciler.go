@@ -6,12 +6,13 @@ package association
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash"
 	"hash/fnv"
 	"reflect"
+	"strings"
 
-	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,14 +27,17 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -132,6 +136,9 @@ type ElasticsearchUserCreation struct {
 	UserSecretSuffix string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
 	ESUserRole func(commonv1.Associated) (string, error)
+	// SupportsAuthentication reports whether the associated resource supports the given authentication mode.
+	// Nil means every mode is supported.
+	SupportsAuthentication func(obj commonv1.Associated, mode commonv1.AuthenticationMode) bool
 }
 
 // AssociationResourceLabels returns all labels required by a resource to allow identifying both its Associated resource
@@ -167,6 +174,18 @@ func (a AssociationInfo) serviceAccountTokenLabelSelector(
 ) client.MatchingLabels {
 	return maps.Merge(
 		map[string]string{commonv1.TypeLabelName: user.ServiceAccountTokenType},
+		a.AssociationResourceLabels(associated, association),
+	)
+}
+
+// pkiRoleMappingRequestLabelSelector returns labels selecting Elasticsearch-side PKI role mapping
+// request Secrets for this association.
+func (a AssociationInfo) pkiRoleMappingRequestLabelSelector(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
+	return maps.Merge(
+		map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType},
 		a.AssociationResourceLabels(associated, association),
 	)
 }
@@ -256,7 +275,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			"name", associatedKey.Name)
 		return results.WithRequeue().Aggregate()
 	} else if err != nil {
-		return defaultRequeue, tracing.CaptureError(ctx, errors.Wrapf(err, "while updating status"))
+		return defaultRequeue, tracing.CaptureError(ctx, fmt.Errorf("while updating status: %w", err))
 	}
 	return results.
 		WithResult(RequeueRbacCheck(r.accessReviewer)).
@@ -362,14 +381,17 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	}
 
 	// Reconcile or clean up client certificate depending on whether client authentication is required.
+	hasClientAuthenticationRequired := annotation.HasClientAuthenticationRequired(referencedObj)
+	var clientCertSecret *certificates.CertificatesSecret
 	var clientCertSecretName string
-	if annotation.HasClientAuthenticationRequired(referencedObj) {
+	if hasClientAuthenticationRequired {
 		var certResults *reconciler.Results
-		clientCertSecretName, certResults = r.reconcileClientCertificate(ctx, association, assocMeta)
+		clientCertSecret, certResults = r.reconcileClientCertificate(ctx, association, assocMeta)
 		results.WithResults(certResults)
 		if certResults.HasError() {
 			return commonv1.AssociationPending, results
 		}
+		clientCertSecretName = clientCertSecret.Name
 	} else {
 		if err := DeleteClientCertSecret(ctx, r.Client, association, r.AssociationName); err != nil {
 			return commonv1.AssociationPending, results.WithError(err)
@@ -416,54 +438,226 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		return status, results.WithError(err)
 	}
 
+	authMode := assocRef.GetAuthenticationMode()
+	ac, assocStatus, staleParams, err := r.reconcileAuth(ctx, association, es, assocMeta, authMode, hasClientAuthenticationRequired, clientCertSecret, ver)
+	if assocStatus != "" || err != nil {
+		return assocStatus, results.WithError(err)
+	}
+	expectedAssocConf.AuthSecretName = ac.secretName
+	expectedAssocConf.AuthSecretKey = ac.secretKey
+	expectedAssocConf.IsServiceAccount = ac.isServiceAccount
+
+	// Delete stale auth artifacts only once the new conf is committed and the association is established.
+	status, err := r.updateAssocConf(ctx, expectedAssocConf, association)
+	if status == commonv1.AssociationEstablished && err == nil {
+		if delErr := r.deleteStaleAuthRequestSecrets(ctx, association, staleParams); delErr != nil {
+			return commonv1.AssociationPending, results.WithError(delErr)
+		}
+	}
+	return status, results.WithError(err)
+}
+
+// authConf holds the authentication fields to be merged into AssociationConf after the auth mode is resolved.
+type authConf struct {
+	secretName       string
+	secretKey        string
+	isServiceAccount bool
+}
+
+// reconcileAuth runs the auth reconciler for the requested mode. It does not delete the Secrets of the other modes:
+// it returns which ones are stale, so the caller can delete them once the new conf is committed. A non-empty status
+// means the caller must stop and return it.
+func (r *Reconciler) reconcileAuth(
+	ctx context.Context,
+	association commonv1.Association,
+	es esv1.Elasticsearch,
+	assocMeta metadata.Metadata,
+	authMode commonv1.AuthenticationMode,
+	hasClientAuthenticationRequired bool,
+	clientCertSecret *certificates.CertificatesSecret,
+	ver string,
+) (authConf, commonv1.AssociationStatus, deleteStaleAuthRequestParams, error) {
+	// r.ElasticsearchUserCreation is non-nil here: the nil guard in reconcileAssociation returns early
+	// for association types that don't require user creation.
+	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
+	if err != nil {
+		return authConf{}, commonv1.AssociationFailed, deleteStaleAuthRequestParams{}, err
+	}
+
+	if r.ElasticsearchUserCreation.SupportsAuthentication != nil &&
+		!r.ElasticsearchUserCreation.SupportsAuthentication(association.Associated(), authMode) {
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"authentication mode %q is not supported for this resource type", authMode)
+		return authConf{}, commonv1.AssociationPending, deleteStaleAuthRequestParams{}, nil
+	}
+
 	serviceAccount, err := association.ElasticServiceAccount()
 	if err != nil {
-		return commonv1.AssociationPending, results.WithError(err)
+		return authConf{}, commonv1.AssociationPending, deleteStaleAuthRequestParams{}, err
 	}
-	// Detect if we should use a service account.
-	var esHints hints.OrchestrationsHints
-	if len(serviceAccount) > 0 {
+	log := ulog.FromContext(ctx)
+	var (
+		ac                 authConf
+		status             commonv1.AssociationStatus
+		staleRequestParams deleteStaleAuthRequestParams
+	)
+	switch {
+	case authMode == commonv1.AuthenticationModePKI:
+		ac, status, err = r.reconcilePKIAuth(ctx, association, es, assocMeta, hasClientAuthenticationRequired, clientCertSecret, ver, userRole)
+		staleRequestParams = deleteStaleAuthRequestParams{ServiceAccount: true, UserESSecrets: true, UserAppSecret: true}
+	case len(serviceAccount) > 0:
 		// We must first ensure that the relevant orchestration hint is set on the Elasticsearch cluster.
-		esHints, err = hints.NewFrom(es)
-		if err != nil {
-			return commonv1.AssociationPending, results.WithError(err)
+		esHints, hintsErr := hints.NewFrom(es)
+		if hintsErr != nil {
+			return authConf{}, commonv1.AssociationPending, deleteStaleAuthRequestParams{}, hintsErr
 		}
 		if !esHints.ServiceAccounts.IsSet() {
 			log.Info("Waiting for Elasticsearch to report if service accounts are fully rolled out")
-			return commonv1.AssociationPending, results
+			return authConf{}, commonv1.AssociationPending, deleteStaleAuthRequestParams{}, nil
 		}
+
+		if esHints.ServiceAccounts.IsTrue() {
+			ac, status, err = r.reconcileServiceAccountAuth(ctx, association, es, assocMeta, serviceAccount)
+			// see deleteStaleAuthRequestParams.UserAppSecret
+			staleRequestParams = deleteStaleAuthRequestParams{PKI: true, UserESSecrets: true}
+		} else {
+			ac, status, err = r.reconcilePlainCredentialsAuth(ctx, association, es, assocMeta, userRole)
+			staleRequestParams = deleteStaleAuthRequestParams{PKI: true, ServiceAccount: true}
+		}
+	default:
+		ac, status, err = r.reconcilePlainCredentialsAuth(ctx, association, es, assocMeta, userRole)
+		staleRequestParams = deleteStaleAuthRequestParams{PKI: true, ServiceAccount: true}
 	}
 
-	// If it is the case, create the related Secrets and update the association configuration on the associated resource.
-	if len(serviceAccount) > 0 && esHints.ServiceAccounts.IsTrue() {
-		applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
-		log.V(1).Info("Ensure service account exists", "sa", serviceAccount)
-		err := ReconcileServiceAccounts(
-			ctx,
-			r.Client,
-			es,
-			assocMeta,
-			applicationSecretName,
-			UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
-			serviceAccount,
-			association.Associated(),
-		)
-		if err != nil {
-			return commonv1.AssociationFailed, results.WithError(err)
-		}
-		expectedAssocConf.AuthSecretName = applicationSecretName.Name
-		expectedAssocConf.AuthSecretKey = "token"
-		expectedAssocConf.IsServiceAccount = true
-		// update the association configuration if necessary
-		status, err := r.updateAssocConf(ctx, expectedAssocConf, association)
-		return status, results.WithError(err)
+	return ac, status, staleRequestParams, err
+}
+
+// reconcilePKIAuth handles PKI mode: validates preconditions, writes the role mapping request, and
+// returns the no-auth sentinel so the component skips credential-based authentication.
+// Note: clientCertSecret must be non-nil when hasClientAuthenticationRequired is true.
+func (r *Reconciler) reconcilePKIAuth(
+	ctx context.Context,
+	association commonv1.Association,
+	es esv1.Elasticsearch,
+	assocMeta metadata.Metadata,
+	hasClientAuthenticationRequired bool,
+	clientCertSecret *certificates.CertificatesSecret,
+	ver string,
+	userRole string,
+) (authConf, commonv1.AssociationStatus, error) {
+	// PKI authentication cannot work without mTLS being enabled on the Elasticsearch cluster.
+	if !hasClientAuthenticationRequired {
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"PKI authentication requires mTLS on the Elasticsearch cluster (spec.http.tls.client.authentication: true)")
+		return authConf{}, commonv1.AssociationPending, nil
 	}
 
-	userRole, err := r.ElasticsearchUserCreation.ESUserRole(association.Associated())
+	// The ECK-managed PKI realm is opt-in on the Elasticsearch side.
+	if !es.Spec.Auth.PKI.Enabled {
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"PKI authentication requires the PKI realm to be enabled on Elasticsearch %s/%s (spec.auth.pki.enabled: true)", es.Namespace, es.Name)
+		return authConf{}, commonv1.AssociationPending, nil
+	}
+
+	// PKI authentication requires PKIAuthMinVersion. An unparseable version, such as the empty status version of a
+	// new cluster, also leaves the association Pending.
+	esVer, _ := version.Parse(ver)
+	if !esVer.GTE(commonv1.PKIAuthMinVersion) {
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"PKI authentication requires Elasticsearch %s or higher (current: %q)", version.WithoutPre(commonv1.PKIAuthMinVersion), ver)
+		return authConf{}, commonv1.AssociationPending, nil
+	}
+
+	clientCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
 	if err != nil {
-		return commonv1.AssociationFailed, results.WithError(err)
+		return authConf{}, commonv1.AssociationPending, fmt.Errorf("failed to parse client certificate: %w", err)
 	}
 
+	// The PKI realm takes the username from the Subject CN (default username_pattern), so authentication fails
+	// without one, for example with SAN-only certificates. Only user-provided certificates can lack a CN: ECK always
+	// sets it.
+	if strings.TrimSpace(clientCert.Subject.CommonName) == "" {
+		certSecretName := association.AssociationRef().GetClientCertificateSecretName()
+		if certSecretName == "" {
+			certSecretName = clientCertSecret.Name
+		}
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"PKI authentication requires the client certificate in Secret %s/%s to have a non-empty Subject Common Name, from which Elasticsearch derives the PKI username",
+			association.GetNamespace(), certSecretName)
+		return authConf{}, commonv1.AssociationPending, nil
+	}
+
+	evaluated, conflictMsg, err := reconcilePKIRoleMappingRequest(ctx, r.Client, association, assocMeta, r.AssociationName, clientCert, userRole, es)
+	if err != nil {
+		return authConf{}, commonv1.AssociationPending, err
+	}
+	// Until the ES driver has evaluated the current request, its role mapping may not be written or applied by
+	// Elasticsearch, or the ECK-managed PKI realm may not run on all the nodes yet. Stay Pending, keeping the committed
+	// conf and its credentials: the driver annotates the request Secret, which triggers a reconciliation through the
+	// request Secret watch.
+	if !evaluated {
+		// The event is Normal: this is expected on every new request or client certificate rotation, and during the
+		// rolling restart that loads the realm.
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeNormal,
+			events.EventAssociationStatusChange, events.EventActionAssociationConfiguration,
+			"Waiting for Elasticsearch %s/%s to evaluate the PKI role mapping request. It is evaluated once Elasticsearch is "+
+				"reachable, the ECK-managed PKI realm runs on all its nodes and the file-based settings holding the role "+
+				"mapping are applied, see the Elasticsearch status and events",
+			es.Namespace, es.Name)
+		return authConf{}, commonv1.AssociationPending, nil
+	}
+	if conflictMsg != "" {
+		k8s.EmitEventf(r.recorder, association.Associated(), corev1.EventTypeWarning,
+			events.EventAssociationError, events.EventActionAssociationConfiguration,
+			"PKI role mapping conflict: %s", conflictMsg)
+		return authConf{}, commonv1.AssociationPending, nil
+	}
+
+	return authConf{secretName: commonv1.NoAuthRequiredValue}, "", nil
+}
+
+// reconcileServiceAccountAuth creates or updates the Elasticsearch service-account token secret.
+// The caller must confirm the SA orchestration hint is set and true before calling.
+func (r *Reconciler) reconcileServiceAccountAuth(
+	ctx context.Context,
+	association commonv1.Association,
+	es esv1.Elasticsearch,
+	assocMeta metadata.Metadata,
+	serviceAccount commonv1.ServiceAccountName,
+) (authConf, commonv1.AssociationStatus, error) {
+	log := ulog.FromContext(ctx)
+
+	applicationSecretName := secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)
+	log.V(1).Info("Ensure service account exists", "sa", serviceAccount)
+	if err := ReconcileServiceAccounts(
+		ctx,
+		r.Client,
+		es,
+		assocMeta,
+		applicationSecretName,
+		UserKey(association, es.Namespace, r.ElasticsearchUserCreation.UserSecretSuffix),
+		serviceAccount,
+		association.Associated(),
+	); err != nil {
+		return authConf{}, commonv1.AssociationFailed, err
+	}
+
+	return authConf{secretName: applicationSecretName.Name, secretKey: ServiceAccountTokenValueField, isServiceAccount: true}, "", nil
+}
+
+// reconcilePlainCredentialsAuth creates or updates the basic-auth user secret for the association.
+func (r *Reconciler) reconcilePlainCredentialsAuth(
+	ctx context.Context,
+	association commonv1.Association,
+	es esv1.Elasticsearch,
+	assocMeta metadata.Metadata,
+	userRole string,
+) (authConf, commonv1.AssociationStatus, error) {
 	if err := reconcileEsUserSecret(
 		ctx,
 		r.Client,
@@ -474,16 +668,10 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 		es,
 		r.Parameters.PasswordGenerator,
 	); err != nil {
-		return commonv1.AssociationPending, results.WithError(err)
+		return authConf{}, commonv1.AssociationPending, err
 	}
-
 	authSecretRef := UserSecretKeySelector(association, r.ElasticsearchUserCreation.UserSecretSuffix)
-	expectedAssocConf.AuthSecretName = authSecretRef.Name
-	expectedAssocConf.AuthSecretKey = authSecretRef.Key
-
-	// update the association configuration if necessary
-	status, err := r.updateAssocConf(ctx, expectedAssocConf, association)
-	return status, results.WithError(err)
+	return authConf{secretName: authSecretRef.Name, secretKey: authSecretRef.Key}, "", nil
 }
 
 // getElasticsearch attempts to retrieve the referenced Elasticsearch resource. If not found, it removes
@@ -512,6 +700,43 @@ func (r *Reconciler) getElasticsearch(
 		return esv1.Elasticsearch{}, commonv1.AssociationFailed, err
 	}
 	return es, "", nil
+}
+
+type deleteStaleAuthRequestParams struct {
+	// PKI deletes the PKI role mapping request Secret in the ES namespace.
+	PKI bool
+	// ServiceAccount deletes the ES-side service-account-token Secrets via label selector.
+	ServiceAccount bool
+	// UserESSecrets deletes ES-side user Secrets via label selector.
+	UserESSecrets bool
+	// UserAppSecret deletes the application-side auth Secret by name.
+	// Must not be set in SA mode: the SA token is stored under the same name.
+	UserAppSecret bool
+}
+
+// deleteStaleAuthRequestSecrets deletes the auth Secrets selected by p.
+func (r *Reconciler) deleteStaleAuthRequestSecrets(ctx context.Context, association commonv1.Association, p deleteStaleAuthRequestParams) error {
+	associated := k8s.ExtractNamespacedName(association)
+	assocRef := association.AssociationRef().NamespacedName()
+	var err error
+	if p.PKI {
+		err = errors.Join(err, k8s.DeleteSecretMatching(ctx, r.Client, r.pkiRoleMappingRequestLabelSelector(associated, assocRef)))
+	}
+	if p.ServiceAccount {
+		err = errors.Join(err, k8s.DeleteSecretMatching(ctx, r.Client, r.serviceAccountTokenLabelSelector(associated, assocRef)))
+	}
+	if p.UserESSecrets {
+		err = errors.Join(err, k8s.DeleteSecretMatching(ctx, r.Client, r.userLabelSelector(associated, assocRef)))
+	}
+	if p.UserAppSecret && r.ElasticsearchUserCreation != nil {
+		err = errors.Join(err, k8s.DeleteSecretIfExists(ctx, r.Client, secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)))
+	}
+	return err
+}
+
+// deleteAllAuthRequestSecrets deletes every auth-related secret for the association regardless of mode.
+func (r *Reconciler) deleteAllAuthRequestSecrets(ctx context.Context, association commonv1.Association) error {
+	return r.deleteStaleAuthRequestSecrets(ctx, association, deleteStaleAuthRequestParams{PKI: true, ServiceAccount: true, UserESSecrets: true, UserAppSecret: true})
 }
 
 // resolveESAndCheckRBAC finds the Elasticsearch reference for the association.
@@ -568,33 +793,8 @@ func (r *Reconciler) deleteAllAssociationSecrets(ctx context.Context, associatio
 
 // Unbind removes the association resources.
 func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Association) error {
-	associated := k8s.ExtractNamespacedName(association)
-	assocRef := association.AssociationRef().NamespacedName()
-
-	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := k8s.DeleteSecretMatching(
-		ctx,
-		r.Client,
-		r.userLabelSelector(associated, assocRef),
-	); err != nil {
+	if err := r.deleteAllAuthRequestSecrets(ctx, association); err != nil {
 		return err
-	}
-
-	// Delete Elasticsearch-side service-account-token secrets. Elasticsearch reads these to validate
-	// bearer tokens, so removing them immediately revokes access on the Elasticsearch side.
-	if err := k8s.DeleteSecretMatching(
-		ctx,
-		r.Client,
-		r.serviceAccountTokenLabelSelector(associated, assocRef),
-	); err != nil {
-		return err
-	}
-
-	// Delete the application-side service-account token secret (lives in the associated resource's namespace).
-	if r.ElasticsearchUserCreation != nil {
-		if err := k8s.DeleteSecretIfExists(ctx, r.Client, secretKey(association, r.ElasticsearchUserCreation.UserSecretSuffix)); err != nil {
-			return err
-		}
 	}
 
 	// Delete all association-labeled secrets in the associated resource's namespace: CA copy,

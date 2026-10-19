@@ -131,9 +131,11 @@ func newElasticsearchConfigFromSpec(ctx context.Context, c k8s.Client, esAssocia
 	}
 
 	tmpOutputCfg := map[string]any{
-		"output.elasticsearch.hosts":    []string{esAssocConf.GetURL()},
-		"output.elasticsearch.username": credentials.Username,
-		"output.elasticsearch.password": credentials.Password,
+		"output.elasticsearch.hosts": []string{esAssocConf.GetURL()},
+	}
+	if !esAssocConf.NoAuthRequired() {
+		tmpOutputCfg["output.elasticsearch.username"] = credentials.Username
+		tmpOutputCfg["output.elasticsearch.password"] = credentials.Password
 	}
 	if esAssocConf.GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}

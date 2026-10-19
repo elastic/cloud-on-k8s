@@ -224,6 +224,54 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "pki-authentication-rejected-on-unsupported-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef.authenticationMode: Invalid value: "PKI": PKI authentication mode requires Elastic Maps Server 9\.6\.0 or higher`,
+			),
+		},
+		{
+			Name:      "pki-authentication-rejected-on-previous-minor-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "9.5.6"
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef.authenticationMode: Invalid value: "PKI": PKI authentication mode requires Elastic Maps Server 9\.6\.0 or higher`,
+			),
+		},
+		{
+			Name:      "pki-authentication-accepted-on-supported-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "9.6.0"
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
 			Name:      "pause-orchestration false",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

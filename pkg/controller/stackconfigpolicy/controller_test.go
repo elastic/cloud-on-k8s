@@ -223,6 +223,29 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Spec:      esv1.ElasticsearchSpec{Version: "8.0.0"},
 	}
 
+	reservedPKIRealmPolicyFixture := policyFixture.DeepCopy()
+	reservedPKIRealmPolicyFixture.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
+		"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+	}}
+
+	// A second policy targeting the same Elasticsearch, with a copy of an ECK-generated PKI role mapping. It is not the
+	// reconciled policy, but its role mappings are merged into the file settings of the Elasticsearch.
+	eckManagedRoleMappingPolicyFixture := policyFixture.DeepCopy()
+	eckManagedRoleMappingPolicyFixture.Name = "eck-managed-role-mapping-policy"
+	eckManagedRoleMappingPolicyFixture.Spec.Weight = 1
+	eckManagedRoleMappingPolicyFixture.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{
+		SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+			commonv1.ECKPKIRoleMappingPrefix + "ns.kb-client-cert": map[string]any{
+				"enabled":  true,
+				"metadata": map[string]any{"managed_by": "eck", "eck_resource_uid": "uid"},
+			},
+		}},
+	}
+	eckManagedRoleMappingPolicyFixture.Spec.Kibana = policyv1alpha1.KibanaConfigPolicySpec{}
+
+	pkiEsFixture := esFixture.DeepCopy()
+	pkiEsFixture.Spec.Auth.PKI.Enabled = true
+
 	clusterStateFileSettingsFixture := func(v int64, err error) esclient.FileSettings {
 		if err != nil {
 			return esclient.FileSettings{
@@ -398,6 +421,65 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
 			},
 			wantErr:          true,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "Reserved PKI realm settings are applied to Elasticsearch without PKI enabled",
+			args: args{
+				client:           k8s.NewFakeClient(reservedPKIRealmPolicyFixture, &esFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.NoError(t, err, "file settings secret should be created by the policy controller")
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "Reserved PKI realm settings are not applied to Elasticsearch with PKI enabled",
+			args: args{
+				client:           k8s.NewFakeClient(reservedPKIRealmPolicyFixture, pkiEsFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.True(t, apierrors.IsNotFound(err), "file settings secret should not be created, got: %v", err)
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Contains(t, policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message,
+					"realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki")
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "ECK-managed role mappings merged from another policy are not written",
+			args: args{
+				client:           k8s.NewFakeClient(&policyFixture, eckManagedRoleMappingPolicyFixture, &esFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.True(t, apierrors.IsNotFound(err), "file settings secret should not be created, got: %v", err)
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Contains(t, policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message,
+					"are reserved for ECK-generated PKI role mappings, remove this metadata")
+			},
+			wantErr:          false,
 			wantRequeueAfter: true,
 		},
 		{

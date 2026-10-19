@@ -374,6 +374,32 @@ func (r *ReconcileStackConfigPolicy) reconcileElasticsearchResources(ctx context
 			return results.WithError(err), status
 		}
 
+		// the merged spec also contains the policies that are not reconciled here, which may be invalid: never write
+		// role mappings that the Elasticsearch controller would remove
+		if errs := policyv1alpha1.CheckNoECKManagedRoleMappings(esConfigPolicyFinal.Spec.SecurityRoleMappings); len(errs) > 0 {
+			err = errs.ToAggregate()
+			log.Info("StackConfigPolicy role mappings clash with ECK-generated PKI role mappings", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
+			k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
+			if err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
+				return results.WithError(err), status
+			}
+			continue
+		}
+
+		// settings under the reserved eck_managed_pki realm or using its order only clash with the realm ECK
+		// generates when PKI is enabled
+		if es.Spec.Auth.PKI.Enabled {
+			if errs := policyv1alpha1.CheckReservedPKIRealmInConfig(esConfigPolicyFinal.Spec.Config); len(errs) > 0 {
+				err = errs.ToAggregate()
+				log.Info("StackConfigPolicy config clashes with the ECK-managed PKI realm", "es_namespace", es.Namespace, "es_name", es.Name, "error", err)
+				k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, err.Error())
+				if err = status.AddPolicyErrorFor(esNsn, policyv1alpha1.ErrorPhase, err.Error(), policyv1alpha1.ElasticsearchResourceType); err != nil {
+					return results.WithError(err), status
+				}
+				continue
+			}
+		}
+
 		// extract the metadata that should be propagated to children
 		meta := metadata.Propagate(&es, metadata.Metadata{Labels: eslabel.NewLabels(k8s.ExtractNamespacedName(&es))})
 		// Recompute expected settings secret on each retry attempt using the latest
@@ -906,12 +932,7 @@ func (r *ReconcileStackConfigPolicy) getClusterStateFileSettings(ctx context.Con
 	}
 	defer esClient.Close()
 
-	clusterState, err := esClient.GetClusterState(ctx)
-	if err != nil {
-		return esclient.FileSettings{}, err
-	}
-
-	return clusterState.Metadata.ReservedState.FileSettings, nil
+	return esclient.GetFileSettings(ctx, esClient)
 }
 
 func (r *ReconcileStackConfigPolicy) addDynamicWatchesOnAdditionalSecretMounts(policy policyv1alpha1.StackConfigPolicy) error {

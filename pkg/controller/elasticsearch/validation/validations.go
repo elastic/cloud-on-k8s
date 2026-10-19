@@ -97,6 +97,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validClientAuthentication(ctx, proposed, checker)
 		},
+		validPKIRealm,
 		func(es esv1.Elasticsearch) field.ErrorList { return commonv1.CheckPauseOrchestrationAnnotation(&es) },
 	}
 }
@@ -610,6 +611,31 @@ func validateRestartTriggerWarnings(ctx context.Context, k8sClient k8s.Client, o
 	}
 
 	return ""
+}
+
+// validPKIRealm checks that the ECK-managed PKI realm is only enabled together with
+// spec.http.tls.client.authentication on an Elasticsearch version that supports PKI authentication.
+func validPKIRealm(es esv1.Elasticsearch) field.ErrorList {
+	if !es.Spec.Auth.PKI.Enabled {
+		return nil
+	}
+	path := field.NewPath("spec").Child("auth", "pki", "enabled")
+	var errs field.ErrorList
+	if !es.Spec.HTTP.TLS.Client.Authentication {
+		errs = append(errs, field.Invalid(path, true, "PKI realm requires spec.http.tls.client.authentication to be enabled"))
+	}
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		// an unparseable version is reported by supportedVersion
+		return errs
+	}
+	if ver.LT(commonv1.PKIAuthMinVersion) {
+		errs = append(errs, field.Invalid(path, true, fmt.Sprintf(
+			"minimum required version for the PKI realm is %s but desired version is %s",
+			version.WithoutPre(commonv1.PKIAuthMinVersion), es.Spec.Version,
+		)))
+	}
+	return errs
 }
 
 // validClientAuthentication checks that client certificate authentication is only enabled with an enterprise license.

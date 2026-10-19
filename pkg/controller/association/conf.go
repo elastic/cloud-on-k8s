@@ -82,7 +82,7 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 	if err != nil {
 		return Credentials{}, err
 	}
-	if !assocConf.AuthIsConfigured() {
+	if !assocConf.AuthIsConfigured() || assocConf.NoAuthRequired() {
 		return Credentials{}, nil
 	}
 	if assocConf.IsAPIKey && !assoc.SupportsAuthAPIKey() {

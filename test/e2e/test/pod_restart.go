@@ -11,6 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // PodRestartChecker records pod UIDs at a point in time and later verifies that all of them have
@@ -60,6 +62,21 @@ func (c *PodRestartChecker) RecordUIDs(k *K8sClient) StepList {
 			}),
 		},
 	}
+}
+
+// ReadyPodsNotRestarted returns the names of the previously recorded pods that still exist and are Ready.
+func (c *PodRestartChecker) ReadyPodsNotRestarted(ctx context.Context, k *K8sClient) ([]string, error) {
+	var pods corev1.PodList
+	if err := k.Client.List(ctx, &pods, c.listOpts...); err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, pod := range pods.Items {
+		if _, ok := c.prevUIDs[pod.UID]; ok && k8s.IsPodReady(pod) {
+			names = append(names, pod.Name)
+		}
+	}
+	return names, nil
 }
 
 // WaitForRestart returns a step that polls until all previously recorded pods have been replaced

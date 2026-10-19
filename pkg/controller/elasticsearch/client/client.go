@@ -133,6 +133,16 @@ func Timeout(ctx context.Context, es esv1.Elasticsearch) time.Duration {
 	return annotation.ExtractTimeout(ctx, es.ObjectMeta, ESClientTimeoutAnnotation, DefaultESClientTimeout)
 }
 
+// GetFileSettings returns the file-based settings currently configured in Elasticsearch, as reported by the
+// /_cluster/state API.
+func GetFileSettings(ctx context.Context, c Client) (FileSettings, error) {
+	clusterState, err := c.GetClusterState(ctx)
+	if err != nil {
+		return FileSettings{}, err
+	}
+	return clusterState.Metadata.ReservedState.FileSettings, nil
+}
+
 func formatAsSeconds(d time.Duration) string {
 	return fmt.Sprintf("%.0fs", math.Round(d.Seconds()))
 }

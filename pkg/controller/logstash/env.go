@@ -39,16 +39,18 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 		normalizedClusterName := normalize(clusterName)
 
 		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_HOSTS", assocConf.GetURL()))
-		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USER", credentials.Username))
-		envs = append(envs, corev1.EnvVar{
-			Name: normalizedClusterName + "_ES_PASSWORD",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Name: assocConf.AuthSecretName,
-					Key:  assocConf.AuthSecretKey,
+		if !assocConf.NoAuthRequired() {
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USER", credentials.Username))
+			envs = append(envs, corev1.EnvVar{
+				Name: normalizedClusterName + "_ES_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Name: assocConf.AuthSecretName,
+						Key:  assocConf.AuthSecretKey,
+					},
 				},
-			},
-		})
+			})
+		}
 
 		if assocConf.GetCACertProvided() {
 			caPath := filepath.Join(volume.CertificatesDir(assoc), certificates.CAFileName)

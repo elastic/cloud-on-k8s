@@ -292,3 +292,58 @@ func Test_buildOutputConfig_withClientCert(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(expectedBytes), string(gotBytes))
 }
+
+func Test_buildOutputConfig_withPKIAuth(t *testing.T) {
+	agent := &agentv1alpha1.Agent{
+		Name:      "agent",
+		Namespace: "ns",
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					Name:               "es",
+					Namespace:          "es-ns",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+					OutputName:         "default",
+				},
+			},
+		},
+	}
+
+	assoc := agent.GetAssociations()[0]
+	assoc.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       commonv1.NoAuthRequiredValue,
+		URL:                  "https://es:9200",
+		CACertProvided:       true,
+		CASecretName:         "ca-secret",
+		ClientCertSecretName: "es-client-cert",
+	})
+
+	params := Params{
+		Context: context.Background(),
+		Agent:   *agent,
+		Client:  k8s.NewFakeClient(),
+	}
+
+	got, err := buildOutputConfig(params)
+	require.NoError(t, err)
+
+	expectedClientCertDir := "/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs"
+	expectedCfg, err := settings.NewCanonicalConfigFrom(map[string]any{
+		"outputs": map[string]any{
+			"default": map[string]any{
+				"type":                        "elasticsearch",
+				"hosts":                       []string{"https://es:9200"},
+				"ssl.certificate_authorities": []string{"/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt"},
+				"ssl.certificate":             path.Join(expectedClientCertDir, certificates.CertFileName),
+				"ssl.key":                     path.Join(expectedClientCertDir, certificates.KeyFileName),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	expectedBytes, err := expectedCfg.Render()
+	require.NoError(t, err)
+	gotBytes, err := got.Render()
+	require.NoError(t, err)
+	require.Equal(t, string(expectedBytes), string(gotBytes))
+}

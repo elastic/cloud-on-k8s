@@ -14,6 +14,7 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -62,6 +63,21 @@ func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return MapsSystemUserBuiltinRole, nil
 			},
+			SupportsAuthentication: mapsSupportsAuthentication,
 		},
 	})
+}
+
+// mapsSupportsAuthentication reports whether Elastic Maps Server supports the given authentication mode towards
+// Elasticsearch. PKI requires an Elastic Maps Server version that can authenticate with a client certificate only.
+func mapsSupportsAuthentication(associated commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	if mode == commonv1.AuthenticationModeCredentials {
+		return true
+	}
+	ems, ok := associated.(*emsv1alpha1.ElasticMapsServer)
+	if !ok {
+		return false
+	}
+	v, err := version.Parse(ems.Spec.Version)
+	return err == nil && v.GTE(commonv1.PKIAuthMinVersion)
 }
