@@ -199,31 +199,36 @@ func sortCandidates(allPods []corev1.Pod) {
 // * Because of the design of Zen2 there's nothing else to do for it.
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
-	if masterScaleDown {
-		// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
-		// from the voting: it is not part of the voting configuration. The downscale excludes it once it is removed. A
-		// master that stays and loses its role is excluded even if it is not a member right now, as a master that joined
-		// earlier and is offline may still be in the voting configuration.
-		if ctx.leavingPods.Has(pod.Name) {
-			members, err := membersAmong(ctx.esState, []string{pod.Name})
-			if err != nil {
-				return err
-			}
-			if !members.Has(pod.Name) {
-				return nil
-			}
-		}
-		// Update zen2 settings to exclude leaving master nodes from voting.
-		if err := zen2.AddToVotingConfigExclusions(
-			ctx.parentCtx,
-			ctx.esClient,
-			ctx.ES,
-			[]string{pod.Name},
-		); err != nil {
-			return err
-		}
+	if !masterScaleDown {
+		return nil
 	}
-	return nil
+	// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
+	// from the voting: it is not part of the voting configuration. The downscale excludes it once it is removed. A
+	// master that stays and loses its role is excluded even if it is not a member right now, as a master that joined
+	// earlier and is offline may still be in the voting configuration.
+	nonMember, err := ctx.isLeavingNonMember(pod.Name)
+	if err != nil || nonMember {
+		return err
+	}
+	// Update zen2 settings to exclude leaving master nodes from voting.
+	return zen2.AddToVotingConfigExclusions(
+		ctx.parentCtx,
+		ctx.esClient,
+		ctx.ES,
+		[]string{pod.Name},
+	)
+}
+
+// isLeavingNonMember returns true if the given Pod is leaving and is not a member of the cluster.
+func (ctx *upgradeCtx) isLeavingNonMember(podName string) (bool, error) {
+	if !ctx.leavingPods.Has(podName) {
+		return false, nil
+	}
+	members, err := membersAmong(ctx.esState, []string{podName})
+	if err != nil {
+		return false, err
+	}
+	return !members.Has(podName), nil
 }
 
 func deletePod(

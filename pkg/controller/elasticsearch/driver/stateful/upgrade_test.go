@@ -624,7 +624,8 @@ func Test_Driver_handleUpgrades_masterNotInCluster(t *testing.T) {
 				nodes:   nodes,
 				health:  esclient.Health{Status: esv1.ElasticsearchGreenHealth},
 			}
-			objects := []client.Object{&es}
+			objects := make([]client.Object, 0, 1+len(actualSsets)+len(pods))
+			objects = append(objects, &es)
 			for i := range actualSsets {
 				objects = append(objects, &actualSsets[i])
 			}
