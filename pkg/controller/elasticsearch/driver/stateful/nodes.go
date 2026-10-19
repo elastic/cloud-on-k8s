@@ -165,9 +165,18 @@ func (d *Driver) reconcileNodeSpecs(
 	esState := NewMemoizingESState(ctx, esClient)
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it. Only the leaving Pods that are draining are
 	// protected, the others may need it to recover.
-	leaving, stop, err := d.maybeForceUpgradeWithShutdowns(ctx, esReachable, esClient, esState, reconcileState, actualStatefulSets, desiredLeaving)
-	if stop {
+	leaving, leavingErr := d.prepareLeavingNodes(ctx, esReachable, esClient, esState, reconcileState, desiredLeaving)
+	// the leaving error is only returned after the forced upgrade, which must not wait for the nodes to be retrieved
+	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, leaving)
+	if err != nil || attempted {
+		// If attempted, we're in a transient state where it's safer to requeue.
+		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
+		// Next reconciliation will check expectations again.
+		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
 		return results.WithError(err)
+	}
+	if leavingErr != nil {
+		return results.WithError(leavingErr)
 	}
 
 	// Next operations require the Elasticsearch API to be available.
@@ -252,24 +261,22 @@ func (d *Driver) reconcileNodeSpecs(
 	return results
 }
 
-// maybeForceUpgradeWithShutdowns creates the shutdown interface and the leavingNodes of the given desired leaving Pods
-// used by the next phases, and may attempt a forced upgrade, see MaybeForceUpgrade. The shutdown interface is dependent
-// on Elasticsearch version. It requires Elasticsearch to be reachable, and the nodes and their shutdowns to be
-// retrieved: otherwise the forced upgrade relies on the shutdowns reported in the downscale status. It returns true if
-// the reconciliation must stop, with the error that stopped it if any.
-func (d *Driver) maybeForceUpgradeWithShutdowns(
+// prepareLeavingNodes creates the shutdown interface and the leavingNodes of the given desired leaving Pods used by the
+// next phases. The shutdown interface is dependent on Elasticsearch version. It requires Elasticsearch to be reachable,
+// and the nodes and their shutdowns to be retrieved: otherwise the returned leavingNodes have no shutdown interface, so
+// that the forced upgrade relies on the shutdowns reported in the downscale status, and the error that prevented it is
+// returned along with them. The leavingNodes are always returned.
+func (d *Driver) prepareLeavingNodes(
 	ctx context.Context,
 	esReachable bool,
 	esClient esclient.Client,
 	esState ESState,
 	reconcileState *reconcile.State,
-	actualStatefulSets es_sset.StatefulSetList,
 	desiredLeaving set.StringSet,
-) (*leavingNodes, bool, error) {
+) (*leavingNodes, error) {
 	var nodeShutdowns shutdown.Interface
 	var nodeShutdownsErr error
 	if esReachable {
-		// the error is only returned after the forced upgrade, which must not wait for the nodes to be retrieved
 		nodeShutdowns, nodeShutdownsErr = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
 	}
 	if nodeShutdowns != nil && desiredLeaving.Count() > 0 {
@@ -279,20 +286,7 @@ func (d *Driver) maybeForceUpgradeWithShutdowns(
 			nodeShutdowns, nodeShutdownsErr = nil, err
 		}
 	}
-
-	leaving := newLeavingNodes(desiredLeaving, esState, nodeShutdowns, d.ES.Status.DownscaleOperation)
-	attempted, err := d.MaybeForceUpgrade(ctx, actualStatefulSets, leaving)
-	if err != nil || attempted {
-		// If attempted, we're in a transient state where it's safer to requeue.
-		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
-		// Next reconciliation will check expectations again.
-		reconcileState.UpdateWithPhase(esv1.ElasticsearchApplyingChangesPhase)
-		return nil, true, err
-	}
-	if nodeShutdownsErr != nil {
-		return nil, true, nodeShutdownsErr
-	}
-	return leaving, false, nil
+	return newLeavingNodes(desiredLeaving, esState, nodeShutdowns, d.ES.Status.DownscaleOperation), nodeShutdownsErr
 }
 
 func (d *Driver) isNodeSpecsReconciled(ctx context.Context, actualStatefulSets es_sset.StatefulSetList, client k8s.Client, result *reconciler.Results, leaving *leavingNodes) bool {
