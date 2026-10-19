@@ -20,8 +20,9 @@ import (
 type DeploymentHealth string
 
 const (
-	GreenHealth DeploymentHealth = "green"
-	RedHealth   DeploymentHealth = "red"
+	GreenHealth  DeploymentHealth = "green"
+	RedHealth    DeploymentHealth = "red"
+	YellowHealth DeploymentHealth = "yellow"
 
 	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
 	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,

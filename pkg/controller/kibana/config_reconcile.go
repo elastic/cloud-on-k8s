@@ -27,12 +27,16 @@ const (
 )
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
-// This managed secret is mounted into each pod of the Kibana deployment.
+// secretName is the name of the Secret to write; callers pass kbv1.ConfigSecret(kb.Name) for the
+// UI/single pool and kbv1.BackgroundTasksConfigSecret(kb.Name) for the background tasks pool.
+// keepTelemetry preserves the telemetry data; callers set it when writing the base (UI) secret.
 func ReconcileConfigSecret(
 	ctx context.Context,
 	client k8s.Client,
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
+	secretName string,
+	keepTelemetry bool,
 	meta metadata.Metadata,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
@@ -43,22 +47,23 @@ func ReconcileConfigSecret(
 		return err
 	}
 
-	telemetryYamlBytes, err := getTelemetryYamlBytes(client, kb)
-	if err != nil {
-		return err
-	}
-
 	data := map[string][]byte{
 		SettingsFilename: settingsYamlBytes,
 	}
 
-	if telemetryYamlBytes != nil {
-		data[TelemetryFilename] = telemetryYamlBytes
+	if keepTelemetry {
+		telemetryYamlBytes, err := getTelemetryYamlBytes(client, kb)
+		if err != nil {
+			return err
+		}
+		if telemetryYamlBytes != nil {
+			data[TelemetryFilename] = telemetryYamlBytes
+		}
 	}
 
 	expected := corev1.Secret{
 		Namespace:   kb.Namespace,
-		Name:        kbv1.ConfigSecret(kb.Name),
+		Name:        secretName,
 		Labels:      maps.Clone(meta.Labels),
 		Annotations: meta.Annotations,
 		Data:        data,
