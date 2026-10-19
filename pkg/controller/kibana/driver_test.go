@@ -76,6 +76,18 @@ func Test_getStrategyType(t *testing.T) {
 		return objects
 	}
 
+	// withPhase sets the phase of the given pods, e.g. to mark them as terminated.
+	withPhase := func(objects []client.Object, phase corev1.PodPhase) []client.Object {
+		for _, object := range objects {
+			pod, ok := object.(*corev1.Pod)
+			if !ok {
+				t.FailNow()
+			}
+			pod.Status.Phase = phase
+		}
+		return objects
+	}
+
 	tests := []struct {
 		name            string
 		expectedKbName  string
@@ -159,6 +171,33 @@ func Test_getStrategyType(t *testing.T) {
 			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
 			initialObjects:  clearVersionLabels(getPods("test", 3, "8.5.0")),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch only on terminated pods (Succeeded): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(getPods("test", 1, "8.4.0"), corev1.PodSucceeded)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version label missing only on terminated pods (Failed): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(clearVersionLabels(getPods("test", 1, "8.4.0")), corev1.PodFailed)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch on a running pod next to terminated ones: Recreate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(withPhase(getPods("test", 2, "8.5.0"), corev1.PodSucceeded), getPods("test", 1, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,

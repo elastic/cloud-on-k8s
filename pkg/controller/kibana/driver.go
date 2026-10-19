@@ -327,14 +327,12 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 		return "", err
 	}
 
-	for _, pod := range pods.Items {
-		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
-		// if label is missing we assume that the last reconciliation was done by previous version of the operator
-		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
-		// otherwise we may run into data corruption/data loss.
-		if !ok || ver != kb.Spec.Version {
-			return appsv1.RecreateDeploymentStrategyType, nil
-		}
+	// If the version label is missing we assume that the last reconciliation was done by a previous version of
+	// the operator. To be safe, we assume the Kibana version has changed while the operator was offline and use
+	// Recreate, otherwise we may run into data corruption/data loss.
+	// Terminated pods are ignored, as in the upgrade drain (outdatedPodsForUpgrade): they do not run Kibana anymore.
+	if len(outdatedPodsForUpgrade(kb, pods.Items)) > 0 {
+		return appsv1.RecreateDeploymentStrategyType, nil
 	}
 
 	return appsv1.RollingUpdateDeploymentStrategyType, nil

@@ -403,7 +403,7 @@ func allPodsHaveRoleLabel(ctx context.Context, c k8s.Client, dep *appsv1.Deploym
 		return false, "", err
 	}
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+		if isTerminated(pod) {
 			continue
 		}
 		if _, ok := pod.Labels[kblabel.RoleLabelName]; !ok {
@@ -525,12 +525,19 @@ func shouldScaleAllPoolsToZeroForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) boo
 	return len(outdatedPodsForUpgrade(kb, pods)) > 0
 }
 
+// isTerminated returns true when the pod has reached a terminal phase: it does not run Kibana anymore and
+// is only waiting to be garbage collected.
+func isTerminated(pod corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded
+}
+
 // outdatedPodsForUpgrade returns the names of the pods that are not terminated and do not carry
-// the version label matching kb.Spec.Version. These are the pods the upgrade drain waits for.
+// the version label matching kb.Spec.Version. These are the pods the upgrade drain waits for, and
+// the ones that make the Deployment strategy Recreate (getStrategyType).
 func outdatedPodsForUpgrade(kb *kbv1.Kibana, pods []corev1.Pod) []string {
 	var outdated []string
 	for _, pod := range pods {
-		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+		if isTerminated(pod) {
 			continue
 		}
 		ver, ok := pod.Labels[kblabel.KibanaVersionLabelName]
