@@ -616,7 +616,7 @@ func ReconcilePoolDeployment(
 			Annotations: func(reconciled, expected map[string]string) map[string]string {
 				merged := umaps.Merge(reconciled, expected)
 
-				// Do not merge ECK owned annotations.
+				// Drop the prev-replicas annotation once it is no longer expected, umaps.Merge would keep it forever.
 				if _, exists := expected[replicasAnnotationName]; !exists {
 					delete(merged, replicasAnnotationName)
 				}
