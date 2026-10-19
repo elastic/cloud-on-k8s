@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	umaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 type poolParameters struct {
@@ -162,7 +163,7 @@ func (d *driver) reconcilePoolDeployment(
 	poolParams poolParameters,
 	podAnnotations map[string]string,
 	meta metadata.Metadata,
-	reconciledSecrets map[string]struct{},
+	reconciledSecrets set.StringSet,
 ) (poolDeploymentResult, *appsv1.Deployment, error) {
 	var existingDeployment appsv1.Deployment
 	var existingSelector map[string]string
@@ -185,7 +186,7 @@ func (d *driver) reconcilePoolDeployment(
 	}
 
 	// reconcile pool secret, unless it was already written earlier in this reconciliation pass
-	if _, exists := reconciledSecrets[poolParams.SecretName]; !exists {
+	if !reconciledSecrets.Has(poolParams.SecretName) {
 		// Telemetry is only preserved in the base config secret, which this pool writes
 		// unless it is a background pool with its own config overlay.
 		keepTelemetry := poolParams.SecretName == kbv1.ConfigSecret(kb.Name)
@@ -193,7 +194,7 @@ func (d *driver) reconcilePoolDeployment(
 		if err != nil {
 			return "", nil, err
 		}
-		reconciledSecrets[poolParams.SecretName] = struct{}{}
+		reconciledSecrets.Add(poolParams.SecretName)
 	}
 
 	// Determine replica count for this pool.

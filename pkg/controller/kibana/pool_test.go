@@ -843,7 +843,7 @@ func TestHandleSelectorChange(t *testing.T) {
 
 	legacyDp := func(revisionHistoryLimit *int32) *appsv1.Deployment {
 		return &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-kb", Namespace: "default"},
+			Name: "test-kb", Namespace: "default",
 			Spec: appsv1.DeploymentSpec{
 				Selector:             &metav1.LabelSelector{MatchLabels: legacySelector},
 				RevisionHistoryLimit: revisionHistoryLimit,
@@ -860,8 +860,8 @@ func TestHandleSelectorChange(t *testing.T) {
 	terminatingDp.Finalizers = []string{metav1.FinalizerOrphanDependents}
 	terminatingDp.DeletionTimestamp = new(metav1.Now())
 
-	labeledPod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "labeled", Namespace: "default", Labels: roleSelector}}
-	unlabeledPod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "unlabeled", Namespace: "default", Labels: legacySelector}}
+	labeledPod := &corev1.Pod{Name: "labeled", Namespace: "default", Labels: roleSelector}
+	unlabeledPod := &corev1.Pod{Name: "unlabeled", Namespace: "default", Labels: legacySelector}
 
 	kbFor := func(paused bool) *kbv1.Kibana {
 		kb := kbWithBG(nil, nil)
