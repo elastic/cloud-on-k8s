@@ -48,10 +48,7 @@ const (
 // scheduled. The readiness probe makes the leaving nodes not ready as soon as their remove-type shutdown is registered,
 // which must not make the downscale use up its budget and cancel the shutdowns it is waiting for.
 func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
-	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
-	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
-		t.SkipNow()
-	}
+	skipBeforeReadinessPort(t)
 
 	ctx := t.Context()
 	k := test.NewK8sClientOrFatal()
@@ -92,19 +89,12 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
-		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the new data nodes", pinnedIndexSettings)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, pinnedIndex, "the new data nodes", pinnedIndexSettings)).
 		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
 		WithSteps(leavingPods.RecordUIDs(k)).
 		WithSteps(renamedWithPending.UpgradeTestSteps(k)).
 		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, leavingNodes, leavingPods)).
-		WithStep(test.Step{
-			Name: "Allow the index to be migrated to the new data nodes",
-			Test: test.Eventually(func() error {
-				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
-					[]byte(`{"index.routing.allocation.exclude._name": null}`))
-				return err
-			}),
-		}).
+		WithStep(unpinIndexStep(ctx, &esClient, pinnedIndex, "the new data nodes", "exclude._name")).
 		WithStep(test.Step{
 			Name: "Leaving nodes should be removed while the pending Pod is still not ready",
 			// the removal must not wait for the pending Pod: stop retrying as soon as it is ready
@@ -133,10 +123,7 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 // be scheduled. The not ready Pods use up the budget, but the draining master is the only unavailable master, so its
 // removal does not consume the budget: it must be removed once drained, without waiting for the other Pod to be ready.
 func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
-	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
-	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
-		t.SkipNow()
-	}
+	skipBeforeReadinessPort(t)
 
 	ctx := t.Context()
 	k := test.NewK8sClientOrFatal()
@@ -171,19 +158,12 @@ func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
-		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the remaining master nodes", pinnedIndexSettings)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, pinnedIndex, "the remaining master nodes", pinnedIndexSettings)).
 		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
 		WithSteps(masterPods.RecordUIDs(k)).
 		WithSteps(downscaledWithPending.UpgradeTestSteps(k)).
 		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, []string{leavingNode}, masterPods)).
-		WithStep(test.Step{
-			Name: "Allow the index to be migrated to the remaining master nodes",
-			Test: test.Eventually(func() error {
-				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
-					[]byte(`{"index.routing.allocation.require._name": null}`))
-				return err
-			}),
-		}).
+		WithStep(unpinIndexStep(ctx, &esClient, pinnedIndex, "the remaining master nodes", "require._name")).
 		WithStep(test.Step{
 			Name: "Leaving master should be removed while the pending Pod is still not ready",
 			// the removal must not wait for the pending Pod: stop retrying as soon as it is ready
@@ -212,10 +192,7 @@ func TestDownscaleRemovesDrainingMasterWhileAnotherPodIsNotReady(t *testing.T) {
 // unavailable masters: its removal consumes the budget, which the new master uses up, so it must be held with its
 // shutdown until the new master is ready.
 func TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady(t *testing.T) {
-	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
-	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
-		t.SkipNow()
-	}
+	skipBeforeReadinessPort(t)
 
 	ctx := t.Context()
 	k := test.NewK8sClientOrFatal()
@@ -249,19 +226,12 @@ func TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady(t *testing.T) 
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
-		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the remaining master nodes", pinnedIndexSettings)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, pinnedIndex, "the remaining master nodes", pinnedIndexSettings)).
 		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
 		WithSteps(masterPods.RecordUIDs(k)).
 		WithSteps(downscaledWithPending.UpgradeTestSteps(k)).
 		WithSteps(shutdownsKeptSteps(ctx, k, initial, &esClient, []string{leavingNode}, masterPods)).
-		WithStep(test.Step{
-			Name: "Allow the index to be migrated to the remaining master nodes",
-			Test: test.Eventually(func() error {
-				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
-					[]byte(`{"index.routing.allocation.require._name": null}`))
-				return err
-			}),
-		}).
+		WithStep(unpinIndexStep(ctx, &esClient, pinnedIndex, "the remaining master nodes", "require._name")).
 		WithStep(test.Step{
 			Name: "Leaving master should have a complete remove-type shutdown",
 			Test: test.Eventually(func() error {
@@ -296,10 +266,7 @@ func TestDownscaleHoldsDrainingMasterWhileAnotherMasterIsNotReady(t *testing.T) 
 // leaving nodes are not ready makes this order deterministic, rather than depending on whether the operator selects the
 // staying node before the readiness probes fail.
 func TestDownscaleDuringRollingUpgrade(t *testing.T) {
-	// nodes with a registered shutdown are only reported not ready by the readiness port, used after 8.2.0
-	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
-		t.SkipNow()
-	}
+	skipBeforeReadinessPort(t)
 
 	ctx := t.Context()
 	k := test.NewK8sClientOrFatal()
@@ -339,7 +306,7 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
-		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, "the staying data node", pinnedIndexSettings)).
+		WithStep(createPinnedIndexStep(ctx, k, initial, &esClient, pinnedIndex, "the staying data node", pinnedIndexSettings)).
 		WithStep(elasticsearch.CheckClusterHealth(initial, k)).
 		WithSteps(leavingPods.RecordUIDs(k)).
 		WithSteps(stayingDataPod.RecordUIDs(k)).
@@ -351,14 +318,7 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 		// the operator reconciles the pod template change while the leaving nodes drain, which must not restart them nor
 		// cancel their shutdowns
 		WithSteps(shutdownsKeptSteps(ctx, k, mutated, &esClient, leavingNodes, leavingPods)).
-		WithStep(test.Step{
-			Name: "Allow the index to be migrated to the staying data node",
-			Test: test.Eventually(func() error {
-				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+pinnedIndex+"/_settings",
-					[]byte(`{"index.routing.allocation.require._name": null}`))
-				return err
-			}),
-		}).
+		WithStep(unpinIndexStep(ctx, &esClient, pinnedIndex, "the staying data node", "require._name")).
 		// once the leaving nodes are removed, the staying data node is the only one of its tier and can be upgraded
 		WithSteps(stayingDataPod.WaitForRestart(k)).
 		WithSteps(masterPod.WaitForRestart(k)).
@@ -489,9 +449,9 @@ func pendingNodeSets(name string, config map[string]any) (pending esv1.NodeSet, 
 	return pending, fixed
 }
 
-// createPinnedIndexStep returns a step that creates the pinned index with the given settings, which must prevent its
+// createPinnedIndexStep returns a step that creates the given index with the given settings, which must prevent its
 // shards from being migrated to the given nodes. It also initializes the given Elasticsearch client.
-func createPinnedIndexStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder, esClient *esclient.Client, nodes, settings string) test.Step {
+func createPinnedIndexStep(ctx context.Context, k *test.K8sClient, b elasticsearch.Builder, esClient *esclient.Client, index, nodes, settings string) test.Step {
 	return test.Step{
 		Name: "Create an index that cannot be migrated to " + nodes,
 		Test: test.Eventually(func() error {
@@ -500,12 +460,34 @@ func createPinnedIndexStep(ctx context.Context, k *test.K8sClient, b elasticsear
 				return err
 			}
 			// the index may already exist if a previous attempt only failed to read the response
-			if _, err := elasticsearch.DoRequest(ctx, *esClient, http.MethodGet, "/"+pinnedIndex, nil); err == nil {
+			if _, err := elasticsearch.DoRequest(ctx, *esClient, http.MethodGet, "/"+index, nil); err == nil {
 				return nil
 			}
-			_, err = elasticsearch.DoRequest(ctx, *esClient, http.MethodPut, "/"+pinnedIndex, []byte(settings))
+			_, err = elasticsearch.DoRequest(ctx, *esClient, http.MethodPut, "/"+index, []byte(settings))
 			return err
 		}),
+	}
+}
+
+// unpinIndexStep returns a step that clears the given allocation setting of the given index, so that its shards can be
+// migrated to the given nodes.
+func unpinIndexStep(ctx context.Context, esClient *esclient.Client, index, nodes, setting string) test.Step {
+	return test.Step{
+		Name: "Allow the index to be migrated to " + nodes,
+		Test: test.Eventually(func() error {
+			_, err := elasticsearch.DoRequest(ctx, *esClient, http.MethodPut, "/"+index+"/_settings",
+				[]byte(`{"index.routing.allocation.`+setting+`": null}`))
+			return err
+		}),
+	}
+}
+
+// skipBeforeReadinessPort skips the test before the readiness port is used: nodes with a registered shutdown are only
+// reported not ready by the readiness port, used after 8.2.0.
+func skipBeforeReadinessPort(t *testing.T) {
+	t.Helper()
+	if version.MustParse(test.Ctx().ElasticStackVersion).LE(esv1.MinReadinessPortVersion) {
+		t.SkipNow()
 	}
 }
 
