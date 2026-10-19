@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// serverBasePathEnvName is the environment variable name that allows ibe to specify a path to mount Kibana at if you are running behind a proxy
+	// serverBasePathEnvName is the environment variable name that allows one to specify a path to mount Kibana at if you are running behind a proxy
 	serverBasePathEnvName = "SERVER_BASEPATH"
 	// serverRewriteBasePathEnvName is the environment variable name that specifies whether Kibana should rewrite requests that are prefixed with server.basePath
 	serverRewriteBasePathEnvName = "SERVER_REWRITEBASEPATH"
