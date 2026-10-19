@@ -85,8 +85,9 @@ func allowedSources(policy *policyv1alpha1.StackConfigPolicy, resourceKind strin
 }
 
 // isSourceAllowed returns true if a source in allowed matches src on namespace, secret name and entries.
-// Entries are part of the match because omitting them projects every key of the Secret, which would
-// otherwise let a modified annotation widen the set of keys selected by the policy.
+// Entries are part of the match because a modified annotation could otherwise select more keys of the
+// Secret than the policy does, for example by omitting entries, or store a key under a different secure
+// setting name by changing its path.
 // Nil and empty entries are considered equal, as the SCP controller omits empty entries from the annotation.
 func isSourceAllowed(allowed []commonv1.NamespacedSecretSource, src commonv1.NamespacedSecretSource) bool {
 	return slices.ContainsFunc(allowed, func(a commonv1.NamespacedSecretSource) bool {
