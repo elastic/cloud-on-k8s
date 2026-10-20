@@ -70,6 +70,7 @@ func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 		for _, nodeSet := range es.Spec.NodeSets {
 			mem, err := containerMemLimits(
 				nodeSet.PodTemplate.Spec.Containers,
+				nodeSet.Resources.Limits.Memory,
 				esv1.ElasticsearchContainerName,
 				essettings.EnvEsJavaOpts, memFromJavaOpts,
 				nodespec.DefaultMemoryLimits,
@@ -98,6 +99,7 @@ func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 	for _, ent := range entList.Items {
 		mem, err := containerMemLimits(
 			ent.Spec.PodTemplate.Spec.Containers,
+			ent.Spec.Resources.Limits.Memory,
 			entv1.EnterpriseSearchContainerName,
 			enterprisesearch.EnvJavaOpts, memFromJavaOpts,
 			enterprisesearch.DefaultMemoryLimits,
@@ -125,6 +127,7 @@ func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, e
 	for _, kb := range kbList.Items {
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
+			kb.Spec.Resources.Limits.Memory,
 			kbv1.KibanaContainerName,
 			kibana.EnvNodeOptions, memFromNodeOptions,
 			kibana.DefaultMemoryLimits,
@@ -152,6 +155,7 @@ func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 	for _, ls := range lsList.Items {
 		mem, err := containerMemLimits(
 			ls.Spec.PodTemplate.Spec.Containers,
+			ls.Spec.Resources.Limits.Memory,
 			lsv1alpha1.LogstashContainerName,
 			logstash.EnvJavaOpts, memFromJavaOpts,
 			logstash.DefaultMemoryLimit,
@@ -179,6 +183,7 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 	for _, as := range asList.Items {
 		mem, err := containerMemLimits(
 			as.Spec.PodTemplate.Spec.Containers,
+			as.Spec.Resources.Limits.Memory,
 			apmv1.ApmServerContainerName,
 			"", nil, // no fallback with limits defined in an env var
 			apmserver.DefaultMemoryLimits,
@@ -196,14 +201,21 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 }
 
 // containerMemLimits reads the container memory limits from the resource specification with fallback
-// on the environment variable and on the default limits
+// on the environment variable and on the default limits.
+// A memory limit set through the resources shorthand takes precedence over the pod template, mirroring
+// how PodTemplateBuilder.WithResourcesAndOverrides applies it to the main container
 func containerMemLimits(
 	containers []corev1.Container,
+	shorthandMemLimit *resource.Quantity,
 	containerName string,
 	envVarName string,
 	envLookup func(envVar string) (resource.Quantity, error),
 	defaultLimit resource.Quantity,
 ) (resource.Quantity, error) {
+	if shorthandMemLimit != nil && !shorthandMemLimit.IsZero() {
+		return shorthandMemLimit.DeepCopy(), nil
+	}
+
 	var mem resource.Quantity
 	for _, container := range containers {
 		//nolint:nestif
