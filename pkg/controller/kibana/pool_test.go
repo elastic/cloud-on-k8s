@@ -1386,7 +1386,7 @@ func TestGetPoolIdentityLabels_SplitOnOff(t *testing.T) {
 	})
 }
 
-// ---- getPodTemplateSpecForRole ----------------------------------------------
+// ---- PodTemplateSpecForRole ----------------------------------------------
 
 func TestGetPodTemplateSpecForRole(t *testing.T) {
 	basePodTemplate := corev1.PodTemplateSpec{
@@ -1477,7 +1477,7 @@ func TestGetPodTemplateSpecForRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getPodTemplateSpecForRole(tt.kb, tt.role)
+			got, err := PodTemplateSpecForRole(tt.kb, tt.role)
 			require.NoError(t, err)
 
 			require.Len(t, got.Spec.Containers, 1)
