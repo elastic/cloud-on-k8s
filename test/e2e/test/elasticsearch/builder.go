@@ -684,10 +684,12 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
 	httpOptionsChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	// the PKI realm is a static setting, enabling or disabling it restarts all the nodes
+	pkiChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.Auth.PKI, b.Elasticsearch.Spec.Auth.PKI)
 	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
 		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				(isVersionUpgrade || httpOptionsChange || pkiChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec
 				return true
 			}
