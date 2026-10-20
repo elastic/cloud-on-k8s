@@ -514,11 +514,11 @@ func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 		podNames = append(podNames, p.Name)
 	}
 	if len(podNames) == 0 {
-		// ReconcileShutdowns would cancel the ongoing shutdowns when called with no podNames, including the one of a Pod
-		// about to be deleted that is not ready because its shutdown closed its readiness port.
+		// there is no shutdown to request, and none to cancel: the one of a Pod about to be deleted that is not ready
+		// because its shutdown closed its readiness port is kept
 		return nil
 	}
-	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)), false)
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
 }
 
 // clearHeldRestartShutdowns deletes the restart shutdowns, complete or not, of the Pods to upgrade that failed a

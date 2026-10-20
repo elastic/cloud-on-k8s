@@ -86,34 +86,17 @@ func HandleDownscale(
 	}
 
 	// request the shutdowns of the nodes to remove, and keep those of the draining nodes even if they cannot be removed
-	// now: cancelling them would make the nodes ready only to drain them again. With no such nodes, cancel the shutdowns
-	// of the non-terminating nodes. While a leaving node is not a member of the cluster, the shutdowns of the nodes that
+	// now: cancelling them would make the nodes ready only to drain them again. Cancel the shutdowns of the other
+	// non-terminating nodes. While a leaving node is not a member of the cluster, the shutdowns of the nodes that
 	// are not members are kept: it may have left the cluster while draining, for example because its Pod restarted, and
 	// its shutdown cannot be told apart from the others as its node ID is unknown.
 	selectedNodes := leavingNodeNames(downscales)
 	keptNodes := draining.Diff(set.Make(selectedNodes...)).AsSortedSlice()
 	shutdownNodes := slices.Concat(selectedNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
-	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes, len(notMembers) > 0); err != nil {
-		return results.WithError(err)
-	}
-	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)
+	requeue, err := requestShutdownsAndDownscale(downscaleCtx, downscales, shutdownNodes, terminatingNodes, len(notMembers) > 0)
 	if err != nil {
 		return results.WithError(err)
-	}
-	// report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
-	// downscale fails
-	defer reportShutdownStalled(downscaleCtx, statuses)
-
-	var requeue bool
-	for _, downscale := range downscales {
-		// attempt the StatefulSet downscale (may or may not remove nodes)
-		downscaleRequeue, err := attemptDownscale(downscaleCtx, downscale, statuses)
-		if err != nil {
-			return results.WithError(err)
-		}
-		// retry downscaling this statefulset later
-		requeue = requeue || downscaleRequeue
 	}
 
 	// Report the delayed nodes and why they are held in a single reason, as only the first one of a priority is kept.
@@ -129,6 +112,66 @@ func HandleDownscale(
 		results.WithReconciliationState(shared.DefaultRequeue.WithReason(reason))
 	}
 	return results
+}
+
+// requestShutdownsAndDownscale requests the shutdowns of shutdownNodes and attempts the downscales, then cancels the
+// shutdowns of the other non-terminating nodes, even if an earlier step failed. It returns whether a requeue should be
+// scheduled if some of the downscales could not be performed entirely.
+func requestShutdownsAndDownscale(
+	downscaleCtx downscaleContext,
+	downscales []ssetDownscale,
+	shutdownNodes, terminatingNodes []string,
+	keepNonMembers bool,
+) (bool, error) {
+	requeue, err := downscaleAfterShutdowns(downscaleCtx, downscales, shutdownNodes)
+	// Nodes that are no longer leaving, for example because of a later spec change, would otherwise keep their shutdown
+	// for as long as another node is held draining, using up the downscale budget and blocking the rolling upgrade.
+	// Cancelling their shutdowns does not depend on the nodes to shut down, so it is done whether or not their shutdowns
+	// could be requested, and after the downscales, whether they failed or not. Its failure is only returned: it must not
+	// hide the shutdown statuses, nor the stalled one, nor hold the downscales back.
+	cancelErr := downscaleCtx.nodeShutdown.CancelShutdownsExcept(downscaleCtx.parentCtx, shutdownNodes, terminatingNodes, keepNonMembers)
+	// the same failure, for example if the shutdowns cannot be retrieved, is only returned once
+	if errors.Is(cancelErr, err) {
+		cancelErr = nil
+	}
+	return requeue, errors.Join(err, cancelErr)
+}
+
+// downscaleAfterShutdowns requests the shutdowns of shutdownNodes, then attempts the downscales. It stops at the first
+// failure. It returns whether a requeue should be scheduled if some of the downscales could not be performed entirely.
+func downscaleAfterShutdowns(downscaleCtx downscaleContext, downscales []ssetDownscale, shutdownNodes []string) (bool, error) {
+	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes); err != nil {
+		return false, err
+	}
+	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)
+	if err != nil {
+		return false, err
+	}
+	// report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
+	// downscale fails
+	defer reportShutdownStalled(downscaleCtx, statuses)
+	return attemptDownscales(downscaleCtx, downscales, statuses)
+}
+
+// attemptDownscales attempts the given downscales in order, and stops at the first error. A boolean is returned to
+// indicate if a requeue should be scheduled if some of them could not be performed entirely.
+// statuses are the shutdown statuses returned by shutdownStatuses.
+func attemptDownscales(
+	ctx downscaleContext,
+	downscales []ssetDownscale,
+	statuses map[string]shutdown.NodeShutdownStatus,
+) (bool, error) {
+	var requeue bool
+	for _, downscale := range downscales {
+		// attempt the StatefulSet downscale (may or may not remove nodes)
+		downscaleRequeue, err := attemptDownscale(ctx, downscale, statuses)
+		if err != nil {
+			return requeue, err
+		}
+		// retry downscaling this statefulset later
+		requeue = requeue || downscaleRequeue
+	}
+	return requeue, nil
 }
 
 // formatHeldReasons formats the reasons why the downscale of StatefulSets is held, sorted by StatefulSet name.

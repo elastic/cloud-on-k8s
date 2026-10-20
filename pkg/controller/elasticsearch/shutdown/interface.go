@@ -25,10 +25,14 @@ type NodeShutdownStatus struct {
 // prepare node shutdowns.
 type Interface interface {
 	// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down, which
-	// can include nodes kept draining while their removal is held. If no node is given, it cancels the ongoing shutdowns
-	// of the non-terminating nodes, except those of the nodes that are not members of the cluster if keepNonMembers is
-	// true.
-	ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error
+	// can include nodes kept draining while their removal is held. It does not cancel any shutdown, see
+	// CancelShutdownsExcept. With shard migration, which registers no shutdown, it migrates data away from the given nodes
+	// or removes the allocation filtering if none is given.
+	ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error
+	// CancelShutdownsExcept cancels the ongoing shutdowns of the nodes that are not kept, nor terminating, nor the nodes
+	// that are not members of the cluster if keepNonMembers is true. It does nothing if the shutdowns are not registered
+	// in Elasticsearch.
+	CancelShutdownsExcept(ctx context.Context, keptNodes []string, terminatingNodes []string, keepNonMembers bool) error
 	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
@@ -54,11 +58,11 @@ type observed struct {
 	observer Observer
 }
 
-func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error {
+func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error {
 	if o.observer != nil {
 		o.observer.OnReconcileShutdowns(nodesToShutdown)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, nodesToShutdown, terminatingNodes, keepNonMembers)
+	return o.Interface.ReconcileShutdowns(ctx, nodesToShutdown)
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {

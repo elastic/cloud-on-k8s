@@ -50,6 +50,8 @@ type fakeESClient struct { //nolint:maligned
 	// RegisterPutShutdowns makes PutShutdown register an in progress shutdown in Shutdowns, replacing any existing one
 	RegisterPutShutdowns bool
 	DeleteShutdownCalled bool
+	// DeleteShutdownErr is returned by DeleteShutdown, which then deletes nothing
+	DeleteShutdownErr error
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -157,6 +159,9 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 
 func (f *fakeESClient) DeleteShutdown(_ context.Context, nodeID string) error {
 	f.DeleteShutdownCalled = true
+	if f.DeleteShutdownErr != nil {
+		return f.DeleteShutdownErr
+	}
 	delete(f.Shutdowns, nodeID)
 	return nil
 }
