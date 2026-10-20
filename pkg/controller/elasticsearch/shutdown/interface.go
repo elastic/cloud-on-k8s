@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var MinVersion = version.MinFor(7, 15, 2)
@@ -23,12 +24,17 @@ type NodeShutdownStatus struct {
 // Interface defines methods that both legacy shard migration based shutdown and new API based shutdowns implement to
 // prepare node shutdowns.
 type Interface interface {
-	// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
-	// shutdowns.
-	ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error
+	// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down, which
+	// can include nodes kept draining while their removal is held. If no node is given, it cancels the ongoing shutdowns
+	// of the non-terminating nodes, except those of the nodes that are not members of the cluster if keepNonMembers is
+	// true.
+	ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error
 	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
+	// NodesWithShutdown returns the given nodes that are members of the cluster and have a shutdown of the type managed
+	// by this implementation registered in Elasticsearch.
+	NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error)
 }
 
 type Observer interface {
@@ -48,11 +54,11 @@ type observed struct {
 	observer Observer
 }
 
-func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
+func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error {
 	if o.observer != nil {
-		o.observer.OnReconcileShutdowns(leavingNodes)
+		o.observer.OnReconcileShutdowns(nodesToShutdown)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, leavingNodes, terminatingNodes)
+	return o.Interface.ReconcileShutdowns(ctx, nodesToShutdown, terminatingNodes, keepNonMembers)
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {

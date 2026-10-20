@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var (
@@ -200,6 +201,80 @@ func TestNodeShutdown_Clear(t *testing.T) {
 			wantDelete: true,
 		},
 		{
+			name: "Should not delete the shutdowns of the excluded nodes",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.ExceptNodes([]string{"pod-1"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+			},
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
+			name: "Should delete the shutdowns of the nodes that are not excluded",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.ExceptNodes([]string{"pod-2"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				"pod-2": "another-node-id",
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
+			name: "Should delete the shutdowns of the given nodes",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.OnlyNodes([]string{"pod-1"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
+			name: "Should not delete the shutdowns of the nodes that are not given",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.OnlyNodes([]string{"pod-2"})}
+				},
+			},
+			fixture: singleRestartShutdownFixture,
+			podToNodeID: map[string]string{
+				"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				"pod-2": "another-node-id",
+			},
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
+			name: "Should not delete the shutdowns of the given nodes that are not in the cluster",
+			args: args{
+				typ: esclient.Restart,
+				conditions: func(shutdown *NodeShutdown) []ClearCondition {
+					return []ClearCondition{esclient.ShutdownComplete.Applies, shutdown.OnlyNodes([]string{"pod-1"})}
+				},
+			},
+			fixture:    singleRestartShutdownFixture,
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
 			name: "Should bubble up errors",
 			args: args{
 				typ:        esclient.Remove,
@@ -339,12 +414,94 @@ func TestNodeShutdown_ShutdownStatus(t *testing.T) {
 	}
 }
 
+func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
+	podToNodeID := map[string]string{
+		"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+		"pod-2": "D_E3ZVdyQlOmc81NAUOD8w",
+	}
+	tests := []struct {
+		name        string
+		typ         esclient.ShutdownType
+		fixture     string
+		podToNodeID map[string]string
+		podNames    []string
+		want        set.StringSet
+		wantErr     bool
+	}{
+		{
+			name:        "node with a shutdown of the same type",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make("pod-1"),
+		},
+		{
+			name:        "node with a shutdown of another type",
+			typ:         esclient.Remove,
+			fixture:     singleRestartShutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "node with a shutdown that is not requested",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "node with a shutdown that is not in the cluster",
+			typ:         esclient.Remove,
+			fixture:     shutdownFixture,
+			podToNodeID: map[string]string{"pod-2": "D_E3ZVdyQlOmc81NAUOD8w"},
+			podNames:    []string{"pod-1", "pod-2"},
+			want:        set.Make(),
+		},
+		{
+			name:        "handles initialisation errors",
+			typ:         esclient.Remove,
+			fixture:     "not json",
+			podToNodeID: podToNodeID,
+			podNames:    []string{"pod-1"},
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(tt.fixture))),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			})
+			ns := &NodeShutdown{
+				c:           client,
+				typ:         tt.typ,
+				podToNodeID: tt.podToNodeID,
+				log:         log.Log.WithName("test"),
+			}
+			// the shutdowns are only retrieved once: a second call must return the same result, including the error
+			for range 2 {
+				got, err := ns.NodesWithShutdown(context.Background(), tt.podNames)
+				require.Equal(t, tt.wantErr, err != nil, "NodesWithShutdown() error = %v", err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
 func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 	type args struct {
 		typ              esclient.ShutdownType
 		podToNodeID      map[string]string
 		leavingNodes     []string
 		terminatingNodes []string
+		keepNonMembers   bool
 	}
 	tests := []struct {
 		name        string
@@ -468,6 +625,35 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 			wantErr:     false,
 			wantMethods: []string{"GET"},
 		},
+		{
+			name: "should not clean up shutdowns of nodes not in the cluster if they are kept",
+			args: args{
+				typ:            esclient.Restart,
+				podToNodeID:    map[string]string{},
+				keepNonMembers: true,
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET"},
+		},
+		{
+			name: "should clean up shutdowns of nodes in the cluster if the ones not in the cluster are kept",
+			args: args{
+				typ: esclient.Restart,
+				podToNodeID: map[string]string{
+					"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q",
+				},
+				keepNonMembers: true,
+			},
+			fixtures: []string{
+				singleRestartShutdownFixture,
+				ackFixture,
+			},
+			wantErr:     false,
+			wantMethods: []string{"GET", "DELETE"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -491,7 +677,7 @@ func TestNodeShutdown_ReconcileShutdowns(t *testing.T) {
 				podToNodeID: tt.args.podToNodeID,
 				log:         log.Log.WithName("test"),
 			}
-			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes, tt.args.terminatingNodes); (err != nil) != tt.wantErr {
+			if err := ns.ReconcileShutdowns(context.Background(), tt.args.leavingNodes, tt.args.terminatingNodes, tt.args.keepNonMembers); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileShutdowns() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(methodsCalled, tt.wantMethods) {
@@ -547,7 +733,7 @@ func TestNodeShutdown_ReconcileShutdowns_AllocationDelay(t *testing.T) {
 				log:             log.Log.WithName("test"),
 			}
 
-			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"}, nil)
+			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"}, nil, false)
 			require.NoError(t, err)
 			assert.Equal(t, esclient.Restart, capturedBody.Type)
 			assert.Equal(t, "test-reason", capturedBody.Reason)

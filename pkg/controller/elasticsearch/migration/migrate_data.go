@@ -12,6 +12,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // ShardMigration implements the shutdown.Interface based on externally controlled shard allocation filtering.
@@ -34,7 +35,8 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.Shar
 }
 
 // ReconcileShutdowns migrates data away from the leaving nodes or removes any allocation filtering if no nodes are leaving.
-func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes, _ []string) error {
+// The allocation filtering does not depend on the membership of the nodes: keepNonMembers is ignored.
+func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes, _ []string, _ bool) error {
 	return migrateData(ctx, sm.es, sm.c, leavingNodes)
 }
 
@@ -58,6 +60,11 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownInProgress}, nil
 	}
 	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
+}
+
+// NodesWithShutdown returns no node, as shard migration does not register shutdowns in Elasticsearch.
+func (sm *ShardMigration) NodesWithShutdown(_ context.Context, _ []string) (set.StringSet, error) {
+	return nil, nil
 }
 
 // nodeMayHaveShard returns true if one of those conditions is met:

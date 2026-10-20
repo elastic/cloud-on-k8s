@@ -6,23 +6,30 @@ package stateful
 
 import (
 	"context"
+	"errors"
+	"maps"
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -33,6 +40,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // Sample StatefulSets to use in tests
@@ -152,6 +160,12 @@ var (
 	emptyResults = &reconciler.Results{}
 )
 
+// testLeavingNodes returns the leavingNodes of the downscale from the given actual StatefulSets to the given expected
+// ones, with the shutdown interface of the given downscale context and the given ESState.
+func testLeavingNodes(downscaleCtx downscaleContext, esState ESState, expected, actual es_sset.StatefulSetList) *leavingNodes {
+	return newLeavingNodes(desiredLeavingNodeNames(context.Background(), expected, actual), esState, downscaleCtx.nodeShutdown, esv1.DownscaleOperation{})
+}
+
 // -- Tests start here
 
 func TestHandleDownscale(t *testing.T) {
@@ -189,7 +203,7 @@ func TestHandleDownscale(t *testing.T) {
 	requestedStatefulSets := es_sset.StatefulSetList{ssetMaster3ReplicasDownscaled, ssetData4ReplicasDownscaled}
 
 	// do the downscale
-	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets)
+	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actualStatefulSets))
 	require.False(t, results.HasError())
 
 	// data migration should have been requested for all nodes, but three master in Master3 sset, leaving the cluster
@@ -222,7 +236,9 @@ func TestHandleDownscale(t *testing.T) {
 
 	// a requeue should be requested since all nodes were not downscaled
 	// (2 requeues actually: for data migration & master nodes)
-	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason(
+		"Downscale in progress, delayed nodes: [ssetMaster3Replicas-1 ssetMaster3Replicas-2], ssetMaster3Replicas: "+OneMasterAtATimeInvariant,
+	)), results)
 
 	// voting config exclusion should have been added for leaving master
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
@@ -243,9 +259,11 @@ func TestHandleDownscale(t *testing.T) {
 
 	// running the downscale again should remove the next master,
 	// and also requeue since data migration is still not over for data nodes
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
-	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
+	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason(
+		"Downscale in progress, delayed nodes: [ssetMaster3Replicas-1], ssetMaster3Replicas: "+OneMasterAtATimeInvariant,
+	)), results)
 	// status should reflect the in progress operations
 	require.Equal(t,
 		[]esv1.DownscaledNode{
@@ -274,7 +292,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// running the downscale yet again should remove the next master,
 	// and also requeue since data migration is still not over for data nodes
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, (&reconciler.Results{}).WithReconciliationState(shared.DefaultRequeue.WithReason("Downscale in progress")), results)
 	// status should reflect the in progress operations
@@ -310,7 +328,7 @@ func TestHandleDownscale(t *testing.T) {
 	)
 	downscaleCtx.nodeShutdown = shutdown.WithObserver(migration.NewShardMigration(es, esClient, shardLister), reconcileState)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[0], new(int32(2)))
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
 	require.Equal(t,
@@ -338,7 +356,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, k8sClient.Delete(context.Background(), &podsSsetData4Replicas[2]))
 
 	// running the downscale again should not remove any new node
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(context.Background(), &actual)
@@ -366,7 +384,7 @@ func TestHandleDownscale(t *testing.T) {
 	// do the downscale, that third StatefulSet is not part of the expected ones
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	// the StatefulSet replicas should be decreased to 0, but StatefulSet should still be around
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
@@ -375,7 +393,7 @@ func TestHandleDownscale(t *testing.T) {
 	// run downscale again: this time the StatefulSet should be removed
 	err = k8sClient.List(context.Background(), &actual)
 	require.NoError(t, err)
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items, testLeavingNodes(downscaleCtx, nil, requestedStatefulSets, actual.Items))
 	require.False(t, results.HasError())
 	require.Equal(t,
 		[]esv1.DownscaledNode{
@@ -391,6 +409,603 @@ func TestHandleDownscale(t *testing.T) {
 	)
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
 	require.True(t, apierrors.IsNotFound(err))
+}
+
+// countingNodeShutdown counts the calls to ShutdownStatus for each node, and the calls to NodesWithShutdown.
+type countingNodeShutdown struct {
+	shutdown.Interface
+	statusCalls            map[string]int
+	nodesWithShutdownCalls int
+}
+
+func (c *countingNodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error) {
+	c.nodesWithShutdownCalls++
+	return c.Interface.NodesWithShutdown(ctx, podNames)
+}
+
+func (c *countingNodeShutdown) ShutdownStatus(ctx context.Context, podName string) (shutdown.NodeShutdownStatus, error) {
+	if c.statusCalls == nil {
+		c.statusCalls = map[string]int{}
+	}
+	c.statusCalls[podName]++
+	return c.Interface.ShutdownStatus(ctx, podName)
+}
+
+func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
+	type nodeSet struct {
+		name            string
+		master, data    bool
+		actualReplicas  int32
+		desiredReplicas int32
+	}
+	// The "old" NodeSet is being removed while the Pod of the "unhealthy" NodeSet cannot become ready. Elasticsearch
+	// closes the readiness port of old-0 because of its remove-type shutdown, so only master-0 and new-0 are ready:
+	// with 3 desired nodes and maxUnavailable 1, old-0 can only be removed if its removal does not consume the budget.
+	removedNodeSet := []nodeSet{
+		{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+		{name: "new", data: true, actualReplicas: 1, desiredReplicas: 1},
+		{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+		{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+	}
+
+	tests := []struct {
+		name           string
+		nodeSets       []nodeSet
+		maxUnavailable *int32
+		notReadyPods   set.StringSet
+		// notJoinedPods are the Pods that are not members of the cluster
+		notJoinedPods set.StringSet
+		shutdowns     map[string]esclient.NodeShutdown
+		// reportedShutdowns are the shutdown statuses in the downscale status reported by a previous reconciliation
+		reportedShutdowns     map[string]string
+		getShutdownErr        error
+		wantErr               bool
+		wantShutdownCancelled bool
+		// wantShutdowns are the node IDs of the shutdowns that remain registered, if not nil
+		wantShutdowns        []string
+		wantPutShutdowns     []string
+		wantReplicas         map[string]int32
+		wantShutdownStatuses map[string]string
+		wantStalled          bool
+		wantReason           string
+	}{
+		{
+			// the next steps may recreate the Pod, for it to join the cluster and be removed
+			name: "a leaving node that is not a member of the cluster is held, the downscale does not fail",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-2"),
+			notJoinedPods: set.Make("data-2"),
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// data-2 left the cluster while draining, for example because its Pod restarted: its shutdown cannot be
+			// mapped to it, so it is not cancelled while data-2 is held
+			name: "the shutdown of a draining node that is not a member of the cluster is not cancelled",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-2"),
+			notJoinedPods: set.Make("data-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantShutdowns:         []string{"id-data-2"},
+			wantReplicas:          map[string]int32{"data": 3},
+			wantReason:            "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// data-1 no longer leaves but kept its shutdown: it is a member of the cluster, so its shutdown is cancelled,
+			// while the one of data-2, which is not a member, is kept
+			name: "the shutdowns of members are cancelled while a draining node is not a member of the cluster",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-1", "data-2"),
+			notJoinedPods: set.Make("data-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: true,
+			wantShutdowns:         []string{"id-data-2"},
+			wantReplicas:          map[string]int32{"data": 3},
+			wantReason:            "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			name: "the leaving nodes removed before a node that is not a member of the cluster are removed",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
+			},
+			notReadyPods:  set.Make("data-2", "data-1"),
+			notJoinedPods: set.Make("data-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
+			},
+			wantReplicas: map[string]int32{"data": 2},
+			wantReason:   "Downscale in progress, delayed nodes: [data-1], data: " + NodeNotInClusterInvariant + ": data-1",
+		},
+		{
+			// the shutdowns are retrieved before the StatefulSets downscaled to 0 replicas are deleted
+			name: "an error while retrieving the shutdowns aborts the downscale",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "removed", data: true, actualReplicas: 0, desiredReplicas: 0},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			getShutdownErr:        errors.New("boom"),
+			wantErr:               true,
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"removed": 0, "old": 1},
+		},
+		{
+			// the forced upgrade relies on the reported shutdowns while Elasticsearch is unreachable: a failed
+			// retrieval must not reset them
+			name:                 "an error while retrieving the shutdowns keeps the reported shutdown statuses",
+			nodeSets:             removedNodeSet,
+			notReadyPods:         set.Make("old-0", "unhealthy-0"),
+			reportedShutdowns:    map[string]string{"old-0": "IN_PROGRESS"},
+			getShutdownErr:       errors.New("boom"),
+			wantErr:              true,
+			wantReplicas:         map[string]int32{"old": 1},
+			wantShutdownStatuses: map[string]string{"old-0": "IN_PROGRESS"},
+		},
+		{
+			name:         "removing a draining node does not consume the budget",
+			nodeSets:     removedNodeSet,
+			notReadyPods: set.Make("unhealthy-0", "old-0"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 0},
+		},
+		{
+			// the budget does not allow removing old-0, so no shutdown is requested for it and the shutdown of
+			// unhealthy-0 is cancelled
+			name:         "a draining node that stays does not allow removals",
+			nodeSets:     removedNodeSet,
+			notReadyPods: set.Make("unhealthy-0", "old-0"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-unhealthy-0": {NodeID: "id-unhealthy-0", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: true,
+		},
+		{
+			// the draining master is not running, so removing it does not leave the cluster without a running master
+			name: "a draining master node can be removed while another master is running",
+			nodeSets: []nodeSet{
+				{name: "mdi", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
+			},
+			notReadyPods: set.Make("mdi-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-mdi-1": {NodeID: "id-mdi-1", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"mdi": 1},
+		},
+		{
+			// a-1 comes first in name order but the budget only allows removing the draining b-1, so no shutdown is
+			// requested for a-1
+			name: "a draining node does not allow removing a ready node of another NodeSet",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "a", data: true, actualReplicas: 2, desiredReplicas: 1},
+				{name: "b", data: true, actualReplicas: 2, desiredReplicas: 1},
+				{name: "c", data: true, actualReplicas: 3, desiredReplicas: 3},
+			},
+			notReadyPods: set.Make("b-1", "c-1", "c-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-b-1": {NodeID: "id-b-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+		},
+		{
+			// a-1 comes first in name order but b-1 is already draining, so no shutdown is requested for a-1
+			name: "a draining master node prevents removing another master node",
+			nodeSets: []nodeSet{
+				{name: "a", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
+				{name: "b", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
+			},
+			notReadyPods: set.Make("b-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-b-1": {NodeID: "id-b-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantReason:            "Downscale in progress, delayed nodes: [a-1], a: " + OneMasterAtATimeInvariant + ": b-1 draining",
+		},
+		{
+			// a-1 is draining and comes first in name order: its removal is in progress, so no shutdown is requested for b-1
+			name: "a draining master node of the first NodeSet prevents removing a master node of another NodeSet",
+			nodeSets: []nodeSet{
+				{name: "a", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
+				{name: "b", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
+			},
+			notReadyPods: set.Make("a-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-a-1": {NodeID: "id-a-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantReason:            "Downscale in progress, delayed nodes: [b-1], b: " + OneMasterAtATimeInvariant,
+		},
+		{
+			// mdi-1 has a shutdown but is not the next master to remove: it does not block the removal of mdi-2, which
+			// gets a shutdown, and keeps its own shutdown
+			name: "a draining master node that is not the next to be removed does not prevent removing a master node",
+			nodeSets: []nodeSet{
+				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 1},
+			},
+			notReadyPods: set.Make("mdi-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-mdi-1": {NodeID: "id-mdi-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantPutShutdowns:      []string{"id-mdi-2"},
+			wantReplicas:          map[string]int32{"mdi": 3},
+			wantShutdownStatuses:  map[string]string{"mdi-1": "IN_PROGRESS", "mdi-2": "IN_PROGRESS"},
+		},
+		{
+			// mdi-2 is drained but mdi-1 is not ready: with 2 desired nodes and maxUnavailable 1 the budget does not allow
+			// removing mdi-2, which keeps its shutdown
+			name: "a draining master node is not removed while the budget does not allow it",
+			nodeSets: []nodeSet{
+				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods: set.Make("mdi-1", "mdi-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"mdi": 3},
+			wantShutdownStatuses:  map[string]string{"mdi-2": "COMPLETE"},
+		},
+		{
+			// mdi-2 is drained and the other masters are ready: removing it does not consume the budget
+			name: "a draining master node is removed with maxUnavailable 0 while the other masters are ready",
+			nodeSets: []nodeSet{
+				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			maxUnavailable: new(int32(0)),
+			notReadyPods:   set.Make("mdi-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"mdi": 2},
+		},
+		{
+			// mdi-2 is drained and the other masters are ready: with 2 ready nodes, 2 desired nodes and maxUnavailable 1,
+			// the budget allows removing mdi-2
+			name: "a draining master node is removed with maxUnavailable 1 while the other nodes are ready",
+			nodeSets: []nodeSet{
+				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			maxUnavailable: new(int32(1)),
+			notReadyPods:   set.Make("mdi-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"mdi": 2},
+		},
+		{
+			// with maxSurge 0, the new NodeSet cannot be created before the old one is removed: with 2 ready nodes,
+			// 3 desired nodes and maxUnavailable 1 the budget does not allow removing old-2, but the other masters are ready
+			name: "a draining master node of a renamed NodeSet is removed with maxSurge 0",
+			nodeSets: []nodeSet{
+				{name: "new", master: true, data: true, actualReplicas: 0, desiredReplicas: 3},
+				{name: "old", master: true, data: true, actualReplicas: 3, desiredReplicas: 0},
+			},
+			maxUnavailable: new(int32(1)),
+			notReadyPods:   set.Make("old-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-2": {NodeID: "id-old-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+		},
+		{
+			// new-2 cannot be scheduled before old-2 is removed: with 4 ready nodes, 3 desired nodes and maxUnavailable 1,
+			// the budget allows removing old-2
+			name: "a draining master node is removed while a new master node is not ready if the budget allows it",
+			nodeSets: []nodeSet{
+				{name: "new", master: true, data: true, actualReplicas: 3, desiredReplicas: 3},
+				{name: "old", master: true, data: true, actualReplicas: 3, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("new-2", "old-2"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-2": {NodeID: "id-old-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+		},
+		{
+			// old-0 is drained but the new NodeSet has no Pod yet: old-0 is not removed and keeps its shutdown
+			name: "a draining master node is not removed while no other master node is running",
+			nodeSets: []nodeSet{
+				{name: "new", master: true, data: true, actualReplicas: 0, desiredReplicas: 1},
+				{name: "old", master: true, data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("old-0"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 1},
+		},
+		{
+			// both shutdowns are complete but only old-1 can be removed with maxUnavailable 1, old-0 keeps its shutdown
+			// as it is draining
+			name: "draining nodes beyond the draining removals allowed keep their shutdown",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 1},
+			wantShutdownStatuses:  map[string]string{"old-0": "COMPLETE", "old-1": "COMPLETE"},
+		},
+		{
+			// old-1 is selected but not drained yet, old-0 is held: the reason mentions it even though the downscale of
+			// old-1 is in progress
+			name: "the delayed nodes are reported while the downscale of other nodes is in progress",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+			wantShutdownStatuses:  map[string]string{"old-0": "COMPLETE", "old-1": "IN_PROGRESS"},
+			wantReason:            "Downscale in progress, delayed nodes: [old-0], old: " + RespectMaxUnavailableInvariant,
+		},
+		{
+			// old-0 stays ready while it drains, as with the legacy readiness probe, so removing it needs budget, which the
+			// 2 unhealthy Pods use up: it is not removed but keeps its shutdown
+			name: "a ready draining node keeps its shutdown when the budget does not allow its removal",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "unhealthy", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "unhealthy-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 1},
+			wantShutdownStatuses:  map[string]string{"old-0": "COMPLETE"},
+			wantReason:            "Downscale in progress, delayed nodes: [old-0], old: " + RespectMaxUnavailableInvariant,
+		},
+		{
+			name: "a stalled shutdown of a draining node that is not removed is reported",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "unhealthy", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "unhealthy-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 1},
+			wantShutdownStatuses:  map[string]string{"old-0": "STALLED"},
+			wantStalled:           true,
+		},
+		{
+			// old-1 is selected but not drained yet, old-0 is held: the phase reports the stalled shutdown of old-0 rather
+			// than the data migration of old-1
+			name: "a stalled shutdown of a draining node that is not removed takes precedence over data migration",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+			wantShutdownStatuses:  map[string]string{"old-0": "STALLED", "old-1": "IN_PROGRESS"},
+			wantStalled:           true,
+		},
+		{
+			// old-1 is selected and old-0 is held, both shutdowns are stalled: a single stalled event is reported for both
+			name: "the stalled shutdowns of the nodes that are removed and held are reported once",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownStalled},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+			wantShutdownStatuses:  map[string]string{"old-0": "STALLED", "old-1": "STALLED"},
+			wantStalled:           true,
+		},
+		{
+			// old-1 is selected but its shutdown could not be started, which fails the downscale: the stalled shutdown of
+			// the held old-0 is still reported
+			name: "a stalled shutdown is reported when a downscale fails",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownNotStarted},
+			},
+			wantErr:               true,
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+			wantShutdownStatuses:  map[string]string{"old-0": "STALLED", "old-1": "NOT_STARTED"},
+			wantStalled:           true,
+		},
+		{
+			// both nodes are selected but old-0 waits for old-1 to be drained: the status of old-0 is still reported
+			name: "the shutdown status of a node removed after a node that is not drained is reported",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "new", data: true, actualReplicas: 2, desiredReplicas: 2},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			maxUnavailable: new(int32(2)),
+			notReadyPods:   set.Make("old-0", "old-1"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantShutdownCancelled: false,
+			wantReplicas:          map[string]int32{"old": 2},
+			wantShutdownStatuses:  map[string]string{"old-0": "COMPLETE", "old-1": "IN_PROGRESS"},
+			wantReason:            "Downscale in progress",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{Namespace: "ns", Name: clusterName}
+			es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable = tt.maxUnavailable
+			for name, status := range tt.reportedShutdowns {
+				// the status was written by a previous reconciliation
+				es.Status.DownscaleOperation.LastUpdatedTime = metav1.Now()
+				es.Status.DownscaleOperation.Nodes = append(es.Status.DownscaleOperation.Nodes, esv1.DownscaledNode{Name: name, ShutdownStatus: status})
+			}
+			var actualStatefulSets, expectedStatefulSets es_sset.StatefulSetList
+			var pods []sset.TestPod
+			for _, ns := range tt.nodeSets {
+				testSset := sset.TestSset{Namespace: es.Namespace, Name: ns.name, ClusterName: es.Name, Master: ns.master, Data: ns.data}
+				testSset.Replicas = ns.actualReplicas
+				actualStatefulSets = append(actualStatefulSets, testSset.Build())
+				if ns.desiredReplicas > 0 {
+					es.Spec.NodeSets = append(es.Spec.NodeSets, esv1.NodeSet{Name: ns.name, Count: ns.desiredReplicas})
+					testSset.Replicas = ns.desiredReplicas
+					expectedStatefulSets = append(expectedStatefulSets, testSset.Build())
+				}
+				for i := range ns.actualReplicas {
+					name := sset.PodName(ns.name, i)
+					pods = append(pods, sset.TestPod{Namespace: es.Namespace, Name: name, ClusterName: es.Name, StatefulSetName: ns.name, Master: ns.master, Data: ns.data, Ready: !tt.notReadyPods.Has(name)})
+				}
+			}
+
+			objs := make([]client.Object, 0, 1+len(actualStatefulSets)+len(pods))
+			objs = append(objs, &es)
+			for _, s := range actualStatefulSets {
+				objs = append(objs, s.DeepCopy())
+			}
+			podToNodeID := map[string]string{}
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{}}
+			for _, p := range pods {
+				objs = append(objs, p.BuildPtr())
+				if tt.notJoinedPods.Has(p.Name) {
+					continue
+				}
+				podToNodeID[p.Name] = "id-" + p.Name
+				nodes.Nodes["id-"+p.Name] = esclient.Node{Name: p.Name}
+			}
+			k8sClient := k8s.NewFakeClient(objs...)
+			esClient := &fakeESClient{
+				version: version.MustParse("8.0.0"), nodes: nodes, Shutdowns: maps.Clone(tt.shutdowns), GetShutdownErr: tt.getShutdownErr,
+				RegisterPutShutdowns: true,
+			}
+			reconcileState := reconcile.MustNewState(es)
+			nodeShutdown := &countingNodeShutdown{
+				Interface: shutdown.WithObserver(
+					shutdown.NewNodeShutdown(esClient, podToNodeID, esclient.Remove, "", nil, logr.Discard()),
+					reconcileState.DownscaleReporter,
+				),
+			}
+			downscaleCtx := downscaleContext{
+				k8sClient:      k8sClient,
+				expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				reconcileState: reconcileState,
+				nodeShutdown:   nodeShutdown,
+				esClient:       esClient,
+				es:             es,
+				parentCtx:      context.Background(),
+			}
+
+			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, testLeavingNodes(downscaleCtx, NewMemoizingESState(context.Background(), esClient), expectedStatefulSets, actualStatefulSets))
+			// the shutdowns of the draining nodes are already registered, only the nodes selected for removal get one
+			var putShutdowns []string
+			for _, call := range esClient.PutShutdownCalls {
+				putShutdowns = append(putShutdowns, call.NodeID)
+			}
+			require.Equal(t, tt.wantPutShutdowns, putShutdowns)
+			require.Equal(t, tt.wantErr, results.HasError())
+			require.Equal(t, tt.wantShutdownCancelled, esClient.DeleteShutdownCalled)
+			if tt.wantShutdowns != nil {
+				require.ElementsMatch(t, tt.wantShutdowns, slices.Collect(maps.Keys(esClient.Shutdowns)))
+			}
+			// the shutdown status of each node is retrieved, and reported to the observer, once
+			for node, calls := range nodeShutdown.statusCalls {
+				require.Equal(t, 1, calls, node)
+			}
+			if tt.wantReason != "" {
+				_, reason := results.IsReconciled()
+				require.Equal(t, tt.wantReason, reason)
+			}
+			for name, wantReplicas := range tt.wantReplicas {
+				var statefulSet appsv1.StatefulSet
+				require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: name}, &statefulSet))
+				require.Equal(t, wantReplicas, sset.GetReplicas(statefulSet))
+			}
+			shutdownStatuses := map[string]string{}
+			for _, node := range reconcileState.DownscaleReporter.Merge(es.Status.DownscaleOperation).Nodes {
+				shutdownStatuses[node.Name] = node.ShutdownStatus
+			}
+			for name, wantStatus := range tt.wantShutdownStatuses {
+				require.Equal(t, wantStatus, shutdownStatuses[name], name)
+			}
+			stalledEvents := 0
+			for _, event := range reconcileState.Events() {
+				if event.Reason == events.EventReasonStalled {
+					stalledEvents++
+				}
+			}
+			_, updatedES := reconcileState.Apply()
+			if tt.wantStalled {
+				require.Equal(t, 1, stalledEvents)
+				require.NotNil(t, updatedES)
+				require.Equal(t, esv1.ElasticsearchNodeShutdownStalledPhase, updatedES.Status.Phase)
+			} else {
+				require.Zero(t, stalledEvents)
+			}
+		})
+	}
 }
 
 func Test_calculateDownscales(t *testing.T) {
@@ -636,9 +1251,11 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownscales, gotDeletions := calculateDownscales(context.Background(), downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
+			gotDownscales, gotDeletions, gotHeldReasons := calculateDownscales(context.Background(), downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
 			require.Equal(t, tt.wantDownscales, gotDownscales)
 			require.Equal(t, tt.wantDeletions, gotDeletions)
+			// no budget limit and no master removal in progress: nothing is held
+			require.Empty(t, gotHeldReasons)
 		})
 	}
 }
@@ -742,7 +1359,8 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale)
+			// shard migration registers no shutdown: the statuses are retrieved by calculatePerformableDownscale
+			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("calculatePerformableDownscale() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -813,7 +1431,8 @@ func Test_attemptDownscale(t *testing.T) {
 				parentCtx:      context.Background(),
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale)
+			// shard migration registers no shutdown: the statuses are retrieved by calculatePerformableDownscale
+			_, err := attemptDownscale(downscaleCtx, tt.downscale, nil)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
