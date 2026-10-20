@@ -284,7 +284,11 @@ func podsToRollingUpgrade(
 	if err != nil {
 		return nil, err
 	}
-	return excludeLeavingPods(toUpgrade, members), nil
+	protected, err := leaving.withUnreached(members, k8s.PodNames(toUpgrade))
+	if err != nil {
+		return nil, err
+	}
+	return excludeLeavingPods(toUpgrade, protected), nil
 }
 
 // excludeLeavingPods returns the given Pods minus the given leaving ones, for example the ones the downscale wants to

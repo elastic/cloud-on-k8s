@@ -457,6 +457,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		notReadyPods   set.StringSet
 		// notJoinedPods are the Pods that are not members of the cluster
 		notJoinedPods set.StringSet
+		// partialNodes is true if the nodes response is partial: the Pods that are not members did not respond
+		partialNodes bool
 		// deleteErr is returned when a resource is deleted, for example a StatefulSet that is no longer expected
 		deleteErr error
 		// wantStatusCalls overrides the number of times the shutdown status of a node is retrieved, for the cases that
@@ -465,7 +467,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		shutdowns       map[string]esclient.NodeShutdown
 		// reportedShutdowns are the shutdown statuses in the downscale status reported by a previous reconciliation
 		reportedShutdowns map[string]string
-		getShutdownErr    error
+		// reportedExplanations are the explanations of the reported shutdown statuses, by node name
+		reportedExplanations map[string]string
+		getShutdownErr       error
 		// putShutdownFailures are the nodes whose shutdown request fails
 		putShutdownFailures set.StringSet
 		// deleteShutdownErr is returned when a shutdown is cancelled
@@ -480,7 +484,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		wantReplicas         map[string]int32
 		wantShutdownStatuses map[string]string
 		wantStalled          bool
-		wantReason           string
+		// wantStalledMessage is the explanation that the stalled event must contain, and wantNotStalledMessage the one it must
+		// not contain
+		wantStalledMessage    string
+		wantNotStalledMessage string
+		wantReason            string
 	}{
 		{
 			// the next steps may recreate the Pod, for it to join the cluster and be removed
@@ -493,6 +501,19 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notJoinedPods: set.Make("data-2"),
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// the nodes response is partial: data-2 may be a member that did not answer, the reason says so
+			name: "a leaving node that is not a member of the cluster is held with a reason that says it may not have answered if the response is partial",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  set.Make("data-2"),
+			notJoinedPods: set.Make("data-2"),
+			partialNodes:  true,
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterPartialInvariant + ": data-2",
 		},
 		{
 			// data-2 left the cluster while draining, for example because its Pod restarted: its shutdown cannot be
@@ -550,6 +571,26 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantShutdownStatuses:  map[string]string{"data-2": "IN_PROGRESS"},
 		},
 		{
+			// data-2 is a draining node that did not respond to the nodes request, reported as stalled by the previous
+			// reconciliation: it keeps that status, with its phase and event, although the request of another shutdown fails
+			name: "a stalled node missing from a partial nodes response is reported as stalled when a shutdown request fails",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+				{name: "other", data: true, actualReplicas: 2, desiredReplicas: 1},
+			},
+			maxUnavailable:       new(int32(2)),
+			notJoinedPods:        set.Make("data-2"),
+			partialNodes:         true,
+			reportedShutdowns:    map[string]string{"data-2": "STALLED"},
+			putShutdownFailures:  set.Make("id-other-1"),
+			wantErr:              true,
+			wantPutShutdowns:     []string{"id-other-1"},
+			wantReplicas:         map[string]int32{"data": 3, "other": 2},
+			wantShutdownStatuses: map[string]string{"data-2": "STALLED", "other-1": "NOT_STARTED"},
+			wantStalled:          true,
+		},
+		{
 			// the StatefulSet that is no longer expected cannot be deleted, before any shutdown is requested: the stalled
 			// status of data-2, a draining member, still comes with its phase and event
 			name: "the stalled status of a draining node is kept when a StatefulSet cannot be deleted",
@@ -568,6 +609,51 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantShutdownStatuses: map[string]string{"data-2": "STALLED"},
 			wantStatusCalls:      map[string]int{"data-2": 1},
 			wantStalled:          true,
+		},
+		{
+			// the StatefulSet that is no longer expected cannot be deleted, before any shutdown is requested: the carried
+			// forward stalled status of data-2 still comes with its phase and event
+			name: "a stalled node missing from a partial nodes response is reported as stalled when a StatefulSet cannot be deleted",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+				{name: "old", data: true, actualReplicas: 0, desiredReplicas: 0},
+			},
+			notJoinedPods:        set.Make("data-2"),
+			partialNodes:         true,
+			reportedShutdowns:    map[string]string{"data-2": "STALLED"},
+			deleteErr:            errors.New("delete failed"),
+			wantErr:              true,
+			wantReplicas:         map[string]int32{"data": 3},
+			wantShutdownStatuses: map[string]string{"data-2": "STALLED"},
+			wantStalled:          true,
+		},
+		{
+			// data-2 did not respond and was stalled: its explanation is the one of an earlier reconciliation. It sorts before
+			// other-1, which is stalled right now: the event shows the explanation of other-1
+			name: "a stalled node that responds is reported rather than a stalled node missing from a partial nodes response",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+				{name: "other", data: true, actualReplicas: 2, desiredReplicas: 1},
+			},
+			maxUnavailable: new(int32(2)),
+			notReadyPods:   set.Make("other-1"),
+			notJoinedPods:  set.Make("data-2"),
+			partialNodes:   true,
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-other-1": {
+					NodeID: "id-other-1", Type: string(esclient.Remove), Status: esclient.ShutdownStalled,
+					ShardMigration: esclient.ShardMigration{Explanation: "current explanation"},
+				},
+			},
+			reportedShutdowns:     map[string]string{"data-2": "STALLED"},
+			reportedExplanations:  map[string]string{"data-2": "old explanation"},
+			wantReplicas:          map[string]int32{"data": 3, "other": 2},
+			wantShutdownStatuses:  map[string]string{"data-2": "STALLED", "other-1": "STALLED"},
+			wantStalled:           true,
+			wantStalledMessage:    "current explanation",
+			wantNotStalledMessage: "old explanation",
 		},
 		{
 			// data-2 comes first in the removal order: its shutdown is confirmed, the request of data-1 fails, so only
@@ -1099,7 +1185,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			for name, status := range tt.reportedShutdowns {
 				// the status was written by a previous reconciliation
 				es.Status.DownscaleOperation.LastUpdatedTime = metav1.Now()
-				es.Status.DownscaleOperation.Nodes = append(es.Status.DownscaleOperation.Nodes, esv1.DownscaledNode{Name: name, ShutdownStatus: status})
+				reported := esv1.DownscaledNode{Name: name, ShutdownStatus: status}
+				if explanation, exists := tt.reportedExplanations[name]; exists {
+					reported.Explanation = &explanation
+				}
+				es.Status.DownscaleOperation.Nodes = append(es.Status.DownscaleOperation.Nodes, reported)
 			}
 			var actualStatefulSets, expectedStatefulSets es_sset.StatefulSetList
 			var pods []sset.TestPod
@@ -1133,6 +1223,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				podToNodeID[p.Name] = "id-" + p.Name
 				nodes.Nodes["id-"+p.Name] = esclient.Node{Name: p.Name}
 			}
+			if tt.partialNodes {
+				nodes.Summary.Failed = len(tt.notJoinedPods)
+			}
 			clientBuilder := k8s.NewFakeClientBuilder(objs...)
 			if tt.deleteErr != nil {
 				clientBuilder = clientBuilder.WithInterceptorFuncs(interceptor.Funcs{
@@ -1163,7 +1256,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				parentCtx:      context.Background(),
 			}
 
-			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, testLeavingNodes(downscaleCtx, NewMemoizingESState(context.Background(), esClient), expectedStatefulSets, actualStatefulSets))
+			results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, leavingNodesOfStatus(es, expectedStatefulSets, actualStatefulSets, esClient, downscaleCtx.nodeShutdown))
 			// the shutdowns of the draining nodes are already registered, only the nodes selected for removal get one
 			var putShutdowns []string
 			for _, call := range esClient.PutShutdownCalls {
@@ -1219,14 +1312,22 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			stalledReported := reconcileState.DownscaleReporter.Merge(es.Status.DownscaleOperation).Stalled
 			require.Equal(t, tt.wantStalled, stalledReported != nil && *stalledReported)
 			stalledEvents := 0
+			var stalledMessage string
 			for _, event := range reconcileState.Events() {
 				if event.Reason == events.EventReasonStalled {
 					stalledEvents++
+					stalledMessage = event.Message
 				}
 			}
 			_, updatedES := reconcileState.Apply()
 			if tt.wantStalled {
 				require.Equal(t, 1, stalledEvents)
+				if tt.wantStalledMessage != "" {
+					require.Contains(t, stalledMessage, tt.wantStalledMessage)
+				}
+				if tt.wantNotStalledMessage != "" {
+					require.NotContains(t, stalledMessage, tt.wantNotStalledMessage)
+				}
 				require.NotNil(t, updatedES)
 				require.Equal(t, esv1.ElasticsearchNodeShutdownStalledPhase, updatedES.Status.Phase)
 			} else {
@@ -1234,6 +1335,153 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestHandleDownscale_unreachedNodesKeepTheirReportedShutdown checks that a leaving node that is missing from a partial
+// nodes response keeps the shutdown status it was reported with over several reconciliations, as the upgrades rely on the
+// status of the previous reconciliation to leave it alone while it drains. The node is a live draining member that did
+// not respond, so it has no node ID: no shutdown is retrieved or requested for it.
+func TestHandleDownscale_unreachedNodesKeepTheirReportedShutdown(t *testing.T) {
+	tests := []struct {
+		name string
+		// partial is true if the node that did not respond is reported as failed in the nodes response
+		partial bool
+		// reported is the status of the node written by the previous reconciliation
+		reported esv1.DownscaledNode
+		// wantNode is the status reported for the node after each reconciliation
+		wantNode    esv1.DownscaledNode
+		wantStalled bool
+	}{
+		{
+			name:     "a node missing from a partial nodes response keeps its reported shutdown",
+			partial:  true,
+			reported: esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "IN_PROGRESS"},
+			wantNode: esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "IN_PROGRESS"},
+		},
+		{
+			name:        "a node missing from a partial nodes response keeps its reported stalled shutdown and explanation",
+			partial:     true,
+			reported:    esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "STALLED", Explanation: new("cannot move")},
+			wantNode:    esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "STALLED", Explanation: new("cannot move")},
+			wantStalled: true,
+		},
+		{
+			// the node is not a member of the cluster: it has no shutdown to report
+			name:     "a node missing from a complete nodes response is reported as not started",
+			partial:  false,
+			reported: esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "IN_PROGRESS"},
+			wantNode: esv1.DownscaledNode{Name: "data-2", ShutdownStatus: "NOT_STARTED"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{Namespace: "ns", Name: clusterName}
+			es.Spec.NodeSets = []esv1.NodeSet{{Name: "master", Count: 1}, {Name: "data", Count: 2}}
+			// the status written by the reconciliation that requested the shutdown of data-2
+			es.Status.DownscaleOperation = esv1.DownscaleOperation{
+				LastUpdatedTime: metav1.Now(),
+				Nodes:           []esv1.DownscaledNode{tt.reported},
+			}
+			masterSset := sset.TestSset{Namespace: es.Namespace, Name: "master", ClusterName: es.Name, Master: true, Replicas: 1}
+			dataSset := sset.TestSset{Namespace: es.Namespace, Name: "data", ClusterName: es.Name, Data: true, Replicas: 3}
+			actualStatefulSets := es_sset.StatefulSetList{masterSset.Build(), dataSset.Build()}
+			dataSset.Replicas = 2
+			expectedStatefulSets := es_sset.StatefulSetList{masterSset.Build(), dataSset.Build()}
+
+			objs := []client.Object{&es, actualStatefulSets[0].DeepCopy(), actualStatefulSets[1].DeepCopy()}
+			podToNodeID := map[string]string{}
+			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{}}
+			for _, p := range []sset.TestPod{
+				{Name: "master-0", StatefulSetName: "master", Master: true},
+				{Name: "data-0", StatefulSetName: "data", Data: true},
+				{Name: "data-1", StatefulSetName: "data", Data: true},
+				// data-2 is draining: its readiness port is closed
+				{Name: "data-2", StatefulSetName: "data", Data: true, Ready: false},
+			} {
+				p.Namespace, p.ClusterName, p.Ready = es.Namespace, es.Name, p.Ready || p.Name != "data-2"
+				objs = append(objs, p.BuildPtr())
+				if p.Name == "data-2" {
+					continue
+				}
+				podToNodeID[p.Name] = "id-" + p.Name
+				nodes.Nodes["id-"+p.Name] = esclient.Node{Name: p.Name}
+			}
+			if tt.partial {
+				nodes.Summary.Failed = 1
+			}
+			k8sClient := k8s.NewFakeClient(objs...)
+			esClient := &fakeESClient{
+				version: version.MustParse("8.0.0"), nodes: nodes,
+				Shutdowns: map[string]esclient.NodeShutdown{
+					"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
+				},
+			}
+
+			// each reconciliation relies on the status written by the previous one
+			for reconciliation := range 3 {
+				reconcileState := reconcile.MustNewState(es)
+				downscaleCtx := downscaleContext{
+					k8sClient:      k8sClient,
+					expectations:   expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+					reconcileState: reconcileState,
+					nodeShutdown: shutdown.WithObserver(
+						shutdown.NewNodeShutdown(esClient, podToNodeID, esclient.Remove, "", nil, logr.Discard()),
+						reconcileState.DownscaleReporter,
+					),
+					esClient:  esClient,
+					es:        es,
+					parentCtx: context.Background(),
+				}
+				leaving := leavingNodesOfStatus(es, expectedStatefulSets, actualStatefulSets, esClient, downscaleCtx.nodeShutdown)
+				results := HandleDownscale(downscaleCtx, expectedStatefulSets, actualStatefulSets, leaving)
+				require.False(t, results.HasError(), "reconciliation %d", reconciliation)
+
+				es.Status.DownscaleOperation = reconcileState.DownscaleReporter.Merge(es.Status.DownscaleOperation)
+				require.Equal(t, []esv1.DownscaledNode{tt.wantNode}, es.Status.DownscaleOperation.Nodes, "reconciliation %d", reconciliation)
+				require.Equal(t, tt.wantStalled, es.Status.DownscaleOperation.Stalled != nil && *es.Status.DownscaleOperation.Stalled, "reconciliation %d", reconciliation)
+				// a stalled status comes with the stalled phase and event
+				stalledEvents := 0
+				for _, event := range reconcileState.Events() {
+					if event.Reason == events.EventReasonStalled {
+						stalledEvents++
+					}
+				}
+				if tt.wantStalled {
+					require.Equal(t, 1, stalledEvents, "reconciliation %d", reconciliation)
+					_, updatedES := reconcileState.Apply()
+					require.NotNil(t, updatedES, "reconciliation %d", reconciliation)
+					require.Equal(t, esv1.ElasticsearchNodeShutdownStalledPhase, updatedES.Status.Phase, "reconciliation %d", reconciliation)
+				} else {
+					require.Zero(t, stalledEvents, "reconciliation %d", reconciliation)
+				}
+
+				// the node is held and its shutdown is not cancelled
+				require.False(t, esClient.DeleteShutdownCalled, "reconciliation %d", reconciliation)
+				var statefulSet appsv1.StatefulSet
+				require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: es.Namespace, Name: "data"}, &statefulSet))
+				require.Equal(t, int32(3), sset.GetReplicas(statefulSet), "reconciliation %d", reconciliation)
+
+				// the upgrades leave the node alone only while its shutdown is reported
+				unreached, err := leavingNodesOfStatus(es, expectedStatefulSets, actualStatefulSets, esClient, downscaleCtx.nodeShutdown).unreached([]string{"data-2"})
+				require.NoError(t, err)
+				require.Equal(t, tt.partial, unreached.Has("data-2"), "reconciliation %d", reconciliation)
+			}
+		})
+	}
+}
+
+// leavingNodesOfStatus returns the leavingNodes of the next reconciliation, which relies on the downscale status of the
+// given Elasticsearch.
+func leavingNodesOfStatus(
+	es esv1.Elasticsearch,
+	expected, actual es_sset.StatefulSetList,
+	esClient esclient.Client,
+	nodeShutdown shutdown.Interface,
+) *leavingNodes {
+	return newLeavingNodes(
+		desiredLeavingNodeNames(context.Background(), expected, actual),
+		NewMemoizingESState(context.Background(), esClient), nodeShutdown, es.Status.DownscaleOperation,
+	)
 }
 
 func Test_calculateDownscales(t *testing.T) {

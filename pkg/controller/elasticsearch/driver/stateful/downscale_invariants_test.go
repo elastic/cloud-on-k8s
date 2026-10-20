@@ -563,6 +563,13 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
 		},
 		{
+			name:             "should say that a node that is not a member of the cluster may not have answered if the nodes response is partial",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: set.Make(sset.PodName(ssetData4Replicas.Name, 3)), partialNodes: true},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       NodeNotInClusterPartialInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
+		},
+		{
 			name:             "should report the node that is not a member of the cluster when it holds the removal of the other data nodes",
 			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(3)), notMembers: set.Make(sset.PodName(ssetData4Replicas.Name, 2))},
 			statefulSet:      ssetData4Replicas,

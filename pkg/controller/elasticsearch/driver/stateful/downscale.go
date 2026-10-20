@@ -74,9 +74,12 @@ func HandleDownscale(
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
 	// Report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
-	// downscale fails or a shutdown cannot be requested: the statuses are added to the map once they are known.
+	// downscale fails or a shutdown cannot be requested: the current statuses are added to stalledCandidates once they
+	// are known.
 	stalledCandidates := make(map[string]shutdown.NodeShutdownStatus)
-	defer reportShutdownStalled(downscaleCtx, stalledCandidates)
+	// the statuses of the unreached nodes come from a previous reconciliation: they come after the current ones
+	unreachedStatuses := make(map[string]shutdown.NodeShutdownStatus)
+	defer reportShutdownStalled(downscaleCtx, stalledCandidates, unreachedStatuses)
 
 	// Recording the nodes resets the shutdown status of the draining ones: report it again right away, from the retrieved
 	// shutdowns. If a step fails before they are requested, for example the deletion of a StatefulSet, the reset status
@@ -87,8 +90,31 @@ func HandleDownscale(
 	}
 	maps.Copy(stalledCandidates, drainingStatuses)
 
+	// The leaving nodes that are missing from a partial nodes response have no node ID: no shutdown is retrieved or
+	// requested for them, so nothing else reports them. They keep the shutdown status they were reported with, for the
+	// upgrades to keep leaving them alone in the next reconciliations too, as long as the response is partial. Their
+	// status is reported as stalled too, so that the phase and the event match it, like those of the other nodes, in every
+	// reconciliation: the explanation is the one of the last reconciliation that reached Elasticsearch, so it may be
+	// out of date. A stalled shutdown that is current is reported before it.
+	if supportsNodeShutdown(downscaleCtx.esClient.Version()) {
+		unreached, err := leaving.unreached(desiredLeavingNodes)
+		if err != nil {
+			return results.WithError(err)
+		}
+		for _, node := range unreached.AsSortedSlice() {
+			unreachedStatuses[node] = leaving.reportedStatus(node)
+			downscaleCtx.reconcileState.OnShutdownStatus(node, unreachedStatuses[node])
+		}
+	}
+
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining, notMembers)
+	if notMembers.Count() > 0 {
+		// a node that is not a member may be a member that did not answer, the reason why it is held says so
+		if downscaleState.partialNodes, err = leaving.esState.NodesResponsePartial(); err != nil {
+			return results.WithError(err)
+		}
+	}
 
 	// compute the list of StatefulSet downscales and deletions to perform
 	downscales, deletions, heldReasons := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
@@ -239,22 +265,25 @@ func shutdownStatuses(downscaleCtx downscaleContext, nodes []string) (map[string
 	return statuses, nil
 }
 
-// reportShutdownStalled reports the first stalled shutdown of the given statuses, in node name order, through the phase
-// and an event, as it can require user interaction.
-func reportShutdownStalled(downscaleCtx downscaleContext, statuses map[string]shutdown.NodeShutdownStatus) {
-	for _, node := range slices.Sorted(maps.Keys(statuses)) {
-		if statuses[node].Status != esclient.ShutdownStalled {
-			continue
+// reportShutdownStalled reports the first stalled shutdown, by priority then node name, through the phase and an event,
+// as it can require user interaction. The shutdowns of the current statuses come first: a stalled one of them is
+// reported rather than one of the unreached statuses, which come from a previous reconciliation, whatever the node names.
+func reportShutdownStalled(downscaleCtx downscaleContext, current, unreached map[string]shutdown.NodeShutdownStatus) {
+	for _, statuses := range []map[string]shutdown.NodeShutdownStatus{current, unreached} {
+		for _, node := range slices.Sorted(maps.Keys(statuses)) {
+			if statuses[node].Status != esclient.ShutdownStalled {
+				continue
+			}
+			downscaleCtx.reconcileState.
+				UpdateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase).
+				AddEvent(
+					corev1.EventTypeWarning,
+					events.EventReasonStalled,
+					events.EventActionShutdown,
+					fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", statuses[node].Explanation),
+				)
+			return
 		}
-		downscaleCtx.reconcileState.
-			UpdateWithPhase(esv1.ElasticsearchNodeShutdownStalledPhase).
-			AddEvent(
-				corev1.EventTypeWarning,
-				events.EventReasonStalled,
-				events.EventActionShutdown,
-				fmt.Sprintf("Requested topology change is stalled. User intervention maybe required if this condition persists. %s", statuses[node].Explanation),
-			)
-		return
 	}
 }
 

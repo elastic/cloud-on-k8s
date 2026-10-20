@@ -80,6 +80,60 @@ func (l *leavingNodes) draining(ctx context.Context, nodes []string) (set.String
 	return l.nodeShutdown.NodesWithShutdown(ctx, leaving)
 }
 
+// unreached returns the given nodes that are leaving, missing from a partial nodes response, and have a shutdown in the
+// last downscale status. Such a node may be a draining member of the cluster that did not respond: it has no node ID,
+// so members and draining miss it, although its shutdown may still be running. The upgrades must leave it alone like
+// the nodes they find draining. Nothing is returned if the nodes response is complete: a node missing from it is then
+// not a member. Nothing is returned either without nodeShutdown, as draining then relies on the last downscale status
+// for all the nodes. The protection is broader than needed, as the nodes that did not respond are not identified.
+// A leaving node that left the cluster on its own, for example because its Pod restarted, is protected too while
+// another node fails to answer: the upgrades that would repair it leave it alone until the response is complete or the
+// node rejoins. Telling them apart would require the IDs of the nodes that did not respond.
+func (l *leavingNodes) unreached(nodes []string) (set.StringSet, error) {
+	leaving := l.among(nodes)
+	if len(leaving) == 0 || l.nodeShutdown == nil {
+		return set.Make(), nil
+	}
+	partial, err := l.esState.NodesResponsePartial()
+	if err != nil || !partial {
+		return set.Make(), err
+	}
+	members, err := membersAmong(l.esState, leaving)
+	if err != nil {
+		return nil, err
+	}
+	nonMembers := set.Make(leaving...).Diff(members)
+	return nodesWithReportedShutdown(l.lastDownscale, nonMembers.AsSortedSlice()), nil
+}
+
+// reportedStatus returns the shutdown status of the given node in the last downscale status.
+func (l *leavingNodes) reportedStatus(node string) shutdown.NodeShutdownStatus {
+	for _, reported := range l.lastDownscale.Nodes {
+		if reported.Name != node {
+			continue
+		}
+		status := shutdown.NodeShutdownStatus{Status: esclient.ShutdownStatus(reported.ShutdownStatus)}
+		if reported.Explanation != nil {
+			status.Explanation = *reported.Explanation
+		}
+		return status
+	}
+	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownNotStarted}
+}
+
+// withUnreached returns the given leaving nodes, which an upgrade leaves alone, plus the unreached ones among the given
+// nodes, see unreached. They are not part of draining, because a node without node ID cannot be given to the shutdown
+// interface: its shutdown could not be requested nor kept. Every upgrade path that leaves the leaving nodes alone must
+// go through here, for them to protect the unreached ones as well.
+func (l *leavingNodes) withUnreached(leaving set.StringSet, nodes []string) (set.StringSet, error) {
+	unreached, err := l.unreached(nodes)
+	if err != nil {
+		return nil, err
+	}
+	unreached.MergeWith(leaving)
+	return unreached, nil
+}
+
 // desiredLeavingNodeNames returns the names of all the Pods that the expected StatefulSets no longer include, without
 // applying any budget or invariant filter: this is the whole set of Pods the downscale wants to remove, not the ones it
 // is allowed to remove now.

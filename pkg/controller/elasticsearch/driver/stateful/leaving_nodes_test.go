@@ -126,3 +126,89 @@ func Test_leavingNodes(t *testing.T) {
 		})
 	}
 }
+
+func Test_leavingNodes_unreached(t *testing.T) {
+	tests := []struct {
+		name    string
+		desired set.StringSet
+		// nodes are the nodes given to unreached
+		nodes   []string
+		members set.StringSet
+		// partial is true if some nodes did not respond to the nodes request
+		partial bool
+		// withoutShutdown makes the shutdown interface unavailable
+		withoutShutdown bool
+		// partialErr makes the retrieval of the nodes response fail
+		partialErr error
+		wantErr    bool
+		// reported are the shutdown statuses in the last downscale status, by node name
+		reported map[string]esclient.ShutdownStatus
+		want     []string
+	}{
+		{
+			name:     "a leaving node missing from a partial response with a reported shutdown is unreached",
+			desired:  set.Make("data-1", "data-2"),
+			nodes:    []string{"data-0", "data-1", "data-2"},
+			members:  set.Make("data-0"),
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress, "data-2": esclient.ShutdownNotStarted},
+			want:     []string{"data-1"},
+		},
+		{
+			name:     "a leaving member is not unreached",
+			desired:  set.Make("data-1"),
+			nodes:    []string{"data-1"},
+			members:  set.Make("data-1"),
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+		},
+		{
+			name:     "a node that is not leaving is not unreached",
+			desired:  set.Make("data-2"),
+			nodes:    []string{"data-1"},
+			members:  set.Make(),
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+		},
+		{
+			name:     "no node is unreached if the response is complete",
+			desired:  set.Make("data-1"),
+			nodes:    []string{"data-1"},
+			members:  set.Make(),
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+		},
+		{
+			name:            "no node is unreached without the shutdown interface, as draining relies on the downscale status",
+			desired:         set.Make("data-1"),
+			nodes:           []string{"data-1"},
+			members:         set.Make(),
+			partial:         true,
+			withoutShutdown: true,
+			reported:        map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+		},
+		{
+			name:       "an error while retrieving the nodes response is returned",
+			desired:    set.Make("data-1"),
+			nodes:      []string{"data-1"},
+			members:    set.Make(),
+			partialErr: errors.New("boom"),
+			wantErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var nodeShutdown shutdown.Interface
+			if !tt.withoutShutdown {
+				nodeShutdown = &fakeNodesWithShutdown{withShutdown: set.Make()}
+			}
+			var lastDownscale esv1.DownscaleOperation
+			for node, status := range tt.reported {
+				lastDownscale.Nodes = append(lastDownscale.Nodes, esv1.DownscaledNode{Name: node, ShutdownStatus: string(status)})
+			}
+			leaving := newLeavingNodes(tt.desired, clusterMembers{members: tt.members, partial: tt.partial, partialErr: tt.partialErr}, nodeShutdown, lastDownscale)
+			unreached, err := leaving.unreached(tt.nodes)
+			require.Equal(t, tt.wantErr, err != nil, err)
+			require.ElementsMatch(t, tt.want, unreached.AsSlice())
+		})
+	}
+}

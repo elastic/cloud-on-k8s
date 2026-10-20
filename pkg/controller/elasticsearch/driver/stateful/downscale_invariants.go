@@ -25,6 +25,8 @@ const (
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
 	NodeNotInClusterInvariant        = "Not removing node that is not a member of the cluster"
+	// NodeNotInClusterPartialInvariant is used instead of NodeNotInClusterInvariant if the nodes response is partial.
+	NodeNotInClusterPartialInvariant = "Not removing node that is not a member of the cluster, or that did not answer the nodes request"
 )
 
 // checkDownscaleInvariants returns the removals of nodes that the given state allows when downscaling the given
@@ -47,7 +49,11 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 	if removals.count < requestedDeletes {
 		// the removals stop at the next Pod: it may be a node that is not a member of the cluster
 		if next := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-removals.count-1); state.notMembers.Has(next) {
-			return removals, fmt.Sprintf("%s: %s", NodeNotInClusterInvariant, next)
+			reason := NodeNotInClusterInvariant
+			if state.partialNodes {
+				reason = NodeNotInClusterPartialInvariant
+			}
+			return removals, fmt.Sprintf("%s: %s", reason, next)
 		}
 	}
 
@@ -109,6 +115,9 @@ type downscaleState struct {
 	// notMembers are the Pods that are not members of the cluster, for example because they never joined it. They cannot
 	// be shut down and may still hold data: their removal is held until they join the cluster.
 	notMembers set.StringSet
+	// partialNodes is true if the nodes response is partial: a Pod that is not a member may be a member that did not
+	// answer, which the reason why its removal is held says.
+	partialNodes bool
 }
 
 // newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type

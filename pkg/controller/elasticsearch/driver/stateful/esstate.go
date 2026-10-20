@@ -18,6 +18,9 @@ type ESState interface {
 	NodesInCluster(nodeNames []string) (bool, error)
 	// NodeNameToID returns a map of Elasticsearch node ID to node name.
 	NodeNameToID() (map[string]string, error)
+	// NodesResponsePartial returns true if some nodes of the cluster did not respond to the nodes request that
+	// NodeNameToID relies on: they may be members of the cluster although they have no node ID.
+	NodesResponsePartial() (bool, error)
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
@@ -60,6 +63,7 @@ type memoizingNodes struct {
 	esClient     esclient.Client
 	ctx          context.Context
 	nodeNameToID map[string]string
+	partial      bool
 }
 
 // initialize requests Elasticsearch for nodes information, only once.
@@ -68,6 +72,7 @@ func (n *memoizingNodes) initialize() error {
 	if err != nil {
 		return err
 	}
+	n.partial = nodes.IsPartial()
 	n.nodeNameToID = map[string]string{}
 	for id, node := range nodes.Nodes {
 		n.nodeNameToID[node.Name] = id
@@ -93,6 +98,13 @@ func (n *memoizingNodes) NodeNameToID() (map[string]string, error) {
 		return nil, err
 	}
 	return n.nodeNameToID, nil
+}
+
+func (n *memoizingNodes) NodesResponsePartial() (bool, error) {
+	if err := initOnce(&n.once, n.initialize); err != nil {
+		return false, err
+	}
+	return n.partial, nil
 }
 
 // -- Shards allocation enabled

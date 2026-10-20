@@ -159,6 +159,17 @@ func Test_podsToUpgrade(t *testing.T) {
 type clusterMembers struct {
 	ESState
 	members set.StringSet
+	// partial is true if the nodes response is partial: some nodes did not respond, and may be members
+	partial bool
+	// partialErr is returned if the nodes response cannot be retrieved
+	partialErr error
+}
+
+func (c clusterMembers) NodesResponsePartial() (bool, error) {
+	if c.partialErr != nil {
+		return false, c.partialErr
+	}
+	return c.partial, nil
 }
 
 func (c clusterMembers) NodeNameToID() (map[string]string, error) {
@@ -290,6 +301,56 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, newLeavingNodes(desiredLeaving, clusterMembers{members: tt.args.members}, nil, esv1.DownscaleOperation{}))
 			require.NoError(t, err)
 			assert.ElementsMatch(t, names(got), tt.want, tt.name)
+		})
+	}
+}
+
+// Test_podsToRollingUpgrade_unreachedNodes checks that a leaving Pod missing from a partial nodes response, that the
+// downscale status reports a shutdown for, is left to the downscale: it may be a draining member that did not respond.
+func Test_podsToRollingUpgrade_unreachedNodes(t *testing.T) {
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2}
+	tests := []struct {
+		name string
+		// partial is true if some nodes did not respond to the nodes request
+		partial bool
+		// reported are the shutdown statuses in the last downscale status, by node name
+		reported map[string]esclient.ShutdownStatus
+		// want are the Pods to upgrade: data-0 stays and is outdated
+		want []string
+	}{
+		{
+			name:     "a node missing from a partial response with a reported shutdown is not upgraded",
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+			want:     []string{"data-0"},
+		},
+		{
+			name:     "a node missing from a partial response without a reported shutdown is upgraded",
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownNotStarted},
+			want:     []string{"data-0", "data-1"},
+		},
+		{
+			name:     "a node missing from a complete response is not a member: it is upgraded",
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+			want:     []string{"data-0", "data-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statefulSets := es_sset.StatefulSetList{sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build()}
+			expected := es_sset.StatefulSetList{sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 1}.Build()}
+			client := k8s.NewFakeClient(podWithRevision("data-0", "rev-a"), podWithRevision("data-1", "rev-a"))
+			var lastDownscale esv1.DownscaleOperation
+			for node, status := range tt.reported {
+				lastDownscale.Nodes = append(lastDownscale.Nodes, esv1.DownscaledNode{Name: node, ShutdownStatus: string(status)})
+			}
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expected, statefulSets)
+			esState := clusterMembers{members: set.Make("data-0"), partial: tt.partial}
+			leaving := newLeavingNodes(desiredLeaving, esState, &fakeNodesWithShutdown{withShutdown: set.Make()}, lastDownscale)
+			got, err := podsToRollingUpgrade(client, statefulSets, leaving)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, names(got))
 		})
 	}
 }
