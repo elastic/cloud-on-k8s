@@ -6,6 +6,7 @@ package stateful
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // -- ES Client mock
@@ -49,6 +51,8 @@ type fakeESClient struct { //nolint:maligned
 	PutShutdownCalls []shutdownCall
 	// RegisterPutShutdowns makes PutShutdown register an in progress shutdown in Shutdowns, replacing any existing one
 	RegisterPutShutdowns bool
+	// PutShutdownErrNodes are the IDs of the nodes whose PutShutdown fails
+	PutShutdownErrNodes  set.StringSet
 	DeleteShutdownCalled bool
 	// DeleteShutdownErr is returned by DeleteShutdown, which then deletes nothing
 	DeleteShutdownErr error
@@ -127,6 +131,9 @@ type shutdownCall struct {
 
 func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, _ string, _ *time.Duration) error {
 	f.PutShutdownCalls = append(f.PutShutdownCalls, shutdownCall{NodeID: nodeID, Type: shutdownType})
+	if f.PutShutdownErrNodes.Has(nodeID) {
+		return errors.New("put shutdown failed")
+	}
 	if f.Shutdowns == nil {
 		f.Shutdowns = make(map[string]esclient.NodeShutdown)
 	}

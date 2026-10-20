@@ -73,6 +73,20 @@ func HandleDownscale(
 	// upgrade relies on while Elasticsearch is unreachable, so a failed retrieval must keep the reported one.
 	downscaleCtx.reconcileState.RecordNodesToBeRemoved(desiredLeavingNodes)
 
+	// Report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
+	// downscale fails or a shutdown cannot be requested: the statuses are added to the map once they are known.
+	stalledCandidates := make(map[string]shutdown.NodeShutdownStatus)
+	defer reportShutdownStalled(downscaleCtx, stalledCandidates)
+
+	// Recording the nodes resets the shutdown status of the draining ones: report it again right away, from the retrieved
+	// shutdowns. If a step fails before they are requested, for example the deletion of a StatefulSet, the reset status
+	// would be saved, and the forced upgrade relies on it while Elasticsearch is not reachable.
+	drainingStatuses, err := shutdownStatuses(downscaleCtx, draining.AsSortedSlice())
+	if err != nil {
+		return results.WithError(err)
+	}
+	maps.Copy(stalledCandidates, drainingStatuses)
+
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining, notMembers)
 
@@ -94,7 +108,7 @@ func HandleDownscale(
 	keptNodes := draining.Diff(set.Make(selectedNodes...)).AsSortedSlice()
 	shutdownNodes := slices.Concat(selectedNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
-	requeue, err := requestShutdownsAndDownscale(downscaleCtx, downscales, shutdownNodes, terminatingNodes, len(notMembers) > 0)
+	requeue, err := requestShutdownsAndDownscale(downscaleCtx, downscales, shutdownNodes, terminatingNodes, len(notMembers) > 0, stalledCandidates)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -116,14 +130,16 @@ func HandleDownscale(
 
 // requestShutdownsAndDownscale requests the shutdowns of shutdownNodes and attempts the downscales, then cancels the
 // shutdowns of the other non-terminating nodes, even if an earlier step failed. It returns whether a requeue should be
-// scheduled if some of the downscales could not be performed entirely.
+// scheduled if some of the downscales could not be performed entirely. The shutdown statuses that are known are added
+// to stalledCandidates, even on failure, for a stalled one to be reported.
 func requestShutdownsAndDownscale(
 	downscaleCtx downscaleContext,
 	downscales []ssetDownscale,
 	shutdownNodes, terminatingNodes []string,
 	keepNonMembers bool,
+	stalledCandidates map[string]shutdown.NodeShutdownStatus,
 ) (bool, error) {
-	requeue, err := downscaleAfterShutdowns(downscaleCtx, downscales, shutdownNodes)
+	requeue, err := downscaleAfterShutdowns(downscaleCtx, downscales, shutdownNodes, stalledCandidates)
 	// Nodes that are no longer leaving, for example because of a later spec change, would otherwise keep their shutdown
 	// for as long as another node is held draining, using up the downscale budget and blocking the rolling upgrade.
 	// Cancelling their shutdowns does not depend on the nodes to shut down, so it is done whether or not their shutdowns
@@ -139,17 +155,25 @@ func requestShutdownsAndDownscale(
 
 // downscaleAfterShutdowns requests the shutdowns of shutdownNodes, then attempts the downscales. It stops at the first
 // failure. It returns whether a requeue should be scheduled if some of the downscales could not be performed entirely.
-func downscaleAfterShutdowns(downscaleCtx downscaleContext, downscales []ssetDownscale, shutdownNodes []string) (bool, error) {
+// The shutdown statuses that are known are added to stalledCandidates, even on failure.
+func downscaleAfterShutdowns(
+	downscaleCtx downscaleContext,
+	downscales []ssetDownscale,
+	shutdownNodes []string,
+	stalledCandidates map[string]shutdown.NodeShutdownStatus,
+) (bool, error) {
 	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes); err != nil {
+		// the shutdowns that were confirmed may be stalled
+		if statuses, statusErr := shutdownStatuses(downscaleCtx, shutdownNodes); statusErr == nil {
+			maps.Copy(stalledCandidates, statuses)
+		}
 		return false, err
 	}
 	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)
 	if err != nil {
 		return false, err
 	}
-	// report a stalled shutdown after the downscales, so that it takes precedence over data migration, even if a
-	// downscale fails
-	defer reportShutdownStalled(downscaleCtx, statuses)
+	maps.Copy(stalledCandidates, statuses)
 	return attemptDownscales(downscaleCtx, downscales, statuses)
 }
 

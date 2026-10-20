@@ -89,8 +89,10 @@ func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.S
 }
 
 // nodesWithReportedShutdown returns the given nodes that have a shutdown in the given downscale status. The nodes the
-// downscale has not requested a shutdown for are reported as not started. A node is reported in progress before its
-// shutdown is requested, so a node whose request failed, for example because it never joined the cluster, is included.
+// downscale has not requested a shutdown for are reported as not started. A node is only reported in progress once its
+// shutdown is confirmed, so a node whose request failed, for example because it never joined the cluster, is not included.
+// A status written by an older operator version may still report unconfirmed nodes in progress, until the first
+// reconciliation that reaches Elasticsearch rewrites it.
 func nodesWithReportedShutdown(downscale esv1.DownscaleOperation, nodes []string) set.StringSet {
 	reported := set.Make()
 	for _, node := range downscale.Nodes {

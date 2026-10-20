@@ -106,6 +106,8 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown 
 		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason, ns.allocationDelay); err != nil {
 			return fmt.Errorf("on put shutdown (type: %s) for node %s: %w", ns.typ, node, err)
 		}
+		// the shutdown is registered: remember it right away, so that it is not lost if its record cannot be read back
+		ns.shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: string(ns.typ), Status: esclient.ShutdownInProgress}
 		// update the internal cache with the information about the new shutdown
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
 		if err != nil {

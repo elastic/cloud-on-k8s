@@ -728,6 +728,63 @@ func TestNodeShutdown_CancelShutdownsExcept(t *testing.T) {
 	}
 }
 
+func TestNodeShutdown_ReconcileShutdowns_confirmation(t *testing.T) {
+	tests := []struct {
+		name string
+		// failRequest is the index of the request that fails: 0 is the retrieval of the shutdowns, 1 the shutdown request,
+		// 2 the read of the shutdown record back. -1 if none fails.
+		failRequest int
+		wantErr     bool
+		// wantWithShutdown is true if the node is reported as having a shutdown afterwards
+		wantWithShutdown bool
+	}{
+		{
+			name:             "a requested shutdown is registered",
+			failRequest:      -1,
+			wantWithShutdown: true,
+		},
+		{
+			// the shutdown exists in Elasticsearch: it must not be reported as missing
+			name:             "a requested shutdown is registered even if its record cannot be read back",
+			failRequest:      2,
+			wantErr:          true,
+			wantWithShutdown: true,
+		},
+		{
+			name:        "a shutdown whose request fails is not registered",
+			failRequest: 1,
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixtures := []string{noShutdownFixture, ackFixture, singleRestartShutdownFixture}
+			i := 0
+			client := esclient.NewMockClient(version.MustParse("7.15.2"), func(req *http.Request) *http.Response {
+				defer func() {
+					i++
+				}()
+				statusCode := 200
+				if i == tt.failRequest {
+					statusCode = 500
+				}
+				return &http.Response{
+					StatusCode: statusCode,
+					Body:       io.NopCloser(bytes.NewBuffer([]byte(fixtures[i]))),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			})
+			ns := NewNodeShutdown(client, map[string]string{"pod-1": "txXw-Kd2Q6K0PbYMAPzH-Q"}, esclient.Restart, "", nil, log.Log.WithName("test"))
+			err := ns.ReconcileShutdowns(context.Background(), []string{"pod-1"})
+			assert.Equal(t, tt.wantErr, err != nil, err)
+			withShutdown, err := ns.NodesWithShutdown(context.Background(), []string{"pod-1"})
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantWithShutdown, withShutdown.Has("pod-1"))
+		})
+	}
+}
+
 func TestNodeShutdown_ReconcileShutdowns_AllocationDelay(t *testing.T) {
 	delay := 10 * time.Minute
 

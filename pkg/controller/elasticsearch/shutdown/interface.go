@@ -59,10 +59,15 @@ type observed struct {
 }
 
 func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error {
-	if o.observer != nil {
+	err := o.Interface.ReconcileShutdowns(ctx, nodesToShutdown)
+	// On success, report the nodes in progress. With node shutdowns, the caller overwrites this right after with their
+	// real status, so nothing depends on it: it only remains for shard migration, which registers no shutdown, for the
+	// nodes whose status is not retrieved. On failure, the nodes that fail or are not reached have no shutdown, and the
+	// others are reported with their status by the caller: report nothing, rather than every node.
+	if err == nil && o.observer != nil {
 		o.observer.OnReconcileShutdowns(nodesToShutdown)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, nodesToShutdown)
+	return err
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {
