@@ -6,11 +6,13 @@ package stateful
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -49,7 +51,11 @@ type fakeESClient struct { //nolint:maligned
 	PutShutdownCalls []shutdownCall
 	// RegisterPutShutdowns makes PutShutdown register an in progress shutdown in Shutdowns, replacing any existing one
 	RegisterPutShutdowns bool
+	// PutShutdownErrNodes are the IDs of the nodes whose PutShutdown fails
+	PutShutdownErrNodes  sets.Set[string]
 	DeleteShutdownCalled bool
+	// DeleteShutdownErr is returned by DeleteShutdown, which then deletes nothing
+	DeleteShutdownErr error
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
@@ -125,6 +131,9 @@ type shutdownCall struct {
 
 func (f *fakeESClient) PutShutdown(_ context.Context, nodeID string, shutdownType esclient.ShutdownType, _ string, _ *time.Duration) error {
 	f.PutShutdownCalls = append(f.PutShutdownCalls, shutdownCall{NodeID: nodeID, Type: shutdownType})
+	if f.PutShutdownErrNodes.Has(nodeID) {
+		return errors.New("put shutdown failed")
+	}
 	if f.Shutdowns == nil {
 		f.Shutdowns = make(map[string]esclient.NodeShutdown)
 	}
@@ -157,6 +166,9 @@ func (f *fakeESClient) GetShutdown(_ context.Context, nodeID *string) (esclient.
 
 func (f *fakeESClient) DeleteShutdown(_ context.Context, nodeID string) error {
 	f.DeleteShutdownCalled = true
+	if f.DeleteShutdownErr != nil {
+		return f.DeleteShutdownErr
+	}
 	delete(f.Shutdowns, nodeID)
 	return nil
 }

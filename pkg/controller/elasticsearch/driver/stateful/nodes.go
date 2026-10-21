@@ -11,6 +11,7 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -34,7 +35,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/optional"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func (d *Driver) reconcileNodeSpecs(
@@ -272,14 +272,14 @@ func (d *Driver) prepareLeavingNodes(
 	esClient esclient.Client,
 	esState ESState,
 	reconcileState *reconcile.State,
-	desiredLeaving set.StringSet,
+	desiredLeaving sets.Set[string],
 ) (*leavingNodes, error) {
 	var nodeShutdowns shutdown.Interface
 	var nodeShutdownsErr error
 	if esReachable {
 		nodeShutdowns, nodeShutdownsErr = newShutdownInterface(ctx, d.ES, esClient, esState, reconcileState.StatusReporter)
 	}
-	if nodeShutdowns != nil && desiredLeaving.Count() > 0 {
+	if nodeShutdowns != nil && desiredLeaving.Len() > 0 {
 		// retrieve the shutdowns up front, as the downscale does in any case: if they cannot be retrieved, the forced
 		// upgrade relies on the reported ones, and the error stops the reconciliation before the downscale
 		if _, err := nodeShutdowns.NodesWithShutdown(ctx, nil); err != nil {
