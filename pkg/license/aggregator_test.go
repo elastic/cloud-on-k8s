@@ -176,14 +176,14 @@ func TestAggregator(t *testing.T) {
 			wantTotal: 35.0,
 		},
 		{
-			name: "kibana replicas from the deployment",
+			name: "kibana single pool replicas from the spec",
 			objects: []client.Object{
-				// the spec count is 2 but the deployment is scaled to 5
+				// the spec count is authoritative for the single pool, a drift of the live deployment is ignored
 				&kbv1.Kibana{Name: "test-kibana", Namespace: "default", Spec: kbv1.KibanaSpec{
-					Count:     2,
+					Count:     5,
 					Resources: commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: new(resource.MustParse("1Gi"))}},
 				}},
-				kibanaDeployment("test-kibana", kblabel.SinglePoolRole, 5),
+				kibanaDeployment("test-kibana", kblabel.SinglePoolRole, 2),
 			},
 			wantUsage: map[string]float64{kibanaKey: 5.0}, // 5x1Gi
 			wantTotal: 5.0,
@@ -221,7 +221,7 @@ func TestAggregator(t *testing.T) {
 				}},
 				&kbv1.Kibana{Name: "test-kibana-hpa", Namespace: "default", Spec: kbv1.KibanaSpec{
 					Count:           1,
-					BackgroundTasks: &kbv1.KibanaBackgroundTasks{}, // no count, the deployment would get the Kubernetes default of 1
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{}, // no count and no deployment yet, defaults to 1
 				}},
 			},
 			wantUsage: map[string]float64{
@@ -259,14 +259,14 @@ func TestAggregator(t *testing.T) {
 		{
 			name: "fleet server replicas from the live workload",
 			objects: []client.Object{
-				// the spec declares 1 replica but the deployment is scaled to 3
+				// the spec is authoritative for a Deployment, a drift of the live object is ignored
 				&agentv1alpha1.Agent{Name: "fs-deployment", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
 					FleetServerEnabled: true,
-					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](1)},
+					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](3)},
 				}},
 				&appsv1.Deployment{
 					Name: agent.Name("fs-deployment"), Namespace: "default",
-					Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](3)},
+					Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](1)},
 				},
 				// a DaemonSet schedules one pod per node, read from the DaemonSet status
 				&agentv1alpha1.Agent{Name: "fs-daemonset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{

@@ -175,30 +175,25 @@ func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, e
 }
 
 // kibanaPoolReplicas returns the number of replicas of the given Kibana pool.
-// The replicas are read from the pool Deployment as the background tasks pool may be scaled by an HPA. If the
-// Deployment does not exist yet, the count declared in the spec is used.
+// The spec is authoritative for the single pool, the UI pool and a background tasks pool with a count as the
+// controller owns their replicas. A background tasks pool without a count is scaled by an HPA, its replicas are read
+// from the live Deployment.
 func (a aggregator) kibanaPoolReplicas(ctx context.Context, kb kbv1.Kibana, role kblabel.Role) (int32, error) {
-	name := kbv1.Deployment(kb.Name)
-	if role.IsBackgroundTasks() {
-		name = kbv1.BackgroundTasksDeployment(kb.Name)
+	if !role.IsBackgroundTasks() {
+		return kb.Spec.Count, nil
+	}
+
+	if kb.Spec.BackgroundTasks.Count != nil {
+		return *kb.Spec.BackgroundTasks.Count, nil
 	}
 
 	var dp appsv1.Deployment
-	err := a.client.Get(ctx, types.NamespacedName{Namespace: kb.Namespace, Name: name}, &dp)
-	if err == nil && dp.Spec.Replicas != nil {
-		return *dp.Spec.Replicas, nil
-	}
-	if client.IgnoreNotFound(err) != nil {
+	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.BackgroundTasksDeployment(kb.Name)}
+	if err := a.client.Get(ctx, nsn, &dp); client.IgnoreNotFound(err) != nil {
 		return 0, err
 	}
-
-	if role.IsBackgroundTasks() {
-		if kb.Spec.BackgroundTasks.Count != nil {
-			return *kb.Spec.BackgroundTasks.Count, nil
-		}
-		return 1, nil // replicas are managed externally, the Deployment gets the Kubernetes default
-	}
-	return kb.Spec.Count, nil
+	// a missing Deployment or nil replicas both resolve to the Kubernetes default of 1 replica
+	return pointer.Int32OrDefault(dp.Spec.Replicas, 1), nil
 }
 
 func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory, error) {
@@ -319,41 +314,22 @@ func agentPodTemplate(agt agentv1alpha1.Agent) corev1.PodTemplateSpec {
 }
 
 // fleetServerReplicas returns the number of replicas of the given Fleet Server Agent.
-// The replicas are read from the live workload object as a Deployment may be scaled externally and the number of
-// DaemonSet pods depends on the number of Kubernetes nodes. If the workload object does not exist yet, the count
-// declared in the spec is used.
+// The spec is authoritative for a Deployment or a StatefulSet as the controller always sets their replicas and the
+// Agent resource cannot be scaled by an HPA. The number of DaemonSet pods depends on the number of Kubernetes nodes
+// and is read from the live object.
 func (a aggregator) fleetServerReplicas(ctx context.Context, agt agentv1alpha1.Agent) (int32, error) {
-	nsn := types.NamespacedName{Namespace: agt.Namespace, Name: agent.Name(agt.Name)}
 	switch {
 	case agt.Spec.DaemonSet != nil:
 		var ds appsv1.DaemonSet
-		err := a.client.Get(ctx, nsn, &ds)
-		if err != nil {
+		nsn := types.NamespacedName{Namespace: agt.Namespace, Name: agent.Name(agt.Name)}
+		if err := a.client.Get(ctx, nsn, &ds); err != nil {
 			// the number of nodes the DaemonSet will cover is unknown until the DaemonSet exists
 			return 0, client.IgnoreNotFound(err)
 		}
 		return ds.Status.DesiredNumberScheduled, nil
 	case agt.Spec.Deployment != nil:
-		var dp appsv1.Deployment
-		if err := a.client.Get(ctx, nsn, &dp); client.IgnoreNotFound(err) != nil {
-			return 0, err
-		}
-
-		if dp.Spec.Replicas != nil {
-			return *dp.Spec.Replicas, nil
-		}
-
 		return pointer.Int32OrDefault(agt.Spec.Deployment.Replicas, 1), nil
 	case agt.Spec.StatefulSet != nil:
-		var sset appsv1.StatefulSet
-		if err := a.client.Get(ctx, nsn, &sset); client.IgnoreNotFound(err) != nil {
-			return 0, err
-		}
-
-		if sset.Spec.Replicas != nil {
-			return *sset.Spec.Replicas, nil
-		}
-
 		return pointer.Int32OrDefault(agt.Spec.StatefulSet.Replicas, 1), nil
 	}
 	return 0, nil // no deployment mode configured, nothing is deployed
