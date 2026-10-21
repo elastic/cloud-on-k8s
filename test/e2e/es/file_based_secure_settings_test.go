@@ -119,7 +119,6 @@ func TestFileBasedSecureSettingsFIPS(t *testing.T) {
 
 	b := elasticsearch.NewBuilder("test-es-fbs-fips").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithEmptyDirVolumes().
 		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,
