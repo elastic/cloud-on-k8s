@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -326,6 +328,20 @@ func namespacedNameFromObject(owner client.Object) types.NamespacedName {
 		namespace = "-"
 	}
 	return types.NamespacedName{Name: name, Namespace: namespace}
+}
+
+// StatefulSetsToRecreate returns the StatefulSets the given owner has scheduled for re-creation
+// to account for resized volume claims.
+func StatefulSetsToRecreate(owner client.Object) ([]appsv1.StatefulSet, error) {
+	gvk, err := apiutil.GVKForObject(owner, scheme.Scheme)
+	if err != nil {
+		return nil, err
+	}
+	toRecreate, err := ssetsToRecreate(owner, gvk.Kind)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Collect(maps.Values(toRecreate)), nil
 }
 
 // ssetsToRecreate returns the list of StatefulSet that should be recreated, based on annotations
