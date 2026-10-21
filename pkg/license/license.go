@@ -44,6 +44,7 @@ const (
 	apmKey           = "apm"
 	entSearchKey     = "enterprise_search"
 	logstashKey      = "logstash"
+	fleetServerKey   = "fleet_server"
 	totalKey         = "total_managed"
 )
 
@@ -127,6 +128,7 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].inGiB())
 	metrics.LicensingEntSearchMemoryGauge.With(labels).Set(li.appUsage[entSearchKey].inGiB())
 	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].inGiB())
+	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {
