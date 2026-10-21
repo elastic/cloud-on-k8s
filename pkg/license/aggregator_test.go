@@ -23,12 +23,14 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -226,6 +228,63 @@ func TestAggregator(t *testing.T) {
 				kibanaKey: 14.0, // (3 + 2 + 1 + 1) x 2Gi (default)
 			},
 			wantTotal: 14.0,
+		},
+		{
+			name: "fleet server agents",
+			objects: []client.Object{
+				// a regular Elastic Agent is not billable
+				&agentv1alpha1.Agent{Name: "test-agent", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{},
+				}},
+				// a Fleet Server Deployment counts its spec replicas with the fleet default memory limit
+				&agentv1alpha1.Agent{Name: "fs-deployment", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](2)},
+				}},
+				// a Fleet Server StatefulSet without replicas defaults to 1, with the resources shorthand
+				&agentv1alpha1.Agent{Name: "fs-statefulset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					StatefulSet:        &agentv1alpha1.StatefulSetSpec{},
+					Resources:          commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: new(resource.MustParse("2Gi"))}},
+				}},
+				// a Fleet Server DaemonSet counts 0 until the DaemonSet exists, the number of nodes is unknown
+				&agentv1alpha1.Agent{Name: "fs-daemonset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					DaemonSet:          &agentv1alpha1.DaemonSetSpec{},
+				}},
+			},
+			wantUsage: map[string]float64{fleetServerKey: 4.0}, // 2x1Gi (deployment) + 1x2Gi (statefulset)
+			wantTotal: 4.0,
+		},
+		{
+			name: "fleet server replicas from the live workload",
+			objects: []client.Object{
+				// the spec declares 1 replica but the deployment is scaled to 3
+				&agentv1alpha1.Agent{Name: "fs-deployment", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](1)},
+				}},
+				&appsv1.Deployment{
+					Name: agent.Name("fs-deployment"), Namespace: "default",
+					Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](3)},
+				},
+				// a DaemonSet schedules one pod per node, read from the DaemonSet status
+				&agentv1alpha1.Agent{Name: "fs-daemonset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							Name:      agentv1alpha1.AgentContainerName,
+							Resources: corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("512Mi")}},
+						}},
+					}}},
+				}},
+				&appsv1.DaemonSet{
+					Name: agent.Name("fs-daemonset"), Namespace: "default",
+					Status: appsv1.DaemonSetStatus{DesiredNumberScheduled: 4},
+				},
+			},
+			wantUsage: map[string]float64{fleetServerKey: 5.0}, // 3x1Gi (deployment) + 4x512Mi (daemonset)
+			wantTotal: 5.0,
 		},
 	}
 	for _, tt := range tests {

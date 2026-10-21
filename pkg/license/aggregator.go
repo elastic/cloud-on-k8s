@@ -18,12 +18,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -34,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
 // aggregator aggregates the total of resources of all Elastic managed components
@@ -53,6 +56,7 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 		a.aggregateApmServerMemory,
 		a.aggregateEnterpriseSearchMemory,
 		a.aggregateLogstashMemory,
+		a.aggregateFleetServerMemory,
 	} {
 		memory, err := f(ctx)
 		if err != nil {
@@ -257,6 +261,102 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 	}
 
 	return managedMemory{total, apmKey}, nil
+}
+
+// aggregateFleetServerMemory aggregates the memory of the Elastic Agents running Fleet Server.
+// Regular Elastic Agents are not billable, but count towards the license when used to deploy Fleet Server.
+func (a aggregator) aggregateFleetServerMemory(ctx context.Context) (managedMemory, error) {
+	var agentList agentv1alpha1.AgentList
+	err := a.client.List(ctx, &agentList)
+	if err != nil {
+		return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+	}
+
+	var total resource.Quantity
+	for _, agt := range agentList.Items {
+		if !agt.Spec.FleetServerEnabled {
+			continue
+		}
+
+		mem, err := containerMemLimits(
+			containersWithResourceOverrides(
+				agentv1alpha1.AgentContainerName,
+				agentPodTemplate(agt),
+				agt.Spec.Resources,
+			),
+			agentv1alpha1.AgentContainerName,
+			"", nil, // no fallback with limits defined in an env var
+			agent.DefaultFleetMemoryLimits,
+		)
+		if err != nil {
+			return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+		}
+
+		count, err := a.fleetServerReplicas(ctx, agt)
+		if err != nil {
+			return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+		}
+
+		total.Add(multiply(mem, count))
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", agt.Namespace, "agent_name", agt.Name,
+			"memory", mem.String(), "count", count)
+	}
+
+	return managedMemory{total, fleetServerKey}, nil
+}
+
+// agentPodTemplate returns the pod template of the configured Agent deployment mode.
+func agentPodTemplate(agt agentv1alpha1.Agent) corev1.PodTemplateSpec {
+	switch {
+	case agt.Spec.DaemonSet != nil:
+		return agt.Spec.DaemonSet.PodTemplate
+	case agt.Spec.Deployment != nil:
+		return agt.Spec.Deployment.PodTemplate
+	case agt.Spec.StatefulSet != nil:
+		return agt.Spec.StatefulSet.PodTemplate
+	}
+	return corev1.PodTemplateSpec{}
+}
+
+// fleetServerReplicas returns the number of replicas of the given Fleet Server Agent.
+// The replicas are read from the live workload object as a Deployment may be scaled externally and the number of
+// DaemonSet pods depends on the number of Kubernetes nodes. If the workload object does not exist yet, the count
+// declared in the spec is used.
+func (a aggregator) fleetServerReplicas(ctx context.Context, agt agentv1alpha1.Agent) (int32, error) {
+	nsn := types.NamespacedName{Namespace: agt.Namespace, Name: agent.Name(agt.Name)}
+	switch {
+	case agt.Spec.DaemonSet != nil:
+		var ds appsv1.DaemonSet
+		err := a.client.Get(ctx, nsn, &ds)
+		if err != nil {
+			// the number of nodes the DaemonSet will cover is unknown until the DaemonSet exists
+			return 0, client.IgnoreNotFound(err)
+		}
+		return ds.Status.DesiredNumberScheduled, nil
+	case agt.Spec.Deployment != nil:
+		var dp appsv1.Deployment
+		if err := a.client.Get(ctx, nsn, &dp); client.IgnoreNotFound(err) != nil {
+			return 0, err
+		}
+
+		if dp.Spec.Replicas != nil {
+			return *dp.Spec.Replicas, nil
+		}
+
+		return pointer.Int32OrDefault(agt.Spec.Deployment.Replicas, 1), nil
+	case agt.Spec.StatefulSet != nil:
+		var sset appsv1.StatefulSet
+		if err := a.client.Get(ctx, nsn, &sset); client.IgnoreNotFound(err) != nil {
+			return 0, err
+		}
+
+		if sset.Spec.Replicas != nil {
+			return *sset.Spec.Replicas, nil
+		}
+
+		return pointer.Int32OrDefault(agt.Spec.StatefulSet.Replicas, 1), nil
+	}
+	return 0, nil // no deployment mode configured, nothing is deployed
 }
 
 // containerMemLimits reads the container memory limits from the resource specification with fallback
