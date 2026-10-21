@@ -16,11 +16,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var (
@@ -425,7 +425,7 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 		fixture     string
 		podToNodeID map[string]string
 		podNames    []string
-		want        set.StringSet
+		want        sets.Set[string]
 		wantErr     bool
 	}{
 		{
@@ -434,7 +434,7 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 			fixture:     shutdownFixture,
 			podToNodeID: podToNodeID,
 			podNames:    []string{"pod-1", "pod-2"},
-			want:        set.Make("pod-1"),
+			want:        sets.New("pod-1"),
 		},
 		{
 			name:        "node with a shutdown of another type",
@@ -442,7 +442,7 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 			fixture:     singleRestartShutdownFixture,
 			podToNodeID: podToNodeID,
 			podNames:    []string{"pod-1", "pod-2"},
-			want:        set.Make(),
+			want:        sets.New[string](),
 		},
 		{
 			name:        "node with a shutdown that is not requested",
@@ -450,7 +450,7 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 			fixture:     shutdownFixture,
 			podToNodeID: podToNodeID,
 			podNames:    []string{"pod-2"},
-			want:        set.Make(),
+			want:        sets.New[string](),
 		},
 		{
 			name:        "node with a shutdown that is not in the cluster",
@@ -458,7 +458,7 @@ func TestNodeShutdown_NodesWithShutdown(t *testing.T) {
 			fixture:     shutdownFixture,
 			podToNodeID: map[string]string{"pod-2": "D_E3ZVdyQlOmc81NAUOD8w"},
 			podNames:    []string{"pod-1", "pod-2"},
-			want:        set.Make(),
+			want:        sets.New[string](),
 		},
 		{
 			name:        "handles initialisation errors",

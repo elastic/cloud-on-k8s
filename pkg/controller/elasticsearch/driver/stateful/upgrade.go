@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -30,7 +31,6 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 func (d *Driver) handleUpgrades(
@@ -152,7 +152,7 @@ type upgradeCtx struct {
 	reconcileState  *reconcile.State
 	expectedMasters []string
 	// leavingPods are the Pods the downscale wants to remove.
-	leavingPods                  set.StringSet
+	leavingPods                  sets.Set[string]
 	podsToUpgrade                []corev1.Pod
 	healthyPods                  map[string]corev1.Pod
 	currentPods                  []corev1.Pod
@@ -168,7 +168,7 @@ func newUpgrade(
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
-	leavingPods set.StringSet,
+	leavingPods sets.Set[string],
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	currentPods []corev1.Pod,
@@ -293,7 +293,7 @@ func podsToRollingUpgrade(
 
 // excludeLeavingPods returns the given Pods minus the given leaving ones, for example the ones the downscale wants to
 // remove.
-func excludeLeavingPods(pods []corev1.Pod, leaving set.StringSet) []corev1.Pod {
+func excludeLeavingPods(pods []corev1.Pod, leaving sets.Set[string]) []corev1.Pod {
 	staying := make([]corev1.Pod, 0, len(pods))
 	for _, pod := range pods {
 		if !leaving.Has(pod.Name) {

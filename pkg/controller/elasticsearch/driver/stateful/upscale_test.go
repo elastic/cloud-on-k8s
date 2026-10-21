@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -35,7 +36,6 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 var onceDone = &sync.Once{}
@@ -914,7 +914,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 		actual   es_sset.StatefulSetList
 		expected es_sset.StatefulSetList
 		pods     []client.Object
-		leaving  set.StringSet
+		leaving  sets.Set[string]
 		want     []string // names of the StatefulSets with a pending upgrade
 	}{
 		{
@@ -929,7 +929,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
 			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.2.0", "rev-a")},
-			leaving:  set.Make("data-1"),
+			leaving:  sets.New("data-1"),
 			want:     nil,
 		},
 		{
@@ -937,7 +937,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
 			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.1.0", "rev-a")},
-			leaving:  set.Make("data-1"),
+			leaving:  sets.New("data-1"),
 			want:     []string{"data"},
 		},
 		{
@@ -945,7 +945,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 0)},
 			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-b")},
-			leaving:  set.Make("data-1"),
+			leaving:  sets.New("data-1"),
 			want:     []string{"data"},
 		},
 		{
@@ -953,7 +953,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.1.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
 			pods:     []client.Object{pod("data", 0, "8.1.0", "rev-a"), pod("data", 1, "8.1.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
-			leaving:  set.Make("data-0", "data-1"),
+			leaving:  sets.New("data-0", "data-1"),
 			want:     []string{"data"},
 		},
 		{
@@ -961,7 +961,7 @@ func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
 			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
 			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
 			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
-			leaving:  set.Make("data-0", "data-1"),
+			leaving:  sets.New("data-0", "data-1"),
 			want:     nil,
 		},
 	}

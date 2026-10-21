@@ -8,11 +8,12 @@ import (
 	"context"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // ShardMigration implements the shutdown.Interface based on externally controlled shard allocation filtering.
@@ -67,7 +68,7 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 }
 
 // NodesWithShutdown returns no node, as shard migration does not register shutdowns in Elasticsearch.
-func (sm *ShardMigration) NodesWithShutdown(_ context.Context, _ []string) (set.StringSet, error) {
+func (sm *ShardMigration) NodesWithShutdown(_ context.Context, _ []string) (sets.Set[string], error) {
 	return nil, nil
 }
 

@@ -7,11 +7,12 @@ package stateful
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // leavingNodes are the nodes the downscale wants to remove in a reconciliation, and the subsets of them that each phase
@@ -24,7 +25,7 @@ import (
 // The subsets are only retrieved for the given nodes, so that no request is made when none of them is leaving.
 type leavingNodes struct {
 	// desired are the Pods the downscale wants to remove, regardless of the downscale budget and invariants.
-	desired set.StringSet
+	desired sets.Set[string]
 	// esState is used to retrieve the members of the cluster.
 	esState ESState
 	// nodeShutdown is used to retrieve the draining nodes. It is nil if Elasticsearch is not reachable or if it cannot be
@@ -36,7 +37,7 @@ type leavingNodes struct {
 
 // newLeavingNodes returns the leavingNodes of the given desired leaving Pods, see leavingNodes.
 func newLeavingNodes(
-	desired set.StringSet,
+	desired sets.Set[string],
 	esState ESState,
 	nodeShutdown shutdown.Interface,
 	lastDownscale esv1.DownscaleOperation,
@@ -46,33 +47,22 @@ func newLeavingNodes(
 
 // names returns the names of the desired leaving Pods, sorted.
 func (l *leavingNodes) names() []string {
-	return l.desired.AsSortedSlice()
-}
-
-// among returns the given nodes that are leaving.
-func (l *leavingNodes) among(nodes []string) []string {
-	var leaving []string
-	for _, node := range nodes {
-		if l.desired.Has(node) {
-			leaving = append(leaving, node)
-		}
-	}
-	return leaving
+	return sets.List(l.desired)
 }
 
 // members returns the given nodes that are leaving and members of the cluster. Elasticsearch is not requested if none of
 // them is leaving.
-func (l *leavingNodes) members(nodes []string) (set.StringSet, error) {
-	return membersAmong(l.esState, l.among(nodes))
+func (l *leavingNodes) members(nodes []string) (sets.Set[string], error) {
+	return membersAmong(l.esState, sets.New(nodes...).Intersection(l.desired).UnsortedList())
 }
 
 // draining returns the given nodes that are leaving and have a remove-type shutdown registered. Elasticsearch is not
 // requested if none of them is leaving. Without nodeShutdown, because Elasticsearch is not reachable or the shutdown
 // interface cannot be created, the shutdowns may still be running: the nodes with a shutdown in lastDownscale are draining.
-func (l *leavingNodes) draining(ctx context.Context, nodes []string) (set.StringSet, error) {
-	leaving := l.among(nodes)
+func (l *leavingNodes) draining(ctx context.Context, nodes []string) (sets.Set[string], error) {
+	leaving := sets.New(nodes...).Intersection(l.desired).UnsortedList()
 	if len(leaving) == 0 {
-		return set.Make(), nil
+		return sets.New[string](), nil
 	}
 	if l.nodeShutdown == nil {
 		return nodesWithReportedShutdown(l.lastDownscale, leaving), nil
@@ -89,21 +79,20 @@ func (l *leavingNodes) draining(ctx context.Context, nodes []string) (set.String
 // A leaving node that left the cluster on its own, for example because its Pod restarted, is protected too while
 // another node fails to answer: the upgrades that would repair it leave it alone until the response is complete or the
 // node rejoins. Telling them apart would require the IDs of the nodes that did not respond.
-func (l *leavingNodes) unreached(nodes []string) (set.StringSet, error) {
-	leaving := l.among(nodes)
-	if len(leaving) == 0 || l.nodeShutdown == nil {
-		return set.Make(), nil
+func (l *leavingNodes) unreached(nodes []string) (sets.Set[string], error) {
+	leaving := sets.New(nodes...).Intersection(l.desired)
+	if leaving.Len() == 0 || l.nodeShutdown == nil {
+		return sets.New[string](), nil
 	}
 	partial, err := l.esState.NodesResponsePartial()
 	if err != nil || !partial {
-		return set.Make(), err
+		return sets.New[string](), err
 	}
-	members, err := membersAmong(l.esState, leaving)
+	members, err := membersAmong(l.esState, leaving.UnsortedList())
 	if err != nil {
 		return nil, err
 	}
-	nonMembers := set.Make(leaving...).Diff(members)
-	return nodesWithReportedShutdown(l.lastDownscale, nonMembers.AsSortedSlice()), nil
+	return nodesWithReportedShutdown(l.lastDownscale, leaving.Difference(members).UnsortedList()), nil
 }
 
 // reportedStatus returns the shutdown status of the given node in the last downscale status.
@@ -125,21 +114,20 @@ func (l *leavingNodes) reportedStatus(node string) shutdown.NodeShutdownStatus {
 // nodes, see unreached. They are not part of draining, because a node without node ID cannot be given to the shutdown
 // interface: its shutdown could not be requested nor kept. Every upgrade path that leaves the leaving nodes alone must
 // go through here, for them to protect the unreached ones as well.
-func (l *leavingNodes) withUnreached(leaving set.StringSet, nodes []string) (set.StringSet, error) {
+func (l *leavingNodes) withUnreached(leaving sets.Set[string], nodes []string) (sets.Set[string], error) {
 	unreached, err := l.unreached(nodes)
 	if err != nil {
 		return nil, err
 	}
-	unreached.MergeWith(leaving)
-	return unreached, nil
+	return unreached.Union(leaving), nil
 }
 
 // desiredLeavingNodeNames returns the names of all the Pods that the expected StatefulSets no longer include, without
 // applying any budget or invariant filter: this is the whole set of Pods the downscale wants to remove, not the ones it
 // is allowed to remove now.
-func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList) set.StringSet {
+func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList) sets.Set[string] {
 	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
-	return set.Make(leavingNodeNames(downscales)...)
+	return sets.New(leavingNodeNames(downscales)...)
 }
 
 // nodesWithReportedShutdown returns the given nodes that have a shutdown in the given downscale status. The nodes the
@@ -147,17 +135,17 @@ func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.S
 // shutdown is confirmed, so a node whose request failed, for example because it never joined the cluster, is not included.
 // A status written by an older operator version may still report unconfirmed nodes in progress, until the first
 // reconciliation that reaches Elasticsearch rewrites it.
-func nodesWithReportedShutdown(downscale esv1.DownscaleOperation, nodes []string) set.StringSet {
-	reported := set.Make()
+func nodesWithReportedShutdown(downscale esv1.DownscaleOperation, nodes []string) sets.Set[string] {
+	reported := sets.New[string]()
 	for _, node := range downscale.Nodes {
 		if node.ShutdownStatus != string(esclient.ShutdownNotStarted) {
-			reported.Add(node.Name)
+			reported.Insert(node.Name)
 		}
 	}
-	withShutdown := set.Make()
+	withShutdown := sets.New[string]()
 	for _, node := range nodes {
 		if reported.Has(node) {
-			withShutdown.Add(node)
+			withShutdown.Insert(node)
 		}
 	}
 	return withShutdown

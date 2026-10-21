@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // -- ES Client mock
@@ -52,7 +52,7 @@ type fakeESClient struct { //nolint:maligned
 	// RegisterPutShutdowns makes PutShutdown register an in progress shutdown in Shutdowns, replacing any existing one
 	RegisterPutShutdowns bool
 	// PutShutdownErrNodes are the IDs of the nodes whose PutShutdown fails
-	PutShutdownErrNodes  set.StringSet
+	PutShutdownErrNodes  sets.Set[string]
 	DeleteShutdownCalled bool
 	// DeleteShutdownErr is returned by DeleteShutdown, which then deletes nothing
 	DeleteShutdownErr error

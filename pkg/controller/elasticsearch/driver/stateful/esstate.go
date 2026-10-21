@@ -8,8 +8,9 @@ import (
 	"context"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // ESState gives information about Elasticsearch current status.
@@ -136,19 +137,19 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 }
 
 // membersAmong returns the given nodes that are members of the cluster.
-func membersAmong(esState ESState, nodes []string) (set.StringSet, error) {
+func membersAmong(esState ESState, nodes []string) (sets.Set[string], error) {
 	if len(nodes) == 0 {
 		// do not require Elasticsearch to be reachable when there is nothing to look up
-		return set.Make(), nil
+		return sets.New[string](), nil
 	}
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
 		return nil, err
 	}
-	members := set.Make()
+	members := sets.New[string]()
 	for _, node := range nodes {
 		if _, exists := nodeNameToID[node]; exists {
-			members.Add(node)
+			members.Insert(node)
 		}
 	}
 	return members, nil

@@ -16,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -31,7 +32,6 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
@@ -84,7 +84,7 @@ func HandleDownscale(
 	// Recording the nodes resets the shutdown status of the draining ones: report it again right away, from the retrieved
 	// shutdowns. If a step fails before they are requested, for example the deletion of a StatefulSet, the reset status
 	// would be saved, and the forced upgrade relies on it while Elasticsearch is not reachable.
-	drainingStatuses, err := shutdownStatuses(downscaleCtx, draining.AsSortedSlice())
+	drainingStatuses, err := shutdownStatuses(downscaleCtx, sets.List(draining))
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -101,7 +101,7 @@ func HandleDownscale(
 		if err != nil {
 			return results.WithError(err)
 		}
-		for _, node := range unreached.AsSortedSlice() {
+		for _, node := range sets.List(unreached) {
 			unreachedStatuses[node] = leaving.reportedStatus(node)
 			downscaleCtx.reconcileState.OnShutdownStatus(node, unreachedStatuses[node])
 		}
@@ -109,7 +109,7 @@ func HandleDownscale(
 
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
 	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining, notMembers)
-	if notMembers.Count() > 0 {
+	if notMembers.Len() > 0 {
 		// a node that is not a member may be a member that did not answer, the reason why it is held says so
 		if downscaleState.partialNodes, err = leaving.esState.NodesResponsePartial(); err != nil {
 			return results.WithError(err)
@@ -131,7 +131,7 @@ func HandleDownscale(
 	// are not members are kept: it may have left the cluster while draining, for example because its Pod restarted, and
 	// its shutdown cannot be told apart from the others as its node ID is unknown.
 	selectedNodes := leavingNodeNames(downscales)
-	keptNodes := draining.Diff(set.Make(selectedNodes...)).AsSortedSlice()
+	keptNodes := sets.List(draining.Difference(sets.New(selectedNodes...)))
 	shutdownNodes := slices.Concat(selectedNodes, keptNodes)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
 	requeue, err := requestShutdownsAndDownscale(downscaleCtx, downscales, shutdownNodes, terminatingNodes, len(notMembers) > 0, stalledCandidates)
@@ -235,7 +235,7 @@ func formatHeldReasons(heldReasons map[string]string) string {
 
 // nodesNotInCluster returns the desired leaving nodes that are not members of the cluster. Without node shutdown,
 // membership does not matter, as a node is removed once it holds no shard: none is returned.
-func nodesNotInCluster(downscaleCtx downscaleContext, leaving *leavingNodes) (set.StringSet, error) {
+func nodesNotInCluster(downscaleCtx downscaleContext, leaving *leavingNodes) (sets.Set[string], error) {
 	if !supportsNodeShutdown(downscaleCtx.esClient.Version()) {
 		return nil, nil
 	}
@@ -243,7 +243,7 @@ func nodesNotInCluster(downscaleCtx downscaleContext, leaving *leavingNodes) (se
 	if err != nil {
 		return nil, err
 	}
-	return leaving.desired.Diff(members), nil
+	return leaving.desired.Difference(members), nil
 }
 
 // shutdownStatuses returns the shutdown status of the given nodes that have a shutdown registered, by node name, which
@@ -255,7 +255,7 @@ func shutdownStatuses(downscaleCtx downscaleContext, nodes []string) (map[string
 		return nil, err
 	}
 	statuses := make(map[string]shutdown.NodeShutdownStatus, len(withShutdown))
-	for _, node := range withShutdown.AsSortedSlice() {
+	for _, node := range sets.List(withShutdown) {
 		status, err := downscaleCtx.nodeShutdown.ShutdownStatus(downscaleCtx.parentCtx, node)
 		if err != nil {
 			return nil, fmt.Errorf("while checking shutdown status: %w", err)

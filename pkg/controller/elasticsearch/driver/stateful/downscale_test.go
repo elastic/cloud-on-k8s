@@ -21,6 +21,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
@@ -42,7 +43,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // Sample StatefulSets to use in tests
@@ -420,7 +420,7 @@ type countingNodeShutdown struct {
 	nodesWithShutdownCalls int
 }
 
-func (c *countingNodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error) {
+func (c *countingNodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (sets.Set[string], error) {
 	c.nodesWithShutdownCalls++
 	return c.Interface.NodesWithShutdown(ctx, podNames)
 }
@@ -454,9 +454,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		name           string
 		nodeSets       []nodeSet
 		maxUnavailable *int32
-		notReadyPods   set.StringSet
+		notReadyPods   sets.Set[string]
 		// notJoinedPods are the Pods that are not members of the cluster
-		notJoinedPods set.StringSet
+		notJoinedPods sets.Set[string]
 		// partialNodes is true if the nodes response is partial: the Pods that are not members did not respond
 		partialNodes bool
 		// deleteErr is returned when a resource is deleted, for example a StatefulSet that is no longer expected
@@ -471,7 +471,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		reportedExplanations map[string]string
 		getShutdownErr       error
 		// putShutdownFailures are the nodes whose shutdown request fails
-		putShutdownFailures set.StringSet
+		putShutdownFailures sets.Set[string]
 		// deleteShutdownErr is returned when a shutdown is cancelled
 		deleteShutdownErr error
 		wantErr           bool
@@ -497,8 +497,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods:  set.Make("data-2"),
-			notJoinedPods: set.Make("data-2"),
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
 		},
@@ -509,8 +509,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods:  set.Make("data-2"),
-			notJoinedPods: set.Make("data-2"),
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
 			partialNodes:  true,
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterPartialInvariant + ": data-2",
@@ -523,8 +523,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods:  set.Make("data-2"),
-			notJoinedPods: set.Make("data-2"),
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
 			},
@@ -541,8 +541,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods:  set.Make("data-1", "data-2"),
-			notJoinedPods: set.Make("data-2"),
+			notReadyPods:  sets.New("data-1", "data-2"),
+			notJoinedPods: sets.New("data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
@@ -560,7 +560,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods: set.Make("data-1", "data-2"),
+			notReadyPods: sets.New("data-1", "data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
@@ -580,10 +580,10 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "other", data: true, actualReplicas: 2, desiredReplicas: 1},
 			},
 			maxUnavailable:       new(int32(2)),
-			notJoinedPods:        set.Make("data-2"),
+			notJoinedPods:        sets.New("data-2"),
 			partialNodes:         true,
 			reportedShutdowns:    map[string]string{"data-2": "STALLED"},
-			putShutdownFailures:  set.Make("id-other-1"),
+			putShutdownFailures:  sets.New("id-other-1"),
 			wantErr:              true,
 			wantPutShutdowns:     []string{"id-other-1"},
 			wantReplicas:         map[string]int32{"data": 3, "other": 2},
@@ -599,7 +599,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 				{name: "old", data: true, actualReplicas: 0, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("data-2"),
+			notReadyPods: sets.New("data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownStalled},
 			},
@@ -619,7 +619,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 				{name: "old", data: true, actualReplicas: 0, desiredReplicas: 0},
 			},
-			notJoinedPods:        set.Make("data-2"),
+			notJoinedPods:        sets.New("data-2"),
 			partialNodes:         true,
 			reportedShutdowns:    map[string]string{"data-2": "STALLED"},
 			deleteErr:            errors.New("delete failed"),
@@ -638,8 +638,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "other", data: true, actualReplicas: 2, desiredReplicas: 1},
 			},
 			maxUnavailable: new(int32(2)),
-			notReadyPods:   set.Make("other-1"),
-			notJoinedPods:  set.Make("data-2"),
+			notReadyPods:   sets.New("other-1"),
+			notJoinedPods:  sets.New("data-2"),
 			partialNodes:   true,
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-other-1": {
@@ -664,7 +664,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
 			maxUnavailable:       new(int32(2)),
-			putShutdownFailures:  set.Make("id-data-1"),
+			putShutdownFailures:  sets.New("id-data-1"),
 			wantErr:              true,
 			wantPutShutdowns:     []string{"id-data-2", "id-data-1"},
 			wantReplicas:         map[string]int32{"data": 3},
@@ -678,7 +678,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
 			maxUnavailable:       new(int32(2)),
-			putShutdownFailures:  set.Make("id-data-2"),
+			putShutdownFailures:  sets.New("id-data-2"),
 			wantErr:              true,
 			wantPutShutdowns:     []string{"id-data-2"},
 			wantReplicas:         map[string]int32{"data": 3},
@@ -704,11 +704,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
 			maxUnavailable: new(int32(2)),
-			notReadyPods:   set.Make("data-2"),
+			notReadyPods:   sets.New("data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownStalled},
 			},
-			putShutdownFailures:  set.Make("id-data-1"),
+			putShutdownFailures:  sets.New("id-data-1"),
 			wantErr:              true,
 			wantPutShutdowns:     []string{"id-data-1"},
 			wantReplicas:         map[string]int32{"data": 3},
@@ -723,11 +723,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
 			maxUnavailable: new(int32(2)),
-			notReadyPods:   set.Make("data-1"),
+			notReadyPods:   sets.New("data-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 			},
-			putShutdownFailures:   set.Make("id-data-2"),
+			putShutdownFailures:   sets.New("id-data-2"),
 			wantErr:               true,
 			wantShutdownCancelled: true,
 			wantShutdowns:         []string{},
@@ -742,7 +742,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods: set.Make("data-1", "data-2"),
+			notReadyPods: sets.New("data-1", "data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownStalled},
@@ -762,7 +762,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods: set.Make("data-1", "data-2"),
+			notReadyPods: sets.New("data-1", "data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
@@ -780,7 +780,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
-			notReadyPods: set.Make("data-1", "data-2"),
+			notReadyPods: sets.New("data-1", "data-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-1": {NodeID: "id-data-1", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownInProgress},
@@ -794,8 +794,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
-			notReadyPods:  set.Make("data-2", "data-1"),
-			notJoinedPods: set.Make("data-1"),
+			notReadyPods:  sets.New("data-2", "data-1"),
+			notJoinedPods: sets.New("data-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
 			},
@@ -833,7 +833,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			// retrieval must not reset them
 			name:                 "an error while retrieving the shutdowns keeps the reported shutdown statuses",
 			nodeSets:             removedNodeSet,
-			notReadyPods:         set.Make("old-0", "unhealthy-0"),
+			notReadyPods:         sets.New("old-0", "unhealthy-0"),
 			reportedShutdowns:    map[string]string{"old-0": "IN_PROGRESS"},
 			getShutdownErr:       errors.New("boom"),
 			wantErr:              true,
@@ -843,7 +843,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		{
 			name:         "removing a draining node does not consume the budget",
 			nodeSets:     removedNodeSet,
-			notReadyPods: set.Make("unhealthy-0", "old-0"),
+			notReadyPods: sets.New("unhealthy-0", "old-0"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -855,7 +855,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			// unhealthy-0 is cancelled
 			name:         "a draining node that stays does not allow removals",
 			nodeSets:     removedNodeSet,
-			notReadyPods: set.Make("unhealthy-0", "old-0"),
+			notReadyPods: sets.New("unhealthy-0", "old-0"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-unhealthy-0": {NodeID: "id-unhealthy-0", Type: "REMOVE", Status: esclient.ShutdownInProgress},
 			},
@@ -867,7 +867,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			nodeSets: []nodeSet{
 				{name: "mdi", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
 			},
-			notReadyPods: set.Make("mdi-1"),
+			notReadyPods: sets.New("mdi-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-mdi-1": {NodeID: "id-mdi-1", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -884,7 +884,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "b", data: true, actualReplicas: 2, desiredReplicas: 1},
 				{name: "c", data: true, actualReplicas: 3, desiredReplicas: 3},
 			},
-			notReadyPods: set.Make("b-1", "c-1", "c-2"),
+			notReadyPods: sets.New("b-1", "c-1", "c-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-b-1": {NodeID: "id-b-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
 			},
@@ -897,7 +897,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "a", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
 				{name: "b", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
 			},
-			notReadyPods: set.Make("b-1"),
+			notReadyPods: sets.New("b-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-b-1": {NodeID: "id-b-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
 			},
@@ -911,7 +911,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "a", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
 				{name: "b", master: true, data: true, actualReplicas: 2, desiredReplicas: 1},
 			},
-			notReadyPods: set.Make("a-1"),
+			notReadyPods: sets.New("a-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-a-1": {NodeID: "id-a-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
 			},
@@ -925,7 +925,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			nodeSets: []nodeSet{
 				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 1},
 			},
-			notReadyPods: set.Make("mdi-1"),
+			notReadyPods: sets.New("mdi-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-mdi-1": {NodeID: "id-mdi-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
 			},
@@ -941,7 +941,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			nodeSets: []nodeSet{
 				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notReadyPods: set.Make("mdi-1", "mdi-2"),
+			notReadyPods: sets.New("mdi-1", "mdi-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -956,7 +956,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
 			maxUnavailable: new(int32(0)),
-			notReadyPods:   set.Make("mdi-2"),
+			notReadyPods:   sets.New("mdi-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -971,7 +971,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "mdi", master: true, data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
 			maxUnavailable: new(int32(1)),
-			notReadyPods:   set.Make("mdi-2"),
+			notReadyPods:   sets.New("mdi-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-mdi-2": {NodeID: "id-mdi-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -987,7 +987,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "old", master: true, data: true, actualReplicas: 3, desiredReplicas: 0},
 			},
 			maxUnavailable: new(int32(1)),
-			notReadyPods:   set.Make("old-2"),
+			notReadyPods:   sets.New("old-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-2": {NodeID: "id-old-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -1002,7 +1002,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "new", master: true, data: true, actualReplicas: 3, desiredReplicas: 3},
 				{name: "old", master: true, data: true, actualReplicas: 3, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("new-2", "old-2"),
+			notReadyPods: sets.New("new-2", "old-2"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-2": {NodeID: "id-old-2", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -1016,7 +1016,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "new", master: true, data: true, actualReplicas: 0, desiredReplicas: 1},
 				{name: "old", master: true, data: true, actualReplicas: 1, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("old-0"),
+			notReadyPods: sets.New("old-0"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -1033,7 +1033,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			notReadyPods: sets.New("unhealthy-0", "old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownComplete},
@@ -1052,7 +1052,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			notReadyPods: sets.New("unhealthy-0", "old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
@@ -1072,7 +1072,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 2, desiredReplicas: 2},
 				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "unhealthy-1"),
+			notReadyPods: sets.New("unhealthy-0", "unhealthy-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 			},
@@ -1089,7 +1089,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 2, desiredReplicas: 2},
 				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "unhealthy-1"),
+			notReadyPods: sets.New("unhealthy-0", "unhealthy-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
 			},
@@ -1108,7 +1108,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			notReadyPods: sets.New("unhealthy-0", "old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
@@ -1127,7 +1127,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			notReadyPods: sets.New("unhealthy-0", "old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownStalled},
@@ -1147,7 +1147,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "unhealthy", data: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
-			notReadyPods: set.Make("unhealthy-0", "old-0", "old-1"),
+			notReadyPods: sets.New("unhealthy-0", "old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownStalled},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownNotStarted},
@@ -1167,7 +1167,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
 			},
 			maxUnavailable: new(int32(2)),
-			notReadyPods:   set.Make("old-0", "old-1"),
+			notReadyPods:   sets.New("old-0", "old-1"),
 			shutdowns: map[string]esclient.NodeShutdown{
 				"id-old-0": {NodeID: "id-old-0", Type: "REMOVE", Status: esclient.ShutdownComplete},
 				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
@@ -1276,11 +1276,11 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			// the shutdown status of each node is retrieved, and reported to the observer, once, or twice for a node draining
 			// from the start: right after recording the nodes to be removed, and with the shutdowns requested. Both read the
 			// retrieved shutdowns, no request is made.
-			initiallyDraining := set.Make()
-			for _, node := range desiredLeavingNodeNames(t.Context(), expectedStatefulSets, actualStatefulSets).AsSortedSlice() {
+			initiallyDraining := sets.New[string]()
+			for _, node := range sets.List(desiredLeavingNodeNames(t.Context(), expectedStatefulSets, actualStatefulSets)) {
 				// a node that is not a member of the cluster has no node ID, so its shutdown is not retrieved
 				if shutdown, exists := tt.shutdowns["id-"+node]; exists && shutdown.Is(esclient.Remove) && !tt.notJoinedPods.Has(node) {
-					initiallyDraining.Add(node)
+					initiallyDraining.Insert(node)
 				}
 			}
 			for node, calls := range nodeShutdown.statusCalls {
