@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -229,6 +230,8 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 		esReachable bool
 		// shutdowns are the nodes that are members of the cluster with a remove-type shutdown
 		shutdowns []string
+		// unreachedShutdowns are the nodes with a remove-type shutdown that are missing from a partial nodes response
+		unreachedShutdowns []string
 		// reportedShutdowns are the nodes with a shutdown in the downscale status, the other leaving nodes are reported as
 		// not started
 		reportedShutdowns []string
@@ -332,6 +335,28 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 			wantRemainingPods: []string{"data-1"},
 		},
 		{
+			// data-1 is a draining member that did not respond to the nodes request, so it has no node ID
+			name:               "a draining Pod missing from a partial nodes response with a reported shutdown is not deleted",
+			actual:             es_sset.StatefulSetList{statefulSet("data", 2, false)},
+			expected:           es_sset.StatefulSetList{statefulSet("data", 1, false)},
+			esReachable:        true,
+			unreachedShutdowns: []string{"data-1"},
+			reportedShutdowns:  []string{"data-1"},
+			wantAttempted:      true,
+			wantLookups:        1,
+			wantRemainingPods:  []string{"data-1"},
+		},
+		{
+			name:               "a Pod missing from a partial nodes response without a reported shutdown is deleted",
+			actual:             es_sset.StatefulSetList{statefulSet("data", 2, false)},
+			expected:           es_sset.StatefulSetList{statefulSet("data", 1, false)},
+			esReachable:        true,
+			unreachedShutdowns: []string{"data-1"},
+			wantAttempted:      true,
+			wantLookups:        1,
+			wantRemainingPods:  nil,
+		},
+		{
 			name:              "a StatefulSet that cannot be force upgraded is left untouched",
 			actual:            es_sset.StatefulSetList{statefulSet("data", 2, false)},
 			expected:          es_sset.StatefulSetList{statefulSet("data", 1, false)},
@@ -369,7 +394,7 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 			if len(tt.initialMasterNodes) > 0 {
 				es.Annotations = map[string]string{zen2.InitialMasterNodesAnnotation: strings.Join(tt.initialMasterNodes, ",")}
 			}
-			for _, node := range desiredLeaving.AsSortedSlice() {
+			for _, node := range sets.List(desiredLeaving) {
 				status := string(esclient.ShutdownNotStarted)
 				if slices.Contains(tt.reportedShutdowns, node) {
 					status = string(esclient.ShutdownInProgress)
@@ -403,6 +428,12 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 				esClient.nodes.Nodes["id-"+node] = esclient.Node{Name: node}
 				esClient.Shutdowns["id-"+node] = esclient.NodeShutdown{NodeID: "id-" + node, Type: string(esclient.Remove), Status: esclient.ShutdownInProgress}
 			}
+			if len(tt.unreachedShutdowns) > 0 {
+				esClient.nodes.Summary.Failed = len(tt.unreachedShutdowns)
+			}
+			for _, node := range tt.unreachedShutdowns {
+				esClient.Shutdowns["id-"+node] = esclient.NodeShutdown{NodeID: "id-" + node, Type: string(esclient.Remove), Status: esclient.ShutdownInProgress}
+			}
 			// the shutdown interface is only available if Elasticsearch is reachable
 			var nodeShutdowns shutdown.Interface
 			var counting *countingNodeShutdown
@@ -413,7 +444,7 @@ func Test_Driver_MaybeForceUpgrade_leavingPods(t *testing.T) {
 				nodeShutdowns = counting
 			}
 
-			attempted, err := d.MaybeForceUpgrade(ctx, tt.actual, newLeavingNodes(desiredLeaving, nil, nodeShutdowns, es.Status.DownscaleOperation))
+			attempted, err := d.MaybeForceUpgrade(ctx, tt.actual, newLeavingNodes(desiredLeaving, NewMemoizingESState(ctx, esClient), nodeShutdowns, es.Status.DownscaleOperation))
 			require.Equal(t, tt.wantErr, err != nil, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var lookups int

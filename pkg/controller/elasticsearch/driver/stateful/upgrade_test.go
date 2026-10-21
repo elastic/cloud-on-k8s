@@ -19,6 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
@@ -158,7 +158,18 @@ func Test_podsToUpgrade(t *testing.T) {
 // clusterMembers is an ESState of a cluster that only has the given members.
 type clusterMembers struct {
 	ESState
-	members set.StringSet
+	members sets.Set[string]
+	// partial is true if the nodes response is partial: some nodes did not respond, and may be members
+	partial bool
+	// partialErr is returned if the nodes response cannot be retrieved
+	partialErr error
+}
+
+func (c clusterMembers) NodesResponsePartial() (bool, error) {
+	if c.partialErr != nil {
+		return false, c.partialErr
+	}
+	return c.partial, nil
 }
 
 func (c clusterMembers) NodeNameToID() (map[string]string, error) {
@@ -184,7 +195,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 		statefulSets         es_sset.StatefulSetList
 		expectedStatefulSets es_sset.StatefulSetList
 		// members are the Pods that are members of the cluster
-		members set.StringSet
+		members sets.Set[string]
 	}
 	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2}
 	tests := []struct {
@@ -224,7 +235,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 					podWithRevision("data-new-0", "rev-a"),
 					podWithRevision("data-new-1", "rev-a"),
 				},
-				members: set.Make("data-0", "data-1"),
+				members: sets.New("data-0", "data-1"),
 			},
 			want: []string{"data-new-0", "data-new-1"},
 		},
@@ -245,7 +256,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 					podWithRevision("data-new-1", "rev-a"),
 				},
 				// the Pod of data-1 never joined the cluster
-				members: set.Make("data-0"),
+				members: sets.New("data-0"),
 			},
 			want: []string{"data-1", "data-new-0", "data-new-1"},
 		},
@@ -262,7 +273,7 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 					podWithRevision("data-0", "rev-a"),
 					podWithRevision("data-1", "rev-a"),
 				},
-				members: set.Make("data-1"),
+				members: sets.New("data-1"),
 			},
 			want: []string{"data-0"},
 		},
@@ -290,6 +301,56 @@ func Test_podsToRollingUpgrade(t *testing.T) {
 			got, err := podsToRollingUpgrade(client, tt.args.statefulSets, newLeavingNodes(desiredLeaving, clusterMembers{members: tt.args.members}, nil, esv1.DownscaleOperation{}))
 			require.NoError(t, err)
 			assert.ElementsMatch(t, names(got), tt.want, tt.name)
+		})
+	}
+}
+
+// Test_podsToRollingUpgrade_unreachedNodes checks that a leaving Pod missing from a partial nodes response, that the
+// downscale status reports a shutdown for, is left to the downscale: it may be a draining member that did not respond.
+func Test_podsToRollingUpgrade_unreachedNodes(t *testing.T) {
+	outdated := appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2}
+	tests := []struct {
+		name string
+		// partial is true if some nodes did not respond to the nodes request
+		partial bool
+		// reported are the shutdown statuses in the last downscale status, by node name
+		reported map[string]esclient.ShutdownStatus
+		// want are the Pods to upgrade: data-0 stays and is outdated
+		want []string
+	}{
+		{
+			name:     "a node missing from a partial response with a reported shutdown is not upgraded",
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+			want:     []string{"data-0"},
+		},
+		{
+			name:     "a node missing from a partial response without a reported shutdown is upgraded",
+			partial:  true,
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownNotStarted},
+			want:     []string{"data-0", "data-1"},
+		},
+		{
+			name:     "a node missing from a complete response is not a member: it is upgraded",
+			reported: map[string]esclient.ShutdownStatus{"data-1": esclient.ShutdownInProgress},
+			want:     []string{"data-0", "data-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statefulSets := es_sset.StatefulSetList{sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 2, Status: outdated}.Build()}
+			expected := es_sset.StatefulSetList{sset.TestSset{Name: "data", Namespace: TestEsNamespace, Replicas: 1}.Build()}
+			client := k8s.NewFakeClient(podWithRevision("data-0", "rev-a"), podWithRevision("data-1", "rev-a"))
+			var lastDownscale esv1.DownscaleOperation
+			for node, status := range tt.reported {
+				lastDownscale.Nodes = append(lastDownscale.Nodes, esv1.DownscaledNode{Name: node, ShutdownStatus: string(status)})
+			}
+			desiredLeaving := desiredLeavingNodeNames(context.Background(), expected, statefulSets)
+			esState := clusterMembers{members: sets.New("data-0"), partial: tt.partial}
+			leaving := newLeavingNodes(desiredLeaving, esState, &fakeNodesWithShutdown{withShutdown: sets.New[string]()}, lastDownscale)
+			got, err := podsToRollingUpgrade(client, statefulSets, leaving)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, names(got))
 		})
 	}
 }
@@ -518,7 +579,7 @@ func Test_Driver_handleUpgrades_leavingPodThatIsNotInCluster(t *testing.T) {
 			expectedResources := nodespec.ResourcesList{{StatefulSet: expectedSset}}
 
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), es_sset.StatefulSetList{actualSset})
-			require.ElementsMatch(t, []string{"data-2"}, desiredLeaving.AsSortedSlice())
+			require.ElementsMatch(t, []string{"data-2"}, sets.List(desiredLeaving))
 			esState := NewMemoizingESState(context.Background(), esClient)
 			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
@@ -641,7 +702,7 @@ func Test_Driver_handleUpgrades_masterNotInCluster(t *testing.T) {
 			}
 
 			desiredLeaving := desiredLeavingNodeNames(context.Background(), expectedResources.StatefulSets(), actualSsets)
-			require.ElementsMatch(t, wantLeaving, desiredLeaving.AsSortedSlice())
+			require.ElementsMatch(t, wantLeaving, sets.List(desiredLeaving))
 			esState := NewMemoizingESState(context.Background(), esClient)
 			results := d.handleUpgrades(context.Background(), esClient, esState, expectedResources, newLeavingNodes(desiredLeaving, esState, nil, esv1.DownscaleOperation{}))
 
@@ -761,7 +822,7 @@ func Test_Driver_handleUpgrades_restartShutdownCompletesAfterRequest(t *testing.
 			expectedResources := nodespec.ResourcesList{{StatefulSet: statefulSet}}
 			handleUpgrades := func() {
 				esState := NewMemoizingESState(ctx, esClient)
-				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(sets.New[string](), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
@@ -865,7 +926,7 @@ func Test_Driver_handleUpgrades_restartedPodWithNewSpecChange(t *testing.T) {
 			}
 			expectedResources := nodespec.ResourcesList{{StatefulSet: statefulSet}}
 			esState := NewMemoizingESState(ctx, esClient)
-			results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
+			results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(sets.New[string](), esState, nil, esv1.DownscaleOperation{}))
 			_, err := results.Aggregate()
 			require.NoError(t, err)
 
@@ -1008,7 +1069,7 @@ func Test_Driver_handleUpgrades_heldRestartShutdowns(t *testing.T) {
 			}
 			handleUpgrades := func() {
 				esState := NewMemoizingESState(ctx, esClient)
-				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(sets.New[string](), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
@@ -1145,7 +1206,7 @@ func Test_Driver_handleUpgrades_fullRestartShutdownsCompleteAfterRequest(t *test
 			require.True(t, isNonHACluster(currentPods, expectedResources.MasterNodesNames()))
 			handleUpgrades := func() {
 				esState := NewMemoizingESState(ctx, esClient)
-				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(set.Make(), esState, nil, esv1.DownscaleOperation{}))
+				results := d.handleUpgrades(ctx, esClient, esState, expectedResources, newLeavingNodes(sets.New[string](), esState, nil, esv1.DownscaleOperation{}))
 				_, err := results.Aggregate()
 				require.NoError(t, err)
 			}
