@@ -188,18 +188,18 @@ func downscaleAfterShutdowns(
 	shutdownNodes []string,
 	stalledCandidates map[string]shutdown.NodeShutdownStatus,
 ) (bool, error) {
-	if err := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes); err != nil {
-		// the shutdowns that were confirmed may be stalled
-		if statuses, statusErr := shutdownStatuses(downscaleCtx, shutdownNodes); statusErr == nil {
-			maps.Copy(stalledCandidates, statuses)
-		}
-		return false, err
+	requestErr := downscaleCtx.nodeShutdown.ReconcileShutdowns(downscaleCtx.parentCtx, shutdownNodes)
+	// the shutdowns that were confirmed may be stalled, even if some of them could not be requested
+	statuses, statusErr := shutdownStatuses(downscaleCtx, shutdownNodes)
+	if statusErr == nil {
+		maps.Copy(stalledCandidates, statuses)
 	}
-	statuses, err := shutdownStatuses(downscaleCtx, shutdownNodes)
-	if err != nil {
-		return false, err
+	if requestErr != nil {
+		return false, requestErr
 	}
-	maps.Copy(stalledCandidates, statuses)
+	if statusErr != nil {
+		return false, statusErr
+	}
 	return attemptDownscales(downscaleCtx, downscales, statuses)
 }
 
