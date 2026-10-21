@@ -156,23 +156,26 @@ func NewPredicateContext(
 	}
 }
 
+// applyPredicates returns the candidates that can be deleted, and the ones that failed a predicate, by name, with the
+// predicate. The candidates after the last one that can be deleted within allowedDeletions are in neither.
 func applyPredicates(
 	ctx PredicateContext,
 	candidates []corev1.Pod,
 	maxUnavailableReached bool,
 	allowedDeletions int,
 	reconcileState *reconcile.State,
-) (deletedPods []corev1.Pod, err error) {
-	failedPredicates := make(failedPredicates)
+) ([]corev1.Pod, failedPredicates, error) {
+	var deletedPods []corev1.Pod
+	failed := make(failedPredicates)
 
 Loop:
 	for _, candidate := range candidates {
 		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); {
 		case err != nil:
-			return deletedPods, err
+			return deletedPods, failed, err
 		case predicateErr != nil:
 			// A predicate has failed on this Pod
-			failedPredicates[predicateErr.pod] = predicateErr.predicate
+			failed[predicateErr.pod] = predicateErr.predicate
 		default:
 			candidate := candidate
 			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.expectedMasterNodesNames) {
@@ -192,8 +195,8 @@ Loop:
 
 	// If some predicates have failed print a summary of the failures to help
 	// the user to understand why.
-	groupByPredicates := groupByPredicates(failedPredicates)
-	if len(failedPredicates) > 0 {
+	groupByPredicates := groupByPredicates(failed)
+	if len(failed) > 0 {
 		ulog.FromContext(ctx.ctx).Info(
 			"Cannot restart some nodes for upgrade at this time",
 			"namespace", ctx.es.Namespace,
@@ -201,8 +204,8 @@ Loop:
 			"failed_predicates", groupByPredicates)
 	}
 	// Also report in the status
-	reconcileState.RecordPredicatesResult(failedPredicates)
-	return deletedPods, nil
+	reconcileState.RecordPredicatesResult(failed)
+	return deletedPods, failed, nil
 }
 
 var predicates = [...]Predicate{

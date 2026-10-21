@@ -7,6 +7,8 @@ package shutdown
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 )
@@ -23,12 +25,21 @@ type NodeShutdownStatus struct {
 // Interface defines methods that both legacy shard migration based shutdown and new API based shutdowns implement to
 // prepare node shutdowns.
 type Interface interface {
-	// ReconcileShutdowns retrieves ongoing shutdowns and based on the given node names either cancels or creates new
-	// shutdowns.
-	ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error
+	// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down, which
+	// can include nodes kept draining while their removal is held. It does not cancel any shutdown, see
+	// CancelShutdownsExcept. With shard migration, which registers no shutdown, it migrates data away from the given nodes
+	// or removes the allocation filtering if none is given.
+	ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error
+	// CancelShutdownsExcept cancels the ongoing shutdowns of the nodes that are not kept, nor terminating, nor the nodes
+	// that are not members of the cluster if keepNonMembers is true. It does nothing if the shutdowns are not registered
+	// in Elasticsearch.
+	CancelShutdownsExcept(ctx context.Context, keptNodes []string, terminatingNodes []string, keepNonMembers bool) error
 	// ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
 	// progress.
 	ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error)
+	// NodesWithShutdown returns the given nodes that are members of the cluster and have a shutdown of the type managed
+	// by this implementation registered in Elasticsearch.
+	NodesWithShutdown(ctx context.Context, podNames []string) (sets.Set[string], error)
 }
 
 type Observer interface {
@@ -48,11 +59,16 @@ type observed struct {
 	observer Observer
 }
 
-func (o *observed) ReconcileShutdowns(ctx context.Context, leavingNodes []string, terminatingNodes []string) error {
-	if o.observer != nil {
-		o.observer.OnReconcileShutdowns(leavingNodes)
+func (o *observed) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error {
+	err := o.Interface.ReconcileShutdowns(ctx, nodesToShutdown)
+	// On success, report the nodes in progress. With node shutdowns, the caller overwrites this right after with their
+	// real status, so nothing depends on it: it only remains for shard migration, which registers no shutdown, for the
+	// nodes whose status is not retrieved. On failure, the nodes that fail or are not reached have no shutdown, and the
+	// others are reported with their status by the caller: report nothing, rather than every node.
+	if err == nil && o.observer != nil {
+		o.observer.OnReconcileShutdowns(nodesToShutdown)
 	}
-	return o.Interface.ReconcileShutdowns(ctx, leavingNodes, terminatingNodes)
+	return err
 }
 
 func (o *observed) ShutdownStatus(ctx context.Context, podName string) (NodeShutdownStatus, error) {

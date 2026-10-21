@@ -18,7 +18,16 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.StatefulSetList) (bool, error) {
+// MaybeForceUpgrade may attempt a forced upgrade of the Pods that need one, except the leaving Pods that are draining:
+// deleting them would disrupt the shutdown that is migrating their shards away. The other leaving Pods have no shutdown
+// to protect and may need a forced upgrade to recover, for example masters that cannot form a quorum without them, or a
+// Pod that must join the cluster to be removed, see excludeDrainingPods. All the actual Pods, leaving ones included, are
+// still considered to decide whether a StatefulSet can be force upgraded.
+func (d *Driver) MaybeForceUpgrade(
+	ctx context.Context,
+	statefulSets sset.StatefulSetList,
+	leaving *leavingNodes,
+) (bool, error) {
 	// Get the pods to upgrade
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
@@ -28,7 +37,43 @@ func (d *Driver) MaybeForceUpgrade(ctx context.Context, statefulSets sset.Statef
 	if err != nil {
 		return false, err
 	}
+	podsToUpgrade, err = excludeDrainingPods(ctx, podsToUpgrade, leaving)
+	if err != nil {
+		return false, err
+	}
 	return d.maybeForceUpgradePods(ctx, actualPods, podsToUpgrade)
+}
+
+// excludeDrainingPods returns the given Pods minus the leaving ones that are draining, see leavingNodes.draining. A
+// Pending Pod whose Elasticsearch container is not running is not draining, as no Elasticsearch node runs in it:
+// deleting it does not disrupt its shutdown. A Pending Pod may still run Elasticsearch, for example while another
+// container waits for its image.
+func excludeDrainingPods(ctx context.Context, pods []corev1.Pod, leaving *leavingNodes) ([]corev1.Pod, error) {
+	var running []string
+	for _, pod := range pods {
+		if pod.Status.Phase != corev1.PodPending || isElasticsearchRunning(pod) {
+			running = append(running, pod.Name)
+		}
+	}
+	draining, err := leaving.draining(ctx, running)
+	if err != nil {
+		return nil, err
+	}
+	protected, err := leaving.withUnreached(draining, running)
+	if err != nil {
+		return nil, err
+	}
+	return excludeLeavingPods(pods, protected), nil
+}
+
+// isElasticsearchRunning returns true if the Elasticsearch container of the given Pod is running.
+func isElasticsearchRunning(pod corev1.Pod) bool {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.Name == esv1.ElasticsearchContainerName && containerStatus.State.Running != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // maybeForceUpgradePods may attempt a forced upgrade of all podsToUpgrade if allowed to,

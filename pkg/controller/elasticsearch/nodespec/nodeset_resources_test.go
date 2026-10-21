@@ -311,7 +311,7 @@ func TestNodeSetResources_BuildPodTemplateSpec(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(
 				es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
-				*nodeSet.Config, nil, false, false, nodeSet.ZoneAwareness != nil, false,
+				*nodeSet.Config, nil, false, false, nodeSet.ZoneAwareness != nil, false, false,
 			)
 			require.NoError(t, err)
 
@@ -376,7 +376,7 @@ func TestNodeSetResources_DefaultResourcesGlobalUnmodified(t *testing.T) {
 	require.NoError(t, err)
 	cfg, err := settings.NewMergedESConfig(
 		es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
-		*nodeSet.Config, nil, false, false, false, false,
+		*nodeSet.Config, nil, false, false, false, false, false,
 	)
 	require.NoError(t, err)
 
@@ -563,7 +563,7 @@ func TestBuildStatefulSet(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(
 				es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP,
-				*ns.Config, nil, false, false, false, false,
+				*ns.Config, nil, false, false, false, false, false,
 			)
 			require.NoError(t, err)
 

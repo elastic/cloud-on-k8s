@@ -231,6 +231,17 @@ func filterManagedElasticRef(associations []commonv1.Association) []commonv1.Ass
 	return r
 }
 
+// filterWithPKIMode returns those associations that use PKI authentication mode.
+func filterWithPKIMode(associations []commonv1.Association) []commonv1.Association {
+	var r []commonv1.Association
+	for _, a := range associations {
+		if a.AssociationRef().GetAuthenticationMode() == commonv1.AuthenticationModePKI {
+			r = append(r, a)
+		}
+	}
+	return r
+}
+
 // copySecret copies the source secret into targetNamespace under destName, hashing the
 // (filtered) source data into secHash. Keys restricts which data keys are included; all keys
 // are copied when empty. extraLabels are merged onto the source labels. owner is set as the
@@ -300,7 +311,7 @@ func copySecret(
 // deleteStaleAdditionalSecrets lists secrets in targetNamespace that carry AdditionalSecretLabelName
 // and the given assocLabels, then deletes those whose name is not in copiedNames.
 // copiedNames holds the names of copies that must be preserved; any copy absent from the set is
-// deleted. Pass nil to delete all matching copies (used by Unbind).
+// deleted. Pass nil to delete all matching copies.
 func deleteStaleAdditionalSecrets(ctx context.Context, c client.Client, targetNamespace string, assocLabels map[string]string, copiedNames sets.Set[string]) error {
 	selector := make(client.MatchingLabels, len(assocLabels)+1)
 	maps.Copy(selector, assocLabels)

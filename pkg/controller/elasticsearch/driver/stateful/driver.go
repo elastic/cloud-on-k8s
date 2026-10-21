@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/pdb"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -79,23 +80,32 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	// File settings (stateful: SCP-deferred empty secret creation).
 	// Stateless clusters manage the file-settings Secret themselves via
 	// filesettings.ReconcileClusterSecrets; this call is stateful-only.
+	fileSettingsRequeue := false
 	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
-		requeue, err := shared.MaybeReconcileEmptyFileSettingsSecret(ctx, d.Client, d.LicenseChecker, &d.ES, d.OperatorParameters.OperatorNamespace)
-		if err != nil {
+		fileSettingsRequeue, err = shared.MaybeReconcileEmptyFileSettingsSecret(ctx, d.Client, d.LicenseChecker, &d.ES, d.OperatorParameters.OperatorNamespace)
+		switch {
+		case err != nil:
 			return results.WithError(err)
-		} else if requeue {
+		case fileSettingsRequeue:
 			results.WithReconciliationState(
 				shared.DefaultRequeue.WithReason(
 					fmt.Sprintf("This cluster is targeted by at least one StackConfigPolicy, expecting Secret %s to be created by StackConfigPolicy controller",
 						esv1.FileSettingsSecretName(d.ES.Name)),
 				),
 			)
+		default:
+			// The file-settings Secret is not waiting on a StackConfigPolicy, so the ECK PKI role mappings can be
+			// written into it. They follow the ECK-managed PKI realm, which depends on the effective mTLS setting.
+			pkiRealmConfigured := settings.PKIRealmConfigured(d.ES.Spec.Auth.PKI.Enabled, resolvedConfig.ClientAuthenticationRequired, d.Version)
+			if results.WithResults(reconcilePKIRoleMappings(ctx, d.Client, d.ES, pkiRealmConfigured, sharedState)).HasError() {
+				return results
+			}
 		}
 	}
 
 	// For ES >= 9.5, secure settings can be delivered via cluster_secrets in file-based settings
 	// when the opt-in annotation is set. For all other cases the keystore init container path is used.
-	keystoreResources, err := d.reconcileSecureSettings(ctx, sharedState.Meta)
+	keystoreResources, err := d.reconcileSecureSettings(ctx, sharedState.Meta, fileSettingsRequeue)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -186,7 +196,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNodesInCluster,
-			nodeShutdown.OnlyNonTerminatingNodes(terminatingNodes),
+			nodeShutdown.ExceptNodes(terminatingNodes),
 		))
 	}
 

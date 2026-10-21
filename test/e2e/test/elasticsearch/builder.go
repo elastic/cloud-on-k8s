@@ -505,7 +505,12 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 					},
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: resource.MustParse("1Gi"),
+							// 2Gi fits a copy of the ELSER model (~660MB) on each node with room to spare.
+							// With an enterprise license, Kibana deploys ELSER at startup for the Security AI Assistant
+							// product documentation (elastic/kibana#199694), and ES stores it in the
+							// .ml-inference-native-* index. With 1Gi volumes its replica cannot be allocated: the cluster
+							// stays yellow and rolling restarts stop before restarting the node holding the primary.
+							corev1.ResourceStorage: resource.MustParse("2Gi"),
 						},
 					},
 					StorageClassName: &storageClass,
@@ -679,10 +684,12 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
 	httpOptionsChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	// the PKI realm is a static setting, enabling or disabling it restarts all the nodes
+	pkiChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.Auth.PKI, b.Elasticsearch.Spec.Auth.PKI)
 	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
 		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				(isVersionUpgrade || httpOptionsChange || pkiChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec
 				return true
 			}

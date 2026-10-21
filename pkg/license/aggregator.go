@@ -12,22 +12,31 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/enterprisesearch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 )
 
 // aggregator aggregates the total of resources of all Elastic managed components
@@ -47,6 +56,7 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 		a.aggregateApmServerMemory,
 		a.aggregateEnterpriseSearchMemory,
 		a.aggregateLogstashMemory,
+		a.aggregateFleetServerMemory,
 	} {
 		memory, err := f(ctx)
 		if err != nil {
@@ -60,7 +70,7 @@ func (a aggregator) aggregateMemory(ctx context.Context) (memoryUsage, error) {
 
 func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMemory, error) {
 	var esList esv1.ElasticsearchList
-	err := a.client.List(context.Background(), &esList)
+	err := a.client.List(ctx, &esList)
 	if err != nil {
 		return managedMemory{}, errors.Wrap(err, "failed to aggregate Elasticsearch memory")
 	}
@@ -69,9 +79,14 @@ func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 	for _, es := range esList.Items {
 		for _, nodeSet := range es.Spec.NodeSets {
 			mem, err := containerMemLimits(
-				nodeSet.PodTemplate.Spec.Containers,
+				containersWithResourceOverrides(
+					esv1.ElasticsearchContainerName,
+					nodeSet.PodTemplate,
+					nodeSet.Resources.ContainerResources(),
+				),
 				esv1.ElasticsearchContainerName,
-				essettings.EnvEsJavaOpts, memFromJavaOpts,
+				essettings.EnvEsJavaOpts,
+				memFromJavaOpts,
 				nodespec.DefaultMemoryLimits,
 			)
 			if err != nil {
@@ -89,7 +104,7 @@ func (a aggregator) aggregateElasticsearchMemory(ctx context.Context) (managedMe
 
 func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (managedMemory, error) {
 	var entList entv1.EnterpriseSearchList
-	err := a.client.List(context.Background(), &entList)
+	err := a.client.List(ctx, &entList)
 	if err != nil {
 		return managedMemory{}, errors.Wrap(err, "failed to aggregate Enterprise Search memory")
 	}
@@ -97,9 +112,14 @@ func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 	var total resource.Quantity
 	for _, ent := range entList.Items {
 		mem, err := containerMemLimits(
-			ent.Spec.PodTemplate.Spec.Containers,
+			containersWithResourceOverrides(
+				entv1.EnterpriseSearchContainerName,
+				ent.Spec.PodTemplate,
+				ent.Spec.Resources,
+			),
 			entv1.EnterpriseSearchContainerName,
-			enterprisesearch.EnvJavaOpts, memFromJavaOpts,
+			enterprisesearch.EnvJavaOpts,
+			memFromJavaOpts,
 			enterprisesearch.DefaultMemoryLimits,
 		)
 		if err != nil {
@@ -116,34 +136,69 @@ func (a aggregator) aggregateEnterpriseSearchMemory(ctx context.Context) (manage
 
 func (a aggregator) aggregateKibanaMemory(ctx context.Context) (managedMemory, error) {
 	var kbList kbv1.KibanaList
-	err := a.client.List(context.Background(), &kbList)
+	err := a.client.List(ctx, &kbList)
 	if err != nil {
 		return managedMemory{}, errors.Wrap(err, "failed to aggregate Kibana memory")
 	}
 
 	var total resource.Quantity
 	for _, kb := range kbList.Items {
-		mem, err := containerMemLimits(
-			kb.Spec.PodTemplate.Spec.Containers,
-			kbv1.KibanaContainerName,
-			kibana.EnvNodeOptions, memFromNodeOptions,
-			kibana.DefaultMemoryLimits,
-		)
-		if err != nil {
-			return managedMemory{}, errors.Wrap(err, "failed to aggregate Kibana memory")
-		}
+		// a Kibana renders one Deployment per active pool (a single pool, or the UI and the background tasks pools),
+		// each with its own pod template and resources shorthand
+		for _, role := range kb.ActiveRoles() {
+			podTemplate, err := kibana.PodTemplateSpecForRole(kb, role)
+			if err != nil {
+				return managedMemory{}, errors.Wrap(err, "failed to aggregate Kibana memory")
+			}
+			mem, err := containerMemLimits(
+				containersWithResourceOverrides(kbv1.KibanaContainerName, podTemplate, kb.GetResourcesForRole(role)),
+				kbv1.KibanaContainerName,
+				kibana.EnvNodeOptions, memFromNodeOptions,
+				kibana.DefaultMemoryLimits,
+			)
+			if err != nil {
+				return managedMemory{}, errors.Wrap(err, "failed to aggregate Kibana memory")
+			}
 
-		total.Add(multiply(mem, kb.Spec.Count))
-		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
-			"memory", mem.String(), "count", kb.Spec.Count)
+			count, err := a.kibanaPoolReplicas(ctx, kb, role)
+			if err != nil {
+				return managedMemory{}, errors.Wrap(err, "failed to aggregate Kibana memory")
+			}
+
+			total.Add(multiply(mem, count))
+			ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
+				"role", role.LabelValue, "memory", mem.String(), "count", count)
+		}
 	}
 
 	return managedMemory{total, kibanaKey}, nil
 }
 
+// kibanaPoolReplicas returns the number of replicas of the given Kibana pool.
+// The spec is authoritative for the single pool, the UI pool and a background tasks pool with a count as the
+// controller owns their replicas. A background tasks pool without a count is scaled by an HPA, its replicas are read
+// from the live Deployment.
+func (a aggregator) kibanaPoolReplicas(ctx context.Context, kb kbv1.Kibana, role kblabel.Role) (int32, error) {
+	if !role.IsBackgroundTasks() {
+		return kb.Spec.Count, nil
+	}
+
+	if kb.Spec.BackgroundTasks.Count != nil {
+		return *kb.Spec.BackgroundTasks.Count, nil
+	}
+
+	var dp appsv1.Deployment
+	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: kbv1.BackgroundTasksDeployment(kb.Name)}
+	if err := a.client.Get(ctx, nsn, &dp); client.IgnoreNotFound(err) != nil {
+		return 0, err
+	}
+	// a missing Deployment or nil replicas both resolve to the Kubernetes default of 1 replica
+	return pointer.Int32OrDefault(dp.Spec.Replicas, 1), nil
+}
+
 func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory, error) {
 	var lsList lsv1alpha1.LogstashList
-	err := a.client.List(context.Background(), &lsList)
+	err := a.client.List(ctx, &lsList)
 	if err != nil {
 		return managedMemory{}, errors.Wrap(err, "failed to aggregate Logstash memory")
 	}
@@ -151,7 +206,11 @@ func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 	var total resource.Quantity
 	for _, ls := range lsList.Items {
 		mem, err := containerMemLimits(
-			ls.Spec.PodTemplate.Spec.Containers,
+			containersWithResourceOverrides(
+				lsv1alpha1.LogstashContainerName,
+				ls.Spec.PodTemplate,
+				ls.Spec.Resources,
+			),
 			lsv1alpha1.LogstashContainerName,
 			logstash.EnvJavaOpts, memFromJavaOpts,
 			logstash.DefaultMemoryLimit,
@@ -170,7 +229,7 @@ func (a aggregator) aggregateLogstashMemory(ctx context.Context) (managedMemory,
 
 func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory, error) {
 	var asList apmv1.ApmServerList
-	err := a.client.List(context.Background(), &asList)
+	err := a.client.List(ctx, &asList)
 	if err != nil {
 		return managedMemory{}, errors.Wrap(err, "failed to aggregate APM Server memory")
 	}
@@ -178,7 +237,11 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 	var total resource.Quantity
 	for _, as := range asList.Items {
 		mem, err := containerMemLimits(
-			as.Spec.PodTemplate.Spec.Containers,
+			containersWithResourceOverrides(
+				apmv1.ApmServerContainerName,
+				as.Spec.PodTemplate,
+				as.Spec.Resources,
+			),
 			apmv1.ApmServerContainerName,
 			"", nil, // no fallback with limits defined in an env var
 			apmserver.DefaultMemoryLimits,
@@ -195,8 +258,86 @@ func (a aggregator) aggregateApmServerMemory(ctx context.Context) (managedMemory
 	return managedMemory{total, apmKey}, nil
 }
 
+// aggregateFleetServerMemory aggregates the memory of the Elastic Agents running Fleet Server.
+// Regular Elastic Agents are not billable, but count towards the license when used to deploy Fleet Server.
+func (a aggregator) aggregateFleetServerMemory(ctx context.Context) (managedMemory, error) {
+	var agentList agentv1alpha1.AgentList
+	err := a.client.List(ctx, &agentList)
+	if err != nil {
+		return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+	}
+
+	var total resource.Quantity
+	for _, agt := range agentList.Items {
+		if !agt.Spec.FleetServerEnabled {
+			continue
+		}
+
+		mem, err := containerMemLimits(
+			containersWithResourceOverrides(
+				agentv1alpha1.AgentContainerName,
+				agentPodTemplate(agt),
+				agt.Spec.Resources,
+			),
+			agentv1alpha1.AgentContainerName,
+			"", nil, // no fallback with limits defined in an env var
+			agent.DefaultFleetMemoryLimits,
+		)
+		if err != nil {
+			return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+		}
+
+		count, err := a.fleetServerReplicas(ctx, agt)
+		if err != nil {
+			return managedMemory{}, errors.Wrap(err, "failed to aggregate Fleet Server memory")
+		}
+
+		total.Add(multiply(mem, count))
+		ulog.FromContext(ctx).V(1).Info("Collecting", "namespace", agt.Namespace, "agent_name", agt.Name,
+			"memory", mem.String(), "count", count)
+	}
+
+	return managedMemory{total, fleetServerKey}, nil
+}
+
+// agentPodTemplate returns the pod template of the configured Agent deployment mode.
+func agentPodTemplate(agt agentv1alpha1.Agent) corev1.PodTemplateSpec {
+	switch {
+	case agt.Spec.DaemonSet != nil:
+		return agt.Spec.DaemonSet.PodTemplate
+	case agt.Spec.Deployment != nil:
+		return agt.Spec.Deployment.PodTemplate
+	case agt.Spec.StatefulSet != nil:
+		return agt.Spec.StatefulSet.PodTemplate
+	}
+	return corev1.PodTemplateSpec{}
+}
+
+// fleetServerReplicas returns the number of replicas of the given Fleet Server Agent.
+// The spec is authoritative for a Deployment or a StatefulSet as the controller always sets their replicas and the
+// Agent resource cannot be scaled by an HPA. The number of DaemonSet pods depends on the number of Kubernetes nodes
+// and is read from the live object.
+func (a aggregator) fleetServerReplicas(ctx context.Context, agt agentv1alpha1.Agent) (int32, error) {
+	switch {
+	case agt.Spec.DaemonSet != nil:
+		var ds appsv1.DaemonSet
+		nsn := types.NamespacedName{Namespace: agt.Namespace, Name: agent.Name(agt.Name)}
+		if err := a.client.Get(ctx, nsn, &ds); err != nil {
+			// the number of nodes the DaemonSet will cover is unknown until the DaemonSet exists
+			return 0, client.IgnoreNotFound(err)
+		}
+		return ds.Status.DesiredNumberScheduled, nil
+	case agt.Spec.Deployment != nil:
+		return pointer.Int32OrDefault(agt.Spec.Deployment.Replicas, 1), nil
+	case agt.Spec.StatefulSet != nil:
+		return pointer.Int32OrDefault(agt.Spec.StatefulSet.Replicas, 1), nil
+	}
+	return 0, nil // no deployment mode configured, nothing is deployed
+}
+
 // containerMemLimits reads the container memory limits from the resource specification with fallback
-// on the environment variable and on the default limits
+// on the environment variable and on the default limits.
+// The containers are expected to carry the resources shorthand already, see containersWithResourceOverrides.
 func containerMemLimits(
 	containers []corev1.Container,
 	containerName string,
@@ -231,6 +372,17 @@ func containerMemLimits(
 	}
 
 	return mem, nil
+}
+
+// containersWithResourceOverrides returns the containers of the pod template with the resources shorthand applied
+// to the main container, mirroring how the controllers build the pod template.
+// The operator default resources are deliberately not applied, so that the memory is read in the documented order:
+// the resources shorthand, the pod template memory limit, the application environment variable, the default limit.
+func containersWithResourceOverrides(containerName string, podTemplateSpec corev1.PodTemplateSpec, overrides commonv1.Resources) []corev1.Container {
+	b := defaults.NewPodTemplateBuilder(podTemplateSpec, containerName).
+		WithResourcesAndOverrides(corev1.ResourceRequirements{}, overrides)
+
+	return b.PodTemplate.Spec.Containers
 }
 
 // maxHeapSizeRe is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)

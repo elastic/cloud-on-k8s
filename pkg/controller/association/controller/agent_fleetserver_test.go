@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -969,6 +970,16 @@ func (d denyESReviewer) AccessAllowed(_ context.Context, _ string, _ string, obj
 
 var _ rbac.AccessReviewer = denyESReviewer{}
 
+// denyAgentReviewer denies access to any Agent-typed object, allowing everything else.
+type denyAgentReviewer struct{}
+
+func (d denyAgentReviewer) AccessAllowed(_ context.Context, _ string, _ string, obj runtime.Object) (bool, error) {
+	_, isAgent := obj.(*agentv1alpha1.Agent)
+	return !isAgent, nil
+}
+
+var _ rbac.AccessReviewer = denyAgentReviewer{}
+
 func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 	agentObj := &agentv1alpha1.Agent{
 		Name: "agent1", Namespace: "agent-ns",
@@ -1073,9 +1084,29 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 		Data: map[string][]byte{"ca.crt": []byte("cacert")},
 	}
 
+	// fleetServerSameNameAsES is a Fleet Server whose backing Elasticsearch shares its own
+	// namespace and name ("fleet1/fleet-ns"). This is the minimal fixture to trigger the
+	// kind-guard regression: without the directRefIsES check, NamespacedName equality
+	// between esAssocRef and assocRef silently skips the Fleet Server RBAC check.
+	fleetServerSameNameAsES := &agentv1alpha1.Agent{
+		Name: "fleet1", Namespace: "fleet-ns",
+		Spec: agentv1alpha1.AgentSpec{
+			Version:            "8.0.0",
+			FleetServerEnabled: true,
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{Name: "fleet1", Namespace: "fleet-ns"},
+			},
+		},
+	}
+	esSameName := &esv1.Elasticsearch{
+		Name: "fleet1", Namespace: "fleet-ns",
+		Spec: esv1.ElasticsearchSpec{Version: "8.0.0"},
+	}
+
 	for _, tt := range []struct {
 		name            string
 		accessReviewer  rbac.AccessReviewer
+		rbacMode        operator.RBACOnRefsMode
 		runtimeObjs     []client.Object
 		wantStatus      commonv1.AssociationStatus
 		wantCAInAgentNs bool
@@ -1084,6 +1115,7 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 		{
 			name:            "transitive ES RBAC allowed: association established and CA copied",
 			accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+			rbacMode:        operator.RBACOnRefsModeAll,
 			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
 			wantStatus:      commonv1.AssociationEstablished,
 			wantCAInAgentNs: true,
@@ -1091,6 +1123,7 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 		{
 			name:            "transitive ES RBAC denied: association pending and CA not copied",
 			accessReviewer:  denyESReviewer{},
+			rbacMode:        operator.RBACOnRefsModeAll,
 			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
 			wantStatus:      commonv1.AssociationPending,
 			wantCAInAgentNs: false,
@@ -1098,6 +1131,7 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 		{
 			name:            "fleet server has no ES ref (manual setup): association establishes",
 			accessReviewer:  rbac.NewPermissiveAccessReviewer(),
+			rbacMode:        operator.RBACOnRefsModeAll,
 			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServerNoES, fleetHTTPCerts, fleetService},
 			wantStatus:      commonv1.AssociationEstablished,
 			wantCAInAgentNs: false,
@@ -1140,11 +1174,76 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 			wantStatus:      commonv1.AssociationEstablished,
 			wantCAInAgentNs: false,
 		},
+		{
+			name:            "transitive ES RBAC denied in true mode: association pending",
+			accessReviewer:  denyESReviewer{},
+			rbacMode:        operator.RBACOnRefsModeTrue,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationPending,
+			wantCAInAgentNs: false,
+		},
+		{
+			name:            "transitive ES RBAC denied in legacy mode: association pending",
+			accessReviewer:  denyESReviewer{},
+			rbacMode:        operator.RBACOnRefsModeLegacy,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationPending,
+			wantCAInAgentNs: false,
+		},
+		{
+			name:            "primary ref denied in all mode: association pending",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeAll,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationPending,
+			wantCAInAgentNs: false,
+		},
+		{
+			name:            "primary ref denied in true mode: association established with warning",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeTrue,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationEstablished,
+			wantCAInAgentNs: true,
+		},
+		{
+			name:            "primary ref denied in legacy mode: association established with warning",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeLegacy,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationEstablished,
+			wantCAInAgentNs: true,
+		},
+		{
+			name:            "kind-guard: Fleet Server and ES share namespace/name, Fleet Server denied in all mode: association pending",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeAll,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServerSameNameAsES, esSameName, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationPending,
+			wantCAInAgentNs: false,
+		},
+		{
+			name:            "kind-guard: Fleet Server and ES share namespace/name, Fleet Server denied in true mode: association established with warning",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeTrue,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServerSameNameAsES, esSameName, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationEstablished,
+			wantCAInAgentNs: false,
+		},
+		{
+			name:            "kind-guard: Fleet Server and ES share namespace/name, Fleet Server denied in legacy mode: association established with warning",
+			accessReviewer:  denyAgentReviewer{},
+			rbacMode:        operator.RBACOnRefsModeLegacy,
+			runtimeObjs:     []client.Object{agentObj.DeepCopy(), fleetServerSameNameAsES, esSameName, fleetHTTPCerts, fleetService},
+			wantStatus:      commonv1.AssociationEstablished,
+			wantCAInAgentNs: false,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r := association.NewTestAssociationReconcilerWithReviewer(
 				agentFleetServerAssociationInfo(),
 				tt.accessReviewer,
+				tt.rbacMode,
 				tt.runtimeObjs...,
 			)
 
@@ -1173,4 +1272,82 @@ func TestAgentFleetServerTransitiveESRBAC(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAgentFleetServerReconcileThenUnbind(t *testing.T) {
+	agentObj := &agentv1alpha1.Agent{
+		Name: "agent1", Namespace: "agent-ns",
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "8.0.0",
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fleet-ns"}},
+		},
+	}
+	fleetServer := &agentv1alpha1.Agent{
+		Name:      "fleet1",
+		Namespace: "fleet-ns",
+		Annotations: map[string]string{
+			esConfAnnotationKey(commonv1.ObjectSelector{Name: "es1", Namespace: "es-ns"}): esAssocConfAnnotation(commonv1.AssociationConf{
+				AuthSecretName: "-",
+				CACertProvided: true,
+				CASecretName:   "fleet1-es-ca",
+				URL:            "https://es1-http.es-ns.svc:9200",
+			}),
+		},
+		Spec: agentv1alpha1.AgentSpec{
+			Version:            "8.0.0",
+			FleetServerEnabled: true,
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{Name: "es1", Namespace: "es-ns"},
+			},
+		},
+	}
+	fleetServer.GetAssociations()[0].SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName: "-",
+		CACertProvided: true,
+		CASecretName:   "fleet1-es-ca",
+		URL:            "https://es1-http.es-ns.svc:9200",
+	})
+	es := &esv1.Elasticsearch{
+		Name: "es1", Namespace: "es-ns",
+		Spec: esv1.ElasticsearchSpec{Version: "8.0.0"},
+	}
+	fleetESCA := &corev1.Secret{
+		Namespace: "fleet-ns", Name: "fleet1-es-ca",
+		Data: map[string][]byte{"ca.crt": []byte("cacert"), "tls.crt": []byte("tlscert")},
+	}
+	fleetHTTPCerts := &corev1.Secret{
+		Namespace: "fleet-ns", Name: "fleet1-agent-http-certs-public",
+		Data: map[string][]byte{"ca.crt": []byte("cacert"), "tls.crt": []byte("tlscert")},
+	}
+	fleetService := &corev1.Service{
+		Namespace: "fleet-ns", Name: "fleet1-agent-http",
+		Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Name: "https", Port: 8220}}},
+	}
+
+	r := association.NewTestAssociationReconcilerWithReviewer(
+		agentFleetServerAssociationInfo(),
+		rbac.NewPermissiveAccessReviewer(),
+		operator.RBACOnRefsModeOff,
+		agentObj, fleetServer, es, fleetESCA, fleetHTTPCerts, fleetService,
+	)
+
+	// Run reconcile — establishes the association and creates secrets in agent-ns.
+	_, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(agentObj)})
+	require.NoError(t, err)
+
+	var updatedAgent agentv1alpha1.Agent
+	require.NoError(t, r.Get(t.Context(), k8s.ExtractNamespacedName(agentObj), &updatedAgent))
+	require.Equal(t, commonv1.AssociationEstablished, updatedAgent.Status.FleetServerAssociationStatus)
+
+	// Verify at least the Fleet Server CA copy and the transitive ES CA copy are present.
+	var secretsBefore corev1.SecretList
+	require.NoError(t, r.List(t.Context(), &secretsBefore, client.InNamespace("agent-ns")))
+	require.NotEmpty(t, secretsBefore.Items, "reconcile must create association secrets in agent-ns")
+
+	// Unbind must delete every association secret in agent-ns.
+	require.NoError(t, r.Unbind(t.Context(), updatedAgent.GetAssociations()[0]))
+
+	var secretsAfter corev1.SecretList
+	require.NoError(t, r.List(t.Context(), &secretsAfter, client.InNamespace("agent-ns")))
+	require.Empty(t, secretsAfter.Items, "Unbind must delete all association secrets from agent-ns")
 }

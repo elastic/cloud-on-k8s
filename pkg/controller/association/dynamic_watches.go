@@ -32,6 +32,11 @@ func esUserWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-user-watch", associated.Namespace, associated.Name)
 }
 
+// pkiRoleMappingRequestWatchName returns the name of the watch on the ES-side PKI role mapping request Secret.
+func pkiRoleMappingRequestWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-pki-role-mapping-request-watch", associated.Namespace, associated.Name)
+}
+
 // serviceWatchName returns the name of the watch setup on the custom service to be used to make requests to the
 // referenced resource.
 func serviceWatchName(associated types.NamespacedName) string {
@@ -102,6 +107,11 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	if r.ElasticsearchUserCreation != nil {
 		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 			return UserKey(association, association.AssociationRef().GetNamespace(), r.ElasticsearchUserCreation.UserSecretSuffix)
+		}); err != nil {
+			return err
+		}
+		if err := ReconcileWatch(associated, filterWithPKIMode(managedElasticRef), r.watches.Secrets, pkiRoleMappingRequestWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+			return PKIRoleMappingRequestKey(association, association.AssociationRef().GetNamespace(), r.AssociationName)
 		}); err != nil {
 			return err
 		}
@@ -220,6 +230,8 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Services, serviceWatchName(associated))
 	// - ES user secret
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
+	// - Elasticsearch-side PKI role mapping request Secret
+	RemoveWatch(r.watches.Secrets, pkiRoleMappingRequestWatchName(associated))
 	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
 	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
 	// - User-provided client certificate secret

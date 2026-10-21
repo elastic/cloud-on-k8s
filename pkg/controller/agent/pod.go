@@ -135,16 +135,20 @@ var (
 		},
 	}
 
+	// DefaultFleetMemoryLimits are the default memory limits applied to the Agent container in fleet mode,
+	// including when it runs Fleet Server.
+	DefaultFleetMemoryLimits = resource.MustParse("1Gi")
+
 	// defaultFleetResources defines default resources to use in case fleet mode is enabled.
 	// System+Kubernetes integrations takes Elastic Agent to 70%, Fleet Server to 60% memory
 	// usage of the below as of 7.14.0.
 	defaultFleetResources = corev1.ResourceRequirements{
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceMemory: DefaultFleetMemoryLimits,
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceMemory: DefaultFleetMemoryLimits,
 			corev1.ResourceCPU:    resource.MustParse("200m"),
 		},
 	}
@@ -741,6 +745,7 @@ func populateFleetServerESConfig(ctx context.Context, agent agentv1alpha1.Agent,
 	if esConnectionSettings.credentials.HasServiceAccountToken() {
 		fleetServerCfg[FleetServerServiceToken] = esConnectionSettings.credentials.ServiceAccountToken
 	} else {
+		// NoAuthRequired() (PKI) is unreachable here: Fleet mode rejects PKI at admission and at runtime.
 		fleetServerCfg[FleetServerElasticsearchUsername] = esConnectionSettings.credentials.Username
 		fleetServerCfg[FleetServerElasticsearchPassword] = esConnectionSettings.credentials.Password
 	}

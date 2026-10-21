@@ -150,6 +150,27 @@ func Test_getEnvVars(t *testing.T) {
 			},
 		},
 		{
+			name:   "es ref with PKI auth: no user/password env vars, only cert paths",
+			params: params,
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       commonv1.NoAuthRequiredValue,
+					CACertProvided:       true,
+					CASecretName:         "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					Version:              "8.7.0",
+					ClientCertSecretName: "my-client-cert",
+				})
+				assocs[0].SetNamespace("default")
+			},
+			wantEnvs: []corev1.EnvVar{
+				{Name: "PRODUCTION_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.crt"},
+				{Name: "PRODUCTION_ES_SSL_KEY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.key"},
+			},
+		},
+		{
 			name:   "es ref with secretName",
 			params: params,
 			setAssocConfs: func(assocs []commonv1.Association) {

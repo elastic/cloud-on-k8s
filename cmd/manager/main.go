@@ -110,8 +110,6 @@ const (
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
 
-	LeaderElectionLeaseName = "elastic-operator-leader"
-
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
 
@@ -231,11 +229,12 @@ func Command() *cobra.Command {
 		"",
 		"Set the distribution channel to report through telemetry.",
 	)
-	cmd.Flags().Bool(
+	cmd.Flags().String(
 		operator.EnforceRBACOnRefsFlag,
-		false, // Set to false for backward compatibility
-		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+		string(operator.RBACOnRefsModeOff),
+		`Restrict cross-namespace resource association through RBAC. Accepts: false (off), true/legacy (direct and transitive Elasticsearch references are enforced; other targets only warn), all (full enforcement). The bare flag is equivalent to --enforce-rbac-on-refs=true.`,
 	)
+	cmd.Flags().Lookup(operator.EnforceRBACOnRefsFlag).NoOptDefVal = string(operator.RBACOnRefsModeTrue)
 	cmd.Flags().String(
 		operator.ProbesBindAddressFlag,
 		":8081",
@@ -458,6 +457,8 @@ func doRun(_ *cobra.Command, _ []string) error {
 }
 
 func startOperator(ctx context.Context) error {
+	// e2e tests parse this log line to check the configuration the operator runs with: changing its message, its
+	// "values" key or its verbosity requires updating parseEffectiveConfig in test/e2e/test/helper/config.go.
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
 	fipsLog()
 
@@ -592,7 +593,7 @@ func startOperator(ctx context.Context) error {
 		Scheme:                     clientgoscheme.Scheme,
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		LeaderElectionID:           LeaderElectionLeaseName,
+		LeaderElectionID:           operator.LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
 		Client:                     client.Options{FieldOwner: about.FieldOwner},
@@ -825,10 +826,17 @@ func startOperator(ctx context.Context) error {
 		}
 	}
 
-	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
+	rbacMode, err := operator.ParseRBACOnRefsMode(viper.GetString(operator.EnforceRBACOnRefsFlag))
+	if err != nil {
+		return err
+	}
+	if w := rbacMode.StartupMessage(); w != "" {
+		log.Info(w)
+	}
+	params.RBACOnRefsMode = rbacMode
 
 	var accessReviewer rbac.AccessReviewer
-	if enforceRbacOnRefs {
+	if rbacMode.EnforcementEnabled() {
 		accessReviewer = rbac.NewSubjectAccessReviewer(clientset)
 	} else {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()

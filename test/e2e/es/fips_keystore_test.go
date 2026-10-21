@@ -159,7 +159,6 @@ func TestFIPSKeystoreSecretDeletedWhenFIPSDisabled(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 	b := elasticsearch.NewBuilder("test-fips-ks-off-cleans-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithEmptyDirVolumes().
 		WithAdditionalConfig(map[string]map[string]any{
 			"masterdata": {
 				fipsSetting: true,

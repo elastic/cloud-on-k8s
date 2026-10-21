@@ -364,3 +364,183 @@ func Test_buildSecret(t *testing.T) {
 	assert.Equal(t, commonlabel.OrphanSecretResetOnPolicyDelete, secret.Labels[commonlabel.StackConfigPolicyOnDeleteLabelName])
 	assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 }
+
+func Test_ApplyPolicy_PreservesECKPKIEntries(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{Namespace: esNsn.Namespace, Name: esNsn.Name}
+
+	pkiKey := commonv1.ECKPKIRoleMappingPrefix + "esNs.kb-pki-role-mapping"
+	pkiEntry := managedPKIEntry("uid-kb")
+
+	// Current Secret carries an eck_managed_pki_ entry written by the ES controller.
+	currentSettings := NewEmptySettings(1)
+	currentSettings.State.RoleMappings = &commonv1.Config{Data: map[string]any{pkiKey: pkiEntry}}
+	settingsBytes, err := json.Marshal(currentSettings)
+	require.NoError(t, err)
+	currentSecret := &corev1.Secret{
+		Namespace:   esNsn.Namespace,
+		Name:        esv1.FileSettingsSecretName(esNsn.Name),
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
+	}
+
+	fakeClient := k8s.NewFakeClient(&es, currentSecret)
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
+	require.NoError(t, err)
+
+	// ApplyPolicy with SCP-defined role mappings must not clobber the eck_managed_pki_ entry.
+	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{
+		SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+			"scp-mapping": map[string]any{"enabled": true, "roles": []any{"superuser"}},
+		}},
+	}, nil)
+	require.NoError(t, err)
+
+	roleMappings := fs.settings.State.RoleMappings
+	require.NotNil(t, roleMappings)
+	assert.Contains(t, roleMappings.Data, pkiKey, "eck_managed_pki_ entry must survive ApplyPolicy (updateState)")
+	assert.Contains(t, roleMappings.Data, "scp-mapping", "SCP-defined entry must be present")
+}
+
+func Test_ApplyPolicy_EmptySecurityRoleMappings_PreservesECKPKIEntries(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+	es := esv1.Elasticsearch{Namespace: esNsn.Namespace, Name: esNsn.Name}
+
+	pkiKey := commonv1.ECKPKIRoleMappingPrefix + "esNs.kb-pki-role-mapping"
+	pkiEntry := managedPKIEntry("uid-kb")
+
+	// Current Secret carries an eck_managed_pki_ entry written by the ES controller.
+	currentSettings := NewEmptySettings(1)
+	currentSettings.State.RoleMappings = &commonv1.Config{Data: map[string]any{pkiKey: pkiEntry}}
+	settingsBytes, err := json.Marshal(currentSettings)
+	require.NoError(t, err)
+	currentSecret := &corev1.Secret{
+		Namespace:   esNsn.Namespace,
+		Name:        esv1.FileSettingsSecretName(esNsn.Name),
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
+	}
+
+	fakeClient := k8s.NewFakeClient(&es, currentSecret)
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
+	require.NoError(t, err)
+
+	// ApplyPolicy with empty (but non-nil) securityRoleMappings must not clobber the eck_managed_pki_ entry.
+	err = fs.ApplyPolicy(policyv1alpha1.ElasticsearchConfigPolicySpec{
+		SecurityRoleMappings: &commonv1.Config{Data: map[string]any{}},
+	}, nil)
+	require.NoError(t, err)
+
+	roleMappings := fs.settings.State.RoleMappings
+	require.NotNil(t, roleMappings, "role_mappings must not be nil when eck_managed_pki_ entries exist")
+	assert.Contains(t, roleMappings.Data, pkiKey, "eck_managed_pki_ entry must survive empty securityRoleMappings")
+}
+
+// Test_RoleMappingOwnership_PolicyAndPKIUpdates checks that the SCP controller (ApplyPolicy) and the ES controller
+// (SetPKIRoleMappings) agree on which role mappings each owns, so that neither removes the other's entries and
+// re-applying the policy after a PKI update does not change the result.
+func Test_RoleMappingOwnership_PolicyAndPKIUpdates(t *testing.T) {
+	es := esv1.Elasticsearch{Namespace: "esNs", Name: "esName"}
+	legacyKey := commonv1.ECKPKIRoleMappingPrefix + "corporate"
+	managedKey := commonv1.ECKPKIRoleMappingPrefix + "esNs.kb-pki-role-mapping"
+	newManagedKey := commonv1.ECKPKIRoleMappingPrefix + "esNs.apm-pki-role-mapping"
+
+	tests := []struct {
+		name               string
+		current            map[string]any
+		policyRoleMappings map[string]any
+		pkiMappings        map[string]any
+		wantAfterPolicy    map[string]any
+		wantAfterPKI       map[string]any
+	}{
+		{
+			name:               "legacy eck_managed_pki_ policy mapping survives a PKI update without requests",
+			current:            map[string]any{legacyKey: userEntry("superuser")},
+			policyRoleMappings: map[string]any{legacyKey: userEntry("superuser")},
+			wantAfterPolicy:    map[string]any{legacyKey: userEntry("superuser")},
+			wantAfterPKI:       map[string]any{legacyKey: userEntry("superuser")},
+		},
+		{
+			name:               "legacy prefixed policy mapping and ECK-generated mappings are kept by each other",
+			current:            map[string]any{legacyKey: userEntry("superuser"), managedKey: managedPKIEntry("uid-kb")},
+			policyRoleMappings: map[string]any{legacyKey: userEntry("superuser")},
+			pkiMappings:        map[string]any{newManagedKey: managedPKIEntry("uid-apm")},
+			wantAfterPolicy:    map[string]any{legacyKey: userEntry("superuser"), managedKey: managedPKIEntry("uid-kb")},
+			wantAfterPKI:       map[string]any{legacyKey: userEntry("superuser"), newManagedKey: managedPKIEntry("uid-apm")},
+		},
+		{
+			name:            "eck_managed_pki_ mapping removed from the policy is not kept as an ECK-generated mapping",
+			current:         map[string]any{legacyKey: userEntry("superuser"), managedKey: managedPKIEntry("uid-kb")},
+			pkiMappings:     map[string]any{managedKey: managedPKIEntry("uid-kb")},
+			wantAfterPolicy: map[string]any{managedKey: managedPKIEntry("uid-kb")},
+			wantAfterPKI:    map[string]any{managedKey: managedPKIEntry("uid-kb")},
+		},
+		{
+			name:               "policy mapping wins over an ECK-generated mapping with the same name",
+			current:            map[string]any{managedKey: managedPKIEntry("uid-kb")},
+			policyRoleMappings: map[string]any{managedKey: userEntry("superuser")},
+			wantAfterPolicy:    map[string]any{managedKey: userEntry("superuser")},
+			wantAfterPKI:       map[string]any{managedKey: userEntry("superuser")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secret := fileSettingsSecretWithRoleMappings(t, es, tt.current)
+			fs, err := Load(t.Context(), k8s.NewFakeClient(&es, secret), k8s.ExtractNamespacedName(&es), metadata.Metadata{})
+			require.NoError(t, err)
+
+			policy := policyv1alpha1.ElasticsearchConfigPolicySpec{}
+			if tt.policyRoleMappings != nil {
+				policy.SecurityRoleMappings = &commonv1.Config{Data: tt.policyRoleMappings}
+			}
+			require.NoError(t, fs.ApplyPolicy(policy, nil))
+			require.Equal(t, tt.wantAfterPolicy, fs.settings.State.RoleMappings.Data, "after ApplyPolicy")
+
+			var pkiMappings *commonv1.Config
+			if tt.pkiMappings != nil {
+				pkiMappings = &commonv1.Config{Data: tt.pkiMappings}
+			}
+			require.NoError(t, fs.SetPKIRoleMappings(pkiMappings))
+			require.Equal(t, tt.wantAfterPKI, fs.settings.State.RoleMappings.Data, "after SetPKIRoleMappings")
+
+			// Re-applying the same policy must not undo the PKI update, nor drop the policy mappings.
+			require.NoError(t, fs.ApplyPolicy(policy, nil))
+			require.Equal(t, tt.wantAfterPKI, fs.settings.State.RoleMappings.Data, "after re-applying the policy")
+		})
+	}
+}
+
+func Test_Reset_PreservesECKPKIEntries(t *testing.T) {
+	esNsn := types.NamespacedName{Namespace: "esNs", Name: "esName"}
+
+	pkiKey := commonv1.ECKPKIRoleMappingPrefix + "esNs.kb-pki-role-mapping"
+	pkiEntry := managedPKIEntry("uid-kb")
+
+	// Current Secret has an eck_managed_pki_ entry and SCP-managed cluster settings.
+	currentSettings := NewEmptySettings(1)
+	currentSettings.State.RoleMappings = &commonv1.Config{Data: map[string]any{pkiKey: pkiEntry}}
+	currentSettings.State.ClusterSettings = &commonv1.Config{Data: map[string]any{
+		"indices.recovery.max_bytes_per_sec": "100mb",
+	}}
+	settingsBytes, err := json.Marshal(currentSettings)
+	require.NoError(t, err)
+	currentSecret := &corev1.Secret{
+		Namespace:   esNsn.Namespace,
+		Name:        "esName-es-file-settings",
+		Annotations: map[string]string{commonannotation.SettingsHashAnnotationName: currentSettings.hash()},
+		Data:        map[string][]byte{SettingsSecretKey: settingsBytes},
+	}
+
+	fakeClient := k8s.NewFakeClient(currentSecret)
+	fs, err := Load(context.Background(), fakeClient, esNsn, metadata.Metadata{})
+	require.NoError(t, err)
+
+	fs.Reset()
+
+	// SCP-managed field must be cleared.
+	assert.Empty(t, fs.settings.State.ClusterSettings.Data, "Reset must clear SCP-managed cluster_settings")
+	// eck_managed_pki_ entry is owned by the ES controller and must survive Reset.
+	roleMappings := fs.settings.State.RoleMappings
+	require.NotNil(t, roleMappings, "role_mappings must not be nil when eck_managed_pki_ entries exist")
+	assert.Contains(t, roleMappings.Data, pkiKey, "eck_managed_pki_ entry must survive Reset")
+}

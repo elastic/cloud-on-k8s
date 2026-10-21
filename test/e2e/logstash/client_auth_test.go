@@ -286,3 +286,94 @@ output {
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), lsWrapped).RunSequential(t)
 }
+
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for Logstash: Logstash
+// ships events to Elasticsearch with its client certificate only (no user or password), and switching it back
+// to credentials cleans up the eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-ls-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	// In PKI mode no user or password is injected, so the pipeline authenticates with the client certificate only.
+	pkiPipeline := commonv1.Config{Data: map[string]interface{}{
+		"pipeline.id": "main",
+		"config.string": `input { exec { command => 'uptime' interval => 10 } }
+output {
+  elasticsearch {
+    hosts => [ "${PRODUCTION_ES_HOSTS}" ]
+    ssl_enabled => true
+    ssl_certificate_authorities => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+    ssl_key => "${PRODUCTION_ES_SSL_KEY}"
+    ssl_certificate => "${PRODUCTION_ES_SSL_CERTIFICATE}"
+  }
+}`,
+	}}
+	credentialsPipeline := commonv1.Config{Data: map[string]interface{}{
+		"pipeline.id": "main",
+		"config.string": `input { exec { command => 'uptime' interval => 10 } }
+output {
+  elasticsearch {
+    hosts => [ "${PRODUCTION_ES_HOSTS}" ]
+    ssl_enabled => true
+    ssl_certificate_authorities => "${PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY}"
+    user => "${PRODUCTION_ES_USER}"
+    password => "${PRODUCTION_ES_PASSWORD}"
+    ssl_key => "${PRODUCTION_ES_SSL_KEY}"
+    ssl_certificate => "${PRODUCTION_ES_SSL_CERTIFICATE}"
+  }
+}`,
+	}}
+
+	lsBuilder := logstash.NewBuilder(name).
+		WithNodeCount(1).
+		WithPipelines([]commonv1.Config{pkiPipeline}).
+		WithElasticsearchRefs(
+			logstashv1alpha1.ElasticsearchCluster{
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{
+					ObjectSelector:     esBuilder.Ref(),
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				},
+				ClusterName: "production",
+			},
+		)
+
+	lsMutated := lsBuilder.DeepCopy().WithMutatedFrom(&lsBuilder).
+		WithPipelines([]commonv1.Config{credentialsPipeline})
+	lsMutated.Logstash.Spec.ElasticsearchRefs[0].AuthenticationMode = commonv1.AuthenticationModeCredentials
+
+	// Events must flow out of Logstash into Elasticsearch in both modes. events.out only counts events accepted by the
+	// Elasticsearch output, which retries batches rejected for authentication.
+	eventsOut := func(b logstash.Builder) func(k *test.K8sClient) test.StepList {
+		return func(k *test.K8sClient) test.StepList {
+			return test.StepList{
+				b.CheckMetricsRequest(k,
+					logstash.Request{Name: "stats events", Path: "/_node/stats/events"},
+					logstash.Want{
+						MatchFunc: map[string]func(string) bool{
+							"events.out": func(cntStr string) bool {
+								cnt, err := strconv.Atoi(cntStr)
+								return err == nil && cnt > 0
+							},
+						},
+					},
+				),
+			}
+		}
+	}
+	lsWrapped := test.WrappedBuilder{BuildingThis: lsBuilder, PostCheckSteps: eventsOut(lsBuilder)}
+	// events.out is kept in memory, so once the PKI pod is replaced it only counts events sent with credentials.
+	restartChecker := test.NewPodRestartChecker("Logstash", test.LogstashPodListOptions(lsBuilder.Logstash.Namespace, lsBuilder.Logstash.Name)...)
+	lsMutatedWrapped := test.WrappedBuilder{
+		BuildingThis: lsMutated,
+		PreMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.RecordUIDs(k)
+		},
+		PostMutationSteps: func(k *test.K8sClient) test.StepList {
+			return restartChecker.WaitForRestart(k).WithSteps(eventsOut(lsMutated)(k))
+		},
+	}
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, lsWrapped, lsMutatedWrapped)
+}

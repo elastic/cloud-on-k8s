@@ -8,6 +8,8 @@ import (
 	"context"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
@@ -34,8 +36,13 @@ func NewShardMigration(es esv1.Elasticsearch, c esclient.Client, s esclient.Shar
 }
 
 // ReconcileShutdowns migrates data away from the leaving nodes or removes any allocation filtering if no nodes are leaving.
-func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes, _ []string) error {
+func (sm *ShardMigration) ReconcileShutdowns(ctx context.Context, leavingNodes []string) error {
 	return migrateData(ctx, sm.es, sm.c, leavingNodes)
+}
+
+// CancelShutdownsExcept does nothing, as shard migration does not register shutdowns in Elasticsearch.
+func (sm *ShardMigration) CancelShutdownsExcept(_ context.Context, _, _ []string, _ bool) error {
+	return nil
 }
 
 // ShutdownStatus returns the current shutdown status for a given Pod mimicking the node shutdown API to create a common
@@ -58,6 +65,11 @@ func (sm *ShardMigration) ShutdownStatus(ctx context.Context, podName string) (s
 		return shutdown.NodeShutdownStatus{Status: esclient.ShutdownInProgress}, nil
 	}
 	return shutdown.NodeShutdownStatus{Status: esclient.ShutdownComplete}, nil
+}
+
+// NodesWithShutdown returns no node, as shard migration does not register shutdowns in Elasticsearch.
+func (sm *ShardMigration) NodesWithShutdown(_ context.Context, _ []string) (sets.Set[string], error) {
+	return nil, nil
 }
 
 // nodeMayHaveShard returns true if one of those conditions is met:

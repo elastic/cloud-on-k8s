@@ -1,0 +1,96 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: test-elasticsearch
+spec:
+  version: 9.1.0
+  nodeSets:
+  # memory set only through the resources shorthand: 2 x 4Gi
+  - name: shorthand
+    count: 2
+    resources:
+      limits:
+        memory: 4Gi
+      requests:
+        memory: 4Gi
+  # memory set only in the pod template: 1 x 4Gi
+  - name: pod-template
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 4Gi
+  # shorthand overrides the pod template: 1 x 2Gi
+  - name: shorthand-overrides-pod-template
+    count: 1
+    resources:
+      limits:
+        memory: 2Gi
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 8Gi
+  # shorthand takes precedence over the heap size: 1 x 6Gi
+  - name: shorthand-overrides-java-opts
+    count: 1
+    resources:
+      limits:
+        memory: 6Gi
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms1g -Xmx1g"
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: test-kibana
+spec:
+  version: 9.1.0
+  count: 2
+  resources:
+    limits:
+      memory: 3Gi
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: test-apm
+spec:
+  version: 9.1.0
+  count: 1
+  resources:
+    limits:
+      memory: 1Gi
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1
+kind: EnterpriseSearch
+metadata:
+  name: test-enterprise-search
+spec:
+  version: 8.18.0
+  count: 1
+  resources:
+    limits:
+      memory: 5Gi
+---
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: test-logstash
+spec:
+  version: 9.1.0
+  count: 1
+  resources:
+    limits:
+      memory: 3Gi

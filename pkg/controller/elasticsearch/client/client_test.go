@@ -316,6 +316,45 @@ func TestClientGetNodes(t *testing.T) {
 	require.Equal(t, 3, len(resp.Nodes))
 	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
 	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
+	require.Equal(t, "us-east-1b", resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Attributes["availability_zone"])
+}
+
+func TestClientGetNodes_partialResponse(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		wantPartial bool
+	}{
+		{
+			name:        "a node did not respond",
+			response:    `{"_nodes":{"total":2,"successful":1,"failed":1,"failures":[]},"nodes":{"id-1":{"name":"node-1"}}}`,
+			wantPartial: true,
+		},
+		{
+			name:     "all the nodes responded",
+			response: `{"_nodes":{"total":1,"successful":1,"failed":0},"nodes":{"id-1":{"name":"node-1"}}}`,
+		},
+		{
+			name:     "no summary",
+			response: `{"nodes":{"id-1":{"name":"node-1"}}}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testClient := NewMockClient(version.MustParse("7.17.0"), func(req *http.Request) *http.Response {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(strings.NewReader(tt.response)),
+					Header:     make(http.Header),
+					Request:    req,
+				}
+			})
+			resp, err := testClient.GetNodes(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, 1, len(resp.Nodes))
+			require.Equal(t, tt.wantPartial, resp.IsPartial())
+		})
+	}
 }
 
 func TestClientGetNodesStats(t *testing.T) {

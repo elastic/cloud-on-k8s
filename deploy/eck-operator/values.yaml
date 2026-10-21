@@ -143,7 +143,16 @@ tracing:
     ELASTIC_APM_SERVER_TIMEOUT: 30s
 
 refs:
-  # enforceRBAC specifies whether RBAC should be enforced for cross-namespace associations between resources.
+  # enforceRBAC controls cross-namespace association RBAC enforcement.
+  # Accepted values are:
+  #   false  - disabled
+  #   true   - RBAC checked for all types of cross-namespace associations but only elasticsearch (direct or transitive)
+  #            are blocked on denial, others emit a warning; in a future release this will become an alias for 'all',
+  #            enforcing RBAC on all associations; review the emitted warnings and update RBAC rules so your setup is
+  #            ready
+  #   legacy - deprecated alias for true, will be removed in a future release; review the emitted warnings and update
+  #            RBAC rules so your setup is ready when legacy mode is removed
+  #   all    - all types of cross-namespace associations are checked and blocked on denial
   enforceRBAC: false
 
 webhook:

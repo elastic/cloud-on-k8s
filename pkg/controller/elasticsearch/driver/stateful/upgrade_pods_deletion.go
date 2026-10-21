@@ -57,9 +57,12 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
+	podsToDelete, failed, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
 	if err != nil {
 		return podsToDelete, err
+	}
+	if err := ctx.clearHeldRestartShutdowns(failed); err != nil {
+		return nil, err
 	}
 
 	if len(podsToDelete) == 0 {
@@ -95,6 +98,9 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 // DeleteAll unconditionally deletes all upgradeable Pods after calling the node shutdown API and accounting for quorum
 // changes on older versions of Elasticsearch as applicable.
 func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
+	// Update the status with the list of Pods to be upgraded here, which also clears the Pods that no longer are, for
+	// example the ones that started to leave the cluster.
+	ctx.reconcileState.RecordNodesToBeUpgraded(k8s.PodNames(ctx.podsToUpgrade))
 	if len(ctx.podsToUpgrade) == 0 {
 		return nil, nil
 	}
@@ -193,18 +199,36 @@ func sortCandidates(allPods []corev1.Pod) {
 // * Because of the design of Zen2 there's nothing else to do for it.
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
-	if masterScaleDown {
-		// Update zen2 settings to exclude leaving master nodes from voting.
-		if err := zen2.AddToVotingConfigExclusions(
-			ctx.parentCtx,
-			ctx.esClient,
-			ctx.ES,
-			[]string{pod.Name},
-		); err != nil {
-			return err
-		}
+	if !masterScaleDown {
+		return nil
 	}
-	return nil
+	// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
+	// from the voting now: its node ID is unknown. It is restarted so that it can recover, and the downscale excludes it
+	// from the voting before its eventual removal. A master that stays and loses its role is excluded even if it is not
+	// a member right now, as a master that joined earlier and is offline may still be in the voting configuration.
+	nonMember, err := ctx.isLeavingNonMember(pod.Name)
+	if err != nil || nonMember {
+		return err
+	}
+	// Update zen2 settings to exclude leaving master nodes from voting.
+	return zen2.AddToVotingConfigExclusions(
+		ctx.parentCtx,
+		ctx.esClient,
+		ctx.ES,
+		[]string{pod.Name},
+	)
+}
+
+// isLeavingNonMember returns true if the given Pod is leaving and is not a member of the cluster.
+func (ctx *upgradeCtx) isLeavingNonMember(podName string) (bool, error) {
+	if !ctx.leavingPods.Has(podName) {
+		return false, nil
+	}
+	members, err := membersAmong(ctx.esState, []string{podName})
+	if err != nil {
+		return false, err
+	}
+	return !members.Has(podName), nil
 }
 
 func deletePod(

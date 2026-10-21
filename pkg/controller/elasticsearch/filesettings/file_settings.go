@@ -6,6 +6,7 @@ package filesettings
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -82,10 +83,12 @@ func newEmptySettingsState() SettingsState {
 }
 
 // updateState updates the Settings state from a StackConfigPolicy for a given Elasticsearch.
-// cluster_secrets is owned by the ES controller and is always preserved across the update.
+// cluster_secrets and ECK-generated PKI role mapping entries are owned by the ES controller and
+// are always preserved across the update.
 func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1alpha1.ElasticsearchConfigPolicySpec) error {
 	esConfigPolicy = *esConfigPolicy.DeepCopy() // be sure to not mutate the original es config policy
 	savedClusterSecrets := s.State.ClusterSecrets
+	savedECKRoleMappings, _ := partitionRoleMappings(s.State.RoleMappings)
 	state := newEmptySettingsState()
 	// mutate Snapshot Repositories
 	if esConfigPolicy.SnapshotRepositories != nil {
@@ -110,7 +113,9 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 		state.SLM = esConfigPolicy.SnapshotLifecyclePolicies
 	}
 	if esConfigPolicy.SecurityRoleMappings != nil {
-		state.RoleMappings = esConfigPolicy.SecurityRoleMappings
+		state.RoleMappings = mergeRoleMappings(esConfigPolicy.SecurityRoleMappings, savedECKRoleMappings)
+	} else if len(savedECKRoleMappings) > 0 {
+		state.RoleMappings = &commonv1.Config{Data: savedECKRoleMappings}
 	}
 	if esConfigPolicy.IndexLifecyclePolicies != nil {
 		state.IndexLifecyclePolicies = esConfigPolicy.IndexLifecyclePolicies
@@ -127,6 +132,41 @@ func (s *Settings) updateState(es types.NamespacedName, esConfigPolicy policyv1a
 	state.ClusterSecrets = savedClusterSecrets
 	s.State = state
 	return nil
+}
+
+// partitionRoleMappings splits role mapping entries into ECK-managed (see commonv1.IsECKManagedPKIRoleMapping) and
+// user-defined sets. Either returned map may be nil when no entries fall into that partition.
+func partitionRoleMappings(roleMappings *commonv1.Config) (eck, user map[string]any) {
+	if roleMappings == nil {
+		return nil, nil
+	}
+	for k, v := range roleMappings.Data {
+		if commonv1.IsECKManagedPKIRoleMapping(k, v) {
+			if eck == nil {
+				eck = make(map[string]any)
+			}
+			eck[k] = v
+		} else {
+			if user == nil {
+				user = make(map[string]any)
+			}
+			user[k] = v
+		}
+	}
+	return eck, user
+}
+
+// mergeRoleMappings merges base (user-defined) role mappings with ECK PKI entries into a new Config. User-defined
+// entries win on a name collision (see withholdNameCollisions).
+func mergeRoleMappings(base *commonv1.Config, eckEntries map[string]any) *commonv1.Config {
+	merged := &commonv1.Config{Data: make(map[string]any)}
+	maps.Copy(merged.Data, eckEntries)
+	if base != nil {
+		maps.Copy(merged.Data, base.Data)
+	}
+	// Never return nil: a nil value is omitted from the JSON (omitempty), and Elasticsearch may then keep
+	// previously applied role mappings. An explicit empty object makes it remove them.
+	return merged
 }
 
 // mutateSnapshotRepositorySettings ensures that a snapshot repository can be used across multiple ES clusters.

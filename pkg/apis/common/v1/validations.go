@@ -7,15 +7,19 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -111,6 +115,79 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	return nil
 }
 
+// PKIAuthMinVersion is the minimum version for PKI authentication. Elasticsearch needs it for the
+// pki_public_key_fingerprint metadata field used in role mapping rules (ES #156144) and for the PKI realm
+// truststore reload (ES #160416). Elastic Maps Server needs it to authenticate with only a client certificate.
+var PKIAuthMinVersion = version.MinFor(9, 6, 0)
+
+// CheckNoPKIAuthenticationMode returns a validation error when the given ElasticsearchSelector
+// uses PKI authentication mode, which some resource types do not support.
+func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, resourceType string) field.ErrorList {
+	if ref.AuthenticationMode == AuthenticationModePKI {
+		return field.ErrorList{field.Invalid(
+			path.Child("authenticationMode"),
+			AuthenticationModePKI,
+			fmt.Sprintf("PKI authentication mode is not supported for %s", resourceType),
+		)}
+	}
+	return nil
+}
+
+// CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
+// its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
+// names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.
+// It also rejects the node attribute ECK uses to detect the nodes running the realm
+// (ECKPKIRealmNodeAttributeConfigKey). path is the path of cfg.
+func CheckReservedPKIRealmConfig(path *field.Path, cfg *settings.CanonicalConfig) field.ErrorList {
+	var errs field.ErrorList
+	if len(cfg.HasKeys([]string{ECKPKIRealmNodeAttributeConfigKey})) > 0 {
+		errs = append(errs, field.Invalid(
+			path.Child(ECKPKIRealmNodeAttributeConfigKey),
+			ECKPKIRealmNodeAttributeConfigKey,
+			fmt.Sprintf("node attribute %s is reserved for ECK-managed PKI authentication", ECKPKIRealmNodeAttribute),
+		))
+	}
+	if !cfg.HasChildConfig(realmsConfigKey) {
+		return errs
+	}
+	if cfg.HasChildConfig(ECKPKIRealmConfigKey) {
+		errs = append(errs, field.Invalid(
+			path.Child(ECKPKIRealmConfigKey),
+			ECKPKIRealmConfigKey,
+			fmt.Sprintf("realm name %s is reserved for ECK-managed PKI authentication", ECKPKIRealmName),
+		))
+	}
+	// realm type -> realm name -> realm settings
+	var realms map[string]map[string]struct {
+		Order *int64 `config:"order"`
+	}
+	if err := cfg.UnpackChild(realmsConfigKey, &realms); err != nil {
+		// Malformed realm settings are rejected by Elasticsearch, not by this check.
+		return errs
+	}
+	for _, realmType := range slices.Sorted(maps.Keys(realms)) {
+		for _, realmName := range slices.Sorted(maps.Keys(realms[realmType])) {
+			// the pki realm type is covered above, also when the realm settings cannot be unpacked
+			if key := strings.Join([]string{realmsConfigKey, realmType, realmName}, "."); realmName == ECKPKIRealmName && key != ECKPKIRealmConfigKey {
+				errs = append(errs, field.Invalid(
+					path.Child(key),
+					key,
+					fmt.Sprintf("realm name %s is reserved for ECK-managed PKI authentication", ECKPKIRealmName),
+				))
+			}
+			if order := realms[realmType][realmName].Order; order != nil && *order == ECKPKIRealmOrder {
+				key := strings.Join([]string{realmsConfigKey, realmType, realmName, "order"}, ".")
+				errs = append(errs, field.Invalid(
+					path.Child(key),
+					*order,
+					fmt.Sprintf("realm order %d is reserved for the ECK-managed PKI realm %s", ECKPKIRealmOrder, ECKPKIRealmName),
+				))
+			}
+		}
+	}
+	return errs
+}
+
 // CheckAssociationRefs checks that the given association references are valid.
 func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
 	for _, ref := range refs {
@@ -129,6 +206,39 @@ func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelec
 		}
 	}
 	return nil
+}
+
+// CheckConsistentESRefAuthentication rejects references to the same Elasticsearch cluster that authenticate
+// differently: with different authentication modes, or in PKI mode with different client certificates. These references
+// share the association configuration and Secrets, including the client certificate and the PKI role mapping request,
+// so each reference would keep overwriting or deleting the resources of the other. namespace is the default namespace
+// of the references. References to an external Elasticsearch through secretName are ignored.
+func CheckConsistentESRefAuthentication(path *field.Path, namespace string, refs ...ElasticsearchSelector) field.ErrorList {
+	firstRefs := make(map[types.NamespacedName]ElasticsearchSelector, len(refs))
+	var errs field.ErrorList
+	for i, ref := range refs {
+		if !ref.IsSet() || ref.IsExternal() {
+			continue
+		}
+		nsn := ref.WithDefaultNamespace(namespace).NamespacedName()
+		first, exists := firstRefs[nsn]
+		if !exists {
+			firstRefs[nsn] = ref
+			continue
+		}
+		mode, firstMode := ref.GetAuthenticationMode(), first.GetAuthenticationMode()
+		switch {
+		case mode != firstMode:
+			errs = append(errs, field.Invalid(path.Index(i).Child("authenticationMode"), mode,
+				fmt.Sprintf("all references to Elasticsearch %s must use the same authentication mode, found %s and %s", nsn, firstMode, mode)))
+		case mode == AuthenticationModePKI && ref.ClientCertificateSecretName != first.ClientCertificateSecretName:
+			// Only checked in PKI mode: in Credentials mode, references with different client certificates were
+			// accepted before PKI authentication was introduced.
+			errs = append(errs, field.Invalid(path.Index(i).Child("clientCertificateSecretName"), ref.ClientCertificateSecretName,
+				fmt.Sprintf("all references to Elasticsearch %s with authentication mode PKI must use the same client certificate", nsn)))
+		}
+	}
+	return errs
 }
 
 // CheckLocalAssociationRefs checks that the given local association references are valid.

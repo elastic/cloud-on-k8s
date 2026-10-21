@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -21,12 +22,14 @@ import (
 
 // Params to specify a Deployment specification.
 type Params struct {
-	Name                 string
-	Namespace            string
-	Selector             map[string]string
-	Metadata             metadata.Metadata
-	PodTemplateSpec      corev1.PodTemplateSpec
-	Replicas             int32
+	Name            string
+	Namespace       string
+	Selector        map[string]string
+	Metadata        metadata.Metadata
+	PodTemplateSpec corev1.PodTemplateSpec
+	// Replicas is the desired replica count. When nil, ECK does not set Spec.Replicas,
+	// allowing an external HPA to own the replica count without interference.
+	Replicas             *int32
 	RevisionHistoryLimit *int32
 	Strategy             appsv1.DeploymentStrategy
 }
@@ -44,11 +47,16 @@ func New(params Params) appsv1.Deployment {
 				MatchLabels: params.Selector,
 			},
 			Template: params.PodTemplateSpec,
-			Replicas: &params.Replicas,
+			Replicas: params.Replicas,
 			Strategy: params.Strategy,
 		},
 	}
 	return WithTemplateHash(d)
+}
+
+type MetadataMergeStrategy struct {
+	Labels      func(reconciled, expected map[string]string) map[string]string
+	Annotations func(reconciled, expected map[string]string) map[string]string
 }
 
 // Reconcile creates or updates the given deployment for the specified owner.
@@ -58,6 +66,27 @@ func Reconcile(
 	expected appsv1.Deployment,
 	owner client.Object,
 ) (appsv1.Deployment, error) {
+	return ReconcileWithMetadataMergeStrategy(ctx, k8sClient, expected, owner, MetadataMergeStrategy{Labels: maps.Merge, Annotations: maps.Merge})
+}
+
+// ReconcileWithMetadataMergeStrategy creates or updates the given Deployment for the specified owner, like Reconcile,
+// but lets the caller choose how labels and annotations are merged on update.
+// When expected.Spec.Replicas is nil, the live replica count is kept and is not part of the template hash.
+// This lets an external controller such as an HPA own the replica count.
+func ReconcileWithMetadataMergeStrategy(
+	ctx context.Context,
+	k8sClient k8s.Client,
+	expected appsv1.Deployment,
+	owner client.Object,
+	mdMergeStrategy MetadataMergeStrategy,
+) (appsv1.Deployment, error) {
+	if mdMergeStrategy.Labels == nil {
+		mdMergeStrategy.Labels = maps.Merge
+	}
+	if mdMergeStrategy.Annotations == nil {
+		mdMergeStrategy.Annotations = maps.Merge
+	}
+
 	// label the deployment with a hash of itself
 	expected = WithTemplateHash(expected)
 
@@ -69,6 +98,12 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
+			if expected.Spec.Replicas == nil {
+				// Replicas are managed externally (e.g. by an HPA): adopt the current count
+				// before recomputing the hash. This prevents ECK from resetting replicas to nil
+				// on every reconcile.
+				expected.Spec.Replicas = reconciled.Spec.Replicas
+			}
 			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
 				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
 				// compare hash of the deployment at the time it was built
@@ -77,8 +112,8 @@ func Reconcile(
 		UpdateReconciled: func() {
 			// set expected annotations and labels, but don't remove existing ones
 			// that may have been defaulted or set by a user/admin on the existing resource
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			reconciled.Labels = mdMergeStrategy.Labels(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = mdMergeStrategy.Annotations(reconciled.Annotations, expected.Annotations)
 			// overwrite the spec but leave the status intact
 			reconciled.Spec = expected.Spec
 		},
@@ -91,4 +126,15 @@ func WithTemplateHash(d appsv1.Deployment) appsv1.Deployment {
 	dCopy := *d.DeepCopy()
 	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
+}
+
+// IsSteady reports whether the Deployment has converged: the controller has observed the latest
+// spec and all expected replicas are updated and available. The default for nil Spec.Replicas is 1,
+// matching the Kubernetes Deployment default, so a Deployment with no explicit replica count is
+// only steady once its one pod is available.
+func IsSteady(d *appsv1.Deployment) bool {
+	return d.Status.ObservedGeneration >= d.Generation &&
+		d.Status.Replicas == d.Status.UpdatedReplicas &&
+		d.Status.UpdatedReplicas == d.Status.AvailableReplicas &&
+		d.Status.UpdatedReplicas == ptr.Deref(d.Spec.Replicas, 1)
 }

@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/beat"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
@@ -182,4 +184,43 @@ func TestClientAuthRequiredCustomCertificate(t *testing.T) {
 	before, after := clientauth.UserCustomCertificateSecretLifecycleSteps(namespace, userCertSecretName, certPEM, keyPEM)
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), beatWrapped, testPodBuilder).RunSequential(t)
+}
+
+// TestPKIAuthenticationModeTransition verifies the PKI authentication mode lifecycle for Beat: Filebeat ships
+// events to Elasticsearch with its client certificate only, and switching it back to credentials cleans up the
+// eck_managed_pki_ role mapping.
+func TestPKIAuthenticationModeTransition(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-beat-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	fileBeatConfig := E2EFilebeatConfig
+	if !SupportsFingerprintIdentity(version.MustParse(test.Ctx().ElasticStackVersion)) {
+		fileBeatConfig = E2EFilebeatConfigPRE810
+	}
+
+	testPodBuilder := beat.NewPodBuilder(name)
+
+	beatBuilder := beat.NewBuilder(name).
+		WithType("filebeat").
+		WithRoles(beat.AutodiscoverClusterRoleName).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithESValidations(
+			beat.HasEventFromBeat(filebeat.Type),
+			beat.HasEventFromPod(testPodBuilder.Pod.Name),
+		)
+	beatBuilder = beat.ApplyYamls(t, beatBuilder, fileBeatConfig, E2EFilebeatPodTemplate)
+	beatBuilder.Beat.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModePKI
+
+	beatMutated := beatBuilder.DeepCopy().WithMutatedFrom(&beatBuilder)
+	beatMutated.Beat.Spec.ElasticsearchRef.AuthenticationMode = commonv1.AuthenticationModeCredentials
+	beatMutatedWrapped := clientauth.WithNewDataCheck(t.Context(), esBuilder.Ref().NamespacedName(), beatMutated,
+		test.NewPodRestartChecker("Beat", test.BeatPodListOptions(beatBuilder.Beat.Namespace, beatBuilder.Beat.Name)...),
+		func(since time.Time) func(esclient.Client) error {
+			return beat.HasEvent(elasticsearch.TimestampSinceQuery(since))
+		})
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, beatBuilder, beatMutatedWrapped, testPodBuilder)
 }

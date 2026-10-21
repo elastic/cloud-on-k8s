@@ -324,6 +324,22 @@ func TestWebhook(t *testing.T) {
 			),
 		},
 		{
+			Name:      "pki-authentication-rejected",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkEnterpriseSearch(uid)
+				ent.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef.authenticationMode: Invalid value: "PKI": PKI authentication mode is not supported for Enterprise Search`,
+			),
+		},
+		{
 			Name:      "pause-orchestration false",
 			Operation: admissionv1.Create,
 			Object: func(t *testing.T, uid string) []byte {

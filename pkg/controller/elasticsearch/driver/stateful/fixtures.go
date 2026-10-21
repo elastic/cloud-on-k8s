@@ -324,7 +324,9 @@ func (t testPod) toPod() corev1.Pod {
 
 type testESState struct {
 	inCluster []string
-	health    client.Health
+	// partialNodes is true if some nodes did not respond to the nodes request
+	partialNodes bool
+	health       client.Health
 	ESState
 }
 
@@ -334,6 +336,18 @@ func (t *testESState) ShardAllocationsEnabled() (bool, error) {
 
 func (t *testESState) Health() (client.Health, error) {
 	return t.health, nil
+}
+
+func (t *testESState) NodeNameToID() (map[string]string, error) {
+	nodeNameToID := make(map[string]string, len(t.inCluster))
+	for _, nodeName := range t.inCluster {
+		nodeNameToID[nodeName] = nodeName
+	}
+	return nodeNameToID, nil
+}
+
+func (t *testESState) NodesResponsePartial() (bool, error) {
+	return t.partialNodes, nil
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/agent"
 	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
@@ -556,4 +558,31 @@ func skipIfFleetServerClientAuthNotSupported(t *testing.T) {
 	if !agentv1alpha1.FleetServerClientAuthSupported(v) {
 		t.Skipf("skipping Fleet Server client authentication test: requires 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+, got %s", v)
 	}
+}
+
+// TestPKIAuthenticationModeTransition_StandaloneAgent verifies the PKI authentication mode lifecycle for a
+// standalone Elastic Agent: the Agent ships data to Elasticsearch with its client certificate only, and switching
+// it back to credentials cleans up the eck_managed_pki_ role mapping. Fleet-managed Agents do not support PKI.
+func TestPKIAuthenticationModeTransition_StandaloneAgent(t *testing.T) {
+	clientauth.SkipIfPKINotSupported(t)
+
+	name := "test-sa-pki-trans"
+	esBuilder := clientauth.NewPKIElasticsearchBuilder(name)
+
+	agentBuilder := agent.NewBuilder(name).
+		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
+		WithOpenShiftRoles(test.UseSCCRole).
+		WithDefaultESValidation(agent.HasWorkingDataStream(agent.MetricsType, "system.cpu", "default"))
+	agentBuilder = agent.ApplyYamls(t, agentBuilder, E2EAgentSystemIntegrationConfig, E2EAgentSystemIntegrationPodTemplate).MoreResourcesForIssue4730()
+	agentBuilder.Agent.Spec.ElasticsearchRefs[0].AuthenticationMode = commonv1.AuthenticationModePKI
+
+	agentMutated := agentBuilder.DeepCopy().WithMutatedFrom(&agentBuilder)
+	agentMutated.Agent.Spec.ElasticsearchRefs[0].AuthenticationMode = commonv1.AuthenticationModeCredentials
+	agentMutatedWrapped := clientauth.WithNewDataCheck(t.Context(), esBuilder.Ref().NamespacedName(), agentMutated,
+		test.NewPodRestartChecker("Agent", test.AgentPodListOptions(agentBuilder.Agent.Namespace, agentBuilder.Agent.Name)...),
+		func(since time.Time) func(esclient.Client) error {
+			return agent.HasEvent(fmt.Sprintf("/metrics-system.cpu-default/_search?q=%s", elasticsearch.TimestampSinceQuery(since)))
+		})
+
+	clientauth.RunPKIAuthenticationModeTransition(t, esBuilder, agentBuilder, agentMutatedWrapped)
 }

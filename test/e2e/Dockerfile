@@ -1,5 +1,5 @@
 # Docker image for the E2E tests runner
-FROM docker.io/library/golang:1.27.1
+FROM docker.io/library/golang:1.27.3
 
 ARG GO_TAGS
 ARG ARCH
@@ -7,7 +7,7 @@ ARG ARCH
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 
 # renovate: datasource=github-releases depName=elastic/eck-diagnostics
-ENV ECK_DIAG_VERSION=1.11.0
+ENV ECK_DIAG_VERSION=1.12.0
 # Download and extract the correct eck-diagnostics binary based on the image architecture
 # ARCH is passed from drivah.toml.sh (amd64 or arm64)
 # Map to eck-diagnostics naming: x86_64 for amd64, arm64 for arm64

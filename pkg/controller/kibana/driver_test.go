@@ -76,6 +76,18 @@ func Test_getStrategyType(t *testing.T) {
 		return objects
 	}
 
+	// withPhase sets the phase of the given pods, e.g. to mark them as terminated.
+	withPhase := func(objects []client.Object, phase corev1.PodPhase) []client.Object {
+		for _, object := range objects {
+			pod, ok := object.(*corev1.Pod)
+			if !ok {
+				t.FailNow()
+			}
+			pod.Status.Phase = phase
+		}
+		return objects
+	}
+
 	tests := []struct {
 		name            string
 		expectedKbName  string
@@ -147,7 +159,9 @@ func Test_getStrategyType(t *testing.T) {
 				getPods("test", 1, "8.5.0"),
 				append(
 					getPods("test", 1, "8.4.0"),
-					getPods("test", 1, "8.3.0")...)...),
+					getPods("test", 1, "8.3.0")...,
+				)...,
+			),
 			clientError:  false,
 			wantErr:      false,
 			wantStrategy: appsv1.RecreateDeploymentStrategyType,
@@ -157,6 +171,33 @@ func Test_getStrategyType(t *testing.T) {
 			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
 			initialObjects:  clearVersionLabels(getPods("test", 3, "8.5.0")),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch only on terminated pods (Succeeded): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(getPods("test", 1, "8.4.0"), corev1.PodSucceeded)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version label missing only on terminated pods (Failed): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(clearVersionLabels(getPods("test", 1, "8.4.0")), corev1.PodFailed)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch on a running pod next to terminated ones: Recreate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(withPhase(getPods("test", 2, "8.5.0"), corev1.PodSucceeded), getPods("test", 1, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
@@ -205,6 +246,43 @@ func TestDriverDeploymentParams(t *testing.T) {
 		initialObjects                func() []client.Object
 		policyAnnotations             map[string]string
 		setDefaultSecurityContextFlag bool
+		scaleToZero                   bool
+		// role of the pool, SinglePoolRole when not set
+		role kblabel.Role
+		// replicasAnnotation is the value of the replicas annotation to write on the background tasks Deployment
+		replicasAnnotation *int32
+		// omitRoleSplit and revisionHistoryLimitOverride are the selectorChangeOutcome inputs
+		omitRoleSplit                bool
+		revisionHistoryLimitOverride *int32
+	}
+
+	// kibanaWithBackgroundTasks is the fixture Kibana with background task isolation enabled,
+	// which the background tasks role requires.
+	kibanaWithBackgroundTasks := func() *kbv1.Kibana {
+		kb := kibanaFixture()
+		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
+		return kb
+	}
+	// backgroundTasksInitialObjects adds the config secret of the background tasks pool, fetched by
+	// deploymentParams for that role, with the same content as the single pool one (same config hash).
+	backgroundTasksInitialObjects := func() []client.Object {
+		return append(defaultInitialObjects(), &corev1.Secret{
+			Name:      kbv1.BackgroundTasksConfigSecret("test"),
+			Namespace: "default",
+			Data:      map[string][]byte{"kibana.yml": []byte("server.name: test")},
+		})
+	}
+
+	// outdatedPod is a pod of the fixture Kibana running a version older than the fixture version,
+	// which makes getStrategyType choose the Recreate strategy.
+	outdatedPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			Name: "test-kb-outdated", Namespace: "default",
+			Labels: map[string]string{
+				kblabel.KibanaNameLabelName:    "test",
+				kblabel.KibanaVersionLabelName: "7.16.0",
+			},
+		}
 	}
 
 	tests := []struct {
@@ -327,6 +405,156 @@ func TestDriverDeploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "version upgrade in progress: Recreate strategy",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: func() []client.Object { return append(defaultInitialObjects(), outdatedPod()) },
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "version upgrade in progress while scaling to zero: RollingUpdate strategy",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: func() []client.Object { return append(defaultInitialObjects(), outdatedPod()) },
+				scaleToZero:    true,
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "UI role: NODE_ROLES set to ui",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: defaultInitialObjects,
+				role:           kblabel.UIRole,
+			},
+			want:    withNodeRoles(pre710(expectedDeploymentParams()), kblabel.UIRole),
+			wantErr: false,
+		},
+		{
+			name: "UI role with omitRoleSplit (selector migration in progress): no NODE_ROLES, role label kept",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: defaultInitialObjects,
+				role:           kblabel.UIRole,
+				omitRoleSplit:  true,
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role: own names, role label and NODE_ROLES",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: backgroundTasksInitialObjects,
+				role:           kblabel.BackgroundTasksRole,
+			},
+			want:    backgroundTasksPool(pre710(expectedDeploymentParams())),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role is not affected by omitRoleSplit",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: backgroundTasksInitialObjects,
+				role:           kblabel.BackgroundTasksRole,
+				omitRoleSplit:  true,
+			},
+			want:    backgroundTasksPool(pre710(expectedDeploymentParams())),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role with a replicas annotation value: annotation written",
+			args: args{
+				kb:                 kibanaWithBackgroundTasks,
+				initialObjects:     backgroundTasksInitialObjects,
+				role:               kblabel.BackgroundTasksRole,
+				replicasAnnotation: new(int32(5)),
+			},
+			want: func() deployment.Params {
+				p := backgroundTasksPool(pre710(expectedDeploymentParams()))
+				p.Metadata.Annotations = map[string]string{replicasAnnotationName: "5"}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "single pool role with a replicas annotation value: annotation absent",
+			args: args{
+				kb:                 kibanaFixture,
+				initialObjects:     defaultInitialObjects,
+				replicasAnnotation: new(int32(5)),
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "UI role with a replicas annotation value: annotation absent",
+			args: args{
+				kb:                 kibanaFixture,
+				initialObjects:     defaultInitialObjects,
+				role:               kblabel.UIRole,
+				replicasAnnotation: new(int32(5)),
+			},
+			want:    withNodeRoles(pre710(expectedDeploymentParams()), kblabel.UIRole),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: spec value used when there is no override",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.RevisionHistoryLimit = new(int32(5))
+					return kb
+				},
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(5))
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: override used when the spec has no value",
+			args: args{
+				kb:                           kibanaFixture,
+				initialObjects:               defaultInitialObjects,
+				revisionHistoryLimitOverride: new(int32(0)),
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(0))
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: override takes precedence over the spec value",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.RevisionHistoryLimit = new(int32(5))
+					return kb
+				},
+				initialObjects:               defaultInitialObjects,
+				revisionHistoryLimitOverride: new(int32(0)),
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(0))
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
 			name: "7.10+ contains security contexts",
 			args: args{
 				kb: func() *kbv1.Kibana {
@@ -375,7 +603,28 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, "", metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			role := tt.args.role
+			if role == (kblabel.Role{}) {
+				role = kblabel.SinglePoolRole
+			}
+			secretName, deploymentName := kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name)
+			if role.IsBackgroundTasks() {
+				secretName, deploymentName = kbv1.BackgroundTasksConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name)
+			}
+
+			got, err := d.deploymentParams(context.Background(), kb, poolParameters{
+				Role:                      role,
+				SecretName:                secretName,
+				DeploymentName:            deploymentName,
+				SetDefaultSecurityContext: tt.args.setDefaultSecurityContextFlag,
+				ScaleToZero:               tt.args.scaleToZero,
+			}, new(kb.Spec.Count), tt.args.replicasAnnotation, tt.args.policyAnnotations,
+				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
+				selectorChangeOutcome{
+					expectedSelector:             kb.GetIdentityLabels(),
+					omitRoleSplit:                tt.args.omitRoleSplit,
+					revisionHistoryLimitOverride: tt.args.revisionHistoryLimitOverride,
+				})
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -434,14 +683,15 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"}},
-		Replicas:  1,
+		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "kibana.k8s.elastic.co/role": "primary"}},
+		Replicas:  new(int32(1)),
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
+					"kibana.k8s.elastic.co/role":    "primary",
 					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
@@ -492,7 +742,7 @@ func expectedDeploymentParams() deployment.Params {
 						Name: "kibana-scripts",
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							Name:        "test-kb-scripts",
-							DefaultMode: new(int32(0755)),
+							DefaultMode: new(int32(0o755)),
 							Optional:    new(false),
 						},
 					},
@@ -657,6 +907,28 @@ func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string
 
 	maps.Copy(deploymentParams.PodTemplateSpec.Annotations, policyAnnotations)
 	return deploymentParams
+}
+
+// withNodeRoles prepends the NODE_ROLES env var of the given role to the Kibana container, as done for
+// the pools of a Kibana with background task isolation enabled.
+func withNodeRoles(params deployment.Params, role kblabel.Role) deployment.Params {
+	c := kbv1.GetKibanaContainer(params.PodTemplateSpec.Spec)
+	c.Env = append([]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: fmt.Sprintf(`["%s"]`, role.Name)}}, c.Env...)
+	return params
+}
+
+// backgroundTasksPool turns the expected params of the single pool into the ones of the background tasks pool:
+// its own Deployment and config secret names, the background_tasks role label and NODE_ROLES.
+func backgroundTasksPool(params deployment.Params) deployment.Params {
+	params.Name = kbv1.BackgroundTasksDeployment("test")
+	params.Metadata.Labels[kblabel.RoleLabelName] = kblabel.RoleBackgroundTasksValue
+	params.PodTemplateSpec.Labels[kblabel.RoleLabelName] = kblabel.RoleBackgroundTasksValue
+	for i := range params.PodTemplateSpec.Spec.Volumes {
+		if v := &params.PodTemplateSpec.Spec.Volumes[i]; v.Name == "elastic-internal-kibana-config" {
+			v.Secret.SecretName = kbv1.BackgroundTasksConfigSecret("test")
+		}
+	}
+	return withNodeRoles(params, kblabel.BackgroundTasksRole)
 }
 
 func pre710(params deployment.Params) deployment.Params {
@@ -825,7 +1097,7 @@ func TestNewService(t *testing.T) {
 					HTTP: tc.httpConf,
 				},
 			}
-			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetPoolIdentityLabels(kblabel.UIRole))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -850,6 +1122,7 @@ func mkService() corev1.Service {
 			Selector: map[string]string{
 				kblabel.KibanaNameLabelName: "kibana-test",
 				commonv1.TypeLabelName:      kblabel.Type,
+				kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
 			},
 		},
 	}
@@ -962,7 +1235,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &driver{}
-			volumes, err := d.buildVolumes(tt.kb)
+			volumes, err := d.buildVolumes(tt.kb, kbv1.ConfigSecret(tt.kb.Name))
 			tt.assertions(t, volumes, err)
 		})
 	}

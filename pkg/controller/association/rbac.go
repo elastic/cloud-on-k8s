@@ -25,7 +25,8 @@ type Unbinder interface {
 	Unbind(ctx context.Context, association commonv1.Association) error
 }
 
-// CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
+// CheckAndUnbind checks whether the association's service account has access to referencedObject.
+// On denial, it always logs and emits a Warning event. If unbinder is non-nil it also calls Unbinder.Unbind.
 func CheckAndUnbind(
 	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,
@@ -61,7 +62,10 @@ func CheckAndUnbind(
 			"Association not allowed: %s/%s to %s/%s",
 			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
-		return false, unbinder.Unbind(ctx, association)
+		if unbinder != nil {
+			return false, unbinder.Unbind(ctx, association)
+		}
+		return false, nil
 	}
 	return true, nil
 }

@@ -7,12 +7,15 @@ package stateful
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -35,6 +38,7 @@ func (d *Driver) handleUpgrades(
 	esClient esclient.Client,
 	esState ESState,
 	expectedResources nodespec.ResourcesList,
+	leaving *leavingNodes,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	log := ulog.FromContext(ctx)
@@ -56,7 +60,7 @@ func (d *Driver) handleUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	rollingUpgradeCandidates, err := podsToRollingUpgrade(d.Client, statefulSets, leaving)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -66,7 +70,7 @@ func (d *Driver) handleUpgrades(
 		return results.WithError(err)
 	}
 
-	isTriggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, podsToUpgrade)
+	isTriggeredRestart := isAnnotationTriggeredRestart(d.ES, expectedResources, rollingUpgradeCandidates)
 
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
@@ -77,7 +81,7 @@ func (d *Driver) handleUpgrades(
 	nodeShutdown := shutdown.NewNodeShutdown(esClient, nodeNameToID, esclient.Restart, shutdownReason, allocationDelay, logger)
 
 	// Maybe re-enable shards allocation and delete shutdowns if upgraded nodes are back into the cluster.
-	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown)).HasError() {
+	if results.WithResults(d.maybeCompleteNodeUpgrades(ctx, esClient, esState, nodeShutdown, rollingUpgradeCandidates)).HasError() {
 		return results
 	}
 
@@ -99,7 +103,8 @@ func (d *Driver) handleUpgrades(
 		esState,
 		nodeShutdown,
 		expectedMasters,
-		podsToUpgrade,
+		leaving.desired,
+		rollingUpgradeCandidates,
 		healthyPods,
 		currentPods,
 		isTriggeredRestart,
@@ -126,7 +131,7 @@ func (d *Driver) handleUpgrades(
 		// Some Pods have just been deleted, we don't need to try to enable shards allocation.
 		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
-	if len(podsToUpgrade) > len(deletedPods) {
+	if len(rollingUpgradeCandidates) > len(deletedPods) {
 		// Some Pods have not been updated, ensure that we retry later
 		results.WithReconciliationState(shared.DefaultRequeue.WithReason("Nodes upgrade in progress"))
 	}
@@ -134,18 +139,20 @@ func (d *Driver) handleUpgrades(
 }
 
 type upgradeCtx struct {
-	parentCtx                    context.Context
-	client                       k8s.Client
-	ES                           esv1.Elasticsearch
-	resourcesList                nodespec.ResourcesList
-	statefulSets                 es_sset.StatefulSetList
-	esClient                     esclient.Client
-	shardLister                  esclient.ShardLister
-	nodeShutdown                 *shutdown.NodeShutdown
-	esState                      ESState
-	expectations                 *expectations.Expectations
-	reconcileState               *reconcile.State
-	expectedMasters              []string
+	parentCtx       context.Context
+	client          k8s.Client
+	ES              esv1.Elasticsearch
+	resourcesList   nodespec.ResourcesList
+	statefulSets    es_sset.StatefulSetList
+	esClient        esclient.Client
+	shardLister     esclient.ShardLister
+	nodeShutdown    *shutdown.NodeShutdown
+	esState         ESState
+	expectations    *expectations.Expectations
+	reconcileState  *reconcile.State
+	expectedMasters []string
+	// leavingPods are the Pods the downscale wants to remove.
+	leavingPods                  sets.Set[string]
 	podsToUpgrade                []corev1.Pod
 	healthyPods                  map[string]corev1.Pod
 	currentPods                  []corev1.Pod
@@ -161,6 +168,7 @@ func newUpgrade(
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
 	expectedMaster []string,
+	leavingPods sets.Set[string],
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 	currentPods []corev1.Pod,
@@ -179,6 +187,7 @@ func newUpgrade(
 		expectations:                 d.Expectations,
 		reconcileState:               d.ReconcileState,
 		expectedMasters:              expectedMaster,
+		leavingPods:                  leavingPods,
 		podsToUpgrade:                podsToUpgrade,
 		healthyPods:                  healthyPods,
 		currentPods:                  currentPods,
@@ -256,6 +265,44 @@ func healthyPods(
 	return healthyPods, nil
 }
 
+// podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the leaving ones that are members of the
+// cluster, see leavingNodes.members. Restarting one that is draining disrupts the remove-type shutdown that is migrating
+// its shards away (its record may even be replaced by a restart-type one), and the others are left to the downscale. A
+// leaving Pod that is not a member has no shard to migrate and may need the upgrade to recover: a Pod that cannot be
+// scheduled or crashes with an outdated spec must be recreated with the repaired one to join the cluster, for the
+// downscale to remove it.
+func podsToRollingUpgrade(
+	client k8s.Client,
+	actualStatefulSets es_sset.StatefulSetList,
+	leaving *leavingNodes,
+) ([]corev1.Pod, error) {
+	toUpgrade, err := podsToUpgrade(client, actualStatefulSets)
+	if err != nil {
+		return nil, err
+	}
+	members, err := leaving.members(k8s.PodNames(toUpgrade))
+	if err != nil {
+		return nil, err
+	}
+	protected, err := leaving.withUnreached(members, k8s.PodNames(toUpgrade))
+	if err != nil {
+		return nil, err
+	}
+	return excludeLeavingPods(toUpgrade, protected), nil
+}
+
+// excludeLeavingPods returns the given Pods minus the given leaving ones, for example the ones the downscale wants to
+// remove.
+func excludeLeavingPods(pods []corev1.Pod, leaving sets.Set[string]) []corev1.Pod {
+	staying := make([]corev1.Pod, 0, len(pods))
+	for _, pod := range pods {
+		if !leaving.Has(pod.Name) {
+			staying = append(staying, pod)
+		}
+	}
+	return staying
+}
+
 // podsToUpgrade returns all Pods of all StatefulSets where the controller-revision-hash label compared to the sset's
 // .status.updateRevision indicates that the Pod still needs to be deleted to be recreated with the new spec.
 func podsToUpgrade(
@@ -329,11 +376,20 @@ func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Clien
 	}
 }
 
+// maybeCompleteNodeUpgrades re-enables shards allocation and deletes the completed restart shutdowns once the upgraded
+// nodes are back in the cluster. The completed shutdowns of the Pods that still wait for their restart, pendingRestarts,
+// are kept: a shutdown may only turn complete a short while after it is requested, which is after the Pod was held, and
+// deleting it would make the next attempt request it again, and hold the Pod again, instead of deleting the Pod. The ones
+// of the Pods that fail a predicate are deleted afterwards, see clearHeldRestartShutdowns.
+// A Pod that already restarted, and is back before its completed shutdown is deleted, is a pending restart again if the
+// spec changes in the meantime: its shutdown is kept, and keeps its readiness port closed, until the Pod is deleted for
+// the new spec or fails a predicate.
 func (d *Driver) maybeCompleteNodeUpgrades(
 	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
 	nodeShutdown *shutdown.NodeShutdown,
+	pendingRestarts []corev1.Pod,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	// Make sure all pods scheduled for upgrade have been upgraded.
@@ -360,6 +416,9 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
+	// the shutdown of a Pod that still waits for its restart is not over until the Pod is deleted. The Pod may also have
+	// restarted already for a previous spec, its shutdown is then kept until its next restart, see above.
+	notPendingRestart := nodeShutdown.ExceptNodes(k8s.PodNames(pendingRestarts))
 
 	// once expectations are satisfied we can already delete shutdowns that are complete and where the node
 	// is back in the cluster to avoid completed shutdowns from accumulating and affecting node availability calculations
@@ -369,7 +428,8 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
 			nodeShutdown.OnlyNodesInCluster,
-			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			nodeShutdown.ExceptNodes(terminating),
+			notPendingRestart,
 		))
 	}
 
@@ -395,7 +455,8 @@ func (d *Driver) maybeCompleteNodeUpgrades(
 		// or node state was lost due to an external event
 		results = results.WithError(nodeShutdown.Clear(ctx,
 			esclient.ShutdownComplete.Applies,
-			nodeShutdown.OnlyNonTerminatingNodes(terminating),
+			nodeShutdown.ExceptNodes(terminating),
+			notPendingRestart,
 		))
 	}
 	return results
@@ -456,9 +517,28 @@ func (ctx *upgradeCtx) requestNodeRestarts(podsToRestart []corev1.Pod) error {
 		}
 		podNames = append(podNames, p.Name)
 	}
-	// Note that ReconcileShutdowns would cancel ongoing shutdowns when called with no podNames
-	// this is however not the case in the rolling upgrade logic where we exit early if no pod needs to be rotated.
-	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames, k8s.PodNames(k8s.TerminatingPods(ctx.currentPods)))
+	if len(podNames) == 0 {
+		// there is no shutdown to request, and none to cancel: the one of a Pod about to be deleted that is not ready
+		// because its shutdown closed its readiness port is kept
+		return nil
+	}
+	return ctx.nodeShutdown.ReconcileShutdowns(ctx.parentCtx, podNames)
+}
+
+// clearHeldRestartShutdowns deletes the restart shutdowns, complete or not, of the Pods to upgrade that failed a
+// predicate in this pass. maybeCompleteNodeUpgrades keeps them before the predicates run, but a held Pod may wait for a
+// long time, for example until the cluster is green again, and its shutdown keeps its readiness port closed: the Pod
+// would be unavailable while it still serves its shards, and use up maxUnavailable, which can hold the restarts the
+// predicate waits for. Its shutdown is requested again once it passes the predicates. The shutdowns of the Pods that
+// are only held by allowedDeletions are kept: they still wait for their deletion, as do the terminating Pods.
+func (ctx *upgradeCtx) clearHeldRestartShutdowns(failed failedPredicates) error {
+	if !supportsNodeShutdown(ctx.esClient.Version()) || len(failed) == 0 {
+		return nil
+	}
+	return ctx.nodeShutdown.Clear(ctx.parentCtx,
+		ctx.nodeShutdown.OnlyNodes(slices.Collect(maps.Keys(failed))),
+		ctx.nodeShutdown.ExceptNodes(k8s.PodNames(k8s.TerminatingPods(ctx.currentPods))),
+	)
 }
 
 func (ctx *upgradeCtx) prepareClusterForNodeRestart(podsToUpgrade []corev1.Pod) error {

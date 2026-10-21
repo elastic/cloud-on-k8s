@@ -60,7 +60,7 @@ data:
     enable-tracing: true
     {{- end }}
     {{- if .Values.refs.enforceRBAC }}
-    enforce-rbac-on-refs: true
+    enforce-rbac-on-refs: {{ .Values.refs.enforceRBAC }}
     {{- end }}
     enable-webhook: {{ .Values.webhook.enabled }}
     {{- if .Values.webhook.enabled }}

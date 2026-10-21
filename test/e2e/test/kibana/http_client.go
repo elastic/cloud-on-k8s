@@ -16,7 +16,6 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/network"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
@@ -54,7 +53,7 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string
 	u.RawQuery = pathAndQueryURL.RawQuery
 
 	// Check for Kibana basePath being set
-	kibanaBasePath, err := kibana.GetKibanaBasePath(kb)
+	kibanaBasePath, err := kbv1.GetKibanaBasePath(kb)
 	if err != nil {
 		return nil, http.Header{}, errors.Wrap(err, "while getting kibana base path")
 	}

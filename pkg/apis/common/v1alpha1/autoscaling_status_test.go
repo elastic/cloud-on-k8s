@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -370,4 +371,64 @@ func getPolicyStatus(policyName string, policies []AutoscalingPolicyStatus) *Aut
 		}
 	}
 	return nil
+}
+
+func TestAutoscalingStatusBuilder_Build_Order(t *testing.T) {
+	type policyEvents struct {
+		name   string
+		events []AutoscalingEventType
+	}
+	tests := []struct {
+		name           string
+		policies       []policyEvents
+		wantPolicies   []string
+		wantStateTypes map[string][]AutoscalingEventType
+	}{
+		{
+			name: "Policies are sorted by name",
+			policies: []policyEvents{
+				{name: "ml"}, {name: "frozen"}, {name: "data-ingest"}, {name: "data-hot"},
+			},
+			wantPolicies: []string{"data-hot", "data-ingest", "frozen", "ml"},
+		},
+		{
+			name: "Policy states are sorted by type",
+			policies: []policyEvents{
+				{name: "ml", events: []AutoscalingEventType{VerticalScalingLimitReached, EmptyResponse, OverlappingPolicies}},
+				{name: "di", events: []AutoscalingEventType{StorageRequired, HorizontalScalingLimitReached, CPURequired, MemoryRequired}},
+			},
+			wantPolicies: []string{"di", "ml"},
+			wantStateTypes: map[string][]AutoscalingEventType{
+				"di": {CPURequired, HorizontalScalingLimitReached, MemoryRequired, StorageRequired},
+				"ml": {EmptyResponse, OverlappingPolicies, VerticalScalingLimitReached},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			asb := NewAutoscalingStatusBuilder()
+			for _, policy := range tt.policies {
+				policyBuilder := asb.ForPolicy(policy.name)
+				for _, event := range policy.events {
+					policyBuilder.RecordEvent(event, "message")
+				}
+			}
+			// The builder is backed by maps, build the status several times to catch a random iteration order.
+			for range 100 {
+				status := asb.Build()
+				gotPolicies := make([]string, 0, len(status.AutoscalingPolicyStatuses))
+				for _, policyStatus := range status.AutoscalingPolicyStatuses {
+					gotPolicies = append(gotPolicies, policyStatus.Name)
+					if wantStateTypes, ok := tt.wantStateTypes[policyStatus.Name]; ok {
+						gotStateTypes := make([]AutoscalingEventType, 0, len(policyStatus.PolicyStates))
+						for _, state := range policyStatus.PolicyStates {
+							gotStateTypes = append(gotStateTypes, state.Type)
+						}
+						require.Equal(t, wantStateTypes, gotStateTypes, "policy %s", policyStatus.Name)
+					}
+				}
+				require.Equal(t, tt.wantPolicies, gotPolicies)
+			}
+		})
+	}
 }

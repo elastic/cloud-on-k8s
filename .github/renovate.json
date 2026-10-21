@@ -57,12 +57,6 @@
   },
   "packageRules": [
     {
-      "groupName": "k8s",
-      "matchPackageNames": [
-        "/k8s.io/"
-      ]
-    },
-    {
       "matchPackageNames": [
         "k8s.io/utils",
         "golang.org/x/crypto",
@@ -102,7 +96,8 @@
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "github.com/elastic/{/,}**",
@@ -115,7 +110,8 @@
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "*"
@@ -129,7 +125,8 @@
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "!github.com/elastic/{/,}**"
@@ -156,6 +153,12 @@
       "matchPackageNames": [
         "/^github.com/elastic/",
         "/^go.elastic.co/"
+      ]
+    },
+    {
+      "groupName": "k8s",
+      "matchPackageNames": [
+        "/k8s.io/"
       ]
     },
     {

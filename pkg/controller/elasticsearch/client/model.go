@@ -77,7 +77,22 @@ const (
 
 // Nodes partially models the response from a request to /_nodes
 type Nodes struct {
-	Nodes map[string]Node `json:"nodes"`
+	// Summary reports how many nodes responded: the response is partial if some did not.
+	Summary NodesSummary    `json:"_nodes"`
+	Nodes   map[string]Node `json:"nodes"`
+}
+
+// NodesSummary is the summary of the nodes that responded to a nodes request.
+type NodesSummary struct {
+	Total      int `json:"total"`
+	Successful int `json:"successful"`
+	Failed     int `json:"failed"`
+}
+
+// IsPartial returns true if some nodes did not respond: they may be missing from the response although they are
+// members of the cluster.
+func (n Nodes) IsPartial() bool {
+	return n.Summary.Failed > 0
 }
 
 func (n Nodes) Names() []string {
@@ -90,9 +105,10 @@ func (n Nodes) Names() []string {
 
 // Node partially models an Elasticsearch node retrieved from /_nodes
 type Node struct {
-	Name    string   `json:"name"`
-	Version string   `json:"version"`
-	Roles   []string `json:"roles"`
+	Name       string            `json:"name"`
+	Version    string            `json:"version"`
+	Roles      []string          `json:"roles"`
+	Attributes map[string]string `json:"attributes"`
 }
 
 func (n Node) isV7OrAbove() (bool, error) {
