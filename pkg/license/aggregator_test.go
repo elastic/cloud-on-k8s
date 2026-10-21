@@ -14,18 +14,25 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	lsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -137,41 +144,165 @@ func TestMemFromNodeOpts(t *testing.T) {
 }
 
 func TestAggregator(t *testing.T) {
-	objects := readObjects(t, "testdata/stack.yaml")
-	client := k8s.NewFakeClient(objects...)
-	aggregator := aggregator{client: client}
-
-	val, err := aggregator.aggregateMemory(context.Background())
-	require.NoError(t, err)
-	for k, v := range map[string]float64{
-		elasticsearchKey: 294.0,
-		kibanaKey:        5.9073486328125,
-		apmKey:           2.0,
-		entSearchKey:     24.0,
-		logstashKey:      4.0,
-	} {
-		require.Equal(t, v, val.appUsage[k].inGiB(), k)
+	tests := []struct {
+		name      string
+		testdata  string          // optional YAML file with Elastic CRs
+		objects   []client.Object // objects added to the fake client alongside the testdata, e.g. Kibana deployments
+		wantUsage map[string]float64
+		wantTotal float64
+	}{
+		{
+			name:     "stack",
+			testdata: "testdata/stack.yaml",
+			wantUsage: map[string]float64{
+				elasticsearchKey: 294.0,
+				kibanaKey:        5.9073486328125, // 4Gi + 2048M (node options)
+				apmKey:           2.0,
+				entSearchKey:     24.0,
+				logstashKey:      4.0,
+			},
+			wantTotal: 329.9073486328125,
+		},
+		{
+			name:     "resources shorthand",
+			testdata: "testdata/resources_shorthand.yaml",
+			wantUsage: map[string]float64{
+				elasticsearchKey: 20.0, // 2x4Gi (shorthand) + 4Gi (pod template) + 2Gi (shorthand over pod template) + 6Gi (shorthand over heap)
+				kibanaKey:        6.0,  // 2x3Gi (shorthand)
+				apmKey:           1.0,
+				entSearchKey:     5.0,
+				logstashKey:      3.0,
+			},
+			wantTotal: 35.0,
+		},
+		{
+			name: "kibana single pool replicas from the spec",
+			objects: []client.Object{
+				// the spec count is authoritative for the single pool, a drift of the live deployment is ignored
+				&kbv1.Kibana{Name: "test-kibana", Namespace: "default", Spec: kbv1.KibanaSpec{
+					Count:     5,
+					Resources: commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: new(resource.MustParse("1Gi"))}},
+				}},
+				kibanaDeployment("test-kibana", kblabel.SinglePoolRole, 2),
+			},
+			wantUsage: map[string]float64{kibanaKey: 5.0}, // 5x1Gi
+			wantTotal: 5.0,
+		},
+		{
+			name: "kibana background tasks pool",
+			objects: []client.Object{
+				// a Kibana with background task isolation enabled renders one Deployment per pool, each with its own
+				// pod template, resources and replicas, the aggregator must sum both
+				&kbv1.Kibana{Name: "test-kibana", Namespace: "default", Spec: kbv1.KibanaSpec{
+					Count: 3,
+					PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+						Name: kbv1.KibanaContainerName,
+						Env:  []corev1.EnvVar{{Name: kibana.EnvNodeOptions, Value: "--max-old-space-size=1024"}},
+					}}}},
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{
+						// no count: the replicas are managed by an HPA and read from the deployment
+						Resources: commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: new(resource.MustParse("4Gi"))}},
+					},
+				}},
+				kibanaDeployment("test-kibana", kblabel.UIRole, 3),
+				kibanaDeployment("test-kibana", kblabel.BackgroundTasksRole, 2),
+			},
+			wantUsage: map[string]float64{
+				kibanaKey: 3*1.024e9/(1<<30) + 8.0, // 3x1024M (ui, node options) + 2x4Gi (background tasks, shorthand over node options)
+			},
+			wantTotal: 3*1.024e9/(1<<30) + 8.0,
+		},
+		{
+			name: "kibana pools without deployments fall back to the spec counts",
+			objects: []client.Object{
+				&kbv1.Kibana{Name: "test-kibana", Namespace: "default", Spec: kbv1.KibanaSpec{
+					Count:           3,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{Count: ptr.To[int32](2)},
+				}},
+				&kbv1.Kibana{Name: "test-kibana-hpa", Namespace: "default", Spec: kbv1.KibanaSpec{
+					Count:           1,
+					BackgroundTasks: &kbv1.KibanaBackgroundTasks{}, // no count and no deployment yet, defaults to 1
+				}},
+			},
+			wantUsage: map[string]float64{
+				kibanaKey: 14.0, // (3 + 2 + 1 + 1) x 2Gi (default)
+			},
+			wantTotal: 14.0,
+		},
+		{
+			name: "fleet server agents",
+			objects: []client.Object{
+				// a regular Elastic Agent is not billable
+				&agentv1alpha1.Agent{Name: "test-agent", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{},
+				}},
+				// a Fleet Server Deployment counts its spec replicas with the fleet default memory limit
+				&agentv1alpha1.Agent{Name: "fs-deployment", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](2)},
+				}},
+				// a Fleet Server StatefulSet without replicas defaults to 1, with the resources shorthand
+				&agentv1alpha1.Agent{Name: "fs-statefulset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					StatefulSet:        &agentv1alpha1.StatefulSetSpec{},
+					Resources:          commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: new(resource.MustParse("2Gi"))}},
+				}},
+				// a Fleet Server DaemonSet counts 0 until the DaemonSet exists, the number of nodes is unknown
+				&agentv1alpha1.Agent{Name: "fs-daemonset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					DaemonSet:          &agentv1alpha1.DaemonSetSpec{},
+				}},
+			},
+			wantUsage: map[string]float64{fleetServerKey: 4.0}, // 2x1Gi (deployment) + 1x2Gi (statefulset)
+			wantTotal: 4.0,
+		},
+		{
+			name: "fleet server replicas from the live workload",
+			objects: []client.Object{
+				// the spec is authoritative for a Deployment, a drift of the live object is ignored
+				&agentv1alpha1.Agent{Name: "fs-deployment", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					Deployment:         &agentv1alpha1.DeploymentSpec{Replicas: ptr.To[int32](3)},
+				}},
+				&appsv1.Deployment{
+					Name: agent.Name("fs-deployment"), Namespace: "default",
+					Spec: appsv1.DeploymentSpec{Replicas: ptr.To[int32](1)},
+				},
+				// a DaemonSet schedules one pod per node, read from the DaemonSet status
+				&agentv1alpha1.Agent{Name: "fs-daemonset", Namespace: "default", Spec: agentv1alpha1.AgentSpec{
+					FleetServerEnabled: true,
+					DaemonSet: &agentv1alpha1.DaemonSetSpec{PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+						Containers: []corev1.Container{{
+							Name:      agentv1alpha1.AgentContainerName,
+							Resources: corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("512Mi")}},
+						}},
+					}}},
+				}},
+				&appsv1.DaemonSet{
+					Name: agent.Name("fs-daemonset"), Namespace: "default",
+					Status: appsv1.DaemonSetStatus{DesiredNumberScheduled: 4},
+				},
+			},
+			wantUsage: map[string]float64{fleetServerKey: 5.0}, // 3x1Gi (deployment) + 4x512Mi (daemonset)
+			wantTotal: 5.0,
+		},
 	}
-	require.Equal(t, 329.9073486328125, val.totalMemory.inGiB(), "total")
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objects := tt.objects
+			if tt.testdata != "" {
+				objects = append(readObjects(t, tt.testdata), objects...)
+			}
+			aggregator := aggregator{client: k8s.NewFakeClient(objects...)}
 
-func TestAggregatorResourcesShorthand(t *testing.T) {
-	objects := readObjects(t, "testdata/resources_shorthand.yaml")
-	client := k8s.NewFakeClient(objects...)
-	aggregator := aggregator{client: client}
-
-	val, err := aggregator.aggregateMemory(context.Background())
-	require.NoError(t, err)
-	for k, v := range map[string]float64{
-		elasticsearchKey: 20.0, // 2x4Gi (shorthand) + 4Gi (pod template) + 2Gi (shorthand over pod template) + 6Gi (shorthand over heap)
-		kibanaKey:        6.0,
-		apmKey:           1.0,
-		entSearchKey:     5.0,
-		logstashKey:      3.0,
-	} {
-		require.Equal(t, v, val.appUsage[k].inGiB(), k)
+			val, err := aggregator.aggregateMemory(context.Background())
+			require.NoError(t, err)
+			for k, v := range tt.wantUsage {
+				require.Equal(t, v, val.appUsage[k].inGiB(), k)
+			}
+			require.Equal(t, tt.wantTotal, val.totalMemory.inGiB(), "total")
+		})
 	}
-	require.Equal(t, 35.0, val.totalMemory.inGiB(), "total")
 }
 
 func TestContainerMemLimits(t *testing.T) {
@@ -179,68 +310,98 @@ func TestContainerMemLimits(t *testing.T) {
 		q := resource.MustParse(s)
 		return &q
 	}
-	container := func(limit string, javaOpts string) corev1.Container {
+	podTemplate := func(limit string, request string, javaOpts string) corev1.PodTemplateSpec {
 		c := corev1.Container{Name: "main"}
 		if limit != "" {
 			c.Resources.Limits = corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(limit)}
 		}
+		if request != "" {
+			c.Resources.Requests = corev1.ResourceList{corev1.ResourceMemory: resource.MustParse(request)}
+		}
 		if javaOpts != "" {
 			c.Env = []corev1.EnvVar{{Name: "JAVA_OPTS", Value: javaOpts}}
 		}
-		return c
+		return corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{c}}}
 	}
+	defaultLimit := resource.MustParse("2Gi")
 	tests := []struct {
-		name       string
-		containers []corev1.Container
-		shorthand  *resource.Quantity
-		want       resource.Quantity
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		overrides   commonv1.Resources
+		want        resource.Quantity
 	}{
 		{
-			name:       "default when nothing is set",
-			containers: []corev1.Container{container("", "")},
-			want:       resource.MustParse("2Gi"),
+			name:        "default when nothing is set",
+			podTemplate: podTemplate("", "", ""),
+			want:        resource.MustParse("2Gi"),
 		},
 		{
-			name:       "pod template limit",
-			containers: []corev1.Container{container("4Gi", "")},
-			want:       resource.MustParse("4Gi"),
+			name:        "default when there is no main container in the pod template",
+			podTemplate: corev1.PodTemplateSpec{},
+			want:        resource.MustParse("2Gi"),
 		},
 		{
-			name:       "heap size when no limit is set",
-			containers: []corev1.Container{container("", "-Xmx3g")},
-			want:       resource.MustParse("6Gi"),
+			name:        "pod template limit",
+			podTemplate: podTemplate("4Gi", "", ""),
+			want:        resource.MustParse("4Gi"),
 		},
 		{
-			name:       "shorthand when the pod template sets nothing",
-			containers: []corev1.Container{container("", "")},
-			shorthand:  quantity("4Gi"),
-			want:       resource.MustParse("4Gi"),
+			name:        "heap size when no limit is set",
+			podTemplate: podTemplate("", "", "-Xmx3g"),
+			want:        resource.MustParse("6Gi"),
 		},
 		{
-			name:       "shorthand when there is no main container in the pod template",
-			containers: nil,
-			shorthand:  quantity("4Gi"),
-			want:       resource.MustParse("4Gi"),
+			name:        "heap size when only a request is set",
+			podTemplate: podTemplate("", "1Gi", "-Xmx3g"),
+			want:        resource.MustParse("6Gi"),
 		},
 		{
-			name:       "shorthand overrides the pod template limit",
-			containers: []corev1.Container{container("8Gi", "")},
-			shorthand:  quantity("2Gi"),
-			want:       resource.MustParse("2Gi"),
+			name:        "shorthand when the pod template sets nothing",
+			podTemplate: podTemplate("", "", ""),
+			overrides:   commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: quantity("4Gi")}},
+			want:        resource.MustParse("4Gi"),
 		},
 		{
-			name:       "shorthand overrides the heap size",
-			containers: []corev1.Container{container("", "-Xmx3g")},
-			shorthand:  quantity("1Gi"),
-			want:       resource.MustParse("1Gi"),
+			name:        "shorthand overrides the pod template limit",
+			podTemplate: podTemplate("8Gi", "", ""),
+			overrides:   commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: quantity("2Gi")}},
+			want:        resource.MustParse("2Gi"),
+		},
+		{
+			name:        "shorthand overrides the heap size",
+			podTemplate: podTemplate("", "", "-Xmx3g"),
+			overrides:   commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: quantity("1Gi")}},
+			want:        resource.MustParse("1Gi"),
+		},
+		{
+			name:        "shorthand request only falls back to the heap size",
+			podTemplate: podTemplate("", "", "-Xmx3g"),
+			overrides:   commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: quantity("1Gi")}},
+			want:        resource.MustParse("6Gi"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := containerMemLimits(tt.containers, tt.shorthand, "main", "JAVA_OPTS", memFromJavaOpts, resource.MustParse("2Gi"))
+			got, err := containerMemLimits(
+				containersWithResourceOverrides("main", tt.podTemplate, tt.overrides),
+				"main", "JAVA_OPTS", memFromJavaOpts, defaultLimit,
+			)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tt.want.Cmp(got), "want %s, got %s", tt.want.String(), got.String())
 		})
+	}
+}
+
+// kibanaDeployment builds the Deployment of the given Kibana pool, named as the Kibana controller names it,
+// carrying only the replicas the license aggregator reads from it.
+func kibanaDeployment(kbName string, role kblabel.Role, replicas int32) *appsv1.Deployment {
+	name := kbv1.Deployment(kbName)
+	if role.IsBackgroundTasks() {
+		name = kbv1.BackgroundTasksDeployment(kbName)
+	}
+	return &appsv1.Deployment{
+		Name: name, Namespace: "default",
+		Spec: appsv1.DeploymentSpec{Replicas: new(replicas)},
 	}
 }
 

@@ -132,7 +132,7 @@ func NewPodTemplateSpec(
 		Annotations: DefaultAnnotations,
 	})
 
-	pt, err := getPodTemplateSpecForRole(kb, role)
+	pt, err := PodTemplateSpecForRole(kb, role)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -273,7 +273,8 @@ func withEPRCertsVolume(builder *defaults.PodTemplateBuilder, kb kbv1.Kibana, us
 	return builder, nil
 }
 
-func getPodTemplateSpecForRole(kb kbv1.Kibana, role kblabel.Role) (corev1.PodTemplateSpec, error) {
+// PodTemplateSpecForRole returns the user-provided pod template for the given pool role.
+func PodTemplateSpecForRole(kb kbv1.Kibana, role kblabel.Role) (corev1.PodTemplateSpec, error) {
 	// For the background tasks pool, merge spec.backgroundTasks.podTemplate on top of
 	// spec.podTemplate.
 	if role.IsBackgroundTasks() {
