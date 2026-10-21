@@ -517,15 +517,15 @@ func shutdownsKeptSteps(
 			}),
 		},
 		{
-			// a spec change that does not affect the Pods, to make sure the operator reconciles while the leaving Pods
-			// are not ready rather than the shutdowns being kept because it is not reconciling
-			Name: "Change the StatefulSets revision history limit",
+			// a spec change that does not affect the StatefulSets nor the Pods, to make sure the operator reconciles while
+			// the leaving Pods are not ready rather than the shutdowns being kept because it is not reconciling
+			Name: "Change the HTTP Service annotations",
 			Test: test.Eventually(func() error {
 				var es esv1.Elasticsearch
 				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
 					return err
 				}
-				es.Spec.RevisionHistoryLimit = new(int32(5))
+				es.Spec.HTTP.Service.ObjectMeta.Annotations = map[string]string{"e2e-downscale-reconcile": "true"}
 				if err := k.Client.Update(ctx, &es); err != nil {
 					return err
 				}
