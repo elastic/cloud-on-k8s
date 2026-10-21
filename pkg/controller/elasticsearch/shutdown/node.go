@@ -198,14 +198,9 @@ func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
 // for example the currently terminating Pods/ES nodes. The nodes that are not members of the cluster have no known node
 // ID: they match no shutdown.
 func (ns *NodeShutdown) ExceptNodes(nodes []string) func(s esclient.NodeShutdown) bool {
-	nodeIDs := map[string]bool{}
-	for _, n := range nodes {
-		if nodeID, inCluster := ns.podToNodeID[n]; inCluster {
-			nodeIDs[nodeID] = true
-		}
-	}
+	member := ns.OnlyNodes(nodes)
 	return func(s esclient.NodeShutdown) bool {
-		return !nodeIDs[s.NodeID]
+		return !member(s)
 	}
 }
 
