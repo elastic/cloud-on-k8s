@@ -8,8 +8,9 @@ import (
 	"context"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // ESState gives information about Elasticsearch current status.
@@ -18,6 +19,9 @@ type ESState interface {
 	NodesInCluster(nodeNames []string) (bool, error)
 	// NodeNameToID returns a map of Elasticsearch node ID to node name.
 	NodeNameToID() (map[string]string, error)
+	// NodesResponsePartial returns true if some nodes of the cluster did not respond to the nodes request that
+	// NodeNameToID relies on: they may be members of the cluster although they have no node ID.
+	NodesResponsePartial() (bool, error)
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
@@ -60,6 +64,7 @@ type memoizingNodes struct {
 	esClient     esclient.Client
 	ctx          context.Context
 	nodeNameToID map[string]string
+	partial      bool
 }
 
 // initialize requests Elasticsearch for nodes information, only once.
@@ -68,6 +73,7 @@ func (n *memoizingNodes) initialize() error {
 	if err != nil {
 		return err
 	}
+	n.partial = nodes.IsPartial()
 	n.nodeNameToID = map[string]string{}
 	for id, node := range nodes.Nodes {
 		n.nodeNameToID[node.Name] = id
@@ -93,6 +99,13 @@ func (n *memoizingNodes) NodeNameToID() (map[string]string, error) {
 		return nil, err
 	}
 	return n.nodeNameToID, nil
+}
+
+func (n *memoizingNodes) NodesResponsePartial() (bool, error) {
+	if err := initOnce(&n.once, n.initialize); err != nil {
+		return false, err
+	}
+	return n.partial, nil
 }
 
 // -- Shards allocation enabled
@@ -124,19 +137,19 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 }
 
 // membersAmong returns the given nodes that are members of the cluster.
-func membersAmong(esState ESState, nodes []string) (set.StringSet, error) {
+func membersAmong(esState ESState, nodes []string) (sets.Set[string], error) {
 	if len(nodes) == 0 {
 		// do not require Elasticsearch to be reachable when there is nothing to look up
-		return set.Make(), nil
+		return sets.New[string](), nil
 	}
 	nodeNameToID, err := esState.NodeNameToID()
 	if err != nil {
 		return nil, err
 	}
-	members := set.Make()
+	members := sets.New[string]()
 	for _, node := range nodes {
 		if _, exists := nodeNameToID[node]; exists {
-			members.Add(node)
+			members.Insert(node)
 		}
 	}
 	return members, nil

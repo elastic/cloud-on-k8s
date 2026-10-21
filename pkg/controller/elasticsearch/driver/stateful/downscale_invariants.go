@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -17,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 const (
@@ -25,6 +25,8 @@ const (
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
 	NodeNotInClusterInvariant        = "Not removing node that is not a member of the cluster"
+	// NodeNotInClusterPartialInvariant is used instead of NodeNotInClusterInvariant if the nodes response is partial.
+	NodeNotInClusterPartialInvariant = "Not removing node that is not a member of the cluster, or that did not answer the nodes request"
 )
 
 // checkDownscaleInvariants returns the removals of nodes that the given state allows when downscaling the given
@@ -47,7 +49,11 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 	if removals.count < requestedDeletes {
 		// the removals stop at the next Pod: it may be a node that is not a member of the cluster
 		if next := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-removals.count-1); state.notMembers.Has(next) {
-			return removals, fmt.Sprintf("%s: %s", NodeNotInClusterInvariant, next)
+			reason := NodeNotInClusterInvariant
+			if state.partialNodes {
+				reason = NodeNotInClusterPartialInvariant
+			}
+			return removals, fmt.Sprintf("%s: %s", reason, next)
 		}
 	}
 
@@ -73,7 +79,7 @@ func checkMasterRemovalInvariants(state downscaleState, statefulSet appsv1.State
 	// the removal of another master is in progress if it is draining, unless this master is draining as well
 	if len(state.drainingMasters) > 0 && !state.drainingMasters.Has(podName) {
 		// name the draining masters, as their removal may be held without being visible otherwise
-		return fmt.Sprintf("%s: %s draining", OneMasterAtATimeInvariant, strings.Join(state.drainingMasters.AsSortedSlice(), ", "))
+		return fmt.Sprintf("%s: %s draining", OneMasterAtATimeInvariant, strings.Join(sets.List(state.drainingMasters), ", "))
 	}
 	removedRunningMasters := 0
 	if state.isRunningMaster(podName) {
@@ -97,18 +103,21 @@ type downscaleState struct {
 	masterRemovalInProgress bool
 	// unavailableDrainingPods are the not ready, non-terminating Pods of the nodes the downscale is draining. Terminating
 	// Pods may be stopping, so their removal conservatively consumes the budget.
-	unavailableDrainingPods set.StringSet
+	unavailableDrainingPods sets.Set[string]
 	// unavailableMasters are the master Pods that are not ready, terminating or missing, they are not running masters.
-	unavailableMasters set.StringSet
+	unavailableMasters sets.Set[string]
 	// drainingRemovalsAllowed indicates how many draining nodes can be removed, so that they are not all removed at once,
 	// nil indicates that any number of removals is allowed.
 	drainingRemovalsAllowed *int32
 	// drainingMasters are the draining master Pods that are the next to be removed from their StatefulSet: their removal
 	// is in progress, even if they are ready or terminating, as their shutdown is kept.
-	drainingMasters set.StringSet
+	drainingMasters sets.Set[string]
 	// notMembers are the Pods that are not members of the cluster, for example because they never joined it. They cannot
 	// be shut down and may still hold data: their removal is held until they join the cluster.
-	notMembers set.StringSet
+	notMembers sets.Set[string]
+	// partialNodes is true if the nodes response is partial: a Pod that is not a member may be a member that did not
+	// answer, which the reason why its removal is held says.
+	partialNodes bool
 }
 
 // newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type
@@ -117,8 +126,8 @@ func newDownscaleState(
 	actualPods []corev1.Pod,
 	actualStatefulSets es_sset.StatefulSetList,
 	es esv1.Elasticsearch,
-	nodesWithShutdown set.StringSet,
-	notMembers set.StringSet,
+	nodesWithShutdown sets.Set[string],
+	notMembers sets.Set[string],
 ) *downscaleState {
 	// retrieve the masters that are not running: a ready but terminating master may be stopping
 	masters := label.FilterMasterNodePods(actualPods)
@@ -126,7 +135,7 @@ func newDownscaleState(
 	runningMasters := len(masters) - len(unavailableMasters)
 	// the master Pods that do not exist, for example because their creation is rejected, are not running either
 	for _, podName := range missingMasterPods(actualStatefulSets, masters) {
-		unavailableMasters.Add(podName)
+		unavailableMasters.Insert(podName)
 	}
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
 	maxUnavailable := es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()
@@ -149,15 +158,15 @@ func newDownscaleState(
 // drainingMasterNodes returns the names of the Pods with the highest ordinal of the given master StatefulSets that are
 // draining. A draining master that is not the next to be removed from its StatefulSet does not have its removal in
 // progress, otherwise a shutdown registered on it would block every master removal.
-func drainingMasterNodes(statefulSets es_sset.StatefulSetList, nodesWithShutdown set.StringSet) set.StringSet {
-	masters := set.Make()
+func drainingMasterNodes(statefulSets es_sset.StatefulSetList, nodesWithShutdown sets.Set[string]) sets.Set[string] {
+	masters := sets.New[string]()
 	for _, statefulSet := range statefulSets {
 		replicas := sset.GetReplicas(statefulSet)
 		if replicas == 0 || !label.IsMasterNodeSet(statefulSet) {
 			continue
 		}
 		if podName := sset.PodName(statefulSet.Name, replicas-1); nodesWithShutdown.Has(podName) {
-			masters.Add(podName)
+			masters.Insert(podName)
 		}
 	}
 	return masters
@@ -165,7 +174,7 @@ func drainingMasterNodes(statefulSets es_sset.StatefulSetList, nodesWithShutdown
 
 // missingMasterPods returns the names of the Pods of the given master StatefulSets that are not in the given master Pods.
 func missingMasterPods(statefulSets es_sset.StatefulSetList, masters []corev1.Pod) []string {
-	actual := set.Make(k8s.PodNames(masters)...)
+	actual := sets.New(k8s.PodNames(masters)...)
 	var missing []string
 	for _, statefulSet := range statefulSets {
 		if !label.IsMasterNodeSet(statefulSet) {
@@ -181,22 +190,22 @@ func missingMasterPods(statefulSets es_sset.StatefulSetList, masters []corev1.Po
 }
 
 // unavailablePods returns the names of the given Pods that are not ready or terminating.
-func unavailablePods(pods []corev1.Pod) set.StringSet {
-	unavailable := set.Make()
+func unavailablePods(pods []corev1.Pod) sets.Set[string] {
+	unavailable := sets.New[string]()
 	for _, pod := range pods {
 		if !k8s.IsPodReady(pod) || !pod.DeletionTimestamp.IsZero() {
-			unavailable.Add(pod.Name)
+			unavailable.Insert(pod.Name)
 		}
 	}
 	return unavailable
 }
 
 // unavailableDrainingPods returns the names of the not ready and non-terminating Pods of the given nodes with a shutdown.
-func unavailableDrainingPods(pods []corev1.Pod, nodesWithShutdown set.StringSet) set.StringSet {
-	notReady := set.Make()
+func unavailableDrainingPods(pods []corev1.Pod, nodesWithShutdown sets.Set[string]) sets.Set[string] {
+	notReady := sets.New[string]()
 	for _, pod := range pods {
 		if nodesWithShutdown.Has(pod.Name) && !k8s.IsPodReady(pod) && pod.DeletionTimestamp.IsZero() {
-			notReady.Add(pod.Name)
+			notReady.Insert(pod.Name)
 		}
 	}
 	return notReady

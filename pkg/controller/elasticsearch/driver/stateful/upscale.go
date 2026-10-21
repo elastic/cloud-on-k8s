@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -27,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 type upscaleCtx struct {
@@ -40,7 +40,7 @@ type upscaleCtx struct {
 	meta                 metadata.Metadata
 	// desiredLeaving are the Pods the downscale wants to remove. The master StatefulSets only wait for the ones that run
 	// an older version, not for their upgrade.
-	desiredLeaving set.StringSet
+	desiredLeaving sets.Set[string]
 }
 
 type UpscaleResults struct {
@@ -318,7 +318,7 @@ func findPendingNonMasterStatefulSetUpgrades(
 	expectedStatefulSets es_sset.StatefulSetList,
 	targetVersion version.Version,
 	expectations *expectations.Expectations,
-	desiredLeaving set.StringSet,
+	desiredLeaving sets.Set[string],
 ) ([]appsv1.StatefulSet, error) {
 	pendingStatefulSets, err := expectations.PendingGenerations()
 	if err != nil {

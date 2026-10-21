@@ -59,7 +59,11 @@ func excludeDrainingPods(ctx context.Context, pods []corev1.Pod, leaving *leavin
 	if err != nil {
 		return nil, err
 	}
-	return excludeLeavingPods(pods, draining), nil
+	protected, err := leaving.withUnreached(draining, running)
+	if err != nil {
+		return nil, err
+	}
+	return excludeLeavingPods(pods, protected), nil
 }
 
 // isElasticsearchRunning returns true if the Elasticsearch container of the given Pod is running.

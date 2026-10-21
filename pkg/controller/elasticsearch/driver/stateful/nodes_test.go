@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -137,7 +138,7 @@ func Test_Driver_prepareLeavingNodes_forcedUpgrade(t *testing.T) {
 			actual := es_sset.StatefulSetList{statefulSet(tt.actual)}
 			desiredLeaving := desiredLeavingNodeNames(ctx, es_sset.StatefulSetList{statefulSet(tt.expected)}, actual)
 			es := esv1.Elasticsearch{Name: TestEsName, Namespace: TestEsNamespace}
-			for _, node := range desiredLeaving.AsSortedSlice() {
+			for _, node := range sets.List(desiredLeaving) {
 				status := string(esclient.ShutdownNotStarted)
 				if slices.Contains(tt.reportedShutdowns, node) {
 					status = string(esclient.ShutdownInProgress)

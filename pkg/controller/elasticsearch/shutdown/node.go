@@ -7,13 +7,14 @@ package shutdown
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
 
 // NodeShutdown implements the shutdown.Interface with the Elasticsearch node shutdown API. It is not safe to call methods
@@ -86,21 +87,11 @@ func (ns *NodeShutdown) nodeInCluster(nodeID string) bool {
 	return false
 }
 
-// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down. If no
-// node is given, it cancels the ongoing shutdowns of the non-terminating nodes, except those of the nodes that are not
-// members of the cluster if keepNonMembers is true: such a shutdown cannot be attributed to a Pod, as its node ID is
-// unknown.
-func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string, terminatingNodes []string, keepNonMembers bool) error {
+// ReconcileShutdowns retrieves ongoing shutdowns and creates the missing ones for the given nodes to shut down. It does
+// not cancel any shutdown, see CancelShutdownsExcept.
+func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown []string) error {
 	if err := ns.initOnce(ctx); err != nil {
 		return err
-	}
-	// cancel all ongoing shutdowns for the current shutdown type
-	if len(nodesToShutdown) == 0 {
-		conditions := []ClearCondition{ns.ExceptNodes(terminatingNodes)}
-		if keepNonMembers {
-			conditions = append(conditions, ns.OnlyNodesInCluster)
-		}
-		return ns.Clear(ctx, conditions...)
 	}
 
 	for _, node := range nodesToShutdown {
@@ -115,6 +106,8 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown 
 		if err := ns.c.PutShutdown(ctx, nodeID, ns.typ, ns.reason, ns.allocationDelay); err != nil {
 			return fmt.Errorf("on put shutdown (type: %s) for node %s: %w", ns.typ, node, err)
 		}
+		// the shutdown is registered: remember it right away, so that it is not lost if its record cannot be read back
+		ns.shutdowns[nodeID] = esclient.NodeShutdown{NodeID: nodeID, Type: string(ns.typ), Status: esclient.ShutdownInProgress}
 		// update the internal cache with the information about the new shutdown
 		shutdown, err := ns.c.GetShutdown(ctx, &nodeID)
 		if err != nil {
@@ -126,6 +119,17 @@ func (ns *NodeShutdown) ReconcileShutdowns(ctx context.Context, nodesToShutdown 
 		ns.shutdowns[nodeID] = shutdown.Nodes[0]
 	}
 	return nil
+}
+
+// CancelShutdownsExcept cancels the ongoing shutdowns of the current shutdown type, except those of the kept and
+// terminating nodes, and those of the nodes that are not members of the cluster if keepNonMembers is true: such a
+// shutdown cannot be attributed to a Pod, as its node ID is unknown.
+func (ns *NodeShutdown) CancelShutdownsExcept(ctx context.Context, keptNodes []string, terminatingNodes []string, keepNonMembers bool) error {
+	conditions := []ClearCondition{ns.ExceptNodes(slices.Concat(keptNodes, terminatingNodes))}
+	if keepNonMembers {
+		conditions = append(conditions, ns.OnlyNodesInCluster)
+	}
+	return ns.Clear(ctx, conditions...)
 }
 
 // ShutdownStatus returns the current shutdown status for the given node. It returns an error if no shutdown is in
@@ -151,18 +155,18 @@ func (ns *NodeShutdown) ShutdownStatus(ctx context.Context, podName string) (Nod
 
 // NodesWithShutdown returns the given nodes that are members of the cluster and have a shutdown of the type of this
 // instance registered.
-func (ns *NodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (set.StringSet, error) {
+func (ns *NodeShutdown) NodesWithShutdown(ctx context.Context, podNames []string) (sets.Set[string], error) {
 	if err := ns.initOnce(ctx); err != nil {
 		return nil, err
 	}
-	nodes := set.Make()
+	nodes := sets.New[string]()
 	for _, podName := range podNames {
 		nodeID, inCluster := ns.podToNodeID[podName]
 		if !inCluster {
 			continue
 		}
 		if shutdown, exists := ns.shutdowns[nodeID]; exists && shutdown.Is(ns.typ) {
-			nodes.Add(podName)
+			nodes.Insert(podName)
 		}
 	}
 	return nodes, nil
@@ -191,14 +195,12 @@ func (ns *NodeShutdown) OnlyNodesInCluster(s esclient.NodeShutdown) bool {
 }
 
 // ExceptNodes is a function to generate a predicate to delete only those shutdowns which don't belong to the given nodes,
-// for example the currently terminating Pods/ES nodes.
+// for example the currently terminating Pods/ES nodes. The nodes that are not members of the cluster have no known node
+// ID: they match no shutdown.
 func (ns *NodeShutdown) ExceptNodes(nodes []string) func(s esclient.NodeShutdown) bool {
-	nodeIDs := map[string]bool{}
-	for _, n := range nodes {
-		nodeIDs[ns.podToNodeID[n]] = true
-	}
+	member := ns.OnlyNodes(nodes)
 	return func(s esclient.NodeShutdown) bool {
-		return !nodeIDs[s.NodeID]
+		return !member(s)
 	}
 }
 
