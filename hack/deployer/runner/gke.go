@@ -666,11 +666,26 @@ func (c gkeClusterContext) waitForClusterOperations() error {
 }
 
 func (c gkeClusterContext) delete() error {
+	deleted, err := c.deleteCluster()
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		// The cluster was never there, so there is nothing to clean up.
+		return nil
+	}
+	return c.deleteOrphanedDisks()
+}
+
+// deleteCluster deletes the GKE cluster and reports whether there was a cluster to delete.
+// A delete attempt that reports an error while GKE still completes the deletion counts as deleted.
+func (c gkeClusterContext) deleteCluster() (bool, error) {
 	// Retry deletion up to 3 times to handle transient failures. GKE cluster deletion can fail
 	// due to race conditions where new operations start between our check and delete attempt,
 	// or due to temporary API errors.
 	const maxDeleteAttempts = 3
 	var lastErr error
+	deleteAttempted := false
 
 	for attempt := 1; attempt <= maxDeleteAttempts; attempt++ {
 		if attempt > 1 {
@@ -681,7 +696,7 @@ func (c gkeClusterContext) delete() error {
 			log.Printf("Error checking for cluster existence: %v", err)
 			continue
 		} else if !exists {
-			return nil
+			return deleteAttempted, nil
 		}
 
 		if err := c.waitForClusterOperations(); err != nil {
@@ -691,22 +706,27 @@ func (c gkeClusterContext) delete() error {
 		}
 
 		log.Println("Deleting cluster...")
+		deleteAttempted = true
 		cmd := "gcloud --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 		if err := exec.NewCommand(cmd).AsTemplate(c).Run(); err != nil {
 			lastErr = err
 			log.Printf("Error deleting cluster: %v", err)
 			continue
 		}
-
-		// Deletion succeeded, break out of retry loop
-		lastErr = nil
-		break
+		return true, nil
 	}
 
-	if lastErr != nil {
-		return fmt.Errorf("failed to delete cluster after %d attempts: %w", maxDeleteAttempts, lastErr)
+	// The last delete attempt may have reported an error while GKE still completed the deletion.
+	if deleteAttempted {
+		if exists, err := c.exists(); err == nil && !exists {
+			return true, nil
+		}
 	}
+	return false, fmt.Errorf("failed to delete cluster after %d attempts: %w", maxDeleteAttempts, lastErr)
+}
 
+// deleteOrphanedDisks deletes the persistent disks left behind by a deleted cluster.
+func (c gkeClusterContext) deleteOrphanedDisks() error {
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
 	diskCmd := `gcloud compute disks list --filter='labels.cluster_name={{.ClusterName}} AND labels.region={{.Region}} AND -users:*' --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := exec.NewCommand(diskCmd).AsTemplate(c).StdoutOnly().OutputList()
