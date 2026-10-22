@@ -189,6 +189,25 @@ func TestGKECIPlanUsesRawNVMeLocalSSD(t *testing.T) {
 	require.Equal(t, gkeLocalDiskSetupCommand, plan.DiskSetup)
 }
 
+func TestGKEAutopilotCIPlanRegionsMatchCIPlan(t *testing.T) {
+	plansYAML, err := os.ReadFile("../config/plans.yml")
+	require.NoError(t, err)
+
+	var plans Plans
+	require.NoError(t, yaml.Unmarshal(plansYAML, &plans))
+
+	ciPlan, err := choosePlan(plans.Plans, "gke-ci")
+	require.NoError(t, err)
+	autopilotPlan, err := choosePlan(plans.Plans, "gke-autopilot-ci")
+	require.NoError(t, err)
+
+	require.ElementsMatch(t,
+		gkeRegions(ciPlan.Gke.Region, ciPlan.Gke.FallbackRegions),
+		gkeRegions(autopilotPlan.Gke.Region, autopilotPlan.Gke.FallbackRegions),
+		"gke-autopilot-ci regions must match gke-ci regions, or the cleanup job will not find autopilot CI clusters",
+	)
+}
+
 func TestGKERegionsToTry(t *testing.T) {
 	tests := []struct {
 		name            string
