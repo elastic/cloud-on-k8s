@@ -9,6 +9,10 @@ plans:
   enforceSecurityPolicies: true
   gke:
     region: europe-west1
+    # Cluster creation moves on to the next fallback region only when gcloud reports a capacity or quota error,
+    # detected by matching the error output against gkeCapacityErrorIndicator and gkeQuotaErrorIndicator in
+    # hack/deployer/runner/gke.go. If a capacity or quota error fails the creation without trying the next
+    # region, add its message there.
     fallbackRegions:
       - us-central1
       - europe-west2
@@ -28,6 +32,10 @@ plans:
   gke:
     autopilot: true
     region: europe-west1
+    # Cluster creation moves on to the next fallback region only when gcloud reports a capacity or quota error,
+    # detected by matching the error output against gkeCapacityErrorIndicator and gkeQuotaErrorIndicator in
+    # hack/deployer/runner/gke.go. If a capacity or quota error fails the creation without trying the next
+    # region, add its message there.
     fallbackRegions:
       - us-central1
       - europe-west2
