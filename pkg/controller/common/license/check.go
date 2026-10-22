@@ -133,23 +133,37 @@ func (lc checker) ValidOperatorLicenseKeyType(ctx context.Context) (OperatorLice
 	return licType, nil
 }
 
+// MockLicenseChecker is a Checker test double. When Err is set, every method returns it.
 type MockLicenseChecker struct {
 	EnterpriseEnabled bool
+	Err               error
 }
 
 func (m MockLicenseChecker) CurrentEnterpriseLicense(context.Context) (*EnterpriseLicense, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
 	return &EnterpriseLicense{}, nil
 }
 
 func (m MockLicenseChecker) EnterpriseFeaturesEnabled(context.Context) (bool, error) {
+	if m.Err != nil {
+		return false, m.Err
+	}
 	return m.EnterpriseEnabled, nil
 }
 
 func (m MockLicenseChecker) Valid(_ context.Context, _ EnterpriseLicense) (bool, error) {
+	if m.Err != nil {
+		return false, m.Err
+	}
 	return m.EnterpriseEnabled, nil
 }
 
 func (m MockLicenseChecker) ValidOperatorLicenseKeyType(_ context.Context) (OperatorLicenseType, error) {
+	if m.Err != nil {
+		return "", m.Err
+	}
 	return LicenseTypeEnterprise, nil
 }
 

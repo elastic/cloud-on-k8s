@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 	"sync/atomic"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -41,6 +43,10 @@ const (
 	controllerName           = "kibana-controller"
 	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
 	replicasAnnotationName   = "kibana.k8s.elastic.co/prev-replicas"
+
+	// licenseRequeueInterval is the delay before re-checking the license when an Enterprise feature is configured
+	// without a valid Enterprise license. There is no watch on license changes.
+	licenseRequeueInterval = 5 * time.Minute
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -67,6 +73,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
+		licenseChecker: commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
 	}
 }
 
@@ -131,6 +138,8 @@ type ReconcileKibana struct {
 	dynamicWatches watches.DynamicWatches
 
 	params operator.Parameters
+
+	licenseChecker commonlicense.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -202,6 +211,19 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		return result, err
 	}
 
+	var admitted bool
+	admitted, err = r.gateBackgroundTasksOnLicense(ctx, kb)
+	if err != nil {
+		// fail closed
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if !admitted {
+		// nothing was applied: do not report the current generation as observed
+		state.Kibana.Status.ObservedGeneration = state.originalKibana.Status.ObservedGeneration
+		// no watch on license changes: requeue with a long delay
+		return reconcile.Result{RequeueAfter: licenseRequeueInterval}, nil
+	}
+
 	var driver *driver
 	driver, err = newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
@@ -213,6 +235,37 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	result, err = results.WithError(err).Aggregate()
 	k8s.MaybeEmitErrorEventf(r.recorder, err, kb, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 	return result, err
+}
+
+// gateBackgroundTasksOnLicense gates spec.backgroundTasks behind an Enterprise license and reports whether the
+// Kibana is admitted to reconciliation. It is independent of the validating webhook, which may be disabled. Whether
+// background tasks were already enabled is read from the cluster state: the background tasks Deployment of this
+// Kibana exists.
+//   - already enabled: a warning is logged, a warning event is emitted and the Kibana is admitted, so the existing
+//     pools keep being managed.
+//   - being enabled for the first time, or the Kibana is new: an error is logged, a warning event is emitted and
+//     the Kibana is not admitted. The caller requeues to check the license again later.
+//
+// A license check or lookup error is returned as is so that the caller fails closed.
+func (r *ReconcileKibana) gateBackgroundTasksOnLicense(ctx context.Context, kb *kbv1.Kibana) (admitted bool, err error) {
+	state, err := checkBackgroundTasksLicense(ctx, r.Client, kb, r.licenseChecker)
+	if err != nil {
+		return false, err
+	}
+	log := ulog.FromContext(ctx)
+	switch state {
+	case backgroundTasksAlreadyEnabledUnlicensed:
+		log.Info(backgroundTasksLicenseWarning, "namespace", kb.Namespace, "kibana_name", kb.Name)
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, backgroundTasksLicenseWarning)
+		return true, nil
+	case backgroundTasksNewlyEnabledUnlicensed:
+		const msg = backgroundTasksLicenseRejectMsg + ". Enterprise features are disabled, skipping reconciliation"
+		log.Error(errors.New(msg), msg, "namespace", kb.Namespace, "kibana_name", kb.Name)
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
+		return false, nil
+	default:
+		return true, nil
+	}
 }
 
 func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {

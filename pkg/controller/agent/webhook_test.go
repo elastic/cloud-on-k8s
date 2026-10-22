@@ -16,27 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
-// errorLicenseChecker implements license.Checker, returning an error from all methods.
-type errorLicenseChecker struct {
-	err error
-}
-
-func (e errorLicenseChecker) CurrentEnterpriseLicense(context.Context) (*license.EnterpriseLicense, error) {
-	return nil, e.err
-}
-
-func (e errorLicenseChecker) EnterpriseFeaturesEnabled(context.Context) (bool, error) {
-	return false, e.err
-}
-
-func (e errorLicenseChecker) Valid(context.Context, license.EnterpriseLicense) (bool, error) {
-	return false, e.err
-}
-
-func (e errorLicenseChecker) ValidOperatorLicenseKeyType(context.Context) (license.OperatorLicenseType, error) {
-	return "", e.err
-}
-
 func Test_validClientAuthentication(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -119,7 +98,7 @@ func Test_validClientAuthentication(t *testing.T) {
 					},
 				},
 			},
-			checker:      errorLicenseChecker{err: errors.New("license check failed")},
+			checker:      license.MockLicenseChecker{Err: errors.New("license check failed")},
 			wantErrCount: 0,
 		},
 	}
