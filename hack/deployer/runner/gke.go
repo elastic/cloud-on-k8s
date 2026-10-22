@@ -261,7 +261,7 @@ func createInRegions(plan Plan, clusters []clusterContext) (clusterContext, erro
 	}
 
 	var errs error
-	for _, cCtx := range clusters {
+	for i, cCtx := range clusters {
 		output, err := cCtx.create(plan)
 		if err != nil {
 			region := cCtx.region()
@@ -273,6 +273,11 @@ func createInRegions(plan Plan, clusters []clusterContext) (clusterContext, erro
 				return nil, errors.Join(errs, createErr)
 			}
 			errs = errors.Join(errs, createErr)
+			if i+1 < len(clusters) {
+				log.Printf("Not enough capacity or quota in region %s, falling back to region %s", region, clusters[i+1].region())
+			} else {
+				log.Printf("Not enough capacity or quota in region %s, no fallback regions left", region)
+			}
 			continue
 		}
 		return cCtx, nil
