@@ -582,6 +582,30 @@ func TestGKEDriverCleanup(t *testing.T) {
 	}
 }
 
+func TestGKEDriverCleanupContinuesAfterClusterDeleteFailure(t *testing.T) {
+	deleteErr := errors.New("cluster delete failed")
+	primary := &fakeClusterContext{
+		regionName: "europe-west1",
+		listResult: []string{"old-cluster-1", "old-cluster-2"},
+		deleteErr:  deleteErr,
+	}
+	fallback := &fakeClusterContext{
+		regionName: "europe-west4",
+		listResult: []string{"old-cluster-3"},
+	}
+	d := &GKEDriver{
+		plan:     Plan{Gke: &GKESettings{GCloudProject: "test-project"}},
+		clusters: []clusterContext{primary, fallback},
+	}
+
+	err := d.cleanup("eck-e2e-", time.Hour)
+	require.ErrorIs(t, err, deleteErr)
+	require.Equal(t, []string{"old-cluster-1", "old-cluster-2"}, primary.clusterNames)
+	require.Equal(t, 2, primary.deleteCalls)
+	require.Equal(t, []string{"old-cluster-3"}, fallback.clusterNames)
+	require.Equal(t, 1, fallback.deleteCalls)
+}
+
 func TestGKECreateWithFallback(t *testing.T) {
 	someErr := errors.New("exit status 1")
 	someDelErr := errors.New("delete exit status 1")
