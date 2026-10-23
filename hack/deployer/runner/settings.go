@@ -78,6 +78,9 @@ type BucketSecretSettings struct {
 type GKESettings struct {
 	GCloudProject string `yaml:"gCloudProject"`
 	Region        string `yaml:"region"`
+	// FallbackRegions is an ordered list of GCP regions to try if cluster creation in Region fails.
+	// Each region is tried in sequence until one succeeds.
+	FallbackRegions []string `yaml:"fallbackRegions,omitempty"`
 	// Deprecated: use LocalNvmeSsdBlock. LocalSsdCount is retained for compatibility with existing GKE overrides.
 	LocalSsdCount int `yaml:"localSsdCount"`
 	// LocalNvmeSsdBlock attaches one raw NVMe Local SSD per node and configures it for local PersistentVolumes.
