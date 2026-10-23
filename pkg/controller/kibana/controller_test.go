@@ -340,7 +340,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			},
 			request:          defaultRequest,
 			want:             reconcile.Result{},
-			wantRequeueAfter: licenseRequeueInterval,
+			wantRequeueAfter: common.DefaultRequeueInterval,
 			wantEvent:        "ReconciliationError",
 			validate: func(t *testing.T, f fields) {
 				var deployments appsv1.DeploymentList
@@ -362,7 +362,8 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 					withBackgroundTasks(&sampleKibana),
 					&appsv1.Deployment{
 						Namespace: sampleKibana.Namespace,
-						Name:      kibanav1.BackgroundTasksDeployment(sampleKibana.Name)},
+						Name:      kibanav1.BackgroundTasksDeployment(sampleKibana.Name),
+					},
 				),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 			},

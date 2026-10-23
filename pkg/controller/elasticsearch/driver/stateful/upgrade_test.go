@@ -24,6 +24,7 @@ import (
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -1823,7 +1824,6 @@ func Test_Driver_maybeCompleteNodeUpgrades(t *testing.T) {
 			require.NoError(t, err)
 
 			d := &Driver{
-
 				Client:         client,
 				ES:             tt.es,
 				Expectations:   expectations.NewExpectations(client, &appsv1.StatefulSet{}),
@@ -1921,7 +1921,7 @@ func Test_shutdownReasonAndAllocationDelay(t *testing.T) {
 			resourceVersion:              "42",
 			isAnnotationTriggeredRestart: true,
 			wantReason:                   "trigger-value",
-			wantDelay:                    new(5 * time.Minute),
+			wantDelay:                    new(common.DefaultRequeueInterval),
 		},
 	}
 	for _, tt := range tests {

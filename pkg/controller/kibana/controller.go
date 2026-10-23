@@ -8,7 +8,6 @@ import (
 	"context"
 	"reflect"
 	"sync/atomic"
-	"time"
 
 	"github.com/pkg/errors"
 	"go.elastic.co/apm/v2"
@@ -43,10 +42,6 @@ const (
 	controllerName           = "kibana-controller"
 	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
 	replicasAnnotationName   = "kibana.k8s.elastic.co/prev-replicas"
-
-	// licenseRequeueInterval is the delay before re-checking the license when an Enterprise feature is configured
-	// without a valid Enterprise license. There is no watch on license changes.
-	licenseRequeueInterval = 5 * time.Minute
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -221,7 +216,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		// nothing was applied: do not report the current generation as observed
 		state.Kibana.Status.ObservedGeneration = state.originalKibana.Status.ObservedGeneration
 		// no watch on license changes: requeue with a long delay
-		return reconcile.Result{RequeueAfter: licenseRequeueInterval}, nil
+		return reconcile.Result{RequeueAfter: common.DefaultRequeueInterval}, nil
 	}
 
 	var driver *driver
@@ -256,7 +251,7 @@ func (r *ReconcileKibana) gateBackgroundTasksOnLicense(ctx context.Context, kb *
 	switch state {
 	case backgroundTasksAlreadyEnabledUnlicensed:
 		log.Info(backgroundTasksLicenseRejectMsg, "namespace", kb.Namespace, "kibana_name", kb.Name)
-		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, backgroundTasksLicenseWarning)
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, backgroundTasksLicenseRejectMsg)
 		return true, nil
 	case backgroundTasksNewlyEnabledUnlicensed:
 		const msg = backgroundTasksLicenseRejectMsg + ". Enterprise features are disabled, skipping reconciliation"

@@ -6,7 +6,6 @@ package common
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -109,7 +108,7 @@ func (r *namespacedReconcilerWrapper) Reconcile(ctx context.Context, request rec
 		const msg = "Dynamic namespace selector is an enterprise feature. Enterprise features are disabled"
 		log.V(1).Info(msg)
 		license.EmitEnterpriseFeatureEvent(r.recorder, r.parameters.OperatorNamespace, msg)
-		return reconcile.Result{RequeueAfter: 5 * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: DefaultRequeueInterval}, nil
 	}
 
 	return r.inner.Reconcile(ctx, request)

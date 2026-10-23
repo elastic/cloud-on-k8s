@@ -8,6 +8,7 @@ import (
 	"context"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"go.elastic.co/apm/module/apmzap/v2"
 	"go.elastic.co/apm/v2"
@@ -61,3 +62,7 @@ func NewReconciliationContext(
 		logFields...,
 	)
 }
+
+// DefaultRequeueInterval is the default delay before re-reconciling a resource that is waiting on
+// a condition (e.g. a license) which is not signalled by a watched event.
+const DefaultRequeueInterval =5 * time.Minute
