@@ -9,9 +9,11 @@ package kb
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +22,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -29,9 +32,13 @@ import (
 )
 
 // skipIfBackgroundTasksUnsupported skips the test when the stack version is below 8.16.0,
-// the minimum version that supports background task isolation via node.roles.
+// the minimum version that supports background task isolation via node.roles, or when no test
+// license is available, as spec.backgroundTasks requires an Enterprise license.
 func skipIfBackgroundTasksUnsupported(t *testing.T) {
 	t.Helper()
+	if test.Ctx().TestLicense == "" {
+		t.Skip("spec.backgroundTasks requires an Enterprise license, but no test license is configured")
+	}
 	v := version.MustParse(test.Ctx().ElasticStackVersion)
 	if v.LT(kbv1.BackgroundTasksMinVersion) {
 		t.Skipf("background task isolation requires Kibana >= %s (got %s)", kbv1.BackgroundTasksMinVersion, v)
@@ -118,7 +125,7 @@ func TestKibanaBackgroundTasksSplit(t *testing.T) {
 		}
 	}
 
-	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
+	test.Sequence(nil, stepsFn, test.LicenseTestBuilder(esBuilder), kbBuilder).RunSequential(t)
 }
 
 // TestKibanaBackgroundTasksEnableDisable verifies that toggling spec.backgroundTasks on/off:
@@ -224,7 +231,255 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 			WithSteps(stepsFn(k)).
 			WithSteps(kbWithoutBG.MutationTestSteps(k)).
 			WithSteps(disabledStepsFn(k))
-	}, esBuilder, kbBuilder).RunSequential(t)
+	}, test.LicenseTestBuilder(esBuilder), kbBuilder).RunSequential(t)
+}
+
+// TestKibanaBackgroundTasksRequiresLicense verifies the Enterprise license gate on spec.backgroundTasks when no
+// license is installed:
+//   - creating a Kibana with background tasks is rejected by the webhook,
+//   - enabling background tasks on an existing Kibana is rejected by the webhook,
+//   - changing the spec of a Kibana that keeps background tasks is rejected by the webhook, while metadata-only
+//     updates are admitted so the operator can keep writing association annotations,
+//   - a Kibana whose background tasks were enabled under a valid license keeps being reconciled after the license
+//     is removed, with a warning event.
+func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
+	skipIfBackgroundTasksUnsupported(t)
+	if test.Ctx().DeployChaosJob {
+		// the chaos job may leave the webhook without a ready endpoint, in which case the API server admits the resource
+		t.Skip()
+	}
+
+	name := "test-kb-bg-license"
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	// start without background tasks and without a license
+	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1)
+	// mutation 1: enable background tasks (applied once a license is installed)
+	kbWithBG := kbBuilder.
+		WithBackgroundTasks(1).
+		WithMutatedFrom(&kbBuilder)
+	// mutation 2: turn background tasks off again while the license is gone
+	kbWithoutBG := kbBuilder.WithMutatedFrom(&kbWithBG)
+
+	// a second Kibana used to exercise the create path; never expected to exist
+	rejectedBuilder := kibana.NewBuilder(name + "-create").
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).
+		WithBackgroundTasks(1)
+
+	nsn := k8s.ExtractNamespacedName(&kbBuilder.Kibana)
+	bgDeployment := types.NamespacedName{Namespace: nsn.Namespace, Name: kbv1.BackgroundTasksDeployment(nsn.Name)}
+
+	before := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Remove any Enterprise license secret",
+				Test: func(t *testing.T) {
+					t.Helper()
+					test.DeleteAllEnterpriseLicenseSecrets(t, k)
+				},
+			},
+		}
+	}
+
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Creating a Kibana with background tasks without a license should be rejected",
+				Test: func(t *testing.T) {
+					t.Helper()
+					t.Cleanup(func() {
+						_ = k8sclient.IgnoreNotFound(k.Client.Delete(context.Background(), &rejectedBuilder.Kibana))
+					})
+					var createErr error
+					test.Eventually(func() error {
+						createErr = k.Client.Create(context.Background(), rejectedBuilder.Kibana.DeepCopy())
+						switch {
+						case createErr == nil:
+							// admitted: the webhook cache may not have seen the license deletion yet, undo and retry
+							if err := k8sclient.IgnoreNotFound(k.Client.Delete(context.Background(), &rejectedBuilder.Kibana)); err != nil {
+								return err
+							}
+							return fmt.Errorf("creation of %s was admitted, expected a rejection", rejectedBuilder.Kibana.Name)
+						case apierrors.IsInvalid(createErr):
+							return nil
+						default:
+							return createErr
+						}
+					})(t)
+					require.ErrorContains(t, createErr, "spec.backgroundTasks")
+					require.ErrorContains(t, createErr, "Enterprise license")
+				},
+			},
+			{
+				Name: "Enabling background tasks on an existing Kibana without a license should be rejected",
+				Test: func(t *testing.T) {
+					t.Helper()
+					var updateErr error
+					test.Eventually(func() error {
+						var kb kbv1.Kibana
+						if err := k.Client.Get(context.Background(), nsn, &kb); err != nil {
+							return err
+						}
+						kb.Spec.BackgroundTasks = kbWithBG.Kibana.Spec.BackgroundTasks.DeepCopy()
+						updateErr = k.Client.Update(context.Background(), &kb)
+						switch {
+						case updateErr == nil:
+							// admitted: the webhook cache may not have seen the license deletion yet, undo and retry.
+							// Leaving background tasks stored would make the later licensed mutation a no-op.
+							kb.Spec.BackgroundTasks = nil
+							if err := k.Client.Update(context.Background(), &kb); err != nil {
+								return err
+							}
+							return fmt.Errorf("update enabling background tasks on %s was admitted, expected a rejection", nsn.Name)
+						case apierrors.IsInvalid(updateErr):
+							return nil
+						default:
+							return updateErr
+						}
+					})(t)
+					require.ErrorContains(t, updateErr, "spec.backgroundTasks")
+					require.ErrorContains(t, updateErr, "Enterprise license")
+				},
+			},
+			{
+				Name: "Kibana should not have a background tasks Deployment",
+				Test: func(t *testing.T) {
+					t.Helper()
+					var dep appsv1.Deployment
+					err := k.Client.Get(context.Background(), bgDeployment, &dep)
+					require.True(t, apierrors.IsNotFound(err), "expected no background tasks Deployment, got err=%v", err)
+				},
+			},
+			{
+				Name: "Install an Enterprise license secret",
+				Test: func(t *testing.T) {
+					t.Helper()
+					licenseBytes, err := os.ReadFile(test.Ctx().TestLicense)
+					require.NoError(t, err)
+					test.CreateEnterpriseLicenseSecret(t, k, "eck-license", licenseBytes)
+				},
+			},
+		}.
+			// enabling background tasks is admitted once the webhook sees the license; the mutation step retries until then
+			WithSteps(kbWithBG.MutationTestSteps(k)).
+			WithStep(test.Step{
+				Name: "Background tasks Deployment should exist",
+				Test: test.Eventually(func() error {
+					return checkDeploymentExists(k, bgDeployment.Namespace, bgDeployment.Name)
+				}),
+			}).
+			WithStep(test.Step{
+				Name: "Remove the Enterprise license secret",
+				Test: func(t *testing.T) {
+					t.Helper()
+					test.DeleteAllEnterpriseLicenseSecrets(t, k)
+				},
+			}).
+			WithStep(test.Step{
+				Name: "Changing the spec of a Kibana that keeps background tasks without a license should be rejected",
+				Test: func(t *testing.T) {
+					t.Helper()
+					var updateErr error
+					test.Eventually(func() error {
+						var kb kbv1.Kibana
+						if err := k.Client.Get(context.Background(), nsn, &kb); err != nil {
+							return err
+						}
+						originalCount := kb.Spec.Count
+						kb.Spec.Count = originalCount + 1
+						updateErr = k.Client.Update(context.Background(), &kb)
+						switch {
+						case updateErr == nil:
+							// admitted: the webhook cache may not have seen the license deletion yet, undo and retry
+							kb.Spec.Count = originalCount
+							if err := k.Client.Update(context.Background(), &kb); err != nil {
+								return err
+							}
+							return fmt.Errorf("spec update keeping background tasks on %s was admitted, expected a rejection", nsn.Name)
+						case apierrors.IsInvalid(updateErr):
+							return nil
+						default:
+							return updateErr
+						}
+					})(t)
+					require.ErrorContains(t, updateErr, "spec.backgroundTasks")
+					require.ErrorContains(t, updateErr, "Enterprise license")
+				},
+			}).
+			// metadata-only updates must stay admitted: the operator writes association annotations on the Kibana
+			WithStep(test.Step{
+				Name: "Changing only the metadata of a Kibana that keeps background tasks without a license should be admitted",
+				Test: test.Eventually(func() error {
+					var kb kbv1.Kibana
+					if err := k.Client.Get(context.Background(), nsn, &kb); err != nil {
+						return err
+					}
+					if kb.Annotations == nil {
+						kb.Annotations = map[string]string{}
+					}
+					kb.Annotations["e2e.k8s.elastic.co/unlicensed-metadata-change"] = "true"
+					return k.Client.Update(context.Background(), &kb)
+				}),
+			}).
+			WithStep(test.Step{
+				Name: "Deleting a background tasks pod should trigger a reconciliation of the stored Kibana",
+				Test: test.Eventually(func() error {
+					pods, err := k.GetPods(test.KibanaPodListOptions(nsn.Namespace, nsn.Name)...)
+					if err != nil {
+						return err
+					}
+					for i := range pods {
+						if pods[i].Labels[kblabel.RoleLabelName] == kblabel.RoleBackgroundTasksValue {
+							return k8sclient.IgnoreNotFound(k.Client.Delete(context.Background(), &pods[i]))
+						}
+					}
+					return fmt.Errorf("no background tasks pod found for %s", nsn.Name)
+				}),
+			}).
+			// the stored resource keeps its background tasks pool: the controller warns and reconciles
+			WithStep(test.Step{
+				Name: "A license warning event should be emitted for the already enabled background tasks",
+				Test: test.Eventually(func() error {
+					eventList, err := k.GetEvents(test.EventListOptions(nsn.Namespace, nsn.Name)...)
+					if err != nil {
+						return err
+					}
+					for _, evt := range eventList {
+						if evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventReasonInvalidLicense {
+							return nil
+						}
+					}
+					return fmt.Errorf("event did not fire: %s", events.EventReasonInvalidLicense)
+				}),
+			}).
+			WithStep(test.Step{
+				Name: "Background tasks Deployment should still be available without a license",
+				Test: test.Eventually(func() error {
+					return checkDeploymentExists(k, bgDeployment.Namespace, bgDeployment.Name)
+				}),
+			}).
+			// turning background tasks off is always admitted
+			WithSteps(kbWithoutBG.MutationTestSteps(k)).
+			WithStep(test.Step{
+				Name: "Background tasks Deployment should be deleted after turning background tasks off without a license",
+				Test: test.Eventually(func() error {
+					var dep appsv1.Deployment
+					err := k.Client.Get(context.Background(), bgDeployment, &dep)
+					if apierrors.IsNotFound(err) {
+						return nil
+					}
+					if err != nil {
+						return err
+					}
+					return fmt.Errorf("background tasks Deployment %s still exists", dep.Name)
+				}),
+			})
+	}
+
+	test.Sequence(before, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 }
 
 // checkPoolStatus asserts that a per-pool status reports the expected replica count, green health

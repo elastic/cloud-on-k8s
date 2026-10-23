@@ -272,7 +272,7 @@ func (r *ReconcileStackConfigPolicy) doReconcile(ctx context.Context, reconcilin
 		log.Info(msg)
 		k8s.EmitEvent(r.recorder, &reconcilingPolicy, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return results.WithRequeue(5 * time.Minute), status
+		return results.WithRequeue(common.DefaultRequeueInterval), status
 	}
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &reconcilingPolicy); err != nil {

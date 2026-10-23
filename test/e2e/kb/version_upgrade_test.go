@@ -185,6 +185,9 @@ func TestVersionUpgradeToLatest8xWithBackgroundTasks(t *testing.T) {
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
 	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+	if test.Ctx().TestLicense == "" {
+		t.Skip("spec.backgroundTasks requires an Enterprise license, but no test license is configured")
+	}
 	if v := version.MustParse(srcVersion); v.LT(kbv1.BackgroundTasksMinVersion) {
 		t.Skipf("background task isolation requires Kibana >= %s (got %s)", kbv1.BackgroundTasksMinVersion, v)
 	}
@@ -216,7 +219,7 @@ func TestVersionUpgradeToLatest8xWithBackgroundTasks(t *testing.T) {
 	// - at all times all pods, across both pools, had the same Kibana version.
 	test.RunMutationsWhileWatching(
 		t,
-		[]test.Builder{esBuilder, kbBuilder},
+		[]test.Builder{test.LicenseTestBuilder(esBuilder), kbBuilder},
 		[]test.Builder{
 			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
 			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),

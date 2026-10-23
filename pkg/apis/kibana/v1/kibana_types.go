@@ -126,7 +126,7 @@ type KibanaSpec struct {
 	// BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
 	// in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
 	// When nil, Kibana runs a single Deployment with all roles.
-	// Requires Kibana >= 8.16.0.
+	// Requires Kibana >= 8.16.0 and an Enterprise license.
 	// +kubebuilder:validation:Optional
 	BackgroundTasks *KibanaBackgroundTasks `json:"backgroundTasks,omitempty"`
 }
@@ -134,6 +134,7 @@ type KibanaSpec struct {
 // KibanaBackgroundTasks defines the configuration for the Kibana background tasks pool.
 // When set, ECK creates a dedicated Deployment with node.roles: ["background_tasks"] and
 // pins the primary (UI) Deployment to node.roles: ["ui"].
+// Requires an Enterprise license.
 type KibanaBackgroundTasks struct {
 	// Count of background task Kibana instances. When nil, ECK does not manage the replica count
 	// of the Deployment, allowing an HPA to target it directly.
