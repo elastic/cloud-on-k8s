@@ -573,6 +573,7 @@ func (c gkeClusterContext) username(unqualified bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// gcloud output ends with a newline, which would split shell commands that interpolate the username mid-line.
 	user = strings.TrimSpace(user)
 	if unqualified {
 		if idx := strings.Index(user, "@"); idx != -1 {
