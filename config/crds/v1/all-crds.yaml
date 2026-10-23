@@ -9278,7 +9278,7 @@ spec:
                   BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
                   in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
                   When nil, Kibana runs a single Deployment with all roles.
-                  Requires Kibana >= 8.16.0.
+                  Requires Kibana >= 8.16.0 and an Enterprise license.
                 properties:
                   config:
                     description: |-

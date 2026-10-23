@@ -155,7 +155,7 @@ func Test_namespacedReconcilerWrapper_Reconcile(t *testing.T) {
 			request:        request,
 			inner:          &fakeNamespacedReconciler{result: innerResult},
 			licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
-			wantResult:     reconcile.Result{RequeueAfter: 5 * time.Minute},
+			wantResult:     reconcile.Result{RequeueAfter: DefaultRequeueInterval},
 			wantEvent:      true,
 		},
 	}

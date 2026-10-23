@@ -10,7 +10,6 @@ import (
 	"hash/fnv"
 	"reflect"
 	"sync/atomic"
-	"time"
 
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -204,7 +203,7 @@ func (r *ReconcileMapsServer) doReconcile(ctx context.Context, ems emsv1alpha1.E
 		log.Info(msg, "namespace", ems.Namespace, "maps_name", ems.Name)
 		k8s.EmitEvent(r.recorder, &ems, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
 		// we don't have a good way of watching for the license level to change so just requeue with a reasonably long delay
-		return results.WithRequeue(5 * time.Minute), status
+		return results.WithRequeue(common.DefaultRequeueInterval), status
 	}
 
 	isEsAssocConfigured, err := association.IsConfiguredIfSet(ctx, &ems, r.recorder)

@@ -49,6 +49,15 @@ func testSamples(t *testing.T, shouldRun func(sampleName string) bool) {
 		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {
+			if sampleRequiresLicense(sample) {
+				if test.Ctx().TestLicense == "" {
+					t.Skipf("%s requires an Enterprise license, but no test license is configured", sample)
+				}
+				require.NotEmpty(t, builders, "no builders created from %s", sample)
+				// wrap the first builder: its init steps run first, installing the license before any resource is
+				// created, and its deletion steps run last, removing the license after all resources are gone.
+				builders[0] = test.LicenseTestBuilder(builders[0])
+			}
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
 	}
