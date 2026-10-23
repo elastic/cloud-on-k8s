@@ -20,10 +20,6 @@ const (
 	// backgroundTasksLicenseRejectMsg is returned by the webhook when spec.backgroundTasks is set without an Enterprise
 	// license, and logged by the controller when it skips reconciliation for the same reason.
 	backgroundTasksLicenseRejectMsg = "spec.backgroundTasks (Kibana background task isolation) requires an Enterprise license"
-	// backgroundTasksLicenseWarning is logged and emitted as an event by the controller when a stored Kibana already
-	// has a background tasks pool but the Enterprise license is no longer valid. The existing pool keeps being reconciled.
-	backgroundTasksLicenseWarning = "spec.backgroundTasks requires an Enterprise license. Enterprise features are disabled: " +
-		"the existing background tasks pool keeps running but is no longer covered by a valid license"
 )
 
 // backgroundTasksState describes the state of spec.backgroundTasks on a Kibana with respect to the Enterprise license.

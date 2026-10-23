@@ -255,7 +255,7 @@ func (r *ReconcileKibana) gateBackgroundTasksOnLicense(ctx context.Context, kb *
 	log := ulog.FromContext(ctx)
 	switch state {
 	case backgroundTasksAlreadyEnabledUnlicensed:
-		log.Info(backgroundTasksLicenseWarning, "namespace", kb.Namespace, "kibana_name", kb.Name)
+		log.Info(backgroundTasksLicenseRejectMsg, "namespace", kb.Namespace, "kibana_name", kb.Name)
 		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, backgroundTasksLicenseWarning)
 		return true, nil
 	case backgroundTasksNewlyEnabledUnlicensed:
