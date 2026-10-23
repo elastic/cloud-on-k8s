@@ -97,7 +97,7 @@ var samplesRequiringLicense = map[string]struct{}{
 }
 
 func sampleRequiresLicense(sample string) bool {
-	s, _ := strings.CutPrefix(sampleFile, "../../")
+	s, _ := strings.CutPrefix(sample, "../../")
 	_, ok := samplesRequiringLicense[s]
 	return ok
 }
