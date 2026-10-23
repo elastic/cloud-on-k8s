@@ -17,27 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 )
 
-// errorLicenseChecker implements license.Checker, returning an error from all methods.
-type errorLicenseChecker struct {
-	err error
-}
-
-func (e errorLicenseChecker) CurrentEnterpriseLicense(context.Context) (*license.EnterpriseLicense, error) {
-	return nil, e.err
-}
-
-func (e errorLicenseChecker) EnterpriseFeaturesEnabled(context.Context) (bool, error) {
-	return false, e.err
-}
-
-func (e errorLicenseChecker) Valid(context.Context, license.EnterpriseLicense) (bool, error) {
-	return false, e.err
-}
-
-func (e errorLicenseChecker) ValidOperatorLicenseKeyType(context.Context) (license.OperatorLicenseType, error) {
-	return "", e.err
-}
-
 func newPolicy(version string) *autoopsv1alpha1.AutoOpsAgentPolicy {
 	return &autoopsv1alpha1.AutoOpsAgentPolicy{
 		Name:      "test-policy",
@@ -161,7 +140,7 @@ func TestCheckSupportedVersion_LicenseCheckerError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			checker := errorLicenseChecker{err: errors.New("connection refused")}
+			checker := license.MockLicenseChecker{Err: errors.New("connection refused")}
 			errs := checkSupportedVersion(context.Background(), newPolicy(tt.version), checker)
 			if tt.wantErr {
 				require.NotEmpty(t, errs)

@@ -31,7 +31,6 @@ import (
 	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
-	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -45,6 +44,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
 	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
+	kibanacontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	scpvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
@@ -104,13 +104,12 @@ func setupWebhook(
 	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, matcher, entv1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, matcher, entv1beta1.Validate, "Enterprise Search")
 	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, matcher, esv1beta1.Validate, "Elasticsearch")
-	commonwebhook.RegisterResourceWebhook(mgr, kbv1.WebhookPath, checker, managedNamespaces, matcher, kbv1.Validate, "Kibana")
 	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, matcher, kbv1beta1.Validate, "Kibana")
 	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, matcher, emsv1alpha1.Validate, "Elastic Maps Server")
 	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, matcher, eprv1alpha1.Validate, "Package Registry")
 	scpvalidation.RegisterWebhook(mgr, checker, managedNamespaces, params.OperatorNamespace, matcher)
 
-	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, and AutoOps validating webhooks are wired up
+	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, AutoOps, Agent and Kibana v1 validating webhooks are wired up
 	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
 	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
 	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces, matcher)
@@ -118,6 +117,7 @@ func setupWebhook(
 	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces, matcher)
 	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
 	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+	kibanacontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
 
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1

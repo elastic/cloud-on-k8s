@@ -7,12 +7,15 @@ package kibana
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
@@ -23,6 +26,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -55,6 +59,8 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 	}
 	type fields struct {
 		Client k8s.Client
+		// licenseChecker defaults to an enabled Enterprise license when nil.
+		licenseChecker license.Checker
 	}
 	tests := []struct {
 		name     string
@@ -63,7 +69,11 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 		want     reconcile.Result
 		wantErr  bool
 		errorMsg string
-		validate func(*testing.T, fields)
+		// wantRequeueAfter, when non-zero, is asserted against Result.RequeueAfter.
+		wantRequeueAfter time.Duration
+		// wantEvent, when non-empty, must be contained in one of the emitted events.
+		wantEvent string
+		validate  func(*testing.T, fields)
 	}{
 		{
 			name: "unmanaged kibana instance does not increment observedGeneration",
@@ -322,14 +332,111 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 				}, kibana.Status)
 			},
 		},
+		{
+			name: "background tasks without an enterprise license and no existing background deployment skips reconciliation and requeues",
+			fields: fields{
+				Client:         k8s.NewFakeClient(&sampleElasticsearch, withBackgroundTasks(&sampleKibana)),
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
+			},
+			request:          defaultRequest,
+			want:             reconcile.Result{},
+			wantRequeueAfter: common.DefaultRequeueInterval,
+			wantEvent:        "ReconciliationError",
+			validate: func(t *testing.T, f fields) {
+				var deployments appsv1.DeploymentList
+				require.NoError(t, f.Client.List(context.Background(), &deployments, client.InNamespace("test")))
+				require.Empty(t, deployments.Items)
+				var services corev1.ServiceList
+				require.NoError(t, f.Client.List(context.Background(), &services, client.InNamespace("test")))
+				require.Empty(t, services.Items)
+				var kibana kibanav1.Kibana
+				require.NoError(t, f.Client.Get(context.Background(), defaultRequest.NamespacedName, &kibana))
+				require.Equal(t, int64(1), kibana.Status.ObservedGeneration, "generation must not be reported as observed when nothing was applied")
+			},
+		},
+		{
+			name: "background tasks without an enterprise license and an existing background deployment reconciles with a warning",
+			fields: fields{
+				Client: k8s.NewFakeClient(
+					&sampleElasticsearch,
+					withBackgroundTasks(&sampleKibana),
+					&appsv1.Deployment{
+						Namespace: sampleKibana.Namespace,
+						Name:      kibanav1.BackgroundTasksDeployment(sampleKibana.Name),
+					},
+				),
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
+			},
+			request:   defaultRequest,
+			want:      reconcile.Result{},
+			wantEvent: "InvalidLicense",
+			validate: func(t *testing.T, f fields) {
+				var deployments appsv1.DeploymentList
+				require.NoError(t, f.Client.List(context.Background(), &deployments, client.InNamespace("test")))
+				require.Len(t, deployments.Items, 2)
+				var kibana kibanav1.Kibana
+				require.NoError(t, f.Client.Get(context.Background(), defaultRequest.NamespacedName, &kibana))
+				require.NotNil(t, kibana.Status.Pools.BackgroundTasks)
+			},
+		},
+		{
+			name: "background tasks license check error fails closed",
+			fields: fields{
+				Client:         k8s.NewFakeClient(&sampleElasticsearch, withBackgroundTasks(&sampleKibana)),
+				licenseChecker: license.MockLicenseChecker{Err: errors.New("license check failed")},
+			},
+			request:  defaultRequest,
+			want:     reconcile.Result{},
+			wantErr:  true,
+			errorMsg: "license check failed",
+			validate: func(t *testing.T, f fields) {
+				var deployments appsv1.DeploymentList
+				require.NoError(t, f.Client.List(context.Background(), &deployments, client.InNamespace("test")))
+				require.Empty(t, deployments.Items)
+			},
+		},
+		{
+			name: "background tasks with an enterprise license is reconciled",
+			fields: fields{
+				Client:         k8s.NewFakeClient(&sampleElasticsearch, withBackgroundTasks(&sampleKibana)),
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			request: defaultRequest,
+			want:    reconcile.Result{},
+			validate: func(t *testing.T, f fields) {
+				var deployments appsv1.DeploymentList
+				require.NoError(t, f.Client.List(context.Background(), &deployments, client.InNamespace("test")))
+				require.Len(t, deployments.Items, 2)
+			},
+		},
+		{
+			name: "no background tasks without an enterprise license is not gated",
+			fields: fields{
+				Client:         k8s.NewFakeClient(&sampleElasticsearch, &sampleKibana),
+				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
+			},
+			request: defaultRequest,
+			want:    reconcile.Result{},
+			validate: func(t *testing.T, f fields) {
+				var deployments appsv1.DeploymentList
+				require.NoError(t, f.Client.List(context.Background(), &deployments, client.InNamespace("test")))
+				require.Len(t, deployments.Items, 1)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			checker := tt.fields.licenseChecker
+			if checker == nil {
+				checker = license.MockLicenseChecker{EnterpriseEnabled: true}
+			}
+			recorder := toolsevents.NewFakeRecorder(100)
 			r := &ReconcileKibana{
 				Client:         tt.fields.Client,
-				recorder:       toolsevents.NewFakeRecorder(100),
+				recorder:       recorder,
 				dynamicWatches: watches.NewDynamicWatches(),
 				params:         operator.Parameters{},
+				licenseChecker: checker,
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)
 			if (err != nil) != tt.wantErr {
@@ -343,9 +450,34 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			if !cmp.Equal(got, tt.want, cmpopts.IgnoreFields(reconcile.Result{}, "RequeueAfter")) {
 				t.Errorf("ReconcileKibana.Reconcile() = %v, want %v", got, tt.want)
 			}
+			if tt.wantRequeueAfter != 0 {
+				require.Equal(t, tt.wantRequeueAfter, got.RequeueAfter)
+			}
+			if tt.wantEvent != "" {
+				close(recorder.Events)
+				var events []string
+				for e := range recorder.Events {
+					events = append(events, e)
+				}
+				require.Condition(t, func() bool {
+					for _, e := range events {
+						if strings.Contains(e, "Warning") && strings.Contains(e, tt.wantEvent) {
+							return true
+						}
+					}
+					return false
+				}, "expected a warning event containing %q, got %v", tt.wantEvent, events)
+			}
 			tt.validate(t, tt.fields)
 		})
 	}
+}
+
+func withBackgroundTasks(kibana *kibanav1.Kibana) *kibanav1.Kibana {
+	obj := kibana.DeepCopy()
+	obj.Spec.Version = "8.16.0"
+	obj.Spec.BackgroundTasks = &kibanav1.KibanaBackgroundTasks{}
+	return obj
 }
 
 func withAnnotations(kibana *kibanav1.Kibana, annotations map[string]string) *kibanav1.Kibana {

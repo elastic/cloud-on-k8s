@@ -89,3 +89,15 @@ func isSmokeSample(sampleFile string) bool {
 	}
 	return false
 }
+
+// samplesRequiringLicense lists the samples, relative to root directory, that configure an Enterprise feature and
+// therefore need an Enterprise license to be installed in the operator.
+var samplesRequiringLicense = map[string]struct{}{
+	"config/samples/kibana/kibana_bg.yaml": {}, // spec.backgroundTasks
+}
+
+func sampleRequiresLicense(sample string) bool {
+	s, _ := strings.CutPrefix(sample, "../../")
+	_, ok := samplesRequiringLicense[s]
+	return ok
+}

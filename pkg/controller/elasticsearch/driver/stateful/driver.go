@@ -8,7 +8,6 @@ package stateful
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -217,7 +216,7 @@ func (d *Driver) reconcileCriticalStepsWhilePaused(
 		message = common.PausedWithPendingChangesMessage
 		d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
 			events.EventActionPendingOrchestrationChanges, "Spec changes pending but orchestration is paused — remove annotation to apply")
-		results.WithRequeue(5 * time.Minute)
+		results.WithRequeue(common.DefaultRequeueInterval)
 	}
 	d.ReconcileState.ReportCondition(commonv1.OrchestrationPaused, corev1.ConditionTrue, message)
 	return results
