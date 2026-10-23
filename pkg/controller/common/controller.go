@@ -65,4 +65,4 @@ func NewReconciliationContext(
 
 // DefaultRequeueInterval is the default delay before re-reconciling a resource that is waiting on
 // a condition (e.g. a license) which is not signalled by a watched event.
-const DefaultRequeueInterval =5 * time.Minute
+const DefaultRequeueInterval = 5 * time.Minute
