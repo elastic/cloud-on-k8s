@@ -238,6 +238,8 @@ func TestKibanaBackgroundTasksEnableDisable(t *testing.T) {
 // license is installed:
 //   - creating a Kibana with background tasks is rejected by the webhook,
 //   - enabling background tasks on an existing Kibana is rejected by the webhook,
+//   - changing the spec of a Kibana that keeps background tasks is rejected by the webhook, while metadata-only
+//     updates are admitted so the operator can keep writing association annotations,
 //   - a Kibana whose background tasks were enabled under a valid license keeps being reconciled after the license
 //     is removed, with a warning event.
 func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
@@ -377,7 +379,7 @@ func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
 				},
 			}).
 			WithStep(test.Step{
-				Name: "Changing a Kibana that keeps background tasks without a license should be rejected",
+				Name: "Changing the spec of a Kibana that keeps background tasks without a license should be rejected",
 				Test: func(t *testing.T) {
 					t.Helper()
 					var updateErr error
@@ -386,15 +388,17 @@ func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
 						if err := k.Client.Get(context.Background(), nsn, &kb); err != nil {
 							return err
 						}
-						if kb.Annotations == nil {
-							kb.Annotations = map[string]string{}
-						}
-						kb.Annotations["e2e.k8s.elastic.co/unlicensed-change"] = "true"
+						originalCount := kb.Spec.Count
+						kb.Spec.Count = originalCount + 1
 						updateErr = k.Client.Update(context.Background(), &kb)
 						switch {
 						case updateErr == nil:
-							// admitted: the webhook cache may not have seen the license deletion yet, retry
-							return fmt.Errorf("update keeping background tasks on %s was admitted, expected a rejection", nsn.Name)
+							// admitted: the webhook cache may not have seen the license deletion yet, undo and retry
+							kb.Spec.Count = originalCount
+							if err := k.Client.Update(context.Background(), &kb); err != nil {
+								return err
+							}
+							return fmt.Errorf("spec update keeping background tasks on %s was admitted, expected a rejection", nsn.Name)
 						case apierrors.IsInvalid(updateErr):
 							return nil
 						default:
@@ -404,6 +408,21 @@ func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
 					require.ErrorContains(t, updateErr, "spec.backgroundTasks")
 					require.ErrorContains(t, updateErr, "Enterprise license")
 				},
+			}).
+			// metadata-only updates must stay admitted: the operator writes association annotations on the Kibana
+			WithStep(test.Step{
+				Name: "Changing only the metadata of a Kibana that keeps background tasks without a license should be admitted",
+				Test: test.Eventually(func() error {
+					var kb kbv1.Kibana
+					if err := k.Client.Get(context.Background(), nsn, &kb); err != nil {
+						return err
+					}
+					if kb.Annotations == nil {
+						kb.Annotations = map[string]string{}
+					}
+					kb.Annotations["e2e.k8s.elastic.co/unlicensed-metadata-change"] = "true"
+					return k.Client.Update(context.Background(), &kb)
+				}),
 			}).
 			WithStep(test.Step{
 				Name: "Deleting a background tasks pod should trigger a reconciliation of the stored Kibana",

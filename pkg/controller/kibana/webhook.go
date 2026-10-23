@@ -54,7 +54,8 @@ func (v *webhookValidator) validate(ctx context.Context, kb *kbv1.Kibana, old *k
 		return warnings, err
 	}
 
-	// Allow metadata updates, including operator association annotations, after license expiry.
+	// Metadata-only updates are always admitted: the operator itself writes association annotations on the Kibana,
+	// and those writes must keep succeeding after the Enterprise license expires.
 	if old != nil && equality.Semantic.DeepEqual(old.Spec, kb.Spec) {
 		return warnings, nil
 	}
@@ -68,9 +69,9 @@ func (v *webhookValidator) validate(ctx context.Context, kb *kbv1.Kibana, old *k
 	return warnings, nil
 }
 
-// validateBackgroundTasksLicense rejects any create or update that keeps spec.backgroundTasks set without a valid
+// validateBackgroundTasksLicense rejects any create or spec update that keeps spec.backgroundTasks set without a valid
 // Enterprise license, whether background tasks are being enabled or were already enabled. Removing
-// spec.backgroundTasks is always admitted. The controller is more lenient for an already stored resource: it keeps
+// spec.backgroundTasks is always admitted, and so are metadata-only updates, see validate. The controller is more lenient for an already stored resource: it keeps
 // reconciling an existing background tasks pool and only warns, see gateBackgroundTasksOnLicense.
 func validateBackgroundTasksLicense(ctx context.Context, c k8s.Client, kb *kbv1.Kibana, checker commonlicense.Checker) field.ErrorList {
 	state, err := backgroundTasksStateOf(ctx, c, kb, checker)
