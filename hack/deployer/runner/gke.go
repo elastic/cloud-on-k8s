@@ -573,6 +573,7 @@ func (c gkeClusterContext) username(unqualified bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	user = strings.TrimSpace(user)
 	if unqualified {
 		if idx := strings.Index(user, "@"); idx != -1 {
 			user = user[:idx]
