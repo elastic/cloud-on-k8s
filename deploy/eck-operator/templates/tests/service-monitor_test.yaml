@@ -29,6 +29,18 @@ tests:
               matchLabels:
                 app.kubernetes.io/instance: RELEASE-NAME
                 app.kubernetes.io/name: elastic-operator-metrics-service 
+      - template: service-monitor.yaml
+        notExists:
+          path: metadata.annotations
+      - template: service-monitor.yaml
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: elastic-operator
+            app.kubernetes.io/version: 3.6.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.6.0-SNAPSHOT
   - it: legacy values 
     set:
       config:
@@ -69,10 +81,139 @@ tests:
     set:
       serviceMonitor:
         enabled: false
+        labels:
+          release: kube-prometheus-stack
+        annotations:
+          example.com/owner: platform
+        interval: 60s
+        scrapeTimeout: 15s
       config:
         metrics:
           secureMode: 
             enabled: true
+    asserts:
+      - template: service-monitor.yaml
+        hasDocuments:
+          count: 0
+  - it: custom labels and annotations
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+      serviceMonitor:
+        labels:
+          release: kube-prometheus-stack
+        annotations:
+          example.com/owner: platform
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: elastic-operator
+            app.kubernetes.io/version: 3.6.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.6.0-SNAPSHOT
+            release: kube-prometheus-stack
+      - template: service-monitor.yaml
+        equal:
+          path: metadata.annotations
+          value:
+            example.com/owner: platform
+      - template: service-monitor.yaml
+        equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: elastic-operator-metrics-service
+  - it: custom label overrides a colliding chart label
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+      serviceMonitor:
+        labels:
+          app.kubernetes.io/name: custom-operator
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: custom-operator
+            app.kubernetes.io/version: 3.6.0-SNAPSHOT
+            helm.sh/chart: eck-operator-3.6.0-SNAPSHOT
+  - it: sets interval and scrape timeout
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+      serviceMonitor:
+        interval: 60s
+        scrapeTimeout: 15s
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: spec.endpoints[0].interval
+          value: 60s
+      - template: service-monitor.yaml
+        equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: 15s
+  - it: empty interval keeps 30s and omits scrape timeout
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+      serviceMonitor:
+        interval: ""
+        scrapeTimeout: ""
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: spec.endpoints[0].interval
+          value: 30s
+      - template: service-monitor.yaml
+        notExists:
+          path: spec.endpoints[0].scrapeTimeout
+  - it: custom namespace keeps the release namespace selector
+    set:
+      config:
+        metrics:
+          secureMode:
+            enabled: true
+      serviceMonitor:
+        namespace: monitoring
+    asserts:
+      - template: service-monitor.yaml
+        equal:
+          path: metadata.namespace
+          value: monitoring
+      - template: service-monitor.yaml
+        equal:
+          path: spec.namespaceSelector.matchNames
+          value:
+            - NAMESPACE
+  - it: secure mode disabled suppresses the service monitor
+    set:
+      serviceMonitor:
+        enabled: true
+        labels:
+          release: kube-prometheus-stack
+        annotations:
+          example.com/owner: platform
+        interval: 60s
+        scrapeTimeout: 15s
+      config:
+        metrics:
+          secureMode:
+            enabled: false
     asserts:
       - template: service-monitor.yaml
         hasDocuments:
