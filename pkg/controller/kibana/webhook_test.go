@@ -54,12 +54,23 @@ func Test_webhookValidator_validate(t *testing.T) {
 			kb.Spec.Count = 2
 			return kb
 		}(), wantErr: backgroundTasksLicenseRejectMsg},
-		{name: "update keeping background tasks, basic license, deployment missing", checker: basic, old: kibanaWith("8.16.0", true), new: kibanaWith("8.16.0", true), wantErr: backgroundTasksLicenseRejectMsg},
+		{name: "update keeping background tasks, basic license, deployment missing", checker: basic, old: kibanaWith("8.16.0", true), new: func() *kbv1.Kibana {
+			kb := kibanaWith("8.16.0", true)
+			kb.Spec.Count = 2
+			return kb
+		}(), wantErr: backgroundTasksLicenseRejectMsg},
+		{name: "no-op update keeping background tasks, basic license, is admitted", checker: basic, old: kibanaWith("8.16.0", true), new: kibanaWith("8.16.0", true)},
+		{name: "metadata-only update keeping background tasks, basic license, is admitted", checker: basic, old: kibanaWith("8.16.0", true), new: func() *kbv1.Kibana {
+			kb := kibanaWith("8.16.0", true)
+			kb.Labels = map[string]string{"some-label": "some-value"}
+			return kb
+		}()},
 		{name: "update keeping background tasks, enterprise license", checker: enterprise, old: kibanaWith("8.16.0", true), new: kibanaWith("8.16.0", true)},
 		{name: "update disabling background tasks, basic license", checker: basic, objs: []client.Object{bgDeployment}, old: kibanaWith("8.16.0", true), new: kibanaWith("8.16.0", false)},
 		{name: "update enabling background tasks, enterprise license", checker: enterprise, old: kibanaWith("8.16.0", false), new: kibanaWith("8.16.0", true)},
 		{name: "license check error fails open", checker: license.MockLicenseChecker{Err: errors.New("boom")}, new: kibanaWith("8.16.0", true)},
 		{name: "unsupported version is rejected by structural validation", checker: enterprise, new: kibanaWith("8.15.0", true), wantErr: "requires Kibana >= 8.16.0"},
+		{name: "no-op update does not skip structural validation", checker: enterprise, old: kibanaWith("8.15.0", true), new: kibanaWith("8.15.0", true), wantErr: "requires Kibana >= 8.16.0"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

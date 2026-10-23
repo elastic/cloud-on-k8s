@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -52,6 +53,12 @@ func (v *webhookValidator) validate(ctx context.Context, kb *kbv1.Kibana, old *k
 	if err != nil {
 		return warnings, err
 	}
+
+	// Allow metadata updates, including operator association annotations, after license expiry.
+	if old != nil && equality.Semantic.DeepEqual(old.Spec, kb.Spec) {
+		return warnings, nil
+	}
+
 	if errs := validateBackgroundTasksLicense(ctx, v.client, kb, v.licenseChecker); len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(
 			schema.GroupKind{Group: kbv1.GroupVersion.Group, Kind: kbv1.Kind},
