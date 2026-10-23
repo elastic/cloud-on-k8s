@@ -248,7 +248,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 //
 // A license check or lookup error is returned as is so that the caller fails closed.
 func (r *ReconcileKibana) gateBackgroundTasksOnLicense(ctx context.Context, kb *kbv1.Kibana) (admitted bool, err error) {
-	state, err := checkBackgroundTasksLicense(ctx, r.Client, kb, r.licenseChecker)
+	state, err := backgroundTasksStateOf(ctx, r.Client, kb, r.licenseChecker)
 	if err != nil {
 		return false, err
 	}

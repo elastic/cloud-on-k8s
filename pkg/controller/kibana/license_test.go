@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func Test_checkBackgroundTasksLicense(t *testing.T) {
+func Test_backgroundTasksStateOf(t *testing.T) {
 	basic := license.MockLicenseChecker{EnterpriseEnabled: false}
 	enterprise := license.MockLicenseChecker{EnterpriseEnabled: true}
 	kb := kibanaWith("8.16.0", true)
@@ -44,7 +44,7 @@ func Test_checkBackgroundTasksLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := checkBackgroundTasksLicense(context.Background(), tt.client, kibanaWith("8.16.0", tt.bg), tt.checker)
+			got, err := backgroundTasksStateOf(context.Background(), tt.client, kibanaWith("8.16.0", tt.bg), tt.checker)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return

@@ -66,7 +66,7 @@ func (v *webhookValidator) validate(ctx context.Context, kb *kbv1.Kibana, old *k
 // spec.backgroundTasks is always admitted. The controller is more lenient for an already stored resource: it keeps
 // reconciling an existing background tasks pool and only warns, see gateBackgroundTasksOnLicense.
 func validateBackgroundTasksLicense(ctx context.Context, c k8s.Client, kb *kbv1.Kibana, checker commonlicense.Checker) field.ErrorList {
-	state, err := checkBackgroundTasksLicense(ctx, c, kb, checker)
+	state, err := backgroundTasksStateOf(ctx, c, kb, checker)
 	if err != nil {
 		// Fail-open: admit the resource on license check or lookup errors to avoid blocking writes during transient
 		// outages. The controller fails-closed on the same errors. This asymmetry is deliberate.

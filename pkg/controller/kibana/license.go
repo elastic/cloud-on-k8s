@@ -44,13 +44,13 @@ const (
 	backgroundTasksAlreadyEnabledUnlicensed
 )
 
-// checkBackgroundTasksLicense determines the backgroundTasksState of a Kibana. It is shared by the validating
+// backgroundTasksStateOf determines the backgroundTasksState of a Kibana. It is shared by the validating
 // webhook and the controller. Neither relies on the previous spec: whether background tasks were already enabled is
 // read from the cluster state, by fetching the background tasks Deployment of this Kibana. The Deployment is only
 // fetched when background tasks are configured and Enterprise features are disabled.
 // Errors from the license checker or from the Deployment lookup are returned as is: each caller decides whether to
 // fail open or closed.
-func checkBackgroundTasksLicense(ctx context.Context, c k8s.Client, kb *kbv1.Kibana, checker commonlicense.Checker) (backgroundTasksState, error) {
+func backgroundTasksStateOf(ctx context.Context, c k8s.Client, kb *kbv1.Kibana, checker commonlicense.Checker) (backgroundTasksState, error) {
 	if !kb.BackgroundTasksEnabled() {
 		return backgroundTasksDisabled, nil
 	}
