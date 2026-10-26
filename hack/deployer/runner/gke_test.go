@@ -255,6 +255,16 @@ func TestGKEIsCapacityError(t *testing.T) {
 	}{
 		{name: "capacity", output: "ERROR: " + gkeCapacityErrorIndicator, want: true},
 		{name: "quota", output: "ERROR: " + gkeQuotaErrorIndicator, want: true},
+		{
+			name:   "regional resources unavailable",
+			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Try a different location, or try again later: Google Compute Engine does not have enough resources available to fulfill request: europe-west1.",
+			want:   true,
+		},
+		{
+			name:   "node pool zonal stockout",
+			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Google Compute Engine: Not all instances running in IGM after 35m8.580139707s. Expected 1, running 0, transitioning 1. Current errors: [GCE_STOCKOUT]: Instance 'gke-eck-e2e-gke-testsmok-default-pool-6af4210d-bkj4' creation failed: The zone 'projects/elastic-cloud-dev/zones/us-central1-c' does not have enough resources available to fulfill the request.  '(resource type:compute)'.",
+			want:   true,
+		},
 		{name: "permission", output: "ERROR: permission denied"},
 	}
 	for _, tt := range tests {

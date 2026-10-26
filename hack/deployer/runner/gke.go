@@ -36,7 +36,7 @@ overrides:
   gke:
     gCloudProject: %s
 `
-	gkeCapacityErrorIndicator = "does not have enough resources available to fulfill request"
+	gkeCapacityErrorIndicator = "does not have enough resources available"
 	gkeQuotaErrorIndicator    = "insufficient quota to satisfy the request"
 )
 
