@@ -50,7 +50,7 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName, labelN
 	return pods.Items, nil
 }
 
-// PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
+// PodReconciliationDone returns true if actual existing pods match what is specified in the given StatefulSet.
 // It may return false if there are pods in the process of being:
 // - created (but not there in our resources cache)
 // - removed (but still there in our resources cache)
@@ -60,6 +60,13 @@ func PodReconciliationDone(ctx context.Context, c k8s.Client, statefulSet appsv1
 	if err != nil {
 		return false, "", err
 	}
+	ok, reason := PendingPodsReconciled(ctx, statefulSet, pendingCreations, pendingDeletions)
+	return ok, reason, nil
+}
+
+// PendingPodsReconciled is PodReconciliationDone for the given pending Pods of the given StatefulSet, as returned by
+// PendingPodsForStatefulSet: it returns true if there are none, and why the Pods are not reconciled otherwise.
+func PendingPodsReconciled(ctx context.Context, statefulSet appsv1.StatefulSet, pendingCreations, pendingDeletions []string) (bool, string) {
 	if len(pendingCreations) > 0 || len(pendingDeletions) > 0 {
 		ulog.FromContext(ctx).V(1).Info(
 			"Some pods still need to be created/deleted",
@@ -75,9 +82,9 @@ func PodReconciliationDone(ctx context.Context, c k8s.Client, statefulSet appsv1
 			fmt.Fprintf(&reason, ", deletions: %s", pendingDeletions)
 		}
 
-		return false, reason.String(), nil
+		return false, reason.String()
 	}
-	return true, "", nil
+	return true, ""
 }
 
 func PendingPodsForStatefulSet(c k8s.Client, statefulSet appsv1.StatefulSet, labelName string) ([]string, []string, error) {

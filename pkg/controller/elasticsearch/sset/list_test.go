@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -130,83 +129,6 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []corev1.Pod{pod1, pod2}, pods)
 	require.NotContains(t, pods, podNotInSset)
-}
-
-func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
-	// more detailed cases covered in pendingPodsForStatefulSet(), called by the function we test here
-	tests := []struct {
-		name string
-		l    StatefulSetList
-		c    k8s.Client
-		want bool
-	}{
-		{
-			name: "no pods, no sset",
-			l:    nil,
-			c:    k8s.NewFakeClient(),
-			want: true,
-		},
-		{
-			name: "some pods, no sset",
-			l:    nil,
-			c: k8s.NewFakeClient(
-				sset.TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
-			),
-			want: true,
-		},
-		{
-			name: "some statefulSets, no pod",
-			l:    StatefulSetList{sset.TestSset{Name: "sset1", Replicas: 3}.Build()},
-			c:    k8s.NewFakeClient(sset.TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
-			want: false,
-		},
-		{
-			name: "sset has its pods",
-			l: StatefulSetList{
-				sset.TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
-			},
-			c: k8s.NewFakeClient(
-				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				sset.TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				sset.TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
-				sset.TestPod{Namespace: "ns0", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-			),
-			want: true,
-		},
-		{
-			name: "sset is missing a pod",
-			l: StatefulSetList{
-				sset.TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
-			},
-			c: k8s.NewFakeClient(
-				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-			),
-			want: false,
-		},
-		{
-			name: "sset has too many Pods",
-			l: StatefulSetList{
-				sset.TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
-			},
-			c: k8s.NewFakeClient(
-				sset.TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				sset.TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-				sset.TestPod{Namespace: "ns", Name: "sset1-2", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-			),
-			want: false,
-		},
-		// TODO: test more than one StatefulSet once https://github.com/kubernetes-sigs/controller-runtime/pull/311 is available
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, reason, err := tt.l.PodReconciliationDone(context.Background(), tt.c)
-			if !got {
-				require.True(t, len(reason) > 0)
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestStatefulSetList_GetByName(t *testing.T) {

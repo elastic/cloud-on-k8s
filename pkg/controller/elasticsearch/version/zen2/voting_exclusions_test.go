@@ -52,6 +52,8 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	}
 	// simulate 2 pods out of the 3
 	statefulSet2rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
+	// simulate 11 masters of which only one was created, for example because a resource quota rejects the others
+	statefulSet11rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 11, Master: true, Data: true}.Build()
 	tests := []struct {
 		name               string
 		c                  k8s.Client
@@ -69,12 +71,20 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			wantRequeue:        false,
 		},
 		{
-			name:               "2/3 nodes there: cannot clear, should requeue",
+			name:               "2/3 nodes there: pods not created yet are ignored, should clear",
 			c:                  k8s.NewFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1]),
 			es:                 &es,
 			actualStatefulSets: es_sset.StatefulSetList{statefulSet3rep},
-			wantCall:           false,
-			wantRequeue:        true,
+			wantCall:           true,
+			wantRequeue:        false,
+		},
+		{
+			name:               "1/11 nodes there: pods not created yet are ignored, should clear",
+			c:                  k8s.NewFakeClient(&es, &statefulSet11rep, &pods[0]),
+			es:                 &es,
+			actualStatefulSets: es_sset.StatefulSetList{statefulSet11rep},
+			wantCall:           true,
+			wantRequeue:        false,
 		},
 		{
 			name:               "3/2 nodes there: cannot clear, should requeue",

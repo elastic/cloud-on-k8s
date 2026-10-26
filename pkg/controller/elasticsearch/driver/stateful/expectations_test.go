@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -79,4 +80,94 @@ func Test_Driver_expectationSatisfied(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, satisfied)
 	require.Equal(t, "", reason)
+}
+
+func Test_Driver_nodeSpecsExpectationsSatisfied(t *testing.T) {
+	const namespace = "ns"
+	const esName = "cluster"
+	statefulSetName := esv1.StatefulSet(esName, "data")
+	pod := func(ordinal int32) crclient.Object {
+		return sset.TestPod{Namespace: namespace, Name: sset.PodName(statefulSetName, ordinal), StatefulSetName: statefulSetName, ClusterName: esName}.BuildPtr()
+	}
+	tests := []struct {
+		name string
+		// nodeSets are the NodeSets of the spec
+		nodeSets []esv1.NodeSet
+		// replicas and createdReplicas are the replicas of the StatefulSet, and the ones its controller reports created
+		replicas, createdReplicas int32
+		pods                      []crclient.Object
+		// wantStrict is whether expectationsSatisfied, which the other steps keep relying on, is satisfied
+		want, wantStrict bool
+	}{
+		{
+			name:            "all the Pods exist",
+			nodeSets:        []esv1.NodeSet{{Name: "data", Count: 2}},
+			replicas:        2,
+			createdReplicas: 2,
+			pods:            []crclient.Object{pod(0), pod(1)},
+			want:            true,
+			wantStrict:      true,
+		},
+		{
+			name:            "a Pod of a removed NodeSet could not be created",
+			replicas:        1,
+			createdReplicas: 0,
+			want:            true,
+		},
+		{
+			name:            "a Pod that a downscale removes could not be created",
+			nodeSets:        []esv1.NodeSet{{Name: "data", Count: 2}},
+			replicas:        3,
+			createdReplicas: 2,
+			pods:            []crclient.Object{pod(0), pod(1)},
+			want:            true,
+		},
+		{
+			name:            "a Pod that the spec keeps could not be created",
+			nodeSets:        []esv1.NodeSet{{Name: "data", Count: 2}},
+			replicas:        3,
+			createdReplicas: 2,
+			pods:            []crclient.Object{pod(0), pod(2)},
+		},
+		{
+			name:            "a Pod of a removed NodeSet is created but not in the cache yet",
+			replicas:        1,
+			createdReplicas: 1,
+		},
+		{
+			name:            "a Pod that a downscale removes could not be created while another one is still to be deleted",
+			nodeSets:        []esv1.NodeSet{{Name: "data", Count: 1}},
+			replicas:        2,
+			createdReplicas: 2,
+			pods:            []crclient.Object{pod(0), pod(2)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statefulSet := sset.TestSset{
+				Namespace:   namespace,
+				Name:        statefulSetName,
+				ClusterName: esName,
+				Replicas:    tt.replicas,
+				Status:      appsv1.StatefulSetStatus{Replicas: tt.createdReplicas},
+			}.BuildPtr()
+			k8sClient := k8s.NewFakeClient(append([]crclient.Object{statefulSet}, tt.pods...)...)
+			d := &Driver{
+				Expectations: expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}),
+				Client:       k8sClient,
+				ES: esv1.Elasticsearch{
+					Namespace: namespace,
+					Name:      esName,
+					Spec:      esv1.ElasticsearchSpec{NodeSets: tt.nodeSets},
+				},
+			}
+
+			satisfied, reason, err := d.nodeSpecsExpectationsSatisfied(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, tt.want, satisfied, reason)
+			satisfied, reason, err = d.expectationsSatisfied(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, tt.wantStrict, satisfied, reason)
+		})
+	}
 }

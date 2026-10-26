@@ -10,11 +10,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
+	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 // unreachableESState is an ESState that fails to retrieve the nodes, to check that it is not requested.
@@ -209,6 +214,75 @@ func Test_leavingNodes_unreached(t *testing.T) {
 			unreached, err := leaving.unreached(tt.nodes)
 			require.Equal(t, tt.wantErr, err != nil, err)
 			require.ElementsMatch(t, tt.want, unreached.UnsortedList())
+		})
+	}
+}
+
+// TestDesiredLeavingNodeNamesFromSpec checks that the leaving nodes derived from the spec are the ones derived from the
+// StatefulSets that are built from it, which the downscale uses.
+func TestDesiredLeavingNodeNamesFromSpec(t *testing.T) {
+	const esName, namespace = "cluster", "ns"
+	nodeSets := func(counts ...int32) []esv1.NodeSet {
+		result := make([]esv1.NodeSet, 0, len(counts))
+		for i, count := range counts {
+			result = append(result, esv1.NodeSet{Name: string(rune('a' + i)), Count: count})
+		}
+		return result
+	}
+	tests := []struct {
+		name string
+		// actual and desired are the NodeSets of the actual StatefulSets, and of the spec
+		actual, desired []esv1.NodeSet
+		want            sets.Set[string]
+	}{
+		{
+			name:    "nothing to remove",
+			actual:  nodeSets(3, 2),
+			desired: nodeSets(3, 2),
+			want:    sets.New[string](),
+		},
+		{
+			name:    "a NodeSet scales down",
+			actual:  nodeSets(3, 2),
+			desired: nodeSets(1, 2),
+			want:    sets.New(esv1.StatefulSet(esName, "a")+"-1", esv1.StatefulSet(esName, "a")+"-2"),
+		},
+		{
+			name:    "a NodeSet is removed",
+			actual:  nodeSets(3, 2),
+			desired: nodeSets(3),
+			want:    sets.New(esv1.StatefulSet(esName, "b")+"-0", esv1.StatefulSet(esName, "b")+"-1"),
+		},
+		{
+			name:    "a NodeSet scales up",
+			actual:  nodeSets(1),
+			desired: nodeSets(3),
+			want:    sets.New[string](),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			scripts := &corev1.ConfigMap{}
+			scripts.Namespace, scripts.Name = namespace, esv1.ScriptsConfigMap(esName)
+			c := k8s.NewFakeClient(scripts)
+			build := func(es esv1.Elasticsearch) es_sset.StatefulSetList {
+				resolved, err := ResolveConfig(ctx, c, es, corev1.IPv4Protocol, false)
+				require.NoError(t, err)
+				resources, err := nodespec.BuildExpectedResources(ctx, c, es, nil, nil, false, metadata.Metadata{}, resolved)
+				require.NoError(t, err)
+				return resources.StatefulSets()
+			}
+			es := func(nodeSets []esv1.NodeSet) esv1.Elasticsearch {
+				return esv1.Elasticsearch{
+					Name: esName, Namespace: namespace,
+					Spec: esv1.ElasticsearchSpec{Version: "8.17.0", NodeSets: nodeSets},
+				}
+			}
+			actual := build(es(tt.actual))
+			desired := es(tt.desired)
+			require.Equal(t, tt.want, desiredLeavingNodeNames(ctx, build(desired), actual))
+			require.Equal(t, tt.want, desiredLeavingNodeNamesFromSpec(ctx, desired, actual))
 		})
 	}
 }

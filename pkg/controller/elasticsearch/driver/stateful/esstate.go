@@ -47,20 +47,26 @@ func NewMemoizingESState(ctx context.Context, esClient esclient.Client) ESState 
 	}
 }
 
-// initOnce calls f(), if not already called for the given once.
-func initOnce(once *sync.Once, f func() error) error {
-	var err error
-	once.Do(func() {
-		err = f()
+// initOnce calls f() only once, and returns its error to every caller, so that none reads an uninitialized state, for
+// example no nodes, which would make every node look like it is not a member of the cluster.
+type initOnce struct {
+	once sync.Once
+	err  error
+}
+
+// do calls f() if not already called, and returns its error.
+func (i *initOnce) do(f func() error) error {
+	i.once.Do(func() {
+		i.err = f()
 	})
-	return err
+	return i.err
 }
 
 // -- Nodes
 
 // memoizingNodes provides nodes information.
 type memoizingNodes struct {
-	once         sync.Once
+	init         initOnce
 	esClient     esclient.Client
 	ctx          context.Context
 	nodeNameToID map[string]string
@@ -74,16 +80,13 @@ func (n *memoizingNodes) initialize() error {
 		return err
 	}
 	n.partial = nodes.IsPartial()
-	n.nodeNameToID = map[string]string{}
-	for id, node := range nodes.Nodes {
-		n.nodeNameToID[node.Name] = id
-	}
+	n.nodeNameToID = nodeNamesToIDs(nodes)
 	return nil
 }
 
 // NodesInCluster returns true if the given nodes exist in the Elasticsearch cluster.
 func (n *memoizingNodes) NodesInCluster(nodeNames []string) (bool, error) {
-	if err := initOnce(&n.once, n.initialize); err != nil {
+	if err := n.init.do(n.initialize); err != nil {
 		return false, err
 	}
 	for _, name := range nodeNames {
@@ -95,14 +98,14 @@ func (n *memoizingNodes) NodesInCluster(nodeNames []string) (bool, error) {
 }
 
 func (n *memoizingNodes) NodeNameToID() (map[string]string, error) {
-	if err := initOnce(&n.once, n.initialize); err != nil {
+	if err := n.init.do(n.initialize); err != nil {
 		return nil, err
 	}
 	return n.nodeNameToID, nil
 }
 
 func (n *memoizingNodes) NodesResponsePartial() (bool, error) {
-	if err := initOnce(&n.once, n.initialize); err != nil {
+	if err := n.init.do(n.initialize); err != nil {
 		return false, err
 	}
 	return n.partial, nil
@@ -113,7 +116,7 @@ func (n *memoizingNodes) NodesResponsePartial() (bool, error) {
 // memoizingShardsAllocationEnabled provides shards allocation information.
 type memoizingShardsAllocationEnabled struct {
 	enabled  bool
-	once     sync.Once
+	init     initOnce
 	esClient esclient.Client
 	ctx      context.Context
 }
@@ -130,7 +133,7 @@ func (s *memoizingShardsAllocationEnabled) initialize() error {
 
 // ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, error) {
-	if err := initOnce(&s.once, s.initialize); err != nil {
+	if err := s.init.do(s.initialize); err != nil {
 		return false, err
 	}
 	return s.enabled, nil
@@ -160,7 +163,7 @@ func membersAmong(esState ESState, nodes []string) (sets.Set[string], error) {
 // memoizingHealth provides cluster health information.
 type memoizingHealth struct {
 	health   esclient.Health
-	once     sync.Once
+	init     initOnce
 	esClient esclient.Client
 	ctx      context.Context
 }
@@ -179,7 +182,7 @@ func (h *memoizingHealth) initialize() error {
 
 // Health returns the cluster health.
 func (h *memoizingHealth) Health() (esclient.Health, error) {
-	if err := initOnce(&h.once, h.initialize); err != nil {
+	if err := h.init.do(h.initialize); err != nil {
 		return esclient.Health{}, err
 	}
 	return h.health, nil
