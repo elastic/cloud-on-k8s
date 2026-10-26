@@ -251,7 +251,7 @@ func TestKibanaBackgroundTasksRequiresLicense(t *testing.T) {
 
 	name := "test-kb-bg-license"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	// start without background tasks and without a license
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
