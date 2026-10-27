@@ -325,20 +325,11 @@ func clusterIsSettled(ctx context.Context, esClient esclient.Client, esState ESS
 		ulog.FromContext(ctx).Error(err, "Cannot retrieve the nodes, holding the nodes that are not members of the cluster")
 		return false
 	}
-	if current.IsPartial() || !maps.Equal(nodeNamesToIDs(current), nodeNameToID) {
+	if current.IsPartial() || !maps.Equal(current.NameToID(), nodeNameToID) {
 		ulog.FromContext(ctx).V(1).Info("The nodes of the cluster changed since they were retrieved, holding the nodes that are not members of the cluster")
 		return false
 	}
 	return true
-}
-
-// nodeNamesToIDs returns the IDs of the given nodes, by node name.
-func nodeNamesToIDs(nodes esclient.Nodes) map[string]string {
-	nodeNameToID := make(map[string]string, len(nodes.Nodes))
-	for id, node := range nodes.Nodes {
-		nodeNameToID[node.Name] = id
-	}
-	return nodeNameToID
 }
 
 // nodesNotInCluster returns the desired leaving nodes that are not members of the cluster. Without node shutdown,

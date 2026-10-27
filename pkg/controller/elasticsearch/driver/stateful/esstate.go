@@ -80,7 +80,7 @@ func (n *memoizingNodes) initialize() error {
 		return err
 	}
 	n.partial = nodes.IsPartial()
-	n.nodeNameToID = nodeNamesToIDs(nodes)
+	n.nodeNameToID = nodes.NameToID()
 	return nil
 }
 
