@@ -26,7 +26,7 @@ const (
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
 	// NodeNotInClusterInvariant is used for a node that is not a member of the cluster and may join it.
 	NodeNotInClusterInvariant = "Not removing node that is not a member of the cluster until it joins it; if it keeps " +
-		"failing, adjust the NodeSet spec to resolve the failures"
+		"failing, check why its Pod does not start"
 	// NodeNotInClusterPartialInvariant is used instead of NodeNotInClusterInvariant if the nodes response is partial.
 	NodeNotInClusterPartialInvariant = "Not removing node that is not a member of the cluster, or that did not answer the nodes request"
 	// NodeNotInClusterNotSettledInvariant is used for a node that is not a member of the cluster and cannot join it
