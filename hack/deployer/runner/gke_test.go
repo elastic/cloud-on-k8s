@@ -253,8 +253,7 @@ func TestGKEIsCapacityError(t *testing.T) {
 		output string
 		want   bool
 	}{
-		{name: "capacity", output: "ERROR: " + gkeCapacityErrorIndicator, want: true},
-		{name: "quota", output: "ERROR: " + gkeQuotaErrorIndicator, want: true},
+		{name: "quota", output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: insufficient quota to satisfy the request", want: true},
 		{
 			name:   "regional resources unavailable",
 			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Try a different location, or try again later: Google Compute Engine does not have enough resources available to fulfill request: europe-west1.",
@@ -263,6 +262,16 @@ func TestGKEIsCapacityError(t *testing.T) {
 		{
 			name:   "node pool zonal stockout",
 			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Google Compute Engine: Not all instances running in IGM after 35m8.580139707s. Expected 1, running 0, transitioning 1. Current errors: [GCE_STOCKOUT]: Instance 'gke-eck-e2e-gke-testsmok-default-pool-6af4210d-bkj4' creation failed: The zone 'projects/elastic-cloud-dev/zones/us-central1-c' does not have enough resources available to fulfill the request.  '(resource type:compute)'.",
+			want:   true,
+		},
+		{
+			name:   "stockout code with unknown message",
+			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Current errors: [GCE_STOCKOUT]: Instance creation failed: The zone 'us-central1-c' Does Not Have Enough Resources.",
+			want:   true,
+		},
+		{
+			name:   "quota code with unknown message",
+			output: "ERROR: (gcloud.container.clusters.create) Operation finished with error: Current errors: [GCE_QUOTA_EXCEEDED]: Instance creation failed: Quota 'N2D_CPUS' exceeded.",
 			want:   true,
 		},
 		{name: "permission", output: "ERROR: permission denied"},
@@ -371,7 +380,7 @@ func TestGKEDriverCreate(t *testing.T) {
 			fakes: []*fakeClusterContext{
 				{
 					regionName:   "europe-west1",
-					createOutput: gkeCapacityErrorIndicator,
+					createOutput: "Current errors: [GCE_STOCKOUT]",
 					createErr:    errors.New("capacity exhausted"),
 				},
 				{regionName: "europe-west4"},
@@ -619,7 +628,7 @@ func TestGKEDriverCleanupContinuesAfterClusterDeleteFailure(t *testing.T) {
 func TestGKECreateWithFallback(t *testing.T) {
 	someErr := errors.New("exit status 1")
 	someDelErr := errors.New("delete exit status 1")
-	capacityOutput := gkeCapacityErrorIndicator
+	capacityOutput := "Current errors: [GCE_STOCKOUT]"
 	type createResponse struct {
 		output string
 		err    error
