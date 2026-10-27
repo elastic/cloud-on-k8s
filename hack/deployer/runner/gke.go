@@ -36,9 +36,17 @@ overrides:
   gke:
     gCloudProject: %s
 `
-	gkeCapacityErrorIndicator = "does not have enough resources available to fulfill request"
-	gkeQuotaErrorIndicator    = "insufficient quota to satisfy the request"
 )
+
+// gkeCapacityErrorIndicators are matched against the gcloud create output to detect capacity or quota failures.
+// The GKE status condition codes (printed by gcloud as e.g. "[GCE_STOCKOUT]") come first, followed by message
+// text seen in past failures as a fallback for errors that may not carry a code.
+var gkeCapacityErrorIndicators = []string{
+	"GCE_STOCKOUT",
+	"GCE_QUOTA_EXCEEDED",
+	"does not have enough resources available",
+	"insufficient quota to satisfy the request",
+}
 
 var (
 	// GKE uses 18 chars to prefix the pvc created by a cluster
@@ -286,8 +294,12 @@ func createInRegions(plan Plan, clusters []clusterContext) (clusterContext, erro
 }
 
 func isCapacityError(output string) bool {
-	return strings.Contains(output, gkeCapacityErrorIndicator) ||
-		strings.Contains(output, gkeQuotaErrorIndicator)
+	for _, indicator := range gkeCapacityErrorIndicators {
+		if strings.Contains(output, indicator) {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *GKEDriver) finishCreate(cCtx clusterContext) error {
