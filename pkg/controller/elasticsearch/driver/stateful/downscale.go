@@ -248,96 +248,39 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
-// classifyNonMembers returns the kind of each of the given nodes, which are not members of the cluster, by name. A node
-// is nonMemberRecoverable if the next steps may make it join: its Pod is expected, exists and is scheduled, so it may be
-// starting, or be a member that restarts. Otherwise, as nothing repairs a Pod of a removed StatefulSet, recreates a
-// missing Pod, or reliably upgrades an unschedulable one, it is nonMemberUnrecoverable. Its removal waits for the cluster
-// to be settled, whether it ever ran or not, as it may have: it may have been a member, for example recreated after the
-// loss of its Kubernetes node, its claim may be bound to a retained volume, and the ephemeral volumes of a crash looping
-// member survive container restarts. Whatever keeps it from running, a resource quota or a volume bound to a lost
-// Kubernetes node for example, may never be resolved, and a settled cluster does not need its storage. The volume that
-// may hold data, if any, is named for the user, see volumeWithData.
+// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node can join if the next
+// steps may make it join: its Pod is expected, exists and is scheduled, so it may be starting, or be a member that
+// restarts. Otherwise, as nothing repairs a Pod of a removed StatefulSet, recreates a missing Pod, or reliably upgrades an
+// unschedulable one, it cannot join. Its removal waits for the cluster to be settled, whether it ever ran or not, as it
+// may have: it may have been a member, for example recreated after the loss of its Kubernetes node, its claim may be
+// bound to a retained volume, and the ephemeral volumes of a crash looping member survive container restarts. Whatever
+// keeps it from running, a resource quota or a volume bound to a lost Kubernetes node for example, may never be
+// resolved, and a settled cluster does not need its storage.
 func classifyNonMembers(
 	nodes sets.Set[string],
 	expected, actual es_sset.StatefulSetList,
 	pods []corev1.Pod,
 ) map[string]nonMember {
-	podsByName := make(map[string]corev1.Pod, len(pods))
-	for _, pod := range pods {
-		podsByName[pod.Name] = pod
+	// the Pods of the StatefulSets that are no longer expected: nothing can repair them
+	expectedNames := expected.Names()
+	removed := sets.New[string]()
+	for _, statefulSet := range actual {
+		if !expectedNames.Has(statefulSet.Name) {
+			removed.Insert(sset.PodNames(statefulSet)...)
+		}
 	}
+	podsByName := k8s.PodsByName(pods)
 	nonMembers := make(map[string]nonMember, nodes.Len())
 	for node := range nodes {
-		nonMembers[node] = nonMember{kind: nonMemberRecoverable}
-	}
-	for _, statefulSet := range actual {
-		_, stillExpected := expected.GetByName(statefulSet.Name)
-		for ordinal := range sset.GetReplicas(statefulSet) {
-			podName := sset.PodName(statefulSet.Name, ordinal)
-			if !nodes.Has(podName) {
-				continue
-			}
-			pod, exists := podsByName[podName]
-			if stillExpected && exists && !isUnschedulable(pod) {
-				continue
-			}
-			var existing *corev1.Pod
-			if exists {
-				existing = &pod
-			}
-			nonMembers[podName] = nonMember{kind: nonMemberUnrecoverable, volume: volumeWithData(statefulSet, existing, podName)}
-		}
+		pod, exists := podsByName[node]
+		nonMembers[node] = nonMember{cannotJoin: removed.Has(node) || !exists || isUnschedulable(pod)}
 	}
 	return nonMembers
 }
 
-// volumeWithData returns a volume of the given Pod of the given StatefulSet that may hold data, as "claim <name>" or
-// "volume <name>", or an empty string if there is none. Any claim may hold data, whatever its state: it is not looked up.
-// The StatefulSet controller creates the claims before the Pod and reuses the ones that exist, which may be bound to a
-// volume that holds data, for example if they were retained after the Elasticsearch resource was deleted. A claim that
-// the cache shows as missing or pending without a volume may have been created or bound since, and removing the Pod
-// would then lose that data once the claim is garbage collected. A volume that is not a claim may hold data unless
-// volumeHoldsNoData. So only a Pod that has no claim, for example one that has emptyDir volumes only, has none to name.
-// The volumes are taken from the Pod if it exists, as it may run an older template than the StatefulSet's, and from the
-// StatefulSet template otherwise.
-func volumeWithData(statefulSet appsv1.StatefulSet, pod *corev1.Pod, podName string) string {
-	volumes := statefulSet.Spec.Template.Spec.Volumes
-	if pod != nil {
-		volumes = pod.Spec.Volumes
-	}
-	claimNames := sets.New[string]()
-	for _, claim := range statefulSet.Spec.VolumeClaimTemplates {
-		claimNames.Insert(fmt.Sprintf("%s-%s", claim.Name, podName))
-	}
-	for _, volume := range volumes {
-		switch {
-		case volume.PersistentVolumeClaim != nil:
-			claimNames.Insert(volume.PersistentVolumeClaim.ClaimName)
-		case volume.Ephemeral != nil:
-			// the claim of a generic ephemeral volume is named after its Pod and volume
-			claimNames.Insert(fmt.Sprintf("%s-%s", podName, volume.Name))
-		case !volumeHoldsNoData(volume):
-			return "volume " + volume.Name
-		}
-	}
-	if claimNames.Len() == 0 {
-		return ""
-	}
-	// the claims of the claim templates are also volumes of an existing Pod, the set counts each one once: the first one,
-	// by name, is reported
-	return "claim " + sets.List(claimNames)[0]
-}
-
-// volumeHoldsNoData returns true if the given volume, which is not a claim, does not outlive its Pod or is read-only,
-// including inline CSI and image volumes. Any other kind, for example a hostPath, is considered to hold data.
-func volumeHoldsNoData(volume corev1.Volume) bool {
-	return volume.EmptyDir != nil || volume.ConfigMap != nil || volume.Secret != nil ||
-		volume.Projected != nil || volume.DownwardAPI != nil || volume.CSI != nil || volume.Image != nil
-}
-
 // isUnschedulable returns true if the given Pod is pending because it is not scheduled, either because the scheduler
 // cannot place it or because a scheduling gate holds it, as opposed to a Pod that is pending while it starts. A Pod in
-// any other phase, Failed or Succeeded included, is not: it is held as nonMemberRecoverable, as on main, as the
+// any other phase, Failed or Succeeded included, is not: it is held until it joins, as on main, as the
 // StatefulSet controller is expected to replace it.
 func isUnschedulable(pod corev1.Pod) bool {
 	if pod.Status.Phase != corev1.PodPending {
@@ -594,13 +537,9 @@ func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es es
 
 // reportNonMemberRemoval logs and records an event for the removal of the given non-member node without a shutdown. The
 // event is a warning for a master: if it used to be a member, its vote may remain, as an exclusion by name is never
-// resolved to the ID of an absent node, until Elasticsearch has at least 3 live masters to prefer over it. The volume
-// that may hold data, if any, is named, as it may be deleted with the Pod.
+// resolved to the ID of an absent node, until Elasticsearch has at least 3 live masters to prefer over it.
 func reportNonMemberRemoval(ctx downscaleContext, downscale ssetDownscale, node string, nonMember nonMember) {
-	reason := nonMember.kind.removedReason
-	if nonMember.volume != "" {
-		reason += " (" + nonMember.volume + ")"
-	}
+	reason := nonMember.removedReason()
 	eventType := corev1.EventTypeNormal
 	if label.IsMasterNodeSet(downscale.statefulSet) {
 		reason += ". If it was a master that left the cluster, it may still be in the voting configuration until at " +

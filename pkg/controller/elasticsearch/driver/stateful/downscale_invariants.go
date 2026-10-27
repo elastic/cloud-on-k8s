@@ -24,13 +24,13 @@ const (
 	OneMasterAtATimeInvariant        = "A master node is already in the process of being removed"
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
-	// NodeNotInClusterInvariant is used for a nonMemberRecoverable node.
+	// NodeNotInClusterInvariant is used for a node that is not a member of the cluster and may join it.
 	NodeNotInClusterInvariant = "Not removing node that is not a member of the cluster until it joins it; if it keeps " +
 		"failing, adjust the NodeSet spec to resolve the failures"
 	// NodeNotInClusterPartialInvariant is used instead of NodeNotInClusterInvariant if the nodes response is partial.
 	NodeNotInClusterPartialInvariant = "Not removing node that is not a member of the cluster, or that did not answer the nodes request"
-	// NodeNotInClusterNotSettledInvariant is used for a nonMemberUnrecoverable node while clusterIsSettled is false,
-	// followed by its volume, if it has one that may hold data.
+	// NodeNotInClusterNotSettledInvariant is used for a node that is not a member of the cluster and cannot join it
+	// while clusterIsSettled is false.
 	NodeNotInClusterNotSettledInvariant = "Not removing node that is not a member of the cluster and cannot join it until the cluster is confirmed green with no shard activity"
 )
 
@@ -120,7 +120,7 @@ type downscaleState struct {
 	readyPods sets.Set[string]
 	// nonMembers are the leaving Pods that are not members of the cluster, by name, see classifyNonMembers.
 	nonMembers map[string]nonMember
-	// nonMemberRemovalsAllowed returns true if the nonMemberUnrecoverable Pods can be removed, nil meaning they cannot.
+	// nonMemberRemovalsAllowed returns true if the Pods that cannot join the cluster can be removed, nil meaning they cannot.
 	// It may request Elasticsearch, so it is only called when such a Pod is the next to be removed.
 	nonMemberRemovalsAllowed func() bool
 	// partialNodes is true if the nodes response is partial: a Pod that is not a member may be a member that did not
@@ -128,46 +128,31 @@ type downscaleState struct {
 	partialNodes bool
 }
 
-// nonMemberKind tells what the downscale can do with a leaving node that is not a member of the cluster. The kinds are
-// the variables below: each one holds all of its behavior, so a new kind cannot miss a case.
-type nonMemberKind struct {
-	// removable returns true if a node of this kind can be removed without a shutdown in the given state, nil meaning it
-	// cannot.
-	removable func(s *downscaleState) bool
-	// heldReason is why the removal of a node of this kind is held, unless the nodes response is partial.
-	heldReason string
-	// removedReason is why a removable node of this kind is removed without a shutdown.
-	removedReason string
-}
-
-var (
-	// nonMemberRecoverable may still join the cluster: it is held until it does.
-	nonMemberRecoverable = &nonMemberKind{
-		heldReason: NodeNotInClusterInvariant,
-	}
-	// nonMemberUnrecoverable cannot join, and may have run with storage that holds data: a volume, a claim whatever its
-	// state, or ephemeral volumes that survive container restarts. It is removed without a shutdown once the nodes response
-	// is complete and the cluster is settled, as then every shard has all of its copies on the members, and its storage
-	// can only hold stale ones, see nonMemberRemovalsAllowed. Whether the Pod ever ran is not used: only a Pod with no
-	// storage that outlives it could skip the wait, which is rare enough not to be worth a kind of its own.
-	nonMemberUnrecoverable = &nonMemberKind{
-		removable:     removableOnceSettled,
-		heldReason:    NodeNotInClusterNotSettledInvariant,
-		removedReason: "it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks",
-	}
-)
-
-// removableOnceSettled returns true if the nodes response is complete and the cluster is settled, see
-// nonMemberRemovalsAllowed.
-func removableOnceSettled(s *downscaleState) bool {
-	return s.nonMemberRemovalsAllowed != nil && s.nonMemberRemovalsAllowed()
-}
+// nonMemberRemovedReason is why a node that is not a member of the cluster and cannot join it is removed without a
+// shutdown.
+const nonMemberRemovedReason = "it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks"
 
 // nonMember is a leaving node that is not a member of the cluster.
 type nonMember struct {
-	kind *nonMemberKind
-	// volume is the volume of the node that may hold data, if any.
-	volume string
+	// cannotJoin is true if the next steps cannot make the node join, see classifyNonMembers: it is then removed without
+	// a shutdown once the nodes response is complete and the cluster is settled, see nonMemberRemovalsAllowed. Otherwise
+	// it is held until it joins.
+	cannotJoin bool
+}
+
+// heldReason returns why the removal of the given Pod, which is this node, is held, unless the nodes response is
+// partial.
+func (n nonMember) heldReason(podName string) string {
+	reason := NodeNotInClusterInvariant
+	if n.cannotJoin {
+		reason = NodeNotInClusterNotSettledInvariant
+	}
+	return fmt.Sprintf("%s: %s", reason, podName)
+}
+
+// removedReason returns why this node, which cannot join the cluster, is removed without a shutdown.
+func (n nonMember) removedReason() string {
+	return nonMemberRemovedReason
 }
 
 // isNotMember returns true if the given Pod is not a member of the cluster.
@@ -180,7 +165,7 @@ func (s *downscaleState) isNotMember(podName string) bool {
 // a shutdown.
 func (s *downscaleState) isRemovableNonMember(podName string) bool {
 	nonMember, ok := s.nonMembers[podName]
-	return ok && nonMember.kind.removable != nil && nonMember.kind.removable(s)
+	return ok && nonMember.cannotJoin && s.nonMemberRemovalsAllowed != nil && s.nonMemberRemovalsAllowed()
 }
 
 // removableNonMembersAmong returns the given Pods that are removable non-members, by name, or nil if there are none.
@@ -203,13 +188,7 @@ func (s *downscaleState) nonMemberHeldReason(podName string) string {
 	if s.partialNodes {
 		return fmt.Sprintf("%s: %s", NodeNotInClusterPartialInvariant, podName)
 	}
-	nonMember := s.nonMembers[podName]
-	var reason strings.Builder
-	fmt.Fprintf(&reason, "%s: %s", nonMember.kind.heldReason, podName)
-	if nonMember.volume != "" {
-		fmt.Fprintf(&reason, " (%s)", nonMember.volume)
-	}
-	return reason.String()
+	return s.nonMembers[podName].heldReason(podName)
 }
 
 // newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type

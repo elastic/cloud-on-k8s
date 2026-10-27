@@ -439,9 +439,6 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		master, data    bool
 		actualReplicas  int32
 		desiredReplicas int32
-		// noClaims is true if its Pods only have ephemeral volumes, so that no volume is named when their removal is held
-		// or reported: the other NodeSets have a claim, which may hold data whatever the cache says
-		noClaims bool
 	}
 	// The "old" NodeSet is being removed while the Pod of the "unhealthy" NodeSet cannot become ready. Elasticsearch
 	// closes the readiness port of old-0 because of its remove-type shutdown, so only master-0 and new-0 are ready:
@@ -605,7 +602,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notJoinedPods: sets.New("old-0"),
 			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
 			wantReplicas:  map[string]int32{"old": 1},
-			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0 (claim elasticsearch-data-old-0)",
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
 		},
 		{
 			name: "a node of a removed NodeSet that is not a member of the cluster is held while shards are relocating",
@@ -617,7 +614,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notJoinedPods: sets.New("old-0"),
 			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 1},
 			wantReplicas:  map[string]int32{"old": 1},
-			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0 (claim elasticsearch-data-old-0)",
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
 		},
 		{
 			// the health cannot be retrieved: the cluster is not known to be settled, so old-0 is held, and the rest of the
@@ -637,7 +634,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			},
 			wantReplicas:         map[string]int32{"old": 1, "data": 2},
 			wantShutdownStatuses: map[string]string{"data-2": "COMPLETE"},
-			wantReason:           "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0 (claim elasticsearch-data-old-0)",
+			wantReason:           "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
 		},
 		{
 			// the node may be a member that did not answer: it must not be removed, whatever the health of the cluster
@@ -715,20 +712,6 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
 		},
 		{
-			// a Pod that only has ephemeral volumes is not special: a previous Pod of the same name may have been a member, so
-			// its removal waits for the cluster to be green too, and the reason names no volume
-			name: "a missing node of a downscaled NodeSet that has no claim is held when the cluster is not green",
-			nodeSets: []nodeSet{
-				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
-				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2, noClaims: true},
-			},
-			notJoinedPods: sets.New("data-2"),
-			missingPods:   sets.New("data-2"),
-			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
-			wantReplicas:  map[string]int32{"data": 3},
-			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
-		},
-		{
 			// the node may be a member that did not answer, whether its Pod exists or not
 			name: "a missing node of a downscaled NodeSet is held if the nodes response is partial",
 			nodeSets: []nodeSet{
@@ -743,9 +726,8 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterPartialInvariant + ": data-2",
 		},
 		{
-			// the claim of the Pod is not looked up: the cache may show it as missing, or pending without a volume, although it
-			// was created or bound to a volume that holds data since, which would be lost with the claim once the Pod is gone
-			name: "a pending node of a downscaled NodeSet that has a claim is held when the cluster is not green",
+			// a previous Pod of the same name may have been a member, and its storage may hold data
+			name: "a pending node of a downscaled NodeSet is held when the cluster is not green",
 			nodeSets: []nodeSet{
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
@@ -755,12 +737,12 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			pendingPods:   sets.New("data-2"),
 			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
 			wantReplicas:  map[string]int32{"data": 3},
-			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2 (claim elasticsearch-data-data-2)",
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
 		},
 		{
-			// the creation of the Pod is rejected, for example by a resource quota, after its claim was created: the claim may
-			// have been bound to a volume that holds data
-			name: "a missing node of a downscaled NodeSet that has a claim is held when the cluster is not green",
+			// the creation of the Pod is rejected, for example by a resource quota: a previous Pod of the same name may have been
+			// a member, and its storage may hold data
+			name: "a missing node of a downscaled NodeSet is held when the cluster is not green",
 			nodeSets: []nodeSet{
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
@@ -769,7 +751,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			missingPods:   sets.New("data-2"),
 			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
 			wantReplicas:  map[string]int32{"data": 3},
-			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2 (claim elasticsearch-data-data-2)",
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
 		},
 		{
 			// as in the issue this covers: the Pod of a removed NodeSet was never scheduled
@@ -783,7 +765,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			pendingPods:       sets.New("old-0"),
 			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
 			wantReplicas:      map[string]int32{"old": 0},
-			wantRemovedEvents: []string{"Removed node old-0 without a shutdown: it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks (claim elasticsearch-data-old-0)"},
+			wantRemovedEvents: []string{"Removed node old-0 without a shutdown: it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks"},
 		},
 		{
 			// a node joined between the nodes request and the health one, it may be the one that is not a member, whose
@@ -798,21 +780,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			nodesChanged:  true,
 			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
 			wantReplicas:  map[string]int32{"old": 1},
-			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0 (claim elasticsearch-data-old-0)",
-		},
-		{
-			// no volume is named when the Pod has no claim, nor volume that outlives it
-			name: "a pending node of a downscaled NodeSet that has no claim is removed when the cluster is green",
-			nodeSets: []nodeSet{
-				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
-				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2, noClaims: true},
-			},
-			notReadyPods:      sets.New("data-2"),
-			notJoinedPods:     sets.New("data-2"),
-			pendingPods:       sets.New("data-2"),
-			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
-			wantReplicas:      map[string]int32{"data": 2},
-			wantRemovedEvents: []string{"Removed node data-2 without a shutdown: it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks"},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
 		},
 		{
 			// data-2 cannot be scheduled and data-1 does not exist: neither can join the cluster, both are removed
@@ -1584,10 +1552,6 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				testSset := sset.TestSset{Namespace: es.Namespace, Name: ns.name, ClusterName: es.Name, Master: ns.master, Data: ns.data}
 				testSset.Replicas = ns.actualReplicas
 				actualStatefulSet := testSset.Build()
-				if !ns.noClaims {
-					// the claims are not in the cache: a claim that is missing from it may have been created or bound since
-					actualStatefulSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{Name: "elasticsearch-data"}}
-				}
 				actualStatefulSets = append(actualStatefulSets, actualStatefulSet)
 				if ns.desiredReplicas > 0 {
 					es.Spec.NodeSets = append(es.Spec.NodeSets, esv1.NodeSet{Name: ns.name, Count: ns.desiredReplicas})
@@ -2214,7 +2178,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas:     3,
 					targetReplicas:      2,
 					finalReplicas:       2,
-					removableNonMembers: map[string]nonMember{"default-2": {kind: nonMemberUnrecoverable}},
+					removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
 				},
 			},
 			want: ssetDownscale{
@@ -2222,7 +2186,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				initialReplicas:     3,
 				targetReplicas:      2,
 				finalReplicas:       2,
-				removableNonMembers: map[string]nonMember{"default-2": {kind: nonMemberUnrecoverable}},
+				removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
 			},
 		},
 		{
@@ -2665,97 +2629,6 @@ func Test_clusterIsSettled(t *testing.T) {
 			}
 			esClient.GetNodesErr = tt.nodesErr
 			assert.Equal(t, tt.want, clusterIsSettled(context.Background(), esClient, esState))
-		})
-	}
-}
-
-func Test_volumeWithData(t *testing.T) {
-	withClaimTemplates := appsv1.StatefulSet{
-		Namespace: "ns", Name: "sset",
-		Spec: appsv1.StatefulSetSpec{
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{Name: "data"},
-				{Name: "logs"},
-			},
-		},
-	}
-	withVolumes := func(volumes ...corev1.Volume) appsv1.StatefulSet {
-		ss := appsv1.StatefulSet{Namespace: "ns", Name: "sset"}
-		ss.Spec.Template.Spec.Volumes = volumes
-		return ss
-	}
-	tests := []struct {
-		name        string
-		statefulSet appsv1.StatefulSet
-		pod         *corev1.Pod
-		want        string
-	}{
-		{
-			name:        "claim templates: the claims are not looked up, whatever their state, as the cache may be behind",
-			statefulSet: withClaimTemplates,
-			want:        "claim data-sset-0",
-		},
-		{
-			name:        "claim templates of a Pod that exists",
-			statefulSet: withClaimTemplates,
-			pod:         &corev1.Pod{},
-			want:        "claim data-sset-0",
-		},
-		{
-			name:        "no claim template and no volume",
-			statefulSet: withVolumes(),
-		},
-		{
-			name: "claim referenced by a volume of the Pod template",
-			statefulSet: withVolumes(corev1.Volume{Name: "data",
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "existing"}}),
-			want: "claim existing",
-		},
-		{
-			name:        "claim of a generic ephemeral volume",
-			statefulSet: withVolumes(corev1.Volume{Name: "scratch", Ephemeral: &corev1.EphemeralVolumeSource{}}),
-			want:        "claim sset-0-scratch",
-		},
-		{
-			name: "the Pod still runs a generic ephemeral volume that the template no longer has",
-			statefulSet: withVolumes(corev1.Volume{Name: "tmp",
-				EmptyDir: &corev1.EmptyDirVolumeSource{}}),
-			pod: &corev1.Pod{Spec: corev1.PodSpec{Volumes: []corev1.Volume{{Name: "scratch",
-				Ephemeral: &corev1.EphemeralVolumeSource{}}}}},
-			want: "claim sset-0-scratch",
-		},
-		{
-			name: "the Pod no longer runs a claim that the template has",
-			statefulSet: withVolumes(corev1.Volume{Name: "data",
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "existing"}}),
-			pod: &corev1.Pod{Spec: corev1.PodSpec{Volumes: []corev1.Volume{{Name: "tmp",
-				EmptyDir: &corev1.EmptyDirVolumeSource{}}}}},
-		},
-		{
-			name: "volumes that hold no data",
-			statefulSet: withVolumes(
-				corev1.Volume{Name: "a", EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				corev1.Volume{Name: "b", ConfigMap: &corev1.ConfigMapVolumeSource{}},
-				corev1.Volume{Name: "c", Secret: &corev1.SecretVolumeSource{}},
-				corev1.Volume{Name: "d", CSI: &corev1.CSIVolumeSource{Driver: "secrets-store.csi.k8s.io"}},
-				corev1.Volume{Name: "e", Image: &corev1.ImageVolumeSource{Reference: "plugins:1"}},
-			),
-		},
-		{
-			name: "hostPath volume",
-			statefulSet: withVolumes(corev1.Volume{Name: "host",
-				HostPath: &corev1.HostPathVolumeSource{Path: "/data"}}),
-			want: "volume host",
-		},
-		{
-			name:        "volume of an unknown kind",
-			statefulSet: withVolumes(corev1.Volume{Name: "unknown"}),
-			want:        "volume unknown",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, volumeWithData(tt.statefulSet, tt.pod, "sset-0"))
 		})
 	}
 }

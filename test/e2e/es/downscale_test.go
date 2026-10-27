@@ -730,9 +730,9 @@ func TestDownscaleRollsStayingNodesWhileLeavingNodeIsHeld(t *testing.T) {
 
 // TestDownscaleRemovesNodeSetWhosePodNeverJoined removes a master NodeSet while its Pod never joined the cluster, because it
 // cannot be scheduled. The NodeSet is no longer expected, so the rolling upgrade has no template to repair the Pod with,
-// and no shutdown can be requested for a node that is not a member of the cluster. The Pod has a claim, which may hold
-// data whatever its state, so its removal must wait for the cluster to be green: the Pod is held while the cluster is
-// yellow, then removed once it is green. The voting exclusion that the downscale adds by name must be cleared, and the
+// and no shutdown can be requested for a node that is not a member of the cluster. Its storage may hold data, whether it
+// ever ran or not, so its removal must wait for the cluster to be green: the Pod is held while the cluster is yellow,
+// then removed once it is green. The voting exclusion that the downscale adds by name must be cleared, and the
 // claim garbage collected.
 func TestDownscaleRemovesNodeSetWhosePodNeverJoined(t *testing.T) {
 	// the shutdown API is not used before this version, a node that holds no shard is removed whether it is a member or not
@@ -744,7 +744,7 @@ func TestDownscaleRemovesNodeSetWhosePodNeverJoined(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 
 	// The data volumes are the default claims, whatever the binding mode of the storage class: the claim of the pending
-	// Pod is pending with WaitForFirstConsumer, and bound with Immediate, and the downscale does not tell them apart.
+	// Pod is pending with WaitForFirstConsumer, and bound with Immediate, and the downscale does not look at claims.
 	initial := elasticsearch.NewBuilder("test-downscale-rm-unjoined").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
