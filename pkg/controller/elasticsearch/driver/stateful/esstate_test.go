@@ -44,6 +44,7 @@ type fakeESClient struct { //nolint:maligned
 	GetNodesCallCount int
 
 	clusterRoutingAllocation             esclient.ClusterRoutingAllocation
+	GetClusterRoutingAllocationErr       error
 	GetClusterRoutingAllocationCallCount int
 
 	Shutdowns        map[string]esclient.NodeShutdown
@@ -59,7 +60,9 @@ type fakeESClient struct { //nolint:maligned
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
-	version                     version.Version
+	// GetClusterHealthErr is returned by the cluster health requests
+	GetClusterHealthErr error
+	version             version.Version
 
 	shards esclient.Shards
 }
@@ -110,17 +113,17 @@ func (f *fakeESClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
 
 func (f *fakeESClient) GetClusterRoutingAllocation(_ context.Context) (esclient.ClusterRoutingAllocation, error) {
 	f.GetClusterRoutingAllocationCallCount++
-	return f.clusterRoutingAllocation, nil
+	return f.clusterRoutingAllocation, f.GetClusterRoutingAllocationErr
 }
 
 func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
-	return f.health, nil
+	return f.health, f.GetClusterHealthErr
 }
 
 func (f *fakeESClient) GetClusterHealthWaitForAllEvents(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
-	return f.health, nil
+	return f.health, f.GetClusterHealthErr
 }
 
 // shutdownCall is one PutShutdown call recorded by the fake.
@@ -257,6 +260,51 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
 	require.NotEqual(t, esv1.ElasticsearchGreenHealth, health.Status)
+}
+
+func Test_MemoizingESState_Error(t *testing.T) {
+	failed := errors.New("request failed")
+	tests := []struct {
+		name      string
+		esClient  *fakeESClient
+		calls     []func(ESState) error
+		callCount func(*fakeESClient) int
+	}{
+		{
+			name:     "nodes: no node must look like it is not a member of the cluster",
+			esClient: &fakeESClient{GetNodesErr: failed},
+			calls: []func(ESState) error{
+				func(s ESState) error { _, err := s.NodeNameToID(); return err },
+				func(s ESState) error { _, err := s.NodesInCluster([]string{"a"}); return err },
+				func(s ESState) error { _, err := s.NodesResponsePartial(); return err },
+			},
+			callCount: func(c *fakeESClient) int { return c.GetNodesCallCount },
+		},
+		{
+			name:      "health: the health must not look empty",
+			esClient:  &fakeESClient{GetClusterHealthErr: failed},
+			calls:     []func(ESState) error{func(s ESState) error { _, err := s.Health(); return err }},
+			callCount: func(c *fakeESClient) int { return c.GetClusterHealthCalledCount },
+		},
+		{
+			name:      "shards allocation: allocations must not look disabled",
+			esClient:  &fakeESClient{GetClusterRoutingAllocationErr: failed},
+			calls:     []func(ESState) error{func(s ESState) error { _, err := s.ShardAllocationsEnabled(); return err }},
+			callCount: func(c *fakeESClient) int { return c.GetClusterRoutingAllocationCallCount },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewMemoizingESState(context.Background(), tt.esClient)
+			// the error is returned to every caller, not only the first one, and ES is not requested again
+			for range 2 {
+				for _, call := range tt.calls {
+					require.ErrorIs(t, call(s), failed)
+				}
+			}
+			require.Equal(t, 1, tt.callCount(tt.esClient))
+		})
+	}
 }
 
 func TestNewMemoizingESState(t *testing.T) {

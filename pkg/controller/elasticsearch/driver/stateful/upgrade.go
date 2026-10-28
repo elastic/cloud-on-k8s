@@ -268,9 +268,10 @@ func healthyPods(
 // podsToRollingUpgrade returns the Pods that podsToUpgrade reports, minus the leaving ones that are members of the
 // cluster, see leavingNodes.members. Restarting one that is draining disrupts the remove-type shutdown that is migrating
 // its shards away (its record may even be replaced by a restart-type one), and the others are left to the downscale. A
-// leaving Pod that is not a member has no shard to migrate and may need the upgrade to recover: a Pod that cannot be
-// scheduled or crashes with an outdated spec must be recreated with the repaired one to join the cluster, for the
-// downscale to remove it.
+// leaving Pod that is not a member has no shard to migrate and may need the upgrade to recover: a scheduled Pod that
+// crashes with an outdated spec must be recreated with the repaired one to join the cluster, for the downscale to remove
+// it. One that cannot be scheduled, or whose NodeSet is no longer expected, may never be repaired: the downscale removes
+// it without a shutdown once the cluster is green, see classifyNonMembers.
 func podsToRollingUpgrade(
 	client k8s.Client,
 	actualStatefulSets es_sset.StatefulSetList,
