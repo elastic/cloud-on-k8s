@@ -8,9 +8,7 @@ import (
 	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	ssetcommon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -31,22 +29,10 @@ func canClearVotingConfigExclusions(ctx context.Context, c k8s.Client, actualSta
 	// They cannot be cleared when:
 	// - expected nodes to remove are not removed yet
 	// - expectation like Pod being restarted should be check prior to calling this function
-	// Pods still to be created are ignored, as they may never be, for example if a resource quota rejects them: waiting
-	// would keep the exclusions until Elasticsearch rejects new ones at its limit. A leaving master whose Pod is
-	// being recreated is excluded again by the downscale before it is removed.
-	// Pods still to be deleted are not ignored: they may be excluded nodes that are not removed yet.
-	for _, statefulSet := range actualStatefulSets {
-		_, pendingDeletions, err := ssetcommon.PendingPodsForStatefulSet(c, statefulSet, label.StatefulSetNameLabelName)
-		if err != nil {
-			return false, err
-		}
-		if len(pendingDeletions) > 0 {
-			ulog.FromContext(ctx).V(1).Info("Some pods still need to be deleted",
-				"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name, "pending_deletions", pendingDeletions)
-			return false, nil
-		}
-	}
-	return true, nil
+	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
+	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
+	reconciled, _, err := actualStatefulSets.PodReconciliationDone(ctx, c)
+	return reconciled, err
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.

@@ -127,8 +127,7 @@ func HandleDownscale(
 	}
 
 	// compute the list of StatefulSet downscales and deletions to perform
-	downscales, deletions, heldReasons := calculateDownscales(downscaleCtx.parentCtx, *downscaleState,
-		expectedReplicasOfStatefulSets(expectedStatefulSets), actualStatefulSets, downscaleBudgetFilter)
+	downscales, deletions, heldReasons := calculateDownscales(downscaleCtx.parentCtx, *downscaleState, expectedStatefulSets, actualStatefulSets, downscaleBudgetFilter)
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
@@ -248,14 +247,15 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
-// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node can join if the next
-// steps may make it join: its Pod is expected, exists and is scheduled, so it may be starting, or be a member that
-// restarts. Otherwise, as nothing repairs a Pod of a removed StatefulSet, recreates a missing Pod, or reliably upgrades an
-// unschedulable one, it cannot join. Its removal waits for the cluster to be settled, whether it ever ran or not, as it
-// may have: it may have been a member, for example recreated after the loss of its Kubernetes node, its claim may be
-// bound to a retained volume, and the ephemeral volumes of a crash looping member survive container restarts. Whatever
-// keeps it from running, a resource quota or a volume bound to a lost Kubernetes node for example, may never be
-// resolved, and a settled cluster does not need its storage.
+// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node whose Pod exists
+// cannot join if its StatefulSet is no longer expected, as nothing repairs its Pod, or if its Pod is unschedulable, as
+// nothing reliably upgrades it. Its removal waits for the cluster to be settled, whether it ever ran or not, as it may
+// have: it may have been a member, for example recreated after the loss of its Kubernetes node, its claim may be bound
+// to a retained volume, and the ephemeral volumes of a crash looping member survive container restarts. Whatever keeps
+// it from running, a volume bound to a lost Kubernetes node for example, may never be resolved, and a settled cluster
+// does not need its storage. Any other node may join: its Pod may be starting, or be a member that restarts. A Pod that
+// is missing from the cache may join too: it may have been created since, and expectationsSatisfied, which precedes the
+// downscale, waits for its creation anyway.
 func classifyNonMembers(
 	nodes sets.Set[string],
 	expected, actual es_sset.StatefulSetList,
@@ -273,15 +273,15 @@ func classifyNonMembers(
 	nonMembers := make(map[string]nonMember, nodes.Len())
 	for node := range nodes {
 		pod, exists := podsByName[node]
-		nonMembers[node] = nonMember{cannotJoin: removed.Has(node) || !exists || isUnschedulable(pod)}
+		nonMembers[node] = nonMember{cannotJoin: exists && (removed.Has(node) || isUnschedulable(pod))}
 	}
 	return nonMembers
 }
 
 // isUnschedulable returns true if the given Pod is pending because it is not scheduled, either because the scheduler
 // cannot place it or because a scheduling gate holds it, as opposed to a Pod that is pending while it starts. A Pod in
-// any other phase, Failed or Succeeded included, is not: it is held until it joins, as on main, as the
-// StatefulSet controller is expected to replace it.
+// any other phase, Failed or Succeeded included, is not: it is held until it joins, as the StatefulSet controller is
+// expected to replace it.
 func isUnschedulable(pod corev1.Pod) bool {
 	if pod.Status.Phase != corev1.PodPending {
 		return false
@@ -398,27 +398,26 @@ func deleteStatefulSets(ctx context.Context, toDelete es_sset.StatefulSetList, k
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of StatefulSets
 // that can be downscaled (replica decrease) or deleted (no replicas), and why the held downscales are held, by
-// StatefulSet name. It only needs the expected replicas, so desiredLeavingNodeNamesFromSpec can use it with the NodeSets.
-func calculateDownscales(
-	ctx context.Context,
-	state downscaleState,
-	expected expectedReplicas,
-	actualStatefulSets es_sset.StatefulSetList,
-	downscaleFilter downscaleFilter,
-) (downscales []ssetDownscale, deletions es_sset.StatefulSetList, heldReasons map[string]string) {
+// StatefulSet name.
+func calculateDownscales(ctx context.Context, state downscaleState, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList, downscaleFilter downscaleFilter) (downscales []ssetDownscale, deletions es_sset.StatefulSetList, heldReasons map[string]string) {
+	expectedStatefulSetsNames := expectedStatefulSets.Names()
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
-		expectedCount, shouldExist := expected[actualSset.Name]
+		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
+		expectedReplicas := int32(0)
+		if shouldExist {
+			expectedReplicas = sset.GetReplicas(expectedSset)
+		}
 
 		switch {
-		case !shouldExist && actualReplicas == 0 && expectedCount == 0:
+		case !expectedStatefulSetsNames.Has(actualSset.Name) && actualReplicas == 0 && expectedReplicas == 0:
 			// the StatefulSet should not exist, and currently has no replicas
 			// it is safe to delete
 			deletions = append(deletions, actualSset)
 
-		case expectedCount < actualReplicas:
+		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
-			requestedDeletes := actualReplicas - expectedCount
+			requestedDeletes := actualReplicas - expectedReplicas
 			allowedDeletes, heldReason := downscaleFilter(ctx, &state, actualSset, requestedDeletes)
 			if heldReason != "" {
 				if heldReasons == nil {
@@ -433,7 +432,7 @@ func calculateDownscales(
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
 				targetReplicas:  actualReplicas - allowedDeletes,
-				finalReplicas:   expectedCount,
+				finalReplicas:   expectedReplicas,
 			}
 			// the leaving non-members that have no shutdown to wait for
 			downscale.removableNonMembers = state.removableNonMembersAmong(downscale.leavingNodeNames())

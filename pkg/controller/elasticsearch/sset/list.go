@@ -150,6 +150,21 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	return allPods, nil
 }
 
+// PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
+// It may return false if there are pods in the process of being:
+// - created (but not there in our resources cache)
+// - removed (but still there in our resources cache)
+// Status of the pods (running, error, etc.) is ignored.
+func (l StatefulSetList) PodReconciliationDone(ctx context.Context, c k8s.Client) (bool, string, error) {
+	for _, statefulset := range l {
+		ok, reason, err := sset.PodReconciliationDone(ctx, c, statefulset, label.StatefulSetNameLabelName)
+		if !ok {
+			return false, reason, err
+		}
+	}
+	return true, "", nil
+}
+
 // PendingReconciliation returns the list of StatefulSets for which status.observedGeneration does not match the metadata.generation.
 // The status is automatically updated by the StatefulSet controller: if the observedGeneration does not match
 // the metadata generation, it means the resource has not been processed by the StatefulSet controller yet.

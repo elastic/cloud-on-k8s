@@ -430,8 +430,8 @@ func TestDownscaleRecreatesLeavingPodThatNeverJoined(t *testing.T) {
 		// repair the spec
 		WithSteps(initial.UpgradeTestSteps(k)).
 		WithStep(test.Step{
-			// Once the rolling upgrade deletes it, the Pod may be removed before it is recreated: its claim may hold data, but
-			// the cluster is green, so it holds no shard copy that the cluster lacks.
+			// The Pod may already be gone: the rolling upgrade deletes it to recreate it, and the downscale removes the
+			// recreated Pod once it joins the cluster. A missing Pod is not removed, as the cache may not see it yet.
 			Name: "The Pod that never joined the cluster should be recreated or removed",
 			Test: test.Eventually(func() error {
 				pod, err := k.GetPod(esNamespace, crashLoopingNode)

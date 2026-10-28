@@ -60,9 +60,8 @@ func (d *Driver) reconcileNodeSpecs(
 		return results.WithReconciliationState(shared.DefaultRequeue.WithReason("Waiting for autoscaling controller to sync node sets"))
 	}
 
-	// check if actual StatefulSets and corresponding pods match our expectations before applying any change, except for
-	// the Pods that could not be created and that the downscale removes
-	ok, reason, err := d.nodeSpecsExpectationsSatisfied(ctx)
+	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
+	ok, reason, err := d.expectationsSatisfied(ctx)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -463,7 +463,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		gatedPods sets.Set[string]
 		// startingPods are the Pods that are pending while they start, for example running their init containers
 		startingPods sets.Set[string]
-		// missingPods are the Pods of the StatefulSets that do not exist, for example because their creation is rejected
+		// missingPods are the Pods of the StatefulSets that the cache does not see, for example because they were created since
 		missingPods sets.Set[string]
 		// nodesChanged is true if the health counts one more node than the nodes response, as a node joined in between
 		nodesChanged bool
@@ -699,17 +699,30 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantRemovedEvents:     []string{"Removed node data-2 without a shutdown"},
 		},
 		{
-			// the creation of the Pod is rejected, for example by a resource quota: nothing can make it join the cluster
-			name: "a missing node of a downscaled NodeSet is removed when the cluster is green",
+			// the cache may not see a Pod that was created since, for example after an eviction: it is held
+			name: "a missing node of a downscaled NodeSet is held when the cluster is green",
 			nodeSets: []nodeSet{
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
 			},
-			notJoinedPods:     sets.New("data-2"),
-			missingPods:       sets.New("data-2"),
-			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
-			wantReplicas:      map[string]int32{"data": 2},
-			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
+			notJoinedPods: sets.New("data-2"),
+			missingPods:   sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// whether its NodeSet is expected or not, a Pod that the cache does not see may have been created since
+			name: "a missing node of a removed NodeSet is held when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notJoinedPods: sets.New("old-0"),
+			missingPods:   sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterInvariant + ": old-0",
 		},
 		{
 			// the node may be a member that did not answer, whether its Pod exists or not
@@ -735,20 +748,6 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notReadyPods:  sets.New("data-2"),
 			notJoinedPods: sets.New("data-2"),
 			pendingPods:   sets.New("data-2"),
-			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
-			wantReplicas:  map[string]int32{"data": 3},
-			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
-		},
-		{
-			// the creation of the Pod is rejected, for example by a resource quota: a previous Pod of the same name may have been
-			// a member, and its storage may hold data
-			name: "a missing node of a downscaled NodeSet is held when the cluster is not green",
-			nodeSets: []nodeSet{
-				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
-				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
-			},
-			notJoinedPods: sets.New("data-2"),
-			missingPods:   sets.New("data-2"),
 			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
@@ -783,8 +782,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
 		},
 		{
-			// data-2 cannot be scheduled and data-1 does not exist: neither can join the cluster, both are removed
-			name: "a pending node of a downscaled NodeSet is removed when the cluster is green, with a missing node after it",
+			// data-2 cannot be scheduled, so it is removed, but the cache does not see data-1, which may have been created since:
+			// it is held
+			name: "a pending node of a downscaled NodeSet is removed when the cluster is green, and a missing node after it is held",
 			nodeSets: []nodeSet{
 				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
 				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
@@ -794,8 +794,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			pendingPods:       sets.New("data-2"),
 			missingPods:       sets.New("data-1"),
 			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
-			wantReplicas:      map[string]int32{"data": 1},
-			wantRemovedEvents: []string{"Removed node data-2 without a shutdown", "Removed node data-1 without a shutdown"},
+			wantReplicas:      map[string]int32{"data": 2},
+			wantReason:        "Downscale in progress, delayed nodes: [data-1], data: " + NodeNotInClusterInvariant + ": data-1",
+			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
 		},
 		{
 			// the Pod is scheduled and pending while it starts, for example running its init containers: it may join
@@ -2130,7 +2131,7 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDownscales, gotDeletions, gotHeldReasons := calculateDownscales(context.Background(), downscaleState{}, expectedReplicasOfStatefulSets(tt.expectedStatefulSets), tt.actualStatefulSets, downscaleBudgetFilter)
+			gotDownscales, gotDeletions, gotHeldReasons := calculateDownscales(context.Background(), downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets, downscaleBudgetFilter)
 			require.Equal(t, tt.wantDownscales, gotDownscales)
 			require.Equal(t, tt.wantDeletions, gotDeletions)
 			// no budget limit and no master removal in progress: nothing is held

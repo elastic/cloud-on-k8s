@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
@@ -127,40 +126,8 @@ func (l *leavingNodes) withUnreached(leaving sets.Set[string], nodes []string) (
 // applying any budget or invariant filter: this is the whole set of Pods the downscale wants to remove, not the ones it
 // is allowed to remove now.
 func desiredLeavingNodeNames(ctx context.Context, expectedStatefulSets es_sset.StatefulSetList, actualStatefulSets es_sset.StatefulSetList) sets.Set[string] {
-	return desiredLeavingNodeNamesFor(ctx, expectedReplicasOfStatefulSets(expectedStatefulSets), actualStatefulSets)
-}
-
-// desiredLeavingNodeNamesFromSpec is desiredLeavingNodeNames for when the expected StatefulSets are not built yet: it
-// takes the expected replicas from the NodeSets of the given Elasticsearch, which are all that the downscale compares.
-func desiredLeavingNodeNamesFromSpec(ctx context.Context, es esv1.Elasticsearch, actualStatefulSets es_sset.StatefulSetList) sets.Set[string] {
-	return desiredLeavingNodeNamesFor(ctx, expectedReplicasOfSpec(es), actualStatefulSets)
-}
-
-func desiredLeavingNodeNamesFor(ctx context.Context, expected expectedReplicas, actualStatefulSets es_sset.StatefulSetList) sets.Set[string] {
-	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expected, actualStatefulSets, noDownscaleFilter)
+	downscales, _, _ := calculateDownscales(ctx, downscaleState{}, expectedStatefulSets, actualStatefulSets, noDownscaleFilter)
 	return sets.New(leavingNodeNames(downscales)...)
-}
-
-// expectedReplicas are the replicas expected for each StatefulSet, by name: a StatefulSet that is not in it is not
-// expected to exist. It is all that calculateDownscales needs to know of the expected state.
-type expectedReplicas map[string]int32
-
-// expectedReplicasOfStatefulSets returns the replicas of the given expected StatefulSets.
-func expectedReplicasOfStatefulSets(expected es_sset.StatefulSetList) expectedReplicas {
-	replicas := make(expectedReplicas, len(expected))
-	for _, statefulSet := range expected {
-		replicas[statefulSet.Name] = sset.GetReplicas(statefulSet)
-	}
-	return replicas
-}
-
-// expectedReplicasOfSpec returns the replicas of the NodeSets of the given Elasticsearch, by StatefulSet name.
-func expectedReplicasOfSpec(es esv1.Elasticsearch) expectedReplicas {
-	replicas := make(expectedReplicas, len(es.Spec.NodeSets))
-	for _, nodeSet := range es.Spec.NodeSets {
-		replicas[esv1.StatefulSet(es.Name, nodeSet.Name)] = nodeSet.Count
-	}
-	return replicas
 }
 
 // nodesWithReportedShutdown returns the given nodes that have a shutdown in the given downscale status. The nodes the
