@@ -9,6 +9,10 @@ mapped_pages:
 
 Review the changes, fixes, and more in each release of Elastic Cloud on Kubernetes.
 
+## 3.6.0 [elastic-cloud-kubernetes-360-release-notes]
+
+### Release Highlights
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-release-notes]
 
 ### Release Highlights
