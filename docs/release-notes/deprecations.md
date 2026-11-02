@@ -17,6 +17,9 @@ Review the deprecated functionality for Elastic Cloud on Kubernetes. While depre
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.6.0 [elastic-cloud-kubernetes-360-deprecations]
+
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-deprecations]
 
 ::::{dropdown} The `eck.k8s.elastic.co/managed` annotation is deprecated in favor of `eck.k8s.elastic.co/pause-orchestration`

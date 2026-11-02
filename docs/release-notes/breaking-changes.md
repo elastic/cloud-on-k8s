@@ -14,6 +14,9 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.6.0 [elastic-cloud-kubernetes-360-breaking-changes]
+
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-breaking-changes]
 
 ::::{dropdown} Rolling restart of Fleet-server pods during operator upgrade
