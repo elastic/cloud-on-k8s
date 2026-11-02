@@ -697,6 +697,11 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
 		t.SkipNow()
 	}
+	// Elasticsearch versions affected by https://github.com/elastic/elasticsearch/issues/152582 can keep a stale
+	// role cached after roles.yml is reloaded, which makes this test flaky.
+	if !isRoleCacheInvalidationFixed(stackVersion) {
+		t.Skipf("version %s is affected by https://github.com/elastic/elasticsearch/issues/152582", stackVersion)
+	}
 
 	namespace := test.Ctx().ManagedNamespace(0)
 
@@ -913,6 +918,20 @@ func TestStackConfigPolicySecurityRoles(t *testing.T) {
 	}
 
 	test.Sequence(before, steps, esWithLicense).RunSequential(t)
+}
+
+// isRoleCacheInvalidationFixed reports whether the given Elasticsearch version includes the fix for
+// stale role cache entries after a roles.yml reload (https://github.com/elastic/elasticsearch/issues/152582).
+func isRoleCacheInvalidationFixed(v version.Version) bool {
+	switch {
+	case v.GTE(version.MinFor(9, 6, 0)):
+		return true
+	case v.Major == 9 && v.Minor == 5:
+		return v.GTE(version.MinFor(9, 5, 6))
+	case v.Major == 9 && v.Minor == 4:
+		return v.GTE(version.MinFor(9, 4, 9))
+	}
+	return false
 }
 
 type HasPrivilegesResponse struct {
