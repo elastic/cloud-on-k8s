@@ -59,14 +59,14 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20260813180055-c1d0aacb2297 | BSD-3-Clause |
 | [google.golang.org/api](https://google.golang.org/api) | v0.310.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
-| [k8s.io/api](https://github.com/kubernetes/api) | v0.37.1 | Apache-2.0 |
-| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.1 | Apache-2.0 |
-| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.37.1 | Apache-2.0 |
+| [k8s.io/api](https://github.com/kubernetes/api) | v0.37.2 | Apache-2.0 |
+| [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.2 | Apache-2.0 |
+| [k8s.io/client-go](https://github.com/kubernetes/client-go) | v0.37.2 | Apache-2.0 |
 | [k8s.io/klog/v2](https://github.com/kubernetes/klog) | v2.140.0 | Apache-2.0 |
 | [k8s.io/utils](https://github.com/kubernetes/utils) | v0.0.0-20260626114624-be93311217bd | Apache-2.0 |
 | [sigs.k8s.io/controller-runtime](https://sigs.k8s.io/controller-runtime) | v0.25.2 | Apache-2.0 |
-| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.22.0 | Apache-2.0 |
-| [sigs.k8s.io/structured-merge-diff/v7](https://sigs.k8s.io/structured-merge-diff/v7) | v7.0.0 | Apache-2.0 |
+| [sigs.k8s.io/controller-tools](https://sigs.k8s.io/controller-tools) | v0.23.0 | Apache-2.0 |
+| [sigs.k8s.io/structured-merge-diff/v7](https://sigs.k8s.io/structured-merge-diff/v7) | v7.0.1 | Apache-2.0 |
 | [sigs.k8s.io/yaml](https://sigs.k8s.io/yaml) | v1.6.0 | Apache-2.0 |
 
 
@@ -197,8 +197,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/modern-go/concurrent](https://github.com/modern-go/concurrent) | v0.0.0-20180306012644-bacd9c7ef1dd | Apache-2.0 |
 | [github.com/modern-go/reflect2](https://github.com/modern-go/reflect2) | v1.0.3-0.20250322232337-35a7c28c31ee | Apache-2.0 |
 | [github.com/munnerz/goautoneg](https://github.com/munnerz/goautoneg) | v0.0.0-20191010083416-a7dc8b61c822 | BSD-3-Clause |
-| [github.com/onsi/ginkgo/v2](https://github.com/onsi/ginkgo) | v2.32.1 | MIT |
-| [github.com/onsi/gomega](https://github.com/onsi/gomega) | v1.43.0 | MIT |
+| [github.com/onsi/ginkgo/v2](https://github.com/onsi/ginkgo) | v2.33.0 | MIT |
+| [github.com/onsi/gomega](https://github.com/onsi/gomega) | v1.44.0 | MIT |
 | [github.com/opencontainers/go-digest](https://github.com/opencontainers/go-digest) | v1.0.0 | Apache-2.0 |
 | [github.com/opencontainers/image-spec](https://github.com/opencontainers/image-spec) | v1.1.1 | Apache-2.0 |
 | [github.com/pandatix/go-abnf](https://github.com/pandatix/go-abnf) | v0.5.3 | MIT |
@@ -279,7 +279,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [k8s.io/component-base](https://github.com/kubernetes/component-base) | v0.37.0 | Apache-2.0 |
 | [k8s.io/gengo/v2](https://github.com/kubernetes/gengo) | v2.0.0-20260408192533-25e2208e0dc3 | Apache-2.0 |
 | [k8s.io/kube-openapi](https://github.com/kubernetes/kube-openapi) | v0.0.0-20260721132016-d427ff9ee9ad | Apache-2.0 |
-| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.37.1 | Apache-2.0 |
+| [k8s.io/streaming](https://github.com/kubernetes/streaming) | v0.37.2 | Apache-2.0 |
 | [sigs.k8s.io/apiserver-network-proxy/konnectivity-client](https://sigs.k8s.io/apiserver-network-proxy/konnectivity-client) | v0.36.0 | Apache-2.0 |
 | [sigs.k8s.io/json](https://sigs.k8s.io/json) | v0.0.0-20250730193827-2d320260d730 | Apache-2.0 |
 | [sigs.k8s.io/randfill](https://sigs.k8s.io/randfill) | v1.0.0 | Apache-2.0 |
