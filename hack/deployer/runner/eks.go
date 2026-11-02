@@ -390,13 +390,21 @@ func (e *EKSDriver) delete() error {
 // clusterStacks returns the names of the cluster's eksctl CloudFormation stacks, found by their cluster name tag.
 // Deleted stacks are not returned, stacks in DELETE_FAILED are.
 func (e *EKSDriver) clusterStacks() ([]string, error) {
+	// Names are prefixed so that anything else the AWS CLI prints, such as warnings, is not taken for a stack.
+	const stackPrefix = "stack="
 	cmd := `aws cloudformation describe-stacks --region {{.Region}} ` +
-		`--query "Stacks[?Tags[?Key=='alpha.eksctl.io/cluster-name' && Value=='{{.ClusterName}}']].StackName" --output text`
+		`--query "Stacks[?Tags[?Key=='alpha.eksctl.io/cluster-name' && Value=='{{.ClusterName}}']].join('', ['` + stackPrefix + `', StackName])" --output text`
 	out, err := e.newCmd(cmd).WithoutStreaming().Output()
 	if err != nil {
 		return nil, err
 	}
-	return strings.Fields(out), nil
+	var stacks []string
+	for field := range strings.FieldsSeq(out) {
+		if name, ok := strings.CutPrefix(field, stackPrefix); ok {
+			stacks = append(stacks, name)
+		}
+	}
+	return stacks, nil
 }
 
 // logStackDeleteFailures prints the reasons reported by CloudFormation for resources it failed to delete,
