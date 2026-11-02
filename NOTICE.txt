@@ -15225,11 +15225,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/go-jose/go-jose/v4
-Version : v4.1.4
-Time    : 2026-03-31T23:33:50Z
+Version : v4.1.6
+Time    : 2026-10-14T22:46:21Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v4@v4.1.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/go-jose/go-jose/v4@v4.1.6/LICENSE:
 
 
                                  Apache License
