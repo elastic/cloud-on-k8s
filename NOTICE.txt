@@ -472,11 +472,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
-Version : v1.8.2
-Time    : 2026-10-01T16:35:36Z
+Version : v1.8.3
+Time    : 2026-11-02T16:01:27Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.8.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/storage/azblob@v1.8.3/LICENSE.txt:
 
     MIT License
 
@@ -9232,11 +9232,11 @@ Contents of probable licence file $GOMODCACHE/cloud.google.com/go/trace@v1.16.0/
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/azcore
-Version : v1.23.2
-Time    : 2026-09-28T19:00:12Z
+Version : v1.23.3
+Time    : 2026-10-06T16:33:32Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.23.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/azcore@v1.23.3/LICENSE.txt:
 
 MIT License
 
@@ -9294,11 +9294,11 @@ SOFTWARE
 
 --------------------------------------------------------------------------------
 Module  : github.com/Azure/azure-sdk-for-go/sdk/internal
-Version : v1.12.0
-Time    : 2026-04-01T16:23:48Z
+Version : v1.13.0
+Time    : 2026-09-30T18:50:47Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/internal@v1.12.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!azure/azure-sdk-for-go/sdk/internal@v1.13.0/LICENSE.txt:
 
 MIT License
 

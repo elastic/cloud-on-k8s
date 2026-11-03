@@ -19,7 +19,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/auth](https://cloud.google.com/go/auth) | v0.24.2 | Apache-2.0 |
 | [cloud.google.com/go/storage](https://cloud.google.com/go/storage) | v1.70.0 | Apache-2.0 |
 | [dario.cat/mergo](https://dario.cat/mergo) | v1.0.2 | BSD-3-Clause |
-| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.2 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/storage/azblob](https://github.com/Azure/azure-sdk-for-go) | v1.8.3 | MIT |
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v1.0.1 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.47.5 | Apache-2.0 |
@@ -83,9 +83,9 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [cloud.google.com/go/longrunning](https://cloud.google.com/go/longrunning) | v1.3.0 | Apache-2.0 |
 | [cloud.google.com/go/monitoring](https://cloud.google.com/go/monitoring) | v1.30.0 | Apache-2.0 |
 | [cloud.google.com/go/trace](https://cloud.google.com/go/trace) | v1.16.0 | Apache-2.0 |
-| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.23.2 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/azcore](https://github.com/Azure/azure-sdk-for-go) | v1.23.3 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/azidentity](https://github.com/Azure/azure-sdk-for-go) | v1.14.0 | MIT |
-| [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.12.0 | MIT |
+| [github.com/Azure/azure-sdk-for-go/sdk/internal](https://github.com/Azure/azure-sdk-for-go) | v1.13.0 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage](https://github.com/Azure/azure-sdk-for-go) | v1.8.1 | MIT |
 | [github.com/Azure/azure-sdk-for-go/sdk/storage/internal](https://github.com/Azure/azure-sdk-for-go) | v0.1.0 | MIT |
 | [github.com/AzureAD/microsoft-authentication-library-for-go](https://github.com/AzureAD/microsoft-authentication-library-for-go) | v1.8.0 | MIT |
