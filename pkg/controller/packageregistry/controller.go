@@ -362,7 +362,7 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 // OnNamespaceOutOfScope releases all controller-local state associated with the given PackageRegistry
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcilePackageRegistry) OnNamespaceOutOfScope(obj types.NamespacedName) {
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(eprv1alpha1.Namer, obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }

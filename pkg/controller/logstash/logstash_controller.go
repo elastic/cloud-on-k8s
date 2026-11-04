@@ -245,7 +245,7 @@ func (r *ReconcileLogstash) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.SecretRefWatchName(obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(pipelines.ConfigMapRefWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(logstashv1alpha1.Namer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(logstashv1alpha1.Namer, obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(logstashv1alpha1.Namer, obj))
 }
 

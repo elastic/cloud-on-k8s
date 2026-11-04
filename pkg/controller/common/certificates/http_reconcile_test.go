@@ -948,7 +948,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
 	}
 }
 
-func TestAdditionalCAWatchKey_NamespaceScoped(t *testing.T) {
+func TestWatchKeys_NamespaceScoped(t *testing.T) {
 	tests := []struct {
 		name string
 		a, b types.NamespacedName
@@ -959,6 +959,7 @@ func TestAdditionalCAWatchKey_NamespaceScoped(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
+			assert.NotEqual(t, CertificateWatchKey(esv1.ESNamer, tt.a), CertificateWatchKey(esv1.ESNamer, tt.b))
 		})
 	}
 }

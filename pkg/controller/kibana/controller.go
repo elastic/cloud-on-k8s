@@ -309,7 +309,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcileKibana) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(kbv1.KBNamer, obj))
 }
 

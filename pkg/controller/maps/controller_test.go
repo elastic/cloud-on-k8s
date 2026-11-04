@@ -70,7 +70,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcileMapsServer) {
@@ -98,7 +98,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcileMapsServer) {

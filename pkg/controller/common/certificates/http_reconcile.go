@@ -116,7 +116,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	log := ulog.FromContext(ctx)
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 
-	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
+	watchKey := CertificateWatchKey(r.Namer, ownerNSN)
 	if err := ReconcileCustomCertWatch(r.DynamicWatches, watchKey, ownerNSN, r.TLSOptions.Certificate); err != nil {
 		return nil, err
 	}

@@ -13,9 +13,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 )
 
-// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates
-func CertificateWatchKey(namer name.Namer, ownerName string) string {
-	return namer.Suffix(ownerName, "http-certificate")
+// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates.
+// The key includes the namespace as the watches are registered per controller, across all namespaces.
+// Namespace and name are joined with "/" as it cannot appear in either, unlike "-".
+func CertificateWatchKey(namer name.Namer, owner types.NamespacedName) string {
+	return owner.Namespace + "/" + namer.Suffix(owner.Name, "http-certificate")
 }
 
 // AdditionalCAWatchKey returns the key used by the dynamic watch registration for additional HTTP certificate authorities.
