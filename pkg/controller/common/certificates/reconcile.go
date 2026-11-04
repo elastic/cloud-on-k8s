@@ -138,10 +138,8 @@ func (r *Reconciler) removeCAAndHTTPCertsSecrets(ctx context.Context) error {
 		return err
 	}
 
-	// remove watches on user-provided certs secret
-	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, owner))
-	// remove watches on additional CAs config map
-	r.DynamicWatches.ConfigMaps.RemoveHandlerForKey(AdditionalCAWatchKey(r.Namer, owner))
+	// remove watches on user-provided certs secret and additional CAs config map
+	RemoveHTTPCertWatches(r.DynamicWatches, r.Namer, owner)
 
 	return nil
 }

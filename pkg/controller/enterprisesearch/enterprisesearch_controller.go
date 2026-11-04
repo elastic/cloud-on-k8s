@@ -186,8 +186,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcileEnterpriseSearch) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj))
-	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(entv1.Namer, obj))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, entv1.Namer, obj)
 }
 
 func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {

@@ -27,6 +27,13 @@ func AdditionalCAWatchKey(namer name.Namer, owner types.NamespacedName) string {
 	return owner.Namespace + "/" + namer.Suffix(owner.Name, "http-additional-cas")
 }
 
+// RemoveHTTPCertWatches removes the dynamic watches registered for the custom HTTP certificate and the additional
+// certificate authorities of the given owner.
+func RemoveHTTPCertWatches(dw watches.DynamicWatches, namer name.Namer, owner types.NamespacedName) {
+	dw.Secrets.RemoveHandlerForKey(CertificateWatchKey(namer, owner))
+	dw.ConfigMaps.RemoveHandlerForKey(AdditionalCAWatchKey(namer, owner))
+}
+
 // ReconcileCustomCertWatch takes a SecretRef and either creates or removes a dynamic watch for watchKey depending on
 // whether secretRef empty or not.
 func ReconcileCustomCertWatch(

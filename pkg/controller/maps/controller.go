@@ -435,8 +435,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 // OnNamespaceOutOfScope releases all controller-local state associated with the given ElasticMapsServer
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcileMapsServer) OnNamespaceOutOfScope(obj types.NamespacedName) {
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(EMSNamer, obj))
-	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(EMSNamer, obj))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, EMSNamer, obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 

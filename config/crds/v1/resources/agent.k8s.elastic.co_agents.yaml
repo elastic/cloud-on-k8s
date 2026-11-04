@@ -18513,7 +18513,11 @@ spec:
                           The operator adds these certificates to the CA bundle it hands out to clients of this resource, for example
                           other Elastic Stack applications associated with it or the Beats used for Stack Monitoring.
                           Use this if the certificate referenced in `certificate` is issued by a CA that is not included in `ca.crt`
-                          of the referenced secret.
+                          of the referenced secret. Only certificates are used, other PEM blocks in the file are ignored.
+                          Clients trust only the resulting `ca.crt`, so the authorities must include the one that issued the HTTP certificate.
+                          Setting this field on a resource whose public certificate secret has no `ca.crt` yet changes the configuration of
+                          associated resources and of Stack Monitoring Beats, which can restart them.
+                          On Logstash the field is only used for the API service.
                         properties:
                           configMapName:
                             description: ConfigMapName is the name of the config map.

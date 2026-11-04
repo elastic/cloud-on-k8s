@@ -66,7 +66,8 @@ func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) 
 	owner := k8s.ExtractNamespacedName(r.Owner)
 	watchKey := AdditionalCAWatchKey(r.Namer, owner)
 	ref := r.TLSOptions.CertificateAuthorities
-	if !ref.IsDefined() {
+	// Elasticsearch reconciles the public certs secret even if TLS is disabled, do not fail on a stale reference then.
+	if !ref.IsDefined() || !r.TLSOptions.Enabled() {
 		r.DynamicWatches.ConfigMaps.RemoveHandlerForKey(watchKey)
 		return nil, nil
 	}
@@ -93,7 +94,12 @@ func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) 
 	if len(certs) == 0 {
 		return nil, fmt.Errorf("config map %s specified in spec.http.tls.certificateAuthorities contains invalid certificates: no certificate found in %s", nsn, CAFileName)
 	}
-	return []byte(pem), nil
+	// Only hand out certificates: anything else in the ConfigMap, for example a private key, is dropped.
+	raws := make([][]byte, len(certs))
+	for i, cert := range certs {
+		raws[i] = cert.Raw
+	}
+	return EncodePEMCert(raws...), nil
 }
 
 // appendPEMBundles concatenates PEM bundles, making sure each bundle ends with a newline so that certificates do not run together.
