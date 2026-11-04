@@ -18,6 +18,13 @@ func CertificateWatchKey(namer name.Namer, ownerName string) string {
 	return namer.Suffix(ownerName, "http-certificate")
 }
 
+// AdditionalCAWatchKey returns the key used by the dynamic watch registration for additional HTTP certificate authorities.
+// The key includes the namespace as the watches are registered per controller, across all namespaces.
+// Namespace and name are joined with "/" as it cannot appear in either, unlike "-".
+func AdditionalCAWatchKey(namer name.Namer, owner types.NamespacedName) string {
+	return owner.Namespace + "/" + namer.Suffix(owner.Name, "http-additional-cas")
+}
+
 // ReconcileCustomCertWatch takes a SecretRef and either creates or removes a dynamic watch for watchKey depending on
 // whether secretRef empty or not.
 func ReconcileCustomCertWatch(

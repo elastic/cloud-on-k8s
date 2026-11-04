@@ -387,6 +387,7 @@ func (r *ReconcileElasticsearch) OnNamespaceOutOfScope(es types.NamespacedName) 
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(esv1.ESNamer, es))
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted

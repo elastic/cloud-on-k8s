@@ -531,6 +531,14 @@ type TLSOptions struct {
 	// - `tls.crt`: The certificate (or a chain).
 	// - `tls.key`: The private key to the first certificate in the certificate chain.
 	Certificate SecretRef `json:"certificate,omitempty"`
+
+	// CertificateAuthorities is a reference to a config map that contains one or more x509 certificates for
+	// trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
+	// The operator adds these certificates to the CA bundle it hands out to clients of this resource, for example
+	// other Elastic Stack applications associated with it or the Beats used for Stack Monitoring.
+	// Use this if the certificate referenced in `certificate` is issued by a CA that is not included in `ca.crt`
+	// of the referenced secret.
+	CertificateAuthorities ConfigMapRef `json:"certificateAuthorities,omitempty"`
 }
 
 // Enabled returns true when TLS is enabled based on this option struct.

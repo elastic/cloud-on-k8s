@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -13,6 +14,7 @@ import (
 	"encoding/pem"
 	"net"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -217,10 +220,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
 			err := Reconciler{
-				K8sClient: client,
-				Owner:     owner,
-				Namer:     esv1.ESNamer,
-				Metadata:  metadata.Metadata{Labels: labels},
+				K8sClient:      client,
+				DynamicWatches: watches.NewDynamicWatches(),
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				Metadata:       metadata.Metadata{Labels: labels},
 			}.ReconcilePublicHTTPCerts(context.Background(), certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
@@ -837,4 +841,124 @@ func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLe
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(chain), 2, "tls.crt should include leaf + CA chain")
 	assert.True(t, chain[1].Equal(rotatedCA.Cert), "tls.crt chain should include rotated CA")
+}
+
+func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
+	owner := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	publicSecretNSN := PublicCertsSecretRef(esv1.ESNamer, ownerNSN)
+
+	internal := &CertificatesSecret{Data: map[string][]byte{
+		CertFileName: pemTLS,
+		CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+	}}
+	extraCA := EncodePEMCert(testCA.Cert.Raw)
+	extraCANoNewline := bytes.TrimSuffix(extraCA, []byte("\n"))
+
+	configMap := func(data map[string]string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Namespace: ownerNSN.Namespace, Name: "extra-cas"},
+			Data:       data,
+		}
+	}
+
+	tests := []struct {
+		name       string
+		ref        commonv1.ConfigMapRef
+		objs       []client.Object
+		wantCA     []byte
+		wantErr    string
+		wantWatch  bool
+		internalCA []byte // overrides the CA of the internal secret
+	}{
+		{
+			name:   "no additional CAs: CA unchanged",
+			wantCA: internal.CAPem(),
+		},
+		{
+			name:      "additional CAs are appended",
+			ref:       commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:       "additional CAs without internal CA",
+			ref:        commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			objs:       []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			internalCA: []byte{},
+			wantCA:     extraCA,
+			wantWatch:  true,
+		},
+		{
+			name:      "missing trailing newline is handled",
+			ref:       commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCANoNewline)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:      "missing config map",
+			ref:       commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			wantErr:   "could not retrieve config map",
+			wantWatch: true,
+		},
+		{
+			name:      "config map without ca.crt",
+			ref:       commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			objs:      []client.Object{configMap(map[string]string{"other": "x"})},
+			wantErr:   "must contain ca.crt",
+			wantWatch: true,
+		},
+		{
+			name:      "invalid PEM",
+			ref:       commonv1.ConfigMapRef{ConfigMapName: "extra-cas"},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: "not a certificate"})},
+			wantErr:   "invalid certificates",
+			wantWatch: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objs...)
+			dw := watches.NewDynamicWatches()
+			r := Reconciler{
+				K8sClient:      c,
+				DynamicWatches: dw,
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				TLSOptions:     commonv1.TLSOptions{CertificateAuthorities: tt.ref},
+			}
+			certs := internal
+			if tt.internalCA != nil {
+				certs = &CertificatesSecret{Data: map[string][]byte{CertFileName: pemTLS}}
+			}
+			err := r.ReconcilePublicHTTPCerts(context.Background(), certs)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				var got corev1.Secret
+				require.NoError(t, c.Get(context.Background(), publicSecretNSN, &got))
+				assert.Equal(t, string(tt.wantCA), string(got.Data[CAFileName]))
+				assert.Equal(t, pemTLS, got.Data[CertFileName])
+			}
+			assert.Equal(t, tt.wantWatch, slices.Contains(dw.ConfigMaps.Registrations(), AdditionalCAWatchKey(esv1.ESNamer, ownerNSN)))
+		})
+	}
+}
+
+func TestAdditionalCAWatchKey_NamespaceScoped(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b types.NamespacedName
+	}{
+		{name: "same name, different namespaces", a: types.NamespacedName{Namespace: "ns1", Name: "es"}, b: types.NamespacedName{Namespace: "ns2", Name: "es"}},
+		{name: "dash shifted between namespace and name", a: types.NamespacedName{Namespace: "team-a", Name: "es"}, b: types.NamespacedName{Namespace: "team", Name: "a-es"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
+		})
+	}
 }

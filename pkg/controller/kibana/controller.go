@@ -120,7 +120,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcileKibana)(nil)
@@ -306,6 +310,7 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 func (r *ReconcileKibana) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(certificates.AdditionalCAWatchKey(kbv1.KBNamer, obj))
 }
 
 func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
