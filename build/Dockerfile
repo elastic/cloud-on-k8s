@@ -61,7 +61,8 @@ CMD ["manager"]
 
 # ---------------------------------------------
 # ubi - Image that uses ubi-micro as base
-FROM registry.access.redhat.com/ubi9/ubi-micro:1782363497 AS ubi
+# https://catalog.redhat.com/en/software/containers/ubi9/ubi/615bcf606feffc5384e8452e
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.8-1793580630 AS ubi
 
 ARG VERSION
 
