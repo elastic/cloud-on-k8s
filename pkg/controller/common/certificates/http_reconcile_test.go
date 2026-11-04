@@ -844,7 +844,7 @@ func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLe
 }
 
 func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
-	owner := &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	owner := &esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
 	ownerNSN := k8s.ExtractNamespacedName(owner)
 	publicSecretNSN := PublicCertsSecretRef(esv1.ESNamer, ownerNSN)
 
@@ -857,8 +857,8 @@ func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
 
 	configMap := func(data map[string]string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Namespace: ownerNSN.Namespace, Name: "extra-cas"},
-			Data:       data,
+			Namespace: ownerNSN.Namespace, Name: "extra-cas",
+			Data: data,
 		}
 	}
 
