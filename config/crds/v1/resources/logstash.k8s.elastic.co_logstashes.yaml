@@ -9629,6 +9629,9 @@ spec:
                             Clients trust only the resulting `ca.crt`, so the authorities must include the one that issued the HTTP certificate.
                             Setting this field on a resource whose public certificate secret has no `ca.crt` yet changes the configuration of
                             associated resources and of Stack Monitoring Beats, which can restart them.
+                            Later changes to the config map update the bundle in place and do not restart the monitored resource.
+                            Stack Monitoring Beats pick up such a change only if they reload certificates from disk, which is the default
+                            from Beats 9.5 (`ssl.certificate_reload.enabled`); otherwise restart the Beat containers.
                             On Logstash the field is only used for the API service.
                           properties:
                             configMapName:
