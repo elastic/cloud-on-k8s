@@ -105,6 +105,13 @@
       ]
     },
     {
+      "description": "ubi-micro is pinned to a <major>.<minor>-<build timestamp> tag (e.g. 9.8-1793580630); only consider tags of that form so Renovate doesn't compare it against bare timestamp or 9.x tags",
+      "matchPackageNames": [
+        "registry.access.redhat.com/ubi9/ubi-micro"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<patch>\\d{10})$"
+    },
+    {
       "matchUpdateTypes": [
         "major"
       ],
