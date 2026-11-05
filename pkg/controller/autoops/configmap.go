@@ -50,18 +50,13 @@ exporters:
 const autoOpsMandatoryConfig = `
 receivers:
   metricbeatreceiver:
-    processors:
-      - add_fields:
-          target: autoops_es
-          fields:
-            token: ${env:AUTOOPS_TOKEN}
     output:
       otelconsumer: {}
     telemetry_types: ["logs"]
 exporters:
   otlphttp:
     headers:
-      Authorization: "AutoOpsToken ${env:AUTOOPS_TOKEN}"
+      Authorization: "ApiKey ${env:ELASTIC_CLOUD_CONNECTED_MODE_API_KEY}"
     endpoint: ${env:AUTOOPS_OTEL_URL}
 service:
   extensions: [healthcheckv2]
