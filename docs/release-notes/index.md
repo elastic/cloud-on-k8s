@@ -13,6 +13,84 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
+
+### Features and enhancements [elastic-cloud-kubernetes-360-features-and-enhancements]
+
+- autoops: drop autoops-token, authenticate with CCM API key [#9849](https://github.com/elastic/cloud-on-k8s/pull/9849)
+- Kibana Background Tasks license gate [#9821](https://github.com/elastic/cloud-on-k8s/pull/9821)
+- Validate SCP secure settings entries [#9801](https://github.com/elastic/cloud-on-k8s/pull/9801)
+- Sign Helm OCI charts with unified-release container image signing [#9796](https://github.com/elastic/cloud-on-k8s/pull/9796) (issue: [#9603](https://github.com/elastic/cloud-on-k8s/issues/9603))
+- Add PKI support for elasticsearch [#9785](https://github.com/elastic/cloud-on-k8s/pull/9785) (issue: [#9082](https://github.com/elastic/cloud-on-k8s/issues/9082))
+- Push ECK Helm charts to OCI registry [#9764](https://github.com/elastic/cloud-on-k8s/pull/9764) (issue: [#9603](https://github.com/elastic/cloud-on-k8s/issues/9603))
+- Extend `--enforce-rbac-on-refs` to enforce RBAC on all association types [#9756](https://github.com/elastic/cloud-on-k8s/pull/9756) (issue: [#9683](https://github.com/elastic/cloud-on-k8s/issues/9683))
+- Kibana Background Task Execution Isolation [#9745](https://github.com/elastic/cloud-on-k8s/pull/9745)
+- Fix autoscaler SSA field ownership [#9712](https://github.com/elastic/cloud-on-k8s/pull/9712) (issues: [#8975](https://github.com/elastic/cloud-on-k8s/issues/8975), [#9086](https://github.com/elastic/cloud-on-k8s/issues/9086), [#9632](https://github.com/elastic/cloud-on-k8s/issues/9632), [#9713](https://github.com/elastic/cloud-on-k8s/issues/9713))
+- Use scoped annotation/field patches to respect SSA ownerships [#9677](https://github.com/elastic/cloud-on-k8s/pull/9677) (issue: [#9631](https://github.com/elastic/cloud-on-k8s/issues/9631))
+- Logstash: use TCP socket readiness probe when API basic auth is enabled [#9664](https://github.com/elastic/cloud-on-k8s/pull/9664)
+- Add ConfigMap support to pipelinesRef [#9650](https://github.com/elastic/cloud-on-k8s/pull/9650) (issue: [#9110](https://github.com/elastic/cloud-on-k8s/issues/9110))
+- Support automatic TLS certificate reload for Logstash pipelines [#9639](https://github.com/elastic/cloud-on-k8s/pull/9639) (issue: [#9384](https://github.com/elastic/cloud-on-k8s/issues/9384))
+- Gate operator readiness on cache sync and add health probes [#9636](https://github.com/elastic/cloud-on-k8s/pull/9636) (issues: [#5025](https://github.com/elastic/cloud-on-k8s/issues/5025), [#5032](https://github.com/elastic/cloud-on-k8s/issues/5032))
+
+
+
+### Fixes [elastic-cloud-kubernetes-360-fixes]
+
+- Keep REMOVE shutdown records in sync with the nodes actually leaving [#9811](https://github.com/elastic/cloud-on-k8s/pull/9811) (issue: [#9797](https://github.com/elastic/cloud-on-k8s/issues/9797))
+- Count the resources shorthand in license memory reporting [#9806](https://github.com/elastic/cloud-on-k8s/pull/9806) (issue: [#9804](https://github.com/elastic/cloud-on-k8s/issues/9804))
+- Fix `eck.k8s.elastic.co/watched` leak [#9787](https://github.com/elastic/cloud-on-k8s/pull/9787) (issue: [#9786](https://github.com/elastic/cloud-on-k8s/issues/9786))
+- Sort ElasticsearchAutoscaler status policies to avoid extra reconciliations [#9784](https://github.com/elastic/cloud-on-k8s/pull/9784) (issue: [#9783](https://github.com/elastic/cloud-on-k8s/issues/9783))
+- Protect the shutdowns of draining nodes from the downscale budget and upgrades [#9771](https://github.com/elastic/cloud-on-k8s/pull/9771) (issues: [#9732](https://github.com/elastic/cloud-on-k8s/issues/9732), [#9770](https://github.com/elastic/cloud-on-k8s/issues/9770), [#9791](https://github.com/elastic/cloud-on-k8s/issues/9791))
+- fix PVC validation early return when autoscaling targets es cluster [#9749](https://github.com/elastic/cloud-on-k8s/pull/9749) (issue: [#9730](https://github.com/elastic/cloud-on-k8s/issues/9730))
+- Give public read permissions to elastic-agent config file mount [#9743](https://github.com/elastic/cloud-on-k8s/pull/9743) (issues: [#8458](https://github.com/elastic/cloud-on-k8s/issues/8458), [#9726](https://github.com/elastic/cloud-on-k8s/issues/9726))
+- Apply watched label to internal HTTP cert secret when custom cert data is unchanged [#9742](https://github.com/elastic/cloud-on-k8s/pull/9742) (issue: [#9740](https://github.com/elastic/cloud-on-k8s/issues/9740))
+- fix transitive ES RBAC check for Agent-FleetServer associations and perform all association secrets cleanup on unbind [#9725](https://github.com/elastic/cloud-on-k8s/pull/9725) (issue: [#9683](https://github.com/elastic/cloud-on-k8s/issues/9683))
+- Fix cross-namespace naming and GC for fleet-managed agent additional secrets [#9703](https://github.com/elastic/cloud-on-k8s/pull/9703) (issue: [#9681](https://github.com/elastic/cloud-on-k8s/issues/9681))
+- Restrict fleet-server CA secret copy to ca.crt only [#9686](https://github.com/elastic/cloud-on-k8s/pull/9686) (issue: [#9684](https://github.com/elastic/cloud-on-k8s/issues/9684))
+- Fix duplicate volume mounts for fleet-managed and fleet-enabled agents [#9685](https://github.com/elastic/cloud-on-k8s/pull/9685) (issue: [#9682](https://github.com/elastic/cloud-on-k8s/issues/9682))
+- fix --container-suffix=-wolfi behavior for AutoOps, EPR, and Enterprise Search [#9663](https://github.com/elastic/cloud-on-k8s/pull/9663) (issue: [#9647](https://github.com/elastic/cloud-on-k8s/issues/9647))
+- [OLM]: move cluster-scoped RBAC rules to clusterPermissions [#9660](https://github.com/elastic/cloud-on-k8s/pull/9660) (issue: [#9654](https://github.com/elastic/cloud-on-k8s/issues/9654))
+
+
+
+### Documentation improvements [elastic-cloud-kubernetes-360-documentation-improvements]
+
+- Document ResourcesAwareManagement Elasticsearch condition [#9669](https://github.com/elastic/cloud-on-k8s/pull/9669)
+
+
+
+### Miscellaneous [elastic-cloud-kubernetes-360-miscellaneous]
+
+:::{dropdown} Updated dependencies
+- Go 1.26.5 => 1.27.3
+- cloud.google.com/go/auth v0.22.0 => v0.24.2
+- cloud.google.com/go/storage v1.63.1 => v1.69.0
+- github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 => v1.8.3
+- github.com/KimMachineGun/automemlimit v0.7.5 => v1.0.1
+- github.com/aws/aws-sdk-go-v2 v1.42.1 => v1.47.5
+- github.com/aws/aws-sdk-go-v2/credentials v1.19.29 => v1.20.13
+- github.com/aws/aws-sdk-go-v2/service/s3 v1.105.1 => v1.114.6
+- github.com/elastic/go-ucfg v0.9.1 => v0.9.2
+- github.com/gkampitakis/go-snaps v0.5.23 => v0.5.25
+- github.com/go-logr/logr v1.4.3 => v1.4.4
+- github.com/go-test/deep v1.1.1 => v1.1.2
+- github.com/google/go-containerregistry v0.21.7 => v0.22.1
+- github.com/googlecloudplatform/compute-class-api v0.0.0-20251208134148-ae2e7936c1f8 => v0.0.0-20261030010255-cb5cea69fa4a
+- github.com/magiconair/properties v1.8.10 => v1.18.12
+- github.com/prometheus/client_golang v1.23.2 => v1.25.0
+- github.com/prometheus/common v0.70.0 => v0.72.1
+- github.com/stretchr/testify v1.11.1 => v1.12.1
+- golang.org/x/crypto v0.54.0 => v0.58.0
+- golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 => v0.0.0-20261014143641-f0251eb4aa3e
+- google.golang.org/api v0.288.0 => v0.305.0
+- k8s.io/api v0.36.2 => v0.37.2
+- k8s.io/apimachinery v0.36.2 => v0.37.2
+- k8s.io/client-go v0.36.2 => v0.37.2
+- k8s.io/utils v0.0.0-20260319190234-28399d86e0b5 => v0.0.0-20261023123148-ca04ba58ecab
+- sigs.k8s.io/controller-runtime v0.24.1 => v0.25.2
+- sigs.k8s.io/controller-tools v0.21.0 => v0.23.0
+- sigs.k8s.io/structured-merge-diff/v7 => v7.0.1
+:::
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-release-notes]
 
 ### Release Highlights
