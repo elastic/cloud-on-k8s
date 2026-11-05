@@ -654,3 +654,62 @@ func volumeByName(volumes []corev1.Volume, name string) (corev1.Volume, bool) {
 	}
 	return corev1.Volume{}, false
 }
+
+// Test_buildConfigHash_ignoresLegacyAutoOpsToken guards the behavior that the legacy autoops-token key,
+// which is no longer used, does not influence the config hash: adding, changing or removing it must not
+// roll the deployment.
+func Test_buildConfigHash_ignoresLegacyAutoOpsToken(t *testing.T) {
+	const legacyTokenKey = "autoops-token"
+
+	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
+		Name: "policy-1", Namespace: "ns-1",
+		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
+			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{SecretName: "autoops-secret"},
+		},
+	}
+	configMap := corev1.ConfigMap{
+		Name: "config", Namespace: "ns-1",
+		Data: map[string]string{autoopsv1alpha1.ConfigFileName: "test-config-data"},
+	}
+	apiKeySecret := corev1.Secret{
+		Name: "api-key", Namespace: "ns-1",
+		Data: map[string][]byte{apiKeySecretKey: []byte("test-es-api-key")},
+	}
+
+	hashWith := func(t *testing.T, legacyToken *string) string {
+		t.Helper()
+		data := map[string][]byte{
+			autoOpsOTelURL: []byte("https://test-otel-url"),
+			ccmAPIKey:      []byte("test-ccm-api-key"),
+			ccmAPIURL:      []byte("https://test-ccm-api-url"),
+		}
+		if legacyToken != nil {
+			data[legacyTokenKey] = []byte(*legacyToken)
+		}
+		secret := corev1.Secret{
+			Name: "autoops-secret", Namespace: "ns-1",
+			Data: data,
+		}
+		hash, err := buildConfigHash(context.Background(), configMap, apiKeySecret, nil, k8s.NewFakeClient(&secret), policy)
+		require.NoError(t, err)
+		return hash
+	}
+
+	token1, token2 := "legacy-token-1", "legacy-token-2"
+	absent := hashWith(t, nil)
+	require.Equal(t, absent, hashWith(t, &token1), "adding the legacy token must not change the hash")
+	require.Equal(t, absent, hashWith(t, &token2), "changing the legacy token must not change the hash")
+
+	// Sanity check: the hash does react to a key that is still used.
+	changed := corev1.Secret{
+		Name: "autoops-secret", Namespace: "ns-1",
+		Data: map[string][]byte{
+			autoOpsOTelURL: []byte("https://other-otel-url"),
+			ccmAPIKey:      []byte("test-ccm-api-key"),
+			ccmAPIURL:      []byte("https://test-ccm-api-url"),
+		},
+	}
+	other, err := buildConfigHash(context.Background(), configMap, apiKeySecret, nil, k8s.NewFakeClient(&changed), policy)
+	require.NoError(t, err)
+	require.NotEqual(t, absent, other)
+}
