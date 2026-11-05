@@ -37,8 +37,6 @@ annotations: {}
 # - `cloud-connected-mode-api-key`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
 # - `autoops-otel-url`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
 #     Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-# - `autoops-token`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
-#     relevant Elastic Cloud organization
 # - `cloud-connected-mode-api-url`: the URL of the Cloud Connected Mode API (optional)
 #
 autoOpsRef: {}
