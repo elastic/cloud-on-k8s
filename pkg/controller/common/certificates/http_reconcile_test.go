@@ -23,7 +23,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -923,10 +926,17 @@ func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
 			wantWatch: true,
 		},
 		{
-			name:      "invalid PEM",
+			name:      "certificate block with invalid content",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("garbage")}))})},
+			wantErr:   "contains invalid certificates",
+			wantWatch: true,
+		},
+		{
+			name:      "no PEM block",
 			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
 			objs:      []client.Object{configMap(map[string]string{CAFileName: "not a certificate"})},
-			wantErr:   "invalid certificates",
+			wantErr:   "no certificate found",
 			wantWatch: true,
 		},
 		{
@@ -982,6 +992,23 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 		}
 	}
 	withRef := commonv1.TLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}}
+
+	t.Run("watch enqueues the owner when the referenced config map changes", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+
+		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
+		defer q.ShutDown()
+
+		other := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ownerNSN.Namespace, Name: "other"}}
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: other}, q)
+		assert.Equal(t, 0, q.Len())
+
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: cm}, q)
+		require.Equal(t, 1, q.Len())
+		req, _ := q.Get()
+		assert.Equal(t, reconcile.Request{NamespacedName: ownerNSN}, req)
+	})
 
 	t.Run("watch is removed when the reference is removed", func(t *testing.T) {
 		dw := watches.NewDynamicWatches()

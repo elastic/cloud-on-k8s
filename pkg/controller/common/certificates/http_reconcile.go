@@ -71,15 +71,15 @@ func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) 
 		r.DynamicWatches.ConfigMaps.RemoveHandlerForKey(watchKey)
 		return nil, nil
 	}
+	nsn := types.NamespacedName{Namespace: owner.Namespace, Name: ref.ConfigMapName}
 	if err := r.DynamicWatches.ConfigMaps.AddHandler(watches.NamedWatch[*corev1.ConfigMap]{
 		Name:    watchKey,
-		Watched: []types.NamespacedName{{Namespace: owner.Namespace, Name: ref.ConfigMapName}},
+		Watched: []types.NamespacedName{nsn},
 		Watcher: owner,
 	}); err != nil {
 		return nil, err
 	}
 	var configMap corev1.ConfigMap
-	nsn := types.NamespacedName{Namespace: owner.Namespace, Name: ref.ConfigMapName}
 	if err := r.K8sClient.Get(ctx, nsn, &configMap); err != nil {
 		return nil, fmt.Errorf("could not retrieve config map %s specified in spec.http.tls.certificateAuthorities: %w", nsn, err)
 	}
