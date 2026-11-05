@@ -721,7 +721,6 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
@@ -990,7 +989,6 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 

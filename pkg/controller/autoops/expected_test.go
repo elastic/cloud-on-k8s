@@ -194,7 +194,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				Name:      "autoops-secret",
 				Namespace: tt.args.autoops.Namespace,
 				Data: map[string][]byte{
-					"autoops-token":                []byte("test-autoops-token"),
 					"autoops-otel-url":             []byte("https://test-otel-url"),
 					"cloud-connected-mode-api-key": []byte("test-ccm-api-key"),
 					"cloud-connected-mode-api-url": []byte("https://test-ccm-api-url"),
@@ -231,7 +230,6 @@ func TestReconcileAutoOpsAgentPolicy_deploymentParams(t *testing.T) {
 				expectedConfigHash := fnv.New32a()
 				_, _ = expectedConfigHash.Write([]byte(configData))
 				// Hash autoops-secret values
-				_, _ = expectedConfigHash.Write([]byte("test-autoops-token"))
 				_, _ = expectedConfigHash.Write([]byte("https://test-otel-url"))
 				_, _ = expectedConfigHash.Write([]byte("test-ccm-api-key"))
 				_, _ = expectedConfigHash.Write([]byte("https://test-ccm-api-url"))
@@ -318,15 +316,6 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 								},
 							},
 							Env: []corev1.EnvVar{
-								{
-									Name: "AUTOOPS_TOKEN",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											Name: "autoops-secret",
-											Key:  "autoops-token",
-										},
-									},
-								},
 								{
 									Name:  "AUTOOPS_ES_URL",
 									Value: services.InternalServiceURL(es),
@@ -505,15 +494,6 @@ func Test_autoopsEnvVars(t *testing.T) {
 				},
 			},
 			want: []corev1.EnvVar{
-				{
-					Name: "AUTOOPS_TOKEN",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							Name: "autoops-secret",
-							Key:  "autoops-token",
-						},
-					},
-				},
 				{
 					Name:  "AUTOOPS_ES_URL",
 					Value: "https://es-1-es-internal-http.ns-1.svc:9200",

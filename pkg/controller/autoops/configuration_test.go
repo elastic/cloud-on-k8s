@@ -27,7 +27,6 @@ func Test_internalValidate(t *testing.T) {
 				Data: map[string][]byte{
 					ccmAPIKey:      []byte("ccm-api-key-value"),
 					autoOpsOTelURL: []byte("https://otel.example.com"),
-					autoOpsToken:   []byte("token-value"),
 				},
 			},
 			wantErr: false,
@@ -41,7 +40,6 @@ func Test_internalValidate(t *testing.T) {
 				},
 				Data: map[string][]byte{
 					autoOpsOTelURL: []byte("https://otel.example.com"),
-					autoOpsToken:   []byte("token-value"),
 				},
 			},
 			wantErr: true,
@@ -54,22 +52,7 @@ func Test_internalValidate(t *testing.T) {
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmAPIKey:    []byte("ccm-api-key-value"),
-					autoOpsToken: []byte("token-value"),
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing autoOpsToken returns an error",
-			secret: corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "config-secret",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{
-					ccmAPIKey:      []byte("ccm-api-key-value"),
-					autoOpsOTelURL: []byte("https://otel.example.com"),
+					ccmAPIKey: []byte("ccm-api-key-value"),
 				},
 			},
 			wantErr: true,
@@ -84,7 +67,6 @@ func Test_internalValidate(t *testing.T) {
 				Data: map[string][]byte{
 					ccmAPIKey:      []byte(""),
 					autoOpsOTelURL: []byte(""),
-					autoOpsToken:   []byte(""),
 				},
 			},
 			wantErr: true,
@@ -112,17 +94,17 @@ func Test_internalValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "extra fields are ignored",
+			name: "extra fields, including the legacy autoops-token, are ignored",
 			secret: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "config-secret",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
-					ccmAPIKey:      []byte("ccm-api-key-value"),
-					autoOpsOTelURL: []byte("https://otel.example.com"),
-					autoOpsToken:   []byte("token-value"),
-					"extra-field":  []byte("extra-value"),
+					ccmAPIKey:       []byte("ccm-api-key-value"),
+					autoOpsOTelURL:  []byte("https://otel.example.com"),
+					"autoops-token": []byte("legacy-token"),
+					"extra-field":   []byte("extra-value"),
 				},
 			},
 			wantErr: false,
