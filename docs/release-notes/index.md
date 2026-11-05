@@ -13,6 +13,34 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
+#### {{kib}} background task isolation
+
+ECK can now run {{kib}} background tasks (alerting, actions, reporting) in a separate pool of pods. Set `spec.backgroundTasks` on a {{kib}} resource and ECK creates two Deployments: a primary pool that serves UI and API requests, and a background tasks pool that runs task manager work only. The primary pool is the only pool behind the {{kib}} HTTP Service, so a heavy task workload no longer competes with user traffic. Each pool has its own count, resources, config overlay, and pod template. The `status.pools` field reports the health of each pool. This feature requires {{kib}} 8.16.0 or later and an Enterprise license. For more details, refer to the [{{kib}} background task isolation documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/kibana-background-tasks.md).
+
+#### {{es}} PKI authentication
+
+Components that connect to {{es}} can now authenticate with their client certificate instead of a username and password or a service account token. Set `spec.auth.pki.enabled: true` on the {{es}} resource to configure the `eck_managed_pki` realm. Then set `elasticsearchRef.authenticationMode: PKI` on the component. ECK maps the certificate to the roles that the component needs. This feature requires {{es}} 9.6.0 or later and an Enterprise license. {{kib}}, APM Server, Beats, standalone Elastic Agent, {{ls}}, and Elastic Maps Server support PKI. For more details, refer to the [{{es}} PKI authentication documentation](docs-content://deploy-manage/security/k8s-es-pki-authentication.md).
+
+#### Helm charts in the Elastic container registry
+
+The ECK Helm charts are now published as signed OCI artifacts at `docker.elastic.co/eck-charts`, in addition to the existing Helm repository. You do not add a Helm repository for this method. Refer to a chart with an `oci://` URL and specify the chart version with `--version`. For more details, refer to the [Helm chart installation documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/install-using-helm-chart.md).
+
+#### RBAC enforcement for all cross-namespace associations
+
+The `--enforce-rbac-on-refs` flag now checks every cross-namespace association, not only {{es}} references. The flag accepts the values `false`, `true`, and `all`. With `true`, ECK removes associations that fail the check for direct or transitive {{es}} references and emits a warning event for the other reference types. With `all`, ECK removes every association that fails the check. In a future release, `true` becomes an alias for `all`. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md#k8s-restrict-cross-namespace-enforcement-modes).
+
+#### Compatibility with Helm 4 and Server-Side Apply
+
+Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
+
+#### {{ls}} pipeline improvements
+
+The `pipelinesRef` field now accepts a ConfigMap as well as a Secret, so non-sensitive pipeline definitions no longer need a Secret. For {{ls}} 9.5.0 and later, ECK also sets `ssl.reload.automatic: true` by default, so {{ls}} reloads pipeline TLS certificates in place when the backing Secret changes, without a pod restart. For more details, refer to the [{{ls}} configuration documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/configuration-logstash.md#k8s-logstash-pipelines).
+
+#### Operator health probes
+
+The operator pod now has startup, readiness, and liveness probes. The readiness probe reports ready only after the informer cache is synced, so the webhook receives no traffic before the operator can serve it.
+
 
 ### Features and enhancements [elastic-cloud-kubernetes-360-features-and-enhancements]
 
