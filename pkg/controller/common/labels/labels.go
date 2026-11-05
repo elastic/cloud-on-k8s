@@ -12,7 +12,7 @@ import (
 
 const (
 	credentialsLabel = "eck.k8s.elastic.co/credentials" //nolint:gosec
-	// ClientCertificateLabelName marks a secret as a client certificate.
+	// ClientCertificateLabelName marks a secret as a client certificate, in the namespace of the component using it.
 	ClientCertificateLabelName = "eck.k8s.elastic.co/client-certificate"
 	// StackConfigPolicyOnDeleteLabelName is a label used to indicate if an object should be reset or deleted on deletion of its stack config policy.
 	StackConfigPolicyOnDeleteLabelName = "asset.policy.k8s.elastic.co/on-delete"

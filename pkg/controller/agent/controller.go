@@ -129,7 +129,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 		return err
 	}
 
-	// Watch soft-owned secrets (e.g. client certificate secrets for Fleet Server mTLS)
+	// Watch secrets soft-owned by an Agent
 	if err := watches.WatchSoftOwnedSecrets(mgr, c, r.NamespaceMatcher, agentv1alpha1.Kind); err != nil {
 		return err
 	}

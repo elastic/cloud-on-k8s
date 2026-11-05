@@ -26,8 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -41,9 +43,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	commonhash "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password/fixtures"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/hints"
@@ -292,9 +296,8 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 				Version: "1.5.0",
 			},
 		},
-		PasswordGenerator:      fixtures.MustTestRandomGenerator(24),
-		RBACOnRefsMode:         operator.RBACOnRefsModeOff,
-		referencedResourceKind: esv1.Kind,
+		PasswordGenerator: fixtures.MustTestRandomGenerator(24),
+		RBACOnRefsMode:    operator.RBACOnRefsModeOff,
 	}
 }
 
@@ -2173,6 +2176,44 @@ func TestReconciler_Unbind(t *testing.T) {
 			},
 		},
 		{
+			// Unbind must stop the server from trusting the client certificate of a revoked association, including
+			// the trust sources published into other namespaces. Trust sources of other associations survive.
+			name: "client certificate trust sources are deleted",
+			setup: func() (Reconciler, commonv1.Association) {
+				otherNamespaceES := sampleES.DeepCopy()
+				otherNamespaceES.Namespace = "other-es-ns"
+				r := testReconciler(&sampleES, otherNamespaceES, &kb)
+				for _, source := range []struct {
+					name   string
+					server *esv1.Elasticsearch
+					labels map[string]string
+				}{
+					{name: "kbname-kb-es-client-cert", server: &sampleES, labels: assocResourceLabels},
+					// the same association, transitively published into another namespace
+					{name: "kbname-kb-es-client-cert-2", server: otherNamespaceES, labels: assocResourceLabels},
+					{name: "other-kb-es-client-cert", server: &sampleES, labels: map[string]string{
+						"kibanaassociation.k8s.elastic.co/name":      "other-kb",
+						"kibanaassociation.k8s.elastic.co/namespace": kibanaNamespace,
+					}},
+				} {
+					require.NoError(t, certificates.ReconcileClientCertTrustSource(
+						t.Context(), r.Client, source.server,
+						types.NamespacedName{Namespace: kibanaNamespace, Name: source.name}, []byte("cert"),
+						metadata.Metadata{Labels: source.labels},
+					))
+				}
+				return r, kb.EsAssociation()
+			},
+			check: func(t *testing.T, r Reconciler) {
+				t.Helper()
+				trustSources, err := certificates.ListClientCertTrustSources(t.Context(), r.Client, nil)
+				require.NoError(t, err)
+				require.Len(t, trustSources, 1, "only the trust source of the other association should survive Unbind")
+				origin, _ := certificates.ClientCertTrustSourceOrigin(trustSources[0])
+				require.Equal(t, "other-kb-es-client-cert", origin.Name)
+			},
+		},
+		{
 			name: "PKI role mapping request is deleted",
 			setup: func() (Reconciler, commonv1.Association) {
 				return testReconciler(&sampleES, &kb, &pkiRoleMappingRequest), kb.EsAssociation()
@@ -2460,14 +2501,13 @@ func TestReconciler_Reconcile_SupportsAuthentication(t *testing.T) {
 
 			recorder := toolsevents.NewFakeRecorder(10)
 			r := Reconciler{
-				AssociationInfo:        info,
-				Client:                 k8s.NewFakeClient(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), staleRequest),
-				accessReviewer:         rbac.NewPermissiveAccessReviewer(),
-				watches:                watches.NewDynamicWatches(),
-				recorder:               recorder,
-				OperatorInfo:           about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.5.0"}},
-				PasswordGenerator:      fixtures.MustTestRandomGenerator(24),
-				referencedResourceKind: esv1.Kind,
+				AssociationInfo:   info,
+				Client:            k8s.NewFakeClient(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), staleRequest),
+				accessReviewer:    rbac.NewPermissiveAccessReviewer(),
+				watches:           watches.NewDynamicWatches(),
+				recorder:          recorder,
+				OperatorInfo:      about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.5.0"}},
+				PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 			}
 
 			_, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -3075,6 +3115,135 @@ func TestReconcileWatches_SameNamespace_WatchRegistered(t *testing.T) {
 
 	assert.Contains(t, r.watches.Secrets.Registrations(), additionalSecretWatchName(agentNSN),
 		"additional-secret watch must be registered even when agent and fleet server share a namespace")
+}
+
+// requestsOnSecretDeletion returns the reconcile requests the given watches enqueue when the Secret key is deleted.
+func requestsOnSecretDeletion(t *testing.T, secretWatches *watches.DynamicEnqueueRequest[*corev1.Secret], key types.NamespacedName) []reconcile.Request {
+	t.Helper()
+	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
+	defer q.ShutDown()
+	secretWatches.Delete(t.Context(), event.TypedDeleteEvent[*corev1.Secret]{Object: &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(key)}}, q)
+
+	var requests []reconcile.Request
+	for q.Len() > 0 {
+		req, _ := q.Get()
+		q.Done(req)
+		requests = append(requests, req)
+	}
+	return requests
+}
+
+// TestReconciler_reconcileWatches_ClientCertTrustSources tests that the deletion of a client certificate trust source,
+// which is owned by the server, makes the associated resource publish it again.
+func TestReconciler_reconcileWatches_ClientCertTrustSources(t *testing.T) {
+	const (
+		transitiveESNamespace = "transitive-es-ns"
+		transitiveCertName    = "kbname-transitive-client-cert"
+	)
+
+	kb := sampleKibanaWithESRef()
+	kbNSN := k8s.ExtractNamespacedName(&kb)
+	kbRequest := reconcile.Request{NamespacedName: kbNSN}
+	clientCert := types.NamespacedName{Namespace: kibanaNamespace, Name: clientCertSecretName(kb.EsAssociation(), kbAssociationInfo.AssociationName)}
+	trustSource := certificates.ClientCertTrustSourceKey(esNamespace, clientCert)
+
+	// the association conf of the Kibana knows the client certificate of a transitively referenced Elasticsearch
+	conf, err := json.Marshal(commonv1.AssociationConf{
+		AuthSecretName:  commonv1.NoAuthRequiredValue,
+		URL:             "https://es.local:9200",
+		TransitiveESRef: &commonv1.TransitiveESRef{ClientCertSecretName: transitiveCertName},
+	})
+	require.NoError(t, err)
+	kbWithTransitive := kb.DeepCopy()
+	kbWithTransitive.Annotations = map[string]string{kb.EsAssociation().AssociationConfAnnotationName(): string(conf)}
+	transitiveTrustSource := certificates.ClientCertTrustSourceKey(transitiveESNamespace, types.NamespacedName{Namespace: kibanaNamespace, Name: transitiveCertName})
+
+	transitiveES := func(external bool) func(context.Context, k8s.Client, commonv1.Association) (bool, commonv1.AssociationRef, error) {
+		return func(context.Context, k8s.Client, commonv1.Association) (bool, commonv1.AssociationRef, error) {
+			if external {
+				return true, commonv1.ObjectSelector{SecretName: "external-es"}, nil
+			}
+			return true, commonv1.ObjectSelector{Name: "transitive-es", Namespace: transitiveESNamespace}, nil
+		}
+	}
+
+	for _, tt := range []struct {
+		name string
+		kb   *kbv1.Kibana
+		// transitiveES resolves the transitively referenced Elasticsearch, none if nil.
+		transitiveES func(context.Context, k8s.Client, commonv1.Association) (bool, commonv1.AssociationRef, error)
+		// noAssociations reconciles the watches without any association.
+		noAssociations bool
+		deleted        types.NamespacedName
+		wantRequests   []reconcile.Request
+	}{
+		{
+			name:         "the trust source of the client certificate is published again when deleted",
+			kb:           &kb,
+			deleted:      trustSource,
+			wantRequests: []reconcile.Request{kbRequest},
+		},
+		{
+			name:    "the trust source of another client certificate is not watched",
+			kb:      &kb,
+			deleted: certificates.ClientCertTrustSourceKey(esNamespace, types.NamespacedName{Namespace: kibanaNamespace, Name: "another-kb-es-client-cert"}),
+		},
+		{
+			name:    "a secret which is not a trust source of the client certificate is not watched",
+			kb:      &kb,
+			deleted: types.NamespacedName{Namespace: esNamespace, Name: "some-secret"},
+		},
+		{
+			name:           "the trust source is no longer watched without association",
+			kb:             &kb,
+			noAssociations: true,
+			deleted:        trustSource,
+		},
+		{
+			name:         "the trust source of the transitive client certificate is published again when deleted",
+			kb:           kbWithTransitive,
+			transitiveES: transitiveES(false),
+			deleted:      transitiveTrustSource,
+			wantRequests: []reconcile.Request{kbRequest},
+		},
+		{
+			name:         "the trust source of the client certificate is still watched with a transitive Elasticsearch",
+			kb:           kbWithTransitive,
+			transitiveES: transitiveES(false),
+			deleted:      trustSource,
+			wantRequests: []reconcile.Request{kbRequest},
+		},
+		{
+			name:         "the transitive client certificate is not watched when the Elasticsearch is not managed",
+			kb:           kbWithTransitive,
+			transitiveES: transitiveES(true),
+			deleted:      transitiveTrustSource,
+		},
+		{
+			name:         "the transitive client certificate is not watched until it is known",
+			kb:           &kb,
+			transitiveES: transitiveES(false),
+			deleted:      transitiveTrustSource,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := testReconciler(tt.kb)
+			if tt.transitiveES != nil {
+				r.ReconcileTransitiveESSecrets = func(context.Context, k8s.Client, commonv1.Association, metadata.Metadata) (*commonv1.TransitiveESRef, *reconciler.Results) {
+					return nil, nil
+				}
+				r.ElasticsearchRef = tt.transitiveES
+			}
+			associations := []commonv1.Association{tt.kb.EsAssociation()}
+			if tt.noAssociations {
+				associations = nil
+			}
+
+			require.NoError(t, r.reconcileWatches(t.Context(), kbNSN, associations))
+
+			require.Equal(t, tt.wantRequests, requestsOnSecretDeletion(t, r.watches.Secrets, tt.deleted))
+		})
+	}
 }
 
 func TestReconciler_deleteStaleAuthRequestSecrets(t *testing.T) {

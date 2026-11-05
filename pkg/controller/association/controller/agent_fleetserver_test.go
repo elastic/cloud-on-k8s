@@ -7,13 +7,17 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -22,12 +26,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	utilmaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -387,14 +393,45 @@ func TestDeleteOrphanedTransitiveClientCertSecrets(t *testing.T) {
 		"agentassociation.k8s.elastic.co/namespace": "ns",
 		"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
 		labels.ClientCertificateLabelName:           "true",
-		reconciler.SoftOwnerKindLabel:               esv1.Kind,
+		transitiveESClientCertLabel:                 "true",
 	}
 
+	// trustSource describes a trust source published with the agent's association labels.
+	type trustSource struct {
+		server     client.Object
+		originName string
+		transitive bool
+		// agent overrides the agent the trust source was published for.
+		agent string
+		// extraLabels are labels of the trust source which do not identify the agent: the ones propagated from the
+		// agent, or the ones of the Fleet Server it references.
+		extraLabels map[string]string
+	}
+	otherAgentLabels := maps.Clone(matchingLabels)
+	otherAgentLabels["agentassociation.k8s.elastic.co/name"] = "agent2"
+	// the labels of the client certificates created by older operator versions: the server soft-owner labels, set to
+	// Elasticsearch for the transitive client certificate and to the Agent for the Fleet Server client certificate,
+	// and no transitive label
+	legacyTransitiveLabels := maps.Clone(matchingLabels)
+	delete(legacyTransitiveLabels, transitiveESClientCertLabel)
+	legacyTransitiveLabels[reconciler.SoftOwnerNameLabel] = "es1"
+	legacyTransitiveLabels[reconciler.SoftOwnerNamespaceLabel] = "es-ns"
+	legacyTransitiveLabels[reconciler.SoftOwnerKindLabel] = esv1.Kind
+	legacyFleetServerLabels := maps.Clone(legacyTransitiveLabels)
+	legacyFleetServerLabels[reconciler.SoftOwnerNameLabel] = "fleet1"
+	legacyFleetServerLabels[reconciler.SoftOwnerNamespaceLabel] = "fs-ns"
+	legacyFleetServerLabels[reconciler.SoftOwnerKindLabel] = agentv1alpha1.Kind
+	esServer := &esv1.Elasticsearch{Namespace: "es-ns", Name: "es1"}
+	sameNamespaceESServer := &esv1.Elasticsearch{Namespace: "ns", Name: "es1"}
+	fleetServer := &agentv1alpha1.Agent{Namespace: "fs-ns", Name: "fleet1"}
+
 	for _, tt := range []struct {
-		name              string
-		existingObjects   []client.Object
-		currentSecretName string
-		wantRemaining     []string
+		name                   string
+		existingObjects        []client.Object
+		trustSources           []trustSource
+		currentSecretName      string
+		wantRemaining          []string
+		wantTrustSourceOrigins []string
 	}{
 		{
 			name:          "no matching secrets is a no-op",
@@ -418,22 +455,177 @@ func TestDeleteOrphanedTransitiveClientCertSecrets(t *testing.T) {
 			currentSecretName: "current-cert",
 			wantRemaining:     []string{"current-cert"},
 		},
+		{
+			// The trust source published by the agent's own Fleet Server association has the same association
+			// labels, but not the transitive label: it must survive.
+			name: "preserves the current trust source and deletes the others",
+			trustSources: []trustSource{
+				{server: esServer, originName: "current-cert", transitive: true},
+				{server: esServer, originName: "orphaned-cert", transitive: true},
+				{server: fleetServer, originName: "fleet-server-client-cert"},
+			},
+			currentSecretName:      "current-cert",
+			wantTrustSourceOrigins: []string{"current-cert", "fleet-server-client-cert"},
+		},
+		{
+			name: "deletes all transitive trust sources when currentSecretName is empty",
+			trustSources: []trustSource{
+				{server: esServer, originName: "orphaned-cert", transitive: true},
+				{server: fleetServer, originName: "fleet-server-client-cert"},
+			},
+			currentSecretName:      "",
+			wantTrustSourceOrigins: []string{"fleet-server-client-cert"},
+		},
+		{
+			// A trust source published into an Elasticsearch running in the agent's namespace matches the client
+			// certificate selector: it must not be deleted as an orphaned client certificate.
+			name: "preserves the current trust source published into the agent namespace",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "current-cert", Namespace: "ns", Labels: matchingLabels},
+			},
+			trustSources: []trustSource{
+				{server: sameNamespaceESServer, originName: "current-cert", transitive: true},
+			},
+			currentSecretName:      "current-cert",
+			wantRemaining:          []string{"current-cert"},
+			wantTrustSourceOrigins: []string{"current-cert"},
+		},
+		{
+			name: "keeps the secrets and trust sources of other agents",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "orphaned-cert", Namespace: "ns", Labels: matchingLabels},
+				&corev1.Secret{Name: "other-agent-cert", Namespace: "ns", Labels: otherAgentLabels},
+			},
+			trustSources: []trustSource{
+				{server: esServer, originName: "orphaned-cert", transitive: true},
+				{server: esServer, originName: "other-agent-cert", transitive: true, agent: "agent2"},
+			},
+			currentSecretName:      "current-cert",
+			wantRemaining:          []string{"other-agent-cert"},
+			wantTrustSourceOrigins: []string{"other-agent-cert"},
+		},
+		{
+			name: "deletes the legacy transitive client certificates which are not the current one",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "legacy-old-cert", Namespace: "ns", Labels: legacyTransitiveLabels},
+				&corev1.Secret{Name: "legacy-current-cert", Namespace: "ns", Labels: legacyTransitiveLabels},
+			},
+			currentSecretName: "legacy-current-cert",
+			wantRemaining:     []string{"legacy-current-cert"},
+		},
+		{
+			name: "deletes all the legacy transitive client certificates when currentSecretName is empty",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "legacy-old-cert", Namespace: "ns", Labels: legacyTransitiveLabels},
+			},
+			currentSecretName: "",
+		},
+		{
+			name: "keeps the legacy Fleet Server client certificate",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "legacy-fleet-server-cert", Namespace: "ns", Labels: legacyFleetServerLabels},
+			},
+			currentSecretName: "current-cert",
+			wantRemaining:     []string{"legacy-fleet-server-cert"},
+		},
+		{
+			name: "keeps the legacy transitive client certificates of other agents",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "legacy-other-agent-cert", Namespace: "ns", Labels: utilmaps.Merge(maps.Clone(legacyTransitiveLabels), map[string]string{
+					"agentassociation.k8s.elastic.co/name": "agent2",
+				})},
+			},
+			currentSecretName: "current-cert",
+			wantRemaining:     []string{"legacy-other-agent-cert"},
+		},
+		{
+			// The labels propagated from the agent can change along with the Elasticsearch reference: the
+			// certificate and the trust source of the previous reference carry the former ones.
+			name: "deletes the orphaned secrets whatever the labels propagated from the agent",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "orphaned-cert", Namespace: "ns", Labels: utilmaps.Merge(maps.Clone(matchingLabels), map[string]string{"team": "former"})},
+				&corev1.Secret{Name: "legacy-orphaned-cert", Namespace: "ns", Labels: utilmaps.Merge(maps.Clone(legacyTransitiveLabels), map[string]string{"team": "former"})},
+			},
+			trustSources: []trustSource{
+				{server: esServer, originName: "orphaned-cert", transitive: true, extraLabels: map[string]string{"team": "former"}},
+			},
+			currentSecretName: "current-cert",
+		},
+		{
+			// The Fleet Server referenced by the agent can change along with the Elasticsearch reference.
+			name: "deletes the orphaned secrets whatever the Fleet Server referenced by the agent",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "orphaned-cert", Namespace: "ns", Labels: utilmaps.Merge(maps.Clone(matchingLabels), map[string]string{
+					"agent.k8s.elastic.co/name": "former-fleet-server", "agent.k8s.elastic.co/namespace": "former-ns",
+				})},
+			},
+			trustSources: []trustSource{
+				{server: esServer, originName: "orphaned-cert", transitive: true, extraLabels: map[string]string{
+					"agent.k8s.elastic.co/name": "former-fleet-server", "agent.k8s.elastic.co/namespace": "former-ns",
+				}},
+			},
+			currentSecretName: "current-cert",
+		},
+		{
+			name: "keeps the client certificates which are not transitive",
+			existingObjects: []client.Object{
+				&corev1.Secret{Name: "own-fleet-server-cert", Namespace: "ns", Labels: map[string]string{
+					"agentassociation.k8s.elastic.co/name":      "agent1",
+					"agentassociation.k8s.elastic.co/namespace": "ns",
+					"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
+					labels.ClientCertificateLabelName:           "true",
+				}},
+			},
+			currentSecretName: "current-cert",
+			wantRemaining:     []string{"own-fleet-server-cert"},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.existingObjects...)
+			for _, ts := range tt.trustSources {
+				meta := assocMeta
+				if ts.agent != "" {
+					meta = meta.Merge(metadata.Metadata{Labels: map[string]string{"agentassociation.k8s.elastic.co/name": ts.agent}})
+				}
+				if ts.transitive {
+					meta = meta.Merge(metadata.Metadata{Labels: map[string]string{transitiveESClientCertLabel: "true"}})
+				}
+				meta = meta.Merge(metadata.Metadata{Labels: ts.extraLabels})
+				require.NoError(t, certificates.ReconcileClientCertTrustSource(
+					t.Context(), c, ts.server, types.NamespacedName{Namespace: "ns", Name: ts.originName},
+					[]byte("cert"), meta,
+				))
+			}
 
-			err := deleteOrphanedTransitiveESClientCertSecrets(context.Background(), c, assocMeta, associated, tt.currentSecretName)
+			err := deleteOrphanedTransitiveESClientCertSecrets(t.Context(), c, associated, tt.currentSecretName)
 			require.NoError(t, err)
 
 			var secretList corev1.SecretList
-			require.NoError(t, c.List(context.Background(), &secretList))
-			var remaining []string //nolint:prealloc
+			require.NoError(t, c.List(t.Context(), &secretList))
+			var remaining []string
 			for _, s := range secretList.Items {
+				if _, isTrustSource := certificates.ClientCertTrustSourceOrigin(s); isTrustSource {
+					continue
+				}
 				remaining = append(remaining, s.Name)
 			}
 			require.Equal(t, tt.wantRemaining, remaining)
+			require.ElementsMatch(t, tt.wantTrustSourceOrigins, trustSourceOrigins(t, c))
 		})
 	}
+}
+
+// trustSourceOrigins returns the names of the client certificate secrets of all the published trust sources.
+func trustSourceOrigins(t *testing.T, c k8s.Client) []string {
+	t.Helper()
+	trustSources, err := certificates.ListClientCertTrustSources(t.Context(), c, nil)
+	require.NoError(t, err)
+	var origins []string //nolint:prealloc
+	for _, ts := range trustSources {
+		origin, _ := certificates.ClientCertTrustSourceOrigin(ts)
+		origins = append(origins, origin.Name)
+	}
+	return origins
 }
 
 func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
@@ -452,7 +644,67 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 		"agentassociation.k8s.elastic.co/namespace": "ns",
 		"agentassociation.k8s.elastic.co/type":      commonv1.FleetServerAssociationType,
 		labels.ClientCertificateLabelName:           "true",
-		reconciler.SoftOwnerKindLabel:               esv1.Kind,
+		transitiveESClientCertLabel:                 "true",
+	}
+
+	transitiveAgent := &agentv1alpha1.Agent{
+		Name: "agent1", Namespace: "ns",
+		Spec: agentv1alpha1.AgentSpec{
+			Version:        "8.0.0",
+			FleetServerRef: commonv1.FleetServerSelector{ObjectSelector: commonv1.ObjectSelector{Name: "fleet1", Namespace: "fs-ns"}},
+		},
+	}
+	transitiveFleetServer := func(esConf commonv1.AssociationConf, esRef agentv1alpha1.Output) *agentv1alpha1.Agent {
+		return &agentv1alpha1.Agent{
+			Name: "fleet1", Namespace: "fs-ns",
+			Annotations: map[string]string{esConfAnnotationKey(esRef.ObjectSelector): esAssocConfAnnotation(esConf)},
+			Spec: agentv1alpha1.AgentSpec{
+				Version:            "8.0.0",
+				FleetServerEnabled: true,
+				ElasticsearchRefs:  []agentv1alpha1.Output{esRef},
+			},
+		}
+	}
+	managedESConf := commonv1.AssociationConf{
+		AuthSecretName: "-",
+		CACertProvided: true,
+		CASecretName:   "fleet1-es-ca",
+		URL:            "https://es1-http.es-ns.svc:9200",
+	}
+	clientAuthES := func(required bool) *esv1.Elasticsearch {
+		es := &esv1.Elasticsearch{Name: "es1", Namespace: "es-ns"}
+		if required {
+			es.Annotations = map[string]string{annotation.ClientAuthenticationRequiredAnnotation: "true"}
+		}
+		return es
+	}
+	transitiveCertName := "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert"
+	transitiveCASecretName := association.AdditionalSecretNamer.Suffix("agent1", "agent-fleetserver", hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}), "es-ca")
+	// legacyTransitiveCert is the transitive client certificate as created by older operator versions, with the
+	// server soft-owner labels, which are not used any more.
+	// legacyGeneratedCert returns a transitive client certificate as created by older operator versions: it has the
+	// server soft-owner labels and no transitive label.
+	legacyGeneratedCert := func(name string) *corev1.Secret {
+		lbls := maps.Clone(orphanLabels)
+		delete(lbls, transitiveESClientCertLabel)
+		return &corev1.Secret{
+			Name: name, Namespace: "ns",
+			Labels: utilmaps.Merge(lbls, map[string]string{
+				reconciler.SoftOwnerNameLabel:      "es1",
+				reconciler.SoftOwnerNamespaceLabel: "es-ns",
+				reconciler.SoftOwnerKindLabel:      esv1.Kind,
+			}),
+			Data: map[string][]byte{certificates.CertFileName: []byte("legacy-cert")},
+		}
+	}
+	legacyTransitiveCert := &corev1.Secret{
+		Name: transitiveCertName, Namespace: "ns",
+		Labels: utilmaps.Merge(maps.Clone(orphanLabels), map[string]string{
+			reconciler.SoftOwnerNameLabel:      "es1",
+			reconciler.SoftOwnerNamespaceLabel: "es-ns",
+			reconciler.SoftOwnerKindLabel:      esv1.Kind,
+		}),
+		Data: map[string][]byte{certificates.CertFileName: []byte("legacy-cert")},
 	}
 
 	for _, tt := range []struct {
@@ -466,6 +718,14 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 		wantNilResults    bool
 		wantOrphanGone    bool
 		wantCreatedSecret *types.NamespacedName
+		// wantDeletedSecrets are the secrets of the agent namespace expected to be deleted.
+		wantDeletedSecrets []types.NamespacedName
+		// staleTrustSources lists the origins of transitive trust sources published before the call.
+		staleTrustSources []string
+		// interceptorFuncs makes the client fail.
+		interceptorFuncs *interceptor.Funcs
+		// wantTrustSources lists the trust sources expected to be published into the ES namespace.
+		wantTrustSources []string
 	}{
 		{
 			name: "fleet server ref not set returns nil and cleans up",
@@ -616,6 +876,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				Namespace: "ns",
 				Name:      "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert",
 			},
+			wantTrustSources: []string{"agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert"},
 		},
 		{
 			name: "external ES ref skips client cert reconciliation and cleans up",
@@ -690,6 +951,7 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				Namespace: "fs-ns",
 				Name:      "agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert",
 			},
+			wantTrustSources: []string{"agent1-agent-es-" + hash.HashObject(esSelector.NamespacedName()) + "-client-cert"},
 		},
 		{
 			name: "same-namespace fleet server with user-provided cert returns original client cert name",
@@ -733,6 +995,79 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			},
 		},
 		{
+			name:              "legacy soft-owner labels are removed from the current transitive client certificate",
+			agent:             transitiveAgent,
+			fleetServer:       transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
+			es:                clientAuthES(true),
+			orphanedSecrets:   []*corev1.Secret{legacyTransitiveCert},
+			wantRef:           &commonv1.TransitiveESRef{CASecretName: transitiveCASecretName, ClientCertSecretName: transitiveCertName},
+			wantCreatedSecret: &types.NamespacedName{Namespace: "ns", Name: transitiveCertName},
+			wantTrustSources:  []string{transitiveCertName},
+		},
+		{
+			name:              "transitive trust sources are removed when the ES no longer requires client auth",
+			agent:             transitiveAgent,
+			fleetServer:       transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
+			es:                clientAuthES(false),
+			orphanedSecrets:   []*corev1.Secret{{Name: transitiveCertName, Namespace: "ns", Labels: orphanLabels}},
+			staleTrustSources: []string{transitiveCertName},
+			wantRef:           &commonv1.TransitiveESRef{CASecretName: transitiveCASecretName},
+			wantNilResults:    true,
+			wantOrphanGone:    true,
+		},
+		{
+			name:               "a legacy transitive client certificate of a previous ES reference is removed",
+			agent:              transitiveAgent,
+			fleetServer:        transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
+			es:                 clientAuthES(true),
+			orphanedSecrets:    []*corev1.Secret{legacyGeneratedCert("agent1-agent-es-previous-ref-client-cert")},
+			wantRef:            &commonv1.TransitiveESRef{CASecretName: transitiveCASecretName, ClientCertSecretName: transitiveCertName},
+			wantCreatedSecret:  &types.NamespacedName{Namespace: "ns", Name: transitiveCertName},
+			wantTrustSources:   []string{transitiveCertName},
+			wantDeletedSecrets: []types.NamespacedName{{Namespace: "ns", Name: "agent1-agent-es-previous-ref-client-cert"}},
+		},
+		{
+			name:               "a legacy transitive client certificate is removed when the ES no longer requires client auth",
+			agent:              transitiveAgent,
+			fleetServer:        transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
+			es:                 clientAuthES(false),
+			orphanedSecrets:    []*corev1.Secret{legacyGeneratedCert(transitiveCertName)},
+			wantRef:            &commonv1.TransitiveESRef{CASecretName: transitiveCASecretName},
+			wantNilResults:     true,
+			wantDeletedSecrets: []types.NamespacedName{{Namespace: "ns", Name: transitiveCertName}},
+		},
+		{
+			name:  "a legacy generated transitive client certificate is removed when the fleet server has a user-provided one",
+			agent: transitiveAgent,
+			fleetServer: transitiveFleetServer(
+				commonv1.AssociationConf{AuthSecretName: "-", CACertProvided: true, CASecretName: "fleet1-es-ca", ClientCertSecretName: "copied-user-cert", URL: "https://es1-http.es-ns.svc:9200"},
+				agentv1alpha1.Output{ObjectSelector: esSelector, ClientCertificateSecretName: "user-provided-cert"},
+			),
+			es:              clientAuthES(true),
+			orphanedSecrets: []*corev1.Secret{legacyGeneratedCert(transitiveCertName)},
+			wantRef: &commonv1.TransitiveESRef{
+				CASecretName:         transitiveCASecretName,
+				ClientCertSecretName: "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-client-cert",
+			},
+			wantDeletedSecrets: []types.NamespacedName{{Namespace: "ns", Name: transitiveCertName}},
+		},
+		{
+			name:        "a failure to publish the trust source returns the error and no reference",
+			agent:       transitiveAgent,
+			fleetServer: transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
+			es:          clientAuthES(true),
+			interceptorFuncs: &interceptor.Funcs{
+				Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if obj.GetLabels()[commonv1.TypeLabelName] == certificates.ClientCertTrustSourceType {
+						return errors.New("simulated trust source create failure")
+					}
+					return c.Create(ctx, obj, opts...)
+				},
+			},
+			wantRef:      nil,
+			wantHasError: true,
+		},
+		{
 			name: "conf is nil returns nil and cleans up",
 			agent: &agentv1alpha1.Agent{
 				Name: "agent1", Namespace: "ns",
@@ -767,10 +1102,34 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			for _, s := range tt.orphanedSecrets {
 				objects = append(objects, s)
 			}
-			c := k8s.NewFakeClient(objects...)
+			builder := k8s.NewFakeClientBuilder(objects...)
+			if tt.interceptorFuncs != nil {
+				builder = builder.WithInterceptorFuncs(*tt.interceptorFuncs)
+			}
+			c := builder.Build()
+			stale := clientAuthES(true)
+			for _, origin := range tt.staleTrustSources {
+				require.NoError(t, certificates.ReconcileClientCertTrustSource(
+					t.Context(), c, stale, types.NamespacedName{Namespace: "ns", Name: origin}, []byte("cert"),
+					assocMeta.Merge(metadata.Metadata{Labels: map[string]string{transitiveESClientCertLabel: "true"}}),
+				))
+			}
 			assoc := &agentv1alpha1.AgentFleetServerAssociation{Agent: tt.agent}
 
 			ref, results := fleetManagedAgentTransitiveESRef(context.Background(), c, assoc, assocMeta)
+
+			// The managed transitive client certificate must be published into the ES namespace, otherwise ES does
+			// not trust it.
+			trustSources, err := certificates.ListClientCertTrustSources(t.Context(), c, nil)
+			require.NoError(t, err)
+			var gotTrustSources []string //nolint:prealloc
+			for _, ts := range trustSources {
+				require.Equal(t, "es-ns", ts.Namespace, "trust source %s must be published into the ES namespace", ts.Name)
+				require.Equal(t, "true", ts.Labels[transitiveESClientCertLabel], "trust source %s must be marked as transitive", ts.Name)
+				origin, _ := certificates.ClientCertTrustSourceOrigin(ts)
+				gotTrustSources = append(gotTrustSources, origin.Name)
+			}
+			require.Equal(t, tt.wantTrustSources, gotTrustSources)
 
 			if tt.wantRef == nil {
 				require.Nil(t, ref)
@@ -796,11 +1155,20 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				}
 			}
 
+			for _, nsn := range tt.wantDeletedSecrets {
+				var deleted corev1.Secret
+				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), nsn, &deleted)), "secret %s must be deleted", nsn)
+			}
+
 			if tt.wantCreatedSecret != nil {
 				// Verify the secret was actually persisted in the fake client, not just named.
 				var secret corev1.Secret
 				err := c.Get(context.Background(), *tt.wantCreatedSecret, &secret)
 				require.NoError(t, err, "expected secret %s/%s to exist in the fake client", tt.wantCreatedSecret.Namespace, tt.wantCreatedSecret.Name)
+				require.Equal(t, "true", secret.Labels[transitiveESClientCertLabel])
+				for _, l := range []string{reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerKindLabel} {
+					require.NotContains(t, secret.Labels, l, "the client certificate must not carry server soft-owner labels")
+				}
 			}
 		})
 	}

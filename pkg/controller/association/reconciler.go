@@ -190,6 +190,18 @@ func (a AssociationInfo) pkiRoleMappingRequestLabelSelector(
 	)
 }
 
+// clientCertTrustSourceLabelSelector returns labels selecting the client certificate trust Secrets published into
+// the server namespaces for this association.
+func (a AssociationInfo) clientCertTrustSourceLabelSelector(
+	associated types.NamespacedName,
+	association types.NamespacedName,
+) client.MatchingLabels {
+	return maps.Merge(
+		map[string]string{commonv1.TypeLabelName: certificates.ClientCertTrustSourceType},
+		a.AssociationResourceLabels(associated, association),
+	)
+}
+
 // Reconciler reconciles a generic association for a specific AssociationInfo.
 type Reconciler struct {
 	AssociationInfo
@@ -199,9 +211,6 @@ type Reconciler struct {
 	recorder       toolsevents.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
-	// referencedResourceKind is the CRD Kind of the referenced resource (e.g. "Elasticsearch"),
-	// derived from the scheme at controller setup time via ReferencedObjTemplate.
-	referencedResourceKind string
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -386,7 +395,7 @@ func (r *Reconciler) reconcileAssociation(ctx context.Context, association commo
 	var clientCertSecretName string
 	if hasClientAuthenticationRequired {
 		var certResults *reconciler.Results
-		clientCertSecret, certResults = r.reconcileClientCertificate(ctx, association, assocMeta)
+		clientCertSecret, certResults = r.reconcileClientCertificate(ctx, association, referencedObj, assocMeta)
 		results.WithResults(certResults)
 		if certResults.HasError() {
 			return commonv1.AssociationPending, results
@@ -774,9 +783,8 @@ func (r *Reconciler) resolveESAndCheckRBAC(ctx context.Context, association comm
 	return esAssocRef, es, "", nil
 }
 
-// deleteAllAssociationSecrets deletes every secret in the associated resource's namespace that
-// carries the association's resource labels: the CA copy, additional-secret copies, and any
-// transitive ES client cert secrets.
+// deleteAllAssociationSecrets deletes every secret in the associated resource's namespace that carries the
+// association's resource labels.
 func (r *Reconciler) deleteAllAssociationSecrets(ctx context.Context, association commonv1.Association) error {
 	assocLabels := r.AssociationResourceLabels(k8s.ExtractNamespacedName(association), association.AssociationRef().NamespacedName())
 	var secrets corev1.SecretList
@@ -800,6 +808,14 @@ func (r *Reconciler) Unbind(ctx context.Context, association commonv1.Associatio
 	// Delete all association-labeled secrets in the associated resource's namespace: CA copy,
 	// additional-secret copies, and any transitive ES client cert secrets.
 	if err := r.deleteAllAssociationSecrets(ctx, association); err != nil {
+		return err
+	}
+
+	// Delete the client certificate trust sources in the server namespaces, so the server stops trusting the
+	// client certificate of an association that is no longer allowed.
+	associated := k8s.ExtractNamespacedName(association)
+	assocRef := association.AssociationRef().NamespacedName()
+	if err := k8s.DeleteSecretMatching(ctx, r.Client, r.clientCertTrustSourceLabelSelector(associated, assocRef)); err != nil {
 		return err
 	}
 

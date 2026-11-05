@@ -13,6 +13,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -53,37 +54,54 @@ func clientCertSecretName(association commonv1.Association, associationName stri
 // ClientCertificateSecretName on the association ref, its contents are copied into the ECK-managed secret. Otherwise,
 // a self-signed client certificate is auto-generated.
 //
-// The ECK-managed secret is always created in the associated resource's namespace with soft-owner labels
-// pointing to the referenced server resource, enabling trust bundle discovery regardless of the cert source.
+// The ECK-managed secret is created in the associated resource's namespace so the client can mount it. Its
+// public certificate is also published as a trust source into the referenced server's namespace.
 //
 // Returns the client certificate secret and results containing requeue and/or error info.
 func (r *Reconciler) reconcileClientCertificate(
 	ctx context.Context,
 	association commonv1.Association,
+	referencedObj client.Object,
 	assocMeta metadata.Metadata,
 ) (*certificates.CertificatesSecret, *reconciler.Results) {
 	results := reconciler.NewResult(ctx)
 
 	secretName := clientCertSecretName(association, r.AssociationName)
-
-	// Build soft-owner labels pointing to the referenced server resource.
 	ref := association.AssociationRef()
+
 	extraLabels := map[string]string{
-		reconciler.SoftOwnerNameLabel:      ref.GetName(),
-		reconciler.SoftOwnerNamespaceLabel: ref.GetNamespace(),
-		reconciler.SoftOwnerKindLabel:      r.referencedResourceKind,
-		labels.ClientCertificateLabelName:  "true",
+		labels.ClientCertificateLabelName: "true",
 	}
 
-	if userSecretName := association.AssociationRef().GetClientCertificateSecretName(); userSecretName != "" {
-		clientCertSecret, err := ReconcileUserProvidedClientCert(ctx, r.Client, association, assocMeta, secretName, userSecretName, extraLabels)
+	var clientCertSecret *certificates.CertificatesSecret
+	if userSecretName := ref.GetClientCertificateSecretName(); userSecretName != "" {
+		var err error
+		clientCertSecret, err = ReconcileUserProvidedClientCert(ctx, r.Client, association, assocMeta, secretName, userSecretName, extraLabels)
 		if err != nil {
 			return nil, results.WithError(err)
 		}
-		return clientCertSecret, results
+	} else {
+		var certResults *reconciler.Results
+		clientCertSecret, certResults = ReconcileManagedClientCert(ctx, r.Client, association, assocMeta, secretName, extraLabels)
+		results.WithResults(certResults)
+		if certResults.HasError() {
+			return nil, results
+		}
 	}
 
-	return ReconcileManagedClientCert(ctx, r.Client, association, assocMeta, secretName, extraLabels)
+	if err := certificates.RemoveServerSoftOwnerLabels(ctx, r.Client, &clientCertSecret.Secret); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Publish the public client certificate into the server namespace as the authoritative trust source.
+	if err := certificates.ReconcileClientCertTrustSource(
+		ctx, r.Client, referencedObj, k8s.ExtractNamespacedName(&clientCertSecret.Secret),
+		clientCertSecret.CertPem(), assocMeta,
+	); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	return clientCertSecret, results
 }
 
 // ReconcileManagedClientCert creates or updates a self-signed client certificate.
@@ -130,9 +148,8 @@ func ReconcileManagedClientCert(
 }
 
 // ReconcileUserProvidedClientCert copies a user-provided client certificate secret into the ECK-managed
-// secret with the collision-free name and soft-owner labels. This ensures the trust bundle discovery
-// and cleanup mechanisms work uniformly regardless of whether the cert was auto-generated or user-provided.
-// It returns the validated certificate Secret that was written.
+// secret with the collision-free name, so trust source publication and cleanup work the same for generated and
+// user-provided certificates. It returns the reconciled Secret.
 func ReconcileUserProvidedClientCert(
 	ctx context.Context,
 	c k8s.Client,
@@ -198,14 +215,20 @@ func ReconcileUserProvidedClientCert(
 		return nil, fmt.Errorf("invalid user-provided client certificate secret %s/%s: %w", associatedNS, userSecretName, err)
 	}
 
-	if _, err := reconciler.ReconcileSecret(ctx, c, expected, association.Associated()); err != nil {
+	reconciled, err := reconciler.ReconcileSecret(ctx, c, expected, association.Associated())
+	if err != nil {
 		return nil, err
 	}
-	return clientCertSecret, nil
+	return &certificates.CertificatesSecret{Secret: reconciled}, nil
 }
 
-// DeleteClientCertSecret deletes the client certificate secret for the given association if it exists.
+// DeleteClientCertSecret deletes the client certificate secret for the given association if it exists, and its
+// trust source in the server namespace.
 func DeleteClientCertSecret(ctx context.Context, c k8s.Client, association commonv1.Association, associationName string) error {
 	secretName := clientCertSecretName(association, associationName)
-	return k8s.DeleteSecretIfExists(ctx, c, types.NamespacedName{Namespace: association.GetNamespace(), Name: secretName})
+	sourceNSN := types.NamespacedName{Namespace: association.GetNamespace(), Name: secretName}
+	if err := k8s.DeleteSecretIfExists(ctx, c, sourceNSN); err != nil {
+		return err
+	}
+	return certificates.DeleteClientCertTrustSource(ctx, c, association.AssociationRef().GetNamespace(), sourceNSN)
 }

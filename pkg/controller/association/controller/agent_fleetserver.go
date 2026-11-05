@@ -32,27 +32,35 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
+// transitiveESClientCertLabel marks the client certificate an agent uses against the Elasticsearch referenced by its
+// Fleet Server, and the trust source published for it into the Elasticsearch namespace.
+const transitiveESClientCertLabel = "agentassociation.k8s.elastic.co/transitive-es-client-cert"
+
+// agentFleetServerAssociationLabels returns the labels which identify the Agent and its association with a Fleet
+// Server, on the resources created for them.
+func agentFleetServerAssociationLabels(associated types.NamespacedName) map[string]string {
+	return map[string]string{
+		AgentAssociationLabelName:      associated.Name,
+		AgentAssociationLabelNamespace: associated.Namespace,
+		AgentAssociationLabelType:      commonv1.FleetServerAssociationType,
+	}
+}
+
 func agentFleetServerAssociationInfo() association.AssociationInfo {
 	return association.AssociationInfo{
-		AssociatedObjTemplate:        func() commonv1.Associated { return &agentv1alpha1.Agent{} },
-		AssociatedObjListTemplate:    func() client.ObjectList { return &agentv1alpha1.AgentList{} },
-		ReferencedObjTemplate:        func() client.Object { return &agentv1alpha1.Agent{} },
-		ExternalServiceURL:           getFleetServerExternalURL,
-		ReferencedResourceVersion:    referencedFleetServerStatusVersion,
-		ReferencedResourceNamer:      agent.Namer,
-		AssociationName:              "agent-fleetserver",
-		AssociatedShortName:          "agent",
-		AssociationType:              commonv1.FleetServerAssociationType,
-		AdditionalSecrets:            additionalSecrets,
-		ElasticsearchRef:             agentFleetServerESRef,
-		ReconcileTransitiveESSecrets: fleetManagedAgentTransitiveESRef,
-		Labels: func(associated types.NamespacedName) map[string]string {
-			return map[string]string{
-				AgentAssociationLabelName:      associated.Name,
-				AgentAssociationLabelNamespace: associated.Namespace,
-				AgentAssociationLabelType:      commonv1.FleetServerAssociationType,
-			}
-		},
+		AssociatedObjTemplate:                 func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		AssociatedObjListTemplate:             func() client.ObjectList { return &agentv1alpha1.AgentList{} },
+		ReferencedObjTemplate:                 func() client.Object { return &agentv1alpha1.Agent{} },
+		ExternalServiceURL:                    getFleetServerExternalURL,
+		ReferencedResourceVersion:             referencedFleetServerStatusVersion,
+		ReferencedResourceNamer:               agent.Namer,
+		AssociationName:                       "agent-fleetserver",
+		AssociatedShortName:                   "agent",
+		AssociationType:                       commonv1.FleetServerAssociationType,
+		AdditionalSecrets:                     additionalSecrets,
+		ElasticsearchRef:                      agentFleetServerESRef,
+		ReconcileTransitiveESSecrets:          fleetManagedAgentTransitiveESRef,
+		Labels:                                agentFleetServerAssociationLabels,
 		AssociationConfAnnotationNameBase:     commonv1.FleetServerConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      agent.NameLabelName,
 		AssociationResourceNamespaceLabelName: agent.NamespaceLabelName,
@@ -206,7 +214,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	associated := assoc.Associated()
 	fleetServerRef := assoc.AssociationRef()
 	if !fleetServerRef.IsSet() {
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -216,7 +224,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		return nil, results.WithError(err)
 	}
 	if esAssociation == nil {
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -228,7 +236,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 	if conf == nil {
 		log.V(1).Info("Transitive ES association conf is nil")
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return nil, nil
@@ -252,7 +260,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		// For external ES references, the operator cannot determine whether client
 		// authentication is required. Propagate the user-provided cert copy if present
 		// but skip ECK-managed client cert reconciliation.
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, userClientCertName); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, userClientCertName); err != nil {
 			return nil, results.WithError(err)
 		}
 		return transitiveESRefOrNil(caSecretName, userClientCertName), nil
@@ -264,7 +272,7 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 
 	if !annotation.HasClientAuthenticationRequired(&es) {
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, ""); err != nil {
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, ""); err != nil {
 			return nil, results.WithError(err)
 		}
 		return transitiveESRefOrNil(caSecretName, ""), nil
@@ -274,31 +282,44 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	// it: for cross-namespace associations this is the per-agent copy created by
 	// additionalSecrets/copySecret; for same-namespace associations it is the original secret.
 	if userClientCertName != "" {
-		// Pass userClientCertName to preserve the copy: it may inherit SoftOwnerKindLabel/
-		// ClientCertificateLabelName from the source secret, so "" would match and delete it.
-		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, userClientCertName); err != nil {
+		// Pass userClientCertName so the user-provided copy is never deleted, even if it inherited the
+		// selector's labels from the source secret.
+		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, userClientCertName); err != nil {
 			return nil, results.WithError(err)
 		}
 		return transitiveESRefOrNil(caSecretName, userClientCertName), results
 	}
 
-	// Build soft-owner labels pointing to the referenced server resource.
+	// The transitive label tells this certificate apart from the agent's own Fleet Server client certificate,
+	// which has the same association labels. The trust source published below inherits it.
 	extraLabels := map[string]string{
-		reconciler.SoftOwnerNameLabel:      esAssocRef.GetName(),
-		reconciler.SoftOwnerNamespaceLabel: esAssocRef.GetNamespace(),
-		reconciler.SoftOwnerKindLabel:      esv1.Kind,
-		labels.ClientCertificateLabelName:  "true",
+		transitiveESClientCertLabel:       "true",
+		labels.ClientCertificateLabelName: "true",
 	}
+	trustSourceMeta := assocMeta.Merge(metadata.Metadata{Labels: map[string]string{transitiveESClientCertLabel: "true"}})
 
 	secretName := clientCertSecretName(associated, esAssocRef, "agent-es")
 
-	_, certResults := association.ReconcileManagedClientCert(ctx, c, assoc, assocMeta, secretName, extraLabels)
+	clientCertSecret, certResults := association.ReconcileManagedClientCert(ctx, c, assoc, assocMeta, secretName, extraLabels)
 	results.WithResults(certResults)
 	if results.HasError() {
 		return nil, results
 	}
 
-	if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, assocMeta, associated, secretName); err != nil {
+	// Older operator versions set server soft-owner labels, which are no longer used.
+	if err := certificates.RemoveServerSoftOwnerLabels(ctx, c, &clientCertSecret.Secret); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Publish the public client certificate into the Elasticsearch namespace so it is included in its trust bundle.
+	if err := certificates.ReconcileClientCertTrustSource(
+		ctx, c, &es, k8s.ExtractNamespacedName(&clientCertSecret.Secret),
+		clientCertSecret.CertPem(), trustSourceMeta,
+	); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, secretName); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -317,24 +338,57 @@ func transitiveESRefOrNil(caSecretName, clientCertSecretName string) *commonv1.T
 	}
 }
 
-// deleteOrphanedTransitiveESClientCertSecrets lists transitive ES client cert secrets scoped to
-// this agent (via assocMeta labels) and deletes any that don't match currentSecretName. Pass
-// empty string to delete all.
-func deleteOrphanedTransitiveESClientCertSecrets(ctx context.Context, c k8s.Client, assocMeta metadata.Metadata, associated commonv1.Associated, currentSecretName string) error {
-	matchingLabels := make(client.MatchingLabels, len(assocMeta.Labels)+2)
-	maps.Copy(matchingLabels, assocMeta.Labels)
-	matchingLabels[labels.ClientCertificateLabelName] = "true"
-	matchingLabels[reconciler.SoftOwnerKindLabel] = esv1.Kind
+// deleteOrphanedTransitiveESClientCertSecrets deletes the transitive ES client cert secrets of the agent, and their
+// trust sources, other than currentSecretName. Pass an empty string to delete all.
+// They are selected with the labels identifying the agent only: the labels propagated from the agent, or the ones of
+// its Fleet Server, can change along with the Elasticsearch reference.
+func deleteOrphanedTransitiveESClientCertSecrets(ctx context.Context, c k8s.Client, associated commonv1.Associated, currentSecretName string) error {
+	agentLabels := agentFleetServerAssociationLabels(k8s.ExtractNamespacedName(associated))
 
-	var secrets corev1.SecretList
-	if err := c.List(ctx, &secrets, client.InNamespace(associated.GetNamespace()), matchingLabels); err != nil {
+	transitiveSelector := make(client.MatchingLabels, len(agentLabels)+2)
+	maps.Copy(transitiveSelector, agentLabels)
+	transitiveSelector[labels.ClientCertificateLabelName] = "true"
+	transitiveSelector[transitiveESClientCertLabel] = "true"
+
+	// Transitive client certificates created by older operator versions have no transitive label: they are
+	// told apart from the Fleet Server client certificate by the Elasticsearch kind of their server soft-owner
+	// labels. They are migrated, and stop matching, once they are reconciled as the current certificate.
+	// TODO: drop the legacy selector once the versions which set the soft-owner labels are out of support.
+	legacySelector := make(client.MatchingLabels, len(agentLabels)+2)
+	maps.Copy(legacySelector, agentLabels)
+	legacySelector[labels.ClientCertificateLabelName] = "true"
+	legacySelector[reconciler.SoftOwnerKindLabel] = esv1.Kind
+
+	for _, selector := range []client.MatchingLabels{transitiveSelector, legacySelector} {
+		var secrets corev1.SecretList
+		if err := c.List(ctx, &secrets, client.InNamespace(associated.GetNamespace()), selector); err != nil {
+			return err
+		}
+		for i := range secrets.Items {
+			if secrets.Items[i].Name == currentSecretName {
+				continue
+			}
+			if err := c.Delete(ctx, &secrets.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+
+	// Keep only the trust source of currentSecretName. A user-provided client certificate is the Fleet Server's
+	// own, already trusted through the Fleet Server's Elasticsearch association.
+	trustSourceLabels := make(client.MatchingLabels, len(agentLabels)+1)
+	maps.Copy(trustSourceLabels, agentLabels)
+	trustSourceLabels[transitiveESClientCertLabel] = "true"
+	trustSources, err := certificates.ListClientCertTrustSources(ctx, c, trustSourceLabels)
+	if err != nil {
 		return err
 	}
-	for i := range secrets.Items {
-		if secrets.Items[i].Name == currentSecretName {
+	current := types.NamespacedName{Namespace: associated.GetNamespace(), Name: currentSecretName}
+	for i := range trustSources {
+		if origin, _ := certificates.ClientCertTrustSourceOrigin(trustSources[i]); origin == current {
 			continue
 		}
-		if err := c.Delete(ctx, &secrets.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+		if err := k8s.DeleteSecretIfExists(ctx, c, k8s.ExtractNamespacedName(&trustSources[i])); err != nil {
 			return err
 		}
 	}

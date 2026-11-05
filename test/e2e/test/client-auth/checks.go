@@ -12,53 +12,65 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
 
 // CheckClientCertificatesCountStep returns a Step that verifies the expected number of client
-// certificate secrets exist for the given soft-owner. Use within PostCheckSteps or PostMutationSteps
-// of a WrappedBuilder when composing transition tests with test.RunMutations.
-func CheckClientCertificatesCountStep(k *test.K8sClient, namespace, softOwnerName string, expectedCount int) test.Step {
+// certificates are trusted by the given server, which runs in the given namespace. Use within
+// PostCheckSteps or PostMutationSteps of a WrappedBuilder when composing transition tests with test.RunMutations.
+func CheckClientCertificatesCountStep(k *test.K8sClient, namespace, serverName string, expectedCount int) test.Step {
 	return test.Step{
-		Name: fmt.Sprintf("Verify %d certificate secret(s) exist", expectedCount),
+		Name: fmt.Sprintf("Verify %d client certificate trust source(s) exist", expectedCount),
 		Test: test.Eventually(func() error {
-			secrets, err := listClientCertificateSecrets(k, namespace, softOwnerName, "", "")
+			trustSources, err := listClientCertificateTrustSources(k, namespace, serverName, "", "")
 			if err != nil {
 				return err
 			}
-			if len(secrets) != expectedCount {
-				return fmt.Errorf("expected %d client cert secrets for soft-owner %s, got %d", expectedCount, softOwnerName, len(secrets))
+			if len(trustSources) != expectedCount {
+				return fmt.Errorf("expected %d client cert trust sources for server %s, got %d", expectedCount, serverName, len(trustSources))
 			}
 			return nil
 		}),
 	}
 }
 
-// CheckClientCertificateDataStep returns a Step that verifies exactly one client certificate secret
-// exists for the given soft owner, scoped to the given association, and contains the expected cert data.
+// CheckClientCertificateDataStep returns a Step that verifies exactly one client certificate is trusted by the
+// given server, which runs in the given namespace, scoped to the given association, and that both the trust
+// source and the client certificate secret it was published from contain the expected cert data.
 // When associationLabelName and associationLabelValue are empty, no association scoping is applied.
 // Use within PostCheckSteps of a WrappedBuilder when composing custom certificate tests with
 // test.BeforeAfterSequence.
-func CheckClientCertificateDataStep(k *test.K8sClient, namespace, softOwnerName, associationLabelName, associationLabelValue string, expectedCert, expectedKey []byte) test.Step {
+func CheckClientCertificateDataStep(k *test.K8sClient, namespace, serverName, associationLabelName, associationLabelValue string, expectedCert, expectedKey []byte) test.Step {
 	return test.Step{
-		Name: "Verify client certificate secret exists with expected cert data",
+		Name: "Verify client certificate trust source exists with expected cert data",
 		Test: test.Eventually(func() error {
-			secrets, err := listClientCertificateSecrets(k, namespace, softOwnerName, associationLabelName, associationLabelValue)
+			trustSources, err := listClientCertificateTrustSources(k, namespace, serverName, associationLabelName, associationLabelValue)
 			if err != nil {
 				return err
 			}
-			if len(secrets) != 1 {
-				return fmt.Errorf("expected 1 client cert secret, got %d", len(secrets))
+			if len(trustSources) != 1 {
+				return fmt.Errorf("expected 1 client cert trust source, got %d", len(trustSources))
 			}
-			secret := secrets[0]
+			trustSource := trustSources[0]
+			if string(trustSource.Data[certificates.CertFileName]) != string(expectedCert) {
+				return fmt.Errorf("client cert trust source %s has unexpected %s", trustSource.Name, certificates.CertFileName)
+			}
+			origin, ok := certificates.ClientCertTrustSourceOrigin(trustSource)
+			if !ok {
+				return fmt.Errorf("client cert trust source %s does not reference its client cert secret", trustSource.Name)
+			}
+			var secret corev1.Secret
+			if err := k.Client.Get(context.Background(), origin, &secret); err != nil {
+				return err
+			}
 			if string(secret.Data[certificates.CertFileName]) != string(expectedCert) {
 				return fmt.Errorf("client cert secret %s has unexpected %s", secret.Name, certificates.CertFileName)
 			}
@@ -70,15 +82,12 @@ func CheckClientCertificateDataStep(k *test.K8sClient, namespace, softOwnerName,
 	}
 }
 
-// listClientCertificateSecrets lists client certificate secrets soft-owned by the given soft owner.
-// When associationLabelName and associationLabelValue are non-empty, results are further scoped
-// to secrets created by that specific association (e.g., APM or Agent).
-func listClientCertificateSecrets(k *test.K8sClient, namespace, softOwnerName, associationLabelName, associationLabelValue string) ([]corev1.Secret, error) {
+// listClientCertificateTrustSources lists the client certificate trust sources published into the given namespace
+// for the given server. When associationLabelName and associationLabelValue are non-empty, results are further
+// scoped to trust sources published by that specific association (e.g., APM or Agent).
+func listClientCertificateTrustSources(k *test.K8sClient, namespace, serverName, associationLabelName, associationLabelValue string) ([]corev1.Secret, error) {
 	var secretList corev1.SecretList
-	matchLabels := k8sclient.MatchingLabels{
-		labels.ClientCertificateLabelName: "true",
-		reconciler.SoftOwnerNameLabel:     softOwnerName,
-	}
+	matchLabels := k8sclient.MatchingLabels{commonv1.TypeLabelName: certificates.ClientCertTrustSourceType}
 	if associationLabelName != "" && associationLabelValue != "" {
 		matchLabels[associationLabelName] = associationLabelValue
 	}
@@ -86,7 +95,13 @@ func listClientCertificateSecrets(k *test.K8sClient, namespace, softOwnerName, a
 		return nil, err
 	}
 
-	return secretList.Items, nil
+	var trustSources []corev1.Secret
+	for _, secret := range secretList.Items {
+		if owner := metav1.GetControllerOf(&secret); owner != nil && owner.Name == serverName {
+			trustSources = append(trustSources, secret)
+		}
+	}
+	return trustSources, nil
 }
 
 // UserCustomCertificateSecretLifecycleSteps returns before/after StepsFuncs that create and delete a user-provided
