@@ -1000,7 +1000,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 		defer q.ShutDown()
 
-		other := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: ownerNSN.Namespace, Name: "other"}}
+		other := &corev1.ConfigMap{Namespace: ownerNSN.Namespace, Name: "other"}
 		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: other}, q)
 		assert.Equal(t, 0, q.Len())
 
