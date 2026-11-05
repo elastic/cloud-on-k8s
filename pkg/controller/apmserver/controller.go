@@ -150,7 +150,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
@@ -316,7 +320,7 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcileApmServer) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, Namer, obj)
 }
 
 func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {

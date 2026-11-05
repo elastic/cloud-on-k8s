@@ -23,6 +23,7 @@ import (
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -134,7 +135,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileAgent)
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcileAgent)(nil)
@@ -250,6 +255,7 @@ func (r *ReconcileAgent) validate(ctx context.Context, agent agentv1alpha1.Agent
 func (r *ReconcileAgent) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, Namer, obj)
 }
 
 func (r *ReconcileAgent) onDelete(ctx context.Context, obj types.NamespacedName) error {

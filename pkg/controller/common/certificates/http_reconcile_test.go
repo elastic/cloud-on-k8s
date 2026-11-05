@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -13,6 +14,7 @@ import (
 	"encoding/pem"
 	"net"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,7 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -217,10 +223,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
 			err := Reconciler{
-				K8sClient: client,
-				Owner:     owner,
-				Namer:     esv1.ESNamer,
-				Metadata:  metadata.Metadata{Labels: labels},
+				K8sClient:      client,
+				DynamicWatches: watches.NewDynamicWatches(),
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				Metadata:       metadata.Metadata{Labels: labels},
 			}.ReconcilePublicHTTPCerts(context.Background(), certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
@@ -837,4 +844,215 @@ func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLe
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(chain), 2, "tls.crt should include leaf + CA chain")
 	assert.True(t, chain[1].Equal(rotatedCA.Cert), "tls.crt chain should include rotated CA")
+}
+
+func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
+	owner := &esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	publicSecretNSN := PublicCertsSecretRef(esv1.ESNamer, ownerNSN)
+	watchKey := AdditionalCAWatchKey(esv1.ESNamer, ownerNSN)
+
+	internal := &CertificatesSecret{Data: map[string][]byte{
+		CertFileName: pemTLS,
+		CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+	}}
+	internalWithoutCA := &CertificatesSecret{Data: map[string][]byte{CertFileName: pemTLS}}
+	extraCA := EncodePEMCert(testCA.Cert.Raw)
+	extraCANoNewline := bytes.TrimSuffix(extraCA, []byte("\n"))
+	extraCAWithKey := append(append([]byte{}, extraCA...), []byte(testPemPrivateKey)...)
+
+	configMap := func(data map[string]string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{
+			Namespace: ownerNSN.Namespace, Name: "extra-cas",
+			Data: data,
+		}
+	}
+	ref := commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}
+	tlsDisabled := &commonv1.SelfSignedCertificate{Disabled: true}
+
+	tests := []struct {
+		name         string
+		tls          commonv1.TLSOptions
+		objs         []client.Object
+		noInternalCA bool
+		wantCA       []byte
+		wantErr      string
+		wantWatch    bool
+	}{
+		{
+			name:   "no additional CAs: CA unchanged",
+			wantCA: internal.CAPem(),
+		},
+		{
+			name:      "additional CAs are appended",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:         "additional CAs without internal CA",
+			tls:          commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:         []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			noInternalCA: true,
+			wantCA:       extraCA,
+			wantWatch:    true,
+		},
+		{
+			name:      "missing trailing newline is handled",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCANoNewline)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:      "non-certificate PEM blocks such as private keys are dropped",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCAWithKey)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:      "missing config map",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			wantErr:   "could not retrieve config map",
+			wantWatch: true,
+		},
+		{
+			name:      "config map without ca.crt",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{"other": "x"})},
+			wantErr:   "must contain ca.crt",
+			wantWatch: true,
+		},
+		{
+			name:      "certificate block with invalid content",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("garbage")}))})},
+			wantErr:   "contains invalid certificates",
+			wantWatch: true,
+		},
+		{
+			name:      "no PEM block",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: "not a certificate"})},
+			wantErr:   "no certificate found",
+			wantWatch: true,
+		},
+		{
+			name:   "stale reference is ignored if TLS is disabled",
+			tls:    commonv1.TLSOptions{CertificateAuthorities: ref, SelfSignedCertificate: tlsDisabled},
+			wantCA: internal.CAPem(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objs...)
+			dw := watches.NewDynamicWatches()
+			r := Reconciler{
+				K8sClient:      c,
+				DynamicWatches: dw,
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				TLSOptions:     tt.tls,
+			}
+			certs := internal
+			if tt.noInternalCA {
+				certs = internalWithoutCA
+			}
+			err := r.ReconcilePublicHTTPCerts(t.Context(), certs)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				var got corev1.Secret
+				require.NoError(t, c.Get(t.Context(), publicSecretNSN, &got))
+				assert.Equal(t, string(tt.wantCA), string(got.Data[CAFileName]))
+				assert.Equal(t, pemTLS, got.Data[CertFileName])
+			}
+			assert.Equal(t, tt.wantWatch, slices.Contains(dw.ConfigMaps.Registrations(), watchKey))
+		})
+	}
+}
+
+func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
+	owner := &esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	watchKey := AdditionalCAWatchKey(esv1.ESNamer, ownerNSN)
+	internal := &CertificatesSecret{Data: map[string][]byte{CertFileName: pemTLS, CAFileName: EncodePEMCert(testCA.Cert.Raw)}}
+	cm := &corev1.ConfigMap{Namespace: ownerNSN.Namespace, Name: "extra-cas", Data: map[string]string{CAFileName: string(EncodePEMCert(testCA.Cert.Raw))}}
+
+	newReconciler := func(dw watches.DynamicWatches, tls commonv1.TLSOptions) Reconciler {
+		return Reconciler{
+			K8sClient:      k8s.NewFakeClient(cm),
+			DynamicWatches: dw,
+			Owner:          owner,
+			Namer:          esv1.ESNamer,
+			TLSOptions:     tls,
+		}
+	}
+	withRef := commonv1.TLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}}
+
+	t.Run("watch enqueues the owner when the referenced config map changes", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+
+		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
+		defer q.ShutDown()
+
+		other := &corev1.ConfigMap{Namespace: ownerNSN.Namespace, Name: "other"}
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: other}, q)
+		assert.Equal(t, 0, q.Len())
+
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: cm}, q)
+		require.Equal(t, 1, q.Len())
+		req, _ := q.Get()
+		assert.Equal(t, reconcile.Request{NamespacedName: ownerNSN}, req)
+	})
+
+	t.Run("watch is removed when the reference is removed", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		require.NoError(t, newReconciler(dw, commonv1.TLSOptions{}).ReconcilePublicHTTPCerts(t.Context(), internal))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+
+	t.Run("watch is removed when TLS is disabled", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		disabled := withRef
+		disabled.SelfSignedCertificate = &commonv1.SelfSignedCertificate{Disabled: true}
+		require.NoError(t, newReconciler(dw, disabled).ReconcilePublicHTTPCerts(t.Context(), internal))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+
+	t.Run("watch is removed together with the certificate secrets", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		r := newReconciler(dw, withRef)
+		require.NoError(t, r.ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		require.NoError(t, r.removeCAAndHTTPCertsSecrets(t.Context()))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+}
+
+func TestWatchKeys_NamespaceScoped(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b types.NamespacedName
+	}{
+		{name: "same name, different namespaces", a: types.NamespacedName{Namespace: "ns1", Name: "es"}, b: types.NamespacedName{Namespace: "ns2", Name: "es"}},
+		{name: "dash shifted between namespace and name", a: types.NamespacedName{Namespace: "team-a", Name: "es"}, b: types.NamespacedName{Namespace: "team", Name: "a-es"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
+			assert.NotEqual(t, CertificateWatchKey(esv1.ESNamer, tt.a), CertificateWatchKey(esv1.ESNamer, tt.b))
+		})
+	}
 }

@@ -21,6 +21,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -244,6 +245,7 @@ func (r *ReconcileLogstash) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.SecretRefWatchName(obj))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(pipelines.ConfigMapRefWatchName(obj))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, logstashv1alpha1.Namer, obj)
 }
 
 func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {

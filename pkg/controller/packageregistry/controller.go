@@ -112,7 +112,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	}
 
 	// Dynamically watch referenced secrets
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
@@ -358,7 +362,7 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 // OnNamespaceOutOfScope releases all controller-local state associated with the given PackageRegistry
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcilePackageRegistry) OnNamespaceOutOfScope(obj types.NamespacedName) {
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, eprv1alpha1.Namer, obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 

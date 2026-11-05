@@ -117,7 +117,11 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileMapsSe
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
 var _ reconcile.Reconciler = (*ReconcileMapsServer)(nil)
@@ -431,7 +435,7 @@ func (r *ReconcileMapsServer) updateStatus(ctx context.Context, ems emsv1alpha1.
 // OnNamespaceOutOfScope releases all controller-local state associated with the given ElasticMapsServer
 // resource when its namespace no longer matches the operator's namespace selector.
 func (r *ReconcileMapsServer) OnNamespaceOutOfScope(obj types.NamespacedName) {
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(EMSNamer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, EMSNamer, obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
 }
 
