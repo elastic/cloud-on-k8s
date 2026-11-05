@@ -31,7 +31,7 @@ exporters:
   otlphttp:
     endpoint: ${env:AUTOOPS_OTEL_URL}
     headers:
-      Authorization: AutoOpsToken ${env:AUTOOPS_TOKEN}
+      Authorization: ApiKey ${env:ELASTIC_CLOUD_CONNECTED_MODE_API_KEY}
     sending_queue:
       batch:
         flush_timeout: 11s
@@ -84,11 +84,6 @@ receivers:
             verification_mode: none
     output:
       otelconsumer: null
-    processors:
-      - add_fields:
-          fields:
-            token: ${env:AUTOOPS_TOKEN}
-          target: autoops_es
     telemetry_types:
       - logs
 service:
@@ -110,7 +105,7 @@ exporters:
   otlphttp:
     endpoint: ${env:AUTOOPS_OTEL_URL}
     headers:
-      Authorization: AutoOpsToken ${env:AUTOOPS_TOKEN}
+      Authorization: ApiKey ${env:ELASTIC_CLOUD_CONNECTED_MODE_API_KEY}
     sending_queue:
       batch:
         flush_timeout: 11s
@@ -167,11 +162,6 @@ receivers:
             verification_mode: certificate
     output:
       otelconsumer: null
-    processors:
-      - add_fields:
-          fields:
-            token: ${env:AUTOOPS_TOKEN}
-          target: autoops_es
     telemetry_types:
       - logs
 service:
@@ -193,7 +183,7 @@ exporters:
   otlphttp:
     endpoint: ${env:AUTOOPS_OTEL_URL}
     headers:
-      Authorization: AutoOpsToken ${env:AUTOOPS_TOKEN}
+      Authorization: ApiKey ${env:ELASTIC_CLOUD_CONNECTED_MODE_API_KEY}
     sending_queue:
       batch:
         flush_timeout: 11s
@@ -254,11 +244,6 @@ receivers:
             verification_mode: certificate
     output:
       otelconsumer: null
-    processors:
-      - add_fields:
-          fields:
-            token: ${env:AUTOOPS_TOKEN}
-          target: autoops_es
     telemetry_types:
       - logs
 service:
@@ -428,7 +413,7 @@ exporters:
 				got := unpackConfigYAML(t, cm)
 				headers := asMap(t, asMap(t, asMap(t, got["exporters"])["otlphttp"])["headers"])
 				assert.Equal(t, "my-value", headers["X-Custom-Header"])
-				assert.Equal(t, "AutoOpsToken ${env:AUTOOPS_TOKEN}", headers["Authorization"])
+				assert.Equal(t, "ApiKey ${env:ELASTIC_CLOUD_CONNECTED_MODE_API_KEY}", headers["Authorization"])
 			},
 		},
 		{

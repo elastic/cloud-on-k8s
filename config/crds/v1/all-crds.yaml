@@ -2694,7 +2694,6 @@ spec:
                       Required when connecting via Cloud Connect. The secret must contain:
                       - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
                       - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
-                      - `autoops-token`: AutoOps authentication token
                       - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
                       This field cannot be used in combination with `name`.
                     type: string

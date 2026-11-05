@@ -41,7 +41,6 @@ func newSecret(modifiers ...func(*corev1.Secret)) *corev1.Secret {
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
