@@ -697,6 +697,21 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			Data: map[string][]byte{certificates.CertFileName: []byte("legacy-cert")},
 		}
 	}
+	userCertCopyName := "agent1-agent-fleetserver-" + hash.HashObject(types.NamespacedName{Name: "fleet1", Namespace: "fs-ns"}) + "-es-client-cert"
+	// previousES is an ES the Fleet Server referenced before es1, in the agent namespace.
+	previousES := types.NamespacedName{Namespace: "ns", Name: "previous-es"}
+	// legacyUserCertCopy is the copy of the Fleet Server user-provided client certificate as created by older operator
+	// versions, with the server soft-owner labels of the Fleet Server client certificate, for previousES.
+	legacyUserCertCopy := &corev1.Secret{
+		Name: userCertCopyName, Namespace: "ns",
+		Labels: map[string]string{
+			labels.ClientCertificateLabelName:  "true",
+			reconciler.SoftOwnerNameLabel:      previousES.Name,
+			reconciler.SoftOwnerNamespaceLabel: previousES.Namespace,
+			reconciler.SoftOwnerKindLabel:      esv1.Kind,
+		},
+		Data: map[string][]byte{certificates.CertFileName: []byte("user-cert")},
+	}
 	legacyTransitiveCert := &corev1.Secret{
 		Name: transitiveCertName, Namespace: "ns",
 		Labels: utilmaps.Merge(maps.Clone(orphanLabels), map[string]string{
@@ -726,6 +741,9 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 		interceptorFuncs *interceptor.Funcs
 		// wantTrustSources lists the trust sources expected to be published into the ES namespace.
 		wantTrustSources []string
+		// wantKeptUserCertCopy is the user-provided client certificate copy expected to be kept, even when previousES
+		// is deleted.
+		wantKeptUserCertCopy *types.NamespacedName
 	}{
 		{
 			name: "fleet server ref not set returns nil and cleans up",
@@ -1052,6 +1070,18 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 			wantDeletedSecrets: []types.NamespacedName{{Namespace: "ns", Name: transitiveCertName}},
 		},
 		{
+			name:  "legacy soft-owner labels are removed from the copy of the fleet server user-provided client certificate",
+			agent: transitiveAgent,
+			fleetServer: transitiveFleetServer(
+				commonv1.AssociationConf{AuthSecretName: "-", CACertProvided: true, CASecretName: "fleet1-es-ca", ClientCertSecretName: "copied-user-cert", URL: "https://es1-http.es-ns.svc:9200"},
+				agentv1alpha1.Output{ObjectSelector: esSelector, ClientCertificateSecretName: "user-provided-cert"},
+			),
+			es:                   clientAuthES(true),
+			orphanedSecrets:      []*corev1.Secret{legacyUserCertCopy},
+			wantRef:              &commonv1.TransitiveESRef{CASecretName: transitiveCASecretName, ClientCertSecretName: userCertCopyName},
+			wantKeptUserCertCopy: &types.NamespacedName{Namespace: "ns", Name: userCertCopyName},
+		},
+		{
 			name:        "a failure to publish the trust source returns the error and no reference",
 			agent:       transitiveAgent,
 			fleetServer: transitiveFleetServer(managedESConf, agentv1alpha1.Output{ObjectSelector: esSelector}),
@@ -1166,6 +1196,16 @@ func TestFleetManagedAgentTransitiveESRef(t *testing.T) {
 				err := c.Get(context.Background(), *tt.wantCreatedSecret, &secret)
 				require.NoError(t, err, "expected secret %s/%s to exist in the fake client", tt.wantCreatedSecret.Namespace, tt.wantCreatedSecret.Name)
 				require.Equal(t, "true", secret.Labels[transitiveESClientCertLabel])
+				for _, l := range []string{reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerKindLabel} {
+					require.NotContains(t, secret.Labels, l, "the client certificate must not carry server soft-owner labels")
+				}
+			}
+
+			if tt.wantKeptUserCertCopy != nil {
+				// The deletion of the previously referenced ES garbage collects the secrets it soft-owns.
+				require.NoError(t, reconciler.GarbageCollectSoftOwnedSecrets(t.Context(), c, previousES, esv1.Kind))
+				var secret corev1.Secret
+				require.NoError(t, c.Get(t.Context(), *tt.wantKeptUserCertCopy, &secret), "the user-provided client certificate copy must be kept")
 				for _, l := range []string{reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerKindLabel} {
 					require.NotContains(t, secret.Labels, l, "the client certificate must not carry server soft-owner labels")
 				}

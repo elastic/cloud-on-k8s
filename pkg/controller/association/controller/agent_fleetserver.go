@@ -287,6 +287,11 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 		if err := deleteOrphanedTransitiveESClientCertSecrets(ctx, c, associated, userClientCertName); err != nil {
 			return nil, results.WithError(err)
 		}
+		// The copy keeps the server soft-owner labels older operator versions copied from the Fleet Server client
+		// certificate. They can point to a previously referenced ES, whose deletion would delete the copy.
+		if err := removeServerSoftOwnerLabelsIfExists(ctx, c, types.NamespacedName{Namespace: associated.GetNamespace(), Name: userClientCertName}); err != nil {
+			return nil, results.WithError(err)
+		}
 		return transitiveESRefOrNil(caSecretName, userClientCertName), results
 	}
 
@@ -324,6 +329,15 @@ func fleetManagedAgentTransitiveESRef(ctx context.Context, c k8s.Client, assoc c
 	}
 
 	return transitiveESRefOrNil(caSecretName, secretName), results
+}
+
+// removeServerSoftOwnerLabelsIfExists removes the server soft-owner labels from the given secret, if it exists.
+func removeServerSoftOwnerLabelsIfExists(ctx context.Context, c k8s.Client, nsn types.NamespacedName) error {
+	secret, err := k8s.GetSecretIfExists(ctx, c, nsn)
+	if err != nil || secret == nil {
+		return err
+	}
+	return certificates.RemoveServerSoftOwnerLabels(ctx, c, secret)
 }
 
 // transitiveESRefOrNil returns a *TransitiveESRef populated with the provided names, or nil if
