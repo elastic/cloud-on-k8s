@@ -115,7 +115,10 @@ steps:
           DRIVAH_BUILD_PATH: "test/e2e"
 
   # -- e2e-tests
-  # run the tests in an optimistic way without dependency with the images build
+  # the upload steps below do not depend on the images build so that the k8s clusters
+  # are created in parallel with the build; the generated "run e2e tests" steps
+  # depend on the "operator-image-build" and "e2e-tests-image-build" groups
+  # (see .buildkite/e2e/pipeline-gen/pipeline.tpl.yaml)
   # step to run e2e-tests for PR are inlined for speed
 
   # for commits in all branches (PR, release) except main
