@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -252,8 +253,10 @@ func (r *AgentPolicyReconciler) cleanupOrphanedSecrets(
 	matchLabels client.MatchingLabels,
 	matchingESset sets.Set[types.NamespacedName],
 ) error {
+	secretLabels := maps.Clone(matchLabels)
+	secretLabels[policyNamespaceLabelKey] = policy.Namespace
 	var secrets corev1.SecretList
-	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
+	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), secretLabels); err != nil {
 		return err
 	}
 

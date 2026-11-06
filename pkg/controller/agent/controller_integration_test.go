@@ -141,19 +141,6 @@ func TestFleetServerClientTrustBundleFollowsTrustSources(t *testing.T) {
 		wantTrusted bool
 	}{
 		{
-			name:        "trust source controlled by the Fleet Server in its namespace",
-			cert:        "CERT-OWNED-TRUST-SOURCE",
-			wantTrusted: true,
-			publish: func(t *testing.T) {
-				t.Helper()
-				// published as the association controllers do
-				require.NoError(t, certificates.ReconcileClientCertTrustSource(
-					ctx, c, &created, types.NamespacedName{Namespace: otherNamespace, Name: "agent-client-cert"},
-					[]byte("CERT-OWNED-TRUST-SOURCE"), metadata.Metadata{},
-				))
-			},
-		},
-		{
 			name: "trust source in another namespace pointing at the Fleet Server",
 			cert: "CERT-OTHER-NAMESPACE",
 			publish: func(t *testing.T) {
@@ -185,6 +172,19 @@ func TestFleetServerClientTrustBundleFollowsTrustSources(t *testing.T) {
 				require.NoError(t, c.Create(ctx, rawTrustSource(agentNamespace, "not-a-trust-source", "CERT-UNTYPED", false, &ownerRef)))
 			},
 		},
+		{
+			name:        "trust source controlled by the Fleet Server in its namespace",
+			cert:        "CERT-OWNED-TRUST-SOURCE",
+			wantTrusted: true,
+			publish: func(t *testing.T) {
+				t.Helper()
+				// published as the association controllers do
+				require.NoError(t, certificates.ReconcileClientCertTrustSource(
+					ctx, c, &created, types.NamespacedName{Namespace: otherNamespace, Name: "agent-client-cert"},
+					[]byte("CERT-OWNED-TRUST-SOURCE"), metadata.Metadata{},
+				))
+			},
+		},
 	}
 	for _, ts := range trustSources {
 		ts.publish(t)
@@ -202,7 +202,7 @@ func TestFleetServerClientTrustBundleFollowsTrustSources(t *testing.T) {
 		return nil
 	})
 
-	// the bundle holding the owned trust source was built from all the secrets above
+	// the bundle holding the owned trust source, published last, was built from all the other secrets
 	got, err := bundle()
 	require.NoError(t, err)
 	for _, ts := range trustSources {

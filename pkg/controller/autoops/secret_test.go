@@ -222,6 +222,19 @@ func TestAutoOpsESClientCertTrustSource(t *testing.T) {
 		},
 	}
 
+	failTrustSourceDeletion := &interceptor.Funcs{
+		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if obj.GetLabels()[commonv1.TypeLabelName] == certificates.ClientCertTrustSourceType {
+				return errors.New("simulated trust source delete failure")
+			}
+			return c.Delete(ctx, obj, opts...)
+		},
+	}
+	// sameNamePolicy has the name of the policy, in the ES namespace, where the trust sources of the policy are
+	// published.
+	sameNamePolicy := newAutoOpsAgentPolicy()
+	sameNamePolicy.Namespace = es.Namespace
+
 	for _, tt := range []struct {
 		name string
 		objs []client.Object
@@ -285,6 +298,24 @@ func TestAutoOpsESClientCertTrustSource(t *testing.T) {
 				require.NoError(t, r.onDelete(t.Context(), k8s.ExtractNamespacedName(&policy)))
 			},
 			wantTrustSources: []types.NamespacedName{otherClientCertNSN},
+		},
+		{
+			name: "keeps the trust source when a policy with the same name in the ES namespace does not select the ES",
+			cleanup: func(t *testing.T, r *AgentPolicyReconciler) {
+				t.Helper()
+				require.NoError(t, r.cleanupOrphanedSecrets(t.Context(), logr.Discard(), sameNamePolicy, client.MatchingLabels{PolicyNameLabelKey: sameNamePolicy.Name}, sets.New[types.NamespacedName]()))
+			},
+			wantTrustSources: []types.NamespacedName{clientCertNSN, otherClientCertNSN},
+			wantRepublish:    []reconcile.Request{policyRequest},
+		},
+		{
+			name:             "returns the error when the trust source cannot be deleted on policy deletion",
+			interceptorFuncs: failTrustSourceDeletion,
+			cleanup: func(t *testing.T, r *AgentPolicyReconciler) {
+				t.Helper()
+				require.ErrorContains(t, r.onDelete(t.Context(), k8s.ExtractNamespacedName(&policy)), "simulated trust source delete failure")
+			},
+			wantTrustSources: []types.NamespacedName{clientCertNSN, otherClientCertNSN},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
