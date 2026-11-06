@@ -6,6 +6,7 @@ package autoops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -24,9 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -277,7 +280,17 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 	}
 
 	// Cleanup API keys for each ES cluster referenced by the secrets
+	var trustSourceErrs error
 	for _, secret := range secrets.Items {
+		// Trust sources live in the ES namespaces without an owner reference to the policy: delete them here.
+		if secret.Labels[commonv1.TypeLabelName] == certificates.ClientCertTrustSourceType {
+			r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
+			if err := k8s.DeleteSecretIfExists(ctx, r.Client, k8s.ExtractNamespacedName(&secret)); err != nil {
+				trustSourceErrs = errors.Join(trustSourceErrs, fmt.Errorf("while deleting client certificate trust source %s/%s: %w", secret.Namespace, secret.Name, err))
+			}
+			continue
+		}
+
 		// Remove dynamic watch registered for this secret (CA or API key)
 		// Safety-net for in-scope secrets at policy deletion,
 		// selector-change cleanup is handled in cleanupOrphanedSecrets
@@ -309,6 +322,9 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 		log.V(1).Info("Successfully cleaned up API key", "es_namespace", esNamespace, "es_name", esName)
 	}
 
+	if trustSourceErrs != nil {
+		return tracing.CaptureError(ctx, trustSourceErrs)
+	}
 	return nil
 }
 

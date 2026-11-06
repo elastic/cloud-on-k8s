@@ -135,7 +135,7 @@ func ReconcileOperatorClientCertAndTrustBundle(
 			ReconciliationComplete(),
 	)
 
-	if _, err := certReconciler.ReconcileTrustBundle(ctx, esv1.Kind, operatorClientCertSecret); err != nil {
+	if _, err := certReconciler.ReconcileTrustBundle(ctx, operatorClientCertSecret); err != nil {
 		return nil, results.WithError(err)
 	}
 
