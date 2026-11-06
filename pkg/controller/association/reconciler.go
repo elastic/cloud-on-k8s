@@ -259,12 +259,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	// garbage collect leftover resources that are not required anymore
+	results := reconciler.NewResult(ctx)
+	// Garbage collect leftover resources that are not required anymore.
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associatedKey, associations); err != nil {
-		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
+		results.WithError(fmt.Errorf("while deleting orphaned resources: %w", err))
 	}
 
-	results := reconciler.NewResult(ctx)
 	// Watch setup can depend on transitive association configuration. Keep reconciling
 	// if it fails so a denied reference can still be unbound on this pass.
 	results.WithError(r.reconcileWatches(ctx, associatedKey, associations))
