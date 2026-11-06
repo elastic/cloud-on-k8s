@@ -13,13 +13,13 @@ Review the changes, fixes, and more in each release of Elastic Cloud on Kubernet
 
 ### Release Highlights
 
-#### {{kib}} background task isolation
+#### {{product.kibana}} background task isolation
 
-ECK can now run {{kib}} background tasks (alerting, actions, reporting) in a separate pool of pods. Set `spec.backgroundTasks` on a {{kib}} resource and ECK creates two Deployments: a primary pool that serves UI and API requests, and a background tasks pool that runs task manager work only. The primary pool is the only pool behind the {{kib}} HTTP Service, so a heavy task workload no longer competes with user traffic. Each pool has its own count, resources, config overlay, and pod template. The `status.pools` field reports the health of each pool. This feature requires {{kib}} 8.16.0 or later and an Enterprise license. For more details, refer to the [{{kib}} background task isolation documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/kibana-background-tasks.md).
+ECK can now run {{product.kibana}} background tasks (alerting, actions, reporting) in a separate pool of pods. Set `spec.backgroundTasks` on a {{product.kibana}} resource and ECK creates two Deployments: a primary pool that serves UI and API requests, and a background tasks pool that runs task manager work only. The primary pool is the only pool behind the {{product.kibana}} HTTP Service, so a heavy task workload no longer competes with user traffic. Each pool has its own count, resources, config overlay, and pod template. The `status.pools` field reports the health of each pool. This feature requires {{product.kibana}} 8.16.0 or later and an Enterprise license. For more details, refer to the [{{product.kibana}} background task isolation documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/kibana-background-tasks.md).
 
 #### {{es}} PKI authentication
 
-Components that connect to {{es}} can now authenticate with their client certificate instead of a username and password or a service account token. Set `spec.auth.pki.enabled: true` on the {{es}} resource to configure the `eck_managed_pki` realm. Then set `elasticsearchRef.authenticationMode: PKI` on the component. ECK maps the certificate to the roles that the component needs. This feature requires {{es}} 9.6.0 or later and an Enterprise license. {{kib}}, APM Server, Beats, standalone Elastic Agent, {{ls}}, and Elastic Maps Server support PKI. For more details, refer to the [{{es}} PKI authentication documentation](docs-content://deploy-manage/security/k8s-es-pki-authentication.md).
+Components that connect to {{es}} can now authenticate with their client certificate instead of a username and password or a service account token. Set `spec.auth.pki.enabled: true` on the {{es}} resource to configure the `eck_managed_pki` realm. Then set `elasticsearchRef.authenticationMode: PKI` on the component. ECK maps the certificate to the roles that the component needs. This feature requires {{es}} 9.6.0 or later and an Enterprise license. {{product.kibana}}, APM Server, Beats, standalone Elastic Agent, Logstash, and Elastic Maps Server support PKI. For more details, refer to the [{{es}} PKI authentication documentation](docs-content://deploy-manage/security/k8s-es-pki-authentication.md).
 
 #### Helm charts in the Elastic container registry
 
@@ -33,9 +33,9 @@ The `--enforce-rbac-on-refs` flag now checks every cross-namespace association, 
 
 Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
 
-#### {{ls}} pipeline improvements
+#### Logstash pipeline improvements
 
-The `pipelinesRef` field now accepts a ConfigMap as well as a Secret, so non-sensitive pipeline definitions no longer need a Secret. For {{ls}} 9.5.0 and later, ECK also sets `ssl.reload.automatic: true` by default, so {{ls}} reloads pipeline TLS certificates in place when the backing Secret changes, without a pod restart. For more details, refer to the [{{ls}} configuration documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/configuration-logstash.md#k8s-logstash-pipelines).
+The `pipelinesRef` field now accepts a ConfigMap as well as a Secret, so non-sensitive pipeline definitions no longer need a Secret. For Logstash 9.5.0 and later, ECK also sets `ssl.reload.automatic: true` by default, so Logstash reloads pipeline TLS certificates in place when the backing Secret changes, without a pod restart. For more details, refer to the [Logstash configuration documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/configuration-logstash.md#k8s-logstash-pipelines).
 
 #### Operator health probes
 
