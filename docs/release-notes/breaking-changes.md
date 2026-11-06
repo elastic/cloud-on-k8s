@@ -38,10 +38,10 @@ ECK 3.6.0 includes fixes that modify the pod spec of Elastic Agent resources tha
 For more information, check [PR #9685](https://github.com/elastic/cloud-on-k8s/pull/9685), [PR #9686](https://github.com/elastic/cloud-on-k8s/pull/9686), and [PR #9703](https://github.com/elastic/cloud-on-k8s/pull/9703).
 ::::
 
-::::{dropdown} Rolling restart of {{ls}} pods that use API basic authentication
+::::{dropdown} Rolling restart of Logstash pods that use API basic authentication
 When `api.auth.type: basic` is configured, ECK 3.6.0 replaces the HTTP readiness probe, which embedded the API credentials in the StatefulSet spec, with a TCP socket probe. This changes the pod spec.
 
-**Impact**<br> {{ls}} pods with `api.auth.type: basic` will be restarted as part of the operator upgrade. Other {{ls}} pods are not affected.
+**Impact**<br> Logstash pods with `api.auth.type: basic` will be restarted as part of the operator upgrade. Other Logstash pods are not affected.
 
 **Action**<br> No action required. Be aware that these pods will restart during the upgrade.
 
