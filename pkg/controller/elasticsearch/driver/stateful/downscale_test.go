@@ -457,10 +457,33 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 		notReadyPods   sets.Set[string]
 		// notJoinedPods are the Pods that are not members of the cluster
 		notJoinedPods sets.Set[string]
+		// pendingPods are the Pods that are pending because they cannot be scheduled
+		pendingPods sets.Set[string]
+		// gatedPods are the Pods that are pending because a scheduling gate holds them
+		gatedPods sets.Set[string]
+		// startingPods are the Pods that are pending while they start, for example running their init containers
+		startingPods sets.Set[string]
+		// missingPods are the Pods of the StatefulSets that the cache does not see, for example because they were created since
+		missingPods sets.Set[string]
+		// nodesChanged is true if the health counts one more node than the nodes response, as a node joined in between
+		nodesChanged bool
 		// partialNodes is true if the nodes response is partial: the Pods that are not members did not respond
 		partialNodes bool
+		// health is the health of the cluster, which is not green if left empty
+		health esclient.Health
+		// healthErr is returned when the health of the cluster is retrieved
+		healthErr error
+		// wantVotingExclusions are the nodes added to the voting config exclusions, if not nil
+		wantVotingExclusions []string
+		// wantRemovedEvents are the texts that the events reporting the removals of nodes that are not members of the
+		// cluster must contain, in order, one per event. No such event is expected if empty.
+		wantRemovedEvents []string
+		// wantRemovedWarning is true if the event reporting the removal is a warning, it is a normal one otherwise
+		wantRemovedWarning bool
 		// deleteErr is returned when a resource is deleted, for example a StatefulSet that is no longer expected
 		deleteErr error
+		// updateErr is returned when a resource is updated, for example a downscaled StatefulSet
+		updateErr error
 		// wantStatusCalls overrides the number of times the shutdown status of a node is retrieved, for the cases that
 		// stop before the shutdowns are requested
 		wantStatusCalls map[string]int
@@ -501,6 +524,339 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			notJoinedPods: sets.New("data-2"),
 			wantReplicas:  map[string]int32{"data": 3},
 			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// the NodeSet is no longer expected, so the rolling upgrade cannot repair its Pod: it is removed without a
+			// shutdown, even with maxUnavailable 0, as it is already unavailable
+			name: "a node of a removed NodeSet that is not a member of the cluster is removed when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			maxUnavailable: new(int32(0)),
+			notReadyPods:   sets.New("old-0"),
+			notJoinedPods:  sets.New("old-0"),
+			health:         esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:   map[string]int32{"old": 0},
+			// the node has no shutdown: it keeps the status that recording the nodes to remove resets, until the next
+			// reconciliation, in which it is no longer a node to remove
+			wantShutdownStatuses: map[string]string{"old-0": "NOT_STARTED"},
+			wantRemovedEvents:    []string{"Removed node old-0 without a shutdown"},
+		},
+		{
+			// the removal is only reported once done: a failed attempt is retried, and would report it again
+			name: "the removal of a node of a removed NodeSet that is not a member of the cluster is not reported if it fails",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			updateErr:     errors.New("update failed"),
+			wantErr:       true,
+			wantReplicas:  map[string]int32{"old": 1},
+			// the node has no shutdown: it keeps the status that recording the nodes to remove resets
+			wantShutdownStatuses: map[string]string{"old-0": "NOT_STARTED"},
+		},
+		{
+			// the nodes are removed by highest ordinal first: old-0 waits for old-1, which is still draining
+			name: "a node of a removed NodeSet that is not a member of the cluster waits for the draining node with a higher ordinal",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0", "old-1"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownInProgress},
+			},
+			wantReplicas:         map[string]int32{"old": 2},
+			wantShutdownStatuses: map[string]string{"old-1": "IN_PROGRESS"},
+			wantReason:           "Downscale in progress",
+		},
+		{
+			name: "a node of a removed NodeSet that is not a member of the cluster is removed after the draining node with a higher ordinal",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0", "old-1"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-old-1": {NodeID: "id-old-1", Type: "REMOVE", Status: esclient.ShutdownComplete},
+			},
+			wantReplicas:         map[string]int32{"old": 0},
+			wantShutdownStatuses: map[string]string{"old-1": "COMPLETE"},
+			wantRemovedEvents:    []string{"Removed node old-0 without a shutdown"},
+		},
+		{
+			name: "a node of a removed NodeSet that is not a member of the cluster is held when the cluster is not green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
+		},
+		{
+			name: "a node of a removed NodeSet that is not a member of the cluster is held while shards are relocating",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth, RelocatingShards: 1},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
+		},
+		{
+			// the health cannot be retrieved: the cluster is not known to be settled, so old-0 is held, and the rest of the
+			// downscale carries on, data-2 is removed once its shutdown is complete
+			name: "a node of a removed NodeSet that is not a member of the cluster is held if the health cannot be retrieved, the downscale carries on",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			healthErr:     errors.New("health failed"),
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Remove), Status: esclient.ShutdownComplete},
+			},
+			wantReplicas:         map[string]int32{"old": 1, "data": 2},
+			wantShutdownStatuses: map[string]string{"data-2": "COMPLETE"},
+			wantReason:           "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
+		},
+		{
+			// the node may be a member that did not answer: it must not be removed, whatever the health of the cluster
+			name: "a node of a removed NodeSet that is not a member of the cluster is held if the nodes response is partial",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			partialNodes:  true,
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterPartialInvariant + ": old-0",
+		},
+		{
+			// the NodeSet was scaled up beyond the capacity, then back down: the Pod cannot be scheduled
+			name: "a pending node of a downscaled NodeSet is removed when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:      sets.New("data-2"),
+			notJoinedPods:     sets.New("data-2"),
+			pendingPods:       sets.New("data-2"),
+			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:      map[string]int32{"data": 2},
+			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
+		},
+		{
+			// a scheduling gate holds the Pod
+			name: "a gated node of a downscaled NodeSet is removed when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:      sets.New("data-2"),
+			notJoinedPods:     sets.New("data-2"),
+			gatedPods:         sets.New("data-2"),
+			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:      map[string]int32{"data": 2},
+			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
+		},
+		{
+			// data-2 was a member, then the rolling upgrade restarted it for a spec that cannot be scheduled: its restart
+			// shutdown is left, the downscale removes it without waiting for it, and leaves the shutdown to the upgrade
+			name: "a pending node of a downscaled NodeSet that left the cluster for an upgrade is removed when the cluster is green, its restart shutdown is kept",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
+			pendingPods:   sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			shutdowns: map[string]esclient.NodeShutdown{
+				"id-data-2": {NodeID: "id-data-2", Type: string(esclient.Restart), Status: esclient.ShutdownComplete},
+			},
+			wantShutdownCancelled: false,
+			wantShutdowns:         []string{"id-data-2"},
+			wantReplicas:          map[string]int32{"data": 2},
+			wantRemovedEvents:     []string{"Removed node data-2 without a shutdown"},
+		},
+		{
+			// the cache may not see a Pod that was created since, for example after an eviction: it is held
+			name: "a missing node of a downscaled NodeSet is held when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notJoinedPods: sets.New("data-2"),
+			missingPods:   sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// whether its NodeSet is expected or not, a Pod that the cache does not see may have been created since
+			name: "a missing node of a removed NodeSet is held when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notJoinedPods: sets.New("old-0"),
+			missingPods:   sets.New("old-0"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterInvariant + ": old-0",
+		},
+		{
+			// the node may be a member that did not answer, whether its Pod exists or not
+			name: "a missing node of a downscaled NodeSet is held if the nodes response is partial",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notJoinedPods: sets.New("data-2"),
+			missingPods:   sets.New("data-2"),
+			partialNodes:  true,
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterPartialInvariant + ": data-2",
+		},
+		{
+			// a previous Pod of the same name may have been a member, and its storage may hold data
+			name: "a pending node of a downscaled NodeSet is held when the cluster is not green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
+			pendingPods:   sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchYellowHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterNotSettledInvariant + ": data-2",
+		},
+		{
+			// as in the issue this covers: the Pod of a removed NodeSet was never scheduled
+			name: "a pending node of a removed NodeSet is removed when the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:      sets.New("old-0"),
+			notJoinedPods:     sets.New("old-0"),
+			pendingPods:       sets.New("old-0"),
+			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:      map[string]int32{"old": 0},
+			wantRemovedEvents: []string{"Removed node old-0 without a shutdown: it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks"},
+		},
+		{
+			// a node joined between the nodes request and the health one, it may be the one that is not a member, whose
+			// shards the green health may account for
+			name: "a node of a removed NodeSet that is not a member of the cluster is held if the nodes changed before the health is retrieved",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "old", data: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:  sets.New("old-0"),
+			notJoinedPods: sets.New("old-0"),
+			nodesChanged:  true,
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"old": 1},
+			wantReason:    "Downscale in progress, delayed nodes: [old-0], old: " + NodeNotInClusterNotSettledInvariant + ": old-0",
+		},
+		{
+			// data-2 cannot be scheduled, so it is removed, but the cache does not see data-1, which may have been created since:
+			// it is held
+			name: "a pending node of a downscaled NodeSet is removed when the cluster is green, and a missing node after it is held",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 1},
+			},
+			notReadyPods:      sets.New("data-2"),
+			notJoinedPods:     sets.New("data-1", "data-2"),
+			pendingPods:       sets.New("data-2"),
+			missingPods:       sets.New("data-1"),
+			health:            esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:      map[string]int32{"data": 2},
+			wantReason:        "Downscale in progress, delayed nodes: [data-1], data: " + NodeNotInClusterInvariant + ": data-1",
+			wantRemovedEvents: []string{"Removed node data-2 without a shutdown"},
+		},
+		{
+			// the Pod is scheduled and pending while it starts, for example running its init containers: it may join
+			name: "a starting node of a downscaled NodeSet that is not a member of the cluster is held, even if the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
+			startingPods:  sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// a running Pod may be a member that restarts: it is not removed without a shutdown
+			name: "a running node of a downscaled NodeSet that is not a member of the cluster is held, even if the cluster is green",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "data", data: true, actualReplicas: 3, desiredReplicas: 2},
+			},
+			notReadyPods:  sets.New("data-2"),
+			notJoinedPods: sets.New("data-2"),
+			health:        esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:  map[string]int32{"data": 3},
+			wantReason:    "Downscale in progress, delayed nodes: [data-2], data: " + NodeNotInClusterInvariant + ": data-2",
+		},
+		{
+			// the voting configuration is told about the master by name, as it is not a node of the cluster
+			name: "a master of a removed NodeSet that is not a member of the cluster is removed and excluded from the voting",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "m2", master: true, actualReplicas: 1, desiredReplicas: 0},
+			},
+			notReadyPods:         sets.New("m2-0"),
+			notJoinedPods:        sets.New("m2-0"),
+			health:               esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:         map[string]int32{"m2": 0},
+			wantVotingExclusions: []string{"m2-0"},
+			// a master that used to be a member may still be in the voting configuration, the message says so, in a warning
+			wantRemovedEvents:  []string{"it may still be in the voting configuration"},
+			wantRemovedWarning: true,
+		},
+		{
+			// one master is removed at a time: m2-1 is removed and excluded from the voting, m2-0 is removed in the next
+			// reconciliation, with its own exclusion and event
+			name: "the masters of a removed NodeSet that are not members of the cluster are removed one at a time",
+			nodeSets: []nodeSet{
+				{name: "master", master: true, actualReplicas: 1, desiredReplicas: 1},
+				{name: "m2", master: true, actualReplicas: 2, desiredReplicas: 0},
+			},
+			notReadyPods:         sets.New("m2-0", "m2-1"),
+			notJoinedPods:        sets.New("m2-0", "m2-1"),
+			health:               esclient.Health{Status: esv1.ElasticsearchGreenHealth},
+			wantReplicas:         map[string]int32{"m2": 1},
+			wantVotingExclusions: []string{"m2-1"},
+			wantRemovedEvents:    []string{"Removed node m2-1 without a shutdown"},
+			wantRemovedWarning:   true,
+			wantReason:           "Downscale in progress, delayed nodes: [m2-0], m2: " + OneMasterAtATimeInvariant,
 		},
 		{
 			// the nodes response is partial: data-2 may be a member that did not answer, the reason says so
@@ -1192,11 +1548,12 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				es.Status.DownscaleOperation.Nodes = append(es.Status.DownscaleOperation.Nodes, reported)
 			}
 			var actualStatefulSets, expectedStatefulSets es_sset.StatefulSetList
-			var pods []sset.TestPod
+			var pods []corev1.Pod
 			for _, ns := range tt.nodeSets {
 				testSset := sset.TestSset{Namespace: es.Namespace, Name: ns.name, ClusterName: es.Name, Master: ns.master, Data: ns.data}
 				testSset.Replicas = ns.actualReplicas
-				actualStatefulSets = append(actualStatefulSets, testSset.Build())
+				actualStatefulSet := testSset.Build()
+				actualStatefulSets = append(actualStatefulSets, actualStatefulSet)
 				if ns.desiredReplicas > 0 {
 					es.Spec.NodeSets = append(es.Spec.NodeSets, esv1.NodeSet{Name: ns.name, Count: ns.desiredReplicas})
 					testSset.Replicas = ns.desiredReplicas
@@ -1204,7 +1561,23 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 				}
 				for i := range ns.actualReplicas {
 					name := sset.PodName(ns.name, i)
-					pods = append(pods, sset.TestPod{Namespace: es.Namespace, Name: name, ClusterName: es.Name, StatefulSetName: ns.name, Master: ns.master, Data: ns.data, Ready: !tt.notReadyPods.Has(name)})
+					if tt.missingPods.Has(name) {
+						continue
+					}
+					var phase corev1.PodPhase
+					if tt.pendingPods.Has(name) || tt.gatedPods.Has(name) || tt.startingPods.Has(name) {
+						phase = corev1.PodPending
+					}
+					pod := sset.TestPod{Namespace: es.Namespace, Name: name, ClusterName: es.Name, StatefulSetName: ns.name, Master: ns.master, Data: ns.data, Ready: !tt.notReadyPods.Has(name), Phase: phase}.Build()
+					switch {
+					case tt.pendingPods.Has(name):
+						pod.Status.Conditions = append(pod.Status.Conditions, corev1.PodCondition{Type: corev1.PodScheduled, Status: corev1.ConditionFalse, Reason: corev1.PodReasonUnschedulable})
+					case tt.gatedPods.Has(name):
+						pod.Status.Conditions = append(pod.Status.Conditions, corev1.PodCondition{Type: corev1.PodScheduled, Status: corev1.ConditionFalse, Reason: corev1.PodReasonSchedulingGated})
+					case tt.startingPods.Has(name):
+						pod.Status.Conditions = append(pod.Status.Conditions, corev1.PodCondition{Type: corev1.PodScheduled, Status: corev1.ConditionTrue})
+					}
+					pods = append(pods, pod)
 				}
 			}
 
@@ -1216,7 +1589,7 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			podToNodeID := map[string]string{}
 			nodes := esclient.Nodes{Nodes: map[string]esclient.Node{}}
 			for _, p := range pods {
-				objs = append(objs, p.BuildPtr())
+				objs = append(objs, p.DeepCopy())
 				if tt.notJoinedPods.Has(p.Name) {
 					continue
 				}
@@ -1226,17 +1599,32 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			if tt.partialNodes {
 				nodes.Summary.Failed = len(tt.notJoinedPods)
 			}
+			// the health counts the nodes of the nodes response, unless a node joined in between
+			health := tt.health
+			health.NumberOfNodes = len(nodes.Nodes)
+			if tt.nodesChanged {
+				health.NumberOfNodes++
+			}
 			clientBuilder := k8s.NewFakeClientBuilder(objs...)
-			if tt.deleteErr != nil {
+			if tt.deleteErr != nil || tt.updateErr != nil {
 				clientBuilder = clientBuilder.WithInterceptorFuncs(interceptor.Funcs{
-					Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error {
-						return tt.deleteErr
+					Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+						if tt.deleteErr != nil {
+							return tt.deleteErr
+						}
+						return c.Delete(ctx, obj, opts...)
+					},
+					Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+						if tt.updateErr != nil {
+							return tt.updateErr
+						}
+						return c.Update(ctx, obj, opts...)
 					},
 				})
 			}
 			k8sClient := clientBuilder.Build()
 			esClient := &fakeESClient{
-				version: version.MustParse("8.0.0"), nodes: nodes, Shutdowns: maps.Clone(tt.shutdowns), GetShutdownErr: tt.getShutdownErr,
+				version: version.MustParse("8.0.0"), nodes: nodes, health: health, GetClusterHealthErr: tt.healthErr, Shutdowns: maps.Clone(tt.shutdowns), GetShutdownErr: tt.getShutdownErr,
 				RegisterPutShutdowns: true, PutShutdownErrNodes: tt.putShutdownFailures, DeleteShutdownErr: tt.deleteShutdownErr,
 			}
 			reconcileState := reconcile.MustNewState(es)
@@ -1264,6 +1652,9 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			}
 			require.Equal(t, tt.wantPutShutdowns, putShutdowns)
 			require.Equal(t, tt.wantErr, results.HasError())
+			if tt.wantVotingExclusions != nil {
+				require.Equal(t, tt.wantVotingExclusions, esClient.AddVotingConfigExclusionsCalledWith)
+			}
 			if tt.wantErrOnce != "" {
 				_, err := results.Aggregate()
 				require.Error(t, err)
@@ -1313,11 +1704,24 @@ func TestHandleDownscale_drainingNodesKeepTheirShutdown(t *testing.T) {
 			require.Equal(t, tt.wantStalled, stalledReported != nil && *stalledReported)
 			stalledEvents := 0
 			var stalledMessage string
+			var removedEvents []events.Event
 			for _, event := range reconcileState.Events() {
-				if event.Reason == events.EventReasonStalled {
+				switch event.Reason {
+				case events.EventReasonStalled:
 					stalledEvents++
 					stalledMessage = event.Message
+				case events.EventReasonRemoved:
+					removedEvents = append(removedEvents, event)
 				}
+			}
+			require.Len(t, removedEvents, len(tt.wantRemovedEvents))
+			wantType := corev1.EventTypeNormal
+			if tt.wantRemovedWarning {
+				wantType = corev1.EventTypeWarning
+			}
+			for i, want := range tt.wantRemovedEvents {
+				require.Contains(t, removedEvents[i].Message, want)
+				require.Equal(t, wantType, removedEvents[i].EventType)
 			}
 			_, updatedES := reconcileState.Apply()
 			if tt.wantStalled {
@@ -1766,6 +2170,27 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			},
 		},
 		{
+			// no shutdown interface: reading a status for the node would panic
+			name: "downscale possible without a shutdown for a removable node that is not a member of the cluster",
+			args: args{
+				ctx: downscaleContext{parentCtx: context.Background(), reconcileState: reconcile.MustNewState(esv1.Elasticsearch{})},
+				downscale: ssetDownscale{
+					statefulSet:         appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+					initialReplicas:     3,
+					targetReplicas:      2,
+					finalReplicas:       2,
+					removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
+				},
+			},
+			want: ssetDownscale{
+				statefulSet:         appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				initialReplicas:     3,
+				targetReplicas:      2,
+				finalReplicas:       2,
+				removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
+			},
+		},
+		{
 			name: "downscale possible from 3 to 2",
 			args: args{
 				ctx: downscaleContext{
@@ -2139,6 +2564,72 @@ func Test_deleteStatefulSets(t *testing.T) {
 			var remainingSsets appsv1.StatefulSetList
 			require.NoError(t, client.List(context.Background(), &remainingSsets))
 			require.Equal(t, tt.wantRemaining, es_sset.StatefulSetList(remainingSsets.Items))
+		})
+	}
+}
+
+func Test_clusterIsSettled(t *testing.T) {
+	nodes := esclient.Nodes{Nodes: map[string]esclient.Node{"id-a": {Name: "a"}, "id-b": {Name: "b"}}}
+	green := esclient.Health{Status: esv1.ElasticsearchGreenHealth, NumberOfNodes: 2}
+	tests := []struct {
+		name string
+		// memoizedHealth, if set, is the health that the state memoized before the current one
+		memoizedHealth *esclient.Health
+		health         esclient.Health
+		// currentNodes, if set, are the nodes once the health is retrieved, which are the memoized ones otherwise
+		currentNodes *esclient.Nodes
+		nodesErr     error
+		want         bool
+	}{
+		{
+			name:   "green with no shard activity and the same nodes",
+			health: green,
+			want:   true,
+		},
+		{
+			name:           "the memoized health is green, but the current one is not",
+			memoizedHealth: &green,
+			health:         esclient.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 2},
+		},
+		{
+			name:   "a node joined after the nodes were retrieved",
+			health: esclient.Health{Status: esv1.ElasticsearchGreenHealth, NumberOfNodes: 3},
+		},
+		{
+			// the health counts c, which may hold shards of a node removed without a shutdown
+			name:         "a node joined while another one left after the nodes were retrieved",
+			health:       green,
+			currentNodes: &esclient.Nodes{Nodes: map[string]esclient.Node{"id-a": {Name: "a"}, "id-c": {Name: "c"}}},
+		},
+		{
+			name:         "the nodes response is partial once the health is retrieved",
+			health:       green,
+			currentNodes: &esclient.Nodes{Summary: esclient.NodesSummary{Failed: 1}, Nodes: nodes.Nodes},
+		},
+		{
+			name:     "the nodes cannot be retrieved once the health is retrieved",
+			health:   green,
+			nodesErr: errors.New("nodes failed"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esClient := &fakeESClient{nodes: nodes, health: tt.health}
+			esState := NewMemoizingESState(context.Background(), esClient)
+			if tt.memoizedHealth != nil {
+				esClient.health = *tt.memoizedHealth
+				_, err := esState.Health()
+				require.NoError(t, err)
+				esClient.health = tt.health
+			}
+			// memoize the nodes, then change them for the requests that follow
+			_, err := esState.NodeNameToID()
+			require.NoError(t, err)
+			if tt.currentNodes != nil {
+				esClient.nodes = *tt.currentNodes
+			}
+			esClient.GetNodesErr = tt.nodesErr
+			assert.Equal(t, tt.want, clusterIsSettled(context.Background(), esClient, esState))
 		})
 	}
 }

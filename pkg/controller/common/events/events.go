@@ -18,6 +18,9 @@ const (
 	// permanent states if the new topology requested by the user does not have enough space for the shards which requires
 	// user intervention to correct the mistake.
 	EventReasonStalled = "Stalled"
+	// EventReasonRemoved describes events where a resource is removed without the usual graceful steps, because they do
+	// not apply to it, for example a node that is not a member of the cluster and cannot join it.
+	EventReasonRemoved = "Removed"
 	// EventReasonUpgraded describes events where resources are upgraded.
 	EventReasonUpgraded = "Upgraded"
 	// EventReasonUnhealthy describes events where a stack deployments health was affected negatively.
