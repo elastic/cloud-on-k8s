@@ -311,16 +311,59 @@ func TestReconciler_Reconcile_resourceNotFound(t *testing.T) {
 }
 
 func TestReconciler_Reconcile_resourceNotFound_OnDeletion(t *testing.T) {
-	// Kibana does not exist in the apiserver, but there is a leftover es user in es namespace
-	r := testReconciler(&kibanaUserInESNamespace)
-	res, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: kbNamespacedName})
-	require.NoError(t, err)
-	require.Equal(t, reconcile.Result{}, res)
-	// es user secret should have been removed
-	var secret corev1.Secret
-	err = r.Client.Get(context.Background(), k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	// Kibana does not exist in the apiserver, but there are a leftover es user and client certificate trust source in
+	// the es namespace.
+	trustSource := corev1.Secret{
+		Namespace: esNamespace,
+		Name:      "kbname-kb-es-client-cert-trust-source",
+		Labels: maps.Merge(
+			map[string]string{commonv1.TypeLabelName: certificates.ClientCertTrustSourceType},
+			kbAssociationInfo.AssociationResourceLabels(kbNamespacedName, types.NamespacedName{Namespace: esNamespace, Name: "esname"}),
+		),
+	}
+
+	for _, tt := range []struct {
+		name string
+		// deleteErr is the error returned by the first deletion of the trust source.
+		deleteErr error
+	}{
+		{
+			name: "deletes the user and the trust source",
+		},
+		{
+			name:      "returns the error and retries when the trust source cannot be deleted",
+			deleteErr: errors.New("simulated trust source delete failure"),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			deleteErr := tt.deleteErr
+			r := testReconciler()
+			r.Client = k8s.NewFakeClientBuilder(&kibanaUserInESNamespace, &trustSource).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+						if obj.GetName() == trustSource.Name && deleteErr != nil {
+							return deleteErr
+						}
+						return c.Delete(ctx, obj, opts...)
+					},
+				}).Build()
+
+			res, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: kbNamespacedName})
+			require.Equal(t, tt.deleteErr != nil, err != nil)
+			require.Equal(t, reconcile.Result{}, res)
+			err = r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&trustSource), &corev1.Secret{})
+			require.Equal(t, tt.deleteErr != nil, err == nil, "the trust source must only be kept when its deletion fails")
+
+			// the retry deletes what is left
+			deleteErr = nil
+			_, err = r.Reconcile(t.Context(), reconcile.Request{NamespacedName: kbNamespacedName})
+			require.NoError(t, err)
+			for _, secret := range []corev1.Secret{kibanaUserInESNamespace, trustSource} {
+				err := r.Client.Get(t.Context(), k8s.ExtractNamespacedName(&secret), &corev1.Secret{})
+				require.True(t, apierrors.IsNotFound(err), "secret %s should have been deleted", secret.Name)
+			}
+		})
+	}
 }
 
 func TestReconciler_Reconcile_Unmanaged(t *testing.T) {

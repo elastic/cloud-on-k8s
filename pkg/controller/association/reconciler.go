@@ -226,11 +226,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if err := r.Client.Get(ctx, request.NamespacedName, associated); err != nil {
 		if apierrors.IsNotFound(err) {
 			// object resource has been deleted, remove artifacts related to the association.
-			r.onDelete(ctx, types.NamespacedName{
+			return reconcile.Result{}, tracing.CaptureError(ctx, r.onDelete(ctx, types.NamespacedName{
 				Namespace: request.Namespace,
 				Name:      request.Name,
-			})
-			return reconcile.Result{}, nil
+			}))
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -937,13 +936,16 @@ func (r *Reconciler) OnNamespaceOutOfScope(associated types.NamespacedName) {
 	r.removeWatches(associated)
 }
 
-func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) {
+func (r *Reconciler) onDelete(ctx context.Context, associated types.NamespacedName) error {
 	r.OnNamespaceOutOfScope(associated)
 
-	// delete user Secret in the Elasticsearch namespace
+	// Delete the user Secrets and client certificate trust sources in the referenced resources namespaces. The error
+	// is returned for the deletion to be retried: the trust sources are not owned by the deleted resource, and the
+	// servers trust its client certificate as long as they exist.
 	if err := deleteOrphanedResources(ctx, r.Client, r.AssociationInfo, associated, nil); err != nil {
-		ulog.FromContext(ctx).Error(err, "Error while trying to delete orphaned resources. Continuing.")
+		return fmt.Errorf("while deleting orphaned resources: %w", err)
 	}
+	return nil
 }
 
 // NewTestAssociationReconciler creates a new AssociationReconciler given an AssociationInfo for testing.
