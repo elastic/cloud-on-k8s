@@ -24,6 +24,10 @@ func AdditionalCAWatchKey(name types.NamespacedName) string {
 // ReconcileAdditionalCAs retrieves additional trust from an optional config map if configured and reconciles a watch for the config map.
 func ReconcileAdditionalCAs(ctx context.Context, client k8s.Client, elasticsearch v1.Elasticsearch, watches watches.DynamicWatches) ([]byte, error) {
 	owner := k8s.ExtractNamespacedName(&elasticsearch)
-	return certificates.ReconcileAdditionalCAs(ctx, client, watches, owner, elasticsearch.Spec.Transport.TLS.CertificateAuthorities,
-		AdditionalCAWatchKey(owner), "spec.transport.tls.certificateAuthorities")
+	return certificates.ReconcileAdditionalCAs(ctx, client, watches, certificates.AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       elasticsearch.Spec.Transport.TLS.CertificateAuthorities,
+		WatchKey:  AdditionalCAWatchKey(owner),
+		FieldPath: "spec.transport.tls.certificateAuthorities",
+	})
 }

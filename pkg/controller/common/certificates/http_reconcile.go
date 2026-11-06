@@ -68,8 +68,13 @@ func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) 
 	if !r.TLSOptions.Enabled() {
 		ref = commonv1.ConfigMapRef{}
 	}
-	return ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, owner, ref,
-		AdditionalCAWatchKey(r.Namer, owner), "spec.http.tls.certificateAuthorities")
+	// an empty ref releases the watch in ReconcileAdditionalCAs
+	return ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       ref,
+		WatchKey:  AdditionalCAWatchKey(r.Namer, owner),
+		FieldPath: "spec.http.tls.certificateAuthorities",
+	})
 }
 
 // appendPEMBundles concatenates PEM bundles, making sure each bundle ends with a newline so that certificates do not run together.

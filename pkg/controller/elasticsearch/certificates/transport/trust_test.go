@@ -41,15 +41,15 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 	require.NoError(t, err)
 	invalidCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("garbage")})
 	tests := []struct {
-		name    string
-		data    map[string]string
-		noRef   bool
-		missing bool
-		want    []byte
-		wantErr string
+		name             string
+		data             map[string]string
+		noRef            bool
+		configMapMissing bool
+		want             []byte
+		wantErr          string
 	}{
 		{name: "no reference", noRef: true},
-		{name: "missing config map", missing: true,
+		{name: "missing config map", configMapMissing: true,
 			wantErr: `could not retrieve config map ns/my-trust specified in spec.transport.tls.certificateAuthorities: configmaps "my-trust" not found`},
 		{name: "missing ca.crt", wantErr: "config map ns/my-trust specified in spec.transport.tls.certificateAuthorities must contain ca.crt file"},
 		{name: "valid certificate", data: map[string]string{certificates.CAFileName: string(caPEM)}, want: caPEM},
@@ -69,7 +69,7 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 				es.Spec.Transport.TLS.CertificateAuthorities = commonv1.ConfigMapRef{}
 			}
 			c := k8s.NewFakeClient()
-			if !tt.missing {
+			if !tt.configMapMissing {
 				require.NoError(t, c.Create(t.Context(), &corev1.ConfigMap{Namespace: es.Namespace, Name: "my-trust", Data: tt.data}))
 			}
 			dw := watches.NewDynamicWatches()
@@ -81,7 +81,11 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.want, got)
-			assert.Equal(t, !tt.noRef, len(dw.ConfigMaps.Registrations()) == 1)
+			expectedRegistrations := 1
+			if tt.noRef {
+				expectedRegistrations = 0
+			}
+			assert.Len(t, dw.ConfigMaps.Registrations(), expectedRegistrations)
 
 			if len(got) > 0 {
 				// Exercise the consumers: only certificates reach the public and node transport secrets.
@@ -114,10 +118,10 @@ func TestReconcileAdditionalCAsWatch(t *testing.T) {
 	}}
 	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 	defer q.ShutDown()
-	assertEnqueued := func(cm *corev1.ConfigMap, want bool) {
+	assertEnqueued := func(cm *corev1.ConfigMap, wantReconcile bool) {
 		t.Helper()
 		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: cm}, q)
-		if !want {
+		if !wantReconcile {
 			require.Zero(t, q.Len())
 			return
 		}

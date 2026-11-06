@@ -16,19 +16,28 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
+// AdditionalCAsOptions identifies the additional CAs to load and the configuration they come from.
+type AdditionalCAsOptions struct {
+	// Owner is the resource configuring the additional CAs. The ConfigMap is looked up in its namespace and the owner is reconciled when it changes.
+	Owner types.NamespacedName
+	// Ref references the ConfigMap holding the CAs. An undefined ref releases the watch.
+	Ref commonv1.ConfigMapRef
+	// WatchKey is the key of the ConfigMap watch.
+	WatchKey string
+	// FieldPath identifies the configuration field in error messages.
+	FieldPath string
+}
+
 // ReconcileAdditionalCAs loads and validates certificates from the referenced ConfigMap and keeps its watch in sync.
 // The watch is registered before loading the ConfigMap so creating a missing ConfigMap triggers reconciliation.
 // Only certificates are returned, encoded as PEM with a trailing newline; other PEM blocks are discarded.
-// fieldPath identifies the configuration field in error messages.
 func ReconcileAdditionalCAs(
 	ctx context.Context,
 	c k8s.Client,
 	dynamicWatches watches.DynamicWatches,
-	owner types.NamespacedName,
-	ref commonv1.ConfigMapRef,
-	watchKey string,
-	fieldPath string,
+	opts AdditionalCAsOptions,
 ) ([]byte, error) {
+	owner, ref, watchKey, fieldPath := opts.Owner, opts.Ref, opts.WatchKey, opts.FieldPath
 	if !ref.IsDefined() {
 		dynamicWatches.ConfigMaps.RemoveHandlerForKey(watchKey)
 		return nil, nil
