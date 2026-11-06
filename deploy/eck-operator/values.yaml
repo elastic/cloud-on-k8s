@@ -426,6 +426,22 @@ serviceMonitor:
   #
   # allows to disable the serviceMonitor, enabled by default for backwards compatibility
   enabled: true
+  # labels adds additional labels to the serviceMonitor.
+  # Labels are merged with the standard chart labels. When the same key is set in both, this value is used.
+  # Prometheus installations that select ServiceMonitors by a release label, such as kube-prometheus-stack, can discover this monitor by setting that label:
+  # labels:
+  #   release: kube-prometheus-stack
+  labels: {}
+  # annotations adds additional annotations to the serviceMonitor
+  annotations: {}
+  # interval specifies the interval at which metrics should be scraped.
+  # The configured duration must be valid for Prometheus. When unset or empty, the chart keeps the 30s interval.
+  # scrapeTimeout, when configured, must be a valid Prometheus duration and must not exceed interval.
+  interval: 30s
+  # scrapeTimeout specifies the timeout after which the scrape is ended.
+  # When unset or empty, scrapeTimeout is omitted and Prometheus defaults remain in effect.
+  # The configured duration must be valid for Prometheus and must not exceed interval.
+  scrapeTimeout: ""
   # namespace determines in which namespace the serviceMonitor will be deployed.
   # If not set the serviceMonitor will be created in the namespace where the Helm release is installed into
   # namespace: monitoring
