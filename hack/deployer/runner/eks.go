@@ -30,6 +30,7 @@ overrides:
     token: %s
 `
 	EKSVaultPath            = "ci-aws-k8s-operator"
+	eksDeleteRetryDelay     = 2 * time.Minute
 	clusterCreationTemplate = `apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
@@ -119,12 +120,8 @@ func (e *EKSDriver) Execute() error {
 		if bucketErr != nil {
 			log.Printf("warning: bucket deletion failed, will continue with cluster deletion: %v", bucketErr)
 		}
-		if exists {
-			if err = e.delete(); err != nil {
-				return errors.Join(err, bucketErr)
-			}
-		} else {
-			log.Printf("Not deleting cluster as it does not exist")
+		if err = e.delete(); err != nil {
+			return errors.Join(err, bucketErr)
 		}
 		if bucketErr != nil {
 			return bucketErr
@@ -339,11 +336,92 @@ func (e *EKSDriver) Cleanup(prefix string, olderThan time.Duration) error {
 	return nil
 }
 
+// delete deletes the cluster with eksctl, retrying on failure. It does nothing if neither the EKS cluster nor any of
+// its stacks exist.
 func (e *EKSDriver) delete() error {
-	log.Printf("Deleting cluster %s", e.ctx["ClusterName"])
-	// --wait to surface failures to delete all resources in the Cloud formation
-	// --disable-nodegroup-eviction to avoid pod disruption budgets causing nodegroup draining to fail.
-	return e.newCmd("eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait --disable-nodegroup-eviction").Run()
+	// Retry because CloudFormation stack deletion can fail on resources that are released asynchronously,
+	// e.g. ENIs still referencing the nodegroup security group while instances or load balancers terminate.
+	const maxDeleteAttempts = 3
+	var lastErr error
+	for attempt := 1; attempt <= maxDeleteAttempts; attempt++ {
+		if attempt > 1 {
+			log.Printf("Retrying cluster deletion in %s (attempt %d/%d)...", eksDeleteRetryDelay, attempt, maxDeleteAttempts)
+			time.Sleep(eksDeleteRetryDelay)
+		}
+		exists, err := e.clusterExists()
+		if err != nil {
+			lastErr = fmt.Errorf("while checking cluster exists: %w", err)
+			log.Printf("Error: %v", lastErr)
+			continue
+		}
+		if !exists {
+			stacks, err := e.clusterStacks()
+			if err != nil {
+				lastErr = fmt.Errorf("while listing the stacks of the cluster: %w", err)
+				log.Printf("Error: %v", lastErr)
+				continue
+			}
+			if len(stacks) == 0 {
+				log.Printf("Cluster %s and its stacks do not exist, nothing to delete", e.ctx["ClusterName"])
+				return nil
+			}
+		}
+		// --wait to surface failures to delete all resources in the Cloud formation
+		// --disable-nodegroup-eviction to avoid pod disruption budgets causing nodegroup draining to fail.
+		cmd := "eksctl delete cluster -v 1 --name {{.ClusterName}} --region {{.Region}} --wait --disable-nodegroup-eviction"
+		if !exists {
+			// Only the stacks are left. Without --force eksctl fails with "No cluster found" before looking at them;
+			// with it, eksctl carries on and deletes them. It is not used while the EKS cluster exists as it would
+			// also ignore load balancer cleanup and node draining errors.
+			cmd += " --force"
+		}
+		log.Printf("Deleting cluster %s", e.ctx["ClusterName"])
+		if err := e.newCmd(cmd).Run(); err != nil {
+			lastErr = fmt.Errorf("while deleting cluster: %w", err)
+			log.Printf("Error: %v", lastErr)
+			e.logStackDeleteFailures()
+			continue
+		}
+		return nil
+	}
+	return fmt.Errorf("failed to delete cluster after %d attempts: %w", maxDeleteAttempts, lastErr)
+}
+
+// clusterStacks returns the names of the cluster's eksctl CloudFormation stacks, found by their cluster name tag.
+// Deleted stacks are not returned, stacks in DELETE_FAILED are.
+func (e *EKSDriver) clusterStacks() ([]string, error) {
+	// Names are prefixed so that anything else the AWS CLI prints, such as warnings, is not taken for a stack.
+	const stackPrefix = "stack="
+	cmd := `aws cloudformation describe-stacks --region {{.Region}} ` +
+		`--query "Stacks[?Tags[?Key=='alpha.eksctl.io/cluster-name' && Value=='{{.ClusterName}}']].join('', ['` + stackPrefix + `', StackName])" --output text`
+	out, err := e.newCmd(cmd).WithoutStreaming().Output()
+	if err != nil {
+		return nil, err
+	}
+	var stacks []string
+	for field := range strings.FieldsSeq(out) {
+		if name, ok := strings.CutPrefix(field, stackPrefix); ok {
+			stacks = append(stacks, name)
+		}
+	}
+	return stacks, nil
+}
+
+// logStackDeleteFailures prints the reasons reported by CloudFormation for resources it failed to delete,
+// as eksctl only reports that the waiter transitioned to failure.
+func (e *EKSDriver) logStackDeleteFailures() {
+	stacks, err := e.clusterStacks()
+	if err != nil {
+		log.Printf("warning: could not list CloudFormation stacks of the cluster: %v", err)
+		return
+	}
+	for _, stack := range stacks {
+		cmd := fmt.Sprintf(`aws cloudformation describe-stack-events --region {{.Region}} --stack-name %s `+
+			`--query "StackEvents[?ResourceStatus=='DELETE_FAILED'].[Timestamp,LogicalResourceId,ResourceStatusReason]" --output text`, stack)
+		if err := e.newCmd(cmd).Run(); err != nil {
+			log.Printf("warning: could not describe stack events for %s: %v", stack, err)
+		}
+	}
 }
 
 var _ Driver = (*EKSDriver)(nil)
