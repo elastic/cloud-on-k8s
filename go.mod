@@ -12,7 +12,7 @@ require (
 	github.com/KimMachineGun/automemlimit v1.0.1
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/aws/aws-sdk-go-v2 v1.47.8
-	github.com/aws/aws-sdk-go-v2/credentials v1.20.16
+	github.com/aws/aws-sdk-go-v2/credentials v1.20.17
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.9
 	github.com/blang/semver/v4 v4.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
