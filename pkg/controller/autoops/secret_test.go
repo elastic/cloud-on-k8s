@@ -25,6 +25,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
@@ -182,6 +183,89 @@ func TestReconcileAutoOpsESClientCertSecretDoesNotMutatePolicy(t *testing.T) {
 	// the policy's own labels and annotations must not be polluted with the secret's
 	assert.Equal(t, map[string]string{"user-label": "value"}, policy.Labels)
 	assert.Equal(t, map[string]string{"user-annotation": "value"}, policy.Annotations)
+}
+
+func TestReconcileAutoOpsESClientCertSecretTrustSourceMetadata(t *testing.T) {
+	scheme.SetupScheme()
+
+	es := newElasticsearch(func(es *esv1.Elasticsearch) {
+		es.Namespace = "es-ns"
+	})
+	tests := []struct {
+		name            string
+		policyLabels    map[string]string
+		policyAnnots    map[string]string
+		wantLabels      map[string]string
+		wantAnnotations map[string]string
+		wantNoAnnots    []string
+	}{
+		{
+			name: "user labels and annotations are not copied into the ES namespace",
+			policyLabels: map[string]string{
+				"user-label": "value",
+			},
+			policyAnnots: map[string]string{
+				corev1.LastAppliedConfigAnnotation: "{}",
+				"user-annotation":                  "value",
+			},
+			wantNoAnnots: []string{corev1.LastAppliedConfigAnnotation, "user-annotation"},
+		},
+		{
+			name: "only the metadata explicitly propagated is copied",
+			policyLabels: map[string]string{
+				"propagated-label": "value",
+				"user-label":       "value",
+			},
+			policyAnnots: map[string]string{
+				annotation.PropagateLabelsAnnotation:      "propagated-label",
+				annotation.PropagateAnnotationsAnnotation: "propagated-annotation",
+				"propagated-annotation":                   "value",
+				"user-annotation":                         "value",
+			},
+			wantLabels:      map[string]string{"propagated-label": "value"},
+			wantAnnotations: map[string]string{"propagated-annotation": "value"},
+			wantNoAnnots:    []string{"user-annotation"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policy := newAutoOpsAgentPolicy(func(p *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				p.Labels = tt.policyLabels
+				p.Annotations = tt.policyAnnots
+			})
+			c := k8s.NewFakeClient()
+			r := &AgentPolicyReconciler{Client: c, dynamicWatches: watches.NewDynamicWatches()}
+
+			clientCert, results := r.reconcileAutoOpsESClientCertSecret(t.Context(), policy, *es)
+			_, err := results.Aggregate()
+			require.NoError(t, err)
+			require.NotNil(t, clientCert)
+
+			var trustSources corev1.SecretList
+			require.NoError(t, c.List(t.Context(), &trustSources,
+				client.InNamespace(es.Namespace),
+				client.MatchingLabels{commonv1.TypeLabelName: certificates.ClientCertTrustSourceType},
+			))
+			require.Len(t, trustSources.Items, 1)
+			got := trustSources.Items[0]
+
+			wantLabels := resourceLabelsFor(policy, *es)
+			wantLabels[commonv1.TypeLabelName] = certificates.ClientCertTrustSourceType
+			wantLabels[policySecretTypeLabelKey] = clientCertSecretType
+			// added by the secret reconciliation so that the secret is watched
+			wantLabels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+			for k, v := range tt.wantLabels {
+				wantLabels[k] = v
+			}
+			assert.Equal(t, wantLabels, got.Labels)
+			for k, v := range tt.wantAnnotations {
+				assert.Equal(t, v, got.Annotations[k])
+			}
+			for _, k := range tt.wantNoAnnots {
+				assert.NotContains(t, got.Annotations, k)
+			}
+		})
+	}
 }
 
 func TestAutoOpsESClientCertTrustSource(t *testing.T) {

@@ -187,10 +187,14 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 	}
 
 	// Publish the public client certificate into the ES namespace so it is included in the ES trust bundle.
-	// The trust source inherits the policy and ES labels, so the orphan cleanup can find it.
+	// The trust source only carries the policy and ES labels, so the orphan cleanup can find it, plus the metadata
+	// the user explicitly asked to propagate. The remaining policy labels and annotations stay in the policy namespace.
+	trustSourceLabels := resourceLabelsFor(policy, es)
+	trustSourceLabels[policySecretTypeLabelKey] = clientCertSecretType
+	trustSourceMeta := metadata.Propagate(&policy, metadata.Metadata{Labels: trustSourceLabels})
 	if err := certificates.ReconcileClientCertTrustSource(
 		ctx, r.Client, &es, k8s.ExtractNamespacedName(&clientCertSecret.Secret),
-		clientCertSecret.CertPem(), meta,
+		clientCertSecret.CertPem(), trustSourceMeta,
 	); err != nil {
 		return nil, results.WithError(err)
 	}
