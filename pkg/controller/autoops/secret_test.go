@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -254,9 +255,7 @@ func TestReconcileAutoOpsESClientCertSecretTrustSourceMetadata(t *testing.T) {
 			wantLabels[policySecretTypeLabelKey] = clientCertSecretType
 			// added by the secret reconciliation so that the secret is watched
 			wantLabels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
-			for k, v := range tt.wantLabels {
-				wantLabels[k] = v
-			}
+			maps.Copy(wantLabels, tt.wantLabels)
 			assert.Equal(t, wantLabels, got.Labels)
 			for k, v := range tt.wantAnnotations {
 				assert.Equal(t, v, got.Annotations[k])
