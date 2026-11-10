@@ -24,7 +24,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -64,42 +63,18 @@ func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts 
 // and keeps a dynamic watch on the referenced ConfigMap in sync with the configuration.
 func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) {
 	owner := k8s.ExtractNamespacedName(r.Owner)
-	watchKey := AdditionalCAWatchKey(r.Namer, owner)
 	ref := r.TLSOptions.CertificateAuthorities
 	// Elasticsearch reconciles the public certs secret even if TLS is disabled, do not fail on a stale reference then.
-	if !ref.IsDefined() || !r.TLSOptions.Enabled() {
-		r.DynamicWatches.ConfigMaps.RemoveHandlerForKey(watchKey)
-		return nil, nil
+	if !r.TLSOptions.Enabled() {
+		ref = commonv1.ConfigMapRef{}
 	}
-	nsn := types.NamespacedName{Namespace: owner.Namespace, Name: ref.ConfigMapName}
-	if err := r.DynamicWatches.ConfigMaps.AddHandler(watches.NamedWatch[*corev1.ConfigMap]{
-		Name:    watchKey,
-		Watched: []types.NamespacedName{nsn},
-		Watcher: owner,
-	}); err != nil {
-		return nil, err
-	}
-	var configMap corev1.ConfigMap
-	if err := r.K8sClient.Get(ctx, nsn, &configMap); err != nil {
-		return nil, fmt.Errorf("could not retrieve config map %s specified in spec.http.tls.certificateAuthorities: %w", nsn, err)
-	}
-	pem, exists := configMap.Data[CAFileName]
-	if !exists {
-		return nil, fmt.Errorf("config map %s specified in spec.http.tls.certificateAuthorities must contain %s file", nsn, CAFileName)
-	}
-	certs, err := ParsePEMCerts([]byte(pem))
-	if err != nil {
-		return nil, fmt.Errorf("config map %s specified in spec.http.tls.certificateAuthorities contains invalid certificates: %w", nsn, err)
-	}
-	if len(certs) == 0 {
-		return nil, fmt.Errorf("config map %s specified in spec.http.tls.certificateAuthorities contains invalid certificates: no certificate found in %s", nsn, CAFileName)
-	}
-	// Only hand out certificates: anything else in the ConfigMap, for example a private key, is dropped.
-	raws := make([][]byte, len(certs))
-	for i, cert := range certs {
-		raws[i] = cert.Raw
-	}
-	return EncodePEMCert(raws...), nil
+	// an empty ref releases the watch in ReconcileAdditionalCAs
+	return ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       ref,
+		WatchKey:  AdditionalCAWatchKey(r.Namer, owner),
+		FieldPath: "spec.http.tls.certificateAuthorities",
+	})
 }
 
 // appendPEMBundles concatenates PEM bundles, making sure each bundle ends with a newline so that certificates do not run together.
