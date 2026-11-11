@@ -38,7 +38,7 @@ With `--enable-vault` (the default), the OCI registry credentials are read from 
 
 Charts are pushed to dedicated OCI namespaces, separate from the `eck` and `eck-snapshots` namespaces that hold the operator container images. Each repository name equals the chart name (e.g. `docker.elastic.co/eck-charts/eck-operator:1.0.0`), which Helm requires when a chart is consumed as a dependency of another chart.
 
-With `--skip-oci-existing`, the releaser signs the chart that is already in the registry for a version, and does not compare it with the local chart. Retry a failed release from the same commit as the failed build, otherwise the signing step signs the old content.
+With `--skip-oci-existing`, the releaser skips charts already in the registry and records their published digests when `--oci-charts-digests-file` is set; it does not compare them with the local charts or sign them itself. The Helm release pipeline uses those digest refs in its downstream signing step. Retry a failed release from the same commit as the failed build, otherwise the signing step signs the old content.
 
 ### Structure
 
