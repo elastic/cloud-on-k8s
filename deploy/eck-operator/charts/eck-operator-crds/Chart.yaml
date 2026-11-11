@@ -14,7 +14,7 @@ appVersion: 3.6.0-SNAPSHOT
 
 home: https://github.com/elastic/cloud-on-k8s
 
-kubeVersion: ">=1.21.0-0"
+kubeVersion: ">=1.32.0-0"
 
 keywords:
   - AutoOps
