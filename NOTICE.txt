@@ -19639,11 +19639,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/cel-go
-Version : v0.29.2
-Time    : 2026-07-08T08:42:07Z
+Version : v0.30.0
+Time    : 2026-07-25T00:08:13Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/google/cel-go@v0.29.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/cel-go@v0.30.0/LICENSE:
 
 
                                  Apache License
@@ -24758,11 +24758,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/klauspost/compress
-Version : v1.20.1
-Time    : 2026-09-25T08:00:35Z
+Version : v1.20.2
+Time    : 2026-10-12T09:34:06Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.20.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/klauspost/compress@v1.20.2/LICENSE:
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.

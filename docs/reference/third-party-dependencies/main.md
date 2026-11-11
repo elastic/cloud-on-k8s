@@ -158,7 +158,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/goccy/go-yaml](https://github.com/goccy/go-yaml) | v1.19.2 | MIT |
 | [github.com/golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) | v5.3.1 | MIT |
 | [github.com/golang/protobuf](https://github.com/golang/protobuf) | v1.5.4 | BSD-3-Clause |
-| [github.com/google/cel-go](https://github.com/google/cel-go) | v0.29.2 | Apache-2.0 |
+| [github.com/google/cel-go](https://github.com/google/cel-go) | v0.30.0 | Apache-2.0 |
 | [github.com/google/flatbuffers](https://github.com/google/flatbuffers) | v25.12.19+incompatible | Apache-2.0 |
 | [github.com/google/gnostic-models](https://github.com/google/gnostic-models) | v0.7.1 | Apache-2.0 |
 | [github.com/google/gofuzz](https://github.com/google/gofuzz) | v1.2.0 | Apache-2.0 |
@@ -181,7 +181,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/huandu/xstrings](https://github.com/huandu/xstrings) | v1.5.0 | MIT |
 | [github.com/inconshreveable/mousetrap](https://github.com/inconshreveable/mousetrap) | v1.1.0 | Apache-2.0 |
 | [github.com/json-iterator/go](https://github.com/json-iterator/go) | v1.1.12 | MIT |
-| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.20.1 | Apache-2.0 |
+| [github.com/klauspost/compress](https://github.com/klauspost/compress) | v1.20.2 | Apache-2.0 |
 | [github.com/klauspost/cpuid/v2](https://github.com/klauspost/cpuid) | v2.4.0 | MIT |
 | [github.com/kr/pretty](https://github.com/kr/pretty) | v0.3.1 | MIT |
 | [github.com/kr/text](https://github.com/kr/text) | v0.2.0 | MIT |
