@@ -111,8 +111,8 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	)
 }
 
-// deleteAutoOpsESClientCertSecret deletes the client certificate secret for a specific ES cluster
-// when client authentication is no longer required.
+// deleteAutoOpsESClientCertSecret deletes the client certificate secret for a specific ES cluster, and the
+// trust source published for it into the ES namespace, when client authentication is no longer required.
 func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
 	ctx context.Context,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
@@ -120,16 +120,22 @@ func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
 ) error {
 	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretName)
-	return k8s.DeleteSecretIfExists(ctx, r.Client, types.NamespacedName{
+	secretNSN := types.NamespacedName{
 		Namespace: policy.GetNamespace(),
 		Name:      secretName,
-	})
+	}
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.ClientCertTrustSourceKey(es.Namespace, secretNSN).Name)
+	if err := k8s.DeleteSecretIfExists(ctx, r.Client, secretNSN); err != nil {
+		return err
+	}
+	return certificates.DeleteClientCertTrustSource(ctx, r.Client, es.Namespace, secretNSN)
 }
 
 // reconcileAutoOpsESClientCertSecret reconciles a self-signed client certificate
 // for a specific Elasticsearch cluster that requires client authentication.
-// The certificate is unique to this policy+ES pair and is labeled so the ES trust
-// bundle controller discovers it and includes it in the client CA trust bundle.
+// The certificate is unique to this policy+ES pair. Its public part is published as a trust
+// source into the ES namespace so the ES trust bundle controller includes it in the client CA
+// trust bundle.
 // Returns a requeue duration for certificate rotation.
 //
 // Unlike reconcileAutoOpsESCASecret above, this does not gate on ES readiness: we want
@@ -146,12 +152,8 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 
 	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
 
-	// Build labels for the secret: policy resource labels + soft-owner labels for trust bundle discovery.
 	labels := resourceLabelsFor(policy, es)
 	labels[policySecretTypeLabelKey] = clientCertSecretType
-	labels[reconciler.SoftOwnerNameLabel] = es.Name
-	labels[reconciler.SoftOwnerNamespaceLabel] = es.Namespace
-	labels[reconciler.SoftOwnerKindLabel] = esv1.Kind
 	labels[commonlabels.ClientCertificateLabelName] = "true"
 
 	meta := metadata.Propagate(&policy, metadata.Metadata{
@@ -180,11 +182,38 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
 		return nil, results.WithError(err)
 	}
 
+	if err := certificates.RemoveServerSoftOwnerLabels(ctx, r.Client, &clientCertSecret.Secret); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Publish the public client certificate into the ES namespace so it is included in the ES trust bundle.
+	// The trust source only carries the policy and ES labels, so the orphan cleanup can find it, plus the metadata
+	// the user explicitly asked to propagate. The remaining policy labels and annotations stay in the policy namespace.
+	trustSourceLabels := resourceLabelsFor(policy, es)
+	trustSourceLabels[policySecretTypeLabelKey] = clientCertSecretType
+	trustSourceMeta := metadata.Propagate(&policy, metadata.Metadata{Labels: trustSourceLabels})
+	if err := certificates.ReconcileClientCertTrustSource(
+		ctx, r.Client, &es, k8s.ExtractNamespacedName(&clientCertSecret.Secret),
+		clientCertSecret.CertPem(), trustSourceMeta,
+	); err != nil {
+		return nil, results.WithError(err)
+	}
+
 	// Register a dynamic watch on the client cert secret so the controller is
 	// re-triggered if it is deleted out from under us (the cert is otherwise
 	// only re-issued via rotation requeue, which fires once per cert validity).
 	watcher := k8s.ExtractNamespacedName(&policy)
 	if err := watches.WatchUserProvidedSecrets(watcher, r.dynamicWatches, secretName, []string{secretName}); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Same for the trust source in the ES namespace: the ES owns it, so nothing else would publish it again.
+	trustSourceKey := certificates.ClientCertTrustSourceKey(es.Namespace, k8s.ExtractNamespacedName(&clientCertSecret.Secret))
+	if err := r.dynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
+		Name:    trustSourceKey.Name,
+		Watched: []types.NamespacedName{trustSourceKey},
+		Watcher: watcher,
+	}); err != nil {
 		return nil, results.WithError(err)
 	}
 

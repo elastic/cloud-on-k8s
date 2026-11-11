@@ -21,13 +21,15 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -42,14 +44,27 @@ const (
 	// internalClientCertCommonName is the CommonName used in the operator's client certificate.
 	internalClientCertCommonName = "eck-internal"
 
-	// eckAPIGroupSuffix is the common suffix for all ECK custom resource API groups.
-	eckAPIGroupSuffix = ".k8s.elastic.co"
-
 	// clientCertTrustBundleSecretSuffix is the suffix appended to the owner name to form the trust bundle secret name.
 	clientCertTrustBundleSecretSuffix = "client-trust-bundle"
 	// ClientCertificatesTrustBundleFileName is the key used in the trust bundle secret data.
 	ClientCertificatesTrustBundleFileName = "client-trust-bundle.crt"
+
+	// ClientCertTrustSourceType is the type label value of the trust source secrets published into the server
+	// namespace. The server's client certificate trust bundle is built from these secrets only.
+	ClientCertTrustSourceType = "client-cert-trust-source"
+
+	// clientCertTrustSourceSuffix is the suffix of the trust source secret names.
+	clientCertTrustSourceSuffix = "client-cert-source"
+
+	// clientCertSourceNamespaceAnnotation and clientCertSourceNameAnnotation record the originating client
+	// certificate secret on a trust source. The trust bundle is ordered by it, which keeps the bundle bytes
+	// unchanged for existing clusters.
+	clientCertSourceNamespaceAnnotation = "certificates.k8s.elastic.co/client-cert-source-namespace"
+	clientCertSourceNameAnnotation      = "certificates.k8s.elastic.co/client-cert-source-name"
 )
+
+// clientCertTrustSourceNamer names trust source secrets using DNS subdomain naming (253 chars max).
+var clientCertTrustSourceNamer = name.NewSecretNamer()
 
 // OperatorClientCertSecretName returns the expected secret name for the operator client certificate.
 func OperatorClientCertSecretName(namer name.Namer, ownerName string) string {
@@ -118,25 +133,26 @@ func (r Reconciler) ReconcileClientCertificate(
 
 // ReconcileTrustBundle builds a trust bundle containing:
 // 1. The operator client certificate (passed directly, owned by the server resource)
-// 2. Any association client certificates (discovered via soft-owner labels)
+// 2. Any association client certificates published as trust source records into the server namespace.
 //
 // The trust bundle secret contains concatenated PEM-encoded certificates for client certificate validation.
-func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, extraCertificates ...*CertificatesSecret) ([]byte, error) {
+func (r Reconciler) ReconcileTrustBundle(ctx context.Context, extraCertificates ...*CertificatesSecret) ([]byte, error) {
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 	secretName := ClientCertTrustBundleSecretName(r.Namer, ownerNSN.Name)
 
-	// Start with the operator client certificate (directly owned, no soft-owner labels needed)
+	// Start with the certificates passed in by the caller (the operator client certificate).
 	var allSecrets []corev1.Secret
 	for _, extraCert := range extraCertificates {
 		allSecrets = append(allSecrets, extraCert.Secret)
 	}
 
-	// Discover association client certificate secrets with matching soft-owner labels
-	associationSecrets, err := discoverClientCertSecrets(ctx, r.K8sClient, ownerNSN.Name, ownerNSN.Namespace, ownerKind)
+	// Only the trust sources owned by the server in its own namespace are used. The operator publishes them once
+	// the association of the client with the server is reconciled.
+	sources, err := listClientCertTrustSources(ctx, r.K8sClient, r.Owner)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover client certificate secrets: %w", err)
+		return nil, fmt.Errorf("failed to list client certificate trust sources: %w", err)
 	}
-	allSecrets = append(allSecrets, associationSecrets...)
+	allSecrets = append(allSecrets, sources...)
 
 	// Build trust bundle from all secrets
 	bundleData := buildTrustBundleFromSecrets(ctx, allSecrets)
@@ -155,93 +171,168 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, ownerKind string, 
 	return bundleData, err
 }
 
-// discoverClientCertSecrets lists all secrets across namespaces that are labeled as client certificates
-// with soft-owner labels matching the specified owner, then verifies each secret has an ECK-managed
-// owner reference. Only secrets created through the ECK association flow carry such a reference,
-// so secrets with labels set externally are excluded.
-func discoverClientCertSecrets(ctx context.Context, c k8s.Client, ownerName, ownerNamespace, ownerKind string) ([]corev1.Secret, error) {
-	log := ulog.FromContext(ctx)
-
-	var clientCertificateSecrets corev1.SecretList
-	if err := c.List(ctx, &clientCertificateSecrets, client.MatchingLabels{
-		reconciler.SoftOwnerNameLabel:      ownerName,
-		reconciler.SoftOwnerNamespaceLabel: ownerNamespace,
-		reconciler.SoftOwnerKindLabel:      ownerKind,
-		labels.ClientCertificateLabelName:  "true",
-	}); err != nil {
-		return nil, fmt.Errorf("failed to list client certificate secrets: %w", err)
-	}
-
-	// Post-filter: only include secrets that have a verified ECK-managed owner reference.
-	// ECK always sets such an owner reference when creating client cert secrets through the
-	// association flow; secrets without one were not created by the operator.
-	var verified []corev1.Secret
-	for i := range clientCertificateSecrets.Items {
-		secret := &clientCertificateSecrets.Items[i]
-		ok, err := hasVerifiedECKOwnerRef(ctx, c, secret)
-		if err != nil {
-			return nil, fmt.Errorf("verifying owner reference for client certificate secret %s/%s: %w", secret.Namespace, secret.Name, err)
-		}
-		if ok {
-			verified = append(verified, *secret)
-		} else {
-			log.Info("Ignoring client certificate secret: no verified ECK owner reference",
-				"secret_namespace", secret.Namespace, "secret_name", secret.Name)
-		}
-	}
-
-	log.V(1).Info("Discovered client certificate secrets",
-		"owner_name", ownerName,
-		"owner_namespace", ownerNamespace,
-		"owner_kind", ownerKind,
-		"count", len(verified))
-
-	return verified, nil
+// clientCertTrustSourceSecretName returns the deterministic name of the trust source secret published into
+// the server namespace for a client certificate originating from the given source secret. The hash of the
+// source namespace and name keeps it collision-free across associated resources that share a name.
+func clientCertTrustSourceSecretName(sourceNamespace, sourceName string) string {
+	refHash := hash.HashObject(types.NamespacedName{Namespace: sourceNamespace, Name: sourceName})
+	return clientCertTrustSourceNamer.Suffix(sourceName, refHash, clientCertTrustSourceSuffix)
 }
 
-// hasVerifiedECKOwnerRef returns true if the Secret has at least one owner reference pointing to
-// an ECK custom resource (API group ending in .k8s.elastic.co) that currently exists in the same
-// namespace with the expected UID. All ECK custom resources are namespace-scoped, and Kubernetes
-// prevents a namespace-scoped resource from carrying an owner reference to a resource in a
-// different namespace, so the owner is always co-located with the Secret.
-func hasVerifiedECKOwnerRef(ctx context.Context, c k8s.Client, secret *corev1.Secret) (bool, error) {
-	for _, ref := range secret.OwnerReferences {
-		group, _, _ := strings.Cut(ref.APIVersion, "/")
-		if !strings.HasSuffix(group, eckAPIGroupSuffix) {
-			continue
-		}
-		gvk := schema.FromAPIVersionAndKind(ref.APIVersion, ref.Kind)
-		runtimeObj, err := c.Scheme().New(gvk)
-		if err != nil {
-			// GVK not registered in the ECK scheme — not a CR we manage; skip this ref.
-			continue
-		}
-		owner, ok := runtimeObj.(client.Object)
-		if !ok {
-			continue
-		}
-		if err := c.Get(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: ref.Name}, owner); err != nil {
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return false, err
-		}
-		if owner.GetUID() == ref.UID {
-			return true, nil
+// ReconcileClientCertTrustSource publishes the public part of a client certificate into the server namespace so
+// the server includes it in its client certificate trust bundle. It must only be called once the client's access
+// to the server is authorized (RBAC-on-refs). The server owns the record, which inherits the labels in meta so the
+// publishing resource can find and delete it.
+func ReconcileClientCertTrustSource(
+	ctx context.Context,
+	c k8s.Client,
+	server client.Object,
+	sourceNSN types.NamespacedName,
+	certPEM []byte,
+	meta metadata.Metadata,
+) error {
+	secretLabels := maps.Clone(meta.Labels)
+	if secretLabels == nil {
+		secretLabels = map[string]string{}
+	}
+	// The client certificate label is reserved for the client certificate secret in the component namespace.
+	delete(secretLabels, labels.ClientCertificateLabelName)
+	secretLabels[commonv1.TypeLabelName] = ClientCertTrustSourceType
+
+	secretAnnotations := maps.Clone(meta.Annotations)
+	if secretAnnotations == nil {
+		secretAnnotations = map[string]string{}
+	}
+	// Record the originating secret so the trust bundle can preserve a stable, source-based ordering.
+	secretAnnotations[clientCertSourceNamespaceAnnotation] = sourceNSN.Namespace
+	secretAnnotations[clientCertSourceNameAnnotation] = sourceNSN.Name
+
+	expected := corev1.Secret{
+		Namespace:   server.GetNamespace(),
+		Name:        clientCertTrustSourceSecretName(sourceNSN.Namespace, sourceNSN.Name),
+		Data:        map[string][]byte{CertFileName: certPEM},
+		Labels:      secretLabels,
+		Annotations: secretAnnotations,
+	}
+	// Also update a trust source controlled by a previous server of the same name, which has not been garbage
+	// collected yet: ReconcileSecret does not compare owner references. Left alone, it would be ignored as soon as
+	// the garbage collector removes it.
+	needsReOwning := func(p *reconciler.Params) {
+		needsUpdate := p.NeedsUpdate
+		p.NeedsUpdate = func() bool {
+			return needsUpdate() || !metav1.IsControlledBy(p.Reconciled, server)
 		}
 	}
-	return false, nil
+	_, err := reconciler.ReconcileSecret(ctx, c, expected, server, needsReOwning)
+	return err
+}
+
+// ClientCertTrustSourceKey returns the key of the trust source published into the server namespace for the client
+// certificate secret sourceNSN.
+func ClientCertTrustSourceKey(serverNamespace string, sourceNSN types.NamespacedName) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: serverNamespace,
+		Name:      clientCertTrustSourceSecretName(sourceNSN.Namespace, sourceNSN.Name),
+	}
+}
+
+// DeleteClientCertTrustSource removes the trust source record published for the given client certificate
+// source from the server namespace, if it exists.
+func DeleteClientCertTrustSource(ctx context.Context, c k8s.Client, serverNamespace string, sourceNSN types.NamespacedName) error {
+	return k8s.DeleteSecretIfExists(ctx, c, ClientCertTrustSourceKey(serverNamespace, sourceNSN))
+}
+
+// ClientCertTrustSourceOrigin returns the namespace and name of the client certificate secret the given trust
+// source record was published from. It returns false if the secret is not a trust source record.
+func ClientCertTrustSourceOrigin(secret corev1.Secret) (types.NamespacedName, bool) {
+	namespace, hasNamespace := secret.Annotations[clientCertSourceNamespaceAnnotation]
+	name, hasName := secret.Annotations[clientCertSourceNameAnnotation]
+	if !hasNamespace || !hasName {
+		return types.NamespacedName{}, false
+	}
+	return types.NamespacedName{Namespace: namespace, Name: name}, true
+}
+
+// ListClientCertTrustSources lists, across all namespaces, the trust sources carrying the given labels. They
+// inherit the labels of the resource that published them, wherever they were published.
+func ListClientCertTrustSources(ctx context.Context, c k8s.Client, matchingLabels client.MatchingLabels) ([]corev1.Secret, error) {
+	selector := client.MatchingLabels{commonv1.TypeLabelName: ClientCertTrustSourceType}
+	maps.Copy(selector, matchingLabels)
+
+	var secrets corev1.SecretList
+	if err := c.List(ctx, &secrets, selector); err != nil {
+		return nil, fmt.Errorf("failed to list client certificate trust sources: %w", err)
+	}
+	return secrets.Items, nil
+}
+
+// RemoveServerSoftOwnerLabels removes the server soft-owner labels that older operator versions set on client
+// certificate secrets. They are no longer used. Only labels change, so the client's pods do not roll.
+func RemoveServerSoftOwnerLabels(ctx context.Context, c k8s.Client, secret *corev1.Secret) error {
+	var patchBase client.Patch
+	for _, l := range []string{reconciler.SoftOwnerNameLabel, reconciler.SoftOwnerNamespaceLabel, reconciler.SoftOwnerKindLabel} {
+		if _, ok := secret.Labels[l]; !ok {
+			continue
+		}
+		if patchBase == nil {
+			// a label has to be removed: snapshot the secret before deleting
+			// the first one, so the patch can compute the diff
+			patchBase = client.MergeFrom(secret.DeepCopy())
+		}
+		delete(secret.Labels, l)
+	}
+	if patchBase == nil {
+		return nil
+	}
+	return c.Patch(ctx, secret, patchBase)
+}
+
+// listClientCertTrustSources lists the trust sources published into the namespace of the given server, and
+// controlled by it.
+func listClientCertTrustSources(ctx context.Context, c k8s.Client, server client.Object) ([]corev1.Secret, error) {
+	var secrets corev1.SecretList
+	if err := c.List(ctx, &secrets,
+		client.InNamespace(server.GetNamespace()),
+		client.MatchingLabels{commonv1.TypeLabelName: ClientCertTrustSourceType},
+	); err != nil {
+		return nil, fmt.Errorf("failed to list client certificate trust sources: %w", err)
+	}
+
+	trustSources := make([]corev1.Secret, 0, len(secrets.Items))
+	for _, secret := range secrets.Items {
+		if metav1.IsControlledBy(&secret, server) {
+			trustSources = append(trustSources, secret)
+		}
+	}
+
+	ulog.FromContext(ctx).V(1).Info("Listed client certificate trust sources",
+		"server_name", server.GetName(),
+		"server_namespace", server.GetNamespace(),
+		"count", len(trustSources))
+
+	return trustSources, nil
 }
 
 // buildTrustBundleFromSecrets extracts client certificates from the given secrets and concatenates them.
-// The output is sorted by secret namespace/name for deterministic results.
+// The output is sorted by the originating client certificate's namespace/name (recorded on published trust
+// sources) for deterministic results that stay stable regardless of where the trust source is stored.
 func buildTrustBundleFromSecrets(ctx context.Context, secrets []corev1.Secret) []byte {
 	log := ulog.FromContext(ctx)
 
+	// sortKey returns the originating secret identity when recorded (trust source records), falling back to the
+	// secret's own namespace/name (e.g. the operator client certificate passed directly).
+	sortKey := func(s corev1.Secret) (string, string) {
+		if ns, ok := s.Annotations[clientCertSourceNamespaceAnnotation]; ok {
+			return ns, s.Annotations[clientCertSourceNameAnnotation]
+		}
+		return s.Namespace, s.Name
+	}
 	slices.SortFunc(secrets, func(a, b corev1.Secret) int {
+		aNS, aName := sortKey(a)
+		bNS, bName := sortKey(b)
 		return cmp.Or(
-			strings.Compare(a.Namespace, b.Namespace),
-			strings.Compare(a.Name, b.Name),
+			strings.Compare(aNS, bNS),
+			strings.Compare(aName, bName),
 		)
 	})
 
@@ -448,9 +539,9 @@ func LoadOperatorClientCertIfExists(ctx context.Context, c k8s.Client, namer nam
 }
 
 // DeleteClientCertResources deletes the client certificate resources (operator client cert secret,
-// trust bundle secret, and the client-authentication-required annotation) when client certificate
-// authentication is no longer required. This should only be called after all pods have rolled
-// to the new configuration without client authentication.
+// trust bundle secret, the trust sources the owner controls, and the client-authentication-required
+// annotation) when client certificate authentication is no longer required. This should only be called
+// after all pods have rolled to the new configuration without client authentication.
 func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.Object, namer name.Namer) error {
 	ownerNSN := k8s.ExtractNamespacedName(owner)
 
@@ -475,6 +566,18 @@ func DeleteClientCertResources(ctx context.Context, c k8s.Client, owner client.O
 		Name:      ClientCertTrustBundleSecretName(namer, ownerNSN.Name),
 	}); err != nil {
 		return err
+	}
+
+	// Delete the trust sources published for the owner, without relying on every client to reconcile and delete its
+	// own. The clients publish them again if client authentication is required again.
+	trustSources, err := listClientCertTrustSources(ctx, c, owner)
+	if err != nil {
+		return err
+	}
+	for i := range trustSources {
+		if err := k8s.DeleteSecretIfExists(ctx, c, k8s.ExtractNamespacedName(&trustSources[i])); err != nil {
+			return err
+		}
 	}
 
 	return nil

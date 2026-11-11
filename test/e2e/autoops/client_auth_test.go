@@ -60,8 +60,8 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithCloudConnectedAPIURL(mockURL).
 		WithAutoOpsOTelURL(mockURL)
 
-	// Wrap the ES builder with license setup and PostCheckSteps to verify client cert secret exists
-	// and AutoOps agent pods are ready.
+	// Wrap the ES builder with license setup and PostCheckSteps to verify the client cert is published into the
+	// ES namespace and AutoOps agent pods are ready.
 	esWithLicense := test.LicenseTestBuilder(esBuilder)
 	esWithLicense.PostCheckSteps = func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -81,7 +81,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 					return nil
 				}),
 			},
-			clientauth.CheckClientCertificatesCountStep(k, policyNamespace, esBuilder.Elasticsearch.Name, 1),
+			clientauth.CheckClientCertificatesCountStep(k, esNamespace, esBuilder.Elasticsearch.Name, 1),
 		}
 	}
 
@@ -111,7 +111,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 							return nil
 						}),
 					},
-					clientauth.CheckClientCertificatesCountStep(k, policyNamespace, esBuilder.Elasticsearch.Name, 0),
+					clientauth.CheckClientCertificatesCountStep(k, esNamespace, esBuilder.Elasticsearch.Name, 0),
 				})
 		},
 	}
