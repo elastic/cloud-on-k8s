@@ -1,6 +1,6 @@
 # ---------------------------------------------
 # Build the operator binary
-FROM docker.io/library/golang:1.27.3@sha256:957861185dbf29d93668ace41e011d091c6e779953d47f0316ef2cc58e28fe2b AS builder
+FROM docker.io/library/golang:1.27.4@sha256:08bcb99a38f85a265f9a93d1d3323e2440eec333380f3ea26ee0dec9264bb41c AS builder
 
 ARG VERSION
 ARG SHA1
@@ -62,7 +62,7 @@ CMD ["manager"]
 # ---------------------------------------------
 # ubi - Image that uses ubi-micro as base
 # https://catalog.redhat.com/en/software/containers/ubi9/ubi-micro/615bdf943f6014fa45ae1b58
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.8-1791895366 AS ubi
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.9-1793867126 AS ubi
 
 ARG VERSION
 
