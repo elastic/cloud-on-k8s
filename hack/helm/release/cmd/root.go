@@ -28,6 +28,7 @@ const (
 	enableVaultFlag          = "enable-vault"
 	skipChartRepoFlag        = "skip-chart-repo"
 	skipOCIRegistryFlag      = "skip-oci-registry"
+	skipOCIExistingFlag      = "skip-oci-existing"
 	ociChartsDigestsFileFlag = "oci-charts-digests-file"
 
 	// GCS Helm Buckets
@@ -101,6 +102,7 @@ func releaseCmd() *cobra.Command {
 					IsProdRelease:            viper.GetString(envFlag) == prodEnvironment,
 					SkipChartRepo:            skipChartRepo,
 					SkipOCIRegistry:          skipOCIRegistry,
+					SkipOCIExisting:          viper.GetBool(skipOCIExistingFlag),
 					OCIRegistry:              ociRegistry,
 					OCIUsername:              ociUsername,
 					OCIPassword:              ociPassword,
@@ -177,6 +179,13 @@ func releaseCmd() *cobra.Command {
 	)
 	_ = viper.BindPFlag(skipOCIRegistryFlag, flags.Lookup(skipOCIRegistryFlag))
 
+	flags.Bool(
+		skipOCIExistingFlag,
+		false,
+		"Skip pushing charts that already exist in the OCI registry, and still write their digest refs to the OCI charts digests file. Useful to retry a release without overwriting published charts (env: HELM_SKIP_OCI_EXISTING)",
+	)
+	_ = viper.BindPFlag(skipOCIExistingFlag, flags.Lookup(skipOCIExistingFlag))
+
 	flags.String(
 		ociChartsDigestsFileFlag,
 		"",
@@ -200,6 +209,10 @@ func validate(_ *cobra.Command, _ []string) error {
 		ociRegistry = prodOCIRegistry
 	default:
 		return fmt.Errorf("%s flag can only be on of (%s, %s)", envFlag, devEnvironment, prodEnvironment)
+	}
+
+	if viper.GetBool(skipOCIExistingFlag) && viper.GetBool(forceFlag) {
+		return fmt.Errorf("--%s and --%s cannot be used together", skipOCIExistingFlag, forceFlag)
 	}
 
 	enableVault := viper.GetBool(enableVaultFlag)

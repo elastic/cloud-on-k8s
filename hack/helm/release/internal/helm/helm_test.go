@@ -105,11 +105,13 @@ func Test_readCharts(t *testing.T) {
 	}
 }
 
-// mockOCIClient is a test double for ociPusher. Resolve reports the refs in existing as found, and every
-// resolved and pushed ref is recorded.
+// mockOCIClient is a test double for ociPusher. Resolve reports the refs in existing as found with existingDigest,
+// and every resolved and pushed ref is recorded.
 // When pushResult is nil, Push returns errPushCalled so tests can confirm a push was attempted
 // without needing a real registry. When pushResult is non-nil, Push returns it successfully.
 var errPushCalled = errors.New("push called")
+
+const existingDigest = "sha256:def456"
 
 type mockOCIClient struct {
 	existing     []string
@@ -125,7 +127,7 @@ func (m *mockOCIClient) Resolve(ref string) (ocispec.Descriptor, error) {
 		return ocispec.Descriptor{}, m.resolveErr
 	}
 	if slices.Contains(m.existing, ref) {
-		return ocispec.Descriptor{}, nil
+		return ocispec.Descriptor{Digest: existingDigest}, nil
 	}
 	return ocispec.Descriptor{}, fmt.Errorf("%s: %w", ref, errdef.ErrNotFound)
 }
@@ -166,6 +168,7 @@ func TestPushChartsToOCI(t *testing.T) {
 		crdsRef        = prodRegistry + "/eck-operator-crds:1.0.0"
 		devOperatorRef = devRegistry + "/eck-operator:1.0.0"
 		digestSuffix   = "@sha256:abc123\n"
+		existingSuffix = "@" + existingDigest + "\n"
 	)
 
 	var successResult registry.PushResult
@@ -180,6 +183,7 @@ func TestPushChartsToOCI(t *testing.T) {
 		dev              bool
 		dryRun           bool
 		force            bool
+		skipExisting     bool
 		existing         []string
 		resolveErr       error
 		pushFails        bool // Push returns errPushCalled instead of a successful result
@@ -237,6 +241,32 @@ func TestPushChartsToOCI(t *testing.T) {
 			wantDigestOutput: operatorRef + digestSuffix,
 		},
 		{
+			name:             "skip existing records existing charts and pushes the others",
+			charts:           []packagedChart{operator, crds},
+			skipExisting:     true,
+			existing:         []string{operatorRef},
+			wantResolvedRefs: []string{operatorRef, crdsRef},
+			wantPushedRefs:   []string{crdsRef},
+			wantDigestOutput: operatorRef + existingSuffix + crdsRef + digestSuffix,
+		},
+		{
+			name:             "skip existing checks dev charts",
+			charts:           []packagedChart{operator},
+			dev:              true,
+			skipExisting:     true,
+			existing:         []string{devOperatorRef},
+			wantResolvedRefs: []string{devOperatorRef},
+			wantDigestOutput: devOperatorRef + existingSuffix,
+		},
+		{
+			name:             "skip existing aborts on resolve error other than not found",
+			charts:           []packagedChart{operator},
+			skipExisting:     true,
+			resolveErr:       errNetwork,
+			wantErr:          errNetwork,
+			wantResolvedRefs: []string{operatorRef},
+		},
+		{
 			name:             "dry-run checks but does not push",
 			charts:           []packagedChart{operator, crds},
 			dryRun:           true,
@@ -276,10 +306,11 @@ func TestPushChartsToOCI(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := ReleaseConfig{
-				OCIRegistry:   prodRegistry,
-				IsProdRelease: !tt.dev,
-				DryRun:        tt.dryRun,
-				Force:         tt.force,
+				OCIRegistry:     prodRegistry,
+				IsProdRelease:   !tt.dev,
+				DryRun:          tt.dryRun,
+				Force:           tt.force,
+				SkipOCIExisting: tt.skipExisting,
 			}
 			if tt.dev {
 				conf.OCIRegistry = devRegistry

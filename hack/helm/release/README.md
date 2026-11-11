@@ -10,6 +10,7 @@ Examples:
   release --env=prod --charts-dir=./deploy --dry-run=false
   release --env=prod --charts-dir=./deploy --dry-run=false --skip-chart-repo
   release --env=prod --charts-dir=./deploy --dry-run=false --skip-oci-registry
+  release --env=prod --charts-dir=./deploy --dry-run=false --skip-chart-repo --skip-oci-existing
 
 Flags:
       --charts-dir string                Directory which contains Helm charts to release (env: HELM_CHARTS_DIR) (default "./deploy")
@@ -22,6 +23,7 @@ Flags:
   -k, --keep-tmp-dir                     Keep temporary directory which contains the Helm charts ready to be published (env: HELM_KEEP_TMP_DIR)
       --oci-charts-digests-file string   Path to a file where pushed OCI chart digest refs are written, one per line (e.g. registry/chart:version@sha256:...). Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)
       --skip-chart-repo                  Skip uploading to the GCS bucket and updating the Helm index. Useful when only OCI publishing is needed (env: HELM_SKIP_CHART_REPO)
+      --skip-oci-existing                Skip pushing charts that already exist in the OCI registry, and still write their digest refs to the OCI charts digests file. Useful to retry a release without overwriting published charts (env: HELM_SKIP_OCI_EXISTING)
       --skip-oci-registry                Skip pushing charts to the OCI registry. Useful when only GCS publishing is needed (env: HELM_SKIP_OCI_REGISTRY)
 ```
 
