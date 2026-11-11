@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,6 +21,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -251,8 +253,10 @@ func (r *AgentPolicyReconciler) cleanupOrphanedSecrets(
 	matchLabels client.MatchingLabels,
 	matchingESset sets.Set[types.NamespacedName],
 ) error {
+	secretLabels := maps.Clone(matchLabels)
+	secretLabels[policyNamespaceLabelKey] = policy.Namespace
 	var secrets corev1.SecretList
-	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
+	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), secretLabels); err != nil {
 		return err
 	}
 
@@ -280,6 +284,27 @@ func (r *AgentPolicyReconciler) cleanupOrphanedSecrets(
 
 		log.Info("Deleting orphaned Secret", "secret", secret.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
 		if err := r.Client.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// Trust sources are in the ES namespaces, so the list above misses them unless the ES is in the policy namespace.
+	trustSources, err := certificates.ListClientCertTrustSources(ctx, r.Client, client.MatchingLabels{
+		PolicyNameLabelKey:      policy.Name,
+		policyNamespaceLabelKey: policy.Namespace,
+	})
+	if err != nil {
+		return err
+	}
+	for i := range trustSources {
+		trustSource := &trustSources[i]
+		esNN, shouldDelete := shouldDeleteResource(trustSource, matchingESset)
+		if !shouldDelete {
+			continue
+		}
+		log.Info("Deleting orphaned client certificate trust source", "secret", trustSource.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
+		r.dynamicWatches.Secrets.RemoveHandlerForKey(trustSource.Name)
+		if err := k8s.DeleteSecretIfExists(ctx, r.Client, k8s.ExtractNamespacedName(trustSource)); err != nil {
 			return err
 		}
 	}
