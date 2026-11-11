@@ -21,7 +21,7 @@ Flags:
   -f, --force                            Upload artifacts even if they already exist (env: HELM_FORCE)
   -h, --help                             help for release
   -k, --keep-tmp-dir                     Keep temporary directory which contains the Helm charts ready to be published (env: HELM_KEEP_TMP_DIR)
-      --oci-charts-digests-file string   Path to a file where pushed OCI chart digest refs are written, one per line (e.g. registry/chart:version@sha256:...). Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)
+      --oci-charts-digests-file string   Path of the file to write pushed OCI chart digest refs to, one per line (registry/chart:version@sha256:...). Includes digest refs of already-existing charts with --skip-oci-existing. Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)
       --skip-chart-repo                  Skip uploading to the GCS bucket and updating the Helm index. Useful when only OCI publishing is needed (env: HELM_SKIP_CHART_REPO)
       --skip-oci-existing                Skip pushing charts that already exist in the OCI registry, and still write their digest refs to the OCI charts digests file. Useful to retry a release without overwriting published charts (env: HELM_SKIP_OCI_EXISTING)
       --skip-oci-registry                Skip pushing charts to the OCI registry. Useful when only GCS publishing is needed (env: HELM_SKIP_OCI_REGISTRY)

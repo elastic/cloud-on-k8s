@@ -189,7 +189,7 @@ func releaseCmd() *cobra.Command {
 	flags.String(
 		ociChartsDigestsFileFlag,
 		"",
-		"Path to a file where pushed OCI chart digest refs are written, one per line (e.g. registry/chart:version@sha256:...). Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)",
+		"Path of the file to write pushed OCI chart digest refs to, one per line (registry/chart:version@sha256:...). Includes digest refs of already-existing charts with --skip-oci-existing. Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)",
 	)
 	_ = viper.BindPFlag(ociChartsDigestsFileFlag, flags.Lookup(ociChartsDigestsFileFlag))
 

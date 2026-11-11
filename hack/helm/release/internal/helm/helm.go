@@ -64,8 +64,9 @@ type ReleaseConfig struct {
 	// SkipOCIExisting skips pushing charts that already exist in the OCI registry, and still writes their digest refs
 	// to OCIChartsDigestsFilePath. Useful to retry a release without overwriting the charts that are already published.
 	SkipOCIExisting bool
-	// OCIChartsDigestsFilePath is an optional path to a file where pushed OCI chart digest refs are written,
-	// one per line in the format "registry/chart:version@sha256:...". The file is truncated if it exists. Empty to skip.
+	// OCIChartsDigestsFilePath is an optional path to a file where the OCI chart digest refs are written, one per line
+	// in the format "registry/chart:version@sha256:...". It lists the pushed charts and, with SkipOCIExisting, the
+	// charts that already exist. The file is truncated if it exists. Empty to skip.
 	OCIChartsDigestsFilePath string
 }
 
@@ -385,8 +386,8 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 
 // pushChartsToOCI pushes the packaged chart archives to the OCI registry.
 // Charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
-// If conf.OCIChartsDigestsFilePath is set, the digest ref of each pushed chart is written to it in the format
-// "registry/chart:version@sha256:...", one line per pushed chart.
+// If conf.OCIChartsDigestsFilePath is set, the digest ref of each pushed chart, and of each existing chart skipped
+// with conf.SkipOCIExisting, is written to it in the format "registry/chart:version@sha256:...", one line per chart.
 func pushChartsToOCI(client ociPusher, conf ReleaseConfig, charts []packagedChart) error {
 	digestsFileWriter := io.Discard
 	if outputDigestsFilePath := conf.OCIChartsDigestsFilePath; outputDigestsFilePath != "" {
