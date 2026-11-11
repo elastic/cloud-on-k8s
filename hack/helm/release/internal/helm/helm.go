@@ -425,16 +425,12 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 	chartRef := fmt.Sprintf("%s/%s:%s", conf.OCIRegistry, chart.Name, chart.Version)
 
 	// check that the chart does not already exist when publishing to prod OCI registry, or when existing charts must be skipped
+	var existingDigest string
 	if conf.shouldNotOverwrite() || conf.SkipOCIExisting {
 		desc, err := client.Resolve(chartRef)
 		switch {
 		case err == nil && conf.SkipOCIExisting:
-			// record the digest of the published chart so that it can be signed, as if it was pushed
-			log.Printf("Not pushing chart (%s) as it already exists in OCI registry: digest=%s", chartRef, desc.Digest)
-			if _, err := fmt.Fprintf(outputDigestsFileWriter, "%s@%s\n", chartRef, desc.Digest); err != nil {
-				return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
-			}
-			return nil
+			existingDigest = desc.Digest.String()
 		case err == nil:
 			return fmt.Errorf("chart (%s) already exists in OCI registry (%s); remove it or use --force to overwrite", chartRef, conf.OCIRegistry)
 		case errors.Is(err, errdef.ErrNotFound):
@@ -446,6 +442,15 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 
 	if conf.DryRun {
 		log.Printf("Not pushing chart (%s) to OCI registry as dry-run is set", chartRef)
+		return nil
+	}
+
+	if existingDigest != "" {
+		// record the digest of the published chart so that it can be signed, as if it was pushed
+		log.Printf("Not pushing chart (%s) as it already exists in OCI registry: digest=%s", chartRef, existingDigest)
+		if _, err := fmt.Fprintf(outputDigestsFileWriter, "%s@%s\n", chartRef, existingDigest); err != nil {
+			return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
+		}
 		return nil
 	}
 

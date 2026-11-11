@@ -267,6 +267,14 @@ func TestPushChartsToOCI(t *testing.T) {
 			wantResolvedRefs: []string{operatorRef},
 		},
 		{
+			name:             "skip existing on dry-run records nothing",
+			charts:           []packagedChart{operator, crds},
+			dryRun:           true,
+			skipExisting:     true,
+			existing:         []string{operatorRef},
+			wantResolvedRefs: []string{operatorRef, crdsRef},
+		},
+		{
 			name:             "dry-run checks but does not push",
 			charts:           []packagedChart{operator, crds},
 			dryRun:           true,
