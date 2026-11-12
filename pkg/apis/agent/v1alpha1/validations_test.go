@@ -1071,6 +1071,99 @@ func Test_checkClientAuthentication(t *testing.T) {
 	}
 }
 
+func Test_checkAdditionalTrustedClientCAs(t *testing.T) {
+	withAdditionalTrustedCAs := func(authentication bool, secretNames ...string) *Agent {
+		refs := make([]commonv1.SecretRef, 0, len(secretNames))
+		for _, secretName := range secretNames {
+			refs = append(refs, commonv1.SecretRef{SecretName: secretName})
+		}
+		return &Agent{
+			Spec: AgentSpec{
+				Version:            "9.5.0",
+				FleetServerEnabled: true,
+				HTTP: commonv1.HTTPConfigWithClientOptions{
+					TLS: commonv1.TLSWithClientOptions{
+						Client: commonv1.ClientOptions{Authentication: authentication, AdditionalTrustedCAs: refs},
+					},
+				},
+			},
+		}
+	}
+	notFleetServer := func(a *Agent) *Agent {
+		a.Spec.FleetServerEnabled = false
+		return a
+	}
+	tlsDisabled := func(a *Agent) *Agent {
+		a.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{Disabled: true}
+		return a
+	}
+	for _, tt := range []struct {
+		name       string
+		a          *Agent
+		wantFields []string
+	}{
+		{
+			name: "no additional trusted CA: OK",
+			a:    withAdditionalTrustedCAs(true),
+		},
+		{
+			name: "additional trusted CAs, authentication true: OK",
+			a:    withAdditionalTrustedCAs(true, "ca-1", "ca-2"),
+		},
+		{
+			name: "additional trusted CAs, authentication false: OK, it can be required by the pod template",
+			a:    withAdditionalTrustedCAs(false, "ca-1"),
+		},
+		{
+			name:       "additional trusted CAs referencing the same secret twice, authentication false: NOK, it can be required by the pod template",
+			a:          withAdditionalTrustedCAs(false, "ca-1", "ca-1"),
+			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+		},
+		{
+			name:       "additional trusted CA without secret name: NOK",
+			a:          withAdditionalTrustedCAs(true, "ca-1", ""),
+			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+		},
+		{
+			name:       "additional trusted CAs referencing the same secret twice: NOK",
+			a:          withAdditionalTrustedCAs(true, "ca-1", "ca-1"),
+			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+		},
+		{
+			name: "no additional trusted CA, not a Fleet Server, TLS disabled: OK",
+			a:    tlsDisabled(notFleetServer(withAdditionalTrustedCAs(false))),
+		},
+		{
+			name:       "additional trusted CAs, not a Fleet Server: NOK",
+			a:          notFleetServer(withAdditionalTrustedCAs(false, "ca-1")),
+			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs"},
+		},
+		{
+			name:       "additional trusted CAs, TLS disabled: NOK",
+			a:          tlsDisabled(withAdditionalTrustedCAs(false, "ca-1")),
+			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs"},
+		},
+		{
+			name: "additional trusted CAs, not a Fleet Server, TLS disabled, same secret twice: NOK, all are reported",
+			a:    tlsDisabled(notFleetServer(withAdditionalTrustedCAs(false, "ca-1", "ca-1"))),
+			wantFields: []string{
+				"spec.http.tls.client.additionalTrustedCAs",
+				"spec.http.tls.client.additionalTrustedCAs",
+				"spec.http.tls.client.additionalTrustedCAs[1].secretName",
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkAdditionalTrustedClientCAs(tt.a)
+			var gotFields []string
+			for _, err := range got {
+				gotFields = append(gotFields, err.Field)
+			}
+			assert.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}
+
 func Test_checkNoDowngrade(t *testing.T) {
 	type args struct {
 		prev *Agent

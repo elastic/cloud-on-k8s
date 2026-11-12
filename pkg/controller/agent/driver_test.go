@@ -6,8 +6,11 @@ package agent
 
 import (
 	"context"
-	"io"
+	"errors"
+	"fmt"
+	"hash/fnv"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -228,6 +232,19 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 		}
 	}
 
+	additionalCA, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
+	require.NoError(t, err)
+	additionalCAPEM := certificates.EncodePEMCert(additionalCA.Cert.Raw)
+	additionalCASecret := corev1.Secret{
+		Name: "additional-ca", Namespace: agentNamespace,
+		Data: map[string][]byte{certificates.CAFileName: additionalCAPEM},
+	}
+	additionalTrustedCAsWatchKey := certificates.AdditionalTrustedClientCAsWatchKey(Namer, types.NamespacedName{Namespace: agentNamespace, Name: agentName})
+	withAdditionalTrustedCA := func(agent agentv1alpha1.Agent) agentv1alpha1.Agent {
+		agent.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: additionalCASecret.Name}}
+		return agent
+	}
+
 	tests := []struct {
 		name               string
 		agent              agentv1alpha1.Agent
@@ -238,6 +255,15 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 		wantOperatorCert   bool
 		wantTrustBundle    bool
 		wantTrustBundleCA  bool
+		// existingWatch registers a watch on the additional trusted CAs before reconciling.
+		existingWatch bool
+		// unreadable makes the additional trusted CA secret unreadable, for another reason than not existing.
+		unreadable                    bool
+		wantAdditionalTrustedCA       bool
+		wantAdditionalTrustedCAsWatch bool
+		wantErr                       bool
+		// wantAdditionalTrustedCAsErr is the error returned apart from the results, not to hold back the Pods.
+		wantAdditionalTrustedCAsErr bool
 	}{
 		{
 			name:               "clientAuthRequired=false, no annotation: no-op",
@@ -285,6 +311,68 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 			wantTrustBundle:   true,
 			wantTrustBundleCA: true,
 		},
+		{
+			name:                          "clientAuthRequired=true, additional trusted CA: trust bundle includes it and its secret is watched",
+			agent:                         withAdditionalTrustedCA(newAgent(nil)),
+			existingSecrets:               []corev1.Secret{additionalCASecret},
+			clientAuthRequired:            true,
+			wantAnnotation:                true,
+			wantOperatorCert:              true,
+			wantTrustBundle:               true,
+			wantAdditionalTrustedCA:       true,
+			wantAdditionalTrustedCAsWatch: true,
+		},
+		{
+			name:                          "clientAuthRequired=true, additional trusted CA secret missing: error apart from the results, trust bundle without it, its secret is watched",
+			agent:                         withAdditionalTrustedCA(newAgent(nil)),
+			clientAuthRequired:            true,
+			wantAdditionalTrustedCAsErr:   true,
+			wantAnnotation:                true,
+			wantOperatorCert:              true,
+			wantTrustBundle:               true,
+			wantAdditionalTrustedCAsWatch: true,
+		},
+		{
+			name:                          "clientAuthRequired=true, additional trusted CA secret unreadable: error in the results, no trust bundle, its secret is watched",
+			agent:                         withAdditionalTrustedCA(newAgent(nil)),
+			existingSecrets:               []corev1.Secret{additionalCASecret},
+			unreadable:                    true,
+			clientAuthRequired:            true,
+			wantErr:                       true,
+			wantAnnotation:                true,
+			wantOperatorCert:              true,
+			wantTrustBundle:               false,
+			wantAdditionalTrustedCAsWatch: true,
+		},
+		{
+			name:               "clientAuthRequired=true, additional trusted CA removed: watch is removed",
+			agent:              newAgent(nil),
+			existingSecrets:    []corev1.Secret{additionalCASecret},
+			existingWatch:      true,
+			clientAuthRequired: true,
+			wantAnnotation:     true,
+			wantOperatorCert:   true,
+			wantTrustBundle:    true,
+		},
+		{
+			name: "clientAuthRequired=false, additional trusted CA: cleanup, watch is removed",
+			agent: withAdditionalTrustedCA(newAgent(map[string]string{
+				annotation.ClientAuthenticationRequiredAnnotation: "true",
+			})),
+			existingSecrets: []corev1.Secret{
+				additionalCASecret,
+				{Name: operatorClientCertSecretName, Namespace: agentNamespace},
+				{Name: trustBundleSecretName, Namespace: agentNamespace},
+			},
+			existingWatch:      true,
+			clientAuthRequired: false,
+		},
+		{
+			name:               "clientAuthRequired=false, no annotation, stale watch: watch is removed",
+			agent:              newAgent(nil),
+			existingWatch:      true,
+			clientAuthRequired: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -292,23 +380,53 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 			initObjs := slices.Clone(tt.existingSecrets)
 
 			agent := tt.agent.DeepCopy()
-			fakeClient := k8s.NewFakeClient(agent)
+			fakeClient := k8s.NewFakeClientBuilder(agent).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					if tt.unreadable && key.Name == additionalCASecret.Name {
+						return apierrors.NewInternalError(fmt.Errorf("cannot read %s", key))
+					}
+					return c.Get(ctx, key, obj, opts...)
+				},
+			}).Build()
 			// Add any pre-existing secrets.
 			for i := range initObjs {
 				require.NoError(t, fakeClient.Create(context.Background(), &initObjs[i]))
 			}
 
+			dynamicWatches := watches.NewDynamicWatches()
+			if tt.existingWatch {
+				require.NoError(t, dynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
+					Name:    additionalTrustedCAsWatchKey,
+					Watched: []types.NamespacedName{{Namespace: agentNamespace, Name: "additional-ca"}},
+					Watcher: k8s.ExtractNamespacedName(agent),
+				}))
+			}
+			recorder := toolsevents.NewFakeRecorder(10)
 			params := Params{
-				Context: context.Background(),
-				Client:  fakeClient,
-				Agent:   *agent,
+				Context:       context.Background(),
+				Client:        fakeClient,
+				EventRecorder: recorder,
+				Watches:       dynamicWatches,
+				Agent:         *agent,
 				OperatorParams: operator.Parameters{
 					CertRotation: certRotation,
 				},
 			}
 
-			results := reconcileFleetServerClientAuth(params, tt.clientAuthRequired, tt.fleetCerts, io.Discard)
-			require.False(t, results.HasError(), "unexpected error in results")
+			configHash := fnv.New32a()
+			results, additionalTrustedCAsErr := reconcileFleetServerClientAuth(params, tt.clientAuthRequired, tt.fleetCerts, configHash)
+			require.Equal(t, tt.wantErr, results.HasError(), "unexpected error status in results")
+			require.Equal(t, tt.wantAdditionalTrustedCAsErr, additionalTrustedCAsErr != nil, "unexpected additional trusted CAs error")
+			// the trust bundle is written to the config hash, to roll the Pods, if and only if it is reconciled
+			require.Equal(t, tt.wantTrustBundle, configHash.Sum32() != fnv.New32a().Sum32(), "unexpected config hash")
+			if tt.wantAdditionalTrustedCAsWatch {
+				require.Contains(t, dynamicWatches.Secrets.Registrations(), additionalTrustedCAsWatchKey)
+			} else {
+				require.NotContains(t, dynamicWatches.Secrets.Registrations(), additionalTrustedCAsWatchKey)
+			}
+			// a warning is emitted if the additional trusted CAs are set but not used
+			wantWarning := !tt.clientAuthRequired && len(agent.Spec.HTTP.TLS.Client.AdditionalTrustedCAs) > 0
+			require.Equal(t, wantWarning, len(recorder.Events) == 1)
 
 			// Check annotation.
 			var updatedAgent agentv1alpha1.Agent
@@ -345,6 +463,11 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 				if tt.wantTrustBundleCA {
 					require.Contains(t, string(bundleData), "fleet-server-cert-data", "trust bundle should contain the fleet server cert data")
 				}
+				if tt.wantAdditionalTrustedCA {
+					require.Contains(t, string(bundleData), string(additionalCAPEM), "trust bundle should contain the additional trusted CA")
+				} else {
+					require.NotContains(t, string(bundleData), string(additionalCAPEM), "trust bundle should not contain the additional trusted CA")
+				}
 			} else {
 				require.True(t, apierrors.IsNotFound(err), "trust bundle secret should not exist")
 			}
@@ -352,7 +475,7 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 	}
 }
 
-func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
+func Test_internalReconcile_clientAuth(t *testing.T) {
 	scheme.SetupScheme()
 	certRotation := certificates.RotationParams{Validity: 24 * time.Hour, RotateBefore: time.Hour}
 
@@ -374,10 +497,26 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 	tests := []struct {
 		name         string
 		agentVersion string
-		clientAuth   bool
-		extraObjs    []client.Object
-		wantWarning  bool
-		wantHealth   agentv1alpha1.AgentHealth
+		// notFleetServer reconciles a standalone Agent, which was a Fleet Server watching additional trusted CAs before,
+		// and had to drop them to pass the validation
+		notFleetServer bool
+		clientAuth     bool
+		// missingAdditionalTrustedCA references an additional trusted CA secret which does not exist
+		missingAdditionalTrustedCA bool
+		// staleAdditionalTrustedCAsWatch registers the additional trusted CAs watch of a previous reconciliation
+		staleAdditionalTrustedCAsWatch bool
+		// configUnwritable makes the reconciliation return before the Pods are reconciled
+		configUnwritable bool
+		extraObjs        []client.Object
+		wantWarning      bool
+		// wantEvents are expected in the warning events
+		wantEvents []string
+		wantHealth agentv1alpha1.AgentHealth
+		wantErr    bool
+		// wantErrMessages are expected in the error of the results
+		wantErrMessages               []string
+		wantPodsReconciled            bool
+		wantAdditionalTrustedCAsWatch bool
 	}{
 		{
 			name:         "client auth required, version not supported",
@@ -387,18 +526,66 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 			wantHealth:   agentv1alpha1.AgentRedHealth,
 		},
 		{
-			name:         "client auth required, exact minimum supported version",
-			agentVersion: "8.13.0",
-			clientAuth:   true,
-			extraObjs:    readyDeployment("8.13.0"),
-			wantHealth:   agentv1alpha1.AgentGreenHealth,
+			name:                           "client auth required, version not supported: the additional trusted CAs watch is kept until it is",
+			agentVersion:                   "8.12.0",
+			clientAuth:                     true,
+			missingAdditionalTrustedCA:     true,
+			staleAdditionalTrustedCAsWatch: true,
+			wantWarning:                    true,
+			wantHealth:                     agentv1alpha1.AgentRedHealth,
+			wantAdditionalTrustedCAsWatch:  true,
 		},
 		{
-			name:         "client auth not required, version not supported",
-			agentVersion: "8.12.0",
-			clientAuth:   false,
-			extraObjs:    readyDeployment("8.12.0"),
-			wantHealth:   agentv1alpha1.AgentGreenHealth,
+			name:               "client auth required, exact minimum supported version",
+			agentVersion:       "8.13.0",
+			clientAuth:         true,
+			extraObjs:          readyDeployment("8.13.0"),
+			wantHealth:         agentv1alpha1.AgentGreenHealth,
+			wantPodsReconciled: true,
+		},
+		{
+			name:               "client auth not required, version not supported",
+			agentVersion:       "8.12.0",
+			clientAuth:         false,
+			extraObjs:          readyDeployment("8.12.0"),
+			wantHealth:         agentv1alpha1.AgentGreenHealth,
+			wantPodsReconciled: true,
+		},
+		{
+			name:                           "not a Fleet Server anymore: the additional trusted CAs are not watched anymore",
+			agentVersion:                   "9.5.0",
+			notFleetServer:                 true,
+			staleAdditionalTrustedCAsWatch: true,
+			extraObjs:                      readyDeployment("9.5.0"),
+			wantHealth:                     agentv1alpha1.AgentGreenHealth,
+			wantPodsReconciled:             true,
+		},
+		{
+			name:                          "client auth required, additional trusted CA secret missing: error, the Pods are reconciled anyway",
+			agentVersion:                  "9.5.0",
+			clientAuth:                    true,
+			missingAdditionalTrustedCA:    true,
+			extraObjs:                     readyDeployment("9.5.0"),
+			wantWarning:                   true,
+			wantEvents:                    []string{"Additional trusted client CAs reconciliation error: could not retrieve secret test/additional-ca"},
+			wantHealth:                    agentv1alpha1.AgentGreenHealth,
+			wantErr:                       true,
+			wantErrMessages:               []string{"could not retrieve secret test/additional-ca"},
+			wantPodsReconciled:            true,
+			wantAdditionalTrustedCAsWatch: true,
+		},
+		{
+			name:                          "client auth required, additional trusted CA secret missing and an error before the Pods are reconciled: both errors are reported",
+			agentVersion:                  "9.5.0",
+			clientAuth:                    true,
+			missingAdditionalTrustedCA:    true,
+			configUnwritable:              true,
+			extraObjs:                     readyDeployment("9.5.0"),
+			wantWarning:                   true,
+			wantEvents:                    []string{"Additional trusted client CAs reconciliation error: could not retrieve secret test/additional-ca"},
+			wantErr:                       true,
+			wantErrMessages:               []string{"could not retrieve secret test/additional-ca", "cannot write the config"},
+			wantAdditionalTrustedCAsWatch: true,
 		},
 	}
 	for _, tt := range tests {
@@ -413,18 +600,41 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 				},
 			}
 			agentObj.Spec.HTTP.TLS.Client.Authentication = tt.clientAuth
+			dynamicWatches := watches.NewDynamicWatches()
+			additionalTrustedCAsWatchKey := certificates.AdditionalTrustedClientCAsWatchKey(Namer, k8s.ExtractNamespacedName(agentObj))
+			if tt.notFleetServer {
+				agentObj.Spec.FleetServerEnabled = false
+				agentObj.Spec.Mode = agentv1alpha1.AgentStandaloneMode
+			}
+			if tt.missingAdditionalTrustedCA {
+				agentObj.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: "additional-ca"}}
+			}
+			if tt.staleAdditionalTrustedCAsWatch {
+				require.NoError(t, dynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
+					Name:    additionalTrustedCAsWatchKey,
+					Watched: []types.NamespacedName{{Namespace: agentObj.Namespace, Name: "additional-ca"}},
+					Watcher: k8s.ExtractNamespacedName(agentObj),
+				}))
+			}
 
 			agentVersion := version.MustParse(tt.agentVersion)
 			recorder := toolsevents.NewFakeRecorder(10)
 			objects := make([]client.Object, 1, 1+len(tt.extraObjs))
 			objects[0] = agentObj
 			objects = append(objects, tt.extraObjs...)
-			fakeClient := k8s.NewFakeClient(objects...)
+			fakeClient := k8s.NewFakeClientBuilder(objects...).WithInterceptorFuncs(interceptor.Funcs{
+				Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if tt.configUnwritable && obj.GetName() == ConfigSecretName(agentObj.Name) {
+						return apierrors.NewInternalError(errors.New("cannot write the config"))
+					}
+					return c.Create(ctx, obj, opts...)
+				},
+			}).Build()
 
-			_, status := internalReconcile(Params{
+			results, status := internalReconcile(Params{
 				Context:        t.Context(),
 				Client:         fakeClient,
-				Watches:        watches.NewDynamicWatches(),
+				Watches:        dynamicWatches,
 				EventRecorder:  recorder,
 				Agent:          *agentObj,
 				AgentVersion:   agentVersion,
@@ -437,16 +647,30 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 			})
 
 			close(recorder.Events)
-			hasWarning := false
+			var warnings []string
 			for e := range recorder.Events {
 				if e != "" {
-					hasWarning = true
-					break
+					warnings = append(warnings, e)
 				}
 			}
 
 			assert.Equal(t, tt.wantHealth, status.Health, "unexpected health status")
-			assert.Equal(t, tt.wantWarning, hasWarning, "unexpected warning event presence")
+			assert.Equal(t, tt.wantWarning, len(warnings) > 0, "unexpected warning event presence")
+			for _, want := range tt.wantEvents {
+				assert.True(t, slices.ContainsFunc(warnings, func(e string) bool { return strings.Contains(e, want) }),
+					"expected a warning event containing %q, got %v", want, warnings)
+			}
+			assert.Equal(t, tt.wantErr, results.HasError(), "unexpected error status in results")
+			_, err := results.Aggregate()
+			for _, msg := range tt.wantErrMessages {
+				assert.ErrorContains(t, err, msg)
+			}
+			assert.Equal(t, tt.wantAdditionalTrustedCAsWatch, slices.Contains(dynamicWatches.Secrets.Registrations(), additionalTrustedCAsWatchKey),
+				"unexpected additional trusted CAs watch")
+			// the Deployment is created empty, its Pod template is set if the Pods are reconciled
+			var deployment appsv1.Deployment
+			err = fakeClient.Get(t.Context(), types.NamespacedName{Namespace: "test", Name: "fleet-server-agent"}, &deployment)
+			assert.Equal(t, tt.wantPodsReconciled, err == nil && len(deployment.Spec.Template.Spec.Containers) > 0, "unexpected Pods reconciliation")
 		})
 	}
 }

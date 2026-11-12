@@ -154,16 +154,22 @@ func ReconcileSharedResources(
 	}
 
 	// Reconcile operator client certificate and trust bundle of client certificates.
-	// Unlike the HTTP cert reconciliation above, a failure here does not prevent subsequent steps:
-	// the ES client is still created (without a client cert), esReachable becomes false if client auth
-	// is required, and subsequent steps should handle that gracefully with a requeue.
-	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
+	// Unlike the HTTP cert reconciliation above, a failure here does not prevent the subsequent shared steps:
+	// the ES client is still created (without a client cert) and esReachable becomes false if client auth
+	// is required. The error is still part of the returned results, so drivers stop before the nodes.
+	// Invalid additional trusted CAs are not part of the results: they are passed on in the state, for the
+	// drivers to report after the nodes.
+	operatorClientCert, clientCertResults, additionalTrustedCAsErr := certificates.ReconcileOperatorClientCertAndTrustBundle(
 		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
 	)
 	if clientCertResults.HasError() {
 		_, err := clientCertResults.Aggregate()
 		k8s.MaybeEmitErrorEventf(d.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
 			"Operator client certificate and trust bundle reconciliation error: %v", err)
+	}
+	if additionalTrustedCAsErr != nil {
+		k8s.MaybeEmitErrorEventf(d.Recorder(), additionalTrustedCAsErr, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+			"Additional trusted client CAs reconciliation error: %v", additionalTrustedCAsErr)
 	}
 	results.WithResults(clientCertResults)
 
@@ -339,6 +345,8 @@ func ReconcileSharedResources(
 		ResourcesState: resourcesState,
 		ESClient:       esClient,
 		ESReachable:    esReachable,
+
+		AdditionalTrustedClientCAsErr: additionalTrustedCAsErr,
 	}, results
 }
 

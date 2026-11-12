@@ -76,11 +76,25 @@ func (d *Driver) Reconcile(ctx context.Context) *reconciler.Results {
 	defer sharedState.ESClient.Close()
 	results.WithResults(sharedResults)
 
+	return results.WithResults(d.reconcileWithSharedState(ctx, sharedState, resolvedConfig))
+}
+
+// reconcileWithSharedState reconciles the stateful specific resources and the nodes.
+func (d *Driver) reconcileWithSharedState(
+	ctx context.Context,
+	sharedState *shared.ReconcileState,
+	resolvedConfig nodespec.ResolvedConfig,
+) *reconciler.Results {
+	results := reconciler.NewResult(ctx)
+	// invalid additional trusted CAs must not block the nodes: report the error on every return path
+	defer results.WithError(sharedState.AdditionalTrustedClientCAsErr)
+
 	// File settings (stateful: SCP-deferred empty secret creation).
 	// Stateless clusters manage the file-settings Secret themselves via
 	// filesettings.ReconcileClusterSecrets; this call is stateful-only.
 	fileSettingsRequeue := false
 	if d.Version.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		var err error
 		fileSettingsRequeue, err = shared.MaybeReconcileEmptyFileSettingsSecret(ctx, d.Client, d.LicenseChecker, &d.ES, d.OperatorParameters.OperatorNamespace)
 		switch {
 		case err != nil:

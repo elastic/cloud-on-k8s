@@ -89,6 +89,7 @@ func ReconcileHTTP(
 // and the presence of the client-authentication-required annotation on the ES resource.
 // When client authentication is enabled, the annotation is set to signal association controllers.
 // Returns nil certificate (without error) when client authentication is not in use.
+// Missing or invalid additional trusted CAs are left out of the trust bundle and returned as a separate error.
 func ReconcileOperatorClientCertAndTrustBundle(
 	ctx context.Context,
 	driver driver.Interface,
@@ -96,38 +97,45 @@ func ReconcileOperatorClientCertAndTrustBundle(
 	clientAuthenticationRequired bool,
 	certRotation certificates.RotationParams,
 	meta metadata.Metadata,
-) (*tls.Certificate, *reconciler.Results) {
+) (*tls.Certificate, *reconciler.Results, error) {
 	span, ctx := apm.StartSpan(ctx, "reconcile_client_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
 
-	if !clientAuthenticationRequired && !annotation.HasClientAuthenticationRequired(es) {
-		return nil, results
+	certReconciler := certificates.Reconciler{
+		K8sClient:      driver.K8sClient(),
+		DynamicWatches: driver.DynamicWatches(),
+		Owner:          es,
+		Namer:          esv1.ESNamer,
+		Metadata:       meta,
+		CertRotation:   certRotation,
+	}
+
+	// Client authentication is still in use while it is being disabled, until the annotation is removed.
+	clientAuthenticationInUse := clientAuthenticationRequired || annotation.HasClientAuthenticationRequired(es)
+
+	additionalTrustedCAs, additionalTrustedCAsReadErr := certReconciler.ReconcileAdditionalTrustedClientCAs(
+		ctx, driver.Recorder(), es.Spec.HTTP.TLS.Client.AdditionalTrustedCAs, clientAuthenticationInUse)
+
+	if !clientAuthenticationInUse {
+		return nil, results, nil
 	}
 
 	if clientAuthenticationRequired {
 		if err := annotation.SetClientAuthenticationRequiredAnnotation(ctx, driver.K8sClient(), es); err != nil {
-			return nil, results.WithError(err)
+			return nil, results.WithError(err), nil
 		}
-	}
-
-	certReconciler := certificates.Reconciler{
-		K8sClient:    driver.K8sClient(),
-		Owner:        es,
-		Namer:        esv1.ESNamer,
-		Metadata:     meta,
-		CertRotation: certRotation,
 	}
 
 	operatorClientCertSecret, err := certReconciler.ReconcileOperatorCertificate(ctx)
 	if err != nil {
-		return nil, results.WithError(err)
+		return nil, results.WithError(err), nil
 	}
 
 	primaryCert, err := certificates.GetPrimaryCertificate(operatorClientCertSecret.CertPem())
 	if err != nil {
-		return nil, results.WithError(err)
+		return nil, results.WithError(err), nil
 	}
 	results.WithReconciliationState(
 		reconciler.
@@ -135,16 +143,30 @@ func ReconcileOperatorClientCertAndTrustBundle(
 			ReconciliationComplete(),
 	)
 
-	if _, err := certReconciler.ReconcileTrustBundle(ctx, operatorClientCertSecret); err != nil {
-		return nil, results.WithError(err)
+	// Keep the trust bundle as it is if the additional CAs could not be read, not to drop CAs that are still trusted.
+	if additionalTrustedCAsReadErr != nil {
+		results.WithError(additionalTrustedCAsReadErr)
+	} else if _, err := certReconciler.ReconcileTrustBundle(ctx, append([]*certificates.CertificatesSecret{operatorClientCertSecret}, additionalTrustedCAs.CAs...)...); err != nil {
+		return nil, results.WithError(err), nil
+	}
+	var deferredErr error
+	switch {
+	case additionalTrustedCAs.InvalidErr == nil:
+	case !clientAuthenticationRequired:
+		// client authentication is being disabled, the CAs are about to be unused
+		ulog.FromContext(ctx).V(1).Info("Ignoring the invalid additional trusted client CAs while client authentication is being disabled",
+			"namespace", es.Namespace, "es_name", es.Name, "error", additionalTrustedCAs.InvalidErr.Error())
+	default:
+		// reported once the nodes are reconciled, not to block them
+		deferredErr = additionalTrustedCAs.InvalidErr
 	}
 
 	operatorClientCert, err := certificates.ParseTLSCertificate(operatorClientCertSecret.Secret)
 	if err != nil {
-		return nil, results.WithError(err)
+		return nil, results.WithError(err), deferredErr
 	}
 
-	return operatorClientCert, results
+	return operatorClientCert, results, deferredErr
 }
 
 // ReconcileTransport reconciles the transport layer certificates of a cluster.
