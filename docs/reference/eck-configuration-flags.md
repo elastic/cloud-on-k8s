@@ -26,6 +26,7 @@ The following table lists and describes all the available configuration flags fo
 | `disable-config-watch` | `false` | Watch the configuration file for changes and restart to apply them. Only effective when the `--config` flag is used to set the configuration file. |
 | `disable-telemetry` | `false` | Disable periodically updating ECK telemetry data for Kibana to consume. |
 | `elasticsearch-client-timeout` | `180s` | Default timeout for requests made by the Elasticsearch client. |
+| `elasticsearch-observation-interval` | `10s` | Default interval between observations of Elasticsearch health. Non-positive values disable asynchronous observation. A cluster can override it with the `eck.k8s.elastic.co/es-observer-interval` annotation. Refer to [Configure Elasticsearch timeouts](docs-content://troubleshoot/deployments/cloud-on-k8s/troubleshooting-methods.md#k8s-resource-level-config). |
 | `enable-leader-election` | `true` | Enable leader election. Must be set to true if using multiple replicas of the operator |
 | `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://reference/configuration.md) for details. |
 | `enable-webhook` | `false` | Enables a validating webhook server in the operator process. |
