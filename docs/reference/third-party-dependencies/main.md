@@ -203,7 +203,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/opencontainers/image-spec](https://github.com/opencontainers/image-spec) | v1.1.1 | Apache-2.0 |
 | [github.com/pandatix/go-abnf](https://github.com/pandatix/go-abnf) | v0.5.3 | MIT |
 | [github.com/pbnjay/memory](https://github.com/pbnjay/memory) | v0.0.0-20210728143218-7b4eea64cf58 | BSD-3-Clause |
-| [github.com/pelletier/go-toml/v2](https://github.com/pelletier/go-toml) | v2.2.4 | MIT |
+| [github.com/pelletier/go-toml/v2](https://github.com/pelletier/go-toml) | v2.4.3 | MIT |
 | [github.com/pierrec/lz4/v4](https://github.com/pierrec/lz4) | v4.1.28 | BSD-3-Clause |
 | [github.com/pkg/browser](https://github.com/pkg/browser) | v0.0.0-20240102092130-5ac0b6a4141c | BSD-2-Clause |
 | [github.com/planetscale/vtprotobuf](https://github.com/planetscale/vtprotobuf) | v0.6.1-0.20240319094008-0393e58bdf10 | BSD-3-Clause |

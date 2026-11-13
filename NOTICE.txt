@@ -26967,11 +26967,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/pelletier/go-toml/v2
-Version : v2.2.4
-Time    : 2025-04-07T11:11:38Z
+Version : v2.4.3
+Time    : 2026-07-05T02:25:11Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.2.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pelletier/go-toml/v2@v2.4.3/LICENSE:
 
 The MIT License (MIT)
 
