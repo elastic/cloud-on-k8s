@@ -1,8 +1,8 @@
 ---
-# This example uses an init container to adjust hostPath permissions so Agent can run as non-root.
-# Use this when you want `allowPrivilegeEscalation: false` in the main Agent pods or when
-# running Elastic Agent versions < v8.16.0. For the 8.16+ rootless alternative without an
-# init container, see fleet-kubernetes-integration.yaml (requires allowPrivilegeEscalation and CAP_CHOWN).
+# This example runs Agent as non-root. A root init container prepares the hostPath state
+# directories, so Agent does not need to change their ownership itself.
+# Use it with Agent < 8.16, or when Agent cannot have privilege escalation or CAP_CHOWN.
+# Agent >= 8.16 can also run as non-root without it, see fleet-kubernetes-integration.yaml.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -81,6 +81,8 @@ spec:
     name: elasticsearch
   config:
     xpack.fleet.agents.fleet_server.hosts: ["https://fleet-server-agent-http.default.svc:8220"]
+    # ECK adds the Elasticsearch CA to the Agent trust store only when Agent runs as root.
+    # Non-root Agents get the CA from this output instead.
     xpack.fleet.outputs:
     - id: eck-fleet-agent-output-elasticsearch
       is_default: true

@@ -80,18 +80,19 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
-        # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
-        # as Agent changes ownership of the data directory to the container user id.
-        # For persisted state on hostPath, rootless operation requires privilege escalation
-        # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
-        # These are defaults in most runtimes, but if you set drop: ["ALL"], add them back.
-        # securityContext:
-        #   allowPrivilegeEscalation: true
-        #   capabilities:
-        #     add: ["CHOWN", "SETPCAP"]
-        # If legacy behavior is required:
-        # securityContext:
-        #   runAsUser: 0
+        # runAsUser: 0 lets Agent write to its hostPath state directory, and makes ECK add
+        # the Elasticsearch CA to the container trust store.
+        # To run Agent >= 8.16 as non-root (see README): remove this securityContext, uncomment
+        # the agent container below, and in Kibana replace xpack.fleet.agents.elasticsearch.hosts
+        # with xpack.fleet.outputs from fleet-kubernetes-integration-nonroot.yaml (it adds the CA).
+        # containers:
+        # - name: agent
+        #   securityContext:
+        #     allowPrivilegeEscalation: true
+        #     capabilities:
+        #       add: ["CHOWN", "SETPCAP"]
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: agent.k8s.elastic.co/v1alpha1
 kind: Agent
@@ -124,18 +125,10 @@ spec:
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
         automountServiceAccountToken: true
-        # Since Elastic Agent v8.16.0, the runAsUser: 0 is not needed
-        # as Agent changes ownership of the data directory to the container user id.
-        # For persisted state on hostPath, rootless operation requires privilege escalation
-        # and CAP_CHOWN (CAP_SETPCAP helps Elastic Agent pass capabilities to child processes).
-        # These are defaults in most runtimes, but if you set drop: ["ALL"], add them back.
-        # securityContext:
-        #   allowPrivilegeEscalation: true
-        #   capabilities:
-        #     add: ["CHOWN", "SETPCAP"]
-        # If legacy behavior is required:
-        # securityContext:
-        #   runAsUser: 0
+        # Runs as root for the same reasons as the fleet-server Agent above.
+        # To run as non-root, apply the same changes.
+        securityContext:
+          runAsUser: 0
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
