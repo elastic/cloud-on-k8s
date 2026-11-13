@@ -39,11 +39,11 @@ For more information, check [PR #9685](https://github.com/elastic/cloud-on-k8s/p
 ::::
 
 ::::{dropdown} RBAC enforcement for fleet-managed Elastic Agents that reach {{es}} through a Fleet Server in another namespace
-ECK 3.6.0 fixes the RBAC check for the transitive path from a fleet-managed Elastic Agent to the {{es}} cluster that its Fleet Server references. Earlier versions copied the {{es}} CA and client certificates into the namespace of the Elastic Agent without this check. When the `--enforce-rbac-on-refs` operator flag is enabled, ECK now checks that the `ServiceAccount` of the Elastic Agent can access the {{es}} resource before it copies any Secret.
+ECK 3.6.0 fixes the RBAC check for the transitive path from a fleet-managed Elastic Agent to the {{es}} cluster that its Fleet Server references. Earlier versions copied the {{es}} CA and client certificates into the namespace of the Elastic Agent without this check. When the `--enforce-rbac-on-refs` operator flag is enabled, ECK now checks that the `ServiceAccount` of the Elastic Agent (`spec.serviceAccountName`, or `default` if not set) can access the {{es}} resource before it copies any Secret.
 
 **Impact**<br> This affects only installations that enable `--enforce-rbac-on-refs`. After the operator upgrade, ECK removes the association of a fleet-managed Elastic Agent with its Fleet Server if the {{es}} cluster is in a different namespace than the Elastic Agent and the `ServiceAccount` of the Elastic Agent does not have `get` permission for that {{es}} resource. ECK also deletes the Secrets that it copied for this association.
 
-**Action**<br> Before you upgrade, create the `Role` and `RoleBinding` that allow the `ServiceAccount` of each fleet-managed Elastic Agent to access the {{es}} resource that its Fleet Server references. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md).
+**Action**<br> Before you upgrade, create the RBAC rules that allow the `ServiceAccount` of each fleet-managed Elastic Agent to access the {{es}} resource that its Fleet Server references. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md).
 
 For more information, check [PR #9725](https://github.com/elastic/cloud-on-k8s/pull/9725).
 ::::

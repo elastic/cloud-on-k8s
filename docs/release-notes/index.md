@@ -31,7 +31,7 @@ The `--enforce-rbac-on-refs` flag now checks every cross-namespace association, 
 
 #### Compatibility with Helm 4 and Server-Side Apply
 
-Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. Resources that earlier ECK versions managed can still carry the old field ownership. After you upgrade the operator, run your usual `helm upgrade` command once with the `--force-conflicts` flag, as described in [Helm 4 and Server-Side Apply](docs-content://deploy-manage/deploy/cloud-on-k8s/managing-deployments-using-helm-chart.md#k8s-helm4-ssa). If you use an `ElasticsearchAutoscaler`, first remove the fields that the autoscaler manages from your manifests. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
+Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. Resources that earlier ECK versions managed can still carry the old field ownership. If you manage {{stack}} resources with Helm 4, run your usual `helm upgrade` command once with the `--force-conflicts` flag after you upgrade the operator, as described in [Helm 4 and Server-Side Apply](docs-content://deploy-manage/deploy/cloud-on-k8s/managing-deployments-using-helm-chart.md#k8s-helm4-ssa). If you use an `ElasticsearchAutoscaler`, first remove the fields that the autoscaler manages from your manifests. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
 
 #### Logstash pipeline improvements
 
@@ -83,6 +83,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 ### Documentation improvements [elastic-cloud-kubernetes-360-documentation-improvements]
 
 - Document ResourcesAwareManagement Elasticsearch condition [#9669](https://github.com/elastic/cloud-on-k8s/pull/9669)
+- Document running Elastic Agent as non-root without the init container [#8931](https://github.com/elastic/cloud-on-k8s/pull/8931)
 
 
 
