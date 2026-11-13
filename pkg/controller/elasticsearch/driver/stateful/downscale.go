@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +33,7 @@ import (
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/stringsutil"
 )
 
@@ -60,8 +62,8 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// The leaving nodes that are not members of the cluster cannot be shut down. They are held, not removed, as they may
-	// still hold data, and do not fail the downscale: the next steps can recreate them, for them to join the cluster.
+	// The leaving nodes that are not members of the cluster cannot be shut down. They are held without failing the
+	// downscale, as they may hold data and the next steps may make them join, unless classifyNonMembers says otherwise.
 	notMembers, err := nodesNotInCluster(downscaleCtx, leaving)
 	if err != nil {
 		return results.WithError(err)
@@ -108,11 +110,19 @@ func HandleDownscale(
 	}
 
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
-	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining, notMembers)
+	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)
 	if notMembers.Len() > 0 {
 		// a node that is not a member may be a member that did not answer, the reason why it is held says so
 		if downscaleState.partialNodes, err = leaving.esState.NodesResponsePartial(); err != nil {
 			return results.WithError(err)
+		}
+		downscaleState.nonMembers = classifyNonMembers(notMembers, expectedStatefulSets, actualStatefulSets, actualPods)
+		// a node that cannot join is only removed from a settled cluster, which is checked at most once, and only when
+		// such a node is the next to be removed
+		if !downscaleState.partialNodes {
+			downscaleState.nonMemberRemovalsAllowed = sync.OnceValue(func() bool {
+				return clusterIsSettled(downscaleCtx.parentCtx, downscaleCtx.esClient, leaving.esState)
+			})
 		}
 	}
 
@@ -132,7 +142,11 @@ func HandleDownscale(
 	// its shutdown cannot be told apart from the others as its node ID is unknown.
 	selectedNodes := leavingNodeNames(downscales)
 	keptNodes := sets.List(draining.Difference(sets.New(selectedNodes...)))
-	shutdownNodes := slices.Concat(selectedNodes, keptNodes)
+	// the removable nodes that are not members of the cluster have no shutdown: none is requested for them
+	shutdownNodes := slices.Concat(
+		slices.DeleteFunc(slices.Clone(selectedNodes), downscaleState.isRemovableNonMember),
+		keptNodes,
+	)
 	terminatingNodes := k8s.PodNames(k8s.TerminatingPods(actualPods))
 	requeue, err := requestShutdownsAndDownscale(downscaleCtx, downscales, shutdownNodes, terminatingNodes, len(notMembers) > 0, stalledCandidates)
 	if err != nil {
@@ -233,6 +247,91 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
+// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node whose Pod exists
+// cannot join if its StatefulSet is no longer expected, as nothing repairs its Pod, or if its Pod is unschedulable, as
+// nothing reliably upgrades it. Its removal waits for the cluster to be settled, whether it ever ran or not, as it may
+// have: it may have been a member, for example recreated after the loss of its Kubernetes node, its claim may be bound
+// to a retained volume, and the ephemeral volumes of a crash looping member survive container restarts. Whatever keeps
+// it from running, a volume bound to a lost Kubernetes node for example, may never be resolved, and a settled cluster
+// does not need its storage. Any other node may join: its Pod may be starting, or be a member that restarts. A Pod that
+// is missing from the cache may join too: it may have been created since, and expectationsSatisfied, which precedes the
+// downscale, waits for its creation anyway.
+func classifyNonMembers(
+	nodes sets.Set[string],
+	expected, actual es_sset.StatefulSetList,
+	pods []corev1.Pod,
+) map[string]nonMember {
+	// the Pods of the StatefulSets that are no longer expected: nothing can repair them
+	expectedNames := expected.Names()
+	removed := sets.New[string]()
+	for _, statefulSet := range actual {
+		if !expectedNames.Has(statefulSet.Name) {
+			removed.Insert(sset.PodNames(statefulSet)...)
+		}
+	}
+	podsByName := k8s.PodsByName(pods)
+	nonMembers := make(map[string]nonMember, nodes.Len())
+	for node := range nodes {
+		pod, exists := podsByName[node]
+		nonMembers[node] = nonMember{cannotJoin: exists && (removed.Has(node) || isUnschedulable(pod))}
+	}
+	return nonMembers
+}
+
+// isUnschedulable returns true if the given Pod is pending because it is not scheduled, either because the scheduler
+// cannot place it or because a scheduling gate holds it, as opposed to a Pod that is pending while it starts. A Pod in
+// any other phase, Failed or Succeeded included, is not: it is held until it joins, as the StatefulSet controller is
+// expected to replace it.
+func isUnschedulable(pod corev1.Pod) bool {
+	if pod.Status.Phase != corev1.PodPending {
+		return false
+	}
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodScheduled {
+			return condition.Status == corev1.ConditionFalse &&
+				(condition.Reason == corev1.PodReasonUnschedulable || condition.Reason == corev1.PodReasonSchedulingGated)
+		}
+	}
+	return false
+}
+
+// clusterIsSettled returns true if the cluster is green with no shard activity, so that no node outside of it holds the
+// only copy of any data. The health is fresh, not the memoized one, which may predate the nodes, and it must apply to
+// the same nodes that membership was computed from: they are retrieved again after it and compared. Any retrieval
+// failure means not settled.
+func clusterIsSettled(ctx context.Context, esClient esclient.Client, esState ESState) bool {
+	nodeNameToID, err := esState.NodeNameToID()
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "Cannot retrieve the nodes, holding the nodes that are not members of the cluster")
+		return false
+	}
+	// wait for pending events, so that shard initializations are not missed
+	health, err := esClient.GetClusterHealthWaitForAllEvents(ctx)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "Cannot retrieve the cluster health, holding the nodes that are not members of the cluster")
+		return false
+	}
+	if health.NumberOfNodes != len(nodeNameToID) {
+		ulog.FromContext(ctx).V(1).Info("The nodes of the cluster changed since they were retrieved, holding the nodes that are not members of the cluster",
+			"health_nodes", health.NumberOfNodes, "nodes", len(nodeNameToID))
+		return false
+	}
+	if health.Status != esv1.ElasticsearchGreenHealth || health.HasShardActivity() {
+		return false
+	}
+	// the same count does not mean the same nodes: one may have joined while another left
+	current, err := esClient.GetNodes(ctx)
+	if err != nil {
+		ulog.FromContext(ctx).Error(err, "Cannot retrieve the nodes, holding the nodes that are not members of the cluster")
+		return false
+	}
+	if current.IsPartial() || !maps.Equal(current.NameToID(), nodeNameToID) {
+		ulog.FromContext(ctx).V(1).Info("The nodes of the cluster changed since they were retrieved, holding the nodes that are not members of the cluster")
+		return false
+	}
+	return true
+}
+
 // nodesNotInCluster returns the desired leaving nodes that are not members of the cluster. Without node shutdown,
 // membership does not matter, as a node is removed once it holds no shard: none is returned.
 func nodesNotInCluster(downscaleCtx downscaleContext, leaving *leavingNodes) (sets.Set[string], error) {
@@ -329,12 +428,15 @@ func calculateDownscales(ctx context.Context, state downscaleState, expectedStat
 			if allowedDeletes == 0 {
 				continue
 			}
-			downscales = append(downscales, ssetDownscale{
+			downscale := ssetDownscale{
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
 				targetReplicas:  actualReplicas - allowedDeletes,
 				finalReplicas:   expectedReplicas,
-			})
+			}
+			// the leaving non-members that have no shutdown to wait for
+			downscale.removableNonMembers = state.removableNonMembersAmong(downscale.leavingNodeNames())
+			downscales = append(downscales, downscale)
 
 		default:
 			// nothing to do
@@ -385,7 +487,16 @@ func attemptDownscale(
 	}
 	// do performable downscale, and requeue if needed
 	shouldRequeue := performable.targetReplicas != downscale.finalReplicas
-	return shouldRequeue, doDownscale(ctx, performable)
+	if err := doDownscale(ctx, performable); err != nil {
+		return shouldRequeue, err
+	}
+	// the removals without a shutdown are only reported once they are done, not on every attempt that fails
+	for _, node := range performable.leavingNodeNames() {
+		if nonMember, removable := downscale.removableNonMembers[node]; removable {
+			reportNonMemberRemoval(ctx, downscale, node, nonMember)
+		}
+	}
+	return shouldRequeue, nil
 }
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
@@ -414,6 +525,23 @@ func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es es
 	return k8sClient.Delete(ctx, &statefulSet)
 }
 
+// reportNonMemberRemoval logs and records an event for the removal of the given non-member node without a shutdown. The
+// event is a warning for a master: if it used to be a member, its vote may remain, as an exclusion by name is never
+// resolved to the ID of an absent node, until Elasticsearch has at least 3 live masters to prefer over it.
+func reportNonMemberRemoval(ctx downscaleContext, downscale ssetDownscale, node string, nonMember nonMember) {
+	reason := nonMember.removedReason()
+	eventType := corev1.EventTypeNormal
+	if label.IsMasterNodeSet(downscale.statefulSet) {
+		reason += ". If it was a master that left the cluster, it may still be in the voting configuration until at " +
+			"least 3 masters are live: with fewer, check the voting configuration"
+		eventType = corev1.EventTypeWarning
+	}
+	// the log names the node in its own key, the event in its message
+	ssetLogger(ctx.parentCtx, downscale.statefulSet).Info("Removed node without a shutdown: "+reason, "node", node)
+	ctx.reconcileState.AddEvent(eventType, events.EventReasonRemoved, events.EventActionReconciliation,
+		fmt.Sprintf("Removed node %s without a shutdown: %s", node, reason))
+}
+
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
 // which cannot be safely deleted yet.
 // It returns the updated downscale and a boolean indicating whether a requeue should be done.
@@ -425,13 +553,19 @@ func calculatePerformableDownscale(
 ) (ssetDownscale, error) {
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
-		statefulSet:     downscale.statefulSet,
-		initialReplicas: downscale.initialReplicas,
-		targetReplicas:  downscale.initialReplicas, // target set to initial
-		finalReplicas:   downscale.finalReplicas,
+		statefulSet:         downscale.statefulSet,
+		initialReplicas:     downscale.initialReplicas,
+		targetReplicas:      downscale.initialReplicas, // target set to initial
+		finalReplicas:       downscale.finalReplicas,
+		removableNonMembers: downscale.removableNonMembers,
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
+		if _, removable := downscale.removableNonMembers[node]; removable {
+			// a node that is not a member of the cluster has no shutdown to wait for, its removal is reported once done
+			performableDownscale.targetReplicas--
+			continue
+		}
 		response, ok := statuses[node]
 		if !ok {
 			// with shard migration, retrieving a status requires requests, so it is only done for the inspected nodes

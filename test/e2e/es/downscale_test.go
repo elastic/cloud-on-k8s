@@ -8,9 +8,11 @@ package es
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/shutdown"
+	esvolume "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -65,7 +68,7 @@ func TestDownscaleKeepsShutdownsWhileAnotherPodIsNotReady(t *testing.T) {
 	// add a NodeSet whose Pod cannot be scheduled, so that one Pod is not ready during the removal
 	pendingNodeSet, fixedNodeSet := pendingNodeSets("pending", elasticsearch.DataRoleCfg(initial.Elasticsearch.Spec.Version))
 	renamedWithPending := renamed.DeepCopy().WithNodeSet(pendingNodeSet)
-	// eventually let the Pod be scheduled: a NodeSet whose Pods never joined the cluster cannot be removed
+	// eventually let the Pod be scheduled, for the cluster to be checked with all of its nodes
 	fixed := renamed.DeepCopy().WithNodeSet(fixedNodeSet)
 
 	esName := initial.Elasticsearch.Name
@@ -328,10 +331,10 @@ func TestDownscaleDuringRollingUpgrade(t *testing.T) {
 }
 
 // TestDownscaleRecreatesLeavingPodThatNeverJoined reduces a NodeSet while the Pod of its last node never joined the
-// cluster, because it cannot be scheduled, and repairs its spec with the same change. The other nodes of the NodeSet are
-// healthy, so the forced upgrade does not apply. No shutdown can be requested for a node that is not a member of the
-// cluster: the downscale must hold it, and not fail, for the rolling upgrade to recreate the Pod with the repaired spec.
-// It is then removed once it has joined the cluster, without restarting the healthy nodes.
+// cluster, because it crash loops, then repairs its spec. The other nodes of the NodeSet are healthy, so the forced
+// upgrade does not apply. No shutdown can be requested for a node that is not a member of the cluster, but its Pod is
+// scheduled, so it may join once repaired: the downscale must hold it, rather than remove it or fail, for the rolling
+// upgrade to recreate the Pod with the repaired spec. It is then removed, without restarting the healthy nodes.
 func TestDownscaleRecreatesLeavingPodThatNeverJoined(t *testing.T) {
 	// the shutdown API is not used before this version, a node that holds no shard is removed whether it is a member or not
 	if version.MustParse(test.Ctx().ElasticStackVersion).LT(shutdown.MinVersion) {
@@ -345,40 +348,42 @@ func TestDownscaleRecreatesLeavingPodThatNeverJoined(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data", elasticsearch.DefaultResources)
 
-	// add a data node whose Pod cannot be scheduled: the template of the NodeSet changes for the nodes that are healthy,
-	// which are only restarted for it once the new Pod is ready, so they are not
-	pending := initial.WithNoESTopology().
+	// add a data node whose Pod crash loops: the template of the NodeSet changes for the nodes that are healthy, which
+	// are only restarted for it once the new Pod is ready, so they are not
+	crashLooping := withCrashLoopingNodeSet(initial.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
-		WithNamedESDataNodes(3, "data", elasticsearch.DefaultResources)
-	for i := range pending.Elasticsearch.Spec.NodeSets {
-		if pending.Elasticsearch.Spec.NodeSets[i].Name == "data" {
-			pending.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.NodeSelector = map[string]string{"cannot": "be-scheduled"}
-		}
-	}
+		WithNamedESDataNodes(3, "data", elasticsearch.DefaultResources), "data")
+	// reduce the NodeSet without repairing its spec: the Pod that crash loops is the one to remove
+	reduced := withCrashLoopingNodeSet(initial.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data", elasticsearch.DefaultResources), "data")
 
 	esName := initial.Elasticsearch.Name
 	esNamespace := initial.Elasticsearch.Namespace
 	dataStatefulSet := esv1.StatefulSet(esName, "data")
 	healthyNodes := []string{sset.PodName(dataStatefulSet, 0), sset.PodName(dataStatefulSet, 1)}
-	pendingNode := sset.PodName(dataStatefulSet, 2)
+	crashLoopingNode := sset.PodName(dataStatefulSet, 2)
 	healthyPods := test.NewPodRestartChecker("healthy data Elasticsearch", podListOptionsByName(t, esNamespace, healthyNodes...)...)
-	var pendingUID types.UID
+	var crashLoopingUID types.UID
 
 	test.StepList{}.
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initial, k)).
 		WithSteps(healthyPods.RecordUIDs(k)).
-		WithSteps(pending.UpgradeTestSteps(k)).
+		WithSteps(crashLooping.UpgradeTestSteps(k)).
 		WithStep(test.Step{
-			Name: "The new data Pod should be pending while the other ones are ready",
+			Name: "The new data Pod should be scheduled and crash loop while the other ones are ready",
 			Test: test.Eventually(func() error {
-				pod, err := k.GetPod(esNamespace, pendingNode)
+				pod, err := k.GetPod(esNamespace, crashLoopingNode)
 				if err != nil {
 					return err
 				}
-				if pod.Status.Phase != corev1.PodPending {
-					return fmt.Errorf("pod %s is %s, expected %s", pendingNode, pod.Status.Phase, corev1.PodPending)
+				if !isPodScheduled(pod) {
+					return fmt.Errorf("pod %s is not scheduled", crashLoopingNode)
+				}
+				if !hasRestartedInitContainer(pod, crashLoopingContainer) {
+					return fmt.Errorf("init container %s of pod %s has not restarted yet", crashLoopingContainer, crashLoopingNode)
 				}
 				for _, name := range healthyNodes {
 					healthyPod, err := k.GetPod(esNamespace, name)
@@ -389,12 +394,12 @@ func TestDownscaleRecreatesLeavingPodThatNeverJoined(t *testing.T) {
 						return fmt.Errorf("pod %s is not ready", name)
 					}
 				}
-				pendingUID = pod.UID
+				crashLoopingUID = pod.UID
 				return nil
 			}),
 		}).
 		WithStep(test.Step{
-			Name: "The healthy data Pods should not be restarted while the new one is pending",
+			Name: "The healthy data Pods should not be restarted while the new one crash loops",
 			Test: func(t *testing.T) {
 				t.Helper()
 				require.Never(t, func() bool {
@@ -406,17 +411,38 @@ func TestDownscaleRecreatesLeavingPodThatNeverJoined(t *testing.T) {
 				}, pendingObservedFor, 2*time.Second, "a healthy data Pod was restarted")
 			},
 		}).
-		// repair the spec while reducing the NodeSet: the Pod that is pending is the one to remove
+		WithSteps(reduced.UpgradeTestSteps(k)).
+		WithStep(test.Step{
+			// the Pod is scheduled, so it may join the cluster once its spec is repaired: it is held, not removed
+			Name: "The Pod that crash loops should not be removed while its spec is not repaired",
+			Test: func(t *testing.T) {
+				t.Helper()
+				require.Never(t, func() bool {
+					err := checkPodNotRemoved(ctx, k, esNamespace, dataStatefulSet, crashLoopingNode, crashLoopingUID, 3)
+					if err != nil {
+						t.Log(err)
+					}
+					return errors.Is(err, errPodRemoved)
+				}, pendingObservedFor, 2*time.Second, "the Pod that crash loops was removed")
+				require.NoError(t, healthyPods.CheckNotRestarted(ctx, k))
+			},
+		}).
+		// repair the spec
 		WithSteps(initial.UpgradeTestSteps(k)).
 		WithStep(test.Step{
-			Name: "The Pod that never joined the cluster should be recreated",
+			// The Pod may already be gone: the rolling upgrade deletes it to recreate it, and the downscale removes the
+			// recreated Pod once it joins the cluster. A missing Pod is not removed, as the cache may not see it yet.
+			Name: "The Pod that never joined the cluster should be recreated or removed",
 			Test: test.Eventually(func() error {
-				pod, err := k.GetPod(esNamespace, pendingNode)
+				pod, err := k.GetPod(esNamespace, crashLoopingNode)
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
 				if err != nil {
 					return err
 				}
-				if pod.UID == pendingUID {
-					return fmt.Errorf("pod %s has not been recreated", pendingNode)
+				if pod.UID == crashLoopingUID {
+					return fmt.Errorf("pod %s has not been recreated", crashLoopingNode)
 				}
 				return nil
 			}),
@@ -702,6 +728,187 @@ func TestDownscaleRollsStayingNodesWhileLeavingNodeIsHeld(t *testing.T) {
 		RunSequential(t)
 }
 
+// TestDownscaleRemovesNodeSetWhosePodNeverJoined removes a master NodeSet while its Pod never joined the cluster, because it
+// cannot be scheduled. The NodeSet is no longer expected, so the rolling upgrade has no template to repair the Pod with,
+// and no shutdown can be requested for a node that is not a member of the cluster. Its storage may hold data, whether it
+// ever ran or not, so its removal must wait for the cluster to be green: the Pod is held while the cluster is yellow,
+// then removed once it is green. The voting exclusion that the downscale adds by name must be cleared, and the
+// claim garbage collected.
+func TestDownscaleRemovesNodeSetWhosePodNeverJoined(t *testing.T) {
+	// the shutdown API is not used before this version, a node that holds no shard is removed whether it is a member or not
+	if version.MustParse(test.Ctx().ElasticStackVersion).LT(shutdown.MinVersion) {
+		t.SkipNow()
+	}
+
+	ctx := t.Context()
+	k := test.NewK8sClientOrFatal()
+
+	// The data volumes are the default claims, whatever the binding mode of the storage class: the claim of the pending
+	// Pod is pending with WaitForFirstConsumer, and bound with Immediate, and the downscale does not look at claims.
+	initial := elasticsearch.NewBuilder("test-downscale-rm-unjoined").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	// add a master NodeSet whose Pod cannot be scheduled
+	pendingNodeSet, _ := pendingNodeSets("pending-master", elasticsearch.MasterRoleCfg(initial.Elasticsearch.Spec.Version))
+	withPending := initial.DeepCopy().WithNodeSet(pendingNodeSet)
+
+	esName := initial.Elasticsearch.Name
+	esNamespace := initial.Elasticsearch.Namespace
+	pendingStatefulSet := esv1.StatefulSet(esName, "pending-master")
+	pendingNode := sset.PodName(pendingStatefulSet, 0)
+	pendingClaim := esvolume.ElasticsearchDataVolumeName + "-" + pendingNode
+	// more replicas than the nodes can hold, so that the cluster is yellow until they are removed
+	const yellowIndex = "test-downscale-rm-unjoined-yellow"
+	var esClient esclient.Client
+	var reconciledGeneration int64
+
+	test.StepList{}.
+		WithSteps(initial.InitTestSteps(k)).
+		WithSteps(initial.CreationTestSteps(k)).
+		WithSteps(test.CheckTestSteps(initial, k)).
+		WithSteps(withPending.UpgradeTestSteps(k)).
+		WithStep(test.Step{
+			Name: "The Pod of the new NodeSet should be pending",
+			Test: test.Eventually(func() error {
+				pod, err := k.GetPod(esNamespace, pendingNode)
+				if err != nil {
+					return err
+				}
+				if pod.Status.Phase != corev1.PodPending {
+					return fmt.Errorf("pod %s is %s, expected %s", pendingNode, pod.Status.Phase, corev1.PodPending)
+				}
+				return nil
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "The Pod of the new NodeSet should have a claim",
+			Test: test.Eventually(func() error {
+				var claim corev1.PersistentVolumeClaim
+				return k.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: pendingClaim}, &claim)
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "Create an index with more replicas than the nodes can hold",
+			Test: test.Eventually(func() error {
+				var err error
+				if esClient, err = elasticsearch.NewElasticsearchClient(initial.Elasticsearch, k); err != nil {
+					return err
+				}
+				// the index may already exist if a previous attempt only failed to read the response
+				if _, err := elasticsearch.DoRequest(ctx, esClient, http.MethodGet, "/"+yellowIndex, nil); err == nil {
+					return nil
+				}
+				_, err = elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+yellowIndex,
+					[]byte(`{"settings": {"number_of_shards": 1, "number_of_replicas": 3}}`))
+				return err
+			}),
+		}).
+		WithStep(elasticsearch.CheckSpecificClusterHealth(initial, k, esv1.ElasticsearchYellowHealth)).
+		// remove the NodeSet: nothing can recreate its Pod with another spec
+		WithSteps(initial.UpgradeTestSteps(k)).
+		WithStep(test.Step{
+			Name: "The operator should reconcile the removal",
+			Test: test.Eventually(func() error {
+				var es esv1.Elasticsearch
+				if err := k.Client.Get(ctx, k8s.ExtractNamespacedName(&initial.Elasticsearch), &es); err != nil {
+					return err
+				}
+				if reconciledGeneration == 0 {
+					// the generation of the update that removed the NodeSet, which is the one observed first
+					reconciledGeneration = es.Generation
+				}
+				if es.Status.ObservedGeneration < reconciledGeneration {
+					return fmt.Errorf("observed generation %d, expected %d", es.Status.ObservedGeneration, reconciledGeneration)
+				}
+				return nil
+			}),
+		}).
+		WithStep(test.Step{
+			// the claim of the Pod may hold the only copy of some shards, the cluster does not have all of them while it is
+			// not green: sampled over several reconciliations, as the removal is only held, not refused
+			Name: "The StatefulSet of the removed NodeSet should be kept while the cluster is not green",
+			Test: func(t *testing.T) {
+				t.Helper()
+				require.Never(t, func() bool {
+					var statefulSet appsv1.StatefulSet
+					err := k.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: pendingStatefulSet}, &statefulSet)
+					if err != nil && !apierrors.IsNotFound(err) {
+						t.Log(err)
+					}
+					// errors while querying the API server are not considered as a removal
+					return apierrors.IsNotFound(err) || (err == nil && sset.GetReplicas(statefulSet) == 0)
+				}, shutdownsKeptFor, 2*time.Second, "the Pod of the removed NodeSet was removed while the cluster is not green")
+			},
+		}).
+		WithStep(test.Step{
+			Name: "Remove the replicas that cannot be allocated, for the cluster to be green",
+			Test: test.Eventually(func() error {
+				_, err := elasticsearch.DoRequest(ctx, esClient, http.MethodPut, "/"+yellowIndex+"/_settings",
+					[]byte(`{"index.number_of_replicas": 0}`))
+				return err
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "The StatefulSet of the removed NodeSet should be deleted",
+			Test: test.Eventually(func() error {
+				var statefulSet appsv1.StatefulSet
+				err := k.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: pendingStatefulSet}, &statefulSet)
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("StatefulSet %s still exists with %d replicas", pendingStatefulSet, sset.GetReplicas(statefulSet))
+			}),
+		}).
+		WithStep(test.Step{
+			Name: "The claim of the removed Pod should be garbage collected",
+			Test: test.Eventually(func() error {
+				var claim corev1.PersistentVolumeClaim
+				err := k.Client.Get(ctx, types.NamespacedName{Namespace: esNamespace, Name: pendingClaim}, &claim)
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("claim %s still exists", pendingClaim)
+			}),
+		}).
+		WithSteps(test.CheckTestSteps(initial, k)).
+		WithStep(test.Step{
+			Name: "No voting config exclusion should be left",
+			Test: test.Eventually(func() error {
+				esClient, err := elasticsearch.NewElasticsearchClient(initial.Elasticsearch, k)
+				if err != nil {
+					return err
+				}
+				body, err := elasticsearch.DoRequest(ctx, esClient, http.MethodGet,
+					"/_cluster/state/metadata?filter_path=metadata.cluster_coordination.voting_config_exclusions", nil)
+				if err != nil {
+					return err
+				}
+				var state struct {
+					Metadata struct {
+						ClusterCoordination struct {
+							VotingConfigExclusions []json.RawMessage `json:"voting_config_exclusions"`
+						} `json:"cluster_coordination"`
+					} `json:"metadata"`
+				}
+				if err := json.Unmarshal(body, &state); err != nil {
+					return err
+				}
+				if exclusions := state.Metadata.ClusterCoordination.VotingConfigExclusions; len(exclusions) > 0 {
+					return fmt.Errorf("%d voting config exclusions are left: %s", len(exclusions), exclusions)
+				}
+				return nil
+			}),
+		}).
+		WithSteps(initial.DeletionTestSteps(k)).
+		RunSequential(t)
+}
+
 // pendingNodeSets returns a NodeSet with the given name and config whose Pod cannot be scheduled, and the same NodeSet
 // once its Pod can be scheduled.
 func pendingNodeSets(name string, config map[string]any) (pending esv1.NodeSet, fixed esv1.NodeSet) {
@@ -715,6 +922,76 @@ func pendingNodeSets(name string, config map[string]any) (pending esv1.NodeSet, 
 	fixed = *pending.DeepCopy()
 	fixed.PodTemplate.Spec.NodeSelector = nil
 	return pending, fixed
+}
+
+// crashLoopingContainer is the init container that makes the Pods of withCrashLoopingNodeSet crash loop.
+const crashLoopingContainer = "crash-loop"
+
+// withCrashLoopingNodeSet returns the given Builder with an init container that always fails added to the given NodeSet:
+// its Pods are scheduled, but Elasticsearch never starts in them. The image of the init container is left empty for the
+// operator to set the Elasticsearch one.
+func withCrashLoopingNodeSet(b elasticsearch.Builder, nodeSetName string) elasticsearch.Builder {
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		if b.Elasticsearch.Spec.NodeSets[i].Name != nodeSetName {
+			continue
+		}
+		podSpec := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
+		// copied so that a template shared with another Builder is not changed
+		podSpec.InitContainers = append(slices.Clone(podSpec.InitContainers), corev1.Container{
+			Name:    crashLoopingContainer,
+			Command: []string{"sh", "-c", "exit 1"},
+		})
+	}
+	return b
+}
+
+// isPodScheduled returns true if the given Pod is scheduled on a Kubernetes node.
+func isPodScheduled(pod corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodScheduled {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// hasRestartedInitContainer returns true if the given init container of the given Pod has restarted at least once.
+func hasRestartedInitContainer(pod corev1.Pod, containerName string) bool {
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.Name == containerName {
+			return status.RestartCount > 0
+		}
+	}
+	return false
+}
+
+// checkPodNotRemoved returns an error wrapping errPodRemoved if the given Pod no longer has the given UID, or if the
+// given StatefulSet no longer has the given replicas. Any other error means that this could not be checked.
+func checkPodNotRemoved(
+	ctx context.Context,
+	k *test.K8sClient,
+	namespace, statefulSetName, podName string,
+	uid types.UID,
+	replicas int32,
+) error {
+	var statefulSet appsv1.StatefulSet
+	if err := k.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: statefulSetName}, &statefulSet); err != nil {
+		return err
+	}
+	if actual := sset.GetReplicas(statefulSet); actual != replicas {
+		return fmt.Errorf("%w: StatefulSet %s has %d replicas, expected %d", errPodRemoved, statefulSetName, actual, replicas)
+	}
+	pod, err := k.GetPod(namespace, podName)
+	if apierrors.IsNotFound(err) {
+		return fmt.Errorf("%w: pod %s does not exist", errPodRemoved, podName)
+	}
+	if err != nil {
+		return err
+	}
+	if pod.UID != uid {
+		return fmt.Errorf("%w: pod %s was recreated", errPodRemoved, podName)
+	}
+	return nil
 }
 
 // createPinnedIndexStep returns a step that creates the given index with the given settings, which must prevent its
@@ -848,6 +1125,8 @@ var (
 	errNoRemoveShutdown = errors.New("no remove-type shutdown")
 	// errPodReady is returned by checkPodsNotReady when a Pod is ready.
 	errPodReady = errors.New("pod is ready")
+	// errPodRemoved is returned by checkPodNotRemoved when a Pod is removed or recreated.
+	errPodRemoved = errors.New("pod is removed")
 )
 
 // checkRemoveShutdowns returns an error wrapping errNoRemoveShutdown if one of the given nodes has no remove-type
