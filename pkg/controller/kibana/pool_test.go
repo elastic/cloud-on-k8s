@@ -55,7 +55,7 @@ func newTestDriver(t *testing.T, objects ...client.Object) *driver {
 		Name: "test", Namespace: "default",
 		Spec: kbv1.KibanaSpec{Version: "8.17.0"},
 	}
-	d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(10), kb, corev1.IPv4Protocol)
+	d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches("testCtr"), toolsevents.NewFakeRecorder(10), kb, corev1.IPv4Protocol)
 	require.NoError(t, err)
 	return d
 }
@@ -780,7 +780,7 @@ func TestReconcilePoolDeployment_SelectorMismatch(t *testing.T) {
 			fakeClient := k8s.NewFakeClient(append(objects, tt.pods...)...)
 			recorder := toolsevents.NewFakeRecorder(100)
 			// a complete driver is needed as the deployment is reconciled when it is not deleted
-			d, err := newDriver(fakeClient, watches.NewDynamicWatches(), recorder, kbFor(false, tt.revisionHistoryLimit), corev1.IPv4Protocol)
+			d, err := newDriver(fakeClient, watches.NewDynamicWatches("testCtr"), recorder, kbFor(false, tt.revisionHistoryLimit), corev1.IPv4Protocol)
 			require.NoError(t, err)
 
 			for i, s := range tt.steps {
@@ -983,7 +983,7 @@ func TestHandleSelectorChange(t *testing.T) {
 func TestReconcilePoolDeployment(t *testing.T) {
 	newDriverFor := func(t *testing.T, kb *kbv1.Kibana, objects ...client.Object) *driver {
 		t.Helper()
-		d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches(), toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+		d, err := newDriver(k8s.NewFakeClient(objects...), watches.NewDynamicWatches("testCtr"), toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 		require.NoError(t, err)
 		return d
 	}

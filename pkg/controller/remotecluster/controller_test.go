@@ -865,7 +865,7 @@ func TestRemoteCluster_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			fakeESClient := &fakeESClient{}
 			if tt.fakeESClient != nil {
 				fakeESClient = tt.fakeESClient

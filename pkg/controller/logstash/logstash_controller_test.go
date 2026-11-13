@@ -54,7 +54,7 @@ func newReconcileLogstash(objs ...client.Object) *ReconcileLogstash {
 	r := &ReconcileLogstash{
 		Client:         client,
 		recorder:       toolsevents.NewFakeRecorder(100),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 	}
 	return r

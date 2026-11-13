@@ -10,13 +10,13 @@ import (
 )
 
 // NewDynamicWatches creates an initialized DynamicWatches container.
-func NewDynamicWatches() DynamicWatches {
+func NewDynamicWatches(ctrName string) DynamicWatches {
 	return DynamicWatches{
-		ConfigMaps:          NewDynamicEnqueueRequest[*corev1.ConfigMap](),
-		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](),
-		Services:            NewDynamicEnqueueRequest[*corev1.Service](),
-		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](),
-		ReferencedResources: NewDynamicEnqueueRequest[client.Object](),
+		ConfigMaps:          NewDynamicEnqueueRequest[*corev1.ConfigMap](ctrName),
+		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](ctrName),
+		Services:            NewDynamicEnqueueRequest[*corev1.Service](ctrName),
+		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](ctrName),
+		ReferencedResources: NewDynamicEnqueueRequest[client.Object](ctrName),
 	}
 }
 

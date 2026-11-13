@@ -434,7 +434,7 @@ func TestReconcileKibana_Reconcile(t *testing.T) {
 			r := &ReconcileKibana{
 				Client:         tt.fields.Client,
 				recorder:       recorder,
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				params:         operator.Parameters{},
 				licenseChecker: checker,
 			}

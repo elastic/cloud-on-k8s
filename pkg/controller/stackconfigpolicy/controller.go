@@ -80,7 +80,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileSt
 		recorder:         mgr.GetEventRecorder(controllerName),
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 		params:           params,
-		dynamicWatches:   watches.NewDynamicWatches(),
+		dynamicWatches:   watches.NewDynamicWatches(controllerName),
 	}
 }
 

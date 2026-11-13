@@ -251,7 +251,7 @@ echo "Keystore initialization successful."
 		t.Run(tt.name, func(t *testing.T) {
 			testDriver := driver.TestDriver{
 				Client:       tt.client,
-				Watches:      watches2.NewDynamicWatches(),
+				Watches:      watches2.NewDynamicWatches("testCtr"),
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, "", tt.initContainerParameters)

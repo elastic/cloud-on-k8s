@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePa
 	return &ReconcilePackageRegistry{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		Parameters:     params,
 	}
 }

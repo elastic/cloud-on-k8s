@@ -70,7 +70,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileMa
 	return &ReconcileMapsServer{
 		Client:         client,
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		Parameters:     params,
 	}

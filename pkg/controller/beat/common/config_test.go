@@ -279,7 +279,7 @@ output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/t
 			gotYaml, gotErr := buildBeatConfig(DriverParams{
 				Client:        tt.client,
 				Context:       nil,
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches("testCtr"),
 				EventRecorder: nil,
 				Beat:          tt.beat,
 			}, tt.managedConfig)
@@ -463,7 +463,7 @@ func Test_getUserConfig(t *testing.T) {
 				Context:       context.Background(),
 				Client:        tt.client,
 				EventRecorder: &toolsevents.FakeRecorder{},
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches("testCtr"),
 				Beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{
 						Config:    tt.config,

@@ -224,7 +224,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 			client := tt.client(t)
 			err := Reconciler{
 				K8sClient:      client,
-				DynamicWatches: watches.NewDynamicWatches(),
+				DynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Owner:          owner,
 				Namer:          esv1.ESNamer,
 				Metadata:       metadata.Metadata{Labels: labels},
@@ -557,7 +557,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			c := k8s.NewFakeClient(tt.args.initialObjects...)
 			got, err := Reconciler{
 				K8sClient:      c,
@@ -948,7 +948,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.objs...)
-			dw := watches.NewDynamicWatches()
+			dw := watches.NewDynamicWatches("testCtr")
 			r := Reconciler{
 				K8sClient:      c,
 				DynamicWatches: dw,
@@ -994,7 +994,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 	withRef := commonv1.TLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}}
 
 	t.Run("watch enqueues the owner when the referenced config map changes", func(t *testing.T) {
-		dw := watches.NewDynamicWatches()
+		dw := watches.NewDynamicWatches("testCtr")
 		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
 
 		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
@@ -1011,7 +1011,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 	})
 
 	t.Run("watch is removed when the reference is removed", func(t *testing.T) {
-		dw := watches.NewDynamicWatches()
+		dw := watches.NewDynamicWatches("testCtr")
 		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
 		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
 
@@ -1020,7 +1020,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 	})
 
 	t.Run("watch is removed when TLS is disabled", func(t *testing.T) {
-		dw := watches.NewDynamicWatches()
+		dw := watches.NewDynamicWatches("testCtr")
 		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
 		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
 
@@ -1031,7 +1031,7 @@ func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
 	})
 
 	t.Run("watch is removed together with the certificate secrets", func(t *testing.T) {
-		dw := watches.NewDynamicWatches()
+		dw := watches.NewDynamicWatches("testCtr")
 		r := newReconciler(dw, withRef)
 		require.NoError(t, r.ReconcilePublicHTTPCerts(t.Context(), internal))
 		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)

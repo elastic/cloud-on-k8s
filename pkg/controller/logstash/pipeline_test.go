@@ -88,7 +88,7 @@ func Test_buildPipeline(t *testing.T) {
 				Context:       context.Background(),
 				Client:        tt.client,
 				EventRecorder: &toolsevents.FakeRecorder{},
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches("testCtr"),
 				Logstash: logstashv1alpha1.Logstash{
 					Spec: logstashv1alpha1.LogstashSpec{
 						Pipelines:    tt.pipelines,

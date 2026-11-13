@@ -26,7 +26,7 @@ import (
 
 func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
 	controllerscheme.SetupScheme()
-	w := watches.NewDynamicWatches()
+	w := watches.NewDynamicWatches("testCtr")
 	for _, name := range watchNames {
 		_ = w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 			Name: name,

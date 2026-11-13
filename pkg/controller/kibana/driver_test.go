@@ -215,7 +215,7 @@ func Test_getStrategyType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 
 			kb := kibanaFixture()
 			kb.Name = tt.expectedKbName
@@ -598,7 +598,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			initialObjects := tt.args.initialObjects()
 
 			client := k8s.NewFakeClient(initialObjects...)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 
 			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
@@ -665,7 +665,7 @@ func TestMinSupportedVersion(t *testing.T) {
 			kb := kibanaFixture()
 			kb.Spec.Version = tc.version
 			client := k8s.NewFakeClient(defaultInitialObjects()...)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 
 			_, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
