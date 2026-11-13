@@ -958,7 +958,7 @@ func NewTestAssociationReconcilerWithReviewer(assocInfo AssociationInfo, reviewe
 		AssociationInfo: assocInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  reviewer,
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches(assocInfo.AssociationName),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		RBACOnRefsMode:  rbacOnRefsMode,
 		OperatorInfo: about.OperatorInfo{

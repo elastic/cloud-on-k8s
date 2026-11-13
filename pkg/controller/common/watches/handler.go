@@ -8,7 +8,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/exp/maps"
+	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,12 +35,45 @@ type HandlerRegistration[T client.Object] interface {
 	EventHandler() handler.TypedEventHandler[T, reconcile.Request]
 }
 
+// Values of the "handler" label of elastic_dynamic_watches_registered.
+const (
+	configMapsHandlerKind          = "configmaps"
+	secretsHandlerKind             = "secrets"
+	servicesHandlerKind            = "services"
+	podsHandlerKind                = "pods"
+	referencedResourcesHandlerKind = "referencedresources"
+	unknownHandlerKind             = "unknown"
+)
+
+// handlerKindFor returns the "handler" label value for the watched type T.
+func handlerKindFor[T client.Object]() string {
+	var zero T
+	switch any(zero).(type) {
+	case *corev1.ConfigMap:
+		return configMapsHandlerKind
+	case *corev1.Secret:
+		return secretsHandlerKind
+	case *corev1.Service:
+		return servicesHandlerKind
+	case *corev1.Pod:
+		return podsHandlerKind
+	case nil:
+		// client.Object is used for the generic referenced-resources watch.
+		return referencedResourcesHandlerKind
+	default:
+		return unknownHandlerKind
+	}
+}
+
 // NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
-func NewDynamicEnqueueRequest[T client.Object]() *DynamicEnqueueRequest[T] {
-	return &DynamicEnqueueRequest[T]{
+func NewDynamicEnqueueRequest[T client.Object](ctrName string) *DynamicEnqueueRequest[T] {
+	de := &DynamicEnqueueRequest[T]{
+		ctrName:       ctrName,
 		handlerKind:   handlerKindFor[T](),
 		registrations: make(map[string]HandlerRegistration[T]),
 	}
+	_ = de.getDynamicWatchesMetric()
+	return de
 }
 
 // DynamicEnqueueRequest is an EventHandler that allows addition and removal of
@@ -48,6 +83,18 @@ type DynamicEnqueueRequest[T client.Object] struct {
 	registrations map[string]HandlerRegistration[T]
 	// handlerKind is exposed as the "handler" label of the dynamic watches metric.
 	handlerKind string
+	// ctrName is exposed as the "controller" label of the dynamic watches metric.
+	ctrName string
+}
+
+// initMetric initializes the metric with the handler label.
+func (d *DynamicEnqueueRequest[T]) getDynamicWatchesMetric() prometheus.Gauge {
+	return metrics.DynamicWatchesRegistered.WithLabelValues(d.ctrName, d.handlerKind)
+}
+
+func (d *DynamicEnqueueRequest[T]) setDynamicWatchesValue() {
+	g := d.getDynamicWatchesMetric()
+	g.Set(float64(len(d.registrations)))
 }
 
 // AddHandlers adds the new event handlers to this DynamicEnqueueRequest.
@@ -70,10 +117,9 @@ func (d *DynamicEnqueueRequest[T]) AddHandler(handler HandlerRegistration[T]) er
 		log.V(1).Info("Replacing existing handler registration", "key", handler.Key())
 	} else {
 		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations_keys", maps.Keys(d.registrations))
-		// Aggregate across controllers: each owns its own DynamicWatches instance.
-		metrics.DynamicWatchesRegistered.WithLabelValues(d.handlerKind).Inc()
 	}
 	d.registrations[handler.Key()] = handler
+	d.setDynamicWatchesValue()
 	return nil
 }
 
@@ -87,8 +133,8 @@ func (d *DynamicEnqueueRequest[T]) RemoveHandlerForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, exists := d.registrations[key]; exists {
-		metrics.DynamicWatchesRegistered.WithLabelValues(d.handlerKind).Dec()
 		delete(d.registrations, key)
+		d.setDynamicWatchesValue()
 	}
 }
 

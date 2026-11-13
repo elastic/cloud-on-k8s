@@ -34,7 +34,7 @@ func newReconcileAgent(objs ...client.Object) *ReconcileAgent {
 	r := &ReconcileAgent{
 		Client:         k8s.NewFakeClient(objs...),
 		recorder:       toolsevents.NewFakeRecorder(100),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 	}
 	return r
 }

@@ -252,7 +252,7 @@ ssl:
 			d := ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			got, err := newConfig(context.Background(), &d, tt.args.ems, tt.args.ipFamily)

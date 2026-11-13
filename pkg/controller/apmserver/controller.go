@@ -103,7 +103,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	return &ReconcileApmServer{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		Parameters:     params,
 	}
 }

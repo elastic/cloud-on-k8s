@@ -21,6 +21,7 @@ const (
 	OperatorNamespaceLabel = "operator_namespace"
 	UUIDLabel              = "uuid"
 	HandlerKindLabel       = "handler"
+	ControllerNameLabel    = "controller"
 )
 
 var (
@@ -35,7 +36,7 @@ var (
 		Namespace: namespace,
 		Name:      "dynamic_watches_registered",
 		Help:      "Number of registered dynamic watch handlers, by watched resource kind",
-	}, []string{HandlerKindLabel}))
+	}, []string{ControllerNameLabel, HandlerKindLabel}))
 
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.
 	LicensingMaxERUGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{

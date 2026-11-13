@@ -990,7 +990,7 @@ func (s *staticPasswordHasher) ReuseOrGenerateHash(password, _ []byte) ([]byte, 
 
 func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string, defaultURL string, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
 	t.Helper()
-	watches := commonwatches.NewDynamicWatches()
+	watches := commonwatches.NewDynamicWatches("testCtr")
 	operatorParams := operator.Parameters{
 		PasswordGenerator: &staticPasswordGenerator{},
 		PasswordHasher:    &staticPasswordHasher{},

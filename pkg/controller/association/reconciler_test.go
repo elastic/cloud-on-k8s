@@ -289,7 +289,7 @@ func testReconciler(runtimeObjs ...client.Object) Reconciler {
 		AssociationInfo: kbAssociationInfo,
 		Client:          k8s.NewFakeClient(runtimeObjs...),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches("testCtr"),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
@@ -542,7 +542,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 			AssociationInfo: kbEntAssocInfo,
 			Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
 			accessReviewer:  reviewer,
-			watches:         watches.NewDynamicWatches(),
+			watches:         watches.NewDynamicWatches("testCtr"),
 			recorder:        rec,
 			OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 			RBACOnRefsMode:  rbacMode,
@@ -639,7 +639,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 					AssociationInfo: kbEntAssocInfo,
 					Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
 					accessReviewer:  denyAllAccessReviewer{},
-					watches:         watches.NewDynamicWatches(),
+					watches:         watches.NewDynamicWatches("testCtr"),
 					recorder:        rec,
 					OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 					RBACOnRefsMode:  operator.RBACOnRefsModeAll,
@@ -670,7 +670,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 					AssociationInfo: info,
 					Client:          k8s.NewFakeClient(&kb, &entObj, &entHTTPCerts, &entHTTPSvc),
 					accessReviewer:  denyAllAccessReviewer{},
-					watches:         watches.NewDynamicWatches(),
+					watches:         watches.NewDynamicWatches("testCtr"),
 					recorder:        rec,
 					OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 					RBACOnRefsMode:  operator.RBACOnRefsModeAll,
@@ -862,7 +862,7 @@ func TestReconciler_Reconcile_noESAuth(t *testing.T) {
 			&entHTTPService,
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches(),
+		watches:        watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
@@ -1198,7 +1198,7 @@ func TestReconciler_Reconcile_MultiRef(t *testing.T) {
 			},
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches(),
+		watches:        watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
@@ -1545,7 +1545,7 @@ func TestReconciler_Reconcile_Transitive_Associations(t *testing.T) {
 			},
 		),
 		accessReviewer: rbac.NewPermissiveAccessReviewer(),
-		watches:        watches.NewDynamicWatches(),
+		watches:        watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{
@@ -1681,7 +1681,7 @@ func TestReconciler_Reconcile_Transitive_SameNamespace(t *testing.T) {
 		AssociationInfo: info,
 		Client:          k8s.NewFakeClient(&agent, &fleetServer, &caSecret),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches("testCtr"),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
 	}
@@ -1799,7 +1799,7 @@ func TestReconciler_AdditionalSecrets_StaleDeleteOnConditionChange(t *testing.T)
 		AssociationInfo: info,
 		Client:          k8s.NewFakeClient(&agent, &fleetAgent, caSecret, staleCAcopy),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches("testCtr"),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		OperatorInfo: about.OperatorInfo{
 			BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"},
@@ -1905,7 +1905,7 @@ func TestReconciler_AdditionalSecrets_CrossToSameNamespaceTransition(t *testing.
 		AssociationInfo: info,
 		Client:          k8s.NewFakeClient(&agent, &fleetAgent, caInFleetNS, caInAgentNS),
 		accessReviewer:  rbac.NewPermissiveAccessReviewer(),
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches("testCtr"),
 		recorder:        toolsevents.NewFakeRecorder(10),
 		OperatorInfo:    about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.4.0-unittest"}},
 	}
@@ -2153,7 +2153,7 @@ func sameNSReconciler(objs ...client.Object) Reconciler {
 			}, nil
 		},
 		Client:  k8s.NewFakeClient(objs...),
-		watches: watches.NewDynamicWatches(),
+		watches: watches.NewDynamicWatches("testCtr"),
 	}
 }
 
@@ -2337,7 +2337,7 @@ func TestReconciler_Unbind(t *testing.T) {
 						}, nil
 					},
 					Client:  k8s.NewFakeClient(&crossNSAgent, &caCopy),
-					watches: watches.NewDynamicWatches(),
+					watches: watches.NewDynamicWatches("testCtr"),
 				}
 				return r, crossNSAgent.GetAssociations()[0]
 			},
@@ -2362,7 +2362,7 @@ func TestReconciler_Unbind(t *testing.T) {
 					AssociationResourceNamespaceLabelName: "test-ns",
 					ReferencedResourceNamer:               common_name.NewNamer("agent"),
 					Client:                                k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel),
-					watches:                               watches.NewDynamicWatches(),
+					watches:                               watches.NewDynamicWatches("testCtr"),
 				}
 				return r, crossNSAgent.GetAssociations()[0]
 			},
@@ -2401,7 +2401,7 @@ func TestReconciler_Unbind(t *testing.T) {
 					AssociationResourceNamespaceLabelName: "test-ns",
 					ReferencedResourceNamer:               common_name.NewNamer("agent"),
 					Client:                                k8s.NewFakeClient(&crossNSAgent, &caSecretNoLabel, &additionalCopy, &clientCertSecret, &unrelatedSecret),
-					watches:                               watches.NewDynamicWatches(),
+					watches:                               watches.NewDynamicWatches("testCtr"),
 				}
 				return r, crossNSAgent.GetAssociations()[0]
 			},
@@ -2590,7 +2590,7 @@ func TestReconciler_Reconcile_SupportsAuthentication(t *testing.T) {
 				AssociationInfo:   info,
 				Client:            k8s.NewFakeClient(&kb, &es, &esHTTPPublicCertsSecret, esHTTPService(), staleRequest),
 				accessReviewer:    rbac.NewPermissiveAccessReviewer(),
-				watches:           watches.NewDynamicWatches(),
+				watches:           watches.NewDynamicWatches("testCtr"),
 				recorder:          recorder,
 				OperatorInfo:      about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.5.0"}},
 				PasswordGenerator: fixtures.MustTestRandomGenerator(24),

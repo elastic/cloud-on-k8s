@@ -63,7 +63,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Resource not found",
 			reconciler: ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			},
 			pre: func(r ReconcilePackageRegistry) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
@@ -90,7 +90,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 						ObservedGeneration: 1,
 					},
 				}),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			},
 			pre: func(r ReconcilePackageRegistry) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
@@ -148,7 +148,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			reconciler: ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(&eprFixture),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcilePackageRegistry) {

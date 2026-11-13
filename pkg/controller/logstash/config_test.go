@@ -486,7 +486,7 @@ config:
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: toolsevents.NewFakeRecorder(10),
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches("testCtr"),
 				Logstash:      tt.args.logstash,
 				Version:       v,
 			}
@@ -874,7 +874,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
 				EventRecorder: toolsevents.NewFakeRecorder(10),
-				Watches:       watches.NewDynamicWatches(),
+				Watches:       watches.NewDynamicWatches("testCtr"),
 				Logstash:      tt.args.logstash,
 			}
 
@@ -916,7 +916,7 @@ func Test_reconcileConfig_credentialHash(t *testing.T) {
 			Context:       context.Background(),
 			Client:        k8s.NewFakeClient(),
 			EventRecorder: toolsevents.NewFakeRecorder(10),
-			Watches:       watches.NewDynamicWatches(),
+			Watches:       watches.NewDynamicWatches("testCtr"),
 			Logstash: v1alpha1.Logstash{
 				ObjectMeta: metav1.ObjectMeta{Name: "ls", Namespace: "ns"},
 				Spec: v1alpha1.LogstashSpec{

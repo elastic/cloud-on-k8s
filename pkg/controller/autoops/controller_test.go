@@ -316,7 +316,7 @@ func TestReconcileAutoOpsAgentPolicy_onDelete(t *testing.T) {
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := context.Background()

@@ -9,44 +9,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Values of the "handler" label of elastic_dynamic_watches_registered.
-const (
-	configMapsHandlerKind          = "configmaps"
-	secretsHandlerKind             = "secrets"
-	servicesHandlerKind            = "services"
-	podsHandlerKind                = "pods"
-	referencedResourcesHandlerKind = "referencedresources"
-	unknownHandlerKind             = "unknown"
-)
-
-// handlerKindFor returns the "handler" label value for the watched type T.
-func handlerKindFor[T client.Object]() string {
-	var zero T
-	switch any(zero).(type) {
-	case *corev1.ConfigMap:
-		return configMapsHandlerKind
-	case *corev1.Secret:
-		return secretsHandlerKind
-	case *corev1.Service:
-		return servicesHandlerKind
-	case *corev1.Pod:
-		return podsHandlerKind
-	case nil:
-		// client.Object is used for the generic referenced-resources watch.
-		return referencedResourcesHandlerKind
-	default:
-		return unknownHandlerKind
-	}
-}
-
 // NewDynamicWatches creates an initialized DynamicWatches container.
-func NewDynamicWatches() DynamicWatches {
+func NewDynamicWatches(ctrName string) DynamicWatches {
 	return DynamicWatches{
-		ConfigMaps:          NewDynamicEnqueueRequest[*corev1.ConfigMap](),
-		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](),
-		Services:            NewDynamicEnqueueRequest[*corev1.Service](),
-		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](),
-		ReferencedResources: NewDynamicEnqueueRequest[client.Object](),
+		ConfigMaps:          NewDynamicEnqueueRequest[*corev1.ConfigMap](ctrName),
+		Secrets:             NewDynamicEnqueueRequest[*corev1.Secret](ctrName),
+		Services:            NewDynamicEnqueueRequest[*corev1.Service](ctrName),
+		Pods:                NewDynamicEnqueueRequest[*corev1.Pod](ctrName),
+		ReferencedResources: NewDynamicEnqueueRequest[client.Object](ctrName),
 	}
 }
 

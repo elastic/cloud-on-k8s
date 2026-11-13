@@ -95,7 +95,7 @@ func Test_parseConfigRef(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.secrets...)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
@@ -660,7 +660,7 @@ func TestReconcileConfig(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			// secret metadata should be correct
@@ -839,7 +839,7 @@ secret_session_key: alreadysetsessionkey
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			got, err := ReconcileConfig(context.Background(), driver, tt.ent, corev1.IPv4Protocol, metadata.Metadata{})
@@ -967,7 +967,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			got, err := ReconcileConfig(context.Background(), driver, tt.ent, tt.ipFamily, metadata.Metadata{})

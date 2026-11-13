@@ -93,7 +93,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	}
 	return &ReconcileElasticsearchAutoscaler{
 		baseReconcileAutoscaling: reconcileAutoscaling.withRecorder(mgr.GetEventRecorder(ControllerName)),
-		Watches:                  watches.NewDynamicWatches(),
+		Watches:                  watches.NewDynamicWatches(ControllerName),
 	}
 }
 

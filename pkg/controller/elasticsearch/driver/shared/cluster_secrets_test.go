@@ -82,7 +82,7 @@ func TestBuildClusterSecrets(t *testing.T) {
 			objects[0] = &es
 			objects = append(objects, tt.objects...)
 			c := k8s.NewFakeClient(objects...)
-			dw := watches.NewDynamicWatches()
+			dw := watches.NewDynamicWatches("testCtr")
 			recorder := &toolsevents.FakeRecorder{}
 
 			result, err := BuildClusterSecrets(context.Background(), c, recorder, dw, es, "")

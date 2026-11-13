@@ -136,7 +136,7 @@ package_paths:
 			d := ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
 				recorder:       toolsevents.NewFakeRecorder(10),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			got, err := newConfig(&d, tt.args.epr)

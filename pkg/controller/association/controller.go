@@ -50,7 +50,7 @@ func AddAssociationController(
 		AssociationInfo: associationInfo,
 		Client:          mgr.GetClient(),
 		accessReviewer:  accessReviewer,
-		watches:         watches.NewDynamicWatches(),
+		watches:         watches.NewDynamicWatches(controllerName),
 		recorder:        mgr.GetEventRecorder(controllerName),
 		Parameters:      params,
 	}

@@ -287,7 +287,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 					Version:        tt.version,
 					Client:         c,
 					Recorder:       toolsevents.NewFakeRecorder(10),
-					DynamicWatches: watches.NewDynamicWatches(),
+					DynamicWatches: watches.NewDynamicWatches("testCtr"),
 					OperatorParameters: operator.Parameters{
 						PasswordGenerator: fixtures.MustTestRandomGenerator(24),
 					},
