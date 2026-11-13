@@ -37,7 +37,7 @@ func reconcileServices(params Params) ([]corev1.Service, corev1.Service, error) 
 	for _, userDefinedService := range params.Logstash.Spec.Services {
 		logstash := params.Logstash
 		svc := newService(userDefinedService, params.Logstash)
-		isAPISvc := logstashv1alpha1.UserServiceName(logstash.Name, userDefinedService.Name) == logstashv1alpha1.APIServiceName(logstash.Name)
+		isAPISvc := logstash.IsAPIService(userDefinedService)
 		if isAPISvc {
 			// Ensure the API service is created with the correct defaults.
 			defaults.SetServiceDefaults(svc, params.Meta, defaultAPIService.Spec.Selector, defaultAPIService.Spec.Ports)

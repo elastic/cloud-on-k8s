@@ -11719,7 +11719,14 @@ spec:
                           type: object
                       type: object
                     tls:
-                      description: TLS defines options for configuring TLS for HTTP.
+                      description: |-
+                        TLS defines options for configuring TLS.
+                        Logstash uses a single certificate, which is issued according to the TLS options of the `api` Service.
+                        For any other Service, only `selfSignedCertificate` is taken into account: when it is set and not disabled,
+                        its `subjectAltNames` and the DNS names and IP addresses of the Service are added to that certificate,
+                        so that it can also be used by the Logstash inputs exposed through the Service. The certificate and its key
+                        are available in the Logstash container in the `/mnt/elastic-internal/http-certs` directory.
+                        `certificate` and `certificateAuthorities` are ignored for Services other than `api`.
                       properties:
                         certificate:
                           description: |-

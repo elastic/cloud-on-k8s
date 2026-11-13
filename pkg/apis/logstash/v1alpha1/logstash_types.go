@@ -125,7 +125,13 @@ type LogstashService struct {
 	Name string `json:"name,omitempty"`
 	// Service defines the template for the associated Kubernetes Service object.
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`
-	// TLS defines options for configuring TLS for HTTP.
+	// TLS defines options for configuring TLS.
+	// Logstash uses a single certificate, which is issued according to the TLS options of the `api` Service.
+	// For any other Service, only `selfSignedCertificate` is taken into account: when it is set and not disabled,
+	// its `subjectAltNames` and the DNS names and IP addresses of the Service are added to that certificate,
+	// so that it can also be used by the Logstash inputs exposed through the Service. The certificate and its key
+	// are available in the Logstash container in the `/mnt/elastic-internal/http-certs` directory.
+	// `certificate` and `certificateAuthorities` are ignored for Services other than `api`.
 	TLS commonv1.TLSOptions `json:"tls,omitempty"`
 }
 
@@ -438,14 +444,54 @@ func (l *Logstash) Conditions() commonv1.Conditions {
 	return l.Status.Conditions
 }
 
+// IsAPIService returns true if the given user defined Service is the Logstash API Service.
+func (l *Logstash) IsAPIService(service LogstashService) bool {
+	return UserServiceName(l.Name, service.Name) == APIServiceName(l.Name)
+}
+
 // APIServerService returns the user defined API Service
 func (l *Logstash) APIServerService() LogstashService {
 	for _, service := range l.Spec.Services {
-		if UserServiceName(l.Name, service.Name) == APIServiceName(l.Name) {
+		if l.IsAPIService(service) {
 			return service
 		}
 	}
 	return LogstashService{}
+}
+
+// CertificateContributingServices returns the user defined Services, other than the API Service, which explicitly
+// request a self-signed certificate. The DNS names and IP addresses of these Services and their subject alternative
+// names are added to the certificate shared by all the Services of this Logstash.
+// A Service without `tls.selfSignedCertificate` does not contribute, which keeps the certificate of existing
+// resources unchanged.
+func (l *Logstash) CertificateContributingServices() []LogstashService {
+	var services []LogstashService
+	for _, service := range l.Spec.Services {
+		if l.IsAPIService(service) {
+			continue
+		}
+		if selfSigned := service.TLS.SelfSignedCertificate; selfSigned != nil && !selfSigned.Disabled {
+			services = append(services, service)
+		}
+	}
+	return services
+}
+
+// ExtraCertificateSANs returns the subject alternative names requested by the Services returned by
+// CertificateContributingServices, in the order of the spec and without duplicates.
+func (l *Logstash) ExtraCertificateSANs() []commonv1.SubjectAlternativeName {
+	var sans []commonv1.SubjectAlternativeName
+	seen := make(map[commonv1.SubjectAlternativeName]struct{})
+	for _, service := range l.CertificateContributingServices() {
+		for _, san := range service.TLS.SelfSignedCertificate.SubjectAlternativeNames {
+			if _, ok := seen[san]; ok {
+				continue
+			}
+			seen[san] = struct{}{}
+			sans = append(sans, san)
+		}
+	}
+	return sans
 }
 
 // APIServerTLSOptions returns the user defined TLSOptions of API Service

@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	toolsevents "k8s.io/client-go/tools/events"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -52,6 +53,9 @@ type Params struct {
 	OperatorParams    operator.Parameters
 	KeystoreResources *keystore.Resources
 	APIServerConfig   configs.APIServer // resolved API server config
+	// MountHTTPCerts is true if the HTTP certificates are reconciled and must be mounted in the Logstash container.
+	// It can be true while TLS is disabled for the API server, if another Service requests a self-signed certificate.
+	MountHTTPCerts bool
 
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
@@ -99,21 +103,24 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 
-	_, apiSvc, err := reconcileServices(params)
+	svcs, apiSvc, err := reconcileServices(params)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
 
 	apiSvcTLS := params.Logstash.APIServerTLSOptions()
+	certTLS := certificateTLSOptions(params.Logstash)
+	params.MountHTTPCerts = certTLS.Enabled()
 
 	_, results = certificates.Reconciler{
 		K8sClient:             params.Client,
 		DynamicWatches:        params.Watches,
 		Owner:                 &params.Logstash,
-		TLSOptions:            apiSvcTLS,
+		TLSOptions:            certTLS,
+		ExtraHTTPSANs:         params.Logstash.ExtraCertificateSANs(),
 		Namer:                 logstashv1alpha1.Namer,
 		Metadata:              params.Meta,
-		Services:              []corev1.Service{apiSvc},
+		Services:              certificateServices(params.Logstash, apiSvc, svcs),
 		GlobalCA:              params.OperatorParams.GlobalCA,
 		CACertRotation:        params.OperatorParams.CACertRotation,
 		CertRotation:          params.OperatorParams.CertRotation,
@@ -157,6 +164,34 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 		return results.WithError(err), params.Status
 	}
 	return reconcileStatefulSet(params, podTemplate)
+}
+
+// certificateTLSOptions returns the TLS options used to reconcile the certificate shared by all the Services.
+// These are the TLS options of the API Service, unless TLS is disabled for the API Service while another Service
+// requests a self-signed certificate. In that case a self-signed certificate is reconciled for the other Services
+// and the API server does not use it.
+func certificateTLSOptions(logstash logstashv1alpha1.Logstash) commonv1.TLSOptions {
+	apiSvcTLS := logstash.APIServerTLSOptions()
+	if !apiSvcTLS.Enabled() && len(logstash.CertificateContributingServices()) > 0 {
+		return commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{}}
+	}
+	return apiSvcTLS
+}
+
+// certificateServices returns the Services whose DNS names and IP addresses are added to the shared certificate:
+// the API Service first, then the Services which request a self-signed certificate, in the order of the spec.
+func certificateServices(logstash logstashv1alpha1.Logstash, apiSvc corev1.Service, reconciled []corev1.Service) []corev1.Service {
+	contributing := make(map[string]struct{})
+	for _, service := range logstash.CertificateContributingServices() {
+		contributing[logstashv1alpha1.UserServiceName(logstash.Name, service.Name)] = struct{}{}
+	}
+	services := []corev1.Service{apiSvc}
+	for _, svc := range reconciled {
+		if _, ok := contributing[svc.Name]; ok {
+			services = append(services, svc)
+		}
+	}
+	return services
 }
 
 // expectationsSatisfied checks that resources in our local cache match what we expect.
