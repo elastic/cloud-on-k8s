@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -42,6 +43,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		name                      string
 		logstash                  logstashv1alpha1.Logstash
 		apiServerConfig           configs.APIServer
+		mountHTTPCerts            bool
 		setDefaultSecurityContext bool
 		assertions                func(pod corev1.PodTemplateSpec)
 	}{
@@ -382,6 +384,34 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Len(t, GetLogstashContainer(pod.Spec).VolumeMounts, 6)
 			},
 		},
+		{
+			name: "API server without TLS and no certificate: HTTP certificates are not mounted",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Len(t, pod.Spec.Volumes, 4)
+				assert.False(t, hasHTTPCertsVolumeMount(pod))
+				assert.Equal(t, "false", GetEnvByName(GetConfigInitContainer(pod.Spec).Env, UseTLSEnv).Value)
+			},
+		},
+		{
+			name: "API server without TLS and a certificate requested by another Service: HTTP certificates are mounted",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
+			mountHTTPCerts:  true,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Len(t, pod.Spec.Volumes, 5)
+				assert.True(t, hasHTTPCertsVolumeMount(pod))
+				// the API server keystore is not prepared
+				initContainer := GetConfigInitContainer(pod.Spec)
+				assert.Equal(t, "false", GetEnvByName(initContainer.Env, UseTLSEnv).Value)
+				assert.Nil(t, GetEnvByName(initContainer.Env, APIKeystorePassEnv))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -393,6 +423,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Logstash:        tt.logstash,
 				Version:         v,
 				APIServerConfig: tt.apiServerConfig,
+				MountHTTPCerts:  tt.mountHTTPCerts,
 				OperatorParams:  operator.Parameters{SetDefaultSecurityContext: tt.setDefaultSecurityContext},
 			}
 			configHash := fnv.New32a()
@@ -400,6 +431,70 @@ func TestNewPodTemplateSpec(t *testing.T) {
 
 			require.NoError(t, err)
 			tt.assertions(got)
+		})
+	}
+}
+
+func Test_writeHTTPSCertsToConfigHash(t *testing.T) {
+	httpCertsSecret := corev1.Secret{
+		Name: "fake-ls-http-certs-internal", Namespace: "default",
+		Data: map[string][]byte{"tls.crt": []byte("certificate")},
+	}
+	emptyHash := fnv.New32a().Sum32()
+
+	tests := []struct {
+		name            string
+		apiServerConfig configs.APIServer
+		mountHTTPCerts  bool
+		objs            []client.Object
+		wantHashed      bool
+		wantErr         bool
+	}{
+		{
+			name:            "API server with TLS: certificate is in the hash",
+			apiServerConfig: GetDefaultAPIServer(),
+			objs:            []client.Object{&httpCertsSecret},
+			wantHashed:      true,
+		},
+		{
+			name:            "API server without TLS and no certificate: nothing is in the hash",
+			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
+			objs:            []client.Object{&httpCertsSecret},
+			wantHashed:      false,
+		},
+		{
+			name:            "API server without TLS and a certificate requested by another Service: certificate is in the hash",
+			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
+			mountHTTPCerts:  true,
+			objs:            []client.Object{&httpCertsSecret},
+			wantHashed:      true,
+		},
+		{
+			name:            "certificate requested by another Service but the Secret does not exist: error",
+			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
+			mountHTTPCerts:  true,
+			wantErr:         true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := Params{
+				Context: context.Background(),
+				Client:  k8s.NewFakeClient(tt.objs...),
+				Logstash: logstashv1alpha1.Logstash{
+					ObjectMeta: metav1.ObjectMeta{Name: "fake", Namespace: "default"},
+				},
+				APIServerConfig: tt.apiServerConfig,
+				MountHTTPCerts:  tt.mountHTTPCerts,
+			}
+			configHash := fnv.New32a()
+			err := writeHTTPSCertsToConfigHash(params, configHash)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantHashed, configHash.Sum32() != emptyHash)
 		})
 	}
 }

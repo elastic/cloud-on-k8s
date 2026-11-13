@@ -7,6 +7,7 @@ package validation
 import (
 	"context"
 	"fmt"
+	"net"
 
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -18,10 +19,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
 )
 
 const (
-	pvcImmutableMsg = "Volume claim templates can only have storage requests modified"
+	pvcImmutableMsg    = "Volume claim templates can only have storage requests modified"
+	invalidSanIPErrMsg = "Invalid SAN IP address. Must be a valid IPv4 or IPv6 address"
+	// apiServiceName is the name of the Service of the Logstash API in spec.services.
+	apiServiceName = "api"
 )
 
 type validation func(*lsv1alpha1.Logstash) field.ErrorList
@@ -50,6 +55,7 @@ func validations() []validation {
 		checkConsistentESRefAuthentication,
 		checkSinglePipelineSource,
 		checkPipelinesRefSource,
+		checkServicesSubjectAltNames,
 		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
 	}
 }
@@ -122,6 +128,62 @@ func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
 		}
 	}
 	return nil
+}
+
+// checkServicesSubjectAltNames ensures that the IP addresses set in the subject alternative names of the Services
+// are valid.
+func checkServicesSubjectAltNames(l *lsv1alpha1.Logstash) field.ErrorList {
+	var errs field.ErrorList
+	for i, service := range l.Spec.Services {
+		selfSigned := service.TLS.SelfSignedCertificate
+		if selfSigned == nil {
+			continue
+		}
+		for j, san := range selfSigned.SubjectAlternativeNames {
+			if san.IP != "" && netutil.IPToRFCForm(net.ParseIP(san.IP)) == nil {
+				errs = append(errs, field.Invalid(
+					field.NewPath("spec").Child("services").Index(i).Child("tls", "selfSignedCertificate", "subjectAltNames").Index(j).Child("ip"),
+					san.IP,
+					invalidSanIPErrMsg,
+				))
+			}
+		}
+	}
+	return errs
+}
+
+// servicesTLSWarnings returns warnings for the TLS options of the Services which have no effect.
+// Logstash uses a single certificate, issued according to the TLS options of the API Service. The other Services
+// can only add subject alternative names to it, and only if this certificate is self-signed.
+func servicesTLSWarnings(l *lsv1alpha1.Logstash) []string {
+	var warnings []string
+	apiCustomCert := l.APIServerTLSOptions().Certificate.SecretName != ""
+	for i, service := range l.Spec.Services {
+		if l.IsAPIService(service) {
+			continue
+		}
+		tlsPath := field.NewPath("spec").Child("services").Index(i).Child("tls")
+		if service.TLS.Certificate.SecretName != "" {
+			warnings = append(warnings, fmt.Sprintf(
+				"%s is ignored: Logstash uses a single certificate, which is configured in the TLS options of the `%s` Service",
+				tlsPath.Child("certificate"), apiServiceName,
+			))
+		}
+		if service.TLS.CertificateAuthorities.ConfigMapName != "" {
+			warnings = append(warnings, fmt.Sprintf(
+				"%s is ignored: it is only supported in the TLS options of the `%s` Service",
+				tlsPath.Child("certificateAuthorities"), apiServiceName,
+			))
+		}
+		selfSigned := service.TLS.SelfSignedCertificate
+		if apiCustomCert && selfSigned != nil && !selfSigned.Disabled && len(selfSigned.SubjectAlternativeNames) > 0 {
+			warnings = append(warnings, fmt.Sprintf(
+				"%s is ignored: the `%s` Service uses a custom certificate, to which subject alternative names cannot be added",
+				tlsPath.Child("selfSignedCertificate", "subjectAltNames"), apiServiceName,
+			))
+		}
+	}
+	return warnings
 }
 
 func checkESRefsNamed(l *lsv1alpha1.Logstash) field.ErrorList {
