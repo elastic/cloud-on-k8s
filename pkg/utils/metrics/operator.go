@@ -35,7 +35,7 @@ var (
 	DynamicWatchesRegistered = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "dynamic_watches_registered",
-		Help:      "Number of registered dynamic watch handlers, by watched resource kind",
+		Help:      "Number of registered dynamic watch handlers, by controller and watched resource kind",
 	}, []string{ControllerNameLabel, HandlerKindLabel}))
 
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.

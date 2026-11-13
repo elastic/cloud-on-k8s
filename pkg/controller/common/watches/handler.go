@@ -72,7 +72,7 @@ func NewDynamicEnqueueRequest[T client.Object](ctrName string) *DynamicEnqueueRe
 		handlerKind:   handlerKindFor[T](),
 		registrations: make(map[string]HandlerRegistration[T]),
 	}
-	_ = de.getDynamicWatchesMetric()
+	de.setDynamicWatchesValue()
 	return de
 }
 
@@ -87,7 +87,8 @@ type DynamicEnqueueRequest[T client.Object] struct {
 	ctrName string
 }
 
-// initMetric initializes the metric with the handler label.
+// getDynamicWatchesMetric get the dynamic watches metric with the handler and controller labels set.
+// if this is first time the metric is being get, the metric will be registered.
 func (d *DynamicEnqueueRequest[T]) getDynamicWatchesMetric() prometheus.Gauge {
 	return metrics.DynamicWatchesRegistered.WithLabelValues(d.ctrName, d.handlerKind)
 }

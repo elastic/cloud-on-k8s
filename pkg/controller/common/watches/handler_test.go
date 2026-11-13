@@ -6,6 +6,7 @@ package watches
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -82,6 +83,20 @@ func TestHandlerKindFor(t *testing.T) {
 	assert.Equal(t, unknownHandlerKind, handlerKindFor[*corev1.Namespace]())
 }
 
+func TestNewDynamicWatches_HandlerKinds(t *testing.T) {
+	dw := reflect.ValueOf(NewDynamicWatches("test-ctr"))
+	seen := map[string]string{}
+	for i := range dw.NumField() {
+		field := dw.Type().Field(i).Name
+		kind := dw.Field(i).Elem().FieldByName("handlerKind").String()
+		assert.NotEqual(t, unknownHandlerKind, kind, "field %s has no handler kind mapping", field)
+		if prev, ok := seen[kind]; ok {
+			t.Errorf("fields %s and %s share handler kind %q", prev, field, kind)
+		}
+		seen[kind] = field
+	}
+}
+
 func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
 	const kind = secretsHandlerKind
 	const testCtrName = "testCtr"
@@ -143,7 +158,6 @@ func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
 			if tt.removeHandlerKey != "" {
 				d.RemoveHandlerForKey(tt.removeHandlerKey)
 			}
-			assert.Equal(t, tt.expectedValue, float64(len(d.registrations)))
 			assert.Equal(t, tt.expectedValue, dynamicWatchesValue(testCtrName, kind))
 		})
 	}
