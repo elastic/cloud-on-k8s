@@ -1785,3 +1785,170 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 		})
 	}
 }
+
+func Test_validPlugins(t *testing.T) {
+	icu := []esv1.Plugin{{ID: "analysis-icu"}}
+	tests := []struct {
+		name       string
+		version    string
+		plugins    *esv1.PluginsSpec
+		wantFields []string
+	}{
+		{
+			name:       "no plugins on an old version",
+			version:    "8.16.0",
+			plugins:    nil,
+			wantFields: nil,
+		},
+		{
+			name:       "empty plugins on an old version",
+			version:    "8.16.0",
+			plugins:    &esv1.PluginsSpec{Proxy: "malformed"},
+			wantFields: nil,
+		},
+		{
+			name:       "plugins with an unparseable version",
+			version:    "not-a-version",
+			plugins:    &esv1.PluginsSpec{Items: icu},
+			wantFields: nil,
+		},
+		{
+			name:       "plugins below the minimum version",
+			version:    "8.16.6",
+			plugins:    &esv1.PluginsSpec{Items: icu},
+			wantFields: []string{"spec.plugins"},
+		},
+		{
+			name:       "plugins at the minimum version",
+			version:    "8.17.0",
+			plugins:    &esv1.PluginsSpec{Items: icu},
+			wantFields: nil,
+		},
+		{
+			name:       "plugins on a snapshot of the minimum version",
+			version:    "8.17.0-SNAPSHOT",
+			plugins:    &esv1.PluginsSpec{Items: icu},
+			wantFields: nil,
+		},
+		{
+			name:       "plugins on 9.x",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu},
+			wantFields: nil,
+		},
+		{
+			name:    "valid proxy and locations",
+			version: "9.2.0",
+			plugins: &esv1.PluginsSpec{
+				Proxy: "proxy.corp:3128",
+				Items: []esv1.Plugin{
+					{ID: "analysis-icu"},
+					{ID: "url-plugin", Location: "https://repo.corp/my-plugin-9.2.0.zip"},
+					{ID: "file-plugin", Location: "file:///mnt/plugins/my-plugin.zip"},
+					{ID: "maven-plugin", Location: "org.example:my-plugin:9.2.0"},
+					{ID: "ipv6-host", Location: "https://[::1]:8080/my-plugin.zip"},
+					{ID: "escaped-brackets", Location: "https://repo.corp/my%5Bplugin%5D.zip"},
+					{ID: "query-brackets", Location: "https://repo.corp/my-plugin.zip?v=[1]"},
+					{ID: "fragment-brackets", Location: "https://repo.corp/my-plugin.zip#v[1]"},
+					{ID: "maven-brackets", Location: "org.example:my[plugin]:9.2.0"},
+					{ID: "query-only-ssp", Location: "https:?v=1"},
+					{ID: "empty-authority", Location: "file:///mnt/plugins/my-plugin.zip#v1"},
+				},
+			},
+			wantFields: nil,
+		},
+		{
+			name:       "proxy without port",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu, Proxy: "proxy.corp"},
+			wantFields: []string{"spec.plugins.proxy"},
+		},
+		{
+			name:       "proxy with empty host",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu, Proxy: ":3128"},
+			wantFields: []string{"spec.plugins.proxy"},
+		},
+		{
+			name:       "proxy with non numeric port",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu, Proxy: "proxy.corp:http"},
+			wantFields: []string{"spec.plugins.proxy"},
+		},
+		{
+			name:       "proxy with out of range port",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu, Proxy: "proxy.corp:70000"},
+			wantFields: []string{"spec.plugins.proxy"},
+		},
+		{
+			name:       "proxy with a scheme",
+			version:    "9.2.0",
+			plugins:    &esv1.PluginsSpec{Items: icu, Proxy: "http://proxy.corp:3128"},
+			wantFields: []string{"spec.plugins.proxy"},
+		},
+		{
+			name:    "blank ids",
+			version: "9.2.0",
+			plugins: &esv1.PluginsSpec{Items: []esv1.Plugin{
+				{ID: "analysis-icu"},
+				{ID: " "},
+				{ID: "\t", Location: "https://repo.corp/my-plugin.zip"},
+			}},
+			wantFields: []string{
+				"spec.plugins.items[1].id",
+				"spec.plugins.items[2].id",
+			},
+		},
+		{
+			name:    "malformed locations",
+			version: "9.2.0",
+			plugins: &esv1.PluginsSpec{Items: []esv1.Plugin{
+				{ID: "analysis-icu"},
+				{ID: "blank", Location: "  "},
+				{ID: "space", Location: "https://repo.corp/my plugin.zip"},
+				{ID: "bad-escape", Location: "https://repo.corp/%zz.zip"},
+				{ID: "pipe", Location: "https://repo.corp/my|plugin.zip"},
+				{ID: "quote", Location: `https://repo.corp/my"plugin.zip`},
+				{ID: "braces", Location: "https://repo.corp/{version}/my-plugin.zip"},
+				{ID: "backslash", Location: `file:///mnt\plugins\my-plugin.zip`},
+				{ID: "query-bad-escape", Location: "https://repo.corp/my-plugin.zip?token=%zz"},
+				{ID: "maven-bad-escape", Location: "org.example:my-plugin:%zz"},
+				{ID: "truncated-escape", Location: "https://repo.corp/my-plugin.zip%2"},
+				{ID: "path-brackets", Location: "https://repo.corp/my[plugin].zip"},
+				{ID: "empty-ssp", Location: "https:"},
+				{ID: "empty-ssp-with-fragment", Location: "file:#fragment"},
+				{ID: "two-fragments", Location: "https://repo.corp/my-plugin.zip#a#b"},
+			}},
+			wantFields: []string{
+				"spec.plugins.items[1].location",
+				"spec.plugins.items[2].location",
+				"spec.plugins.items[3].location",
+				"spec.plugins.items[4].location",
+				"spec.plugins.items[5].location",
+				"spec.plugins.items[6].location",
+				"spec.plugins.items[7].location",
+				"spec.plugins.items[8].location",
+				"spec.plugins.items[9].location",
+				"spec.plugins.items[10].location",
+				"spec.plugins.items[11].location",
+				"spec.plugins.items[12].location",
+				"spec.plugins.items[13].location",
+				"spec.plugins.items[14].location",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				Namespace: "default", Name: "foo",
+				Spec: esv1.ElasticsearchSpec{Version: tt.version, Plugins: tt.plugins},
+			}
+			var gotFields []string
+			for _, err := range validPlugins(es) {
+				gotFields = append(gotFields, err.Field)
+			}
+			require.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}

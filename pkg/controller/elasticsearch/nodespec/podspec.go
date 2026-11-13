@@ -115,7 +115,11 @@ func BuildPodTemplateSpec(
 	if err := client.Get(ctx, types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}, esScripts); err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
-	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), policyConfig.PolicyAnnotations, actualPodsRestartTriggerAnnotationValue)
+	pluginsConfig, err := settings.RenderPluginsConfig(es)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	annotations := buildAnnotations(es, cfg, keystoreResources, getScriptsConfigMapContent(esScripts), pluginsConfig, policyConfig.PolicyAnnotations, actualPodsRestartTriggerAnnotationValue)
 
 	// Attempt to detect if the default data directory is mounted in a volume.
 	// If not, it could be a bug, a misconfiguration, or a custom storage configuration that requires the user to
@@ -222,6 +226,7 @@ func buildAnnotations(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scriptsContent string,
+	pluginsConfig []byte,
 	policyAnnotations map[string]string,
 	actualPodsRestartTriggerAnnotationValue string,
 ) map[string]string {
@@ -235,6 +240,12 @@ func buildAnnotations(
 	hash.WriteHashObject(configHash, cfg)
 	// hash of the scripts' content to rotate the pod if the scripts have changed
 	_, _ = configHash.Write([]byte(scriptsContent))
+
+	if len(pluginsConfig) > 0 {
+		// Elasticsearch only syncs plugins on startup, rotate the pod on plugins changes.
+		// Only hashed when set, to keep the hash of clusters without plugins unchanged.
+		_, _ = configHash.Write(pluginsConfig)
+	}
 
 	if es.HasDownwardNodeLabels() {
 		// Hash user-provided labels in their original annotation order for backward compatibility,

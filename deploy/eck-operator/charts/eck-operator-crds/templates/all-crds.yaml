@@ -5747,6 +5747,46 @@ spec:
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
+              plugins:
+                description: |-
+                  Plugins declares the Elasticsearch plugins to install on every node of the cluster.
+                  The operator renders them into the elasticsearch-plugins.yml file, which Elasticsearch
+                  uses on startup to install, upgrade and remove plugins.
+                  Any plugin that is installed but not listed here is removed, including plugins baked into a custom image.
+                  Requires Elasticsearch 8.17.0 or later.
+                properties:
+                  items:
+                    description: Items is the list of plugins to install.
+                    items:
+                      description: Plugin is a single Elasticsearch plugin.
+                      properties:
+                        id:
+                          description: |-
+                            ID is the name of the plugin.
+                            For a custom plugin, it must match the name declared in the plugin descriptor, otherwise Elasticsearch fails to start.
+                          minLength: 1
+                          type: string
+                        location:
+                          description: |-
+                            Location is the URL, file:// path or Maven coordinates of a custom plugin.
+                            Required for any plugin that is not an official Elastic plugin, otherwise Elasticsearch fails to start.
+                            Leave it empty for official plugins.
+                          type: string
+                      required:
+                      - id
+                      type: object
+                    minItems: 1
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - id
+                    x-kubernetes-list-type: map
+                  proxy:
+                    description: Proxy is an optional HTTP proxy, in host:port form,
+                      used to download plugins.
+                    type: string
+                required:
+                - items
+                type: object
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.

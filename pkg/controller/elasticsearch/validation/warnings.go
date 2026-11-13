@@ -7,6 +7,8 @@ package validation
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +28,7 @@ const (
 	zoneAwarenessAffinityDoesNotExistWarningMsg = "Zone awareness injects an Exists requirement for the topology key; DoesNotExist on the same key makes this node selector term unsatisfiable, though other OR'd terms may still allow scheduling"
 	zoneAwarenessAffinityNotInWarningMsg        = "Zone awareness may conflict with required node affinity using NotIn on the topology key; this can make pods unschedulable depending on node labels"
 	managedFalseDeprecationWarningMsg           = "eck.k8s.elastic.co/managed is deprecated, use eck.k8s.elastic.co/pause-orchestration instead"
+	pluginsInitContainerWarningMsg              = "Init containers that run elasticsearch-plugin fail when spec.plugins is set; move these plugins to spec.plugins"
 )
 
 var warnings = []validation{
@@ -33,6 +36,7 @@ var warnings = []validation{
 	shorthandResourcesOverrideWarning,
 	validZoneAwarenessAffinityWarnings,
 	managedFalseDeprecationWarning,
+	pluginsWarnings,
 }
 
 // deprecatedStackVersionWarning returns a field error when the stack version is deprecated (EOL).
@@ -87,6 +91,34 @@ func managedFalseDeprecationWarning(es esv1.Elasticsearch) field.ErrorList {
 			value, managedFalseDeprecationWarningMsg)}
 	}
 	return nil
+}
+
+// pluginsWarnings warns about init containers that run elasticsearch-plugin when spec.plugins is set.
+// They run after the operator linked elasticsearch-plugins.yml into the config dir, and elasticsearch-plugin
+// refuses to install or remove plugins while that file exists.
+func pluginsWarnings(es esv1.Elasticsearch) field.ErrorList {
+	if !es.HasPlugins() {
+		return nil
+	}
+	var out field.ErrorList
+	for i, nodeSet := range es.Spec.NodeSets {
+		for j, c := range nodeSet.PodTemplate.Spec.InitContainers {
+			if !runsElasticsearchPlugin(c) {
+				continue
+			}
+			out = append(out, field.Invalid(
+				field.NewPath("spec").Child("nodeSets").Index(i).Child("podTemplate", "spec", "initContainers").Index(j),
+				c.Name,
+				pluginsInitContainerWarningMsg,
+			))
+		}
+	}
+	return out
+}
+
+func runsElasticsearchPlugin(c corev1.Container) bool {
+	callsPlugin := func(s string) bool { return strings.Contains(s, "elasticsearch-plugin") }
+	return slices.ContainsFunc(c.Command, callsPlugin) || slices.ContainsFunc(c.Args, callsPlugin)
 }
 
 func noUnsupportedSettings(es esv1.Elasticsearch) field.ErrorList {
