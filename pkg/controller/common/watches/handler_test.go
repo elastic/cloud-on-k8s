@@ -102,7 +102,7 @@ func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
 	const testCtrName = "testCtr"
 	// Other tests may register handlers of this kind; assert relative to the baseline.
 	baseline := dynamicWatchesValue(testCtrName, kind)
-
+	
 	d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 	_ = baseline // baseline checked at start
 
