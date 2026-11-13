@@ -31,11 +31,11 @@ The `--enforce-rbac-on-refs` flag now checks every cross-namespace association, 
 
 #### Compatibility with Helm 4 and Server-Side Apply
 
-Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
+Helm 4 applies resources with Server-Side Apply (SSA) by default. ECK now writes its internal state (association configuration, cluster UUID, finalizers) with scoped patches instead of full-object updates, so the operator never claims ownership of the `spec` fields that Helm manages. The {{es}} autoscaler now owns only the `count` and `resources` fields of the NodeSets it manages. Resources that earlier ECK versions managed can still carry the old field ownership. After you upgrade the operator, run your usual `helm upgrade` command once with the `--force-conflicts` flag, as described in [Helm 4 and Server-Side Apply](docs-content://deploy-manage/deploy/cloud-on-k8s/managing-deployments-using-helm-chart.md#k8s-helm4-ssa). If you use an `ElasticsearchAutoscaler`, first remove the fields that the autoscaler manages from your manifests. For more details, refer to the [autoscaling and field ownership documentation](docs-content://deploy-manage/autoscaling/autoscaling-in-eck.md#k8s-autoscaling-ssa).
 
 #### Logstash pipeline improvements
 
-The `pipelinesRef` field now accepts a ConfigMap as well as a Secret, so non-sensitive pipeline definitions no longer need a Secret. For Logstash 9.5.0 and later, ECK also sets `ssl.reload.automatic: true` by default, so Logstash reloads pipeline TLS certificates in place when the backing Secret changes, without a pod restart. For more details, refer to the [Logstash configuration documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/configuration-logstash.md#k8s-logstash-pipelines).
+The `pipelinesRef` field now accepts a ConfigMap as well as a Secret, so non-sensitive pipeline definitions no longer need a Secret. For Logstash 9.5.0 and later, ECK also sets `ssl.reload.automatic: true` by default, so Logstash reloads pipeline TLS certificates in place when the backing Secret changes, without a pod restart. ECK does not set this default if you configure `ssl.reload.automatic`, `config.reload.automatic`, or `xpack.management.enabled` yourself. For more details, refer to the [Logstash pipelines documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/configuration-logstash.md#k8s-logstash-pipelines) and to [Automatic TLS certificate reload](docs-content://deploy-manage/deploy/cloud-on-k8s/logstash-plugins.md#automatic-tls-certificate-reload).
 
 #### Operator health probes
 
@@ -89,7 +89,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 ### Miscellaneous [elastic-cloud-kubernetes-360-miscellaneous]
 
 :::{dropdown} Updated dependencies
-- Go 1.26.5 => 1.27.3
+- Go 1.26.5 => 1.27.4
 - cloud.google.com/go/auth v0.22.0 => v0.24.2
 - cloud.google.com/go/storage v1.63.1 => v1.69.0
 - github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 => v1.8.3

@@ -31,16 +31,6 @@ With `true`, the operator checks RBAC on all cross-namespace associations. It re
 For more information, check [PR #9756](https://github.com/elastic/cloud-on-k8s/pull/9756).
 ::::
 
-::::{dropdown} The `autoops-token` key of the AutoOps connection Secret is no longer used
-The AutoOps agent now authenticates with the `cloud-connected-mode-api-key` key of the Secret referenced by `spec.secretName` on the `AutoOpsAgentPolicy` resource. The `autoops-token` key is no longer required as of 3.6.0, and ECK no longer injects it into the agent pods as the `AUTOOPS_TOKEN` environment variable.
-
-**Impact**<br> Secrets that still contain the `autoops-token` key remain valid. ECK ignores the key.
-
-**Action**<br> Remove the `autoops-token` key from the Secret. Remove any reference to `${env:AUTOOPS_TOKEN}` from configuration overrides in `spec.config` or `spec.configRef`, because the variable no longer resolves.
-
-For more information, check [PR #9849](https://github.com/elastic/cloud-on-k8s/pull/9849).
-::::
-
 ## 3.5.0 [elastic-cloud-kubernetes-350-deprecations]
 
 ::::{dropdown} The `eck.k8s.elastic.co/managed` annotation is deprecated in favor of `eck.k8s.elastic.co/pause-orchestration`
