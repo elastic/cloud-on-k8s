@@ -95,6 +95,7 @@ func ValidateLogstash(ls *lsv1alpha1.Logstash) (admission.Warnings, error) {
 	); resourcesWarning != "" {
 		warnings = append(warnings, resourcesWarning)
 	}
+	warnings = append(warnings, servicesTLSWarnings(ls)...)
 	errs := check(ls, validations())
 	if len(errs) > 0 {
 		return warnings, apierrors.NewInvalid(

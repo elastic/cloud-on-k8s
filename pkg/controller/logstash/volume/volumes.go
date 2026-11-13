@@ -42,7 +42,9 @@ func AppendDefaultPVCs(existingPVCs []corev1.PersistentVolumeClaim, podSpec core
 	return existingPVCs
 }
 
-func BuildVolumes(ls logstashv1alpha1.Logstash, useTLS bool) ([]corev1.Volume, []corev1.VolumeMount, error) {
+// BuildVolumes returns the volumes and the volume mounts of the Logstash container.
+// The HTTP certificates are mounted if mountHTTPCerts is true.
+func BuildVolumes(ls logstashv1alpha1.Logstash, mountHTTPCerts bool) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	// all volumes with CAs of direct associations
 	volumeLikes, err := getVolumesFromAssociations(ls.GetAssociations())
 	if err != nil {
@@ -57,7 +59,7 @@ func BuildVolumes(ls logstashv1alpha1.Logstash, useTLS bool) ([]corev1.Volume, [
 		DefaultLogsVolume,
 	)
 
-	if useTLS {
+	if mountHTTPCerts {
 		httpCertsVolume := certificates.HTTPCertSecretVolume(logstashv1alpha1.Namer, ls.Name)
 		volumeLikes = append(volumeLikes, httpCertsVolume)
 	}

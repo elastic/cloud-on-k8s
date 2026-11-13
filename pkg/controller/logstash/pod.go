@@ -66,7 +66,7 @@ func buildPodTemplate(params Params, configHash hash.Hash32) (corev1.PodTemplate
 	spec := &params.Logstash.Spec
 	builder := defaults.NewPodTemplateBuilder(params.GetPodTemplate(), logstashv1alpha1.LogstashContainerName)
 
-	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash, params.APIServerConfig.UseTLS())
+	volumes, volumeMounts, err := volume.BuildVolumes(params.Logstash, params.mountHTTPCerts())
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -218,9 +218,15 @@ func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
 	return httpCerts, nil
 }
 
+// mountHTTPCerts returns true if the HTTP certificates must be mounted in the Logstash container, either because the
+// API server uses TLS or because another Service requests a self-signed certificate.
+func (p Params) mountHTTPCerts() bool {
+	return p.APIServerConfig.UseTLS() || p.MountHTTPCerts
+}
+
 // writeHTTPSCertsToConfigHash fetches the http-certs-internal secret and adds the content of tls.crt to checksum
 func writeHTTPSCertsToConfigHash(params Params, configHash hash.Hash) error {
-	if params.APIServerConfig.UseTLS() {
+	if params.mountHTTPCerts() {
 		httpCerts, err := getHTTPSInternalCertsSecret(params)
 		if err != nil {
 			return err

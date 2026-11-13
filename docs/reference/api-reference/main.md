@@ -2183,7 +2183,7 @@ Logstash is the Schema for the logstashes API
 | --- | --- |
 | *`name`* __string__ |  |
 | *`service`* __[ServiceTemplate](#servicetemplate)__ | Service defines the template for the associated Kubernetes Service object. |
-| *`tls`* __[TLSOptions](#tlsoptions)__ | TLS defines options for configuring TLS for HTTP. |
+| *`tls`* __[TLSOptions](#tlsoptions)__ | TLS defines options for configuring TLS.<br>Logstash uses a single certificate, which is issued according to the TLS options of the `api` Service.<br>For any other Service, only `selfSignedCertificate` is taken into account: when it is set and not disabled,<br>its `subjectAltNames` and the DNS names and IP addresses of the Service are added to that certificate,<br>so that it can also be used by the Logstash inputs exposed through the Service. The certificate and its key<br>are available in the Logstash container in the `/mnt/elastic-internal/http-certs` directory.<br>`certificate` and `certificateAuthorities` are ignored for Services other than `api`. |
 
 
 ### LogstashSpec  [#logstashspec]
