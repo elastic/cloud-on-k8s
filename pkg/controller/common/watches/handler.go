@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
 var (
@@ -35,6 +36,7 @@ type HandlerRegistration[T client.Object] interface {
 // NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
 func NewDynamicEnqueueRequest[T client.Object]() *DynamicEnqueueRequest[T] {
 	return &DynamicEnqueueRequest[T]{
+		handlerKind:   handlerKindFor[T](),
 		registrations: make(map[string]HandlerRegistration[T]),
 	}
 }
@@ -44,6 +46,8 @@ func NewDynamicEnqueueRequest[T client.Object]() *DynamicEnqueueRequest[T] {
 type DynamicEnqueueRequest[T client.Object] struct {
 	mutex         sync.RWMutex
 	registrations map[string]HandlerRegistration[T]
+	// handlerKind is exposed as the "handler" label of the dynamic watches metric.
+	handlerKind string
 }
 
 // AddHandlers adds the new event handlers to this DynamicEnqueueRequest.
@@ -62,8 +66,12 @@ func (d *DynamicEnqueueRequest[T]) AddHandler(handler HandlerRegistration[T]) er
 	defer d.mutex.Unlock()
 
 	_, exists := d.registrations[handler.Key()]
-	if !exists {
+	if exists {
+		log.V(1).Info("Replacing existing handler registration", "key", handler.Key())
+	} else {
 		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations_keys", maps.Keys(d.registrations))
+		// Aggregate across controllers: each owns its own DynamicWatches instance.
+		metrics.DynamicWatchesRegistered.WithLabelValues(d.handlerKind).Inc()
 	}
 	d.registrations[handler.Key()] = handler
 	return nil
@@ -78,7 +86,10 @@ func (d *DynamicEnqueueRequest[T]) RemoveHandler(handler HandlerRegistration[T])
 func (d *DynamicEnqueueRequest[T]) RemoveHandlerForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	delete(d.registrations, key)
+	if _, exists := d.registrations[key]; exists {
+		metrics.DynamicWatchesRegistered.WithLabelValues(d.handlerKind).Dec()
+		delete(d.registrations, key)
+	}
 }
 
 // Registrations returns the list of registered handler names.

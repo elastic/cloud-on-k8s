@@ -21,9 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
 type fakeHandler[T client.Object] struct {
@@ -64,6 +66,85 @@ func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 			assert.Equal(t, len(d.registrations), tt.registeredHandlers)
 		})
 	}
+}
+
+// dynamicWatchesValue returns the elastic_dynamic_watches_registered gauge for kind.
+func dynamicWatchesValue(t *testing.T, kind string) float64 {
+	t.Helper()
+
+	families, err := crmetrics.Registry.Gather()
+	require.NoError(t, err)
+
+	for _, family := range families {
+		if family.GetName() != "elastic_dynamic_watches_registered" {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			for _, label := range metric.GetLabel() {
+				if label.GetName() == metrics.HandlerKindLabel && label.GetValue() == kind {
+					return metric.GetGauge().GetValue()
+				}
+			}
+		}
+	}
+	return 0
+}
+
+func TestHandlerKindFor(t *testing.T) {
+	assert.Equal(t, configMapsHandlerKind, handlerKindFor[*corev1.ConfigMap]())
+	assert.Equal(t, secretsHandlerKind, handlerKindFor[*corev1.Secret]())
+	assert.Equal(t, servicesHandlerKind, handlerKindFor[*corev1.Service]())
+	assert.Equal(t, podsHandlerKind, handlerKindFor[*corev1.Pod]())
+	assert.Equal(t, referencedResourcesHandlerKind, handlerKindFor[client.Object]())
+}
+
+func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
+	kind := secretsHandlerKind
+	// Other tests may register handlers of this kind; assert relative to the baseline.
+	baseline := dynamicWatchesValue(t, kind)
+
+	d := NewDynamicEnqueueRequest[*corev1.Secret]()
+	assert.Equal(t, baseline, dynamicWatchesValue(t, kind))
+
+	require.NoError(t, d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-1"}))
+	assert.Equal(t, baseline+1, dynamicWatchesValue(t, kind))
+
+	// Re-adding an existing key must not increase the count.
+	require.NoError(t, d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-1"}))
+	assert.Equal(t, baseline+1, dynamicWatchesValue(t, kind))
+
+	require.NoError(t, d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-2"}))
+	assert.Equal(t, baseline+2, dynamicWatchesValue(t, kind))
+
+	// RemoveHandler must also update the metric.
+	d.RemoveHandler(&fakeHandler[*corev1.Secret]{name: "watch-1"})
+	assert.Equal(t, baseline+1, dynamicWatchesValue(t, kind))
+
+	// Removing an unknown key must not decrease the count.
+	d.RemoveHandlerForKey("unknown")
+	assert.Equal(t, baseline+1, dynamicWatchesValue(t, kind))
+
+	d.RemoveHandlerForKey("watch-2")
+	assert.Equal(t, baseline, dynamicWatchesValue(t, kind))
+}
+
+func TestDynamicEnqueueRequest_DynamicWatchesMetricAggregatesInstances(t *testing.T) {
+	// The metric aggregates registrations of the same kind across controller instances.
+	kind := servicesHandlerKind
+	baseline := dynamicWatchesValue(t, kind)
+
+	first := NewDynamicEnqueueRequest[*corev1.Service]()
+	second := NewDynamicEnqueueRequest[*corev1.Service]()
+
+	require.NoError(t, first.AddHandler(&fakeHandler[*corev1.Service]{name: "first"}))
+	require.NoError(t, second.AddHandler(&fakeHandler[*corev1.Service]{name: "second"}))
+	assert.Equal(t, baseline+2, dynamicWatchesValue(t, kind))
+
+	first.RemoveHandler(&fakeHandler[*corev1.Service]{name: "first"})
+	assert.Equal(t, baseline+1, dynamicWatchesValue(t, kind))
+
+	second.RemoveHandlerForKey("second")
+	assert.Equal(t, baseline, dynamicWatchesValue(t, kind))
 }
 
 func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
