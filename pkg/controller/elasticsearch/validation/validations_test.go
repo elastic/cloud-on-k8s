@@ -1851,6 +1851,8 @@ func Test_validPlugins(t *testing.T) {
 					{ID: "query-brackets", Location: "https://repo.corp/my-plugin.zip?v=[1]"},
 					{ID: "fragment-brackets", Location: "https://repo.corp/my-plugin.zip#v[1]"},
 					{ID: "maven-brackets", Location: "org.example:my[plugin]:9.2.0"},
+					{ID: "query-only-ssp", Location: "https:?v=1"},
+					{ID: "empty-authority", Location: "file:///mnt/plugins/my-plugin.zip#v1"},
 				},
 			},
 			wantFields: nil,
@@ -1914,6 +1916,9 @@ func Test_validPlugins(t *testing.T) {
 				{ID: "maven-bad-escape", Location: "org.example:my-plugin:%zz"},
 				{ID: "truncated-escape", Location: "https://repo.corp/my-plugin.zip%2"},
 				{ID: "path-brackets", Location: "https://repo.corp/my[plugin].zip"},
+				{ID: "empty-ssp", Location: "https:"},
+				{ID: "empty-ssp-with-fragment", Location: "file:#fragment"},
+				{ID: "two-fragments", Location: "https://repo.corp/my-plugin.zip#a#b"},
 			}},
 			wantFields: []string{
 				"spec.plugins.items[1].location",
@@ -1927,6 +1932,9 @@ func Test_validPlugins(t *testing.T) {
 				"spec.plugins.items[9].location",
 				"spec.plugins.items[10].location",
 				"spec.plugins.items[11].location",
+				"spec.plugins.items[12].location",
+				"spec.plugins.items[13].location",
+				"spec.plugins.items[14].location",
 			},
 		},
 	}
