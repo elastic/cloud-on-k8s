@@ -133,6 +133,37 @@ func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, r
 	return nil
 }
 
+// AdditionalTrustedClientCAsPath is the path of the additional trusted client CAs in the spec.
+var AdditionalTrustedClientCAsPath = field.NewPath("spec").Child("http", "tls", "client", "additionalTrustedCAs")
+
+// CheckAdditionalTrustedClientCAs checks that the additional trusted client CAs are only set with TLS enabled, and
+// that each of them references a distinct, named secret.
+func CheckAdditionalTrustedClientCAs(tls TLSWithClientOptions) field.ErrorList {
+	refs := tls.Client.AdditionalTrustedCAs
+	if len(refs) == 0 {
+		return nil
+	}
+	path := AdditionalTrustedClientCAsPath
+	var errs field.ErrorList
+	if !tls.Enabled() {
+		errs = append(errs, field.Forbidden(path, "additional trusted client CAs require TLS to be enabled"))
+	}
+	seen := make(map[string]struct{}, len(refs))
+	for i, ref := range refs {
+		secretNamePath := path.Index(i).Child("secretName")
+		if ref.SecretName == "" {
+			errs = append(errs, field.Required(secretNamePath, "secretName must be set"))
+			continue
+		}
+		if _, exists := seen[ref.SecretName]; exists {
+			errs = append(errs, field.Duplicate(secretNamePath, ref.SecretName))
+			continue
+		}
+		seen[ref.SecretName] = struct{}{}
+	}
+	return errs
+}
+
 // CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
 // its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
 // names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.

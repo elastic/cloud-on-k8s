@@ -14,17 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/driver/shared"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -811,4 +815,113 @@ func (f *fakeSecurityClient) withFileTokens(namespacedService, tokenName string,
 	}
 	f.serviceAccountCredentials[namespacedService] = serviceAccountCredential
 	return f
+}
+
+func TestDriver_reconcileWithSharedState_additionalTrustedClientCAsErr(t *testing.T) {
+	const esName = "test-cluster"
+	const namespace = "test-ns"
+	const nodeSetName = "default"
+
+	additionalTrustedCAsErr := errors.New("could not retrieve secret test-ns/additional-ca specified in spec.http.tls.client.additionalTrustedCAs")
+	fileSettingsErr := apierrors.NewInternalError(errors.New("cannot read the file settings secret"))
+
+	for _, tt := range []struct {
+		name                    string
+		paused                  bool
+		additionalTrustedCAsErr error
+		// fileSettingsUnreadable makes the reconciliation return before the nodes are reconciled
+		fileSettingsUnreadable bool
+		wantErrs               []error
+		wantStatefulSet        bool
+	}{
+		{
+			name:            "no additional trusted CAs error: the nodes are reconciled",
+			wantStatefulSet: true,
+		},
+		{
+			name:                    "additional trusted CAs error: the nodes are reconciled, then the error is reported",
+			additionalTrustedCAsErr: additionalTrustedCAsErr,
+			wantErrs:                []error{additionalTrustedCAsErr},
+			wantStatefulSet:         true,
+		},
+		{
+			name:                    "additional trusted CAs error while paused: the critical steps are reconciled, then the error is reported",
+			paused:                  true,
+			additionalTrustedCAsErr: additionalTrustedCAsErr,
+			wantErrs:                []error{additionalTrustedCAsErr},
+		},
+		{
+			name:                    "additional trusted CAs error and an error before the nodes are reconciled: both are reported",
+			additionalTrustedCAsErr: additionalTrustedCAsErr,
+			fileSettingsUnreadable:  true,
+			wantErrs:                []error{fileSettingsErr, additionalTrustedCAsErr},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				Name:      esName,
+				Namespace: namespace,
+				Spec: esv1.ElasticsearchSpec{
+					Version:  "8.17.0",
+					NodeSets: []esv1.NodeSet{{Name: nodeSetName, Count: 1}},
+				},
+			}
+			if tt.paused {
+				es.Annotations = map[string]string{commonv1.PauseOrchestrationAnnotation: "true"}
+			}
+			k8sClient := k8s.NewFakeClientBuilder(&es, &corev1.ConfigMap{Name: esv1.ScriptsConfigMap(esName), Namespace: namespace}).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Get: func(ctx context.Context, c crclient.WithWatch, key crclient.ObjectKey, obj crclient.Object, opts ...crclient.GetOption) error {
+						if tt.fileSettingsUnreadable && key.Name == esv1.FileSettingsSecretName(esName) {
+							return fileSettingsErr
+						}
+						return c.Get(ctx, key, obj, opts...)
+					},
+				}).Build()
+			resolvedConfig, err := ResolveConfig(t.Context(), k8sClient, es, corev1.IPv4Protocol, false)
+			require.NoError(t, err)
+			resourcesState, err := reconcile.NewResourcesStateFromAPI(k8sClient, es)
+			require.NoError(t, err)
+
+			reconcileState := reconcile.MustNewState(es)
+			d := &Driver{}
+			d.Client = k8sClient
+			d.ES = es
+			d.Version = version.MustParse(es.Spec.Version)
+			d.LicenseChecker = license.MockLicenseChecker{}
+			d.Parameters.DynamicWatches = watches.NewDynamicWatches()
+			d.ReconcileState = reconcileState
+			d.Expectations = expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{})
+			// the critical steps reconciled while paused clear the completed restart shutdowns
+			var esClient esclient.Client = fakeEsClient(t, "8.17.0", false, wantClient{})
+			if tt.paused {
+				esClient = &fakeESShutdownClient{}
+			}
+
+			results := d.reconcileWithSharedState(t.Context(), &shared.ReconcileState{
+				Meta:                          metadata.Metadata{},
+				ResourcesState:                resourcesState,
+				ESClient:                      esClient,
+				AdditionalTrustedClientCAsErr: tt.additionalTrustedCAsErr,
+			}, resolvedConfig)
+
+			_, err = results.Aggregate()
+			for _, wantErr := range tt.wantErrs {
+				require.ErrorIs(t, err, wantErr)
+			}
+			require.Equal(t, len(tt.wantErrs) > 0, err != nil, "unexpected error: %v", err)
+
+			var statefulSets appsv1.StatefulSetList
+			require.NoError(t, k8sClient.List(t.Context(), &statefulSets))
+			require.Equal(t, tt.wantStatefulSet, len(statefulSets.Items) == 1)
+			if tt.paused {
+				// the StatefulSet is not created while paused, but the pending changes are reported
+				_, updatedES := reconcileState.Apply()
+				require.NotNil(t, updatedES)
+				idx := updatedES.Status.Conditions.Index(commonv1.OrchestrationPaused)
+				require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition")
+				require.Equal(t, corev1.ConditionTrue, updatedES.Status.Conditions[idx].Status)
+			}
+		})
+	}
 }

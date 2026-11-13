@@ -15,6 +15,7 @@ import (
 	"net"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -1053,6 +1055,40 @@ func TestWatchKeys_NamespaceScoped(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
 			assert.NotEqual(t, CertificateWatchKey(esv1.ESNamer, tt.a), CertificateWatchKey(esv1.ESNamer, tt.b))
+			assert.NotEqual(t, AdditionalTrustedClientCAsWatchKey(esv1.ESNamer, tt.a), AdditionalTrustedClientCAsWatchKey(esv1.ESNamer, tt.b))
+		})
+	}
+}
+
+// TestWatchKeys_Distinct checks that the watch keys of an owner, which may be registered in the same dynamic
+// watches, do not collide with each other. A suffix exceeding the limit of the namer is truncated, which could
+// make keys collide: check the suffixes are within the limit too.
+func TestWatchKeys_Distinct(t *testing.T) {
+	longestName := strings.Repeat("a", name.MaxResourceNameLength)
+	tests := []struct {
+		name      string
+		namer     name.Namer
+		ownerName string
+	}{
+		{name: "Elasticsearch namer", namer: esv1.ESNamer, ownerName: "es"},
+		{name: "Elasticsearch namer, longest name", namer: esv1.ESNamer, ownerName: longestName},
+		{name: "Agent namer", namer: name.NewNamer("agent"), ownerName: "agent"},
+		{name: "Agent namer, longest name", namer: name.NewNamer("agent"), ownerName: longestName},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, suffix := range []string{"http-certificate", "http-additional-cas", "client-trusted-cas"} {
+				_, err := tt.namer.SafeSuffix(longestName, suffix)
+				require.NoError(t, err)
+			}
+			owner := types.NamespacedName{Namespace: "ns", Name: tt.ownerName}
+			keys := []string{
+				CertificateWatchKey(tt.namer, owner),
+				AdditionalCAWatchKey(tt.namer, owner),
+				AdditionalTrustedClientCAsWatchKey(tt.namer, owner),
+			}
+			slices.Sort(keys)
+			assert.Len(t, slices.Compact(keys), 3)
 		})
 	}
 }
