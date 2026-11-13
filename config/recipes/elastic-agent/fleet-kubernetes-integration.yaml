@@ -80,6 +80,17 @@ spec:
       spec:
         serviceAccountName: fleet-server
         automountServiceAccountToken: true
+        # runAsUser: 0 lets Agent write to its hostPath state directory, and makes ECK add
+        # the Elasticsearch CA to the container trust store.
+        # To run Agent >= 8.16 as non-root (see README): remove this securityContext, uncomment
+        # the agent container below, and in Kibana replace xpack.fleet.agents.elasticsearch.hosts
+        # with xpack.fleet.outputs from fleet-kubernetes-integration-nonroot.yaml (it adds the CA).
+        # containers:
+        # - name: agent
+        #   securityContext:
+        #     allowPrivilegeEscalation: true
+        #     capabilities:
+        #       add: ["CHOWN", "SETPCAP"]
         securityContext:
           runAsUser: 0
 ---
@@ -114,6 +125,8 @@ spec:
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
         automountServiceAccountToken: true
+        # Runs as root for the same reasons as the fleet-server Agent above.
+        # To run as non-root, apply the same changes.
         securityContext:
           runAsUser: 0
 ---
