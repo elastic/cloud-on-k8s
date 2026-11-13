@@ -353,15 +353,21 @@ func validPlugins(es esv1.Elasticsearch) field.ErrorList {
 }
 
 // validPluginLocation approximates the java.net.URI parsing Elasticsearch applies to plugin locations.
-// url.Parse is more lenient than java.net.URI, so the characters java.net.URI never accepts are rejected explicitly.
+// url.Parse is more lenient than java.net.URI, so the cases java.net.URI rejects are checked explicitly:
+// characters it never accepts, malformed percent escapes in any component, and brackets in the path.
 func validPluginLocation(location string) bool {
 	if strings.ContainsFunc(location, func(r rune) bool {
 		return unicode.IsSpace(r) || unicode.IsControl(r) || strings.ContainsRune("\"<>\\^`{|}", r)
 	}) {
 		return false
 	}
-	_, err := url.Parse(location)
-	return err == nil
+	// validates the percent escapes of the whole location, url.Parse does not validate them in the query and opaque parts
+	if _, err := url.PathUnescape(location); err != nil {
+		return false
+	}
+	parsed, err := url.Parse(location)
+	// RawPath preserves unescaped brackets without rejecting encoded brackets or IPv6 hosts.
+	return err == nil && !strings.ContainsAny(parsed.RawPath, "[]")
 }
 
 // validPluginsProxy mirrors the proxy validation of Elasticsearch: a non-empty host and a numeric port, separated by a single colon.
