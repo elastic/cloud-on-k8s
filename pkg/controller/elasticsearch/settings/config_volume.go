@@ -75,16 +75,21 @@ func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (co
 	return secret, nil
 }
 
-func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte, meta metadata.Metadata) corev1.Secret {
+// ConfigSecret builds the config Secret of the given StatefulSet. pluginsData is only added when not empty.
+func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte, pluginsData []byte, meta metadata.Metadata) corev1.Secret {
 	mergedMeta := meta.Merge(metadata.Metadata{Labels: label.NewConfigLabels(k8s.ExtractNamespacedName(&es), ssetName)})
+	data := map[string][]byte{
+		ConfigFileName: configData,
+	}
+	if len(pluginsData) > 0 {
+		data[PluginsConfigFileName] = pluginsData
+	}
 	return corev1.Secret{
 		Namespace:   es.Namespace,
 		Name:        ConfigSecretName(ssetName),
 		Labels:      mergedMeta.Labels,
 		Annotations: mergedMeta.Annotations,
-		Data: map[string][]byte{
-			ConfigFileName: configData,
-		},
+		Data:        data,
 	}
 }
 
@@ -94,7 +99,11 @@ func ReconcileConfig(ctx context.Context, client k8s.Client, es esv1.Elasticsear
 	if err != nil {
 		return err
 	}
-	expected := ConfigSecret(es, ssetName, rendered, meta)
+	pluginsConfig, err := RenderPluginsConfig(es)
+	if err != nil {
+		return err
+	}
+	expected := ConfigSecret(es, ssetName, rendered, pluginsConfig, meta)
 	_, err = reconciler.ReconcileSecret(ctx, client, expected, &es)
 	return err
 }

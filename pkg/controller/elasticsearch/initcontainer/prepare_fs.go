@@ -6,6 +6,7 @@ package initcontainer
 
 import (
 	"path"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -84,6 +85,12 @@ var (
 			},
 		},
 	}
+	// pluginsLinkedFile maps elasticsearch-plugins.yml into the config dir. It is only linked when
+	// spec.plugins is set, so that the rendered script of clusters without plugins does not change.
+	pluginsLinkedFile = LinkedFile{
+		Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.PluginsConfigFileName),
+		Target: stringsutil.Concat(EsConfigSharedVolume.InitContainerMountPath, "/", settings.PluginsConfigFileName),
+	}
 	// defaultResources are the default request and limits for the init container.
 	defaultResources = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
@@ -136,10 +143,15 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 // RenderPrepareFsScript renders the prepare-fs init container script. The script embeds
 // expectedAnnotations in their given order; callers must keep that order stable across
 // operator versions to avoid changing the config hash and triggering a rolling restart.
-func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
+// withPlugins links elasticsearch-plugins.yml into the config dir.
+func RenderPrepareFsScript(expectedAnnotations []string, withPlugins bool) (string, error) {
+	files := linkedFiles
+	if withPlugins {
+		files = LinkedFilesArray{Array: append(slices.Clone(linkedFiles.Array), pluginsLinkedFile)}
+	}
 	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,
-		LinkedFiles:   linkedFiles,
+		LinkedFiles:   files,
 		ChownToElasticsearch: []string{
 			esvolume.ElasticsearchDataMountPath,
 			esvolume.ElasticsearchLogsMountPath,

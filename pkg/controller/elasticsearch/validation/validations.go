@@ -8,7 +8,10 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
+	"strconv"
 	"strings"
+	"unicode"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -45,6 +48,10 @@ const (
 	unsupportedUpgradeMsg                    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 	unsupportedVersionMsg                    = "Unsupported version"
 	notAllowedNodesLabelMsg                  = "Node label not in the exposed node labels list"
+	pluginsUnsupportedVersionMsg             = "spec.plugins requires Elasticsearch 8.17.0 or later; use init containers or a custom image for earlier versions"
+	invalidPluginsProxyMsg                   = "Invalid proxy, expected host:port"
+	blankPluginIDMsg                         = "Plugin ID must not be blank"
+	invalidPluginLocationMsg                 = "Invalid plugin location, expected a URL, file:// path or Maven coordinates"
 	autoscalingAnnotationUnsupportedErrMsg   = "autoscaling annotation is no longer supported"
 	inconsistentFIPSModeWarningMsg           = "xpack.security.fips_mode.enabled is not consistent across all NodeSets; FIPS mode should be uniform across the cluster"
 	fipsManagedKeystoreUnsupportedWarningMsg = "FIPS mode is enabled in NodeSet configuration but Elasticsearch version is below 9.4.0; the operator cannot manage the keystore password automatically."
@@ -91,6 +98,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 		validMonitoring,
 		validAssociations,
 		supportsRemoteClusterUsingAPIKey,
+		validPlugins,
 		func(proposed esv1.Elasticsearch) field.ErrorList {
 			return validLicenseLevel(ctx, proposed, checker)
 		},
@@ -309,6 +317,61 @@ func supportedVersion(es esv1.Elasticsearch) field.ErrorList {
 		}
 	}
 	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionMsg)}
+}
+
+// validPlugins checks spec.plugins against the minimum Elasticsearch version and mirrors the checks
+// Elasticsearch runs on elasticsearch-plugins.yml at startup, so that errors surface at admission
+// instead of as a crashlooping container.
+func validPlugins(es esv1.Elasticsearch) field.ErrorList {
+	if !es.HasPlugins() {
+		return nil
+	}
+	pluginsPath := field.NewPath("spec").Child("plugins")
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		// already reported by supportedVersion
+		return nil
+	}
+	if ver.LT(esversion.PluginsMinVersion) {
+		return field.ErrorList{field.Forbidden(pluginsPath, pluginsUnsupportedVersionMsg)}
+	}
+
+	var errs field.ErrorList
+	if proxy := es.Spec.Plugins.Proxy; proxy != "" && !validPluginsProxy(proxy) {
+		errs = append(errs, field.Invalid(pluginsPath.Child("proxy"), proxy, invalidPluginsProxyMsg))
+	}
+	for i, p := range es.Spec.Plugins.Items {
+		itemPath := pluginsPath.Child("items").Index(i)
+		if strings.TrimSpace(p.ID) == "" {
+			errs = append(errs, field.Invalid(itemPath.Child("id"), p.ID, blankPluginIDMsg))
+		}
+		if p.Location != "" && !validPluginLocation(p.Location) {
+			errs = append(errs, field.Invalid(itemPath.Child("location"), p.Location, invalidPluginLocationMsg))
+		}
+	}
+	return errs
+}
+
+// validPluginLocation approximates the java.net.URI parsing Elasticsearch applies to plugin locations.
+// url.Parse is more lenient than java.net.URI, so the characters java.net.URI never accepts are rejected explicitly.
+func validPluginLocation(location string) bool {
+	if strings.ContainsFunc(location, func(r rune) bool {
+		return unicode.IsSpace(r) || unicode.IsControl(r) || strings.ContainsRune("\"<>\\^`{|}", r)
+	}) {
+		return false
+	}
+	_, err := url.Parse(location)
+	return err == nil
+}
+
+// validPluginsProxy mirrors the proxy validation of Elasticsearch: a non-empty host and a numeric port, separated by a single colon.
+func validPluginsProxy(proxy string) bool {
+	host, port, found := strings.Cut(proxy, ":")
+	if !found || host == "" || strings.Contains(port, ":") {
+		return false
+	}
+	_, err := strconv.ParseUint(port, 10, 16)
+	return err == nil
 }
 
 func supportsRemoteClusterUsingAPIKey(es esv1.Elasticsearch) field.ErrorList {
